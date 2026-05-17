@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
 import {
   MapContainer,
@@ -29,6 +29,37 @@ function RiderApp() {
 
   const selectedPrice = ridePrices[rideType];
 
+  const getStatusText = (status) => {
+    if (status === "requested") return "Waiting for driver ⏳";
+    if (status === "accepted") return "Driver Accepted ✅";
+    if (status === "driver_arriving") return "Driver Arriving 📍";
+    if (status === "in_progress") return "Trip Started 🚖";
+    if (status === "completed") return "Trip Completed ✅";
+    if (status === "cancelled") return "Ride Cancelled ❌";
+    return status;
+  };
+
+  const fetchRideStatus = async (rideId) => {
+    try {
+      const res = await fetch(`${API_URL}/rides/${rideId}/`);
+      const data = await res.json();
+
+      if (res.ok) {
+        setRide(data.ride || data);
+      }
+    } catch (error) {
+      console.log("Ride status error:", error);
+    }
+  };
+
+  const loadCurrentRide = async () => {
+    const rideId = localStorage.getItem("currentRideId");
+
+    if (!rideId) return;
+
+    await fetchRideStatus(rideId);
+  };
+
   const requestRide = async () => {
     try {
       const res = await fetch(`${API_URL}/rides/request/`, {
@@ -53,6 +84,8 @@ function RiderApp() {
 
         setRide(newRide);
         setPaymentStatus("");
+
+        localStorage.setItem("currentRideId", newRide.id);
 
         alert("Ride requested successfully 🚖");
       } else {
@@ -87,6 +120,7 @@ function RiderApp() {
 
       if (res.ok) {
         setPaymentStatus("Paid ✅");
+        localStorage.removeItem("currentRideId");
         alert("Payment successful 💳");
       } else {
         alert(data.error || "Payment failed");
@@ -96,6 +130,22 @@ function RiderApp() {
       alert("Payment server error");
     }
   };
+
+  useEffect(() => {
+    loadCurrentRide();
+  }, []);
+
+  useEffect(() => {
+    let interval;
+
+    if (ride?.id) {
+      interval = setInterval(() => {
+        fetchRideStatus(ride.id);
+      }, 3000);
+    }
+
+    return () => clearInterval(interval);
+  }, [ride?.id]);
 
   return (
     <div style={page}>
@@ -154,7 +204,7 @@ function RiderApp() {
               </p>
 
               <p>
-                <b>Status:</b> {ride.status}
+                <b>Status:</b> {getStatusText(ride.status)}
               </p>
 
               <p>
@@ -169,9 +219,11 @@ function RiderApp() {
                 <b>Payment:</b> {paymentStatus || "Pending"}
               </p>
 
-              <button style={payBtn} onClick={payRide}>
-                Pay Ride 💳
-              </button>
+              {ride.status === "completed" && paymentStatus !== "Paid ✅" && (
+                <button style={payBtn} onClick={payRide}>
+                  Pay Ride 💳
+                </button>
+              )}
             </div>
           )}
         </div>

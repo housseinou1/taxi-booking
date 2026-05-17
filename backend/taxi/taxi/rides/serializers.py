@@ -14,14 +14,25 @@ class RideSerializer(serializers.ModelSerializer):
             "rider_name",
             "driver",
             "driver_name",
+
             "pickup_lat",
             "pickup_lng",
             "destination_lat",
             "destination_lng",
+
+            "ride_type",
+            "estimated_price",
+
             "status",
             "created_at",
         ]
-        read_only_fields = ["rider", "driver", "status", "created_at"]
+
+        read_only_fields = [
+            "rider",
+            "driver",
+            "status",
+            "created_at",
+        ]
 
     def get_rider_name(self, obj):
         return obj.rider.username if obj.rider else None

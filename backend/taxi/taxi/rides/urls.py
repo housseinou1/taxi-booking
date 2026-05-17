@@ -2,9 +2,10 @@ from django.urls import path
 
 from .views import (
     request_ride,
+    rides_list,
     available_rides,
     rides_history,
-    rides_list,
+    ride_detail,
     accept_ride,
     driver_arriving,
     start_ride,
@@ -13,15 +14,14 @@ from .views import (
 )
 
 urlpatterns = [
-    path("create/", request_ride),
+    path("", rides_list),
     path("request/", request_ride),
-
     path("available/", available_rides),
     path("history/", rides_history),
-    path("list/", rides_list),
 
+    path("<int:ride_id>/", ride_detail),
     path("<int:ride_id>/accept/", accept_ride),
-    path("<int:ride_id>/driver-arriving/", driver_arriving),
+    path("<int:ride_id>/arriving/", driver_arriving),
     path("<int:ride_id>/start/", start_ride),
     path("<int:ride_id>/complete/", complete_ride),
     path("<int:ride_id>/cancel/", cancel_ride),

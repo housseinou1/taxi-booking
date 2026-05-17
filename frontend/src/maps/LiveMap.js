@@ -6,64 +6,27 @@ import {
   Marker,
   Popup,
   Polyline,
-  useMap,
 } from "react-leaflet";
 
 import "leaflet/dist/leaflet.css";
-
-function RecenterMap({ position }) {
-  const map = useMap();
-
-  useEffect(() => {
-    if (position) {
-      map.setView(position, 13);
-    }
-  }, [position, map]);
-
-  return null;
-}
 
 function LiveMap({ currentRide }) {
   const API_URL = "http://127.0.0.1:8000";
 
   const [driverPosition, setDriverPosition] = useState([
-    18.081,
-    -15.965,
+    18.0735,
+    -15.9582,
   ]);
 
   const pickup = [
-    Number(currentRide?.pickup_lat) || 18.0735,
-    Number(currentRide?.pickup_lng) || -15.9582,
+    currentRide?.pickup_lat || 18.0735,
+    currentRide?.pickup_lng || -15.9582,
   ];
 
   const destination = [
-    Number(currentRide?.destination_lat) || 18.0896,
-    Number(currentRide?.destination_lng) || -15.9754,
+    currentRide?.destination_lat || 18.0896,
+    currentRide?.destination_lng || -15.9754,
   ];
-
-  const fetchDriverLocation = async () => {
-    if (!currentRide?.driver) return;
-
-    try {
-      const res = await fetch(`${API_URL}/drivers/list/`);
-      const drivers = await res.json();
-
-      const driver = drivers.find(
-        (item) => Number(item.id) === Number(currentRide.driver)
-      );
-
-      if (driver) {
-        const lat = driver.current_lat || driver.driver_lat;
-        const lng = driver.current_lng || driver.driver_lng;
-
-        if (lat && lng) {
-          setDriverPosition([Number(lat), Number(lng)]);
-        }
-      }
-    } catch (error) {
-      console.error("Driver location error:", error);
-    }
-  };
 
   useEffect(() => {
     fetchDriverLocation();
@@ -73,73 +36,67 @@ function LiveMap({ currentRide }) {
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [currentRide]);
+  }, []);
 
-  const routeLine =
-    currentRide?.status === "accepted"
-      ? [driverPosition, pickup]
-      : [driverPosition, destination];
+  const fetchDriverLocation = async () => {
+    try {
+      const res = await fetch(`${API_URL}/drivers/location/`);
+      const data = await res.json();
+
+      if (data.lat && data.lng) {
+        setDriverPosition([
+          parseFloat(data.lat),
+          parseFloat(data.lng),
+        ]);
+      }
+    } catch (err) {
+      console.log("Location error");
+    }
+  };
 
   return (
-    <div style={mapWrapper}>
-      <div style={mapHeader}>
-        <div>
-          <h2 style={{ margin: 0 }}>📍 Live Ride Tracking</h2>
-          <p style={mapSubtitle}>
-            Status: {currentRide?.status || "No active ride"}
-          </p>
-        </div>
-      </div>
+    <MapContainer
+      center={pickup}
+      zoom={13}
+      style={{
+        height: "500px",
+        width: "100%",
+        borderRadius: "20px",
+      }}
+    >
+      <TileLayer
+        attribution="&copy; OpenStreetMap contributors"
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+      />
 
-      <MapContainer center={driverPosition} zoom={13} style={mapStyle}>
-        <RecenterMap position={driverPosition} />
+      {/* DRIVER */}
+      <Marker position={driverPosition}>
+        <Popup>🚖 Driver Location</Popup>
+      </Marker>
 
-        <TileLayer
-          attribution="&copy; OpenStreetMap contributors"
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
+      {/* PICKUP */}
+      <Marker position={pickup}>
+        <Popup>📍 Pickup</Popup>
+      </Marker>
 
-        <Marker position={pickup}>
-          <Popup>Pickup Location 📍</Popup>
-        </Marker>
+      {/* DESTINATION */}
+      <Marker position={destination}>
+        <Popup>🏁 Destination</Popup>
+      </Marker>
 
-        <Marker position={driverPosition}>
-          <Popup>Driver Live Location 🚕</Popup>
-        </Marker>
+      {/* DRIVER TO PICKUP */}
+      <Polyline
+        positions={[driverPosition, pickup]}
+        color="blue"
+      />
 
-        <Marker position={destination}>
-          <Popup>Destination 🏁</Popup>
-        </Marker>
-
-        <Polyline positions={routeLine} />
-      </MapContainer>
-    </div>
+      {/* PICKUP TO DESTINATION */}
+      <Polyline
+        positions={[pickup, destination]}
+        color="green"
+      />
+    </MapContainer>
   );
 }
-
-const mapWrapper = {
-  marginTop: "25px",
-  padding: "20px",
-  borderRadius: "20px",
-  background: "#f9fafc",
-};
-
-const mapHeader = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  marginBottom: "15px",
-};
-
-const mapSubtitle = {
-  color: "#6b7280",
-  marginTop: "6px",
-};
-
-const mapStyle = {
-  height: "420px",
-  width: "100%",
-  borderRadius: "18px",
-};
 
 export default LiveMap;

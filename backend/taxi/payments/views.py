@@ -1,11 +1,10 @@
-import uuid
-
 from django.contrib.auth import get_user_model
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from .models import Payment
 from .serializers import PaymentSerializer
+from taxi.rides.models import Ride
 
 
 User = get_user_model()
@@ -18,65 +17,52 @@ def get_default_user(request):
     return User.objects.first()
 
 
-def get_driver_from_ride_id(ride_id):
-    if not ride_id:
-        return User.objects.first()
-
-    try:
-        from taxi.rides.models import Ride
-
-        ride = Ride.objects.get(id=ride_id)
-
-        if ride.driver:
-            return ride.driver
-
-        return User.objects.first()
-
-    except Exception:
-        return User.objects.first()
-
-
 @api_view(["GET"])
 def payment_list(request):
     payments = Payment.objects.all().order_by("-id")
-
     serializer = PaymentSerializer(payments, many=True)
-
     return Response(serializer.data)
 
 
 @api_view(["POST"])
 def create_test_payment(request):
-    rider = get_default_user(request)
-
-    if not rider:
-        return Response(
-            {"error": "No user found"},
-            status=400,
-        )
-
     ride_id = request.data.get("ride_id")
-
     amount = request.data.get("amount", "0.00")
 
-    driver = get_driver_from_ride_id(ride_id)
+    if not ride_id:
+        return Response({"error": "ride_id is required"}, status=400)
 
-    payment = Payment.objects.create(
-        rider=rider,
-        driver=driver,
-        ride_id=ride_id,
-        amount=amount,
-        currency="MRU",
-        method="test",
-        status="paid",
-        transaction_id=f"TEST-{uuid.uuid4().hex[:10].upper()}",
+    try:
+        ride = Ride.objects.get(id=ride_id)
+    except Ride.DoesNotExist:
+        return Response({"error": "Ride not found"}, status=404)
+
+    rider = ride.rider or get_default_user(request)
+
+    driver = ride.driver
+
+    if not driver:
+        driver = User.objects.first()
+
+    if not rider or not driver:
+        return Response({"error": "Rider or driver not found"}, status=400)
+
+    payment, created = Payment.objects.update_or_create(
+        ride=ride,
+        defaults={
+            "rider": rider,
+            "driver": driver,
+            "amount": amount,
+            "payment_method": "card",
+            "payment_status": "completed",
+        },
     )
 
     serializer = PaymentSerializer(payment)
 
     return Response({
         "success": True,
-        "message": "Test payment completed",
+        "message": "Payment successful",
         "payment": serializer.data,
     })
 
@@ -85,32 +71,16 @@ def create_test_payment(request):
 def mark_payment_paid(request, payment_id):
     try:
         payment = Payment.objects.get(id=payment_id)
-
     except Payment.DoesNotExist:
-        return Response(
-            {"error": "Payment not found"},
-            status=404,
-        )
+        return Response({"error": "Payment not found"}, status=404)
 
-    payment.status = "paid"
-
-    if not payment.transaction_id:
-        payment.transaction_id = (
-            f"TEST-{uuid.uuid4().hex[:10].upper()}"
-        )
-
-    if not payment.driver:
-        payment.driver = get_driver_from_ride_id(
-            payment.ride_id
-        )
-
+    payment.payment_status = "completed"
     payment.save()
 
     serializer = PaymentSerializer(payment)
 
     return Response({
         "success": True,
-        "message": "Payment marked as paid",
         "payment": serializer.data,
     })
 
@@ -119,45 +89,27 @@ def mark_payment_paid(request, payment_id):
 def fail_payment(request, payment_id):
     try:
         payment = Payment.objects.get(id=payment_id)
-
     except Payment.DoesNotExist:
-        return Response(
-            {"error": "Payment not found"},
-            status=404,
-        )
+        return Response({"error": "Payment not found"}, status=404)
 
-    payment.status = "failed"
-
+    payment.payment_status = "failed"
     payment.save()
 
     serializer = PaymentSerializer(payment)
 
     return Response({
         "success": True,
-        "message": "Payment failed",
         "payment": serializer.data,
     })
 
 
 @api_view(["GET"])
 def driver_earnings(request):
-    paid_payments = Payment.objects.filter(
-        status="paid"
-    )
+    payments = Payment.objects.filter(payment_status="completed")
 
-    gross_amount = sum(
-        payment.amount for payment in paid_payments
-    )
-
-    platform_fees = sum(
-        payment.platform_fee
-        for payment in paid_payments
-    )
-
-    total_earnings = sum(
-        payment.driver_amount
-        for payment in paid_payments
-    )
+    gross_amount = sum(payment.amount for payment in payments)
+    platform_fees = sum(payment.platform_fee for payment in payments)
+    total_earnings = sum(payment.driver_amount for payment in payments)
 
     return Response({
         "driver": "Test Driver",
@@ -165,5 +117,5 @@ def driver_earnings(request):
         "platform_fees": platform_fees,
         "total_earnings": total_earnings,
         "currency": "MRU",
-        "completed_payments": paid_payments.count(),
+        "completed_payments": payments.count(),
     })

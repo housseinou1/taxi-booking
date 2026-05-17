@@ -15,44 +15,56 @@ function App() {
   }
 
   return (
-    <div style={pageStyle}>
-      <h1 style={title}>🚖 Sakho Express</h1>
+    <div style={page}>
+      <div style={card}>
+        <h1 style={title}>🚖 Sakho Express</h1>
 
-      <button
-        style={button}
-        onClick={() => setScreen("driver")}
-      >
-        Driver Dashboard
-      </button>
+        <button
+          style={button}
+          onClick={() => setScreen("driver")}
+        >
+          Driver Dashboard
+        </button>
 
-      <button
-        style={button}
-        onClick={() => setScreen("rider")}
-      >
-        Rider Dashboard
-      </button>
+        <button
+          style={button}
+          onClick={() => setScreen("rider")}
+        >
+          Rider Dashboard
+        </button>
+      </div>
     </div>
   );
 }
 
-const pageStyle = {
-  height: "100vh",
+const page = {
+  minHeight: "100vh",
   display: "flex",
-  flexDirection: "column",
   justifyContent: "center",
   alignItems: "center",
+  background: "#f5f7fb",
+};
+
+const card = {
+  background: "white",
+  padding: "50px",
+  borderRadius: "20px",
+  display: "flex",
+  flexDirection: "column",
   gap: "20px",
-  background: "#f4f6f9",
+  width: "350px",
+  boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
 };
 
 const title = {
-  fontSize: "48px",
+  textAlign: "center",
   marginBottom: "20px",
+  fontSize: "42px",
 };
 
 const button = {
-  padding: "18px 40px",
-  borderRadius: "14px",
+  padding: "18px",
+  borderRadius: "12px",
   border: "none",
   background: "#111827",
   color: "white",

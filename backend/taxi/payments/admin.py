@@ -6,24 +6,25 @@ from .models import Payment
 class PaymentAdmin(admin.ModelAdmin):
     list_display = (
         "id",
+        "ride",
         "rider",
-        "ride_id",
+        "driver",
         "amount",
-        "currency",
-        "method",
-        "status",
+        "platform_fee",
+        "driver_amount",
+        "payment_method",
+        "payment_status",
         "created_at",
     )
 
     list_filter = (
-        "status",
-        "method",
-        "currency",
+        "payment_status",
+        "payment_method",
         "created_at",
     )
 
     search_fields = (
-        "transaction_id",
-        "ride_id",
-        "rider__email",
+        "rider__username",
+        "driver__username",
+        "ride__id",
     )

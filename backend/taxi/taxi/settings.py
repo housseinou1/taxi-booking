@@ -228,4 +228,5 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 
 STRIPE_PUBLIC_KEY = os.getenv("STRIPE_PUBLIC_KEY", "")
-STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
+#STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
+SECRET_KEY = "django-insecure-sakho-express-secret-key"

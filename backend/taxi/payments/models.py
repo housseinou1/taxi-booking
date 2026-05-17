@@ -1,73 +1,91 @@
+from decimal import Decimal
+
 from django.db import models
-from django.conf import settings
+from django.contrib.auth import get_user_model
+
+from taxi.rides.models import Ride
+
+
+User = get_user_model()
 
 
 class Payment(models.Model):
-    STATUS_CHOICES = (
+    PAYMENT_STATUS = [
         ("pending", "Pending"),
-        ("paid", "Paid"),
+        ("completed", "Completed"),
         ("failed", "Failed"),
-        ("refunded", "Refunded"),
-    )
+    ]
 
-    PAYMENT_METHOD_CHOICES = (
-        ("cash", "Cash"),
+    PAYMENT_METHODS = [
         ("card", "Card"),
+        ("cash", "Cash"),
         ("wallet", "Wallet"),
-        ("test", "Test Payment"),
+    ]
+
+    ride = models.OneToOneField(
+        Ride,
+        on_delete=models.CASCADE,
+        related_name="payment",
     )
 
     rider = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="payments",
+        User,
+        on_delete=models.CASCADE,
+        related_name="payments_made",
     )
 
     driver = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="driver_payments",
+        User,
+        on_delete=models.CASCADE,
+        related_name="payments_received",
     )
 
-    ride_id = models.IntegerField(null=True, blank=True)
-
-    amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-
-    platform_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-
-    driver_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-
-    currency = models.CharField(max_length=10, default="MRU")
-
-    method = models.CharField(
-        max_length=20,
-        choices=PAYMENT_METHOD_CHOICES,
-        default="test",
+    amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
     )
 
-    status = models.CharField(
+    platform_fee = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+    )
+
+    driver_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+    )
+
+    payment_method = models.CharField(
         max_length=20,
-        choices=STATUS_CHOICES,
+        choices=PAYMENT_METHODS,
+        default="card",
+    )
+
+    payment_status = models.CharField(
+        max_length=20,
+        choices=PAYMENT_STATUS,
         default="pending",
     )
 
-    transaction_id = models.CharField(max_length=100, blank=True)
+    stripe_payment_intent = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
 
-    updated_at = models.DateTimeField(auto_now=True)
-
     def calculate_split(self):
-        self.platform_fee = self.amount * 0.20
-        self.driver_amount = self.amount - self.platform_fee
+        amount = Decimal(str(self.amount))
+
+        self.platform_fee = amount * Decimal("0.20")
+        self.driver_amount = amount - self.platform_fee
 
     def save(self, *args, **kwargs):
         self.calculate_split()
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"Payment {self.id} - {self.amount} {self.currency} - {self.status}"
+        return f"Payment #{self.id} - {self.amount} MRU"

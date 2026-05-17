@@ -1,5 +1,4 @@
 from django.urls import path
-
 from .views import (
     driver_list,
     approve_driver,
@@ -11,10 +10,9 @@ from .views import (
 )
 
 urlpatterns = [
-    path("", driver_list),
-
-    path("<int:id>/approve/", approve_driver),
-    path("<int:id>/reject/", reject_driver),
+    path("list/", driver_list),
+    path("approve/<int:id>/", approve_driver),
+    path("reject/<int:id>/", reject_driver),
 
     path("status/", driver_status),
     path("status/update/", update_driver_status),
