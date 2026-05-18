@@ -1,74 +1,57 @@
 import React, { useState } from "react";
 
+import AuthPage from "./auth/AuthPage";
 import DriverApp from "./driver/DriverApp";
 import RiderApp from "./rider/RiderApp";
 
 function App() {
-  const [screen, setScreen] = useState("home");
+  const savedUserType = localStorage.getItem("userType");
+  const savedToken = localStorage.getItem("access");
 
-  if (screen === "driver") {
-    return <DriverApp />;
-  }
+  const [screen, setScreen] = useState(
+    savedToken && savedUserType ? savedUserType : "auth"
+  );
 
-  if (screen === "rider") {
-    return <RiderApp />;
+  const handleLogin = (userType) => {
+    setScreen(userType);
+  };
+
+  const logout = () => {
+    localStorage.removeItem("access");
+    localStorage.removeItem("refresh");
+    localStorage.removeItem("userType");
+    localStorage.removeItem("currentRideId");
+    localStorage.removeItem("activeRideId");
+
+    setScreen("auth");
+  };
+
+  if (screen === "auth") {
+    return <AuthPage onLogin={handleLogin} />;
   }
 
   return (
-    <div style={page}>
-      <div style={card}>
-        <h1 style={title}>🚖 Sakho Express</h1>
+    <div>
+      <button style={logoutBtn} onClick={logout}>
+        Logout
+      </button>
 
-        <button
-          style={button}
-          onClick={() => setScreen("driver")}
-        >
-          Driver Dashboard
-        </button>
-
-        <button
-          style={button}
-          onClick={() => setScreen("rider")}
-        >
-          Rider Dashboard
-        </button>
-      </div>
+      {screen === "driver" && <DriverApp />}
+      {screen === "rider" && <RiderApp />}
     </div>
   );
 }
 
-const page = {
-  minHeight: "100vh",
-  display: "flex",
-  justifyContent: "center",
-  alignItems: "center",
-  background: "#f5f7fb",
-};
-
-const card = {
-  background: "white",
-  padding: "50px",
-  borderRadius: "20px",
-  display: "flex",
-  flexDirection: "column",
-  gap: "20px",
-  width: "350px",
-  boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-};
-
-const title = {
-  textAlign: "center",
-  marginBottom: "20px",
-  fontSize: "42px",
-};
-
-const button = {
-  padding: "18px",
-  borderRadius: "12px",
+const logoutBtn = {
+  position: "fixed",
+  top: "15px",
+  right: "15px",
+  zIndex: 9999,
+  padding: "10px 18px",
   border: "none",
-  background: "#111827",
+  borderRadius: "10px",
+  background: "#dc2626",
   color: "white",
-  fontSize: "18px",
   cursor: "pointer",
 };
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 import {
   MapContainer,
@@ -12,10 +12,22 @@ import "leaflet/dist/leaflet.css";
 
 function RiderApp() {
   const API_URL = "http://127.0.0.1:8000";
+  const WS_URL = "ws://127.0.0.1:8000/ws/rides/";
+
+  const socketRef = useRef(null);
 
   const [rideType, setRideType] = useState("regular");
   const [ride, setRide] = useState(null);
   const [paymentStatus, setPaymentStatus] = useState("");
+
+  const [driverLocation, setDriverLocation] = useState([
+    18.0735,
+    -15.9582,
+  ]);
+
+  const [liveMessage, setLiveMessage] = useState(
+    "Connecting to live tracking..."
+  );
 
   const ridePrices = {
     regular: 200,
@@ -37,6 +49,15 @@ function RiderApp() {
     if (status === "completed") return "Trip Completed ✅";
     if (status === "cancelled") return "Ride Cancelled ❌";
     return status;
+  };
+
+  const sendSocketMessage = (message) => {
+    if (
+      socketRef.current &&
+      socketRef.current.readyState === WebSocket.OPEN
+    ) {
+      socketRef.current.send(JSON.stringify(message));
+    }
   };
 
   const fetchRideStatus = async (rideId) => {
@@ -83,9 +104,15 @@ function RiderApp() {
         const newRide = data.ride || data;
 
         setRide(newRide);
+
         setPaymentStatus("");
 
         localStorage.setItem("currentRideId", newRide.id);
+
+        sendSocketMessage({
+          type: "new_ride_request",
+          ride: newRide,
+        });
 
         alert("Ride requested successfully 🚖");
       } else {
@@ -120,7 +147,9 @@ function RiderApp() {
 
       if (res.ok) {
         setPaymentStatus("Paid ✅");
+
         localStorage.removeItem("currentRideId");
+
         alert("Payment successful 💳");
       } else {
         alert(data.error || "Payment failed");
@@ -130,6 +159,61 @@ function RiderApp() {
       alert("Payment server error");
     }
   };
+
+  useEffect(() => {
+    socketRef.current = new WebSocket(WS_URL);
+
+    socketRef.current.onopen = () => {
+      console.log("Rider WebSocket connected");
+
+      setLiveMessage("Live tracking active ✅");
+    };
+
+    socketRef.current.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+
+      if (data.type === "driver_location") {
+        setDriverLocation([
+          data.lat,
+          data.lng,
+        ]);
+      }
+
+      if (data.type === "ride_status_update") {
+        const currentRideId =
+          localStorage.getItem("currentRideId");
+
+        if (
+          String(data.ride?.id) ===
+          String(currentRideId)
+        ) {
+          setRide(data.ride);
+
+          setLiveMessage(
+            `Ride Update: ${getStatusText(
+              data.ride.status
+            )}`
+          );
+        }
+      }
+    };
+
+    socketRef.current.onerror = (error) => {
+      console.log(error);
+
+      setLiveMessage("Live connection error");
+    };
+
+    socketRef.current.onclose = () => {
+      setLiveMessage("Live connection closed");
+    };
+
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.close();
+      }
+    };
+  }, []);
 
   useEffect(() => {
     loadCurrentRide();
@@ -151,6 +235,8 @@ function RiderApp() {
     <div style={page}>
       <h1 style={title}>🚖 Sakho Express Rider</h1>
 
+      <p style={liveBox}>{liveMessage}</p>
+
       <div style={container}>
         <div>
           <div style={card}>
@@ -158,39 +244,69 @@ function RiderApp() {
 
             <div style={options}>
               <button
-                style={rideType === "regular" ? activeBtn : btn}
-                onClick={() => setRideType("regular")}
+                style={
+                  rideType === "regular"
+                    ? activeBtn
+                    : btn
+                }
+                onClick={() =>
+                  setRideType("regular")
+                }
               >
                 Regular - 200 MRU
               </button>
 
               <button
-                style={rideType === "xl" ? activeBtn : btn}
-                onClick={() => setRideType("xl")}
+                style={
+                  rideType === "xl"
+                    ? activeBtn
+                    : btn
+                }
+                onClick={() =>
+                  setRideType("xl")
+                }
               >
                 XL - 300 MRU
               </button>
 
               <button
-                style={rideType === "comfort" ? activeBtn : btn}
-                onClick={() => setRideType("comfort")}
+                style={
+                  rideType === "comfort"
+                    ? activeBtn
+                    : btn
+                }
+                onClick={() =>
+                  setRideType("comfort")
+                }
               >
                 Comfort - 350 MRU
               </button>
 
               <button
-                style={rideType === "share" ? activeBtn : btn}
-                onClick={() => setRideType("share")}
+                style={
+                  rideType === "share"
+                    ? activeBtn
+                    : btn
+                }
+                onClick={() =>
+                  setRideType("share")
+                }
               >
                 Share - 25 MRU
               </button>
             </div>
 
             <div style={priceBox}>
-              <h3>Selected Price: {selectedPrice} MRU</h3>
+              <h3>
+                Selected Price:
+                {selectedPrice} MRU
+              </h3>
             </div>
 
-            <button style={requestBtn} onClick={requestRide}>
+            <button
+              style={requestBtn}
+              onClick={requestRide}
+            >
               Request Ride 🚖
             </button>
           </div>
@@ -204,48 +320,79 @@ function RiderApp() {
               </p>
 
               <p>
-                <b>Status:</b> {getStatusText(ride.status)}
+                <b>Status:</b>{" "}
+                {getStatusText(ride.status)}
               </p>
 
               <p>
-                <b>Type:</b> {ride.ride_type || rideType}
+                <b>Type:</b>{" "}
+                {ride.ride_type || rideType}
               </p>
 
               <p>
-                <b>Price:</b> {ride.estimated_price || selectedPrice} MRU
+                <b>Price:</b>{" "}
+                {ride.estimated_price ||
+                  selectedPrice}{" "}
+                MRU
               </p>
 
               <p>
-                <b>Payment:</b> {paymentStatus || "Pending"}
+                <b>Payment:</b>{" "}
+                {paymentStatus || "Pending"}
               </p>
 
-              {ride.status === "completed" && paymentStatus !== "Paid ✅" && (
-                <button style={payBtn} onClick={payRide}>
-                  Pay Ride 💳
-                </button>
-              )}
+              {ride.status === "completed" &&
+                paymentStatus !==
+                  "Paid ✅" && (
+                  <button
+                    style={payBtn}
+                    onClick={payRide}
+                  >
+                    Pay Ride 💳
+                  </button>
+                )}
             </div>
           )}
         </div>
 
         <div style={mapCard}>
-          <h2>🗺️ Live Ride Map</h2>
+          <h2>🗺️ Live Driver Tracking</h2>
 
-          <MapContainer center={pickup} zoom={13} style={mapStyle}>
+          <MapContainer
+            center={pickup}
+            zoom={13}
+            style={mapStyle}
+          >
             <TileLayer
               attribution="&copy; OpenStreetMap contributors"
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
 
             <Marker position={pickup}>
-              <Popup>Pickup Location</Popup>
+              <Popup>
+                Pickup Location
+              </Popup>
             </Marker>
 
             <Marker position={destination}>
-              <Popup>Destination</Popup>
+              <Popup>
+                Destination
+              </Popup>
             </Marker>
 
-            <Polyline positions={[pickup, destination]} />
+            <Marker position={driverLocation}>
+              <Popup>
+                Driver Live Location 🚖
+              </Popup>
+            </Marker>
+
+            <Polyline
+              positions={[
+                pickup,
+                driverLocation,
+                destination,
+              ]}
+            />
           </MapContainer>
         </div>
       </div>
@@ -261,7 +408,17 @@ const page = {
 
 const title = {
   fontSize: "52px",
-  marginBottom: "30px",
+  marginBottom: "10px",
+};
+
+const liveBox = {
+  background: "white",
+  padding: "12px 18px",
+  borderRadius: "12px",
+  marginBottom: "20px",
+  display: "inline-block",
+  fontWeight: "bold",
+  color: "#2563eb",
 };
 
 const container = {
@@ -275,7 +432,8 @@ const card = {
   background: "white",
   padding: "30px",
   borderRadius: "20px",
-  boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+  boxShadow:
+    "0 4px 12px rgba(0,0,0,0.08)",
   marginBottom: "20px",
 };
 
@@ -284,7 +442,8 @@ const rideCard = {
   background: "white",
   padding: "30px",
   borderRadius: "20px",
-  boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+  boxShadow:
+    "0 4px 12px rgba(0,0,0,0.08)",
 };
 
 const mapCard = {
@@ -292,7 +451,8 @@ const mapCard = {
   background: "white",
   padding: "20px",
   borderRadius: "20px",
-  boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+  boxShadow:
+    "0 4px 12px rgba(0,0,0,0.08)",
 };
 
 const mapStyle = {

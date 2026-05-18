@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+
 import {
   MapContainer,
   TileLayer,
@@ -10,11 +11,15 @@ import "leaflet/dist/leaflet.css";
 
 function DriverApp() {
   const API_URL = "http://127.0.0.1:8000";
+  const WS_URL = "ws://127.0.0.1:8000/ws/rides/";
+
+  const socketRef = useRef(null);
 
   const [online, setOnline] = useState(false);
   const [rides, setRides] = useState([]);
   const [activeRide, setActiveRide] = useState(null);
   const [rideHistory, setRideHistory] = useState([]);
+  const [liveMessage, setLiveMessage] = useState("Waiting for live updates...");
 
   const [earnings, setEarnings] = useState({
     gross_amount: 0,
@@ -28,6 +33,15 @@ function DriverApp() {
     18.0735,
     -15.9582,
   ]);
+
+  const sendSocketMessage = (message) => {
+    if (
+      socketRef.current &&
+      socketRef.current.readyState === WebSocket.OPEN
+    ) {
+      socketRef.current.send(JSON.stringify(message));
+    }
+  };
 
   const fetchDriverStatus = async () => {
     try {
@@ -72,17 +86,31 @@ function DriverApp() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ lat, lng }),
+        body: JSON.stringify({
+          lat,
+          lng,
+        }),
       });
     } catch (error) {
       console.log("Location update error:", error);
     }
   };
 
+  const sendDriverLocationLive = (lat, lng) => {
+    sendSocketMessage({
+      type: "driver_location",
+      lat,
+      lng,
+    });
+  };
+
   const goOnline = () => {
     updateDriverStatus(true);
 
-    if (!navigator.geolocation) return;
+    if (!navigator.geolocation) {
+      alert("GPS is not supported on this device");
+      return;
+    }
 
     navigator.geolocation.watchPosition(
       (position) => {
@@ -90,16 +118,27 @@ function DriverApp() {
         const lng = position.coords.longitude;
 
         setDriverPosition([lat, lng]);
+
         updateDriverLocationBackend(lat, lng);
+
+        sendDriverLocationLive(lat, lng);
       },
       (error) => {
         console.log("GPS error:", error);
+        alert("Please allow location permission");
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 0,
+        timeout: 10000,
       }
     );
   };
 
   const goOffline = () => {
     updateDriverStatus(false);
+
+    setLiveMessage("Driver is offline");
   };
 
   const fetchAvailableRides = async () => {
@@ -134,7 +173,10 @@ function DriverApp() {
       const data = await res.json();
 
       if (Array.isArray(data)) {
-        const completed = data.filter((ride) => ride.status === "completed");
+        const completed = data.filter(
+          (ride) => ride.status === "completed"
+        );
+
         setRideHistory(completed);
       }
     } catch (error) {
@@ -180,9 +222,19 @@ function DriverApp() {
 
       if (res.ok) {
         setActiveRide(data.ride);
+
         localStorage.setItem("activeRideId", data.ride.id);
 
-        setRides((prev) => prev.filter((ride) => ride.id !== rideId));
+        setRides((prev) =>
+          prev.filter((ride) => ride.id !== rideId)
+        );
+
+        sendSocketMessage({
+          type: "ride_status_update",
+          ride: data.ride,
+        });
+
+        setLiveMessage("Ride accepted ✅");
 
         alert("Ride Accepted ✅");
       } else {
@@ -197,15 +249,26 @@ function DriverApp() {
     if (!activeRide) return;
 
     try {
-      const res = await fetch(`${API_URL}/rides/${activeRide.id}/arriving/`, {
-        method: "POST",
-      });
+      const res = await fetch(
+        `${API_URL}/rides/${activeRide.id}/arriving/`,
+        {
+          method: "POST",
+        }
+      );
 
       const data = await res.json();
 
       if (res.ok) {
         setActiveRide(data.ride);
+
         localStorage.setItem("activeRideId", data.ride.id);
+
+        sendSocketMessage({
+          type: "ride_status_update",
+          ride: data.ride,
+        });
+
+        setLiveMessage("Driver arriving 📍");
 
         alert("Driver is arriving 📍");
       } else {
@@ -220,15 +283,26 @@ function DriverApp() {
     if (!activeRide) return;
 
     try {
-      const res = await fetch(`${API_URL}/rides/${activeRide.id}/start/`, {
-        method: "POST",
-      });
+      const res = await fetch(
+        `${API_URL}/rides/${activeRide.id}/start/`,
+        {
+          method: "POST",
+        }
+      );
 
       const data = await res.json();
 
       if (res.ok) {
         setActiveRide(data.ride);
+
         localStorage.setItem("activeRideId", data.ride.id);
+
+        sendSocketMessage({
+          type: "ride_status_update",
+          ride: data.ride,
+        });
+
+        setLiveMessage("Trip started 🚖");
       } else {
         alert(data.error || "Could not start ride");
       }
@@ -241,21 +315,32 @@ function DriverApp() {
     if (!activeRide) return;
 
     try {
-      const res = await fetch(`${API_URL}/rides/${activeRide.id}/complete/`, {
-        method: "POST",
-      });
+      const res = await fetch(
+        `${API_URL}/rides/${activeRide.id}/complete/`,
+        {
+          method: "POST",
+        }
+      );
 
       const data = await res.json();
 
       if (res.ok) {
+        sendSocketMessage({
+          type: "ride_status_update",
+          ride: data.ride,
+        });
+
         alert("Ride Completed ✅");
 
         setActiveRide(null);
+
         localStorage.removeItem("activeRideId");
 
         fetchAvailableRides();
         fetchDriverEarnings();
         fetchRideHistory();
+
+        setLiveMessage("Ride completed ✅");
       } else {
         alert(data.error || "Could not complete ride");
       }
@@ -263,6 +348,64 @@ function DriverApp() {
       console.log("Complete ride error:", error);
     }
   };
+
+  useEffect(() => {
+    socketRef.current = new WebSocket(WS_URL);
+
+    socketRef.current.onopen = () => {
+      console.log("Driver WebSocket connected");
+      setLiveMessage("Live connection active ✅");
+    };
+
+    socketRef.current.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+
+      if (data.type === "new_ride_request") {
+        fetchAvailableRides();
+
+        setLiveMessage("New ride request received 🚖");
+      }
+
+      if (data.type === "ride_status_update") {
+        const ride = data.ride;
+
+        if (
+          ride.status === "accepted" ||
+          ride.status === "driver_arriving" ||
+          ride.status === "in_progress"
+        ) {
+          setActiveRide(ride);
+          localStorage.setItem("activeRideId", ride.id);
+        }
+
+        if (ride.status === "completed") {
+          setActiveRide(null);
+          localStorage.removeItem("activeRideId");
+          fetchRideHistory();
+        }
+
+        fetchAvailableRides();
+      }
+    };
+
+    socketRef.current.onerror = (error) => {
+      console.log("Driver WebSocket error:", error);
+
+      setLiveMessage("Live connection error");
+    };
+
+    socketRef.current.onclose = () => {
+      console.log("Driver WebSocket disconnected");
+
+      setLiveMessage("Live connection closed");
+    };
+
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.close();
+      }
+    };
+  }, []);
 
   useEffect(() => {
     fetchDriverStatus();
@@ -273,21 +416,32 @@ function DriverApp() {
 
     const interval = setInterval(() => {
       fetchDriverStatus();
-      fetchAvailableRides();
       fetchDriverEarnings();
       fetchRideHistory();
       loadActiveRide();
-    }, 3000);
+
+      if (online) {
+        sendDriverLocationLive(
+          driverPosition[0],
+          driverPosition[1]
+        );
+      }
+    }, 5000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [online, driverPosition]);
 
   return (
     <div style={page}>
       <div style={topBar}>
         <div>
           <h1 style={logo}>🚖 Sakho Express Driver</h1>
-          <p style={subtitle}>Professional Driver Dashboard</p>
+
+          <p style={subtitle}>
+            Professional Driver Dashboard
+          </p>
+
+          <p style={liveText}>{liveMessage}</p>
         </div>
 
         {!online ? (
@@ -304,6 +458,7 @@ function DriverApp() {
       <div style={statsGrid}>
         <div style={statCard}>
           <h3>Driver Status</h3>
+
           <p style={online ? onlineText : offlineText}>
             {online ? "Online ✅" : "Offline ❌"}
           </p>
@@ -311,30 +466,34 @@ function DriverApp() {
 
         <div style={statCard}>
           <h3>New Ride Requests</h3>
+
           <p style={statNumber}>{rides.length}</p>
         </div>
 
         <div style={statCard}>
           <h3>Active Rides</h3>
-          <p style={statNumber}>{activeRide ? 1 : 0}</p>
+
+          <p style={statNumber}>
+            {activeRide ? 1 : 0}
+          </p>
         </div>
 
         <div style={statCard}>
           <h3>Completed Rides</h3>
-          <p style={statNumber}>{rideHistory.length}</p>
-        </div>
 
-        <div style={statCard}>
-          <h3>Today Earnings</h3>
           <p style={statNumber}>
-            {Number(earnings.total_earnings || 0).toFixed(2)} MRU
+            {rideHistory.length}
           </p>
         </div>
 
         <div style={statCard}>
           <h3>Total Earnings</h3>
+
           <p style={statNumber}>
-            {Number(earnings.total_earnings || 0).toFixed(2)} MRU
+            {Number(
+              earnings.total_earnings || 0
+            ).toFixed(2)}{" "}
+            MRU
           </p>
         </div>
       </div>
@@ -357,7 +516,7 @@ function DriverApp() {
           />
 
           <Marker position={driverPosition}>
-            <Popup>Your Location</Popup>
+            <Popup>Your Live Location 🚖</Popup>
           </Marker>
         </MapContainer>
       </div>
@@ -371,24 +530,16 @@ function DriverApp() {
           </p>
 
           <p>
-            <b>Pickup:</b> {activeRide.pickup_lat}, {activeRide.pickup_lng}
-          </p>
-
-          <p>
-            <b>Destination:</b>{" "}
-            {activeRide.destination_lat}, {activeRide.destination_lng}
-          </p>
-
-          <p>
-            <b>Type:</b> {activeRide.ride_type || "regular"}
-          </p>
-
-          <p>
-            <b>Price:</b> {activeRide.estimated_price || 0} MRU
-          </p>
-
-          <p>
             <b>Status:</b> {activeRide.status}
+          </p>
+
+          <p>
+            <b>Type:</b> {activeRide.ride_type}
+          </p>
+
+          <p>
+            <b>Price:</b>{" "}
+            {activeRide.estimated_price} MRU
           </p>
 
           {activeRide.status === "accepted" && (
@@ -412,10 +563,10 @@ function DriverApp() {
       )}
 
       <div style={requestsCard}>
-        <h2>🚕 New Ride Requests</h2>
+        <h2>🚕 Live Ride Requests</h2>
 
         {rides.length === 0 ? (
-          <p>No new ride requests</p>
+          <p>No ride requests</p>
         ) : (
           rides.map((ride) => (
             <div key={ride.id} style={rideCard}>
@@ -424,23 +575,29 @@ function DriverApp() {
               </p>
 
               <p>
-                <b>Pickup:</b> {ride.pickup_lat}, {ride.pickup_lng}
+                <b>Type:</b> {ride.ride_type}
+              </p>
+
+              <p>
+                <b>Price:</b>{" "}
+                {ride.estimated_price} MRU
+              </p>
+
+              <p>
+                <b>Pickup:</b>{" "}
+                {ride.pickup_lat}, {ride.pickup_lng}
               </p>
 
               <p>
                 <b>Destination:</b>{" "}
-                {ride.destination_lat}, {ride.destination_lng}
+                {ride.destination_lat},{" "}
+                {ride.destination_lng}
               </p>
 
-              <p>
-                <b>Type:</b> {ride.ride_type || "regular"}
-              </p>
-
-              <p>
-                <b>Price:</b> {ride.estimated_price || 0} MRU
-              </p>
-
-              <button style={acceptBtn} onClick={() => acceptRide(ride.id)}>
+              <button
+                style={acceptBtn}
+                onClick={() => acceptRide(ride.id)}
+              >
                 Accept Ride ✅
               </button>
             </div>
@@ -461,20 +618,12 @@ function DriverApp() {
               </p>
 
               <p>
-                <b>Type:</b> {ride.ride_type || "regular"}
+                <b>Type:</b> {ride.ride_type}
               </p>
 
               <p>
-                <b>Price:</b> {ride.estimated_price || 0} MRU
-              </p>
-
-              <p>
-                <b>Pickup:</b> {ride.pickup_lat}, {ride.pickup_lng}
-              </p>
-
-              <p>
-                <b>Destination:</b>{" "}
-                {ride.destination_lat}, {ride.destination_lng}
+                <b>Price:</b>{" "}
+                {ride.estimated_price} MRU
               </p>
 
               <p>
@@ -510,6 +659,12 @@ const subtitle = {
   color: "#666",
 };
 
+const liveText = {
+  marginTop: "10px",
+  color: "#2563eb",
+  fontWeight: "bold",
+};
+
 const onlineBtn = {
   background: "#16a34a",
   color: "white",
@@ -530,7 +685,7 @@ const offlineBtn = {
 
 const statsGrid = {
   display: "grid",
-  gridTemplateColumns: "repeat(6, 1fr)",
+  gridTemplateColumns: "repeat(5, 1fr)",
   gap: "16px",
   marginBottom: "24px",
 };
