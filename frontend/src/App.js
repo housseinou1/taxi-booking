@@ -602,11 +602,11 @@ const emptyPageStyle = {
 
 const pageStyle = {
   minHeight: "100vh",
-  background: "#eef2f6",
+  background: "radial-gradient(circle at 14% 20%, #ffffff 0%, #f6f7fb 45%, #eceff5 100%)",
   display: "flex",
   justifyContent: "center",
   alignItems: "center",
-  fontFamily: "Arial, sans-serif",
+  fontFamily: 'Inter, "SF Pro Display", "Segoe UI", sans-serif',
   padding: "24px",
 };
 
@@ -623,10 +623,10 @@ const landingHeroStyle = {
 };
 
 const landingCopyStyle = {
-  background: "linear-gradient(135deg, #111827 0%, #1f2937 56%, #064e3b 100%)",
+  background: "linear-gradient(152deg, #0a0a0a 0%, #171717 62%, #262626 100%)",
   color: "white",
   padding: "34px",
-  borderRadius: "8px",
+  borderRadius: "24px",
   minHeight: "430px",
   display: "flex",
   flexDirection: "column",
@@ -637,8 +637,8 @@ const heroLogoWrapStyle = {
   width: "min(420px, 100%)",
   aspectRatio: "1.55 / 1",
   borderRadius: "18px",
-  background: "#020617",
-  border: "1px solid rgba(251, 191, 36, 0.36)",
+  background: "#0c0c14",
+  border: "1px solid rgba(255, 255, 255, 0.14)",
   display: "block",
   overflow: "hidden",
   marginBottom: "18px",
@@ -653,9 +653,9 @@ const heroLogoImageStyle = {
 
 const brandPillStyle = {
   width: "fit-content",
-  background: "rgba(167, 243, 208, 0.14)",
-  color: "#a7f3d0",
-  border: "1px solid rgba(167, 243, 208, 0.26)",
+  background: "rgba(255, 255, 255, 0.08)",
+  color: "#f4f4f5",
+  border: "1px solid rgba(255, 255, 255, 0.2)",
   borderRadius: "999px",
   padding: "9px 12px",
   fontWeight: 900,
@@ -685,22 +685,22 @@ const ctaRowStyle = {
 };
 
 const primaryButtonStyle = {
-  background: "#12b76a",
+  background: "#000000",
   color: "white",
-  border: "none",
+  border: "1px solid #111111",
   padding: "15px 18px",
-  borderRadius: "8px",
+  borderRadius: "12px",
   fontWeight: 900,
   fontSize: "15px",
   cursor: "pointer",
 };
 
 const secondaryButtonStyle = {
-  background: "rgba(255, 255, 255, 0.12)",
-  color: "white",
-  border: "1px solid rgba(255, 255, 255, 0.24)",
+  background: "rgba(255, 255, 255, 0.14)",
+  color: "#f8fafc",
+  border: "1px solid rgba(255, 255, 255, 0.38)",
   padding: "15px 18px",
-  borderRadius: "8px",
+  borderRadius: "12px",
   fontWeight: 900,
   fontSize: "15px",
   cursor: "pointer",
@@ -711,16 +711,16 @@ const lightButtonStyle = {
   color: "#111827",
   border: "1px solid #d1d5db",
   padding: "12px 16px",
-  borderRadius: "8px",
+  borderRadius: "10px",
   fontWeight: 900,
   fontSize: "15px",
   cursor: "pointer",
 };
 
 const dispatchPanelStyle = {
-  background: "white",
-  border: "1px solid #e4e7ec",
-  borderRadius: "8px",
+  background: "linear-gradient(180deg, #ffffff 0%, #f7f8fb 100%)",
+  border: "1px solid #e6e8ef",
+  borderRadius: "24px",
   padding: "24px",
   boxShadow: "0 18px 42px rgba(15, 23, 42, 0.08)",
 };
@@ -765,7 +765,7 @@ const platformGridStyle = {
 const platformTileStyle = {
   textAlign: "left",
   border: "1px solid #e5e7eb",
-  background: "#f8fafc",
+  background: "#f8f9ff",
   borderRadius: "8px",
   padding: "16px",
   cursor: "pointer",
@@ -777,7 +777,7 @@ const platformTileStyle = {
 const emergencyPanelStyle = {
   marginTop: "16px",
   border: "1px solid #fecaca",
-  background: "#fff5f5",
+  background: "#fff7f7",
   color: "#7f1d1d",
   borderRadius: "8px",
   padding: "14px",
@@ -854,9 +854,9 @@ const legalPageStyle = {
 const legalCardStyle = {
   maxWidth: "980px",
   margin: "0 auto",
-  background: "white",
-  border: "1px solid #e4e7ec",
-  borderRadius: "8px",
+  background: "linear-gradient(180deg, #ffffff 0%, #f7f8fb 100%)",
+  border: "1px solid #e6e8ef",
+  borderRadius: "24px",
   padding: "28px",
   boxShadow: "0 16px 38px rgba(15, 23, 42, 0.08)",
 };
@@ -879,7 +879,7 @@ const legalSectionGridStyle = {
 };
 
 const legalSectionStyle = {
-  background: "#f8fafc",
+  background: "#f8f9ff",
   border: "1px solid #e5e7eb",
   borderRadius: "8px",
   padding: "18px",
@@ -888,7 +888,7 @@ const legalSectionStyle = {
 };
 
 const topBarStyle = {
-  background: "#111827",
+  background: "#0c0c14",
   color: "white",
   padding: "12px 24px",
   display: "flex",
@@ -896,7 +896,7 @@ const topBarStyle = {
   alignItems: "center",
   gap: "14px",
   flexWrap: "wrap",
-  borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
+  borderBottom: "1px solid rgba(255, 255, 255, 0.12)",
   boxShadow: "0 10px 28px rgba(15, 23, 42, 0.16)",
 };
 
@@ -912,7 +912,7 @@ const brandLogoWrapStyle = {
   borderRadius: "10px",
   display: "grid",
   placeItems: "center",
-  background: "#020617",
+  background: "#0c0c14",
   border: "1px solid rgba(251, 191, 36, 0.28)",
   position: "relative",
   flex: "0 0 auto",
@@ -953,7 +953,7 @@ const safetyMenuWrapStyle = {
 const safetyButtonStyle = {
   background: "#dc2626",
   color: "white",
-  border: "1px solid rgba(255, 255, 255, 0.18)",
+  border: "1px solid rgba(255, 255, 255, 0.2)",
   padding: "10px 12px",
   borderRadius: "8px",
   fontWeight: 900,
@@ -988,7 +988,7 @@ const safetyCallRowStyle = {
   minHeight: "44px",
   padding: "10px 12px",
   borderRadius: "10px",
-  background: "#fff5f5",
+  background: "#fff7f7",
   color: "#991b1b",
   fontWeight: 900,
   textDecoration: "none",
@@ -998,36 +998,36 @@ const safetyCallRowStyle = {
 const topButtonStyle = {
   background: "rgba(255, 255, 255, 0.08)",
   color: "#f9fafb",
-  border: "1px solid rgba(255, 255, 255, 0.14)",
+  border: "1px solid rgba(255, 255, 255, 0.18)",
   padding: "10px 14px",
-  borderRadius: "8px",
+  borderRadius: "10px",
   fontWeight: "bold",
   cursor: "pointer",
 };
 
 const logoutButtonStyle = {
-  background: "rgba(248, 113, 113, 0.16)",
-  color: "#fecaca",
+  background: "rgba(220, 38, 38, 0.22)",
+  color: "#ffe4e6",
   border: "1px solid rgba(254, 202, 202, 0.24)",
   padding: "10px 14px",
-  borderRadius: "8px",
+  borderRadius: "10px",
   fontWeight: "bold",
   cursor: "pointer",
 };
 
 const setupPageStyle = {
   minHeight: "100vh",
-  background: "#f9fafb",
+  background: "#f3f4f9",
   padding: "30px",
-  fontFamily: "Arial, sans-serif",
+  fontFamily: 'Inter, "SF Pro Display", "Segoe UI", sans-serif',
 };
 
 const setupCardStyle = {
   maxWidth: "900px",
   margin: "0 auto",
-  background: "white",
-  padding: "30px",
-  borderRadius: "8px",
+  background: "#ffffff",
+  padding: "32px",
+  borderRadius: "20px",
   border: "1px solid #e4e7ec",
   boxShadow: "0 10px 25px rgba(16,24,40,0.08)",
 };
@@ -1046,10 +1046,10 @@ const continueButtonStyle = {
   width: "100%",
   marginTop: "25px",
   padding: "16px",
-  background: "#111827",
+  background: "#0c0c14",
   color: "white",
-  border: "none",
-  borderRadius: "8px",
+  border: "1px solid #1f2937",
+  borderRadius: "12px",
   fontWeight: "bold",
   fontSize: "16px",
   cursor: "pointer",
