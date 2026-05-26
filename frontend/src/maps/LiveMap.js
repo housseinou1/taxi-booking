@@ -1,101 +1,117 @@
-import React, { useEffect, useState } from "react";
-
+import React from "react";
 import {
-  MapContainer,
-  TileLayer,
+  GoogleMap,
   Marker,
-  Popup,
-  Polyline,
-} from "react-leaflet";
+  useJsApiLoader,
+} from "@react-google-maps/api";
 
-import "leaflet/dist/leaflet.css";
+const containerStyle = {
+  width: "100%",
+  height: "500px",
+  borderRadius: "20px",
+};
 
-function LiveMap({ currentRide }) {
-  const API_URL = "http://127.0.0.1:8000";
+const defaultCenter = {
+  lat: 18.0735,
+  lng: -15.9582,
+};
 
-  const [driverPosition, setDriverPosition] = useState([
-    18.0735,
-    -15.9582,
-  ]);
+function LiveMap({ currentRide, driver }) {
+  const { isLoaded } = useJsApiLoader({
+    id: "google-map-script",
+    googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY,
+  });
 
-  const pickup = [
-    currentRide?.pickup_lat || 18.0735,
-    currentRide?.pickup_lng || -15.9582,
-  ];
+  // SAFE DRIVER LOCATION
+  const driverLocation =
+    driver &&
+    driver.lat &&
+    driver.lng
+      ? {
+          lat: parseFloat(driver.lat),
+          lng: parseFloat(driver.lng),
+        }
+      : null;
 
-  const destination = [
-    currentRide?.destination_lat || 18.0896,
-    currentRide?.destination_lng || -15.9754,
-  ];
+  // SAFE PICKUP LOCATION
+  const pickupLocation =
+    currentRide &&
+    currentRide.pickup_lat &&
+    currentRide.pickup_lng
+      ? {
+          lat: parseFloat(currentRide.pickup_lat),
+          lng: parseFloat(currentRide.pickup_lng),
+        }
+      : null;
 
-  useEffect(() => {
-    fetchDriverLocation();
+  // SAFE DESTINATION LOCATION
+  const destinationLocation =
+    currentRide &&
+    currentRide.destination_lat &&
+    currentRide.destination_lng
+      ? {
+          lat: parseFloat(currentRide.destination_lat),
+          lng: parseFloat(currentRide.destination_lng),
+        }
+      : null;
 
-    const interval = setInterval(() => {
-      fetchDriverLocation();
-    }, 3000);
+  // MAP CENTER
+  const center =
+    driverLocation ||
+    pickupLocation ||
+    destinationLocation ||
+    defaultCenter;
 
-    return () => clearInterval(interval);
-  }, []);
-
-  const fetchDriverLocation = async () => {
-    try {
-      const res = await fetch(`${API_URL}/drivers/location/`);
-      const data = await res.json();
-
-      if (data.lat && data.lng) {
-        setDriverPosition([
-          parseFloat(data.lat),
-          parseFloat(data.lng),
-        ]);
-      }
-    } catch (err) {
-      console.log("Location error");
-    }
-  };
+  if (!isLoaded) {
+    return (
+      <div
+        style={{
+          padding: "20px",
+          fontSize: "18px",
+        }}
+      >
+        Loading Map...
+      </div>
+    );
+  }
 
   return (
-    <MapContainer
-      center={pickup}
-      zoom={13}
+    <div
       style={{
-        height: "500px",
         width: "100%",
-        borderRadius: "20px",
+        marginTop: "20px",
       }}
     >
-      <TileLayer
-        attribution="&copy; OpenStreetMap contributors"
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
+      <GoogleMap
+        mapContainerStyle={containerStyle}
+        center={center}
+        zoom={13}
+      >
+        {/* DRIVER */}
+        {driverLocation && (
+          <Marker
+            position={driverLocation}
+            label="D"
+          />
+        )}
 
-      {/* DRIVER */}
-      <Marker position={driverPosition}>
-        <Popup>🚖 Driver Location</Popup>
-      </Marker>
+        {/* PICKUP */}
+        {pickupLocation && (
+          <Marker
+            position={pickupLocation}
+            label="P"
+          />
+        )}
 
-      {/* PICKUP */}
-      <Marker position={pickup}>
-        <Popup>📍 Pickup</Popup>
-      </Marker>
-
-      {/* DESTINATION */}
-      <Marker position={destination}>
-        <Popup>🏁 Destination</Popup>
-      </Marker>
-
-      {/* DRIVER TO PICKUP */}
-      <Polyline
-        positions={[driverPosition, pickup]}
-        color="blue"
-      />
-
-      {/* PICKUP TO DESTINATION */}
-      <Polyline
-        positions={[pickup, destination]}
-        color="green"
-      />
-    </MapContainer>
+        {/* DESTINATION */}
+        {destinationLocation && (
+          <Marker
+            position={destinationLocation}
+            label="A"
+          />
+        )}
+      </GoogleMap>
+    </div>
   );
 }
 

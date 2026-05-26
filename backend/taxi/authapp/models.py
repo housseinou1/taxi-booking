@@ -1,27 +1,64 @@
-from django.db import models
 from django.contrib.auth.models import AbstractUser
+from django.db import models
 
 
 class User(AbstractUser):
-    GENDER_OPTIONS = (
-        ("Male", "Male"),
-        ("Female", "Female")
+    USER_TYPES = (
+        ("rider", "Rider"),
+        ("driver", "Driver"),
     )
-    username = models.CharField(max_length=299, null=True, blank=True, default="")
-    email = models.EmailField(unique=True, null=False, blank=False)
-    gender = models.CharField(max_length=299, choices=GENDER_OPTIONS)
-    is_driver = models.BooleanField(default=False)
-    is_rider = models.BooleanField(default=False)
-    edited_at = models.DateTimeField(auto_now=True)
 
-    USERNAME_FIELD = "email" 
-    REQUIRED_FIELDS = ["username"]
+    GENDER_CHOICES = (
+        ("Male", "Male"),
+        ("Female", "Female"),
+    )
+
+    username = None
+
+    email = models.EmailField(unique=True)
+
+    first_name = models.CharField(max_length=100)
+    last_name = models.CharField(max_length=100)
+
+    gender = models.CharField(
+        max_length=20,
+        choices=GENDER_CHOICES,
+        default="Male",
+    )
+
+    phone_number = models.CharField(
+        max_length=30,
+        blank=True,
+        default="",
+    )
+
+    user_type = models.CharField(
+        max_length=20,
+        choices=USER_TYPES,
+        default="rider",
+    )
+
+    national_id_number = models.CharField(
+        max_length=50,
+        unique=True,
+        null=True,
+        blank=True,
+    )
+
+    national_id_document = models.FileField(
+        upload_to="users/national_ids/",
+        null=True,
+        blank=True,
+    )
+
+    profile_picture = models.ImageField(
+        upload_to="users/profile_pictures/",
+        null=True,
+        blank=True,
+    )
+
+    USERNAME_FIELD = "email"
+    REQUIRED_FIELDS = []
 
     def __str__(self):
-        user_type = ""
-        if self.is_driver:
-            user_type = "driver"
-        elif self.is_rider:
-            user_type = "rider"
-        return f"{user_type} object"
-        
+        return self.email

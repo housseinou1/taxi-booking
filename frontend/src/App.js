@@ -1,57 +1,1057 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import axios from "axios";
 
-import AuthPage from "./auth/AuthPage";
-import DriverApp from "./driver/DriverApp";
+import Login from "./auth/Login";
+import Register from "./auth/Register";
+
 import RiderApp from "./rider/RiderApp";
+import RiderDashboard from "./rider/RiderDashboard";
+
+import DriverApp from "./driver/DriverApp";
+import DriverSignup from "./driver/DriverSignup";
+
+import AdminDashboard from "./admin/AdminDashboard";
+import InstallAppButton from "./InstallAppButton";
+
+import AddPaymentMethod from "./payments/AddPaymentMethod";
+import SavedPaymentMethods from "./payments/SavedPaymentMethods";
+import RiderPayments from "./payments/PaymentPage";
+import { API_URL } from "./apiConfig";
+import { MARKET } from "./marketConfig";
+
+const LOGO_SRC = "/sakho-brand-logo.jpeg";
 
 function App() {
-  const savedUserType = localStorage.getItem("userType");
-  const savedToken = localStorage.getItem("access");
+  const currentPath = window.location.pathname;
 
-  const [screen, setScreen] = useState(
-    savedToken && savedUserType ? savedUserType : "auth"
-  );
+  const [page, setPage] = useState("home");
+  const [paymentMethods, setPaymentMethods] = useState([]);
+  const [refreshCards, setRefreshCards] = useState(0);
+  const [selectedRide, setSelectedRide] = useState(null);
 
-  const handleLogin = (userType) => {
-    setScreen(userType);
+  useEffect(() => {
+    if (currentPath === "/payment-setup") setPage("payment-setup");
+    else if (currentPath === "/driver-vehicle-setup") setPage("driver-vehicle-setup");
+    else if (currentPath === "/rider-dashboard") setPage("rider-dashboard");
+    else if (currentPath === "/rider-payments") setPage("rider-payments");
+    else if (currentPath === "/rider") setPage("rider");
+    else if (currentPath === "/driver") setPage("driver");
+    else if (currentPath === "/register") setPage("register");
+    else if (currentPath === "/login") setPage("login");
+    else if (currentPath === "/admin-dashboard") setPage("admin");
+    else if (currentPath === "/admin") setPage("admin");
+    else if (currentPath === "/terms") setPage("terms");
+    else if (currentPath === "/privacy") setPage("privacy");
+    else if (currentPath === "/support") setPage("support");
+    else setPage("home");
+  }, [currentPath]);
+
+  useEffect(() => {
+    if (page === "rider-payments") {
+      fetchSelectedRide();
+    }
+  }, [page]);
+
+  const fetchSelectedRide = async () => {
+    try {
+      const token = localStorage.getItem("access");
+
+      if (!token) {
+        window.location.href = "/login";
+        return;
+      }
+
+      const response = await axios.get(`${API_URL}/rides/history/`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const rides = Array.isArray(response.data) ? response.data : [];
+
+      const selectedRideId = localStorage.getItem("selectedRideId");
+
+      let ride = null;
+
+      if (selectedRideId) {
+        ride = rides.find((item) => Number(item.id) === Number(selectedRideId));
+      }
+
+      if (!ride && rides.length > 0) {
+        ride = rides[0];
+      }
+
+      setSelectedRide(ride || null);
+    } catch (error) {
+      console.log("Selected ride error:", error.response?.data || error);
+    }
+  };
+
+  const goHome = () => {
+    window.location.href = "/";
   };
 
   const logout = () => {
     localStorage.removeItem("access");
     localStorage.removeItem("refresh");
-    localStorage.removeItem("userType");
-    localStorage.removeItem("currentRideId");
-    localStorage.removeItem("activeRideId");
-
-    setScreen("auth");
+    localStorage.removeItem("user");
+    localStorage.removeItem("selectedRideId");
+    localStorage.removeItem("needs_payment_setup");
+    localStorage.removeItem("needs_vehicle_setup");
+    window.location.href = "/";
   };
 
-  if (screen === "auth") {
-    return <AuthPage onLogin={handleLogin} />;
+  const withInstall = (content) => (
+    <>
+      {content}
+      <InstallAppButton />
+    </>
+  );
+
+  if (page === "login") return withInstall(<Login />);
+  if (page === "register") return withInstall(<Register />);
+
+  if (page === "rider-dashboard") {
+    return withInstall(<RiderDashboard goBack={() => (window.location.href = "/rider")} />);
   }
 
-  return (
-    <div>
-      <button style={logoutBtn} onClick={logout}>
-        Logout
-      </button>
+  if (page === "rider-payments") {
+    return withInstall(
+      <div>
+        <TopBar
+          title={`${MARKET.brandName} Payments`}
+          goHome={goHome}
+          logout={logout}
+        />
 
-      {screen === "driver" && <DriverApp />}
-      {screen === "rider" && <RiderApp />}
+        {selectedRide ? (
+          <RiderPayments ride={selectedRide} />
+        ) : (
+          <div style={emptyPageStyle}>
+            <h2>No completed ride found.</h2>
+            <button
+              onClick={() => (window.location.href = "/rider-dashboard")}
+              style={continueButtonStyle}
+            >
+              Back to Rider Dashboard
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (page === "payment-setup") {
+    return withInstall(
+      <div>
+        <TopBar
+          title={`${MARKET.brandName} Payment Setup`}
+          goHome={goHome}
+          logout={logout}
+        />
+
+        <div style={setupPageStyle}>
+          <div style={setupCardStyle}>
+            <h1 style={setupTitleStyle}>💳 Add Your Payment Method</h1>
+
+            <p style={setupSubtitleStyle}>
+              Add Card, Bank Account, Bankily, Masravi, Seddad, or Cash before
+              requesting your first ride.
+            </p>
+
+            <AddPaymentMethod
+              onCardSaved={() => setRefreshCards((prev) => prev + 1)}
+            />
+
+            <SavedPaymentMethods
+              methods={paymentMethods}
+              setMethods={setPaymentMethods}
+              refreshKey={refreshCards}
+            />
+
+            <button
+              onClick={() => {
+                localStorage.removeItem("needs_payment_setup");
+                window.location.href = "/rider";
+              }}
+              style={continueButtonStyle}
+            >
+              Continue to Rider App
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (page === "driver-vehicle-setup") {
+    return withInstall(
+      <div>
+        <TopBar
+          title={`${MARKET.brandName} Driver Vehicle Setup`}
+          goHome={goHome}
+          logout={logout}
+        />
+
+        <div style={setupPageStyle}>
+          <div style={setupCardStyle}>
+            <h1 style={setupTitleStyle}>🚗 Add Vehicle Information</h1>
+
+            <p style={setupSubtitleStyle}>
+              Add your vehicle and driver documents before going online.
+            </p>
+
+            <DriverSignup />
+
+            <button
+              onClick={() => {
+                localStorage.removeItem("needs_vehicle_setup");
+                window.location.href = "/driver";
+              }}
+              style={continueButtonStyle}
+            >
+              Continue to Driver App
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (page === "rider") {
+    return withInstall(
+      <div>
+        <TopBar title={`${MARKET.brandName} Rider`} goHome={goHome} logout={logout} />
+        <RiderApp />
+      </div>
+    );
+  }
+
+  if (page === "driver") {
+    return withInstall(<DriverApp />);
+  }
+
+  if (page === "admin") {
+    return withInstall(
+      <div>
+        <TopBar title={`${MARKET.brandName} Admin`} goHome={goHome} logout={logout} />
+        <AdminDashboard />
+      </div>
+    );
+  }
+
+  if (["terms", "privacy", "support"].includes(page)) {
+    return withInstall(
+      <div>
+        <TopBar title={`${MARKET.brandName} ${page}`} goHome={goHome} logout={logout} />
+        <LegalPage page={page} />
+      </div>
+    );
+  }
+
+  return withInstall(
+    <div style={pageStyle}>
+      <div style={homeShellStyle}>
+        <section style={landingHeroStyle}>
+          <div style={landingCopyStyle}>
+            <BrandLogo variant="hero" />
+            <span style={brandPillStyle}>{MARKET.country} ride platform</span>
+            <h1 style={titleStyle}>{MARKET.brandName}</h1>
+            <p style={subtitleStyle}>
+              Book rides, manage drivers, collect payments, and operate across
+              Nouakchott, Nouadhibou, Kaedi, Selibaby, and Rosso.
+            </p>
+
+            <div style={ctaRowStyle}>
+              <button
+                onClick={() => (window.location.href = "/rider-dashboard")}
+                style={primaryButtonStyle}
+              >
+                Open rider app
+              </button>
+
+              <button
+                onClick={() => (window.location.href = "/driver")}
+                style={secondaryButtonStyle}
+              >
+                Open driver app
+              </button>
+            </div>
+          </div>
+
+          <div style={dispatchPanelStyle}>
+            <div style={dispatchHeaderStyle}>
+              <div>
+                <span style={panelKickerStyle}>Live operations</span>
+                <h2 style={panelTitleStyle}>Platform control</h2>
+              </div>
+              <span style={onlineBadgeStyle}>MRU</span>
+            </div>
+
+            <div style={platformGridStyle}>
+              <PlatformTile title="Riders" text="Request, track, pay, tip, and rate trips." path="/rider-dashboard" />
+              <PlatformTile title="Drivers" text="Go online, accept trips, navigate, and earn." path="/driver" />
+              <PlatformTile title="Payments" text="Cash, Bankily, Masravi, card, and receipts." path="/rider-payments" />
+              <PlatformTile title="Admin" text="Approve drivers and monitor the marketplace." path="/admin" />
+            </div>
+
+            <EmergencyPanel />
+          </div>
+        </section>
+
+        <section style={cityStripStyle}>
+          {MARKET.cities.map((city) => (
+            <div key={city.label} style={cityPillStyle}>
+              {city.label}
+            </div>
+          ))}
+        </section>
+
+        <div style={authRowStyle}>
+          <button
+            onClick={() => (window.location.href = "/login")}
+            style={lightButtonStyle}
+          >
+            Login
+          </button>
+
+          <button
+            onClick={() => (window.location.href = "/register")}
+            style={lightButtonStyle}
+          >
+            Register
+          </button>
+        </div>
+
+        <FooterLinks />
+      </div>
     </div>
   );
 }
 
-const logoutBtn = {
-  position: "fixed",
-  top: "15px",
-  right: "15px",
-  zIndex: 9999,
-  padding: "10px 18px",
+function PlatformTile({ title, text, path }) {
+  return (
+    <button onClick={() => (window.location.href = path)} style={platformTileStyle}>
+      <strong>{title}</strong>
+      <span>{text}</span>
+    </button>
+  );
+}
+
+function EmergencyPanel() {
+  return (
+    <div style={emergencyPanelStyle}>
+      <div>
+        <strong>Emergency contacts</strong>
+        <span>Tap to call from a phone</span>
+      </div>
+      <div style={emergencyLinksStyle}>
+        {MARKET.emergencyNumbers.map((item) => (
+          <a key={item.number} href={`tel:${item.number}`} style={emergencyLinkStyle}>
+            {item.label} {item.number}
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function FooterLinks() {
+  return (
+    <div style={footerLinksStyle}>
+      <button onClick={() => (window.location.href = "/terms")} style={footerLinkStyle}>
+        Terms
+      </button>
+      <button onClick={() => (window.location.href = "/privacy")} style={footerLinkStyle}>
+        Privacy
+      </button>
+      <button onClick={() => (window.location.href = "/support")} style={footerLinkStyle}>
+        Support
+      </button>
+    </div>
+  );
+}
+
+function LegalPage({ page }) {
+  const content = {
+    terms: {
+      title: "Terms and Conditions",
+      subtitle: "Rider terms, driver agreement, payment rules, and platform operations.",
+      sections: [
+        {
+          title: "Account responsibility and identity",
+          text:
+            "Riders and drivers must provide accurate names, phone numbers, National Identification information, and payment or payout details. Users are responsible for keeping their account information current. Accounts may be blocked, suspended, or reviewed for unsafe behavior, fraud, false information, expired driver documents, non-payment, or misuse of the app.",
+        },
+        {
+          title: "Rider terms",
+          text:
+            "Riders must request trips honestly, choose accurate pickup and drop-off locations, respect drivers and vehicles, pay the agreed fare, and use rating, support, and emergency tools responsibly. Riders can tip drivers after drop-off when payment is completed. Repeated cancellations, false requests, harassment, abuse, or refusal to pay may lead to account blocking.",
+        },
+        {
+          title: "Driver agreement",
+          text:
+            "Drivers agree to operate safely, follow local transport laws, keep their vehicle clean and roadworthy, respect riders, and complete trips only through the app. Drivers must keep license, registration, insurance, vehicle, payout, and National ID information current. Expired required documents can automatically reject the driver profile until updated documents are submitted and reviewed.",
+        },
+        {
+          title: "Driver conduct and safety",
+          text:
+            "Drivers must not misuse rider phone numbers, pickup locations, drop-off locations, documents, payment information, or trip history. Drivers must not accept trips while impaired, drive dangerously, overcharge riders, or allow another person to use their driver account. Admin may block or reintegrate drivers based on safety, document, payment, and rating review.",
+        },
+        {
+          title: "Payments and commission",
+          text:
+            `The platform owner commission is ${MARKET.ownerCommissionPercent}% of the ride fare. Driver earnings, rider tips, withdrawal requests, and owner payout methods are tracked in the app. Bankily, Masravi, Seddad, cash, card, and bank account records may be used depending on the selected method. Real provider transfers depend on approved provider APIs or manual admin processing.`,
+        },
+        {
+          title: "Ratings, blocking, and disputes",
+          text:
+            "Riders and drivers can rate each other after trips. Admin can use ratings, payment status, documents, and support reports to investigate disputes, block accounts, unblock accounts, or reintegrate drivers. Users should report safety, payment, or document issues as soon as possible.",
+        },
+        {
+          title: "Emergency and support use",
+          text:
+            "Users should follow local laws, use emergency numbers only for real emergencies, and contact support or the admin for safety or account concerns. The app can provide emergency contact shortcuts, but it does not replace police, ambulance, fire, or official emergency services.",
+        },
+      ],
+    },
+    privacy: {
+      title: "Privacy Policy",
+      subtitle: "Data protection rules for user, trip, document, and payment information.",
+      sections: [
+        {
+          title: "Information collected",
+          text:
+            "The app stores account details, phone numbers, trip pickup and drop-off locations, driver documents, National ID information, ratings, payment method details, and payout method details.",
+        },
+        {
+          title: "How information is used",
+          text:
+            "Information is used to match riders with drivers, verify identity and driver documents, process payment records, calculate commission, support withdrawals, improve safety, and help admin manage the platform.",
+        },
+        {
+          title: "Access control",
+          text:
+            "Riders see assigned driver details after acceptance. Drivers see active rider trip information. Admin can review users, documents, payouts, ratings, and account status for platform operations.",
+        },
+        {
+          title: "Data protection rules",
+          text:
+            "Sensitive information should be accessed only by users who need it for a real platform purpose. Admin access should be limited to trusted staff. Driver documents, National ID documents, payout details, and payment records should not be shared outside support, verification, payment, safety, or legal needs.",
+        },
+        {
+          title: "Security requirements",
+          text:
+            "Before public launch, the production app should use HTTPS, private API keys, a strong Django secret key, protected database credentials, limited admin accounts, regular backups, provider webhook verification, and secure hosting. Real payment credentials must not be stored in frontend code.",
+        },
+        {
+          title: "Retention and correction",
+          text:
+            "Users should be able to request correction of inaccurate account, identity, vehicle, or payout information. Trip, payment, rating, and safety records may be retained for operations, dispute handling, fraud prevention, accounting, and legal compliance.",
+        },
+      ],
+    },
+    support: {
+      title: "Support and Safety",
+      subtitle: "Help options for riders, drivers, and admin operations.",
+      sections: [
+        {
+          title: "Emergency contacts",
+          text:
+            `Police ${MARKET.emergencyNumbers[0]?.number || ""}, Ambulance ${MARKET.emergencyNumbers[1]?.number || ""}, Fire ${MARKET.emergencyNumbers[2]?.number || ""}. Use these only for real emergencies.`,
+        },
+        {
+          title: "Emergency process",
+          text:
+            "If a rider or driver is in immediate danger, they should call the correct emergency number first. After the situation is safe, they should report the trip, driver or rider name, phone number, pickup, drop-off, time, and issue to the platform admin for investigation.",
+        },
+        {
+          title: "Rider support",
+          text:
+            "Riders can contact the driver after acceptance, share trip details, rate the trip, and report payment, driver behavior, wrong route, cancellation, document, or safety problems to the platform admin.",
+        },
+        {
+          title: "Driver support",
+          text:
+            "Drivers can update vehicle documents, National ID, payout methods, and withdrawal requests from the driver app. If blocked or rejected, drivers should update missing information and request admin reintegration.",
+        },
+        {
+          title: "Admin support process",
+          text:
+            "Admin should review pending drivers, expired documents, rider and driver ratings, owner payout information, driver withdrawals, blocked accounts, and safety reports regularly. Serious safety reports should be prioritized before normal account and payment requests.",
+        },
+        {
+          title: "Payment and payout support",
+          text:
+            "For Bankily, Masravi, Seddad, cash, bank account, and withdrawal issues, admin should compare ride status, payment records, driver earnings, owner commission, payout method, and provider confirmation before approving or rejecting requests.",
+        },
+      ],
+    },
+  }[page];
+
+  return (
+    <main style={legalPageStyle}>
+      <section style={legalCardStyle}>
+        <span style={brandPillStyle}>{MARKET.brandName}</span>
+        <h1 style={legalTitleStyle}>{content.title}</h1>
+        <p style={legalSubtitleStyle}>{content.subtitle}</p>
+        <div style={legalSectionGridStyle}>
+          {content.sections.map((section) => (
+            <article key={section.title} style={legalSectionStyle}>
+              <h2>{section.title}</h2>
+              <p>{section.text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+    </main>
+  );
+}
+
+function TopBar({ title, goHome, logout }) {
+  const [showSafety, setShowSafety] = useState(false);
+
+  return (
+    <div style={topBarStyle}>
+      <div>
+        <div style={topBrandStyle}>
+          <BrandLogo />
+          <div>
+            <h2 style={topTitleStyle}>{title}</h2>
+            <span style={topSubtitleStyle}>Mauritania mobility platform</span>
+          </div>
+        </div>
+      </div>
+
+      <div style={topButtonGroupStyle}>
+        <div style={safetyMenuWrapStyle}>
+          <button
+            onClick={() => setShowSafety((current) => !current)}
+            style={safetyButtonStyle}
+          >
+            Safety
+          </button>
+
+          {showSafety && (
+            <div style={safetyDropdownStyle}>
+              <div style={safetyHeaderStyle}>
+                <strong>Emergency help</strong>
+                <span>Tap a number to call</span>
+              </div>
+
+              {MARKET.emergencyNumbers.map((item) => (
+                <a
+                  key={item.number}
+                  href={`tel:${item.number}`}
+                  title={item.description}
+                  style={safetyCallRowStyle}
+                >
+                  <span>{item.label}</span>
+                  <strong>{item.number}</strong>
+                </a>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <button onClick={() => (window.location.href = "/rider-dashboard")} style={topButtonStyle}>
+          Rider
+        </button>
+
+        <button onClick={() => (window.location.href = "/driver")} style={topButtonStyle}>
+          Driver
+        </button>
+
+        <button onClick={() => (window.location.href = "/admin")} style={topButtonStyle}>
+          Admin
+        </button>
+
+        <button onClick={goHome} style={topButtonStyle}>
+          Home
+        </button>
+
+        <button onClick={() => (window.location.href = "/support")} style={topButtonStyle}>
+          Support
+        </button>
+
+        <button onClick={logout} style={logoutButtonStyle}>
+          Logout
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function BrandLogo({ variant = "default" }) {
+  const isHero = variant === "hero";
+
+  return (
+    <div style={isHero ? heroLogoWrapStyle : brandLogoWrapStyle}>
+      <img
+        src={LOGO_SRC}
+        alt={`${MARKET.brandName} logo`}
+        style={isHero ? heroLogoImageStyle : brandLogoImageStyle}
+      />
+    </div>
+  );
+}
+
+const emptyPageStyle = {
+  padding: "30px",
+};
+
+const pageStyle = {
+  minHeight: "100vh",
+  background: "#eef2f6",
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+  fontFamily: "Arial, sans-serif",
+  padding: "24px",
+};
+
+const homeShellStyle = {
+  maxWidth: "1160px",
+  width: "100%",
+};
+
+const landingHeroStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 360px), 1fr))",
+  gap: "18px",
+  alignItems: "stretch",
+};
+
+const landingCopyStyle = {
+  background: "linear-gradient(135deg, #111827 0%, #1f2937 56%, #064e3b 100%)",
+  color: "white",
+  padding: "34px",
+  borderRadius: "8px",
+  minHeight: "430px",
+  display: "flex",
+  flexDirection: "column",
+  justifyContent: "center",
+};
+
+const heroLogoWrapStyle = {
+  width: "min(420px, 100%)",
+  aspectRatio: "1.55 / 1",
+  borderRadius: "18px",
+  background: "#020617",
+  border: "1px solid rgba(251, 191, 36, 0.36)",
+  display: "block",
+  overflow: "hidden",
+  marginBottom: "18px",
+  boxShadow: "0 18px 36px rgba(2, 6, 23, 0.24)",
+};
+
+const heroLogoImageStyle = {
+  width: "100%",
+  height: "100%",
+  objectFit: "cover",
+};
+
+const brandPillStyle = {
+  width: "fit-content",
+  background: "rgba(167, 243, 208, 0.14)",
+  color: "#a7f3d0",
+  border: "1px solid rgba(167, 243, 208, 0.26)",
+  borderRadius: "999px",
+  padding: "9px 12px",
+  fontWeight: 900,
+  fontSize: "0.82rem",
+  marginBottom: "18px",
+};
+
+const titleStyle = {
+  fontSize: "3rem",
+  margin: "0 0 14px",
+  color: "white",
+  letterSpacing: 0,
+};
+
+const subtitleStyle = {
+  fontSize: "1.08rem",
+  lineHeight: 1.55,
+  color: "#d1d5db",
+  margin: "0 0 28px",
+  maxWidth: "620px",
+};
+
+const ctaRowStyle = {
+  display: "flex",
+  gap: "12px",
+  flexWrap: "wrap",
+};
+
+const primaryButtonStyle = {
+  background: "#12b76a",
+  color: "white",
   border: "none",
-  borderRadius: "10px",
+  padding: "15px 18px",
+  borderRadius: "8px",
+  fontWeight: 900,
+  fontSize: "15px",
+  cursor: "pointer",
+};
+
+const secondaryButtonStyle = {
+  background: "rgba(255, 255, 255, 0.12)",
+  color: "white",
+  border: "1px solid rgba(255, 255, 255, 0.24)",
+  padding: "15px 18px",
+  borderRadius: "8px",
+  fontWeight: 900,
+  fontSize: "15px",
+  cursor: "pointer",
+};
+
+const lightButtonStyle = {
+  background: "#ffffff",
+  color: "#111827",
+  border: "1px solid #d1d5db",
+  padding: "12px 16px",
+  borderRadius: "8px",
+  fontWeight: 900,
+  fontSize: "15px",
+  cursor: "pointer",
+};
+
+const dispatchPanelStyle = {
+  background: "white",
+  border: "1px solid #e4e7ec",
+  borderRadius: "8px",
+  padding: "24px",
+  boxShadow: "0 18px 42px rgba(15, 23, 42, 0.08)",
+};
+
+const dispatchHeaderStyle = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "14px",
+  marginBottom: "18px",
+};
+
+const panelKickerStyle = {
+  display: "block",
+  color: "#64748b",
+  fontSize: "0.76rem",
+  fontWeight: 900,
+  textTransform: "uppercase",
+  marginBottom: "4px",
+};
+
+const panelTitleStyle = {
+  margin: 0,
+  color: "#111827",
+  fontSize: "1.35rem",
+};
+
+const onlineBadgeStyle = {
+  background: "#ecfdf5",
+  color: "#047857",
+  border: "1px solid #bbf7d0",
+  borderRadius: "999px",
+  padding: "8px 12px",
+  fontWeight: 900,
+};
+
+const platformGridStyle = {
+  display: "grid",
+  gap: "12px",
+};
+
+const platformTileStyle = {
+  textAlign: "left",
+  border: "1px solid #e5e7eb",
+  background: "#f8fafc",
+  borderRadius: "8px",
+  padding: "16px",
+  cursor: "pointer",
+  display: "grid",
+  gap: "6px",
+  color: "#111827",
+};
+
+const emergencyPanelStyle = {
+  marginTop: "16px",
+  border: "1px solid #fecaca",
+  background: "#fff5f5",
+  color: "#7f1d1d",
+  borderRadius: "8px",
+  padding: "14px",
+  display: "grid",
+  gap: "12px",
+};
+
+const emergencyLinksStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
+  gap: "8px",
+};
+
+const emergencyLinkStyle = {
+  display: "inline-flex",
+  justifyContent: "center",
+  alignItems: "center",
+  minHeight: "40px",
+  borderRadius: "8px",
   background: "#dc2626",
   color: "white",
+  fontWeight: 900,
+  textDecoration: "none",
+};
+
+const cityStripStyle = {
+  display: "flex",
+  gap: "10px",
+  flexWrap: "wrap",
+  marginTop: "16px",
+};
+
+const cityPillStyle = {
+  background: "white",
+  border: "1px solid #e5e7eb",
+  borderRadius: "999px",
+  padding: "10px 14px",
+  color: "#334155",
+  fontWeight: 900,
+  boxShadow: "0 8px 20px rgba(15, 23, 42, 0.06)",
+};
+
+const authRowStyle = {
+  display: "flex",
+  justifyContent: "flex-end",
+  gap: "10px",
+  flexWrap: "wrap",
+  marginTop: "18px",
+};
+
+const footerLinksStyle = {
+  display: "flex",
+  justifyContent: "center",
+  gap: "10px",
+  flexWrap: "wrap",
+  marginTop: "22px",
+};
+
+const footerLinkStyle = {
+  background: "transparent",
+  color: "#334155",
+  border: "none",
+  fontWeight: 900,
+  cursor: "pointer",
+  textDecoration: "underline",
+};
+
+const legalPageStyle = {
+  minHeight: "100vh",
+  background: "#f3f6fa",
+  padding: "28px",
+};
+
+const legalCardStyle = {
+  maxWidth: "980px",
+  margin: "0 auto",
+  background: "white",
+  border: "1px solid #e4e7ec",
+  borderRadius: "8px",
+  padding: "28px",
+  boxShadow: "0 16px 38px rgba(15, 23, 42, 0.08)",
+};
+
+const legalTitleStyle = {
+  margin: "14px 0 8px",
+  color: "#111827",
+  fontSize: "2.2rem",
+};
+
+const legalSubtitleStyle = {
+  margin: "0 0 22px",
+  color: "#64748b",
+  lineHeight: 1.5,
+};
+
+const legalSectionGridStyle = {
+  display: "grid",
+  gap: "14px",
+};
+
+const legalSectionStyle = {
+  background: "#f8fafc",
+  border: "1px solid #e5e7eb",
+  borderRadius: "8px",
+  padding: "18px",
+  color: "#334155",
+  lineHeight: 1.55,
+};
+
+const topBarStyle = {
+  background: "#111827",
+  color: "white",
+  padding: "12px 24px",
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: "14px",
+  flexWrap: "wrap",
+  borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
+  boxShadow: "0 10px 28px rgba(15, 23, 42, 0.16)",
+};
+
+const topBrandStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: "12px",
+};
+
+const brandLogoWrapStyle = {
+  width: "62px",
+  height: "46px",
+  borderRadius: "10px",
+  display: "grid",
+  placeItems: "center",
+  background: "#020617",
+  border: "1px solid rgba(251, 191, 36, 0.28)",
+  position: "relative",
+  flex: "0 0 auto",
+  overflow: "hidden",
+};
+
+const brandLogoImageStyle = {
+  width: "100%",
+  height: "100%",
+  objectFit: "cover",
+};
+
+const topTitleStyle = {
+  margin: 0,
+  fontSize: "18px",
+  color: "white",
+};
+
+const topSubtitleStyle = {
+  display: "block",
+  marginTop: "2px",
+  color: "#9ca3af",
+  fontSize: "0.78rem",
+  fontWeight: 800,
+};
+
+const topButtonGroupStyle = {
+  display: "flex",
+  gap: "10px",
+  flexWrap: "wrap",
+  alignItems: "center",
+};
+
+const safetyMenuWrapStyle = {
+  position: "relative",
+};
+
+const safetyButtonStyle = {
+  background: "#dc2626",
+  color: "white",
+  border: "1px solid rgba(255, 255, 255, 0.18)",
+  padding: "10px 12px",
+  borderRadius: "8px",
+  fontWeight: 900,
+  cursor: "pointer",
+};
+
+const safetyDropdownStyle = {
+  position: "absolute",
+  top: "48px",
+  right: 0,
+  zIndex: 50,
+  width: "260px",
+  background: "white",
+  border: "1px solid #fecaca",
+  borderRadius: "12px",
+  padding: "12px",
+  boxShadow: "0 20px 40px rgba(15, 23, 42, 0.24)",
+};
+
+const safetyHeaderStyle = {
+  display: "grid",
+  gap: "3px",
+  color: "#111827",
+  marginBottom: "10px",
+};
+
+const safetyCallRowStyle = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: "12px",
+  minHeight: "44px",
+  padding: "10px 12px",
+  borderRadius: "10px",
+  background: "#fff5f5",
+  color: "#991b1b",
+  fontWeight: 900,
+  textDecoration: "none",
+  marginTop: "8px",
+};
+
+const topButtonStyle = {
+  background: "rgba(255, 255, 255, 0.08)",
+  color: "#f9fafb",
+  border: "1px solid rgba(255, 255, 255, 0.14)",
+  padding: "10px 14px",
+  borderRadius: "8px",
+  fontWeight: "bold",
+  cursor: "pointer",
+};
+
+const logoutButtonStyle = {
+  background: "rgba(248, 113, 113, 0.16)",
+  color: "#fecaca",
+  border: "1px solid rgba(254, 202, 202, 0.24)",
+  padding: "10px 14px",
+  borderRadius: "8px",
+  fontWeight: "bold",
+  cursor: "pointer",
+};
+
+const setupPageStyle = {
+  minHeight: "100vh",
+  background: "#f9fafb",
+  padding: "30px",
+  fontFamily: "Arial, sans-serif",
+};
+
+const setupCardStyle = {
+  maxWidth: "900px",
+  margin: "0 auto",
+  background: "white",
+  padding: "30px",
+  borderRadius: "8px",
+  border: "1px solid #e4e7ec",
+  boxShadow: "0 10px 25px rgba(16,24,40,0.08)",
+};
+
+const setupTitleStyle = {
+  marginTop: 0,
+  color: "#111827",
+};
+
+const setupSubtitleStyle = {
+  color: "#6b7280",
+  marginBottom: "20px",
+};
+
+const continueButtonStyle = {
+  width: "100%",
+  marginTop: "25px",
+  padding: "16px",
+  background: "#111827",
+  color: "white",
+  border: "none",
+  borderRadius: "8px",
+  fontWeight: "bold",
+  fontSize: "16px",
   cursor: "pointer",
 };
 

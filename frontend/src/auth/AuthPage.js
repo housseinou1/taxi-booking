@@ -1,8 +1,7 @@
 import React, { useState } from "react";
+import { API_URL } from "../apiConfig";
 
 function AuthPage({ onLogin }) {
-  const API_URL = "http://127.0.0.1:8000";
-
   const [mode, setMode] = useState("login");
   const [userType, setUserType] = useState("rider");
 
@@ -11,23 +10,33 @@ function AuthPage({ onLogin }) {
   const [gender, setGender] = useState("Male");
 
   const [email, setEmail] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [password, setPassword] = useState("");
+  const [profilePicture, setProfilePicture] = useState(null);
 
   const register = async () => {
     try {
+      if (userType === "rider" && !profilePicture) {
+        alert("Rider profile photo is required.");
+        return;
+      }
+
+      const payload = new FormData();
+      payload.append("first_name", firstName);
+      payload.append("last_name", lastName);
+      payload.append("gender", gender);
+      payload.append("email", email);
+      payload.append("phone_number", phoneNumber);
+      payload.append("password", password);
+      payload.append("user_type", userType);
+
+      if (profilePicture) {
+        payload.append("profile_picture", profilePicture);
+      }
+
       const res = await fetch(`${API_URL}/auth/register/`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          first_name: firstName,
-          last_name: lastName,
-          gender: gender,
-          email: email,
-          password: password,
-          user_type: userType,
-        }),
+        body: payload,
       });
 
       const data = await res.json();
@@ -40,7 +49,9 @@ function AuthPage({ onLogin }) {
         setLastName("");
         setGender("Male");
         setEmail("");
+        setPhoneNumber("");
         setPassword("");
+        setProfilePicture(null);
       } else {
         alert(JSON.stringify(data));
       }
@@ -143,6 +154,19 @@ function AuthPage({ onLogin }) {
               <option value="Male">Male</option>
               <option value="Female">Female</option>
             </select>
+
+            {userType === "rider" && (
+              <label style={fileLabel}>
+                Rider profile photo required
+                <input
+                  type="file"
+                  accept="image/*"
+                  required
+                  onChange={(e) => setProfilePicture(e.target.files?.[0] || null)}
+                  style={fileInput}
+                />
+              </label>
+            )}
           </>
         )}
 
@@ -152,6 +176,15 @@ function AuthPage({ onLogin }) {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
+
+        {mode === "register" && (
+          <input
+            style={input}
+            placeholder="+222 Phone Number"
+            value={phoneNumber}
+            onChange={(e) => setPhoneNumber(e.target.value)}
+          />
+        )}
 
         <input
           style={input}
@@ -245,6 +278,26 @@ const activeRole = {
   background: "#16a34a",
   color: "white",
   cursor: "pointer",
+};
+
+const fileLabel = {
+  display: "grid",
+  gap: "8px",
+  width: "100%",
+  padding: "12px",
+  marginBottom: "14px",
+  borderRadius: "10px",
+  border: "1px dashed #9ca3af",
+  background: "#f9fafb",
+  color: "#111827",
+  fontWeight: "bold",
+  boxSizing: "border-box",
+};
+
+const fileInput = {
+  width: "100%",
+  color: "#374151",
+  fontWeight: "normal",
 };
 
 const input = {

@@ -1,0 +1,2050 @@
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import axios from "axios";
+
+import DriverMap from "./DriverMap";
+import RideDashboard from "./RideDashboard";
+import { API_URL } from "../apiConfig";
+import { MARKET, formatMoney } from "../marketConfig";
+
+export default function DriverApp() {
+  const [availableRides, setAvailableRides] = useState([]);
+  const [driverRides, setDriverRides] = useState([]);
+  const [isOnline, setIsOnline] = useState(false);
+  const [earnings, setEarnings] = useState(0);
+  const [completedRides, setCompletedRides] = useState(0);
+  const [soundEnabled, setSoundEnabled] = useState(false);
+  const [driverProfile, setDriverProfile] = useState(null);
+  const [showSafety, setShowSafety] = useState(false);
+  const [showDriverMenu, setShowDriverMenu] = useState(false);
+  const [driverNotice, setDriverNotice] = useState("");
+  const [showTripDetails, setShowTripDetails] = useState(false);
+  const [menuMessage, setMenuMessage] = useState("");
+  const [isEditingVehicle, setIsEditingVehicle] = useState(false);
+  const [vehicleSaving, setVehicleSaving] = useState(false);
+  const [vehicleForm, setVehicleForm] = useState({
+    phone_number: "",
+    vehicle_make: "",
+    vehicle_model: "",
+    vehicle_color: "",
+    vehicle_plate: "",
+    car_type: "regular",
+  });
+  const [documentFiles, setDocumentFiles] = useState({
+    driver_photo: null,
+    license_file: null,
+    vehicle_registration: null,
+    insurance_document: null,
+  });
+  const [identityForm, setIdentityForm] = useState({
+    national_id_number: "",
+    national_id_document: null,
+  });
+  const [identitySaving, setIdentitySaving] = useState(false);
+  const [payoutMethods, setPayoutMethods] = useState([]);
+  const [withdrawals, setWithdrawals] = useState([]);
+  const [payoutSaving, setPayoutSaving] = useState(false);
+  const [withdrawalSaving, setWithdrawalSaving] = useState(false);
+  const [payoutForm, setPayoutForm] = useState({
+    payout_type: "bank_account",
+    account_holder_name: "",
+    bank_name: "",
+    account_reference: "",
+    card_type: "visa",
+    card_last4: "",
+    phone_number: "",
+    wallet_id: "",
+  });
+  const [withdrawalForm, setWithdrawalForm] = useState({
+    amount: "",
+    note: "",
+  });
+  const [openMenuSections, setOpenMenuSections] = useState({
+    earn: true,
+    vehicle: true,
+    feedback: true,
+    account: true,
+    support: true,
+  });
+
+  const alertedRideIdsRef = useRef(new Set());
+  const notificationAudioRef = useRef(null);
+  const audioContextRef = useRef(null);
+
+  const [driverLocation, setDriverLocation] = useState({
+    current_lat: MARKET.defaultPickup.position[0],
+    current_lng: MARKET.defaultPickup.position[1],
+  });
+
+  const token = localStorage.getItem("access");
+
+  const sendToLogin = useCallback((message = "Please log in again to continue.") => {
+    localStorage.removeItem("access");
+    localStorage.removeItem("refresh");
+    localStorage.removeItem("user");
+    setDriverNotice(message);
+    window.location.href = "/login";
+  }, []);
+
+  const isAuthError = (error) =>
+    error.response?.status === 401 ||
+    error.response?.data?.code === "token_not_valid" ||
+    String(error.response?.data?.detail || "").toLowerCase().includes("token");
+
+  const authHeaders = useMemo(
+    () => ({
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }),
+    [token]
+  );
+
+  const activeRides = useMemo(
+    () =>
+      driverRides.filter((ride) =>
+        ["driver_arriving", "accepted", "in_progress"].includes(ride.status)
+      ),
+    [driverRides]
+  );
+
+  const activeRide = activeRides[0];
+  const waitMinutes = isOnline ? Math.max(1, Math.min(9, availableRides.length + 1)) : 1;
+
+  useEffect(() => {
+    notificationAudioRef.current = new Audio("/notification.wav");
+    notificationAudioRef.current.preload = "auto";
+    notificationAudioRef.current.volume = 0.8;
+  }, []);
+
+  const unlockNotificationSound = useCallback(async () => {
+    const audio = notificationAudioRef.current;
+
+    if (soundEnabled) return;
+
+    try {
+      if (audio) {
+        audio.muted = true;
+        await audio.play();
+        audio.pause();
+        audio.currentTime = 0;
+        audio.muted = false;
+      }
+
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (AudioContextClass && !audioContextRef.current) {
+        audioContextRef.current = new AudioContextClass();
+      }
+
+      if (audioContextRef.current?.state === "suspended") {
+        await audioContextRef.current.resume();
+      }
+
+      if ("Notification" in window && Notification.permission === "default") {
+        await Notification.requestPermission();
+      }
+
+      setSoundEnabled(true);
+      setDriverNotice("Sound alerts are enabled.");
+    } catch (error) {
+      console.log("Notification sound needs a driver click first:", error);
+      setDriverNotice("Phone blocked sound. Keep driver app open and tap Go Online again.");
+    }
+  }, [soundEnabled]);
+
+  const playBeep = useCallback(async () => {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+
+    if (!audioContextRef.current) {
+      audioContextRef.current = new AudioContextClass();
+    }
+
+    const audioContext = audioContextRef.current;
+    if (audioContext.state === "suspended") {
+      await audioContext.resume();
+    }
+
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(880, audioContext.currentTime);
+    gain.gain.setValueAtTime(0.001, audioContext.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.35, audioContext.currentTime + 0.03);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.45);
+
+    oscillator.connect(gain);
+    gain.connect(audioContext.destination);
+    oscillator.start();
+    oscillator.stop(audioContext.currentTime + 0.5);
+  }, []);
+
+  const playNotificationSound = useCallback(async () => {
+    const audio = notificationAudioRef.current;
+
+    if (!soundEnabled) return;
+
+    try {
+      if (navigator.vibrate) {
+        navigator.vibrate([250, 120, 250]);
+      }
+
+      if (audio) {
+        audio.currentTime = 0;
+        await audio.play();
+      } else {
+        await playBeep();
+      }
+    } catch (error) {
+      console.log("Notification sound blocked:", error);
+      await playBeep();
+    }
+  }, [playBeep, soundEnabled]);
+
+  const ringForNewRequest = useCallback(async () => {
+    if ("Notification" in window && Notification.permission === "granted") {
+      new Notification("New rider request", {
+        body: "Open Sakho Express Driver to accept the trip.",
+        icon: "/logo192.png",
+      });
+    }
+
+    await playNotificationSound();
+    setTimeout(playNotificationSound, 850);
+    setTimeout(playNotificationSound, 1700);
+  }, [playNotificationSound]);
+
+  useEffect(() => {
+    if (!isOnline || availableRides.length === 0) return;
+
+    const requestLabel = `${availableRides.length} rider request${
+      availableRides.length === 1 ? "" : "s"
+    } available.`;
+
+    setShowTripDetails(true);
+    setDriverNotice(
+      soundEnabled
+        ? requestLabel
+        : `${requestLabel} Tap Go Offline, then Go Online once to enable sound alerts.`
+    );
+
+    const newRideIds = availableRides
+      .map((ride) => ride.id)
+      .filter((id) => !alertedRideIdsRef.current.has(id));
+
+    if (newRideIds.length === 0 || !soundEnabled) return;
+
+    ringForNewRequest();
+    alertedRideIdsRef.current = new Set(availableRides.map((ride) => ride.id));
+  }, [availableRides, isOnline, ringForNewRequest, soundEnabled]);
+
+  const fetchDriverStatus = useCallback(async () => {
+    try {
+      const response = await axios.get(`${API_URL}/drivers/me/`, authHeaders);
+
+      setDriverProfile(response.data);
+      setIsOnline(Boolean(response.data.is_available));
+      if (response.data.status && response.data.status !== "approved") {
+        setDriverNotice(`Driver account status: ${response.data.status}. Admin approval is required before going online.`);
+      }
+      setDriverLocation({
+        current_lat: Number(
+          response.data.current_lat ||
+            response.data.latitude ||
+            MARKET.defaultPickup.position[0]
+        ),
+        current_lng: Number(
+          response.data.current_lng ||
+            response.data.longitude ||
+            MARKET.defaultPickup.position[1]
+        ),
+      });
+    } catch (error) {
+      console.log("Driver status error:", error.response?.data || error);
+      if (isAuthError(error)) {
+        sendToLogin("Your login expired. Please log in again.");
+        return;
+      }
+      setDriverNotice(
+        error.response?.data?.detail ||
+          error.response?.data?.error ||
+          "Please log in as a driver to go online."
+      );
+    }
+  }, [authHeaders, sendToLogin]);
+
+  const fetchAvailableRides = useCallback(async () => {
+    try {
+      const response = await axios.get(`${API_URL}/rides/available/`);
+      const rides = Array.isArray(response.data) ? response.data : [];
+
+      setAvailableRides(rides);
+    } catch (error) {
+      console.log("Available rides error:", error.response?.data || error);
+      setAvailableRides([]);
+    }
+  }, []);
+
+  const fetchDriverRides = useCallback(async () => {
+    try {
+      const response = await axios.get(`${API_URL}/rides/driver-rides/`, authHeaders);
+      setDriverRides(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      console.log("Driver rides error:", error.response?.data || error);
+      setDriverRides([]);
+    }
+  }, [authHeaders]);
+
+  const fetchDriverStats = useCallback(async () => {
+    try {
+      const response = await axios.get(`${API_URL}/rides/driver/earnings/`, authHeaders);
+
+      setEarnings(response.data.total_earnings || 0);
+      setCompletedRides(response.data.completed_rides || 0);
+    } catch (error) {
+      console.log("Driver stats error:", error.response?.data || error);
+    }
+  }, [authHeaders]);
+
+  const fetchPayoutData = useCallback(async () => {
+    try {
+      const [methodsResponse, withdrawalsResponse] = await Promise.all([
+        axios.get(`${API_URL}/payments/payout-methods/`, authHeaders),
+        axios.get(`${API_URL}/payments/withdrawals/`, authHeaders),
+      ]);
+
+      setPayoutMethods(Array.isArray(methodsResponse.data) ? methodsResponse.data : []);
+      setWithdrawals(Array.isArray(withdrawalsResponse.data) ? withdrawalsResponse.data : []);
+    } catch (error) {
+      console.log("Payout data error:", error.response?.data || error);
+    }
+  }, [authHeaders]);
+
+  const fetchAllDriverData = useCallback(async () => {
+    await fetchDriverStatus();
+    await fetchAvailableRides();
+    await fetchDriverRides();
+    await fetchDriverStats();
+    await fetchPayoutData();
+  }, [fetchAvailableRides, fetchDriverRides, fetchDriverStats, fetchDriverStatus, fetchPayoutData]);
+
+  const updateDriverLocation = useCallback(
+    async (location) => {
+      try {
+        await axios.post(
+          `${API_URL}/drivers/location/update/`,
+          {
+            current_lat: location.current_lat,
+            current_lng: location.current_lng,
+          },
+          authHeaders
+        );
+      } catch (error) {
+        console.log("Location update error:", error.response?.data || error);
+      }
+    },
+    [authHeaders]
+  );
+
+  useEffect(() => {
+    fetchAllDriverData();
+    const interval = setInterval(fetchAllDriverData, 3000);
+    return () => clearInterval(interval);
+  }, [fetchAllDriverData]);
+
+  useEffect(() => {
+    if (!driverProfile || isEditingVehicle) return;
+
+    setVehicleForm({
+      phone_number: driverProfile.phone_number || "",
+      vehicle_make: driverProfile.vehicle_make || "",
+      vehicle_model: driverProfile.vehicle_model || "",
+      vehicle_color: driverProfile.vehicle_color || "",
+      vehicle_plate: driverProfile.vehicle_plate || driverProfile.plate_number || "",
+      car_type: driverProfile.car_type || "regular",
+    });
+  }, [driverProfile, isEditingVehicle]);
+
+  useEffect(() => {
+    if (!driverProfile) return;
+
+    setIdentityForm((current) => ({
+      ...current,
+      national_id_number: driverProfile.national_id_number || "",
+    }));
+  }, [driverProfile]);
+
+  useEffect(() => {
+    if (!isOnline) return;
+
+    if (navigator.geolocation) {
+      const watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          const liveLocation = {
+            current_lat: position.coords.latitude,
+            current_lng: position.coords.longitude,
+          };
+
+          setDriverLocation(liveLocation);
+          updateDriverLocation(liveLocation);
+        },
+        (error) => {
+          console.log("Phone GPS error:", error);
+          setDriverNotice(
+            "GPS permission is needed for exact driver location. Using test movement until location is allowed."
+          );
+        },
+        {
+          enableHighAccuracy: true,
+          maximumAge: 5000,
+          timeout: 12000,
+        }
+      );
+
+      return () => navigator.geolocation.clearWatch(watchId);
+    }
+
+    const interval = setInterval(() => {
+      setDriverLocation((prev) => {
+        const newLocation = {
+          current_lat: Number(prev.current_lat) + 0.0003,
+          current_lng: Number(prev.current_lng) + 0.0003,
+        };
+
+        updateDriverLocation(newLocation);
+        return newLocation;
+      });
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [isOnline, updateDriverLocation]);
+
+  const toggleAvailability = async () => {
+    const nextAvailability = !isOnline;
+
+    try {
+      setDriverNotice("");
+      await unlockNotificationSound();
+
+      const response = await axios.post(
+        `${API_URL}/drivers/availability/toggle/`,
+        {
+          is_available: nextAvailability,
+        },
+        authHeaders
+      );
+
+      setIsOnline(Boolean(response.data.is_available));
+      fetchAllDriverData();
+    } catch (error) {
+      console.log("Toggle status error:", error.response?.data || error);
+      setIsOnline(!nextAvailability);
+      if (isAuthError(error)) {
+        sendToLogin("Your login expired. Please log in again before going online.");
+        return;
+      }
+      setDriverNotice(
+        error.response?.data?.error ||
+          error.response?.data?.detail ||
+          "Could not change driver status. Please check approval and login."
+      );
+    }
+  };
+
+  const toggleMenuSection = (section) => {
+    setOpenMenuSections((current) => ({
+      ...current,
+      [section]: !current[section],
+    }));
+  };
+
+  const showMenuFeedback = (message) => {
+    setMenuMessage(message);
+  };
+
+  const updateVehicleForm = (field, value) => {
+    setVehicleForm((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  };
+
+  const saveVehicleProfile = async (event) => {
+    event.preventDefault();
+
+    try {
+      setVehicleSaving(true);
+      setMenuMessage("");
+      const hasDocumentFiles = Object.values(documentFiles).some(Boolean);
+      const payload = hasDocumentFiles ? new FormData() : vehicleForm;
+      const requestConfig = hasDocumentFiles
+        ? {
+            headers: {
+              ...authHeaders.headers,
+              "Content-Type": "multipart/form-data",
+            },
+          }
+        : authHeaders;
+
+      if (hasDocumentFiles) {
+        Object.entries(vehicleForm).forEach(([key, value]) => {
+          payload.append(key, value || "");
+        });
+
+        Object.entries(documentFiles).forEach(([key, file]) => {
+          if (file) {
+            payload.append(key, file);
+          }
+        });
+      }
+
+      const response = await axios.post(
+        `${API_URL}/drivers/profile/update/`,
+        payload,
+        requestConfig
+      );
+
+      setDriverProfile(response.data.driver);
+      setDocumentFiles({
+        driver_photo: null,
+        license_file: null,
+        vehicle_registration: null,
+        insurance_document: null,
+      });
+      setIsEditingVehicle(false);
+      setMenuMessage("Car information and documents updated successfully.");
+      fetchAllDriverData();
+    } catch (error) {
+      console.log("Vehicle profile update error:", error.response?.data || error);
+      setMenuMessage(
+        error.response?.data?.error ||
+          error.response?.data?.detail ||
+          "Could not update car information."
+      );
+    } finally {
+      setVehicleSaving(false);
+    }
+  };
+
+  const updateDocumentFile = (field, file) => {
+    setDocumentFiles((current) => ({
+      ...current,
+      [field]: file,
+    }));
+  };
+
+  const saveIdentityProfile = async (event) => {
+    event.preventDefault();
+
+    try {
+      setIdentitySaving(true);
+      setMenuMessage("");
+
+      const payload = new FormData();
+      payload.append("national_id_number", identityForm.national_id_number || "");
+
+      if (identityForm.national_id_document) {
+        payload.append("national_id_document", identityForm.national_id_document);
+      }
+
+      const response = await axios.post(
+        `${API_URL}/auth/identity/update/`,
+        payload,
+        {
+          headers: {
+            ...authHeaders.headers,
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      setDriverProfile((current) => ({
+        ...current,
+        national_id_number: response.data.user.national_id_number,
+        national_id_document: response.data.user.national_id_document,
+        has_national_id_document: response.data.user.has_national_id_document,
+      }));
+      setIdentityForm((current) => ({
+        ...current,
+        national_id_document: null,
+      }));
+      setMenuMessage("National ID information updated successfully.");
+    } catch (error) {
+      console.log("National ID update error:", error.response?.data || error);
+      setMenuMessage(
+        error.response?.data?.error ||
+          error.response?.data?.detail ||
+          "Could not update National ID information."
+      );
+    } finally {
+      setIdentitySaving(false);
+    }
+  };
+
+  const updatePayoutForm = (field, value) => {
+    setPayoutForm((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  };
+
+  const savePayoutMethod = async (event) => {
+    event.preventDefault();
+
+    try {
+      setPayoutSaving(true);
+      setMenuMessage("");
+
+      await axios.post(`${API_URL}/payments/payout-methods/save/`, payoutForm, authHeaders);
+      setMenuMessage("Payout method saved successfully.");
+      fetchPayoutData();
+    } catch (error) {
+      console.log("Payout method error:", error.response?.data || error);
+      setMenuMessage(error.response?.data?.error || "Could not save payout method.");
+    } finally {
+      setPayoutSaving(false);
+    }
+  };
+
+  const requestWithdrawal = async (event) => {
+    event.preventDefault();
+
+    try {
+      setWithdrawalSaving(true);
+      setMenuMessage("");
+
+      await axios.post(`${API_URL}/payments/withdrawals/request/`, withdrawalForm, authHeaders);
+      setWithdrawalForm({ amount: "", note: "" });
+      setMenuMessage("Withdrawal request submitted for admin approval.");
+      fetchPayoutData();
+    } catch (error) {
+      console.log("Withdrawal request error:", error.response?.data || error);
+      setMenuMessage(
+        error.response?.data?.error ||
+          error.response?.data?.detail ||
+          "Could not submit withdrawal request."
+      );
+    } finally {
+      setWithdrawalSaving(false);
+    }
+  };
+
+  const pendingWithdrawalsTotal = withdrawals
+    .filter((item) => item.status === "pending")
+    .reduce((total, item) => total + Number(item.amount || 0), 0);
+  const defaultPayoutMethod = payoutMethods.find((item) => item.is_default) || payoutMethods[0];
+
+  const activePickup =
+    activeRide?.pickup || activeRide?.pickup_address || "Waiting for next pickup";
+  const activeDestination =
+    activeRide?.destination || activeRide?.destination_address || "No active drop-off";
+  const driverName =
+    driverProfile?.driver_name ||
+    `${driverProfile?.first_name || ""} ${driverProfile?.last_name || ""}`.trim() ||
+    "Driver";
+  const driverInitials = driverName
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
+  const vehicleSummary = [
+    driverProfile?.vehicle_make,
+    driverProfile?.vehicle_model,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const plateNumber = driverProfile?.vehicle_plate || driverProfile?.plate_number;
+  const driverRating =
+    driverProfile?.average_rating ||
+    driverProfile?.driver_average_rating ||
+    5;
+  const driverEmail = driverProfile?.driver_email || driverProfile?.email || "No email";
+  const driverPhone = driverProfile?.phone_number || "No phone";
+  const driverStatus = driverProfile?.status || "pending";
+  const vehicleColor = driverProfile?.vehicle_color || "";
+  const carType = driverProfile?.car_type || "Regular";
+  const driverCategory = driverProfile?.driver_category || "gold";
+  const driverCategoryLabel =
+    driverProfile?.driver_category_label ||
+    driverCategory.charAt(0).toUpperCase() + driverCategory.slice(1);
+  const driverCategoryStyle =
+    driverCategoryStyles[driverCategory] || driverCategoryStyles.gold;
+
+  return (
+    <div style={pageStyle}>
+      <div style={mapStageStyle}>
+        <div style={driverTopControlsStyle}>
+          <div style={topLeftStackStyle}>
+            <button
+              onClick={() => setShowDriverMenu(true)}
+              style={floatingIconButtonStyle}
+              aria-label="Menu"
+            >
+              <span style={hamburgerGroupStyle}>
+                <span style={hamburgerLineStyle} />
+                <span style={hamburgerLineStyle} />
+                <span style={hamburgerLineStyle} />
+              </span>
+            </button>
+
+            <div style={cornerAvatarStyle} data-testid="driver-dashboard-avatar">
+              {driverProfile?.driver_photo ? (
+                <img
+                  src={driverProfile.driver_photo}
+                  alt={driverName}
+                  style={avatarImageStyle}
+                />
+              ) : (
+                <span style={avatarFallbackStyle}>{driverInitials || "DR"}</span>
+              )}
+            </div>
+          </div>
+
+          <div style={earningsPillStyle}>{formatMoney(earnings)}</div>
+
+          <div style={rightControlStackStyle}>
+            <button
+              onClick={() => setShowSafety((current) => !current)}
+              style={floatingIconButtonStyle}
+              aria-label="Safety"
+            >
+              !
+            </button>
+            <button
+              onClick={() => {
+                setShowTripDetails(true);
+                setDriverNotice(
+                  availableRides.length
+                    ? "Trip requests are open below."
+                    : "No new ride requests yet. Keep the app online."
+                );
+              }}
+              style={floatingIconButtonStyle}
+              aria-label="Alerts"
+            >
+              {availableRides.length || "0"}
+            </button>
+          </div>
+        </div>
+
+        {showSafety && (
+          <div style={driverSafetyPanelStyle}>
+            <strong>Emergency help</strong>
+            <span style={driverSafetyHintStyle}>Tap a number to call</span>
+            {MARKET.emergencyNumbers.map((item) => (
+              <a key={item.number} href={`tel:${item.number}`} style={driverSafetyLinkStyle}>
+                <span>{item.label}</span>
+                <strong>{item.number}</strong>
+              </a>
+            ))}
+          </div>
+        )}
+
+        <div style={driverMapFullStyle}>
+          <DriverMap
+            driverLocation={driverLocation}
+            activeRide={activeRide}
+            availableRides={availableRides}
+          />
+        </div>
+
+        <button
+          onClick={() => setDriverNotice("Map is centered on your current driver location.")}
+          style={locateButtonStyle}
+          aria-label="Current location"
+        >
+          ◎
+        </button>
+      </div>
+
+      <section style={bottomSheetStyle}>
+        <div style={sheetHandleStyle} />
+
+        <div style={sheetHeaderStyle}>
+          <div>
+            <h1 style={waitTitleStyle}>
+              {isOnline ? `${waitMinutes} min wait in your area` : "Ready to drive?"}
+            </h1>
+            <p style={waitSubtitleStyle}>
+              {isOnline
+                ? "Expected for the next 10 min"
+                : "Go online to start receiving nearby ride requests"}
+            </p>
+            {driverNotice && <p style={noticeStyle}>{driverNotice}</p>}
+          </div>
+          <span
+            style={{
+              ...sheetStatusPillStyle,
+              background: isOnline ? "#ecfdf3" : "#f2f4f7",
+              color: isOnline ? "#166534" : "#475467",
+            }}
+          >
+            {isOnline ? "Online" : "Offline"}
+          </span>
+        </div>
+
+        <div style={sheetDividerStyle} />
+
+        <div style={driverPerksGridStyle}>
+          <div style={driverPerkCardStyle}>
+            <span style={perkIconStyle}>⌁</span>
+            <div>
+              <strong>Upfront trip details</strong>
+              <span>{availableRides.length > 0 ? "New requests available" : "Unlocked"}</span>
+            </div>
+          </div>
+
+          <div style={driverPerkCardStyle}>
+            <span style={perkIconStyle}>◇</span>
+            <div>
+              <strong>Driver quality</strong>
+              <span>{completedRides} completed trips</span>
+            </div>
+          </div>
+        </div>
+
+        <div style={primaryActionRowStyle}>
+          <button
+            onClick={toggleAvailability}
+            style={{
+              ...driverGoOnlineButtonStyle,
+              background: isOnline ? "#111827" : "#9b0089",
+            }}
+          >
+            {isOnline ? "Go Offline" : "Go Online"}
+          </button>
+          <button
+            onClick={() => setShowTripDetails((current) => !current)}
+            style={filterButtonStyle}
+            aria-label="Driver settings"
+          >
+            ≡
+          </button>
+        </div>
+
+        <div style={activeRouteCardStyle}>
+          <div>
+            <span style={smallLabelStyle}>Current task</span>
+            <strong style={activeRouteTitleStyle}>
+              {activeRide
+                ? activeRide.status === "in_progress"
+                  ? "Drive to drop-off"
+                  : "Drive to pickup"
+                : isOnline
+                  ? "Waiting for a rider request"
+                  : "Go online to start"}
+            </strong>
+          </div>
+          <div style={routeLineStyle}>
+            <div style={routePointStyle} />
+            <div>
+              <span style={routeLabelStyle}>Pickup</span>
+              <p style={routeTextStyle}>{activePickup}</p>
+            </div>
+          </div>
+          <div style={routeLineStyle}>
+            <div style={{ ...routePointStyle, background: "#9b0089" }} />
+            <div>
+              <span style={routeLabelStyle}>Drop-off</span>
+              <p style={routeTextStyle}>{activeDestination}</p>
+            </div>
+          </div>
+        </div>
+
+        <details
+          open={showTripDetails}
+          onToggle={(event) => setShowTripDetails(event.currentTarget.open)}
+          style={tripDetailsStyle}
+        >
+          <summary style={tripSummaryStyle}>Trip requests and history</summary>
+          <RideDashboard
+            rides={driverRides}
+            availableRides={availableRides}
+            isOnline={isOnline}
+            fetchRides={fetchAllDriverData}
+          />
+        </details>
+      </section>
+
+      {showDriverMenu && (
+        <div style={menuOverlayStyle}>
+          <button
+            onClick={() => setShowDriverMenu(false)}
+            style={menuCloseButtonStyle}
+            aria-label="Close menu"
+          >
+            ×
+          </button>
+
+          <section style={menuProfileStyle}>
+            <div style={menuAvatarWrapStyle}>
+              {driverProfile?.driver_photo ? (
+                <img
+                  src={driverProfile.driver_photo}
+                  alt={driverName}
+                  style={avatarImageStyle}
+                />
+              ) : (
+                <span style={menuAvatarFallbackStyle}>{driverInitials || "DR"}</span>
+              )}
+              <span style={{ ...eliteBadgeStyle, ...driverCategoryStyle }}>
+                {driverCategoryLabel} ›
+              </span>
+            </div>
+
+            <div style={menuProfileTextStyle}>
+              <h1>{driverName}</h1>
+              <p>
+                {[vehicleColor, vehicleSummary].filter(Boolean).join(" ") || "Vehicle not added"}
+                {plateNumber ? ` · ${plateNumber}` : ""}
+              </p>
+              <p style={menuContactStyle}>{driverPhone} · {driverEmail}</p>
+              <button
+                onClick={() => (window.location.href = "/rider-dashboard")}
+                style={viewAsRiderStyle}
+              >
+                View as rider
+              </button>
+            </div>
+          </section>
+
+          <section style={menuStatsCardStyle}>
+            <div>
+              <strong>{completedRides}</strong>
+              <span>Rides</span>
+            </div>
+            <div style={menuDividerStyle} />
+            <div>
+              <strong>{Number(driverRating || 0).toFixed(1)}</strong>
+              <span>Rating ›</span>
+            </div>
+            <div style={menuDividerStyle} />
+            <div>
+              <strong>{driverCategoryLabel}</strong>
+              <span>Level</span>
+            </div>
+          </section>
+
+          {menuMessage && <p style={menuMessageStyle}>{menuMessage}</p>}
+
+          <section style={menuSectionStyle}>
+            <MenuSectionTitle
+              title="More Ways to Earn"
+              open={openMenuSections.earn}
+              onClick={() => toggleMenuSection("earn")}
+            />
+            {openMenuSections.earn && (
+              <>
+                <MenuRow
+                  icon="▣"
+                  label="Scheduled Rides"
+                  badge="Early access"
+                  onClick={() => showMenuFeedback("Scheduled rides will appear here when riders book ahead.")}
+                />
+                <MenuRow
+                  icon="+"
+                  label="Refer a friend"
+                  onClick={() => showMenuFeedback("Referral sharing is ready for the next account setup step.")}
+                />
+              </>
+            )}
+          </section>
+
+          <section>
+            <MenuSectionTitle
+              title="Vehicle and Devices"
+              open={openMenuSections.vehicle}
+              onClick={() => toggleMenuSection("vehicle")}
+            />
+            {openMenuSections.vehicle && (
+              <>
+                <MenuInfoRow label="Vehicle" value={[vehicleColor, vehicleSummary].filter(Boolean).join(" ") || "Not added"} />
+                <MenuInfoRow label="Plate" value={plateNumber || "Not added"} />
+                <MenuInfoRow label="Ride class" value={carType} />
+                <MenuInfoRow label="Driver photo" value={driverProfile?.driver_photo ? "Uploaded" : "Missing"} />
+                <MenuInfoRow label="License" value={driverProfile?.license_file ? "Uploaded" : "Missing"} />
+                <MenuInfoRow label="Registration" value={driverProfile?.vehicle_registration ? "Uploaded" : "Missing"} />
+                <MenuInfoRow label="Insurance" value={driverProfile?.insurance_document ? "Uploaded" : "Missing"} />
+                <button
+                  type="button"
+                  onClick={() => setIsEditingVehicle((current) => !current)}
+                  style={editVehicleButtonStyle}
+                >
+                  {isEditingVehicle ? "Close car editor" : "Update car information"}
+                </button>
+                {isEditingVehicle && (
+                  <form onSubmit={saveVehicleProfile} style={vehicleFormStyle}>
+                    <label style={vehicleFieldStyle}>
+                      <span>Phone number</span>
+                      <input
+                        value={vehicleForm.phone_number}
+                        onChange={(event) => updateVehicleForm("phone_number", event.target.value)}
+                        style={vehicleInputStyle}
+                        placeholder="44556666"
+                      />
+                    </label>
+                    <label style={vehicleFieldStyle}>
+                      <span>Vehicle make</span>
+                      <input
+                        value={vehicleForm.vehicle_make}
+                        onChange={(event) => updateVehicleForm("vehicle_make", event.target.value)}
+                        style={vehicleInputStyle}
+                        placeholder="Toyota"
+                      />
+                    </label>
+                    <label style={vehicleFieldStyle}>
+                      <span>Vehicle model</span>
+                      <input
+                        value={vehicleForm.vehicle_model}
+                        onChange={(event) => updateVehicleForm("vehicle_model", event.target.value)}
+                        style={vehicleInputStyle}
+                        placeholder="Camry"
+                      />
+                    </label>
+                    <label style={vehicleFieldStyle}>
+                      <span>Vehicle color</span>
+                      <input
+                        value={vehicleForm.vehicle_color}
+                        onChange={(event) => updateVehicleForm("vehicle_color", event.target.value)}
+                        style={vehicleInputStyle}
+                        placeholder="Black"
+                      />
+                    </label>
+                    <label style={vehicleFieldStyle}>
+                      <span>Plate number</span>
+                      <input
+                        value={vehicleForm.vehicle_plate}
+                        onChange={(event) => updateVehicleForm("vehicle_plate", event.target.value)}
+                        style={vehicleInputStyle}
+                        placeholder="TEMP-PLATE"
+                      />
+                    </label>
+                    <label style={vehicleFieldStyle}>
+                      <span>Ride class</span>
+                      <select
+                        value={vehicleForm.car_type}
+                        onChange={(event) => updateVehicleForm("car_type", event.target.value)}
+                        style={vehicleInputStyle}
+                      >
+                        <option value="regular">Regular</option>
+                        <option value="comfort">Comfort</option>
+                        <option value="xl">XL</option>
+                        <option value="share">Share</option>
+                      </select>
+                    </label>
+                    <div style={documentUploadGridStyle}>
+                      <DocumentUploadField
+                        label="Driver photo"
+                        field="driver_photo"
+                        file={documentFiles.driver_photo}
+                        currentUrl={driverProfile?.driver_photo}
+                        onChange={updateDocumentFile}
+                      />
+                      <DocumentUploadField
+                        label="Driver license"
+                        field="license_file"
+                        file={documentFiles.license_file}
+                        currentUrl={driverProfile?.license_file}
+                        onChange={updateDocumentFile}
+                      />
+                      <DocumentUploadField
+                        label="Vehicle registration"
+                        field="vehicle_registration"
+                        file={documentFiles.vehicle_registration}
+                        currentUrl={driverProfile?.vehicle_registration}
+                        onChange={updateDocumentFile}
+                      />
+                      <DocumentUploadField
+                        label="Insurance document"
+                        field="insurance_document"
+                        file={documentFiles.insurance_document}
+                        currentUrl={driverProfile?.insurance_document}
+                        onChange={updateDocumentFile}
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={vehicleSaving}
+                      style={{
+                        ...saveVehicleButtonStyle,
+                        opacity: vehicleSaving ? 0.7 : 1,
+                      }}
+                    >
+                      {vehicleSaving ? "Saving..." : "Save car information"}
+                    </button>
+                  </form>
+                )}
+              </>
+            )}
+          </section>
+
+          <section>
+            <MenuSectionTitle
+              title="Feedback and Rewards"
+              open={openMenuSections.feedback}
+              onClick={() => toggleMenuSection("feedback")}
+            />
+            {openMenuSections.feedback && (
+              <>
+                <MenuInfoRow label="Driver rating" value={`${Number(driverRating || 0).toFixed(1)} / 5`} />
+                <MenuInfoRow label="Completed rides" value={completedRides} />
+                <MenuInfoRow label="Total earnings" value={formatMoney(earnings)} />
+                <MenuInfoRow label="Pending withdrawals" value={formatMoney(pendingWithdrawalsTotal)} />
+                <MenuInfoRow
+                  label="Payout method"
+                  value={defaultPayoutMethod?.display_name || "Not added"}
+                />
+                <form onSubmit={savePayoutMethod} style={vehicleFormStyle}>
+                  <label style={vehicleFieldStyle}>
+                    <span>Payout type</span>
+                    <select
+                      value={payoutForm.payout_type}
+                      onChange={(event) => updatePayoutForm("payout_type", event.target.value)}
+                      style={vehicleInputStyle}
+                    >
+                      <option value="bank_account">Bank Account</option>
+                      <option value="card">Card</option>
+                      <option value="bankily">Bankily</option>
+                      <option value="masrvi">Masrvi</option>
+                      <option value="seddad">Seddad</option>
+                    </select>
+                  </label>
+                  <label style={vehicleFieldStyle}>
+                    <span>Account holder name</span>
+                    <input
+                      value={payoutForm.account_holder_name}
+                      onChange={(event) => updatePayoutForm("account_holder_name", event.target.value)}
+                      style={vehicleInputStyle}
+                      placeholder="Driver full name"
+                    />
+                  </label>
+                  {payoutForm.payout_type === "bank_account" && (
+                    <>
+                      <label style={vehicleFieldStyle}>
+                        <span>Bank name</span>
+                        <input
+                          value={payoutForm.bank_name}
+                          onChange={(event) => updatePayoutForm("bank_name", event.target.value)}
+                          style={vehicleInputStyle}
+                          placeholder="Bank name"
+                        />
+                      </label>
+                      <label style={vehicleFieldStyle}>
+                        <span>Account number / RIB</span>
+                        <input
+                          value={payoutForm.account_reference}
+                          onChange={(event) => updatePayoutForm("account_reference", event.target.value)}
+                          style={vehicleInputStyle}
+                          placeholder="Account reference"
+                        />
+                      </label>
+                    </>
+                  )}
+                  {payoutForm.payout_type === "card" && (
+                    <>
+                      <label style={vehicleFieldStyle}>
+                        <span>Card type</span>
+                        <select
+                          value={payoutForm.card_type}
+                          onChange={(event) => updatePayoutForm("card_type", event.target.value)}
+                          style={vehicleInputStyle}
+                        >
+                          <option value="visa">Visa</option>
+                          <option value="mastercard">Mastercard</option>
+                        </select>
+                      </label>
+                      <label style={vehicleFieldStyle}>
+                        <span>Card last 4 digits</span>
+                        <input
+                          value={payoutForm.card_last4}
+                          onChange={(event) => updatePayoutForm("card_last4", event.target.value.slice(0, 4))}
+                          style={vehicleInputStyle}
+                          placeholder="1234"
+                        />
+                      </label>
+                    </>
+                  )}
+                  {["bankily", "masrvi", "seddad"].includes(payoutForm.payout_type) && (
+                    <>
+                      <label style={vehicleFieldStyle}>
+                        <span>Phone number</span>
+                        <input
+                          value={payoutForm.phone_number}
+                          onChange={(event) => updatePayoutForm("phone_number", event.target.value)}
+                          style={vehicleInputStyle}
+                          placeholder="Mobile money phone"
+                        />
+                      </label>
+                      <label style={vehicleFieldStyle}>
+                        <span>Wallet ID</span>
+                        <input
+                          value={payoutForm.wallet_id}
+                          onChange={(event) => updatePayoutForm("wallet_id", event.target.value)}
+                          style={vehicleInputStyle}
+                          placeholder="Optional wallet ID"
+                        />
+                      </label>
+                    </>
+                  )}
+                  <button
+                    type="submit"
+                    disabled={payoutSaving}
+                    style={{ ...saveVehicleButtonStyle, opacity: payoutSaving ? 0.7 : 1 }}
+                  >
+                    {payoutSaving ? "Saving..." : "Save payout method"}
+                  </button>
+                </form>
+                <form onSubmit={requestWithdrawal} style={vehicleFormStyle}>
+                  <label style={vehicleFieldStyle}>
+                    <span>Withdrawal amount</span>
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={withdrawalForm.amount}
+                      onChange={(event) =>
+                        setWithdrawalForm((current) => ({
+                          ...current,
+                          amount: event.target.value,
+                        }))
+                      }
+                      style={vehicleInputStyle}
+                      placeholder="Amount in MRU"
+                    />
+                  </label>
+                  <label style={vehicleFieldStyle}>
+                    <span>Note</span>
+                    <input
+                      value={withdrawalForm.note}
+                      onChange={(event) =>
+                        setWithdrawalForm((current) => ({
+                          ...current,
+                          note: event.target.value,
+                        }))
+                      }
+                      style={vehicleInputStyle}
+                      placeholder="Optional note"
+                    />
+                  </label>
+                  <button
+                    type="submit"
+                    disabled={withdrawalSaving}
+                    style={{ ...saveVehicleButtonStyle, opacity: withdrawalSaving ? 0.7 : 1 }}
+                  >
+                    {withdrawalSaving ? "Submitting..." : "Request withdrawal"}
+                  </button>
+                </form>
+                {withdrawals.length > 0 && (
+                  <div style={withdrawalListStyle}>
+                    {withdrawals.slice(0, 3).map((item) => (
+                      <div key={item.id} style={withdrawalItemStyle}>
+                        <strong>{formatMoney(item.amount)}</strong>
+                        <span>{item.status}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </section>
+
+          <section>
+            <MenuSectionTitle
+              title="Account"
+              open={openMenuSections.account}
+              onClick={() => toggleMenuSection("account")}
+            />
+            {openMenuSections.account && (
+              <>
+                <MenuInfoRow label="Account status" value={driverStatus} />
+                <MenuInfoRow label="Driver level" value={driverCategoryLabel} />
+                <MenuInfoRow label="National ID number" value={driverProfile?.national_id_number || "Missing"} />
+                <MenuInfoRow label="National ID document" value={driverProfile?.has_national_id_document ? "Uploaded" : "Missing"} />
+                <MenuInfoRow label="Online status" value={isOnline ? "Online" : "Offline"} />
+                <MenuInfoRow label="Sound alerts" value={soundEnabled ? "Enabled" : "Enable by going online"} />
+                <form onSubmit={saveIdentityProfile} style={vehicleFormStyle}>
+                  <label style={vehicleFieldStyle}>
+                    <span>National Identification Number</span>
+                    <input
+                      value={identityForm.national_id_number}
+                      onChange={(event) =>
+                        setIdentityForm((current) => ({
+                          ...current,
+                          national_id_number: event.target.value,
+                        }))
+                      }
+                      style={vehicleInputStyle}
+                      placeholder="National ID number"
+                    />
+                  </label>
+                  <DocumentUploadField
+                    label="National ID document"
+                    field="national_id_document"
+                    file={identityForm.national_id_document}
+                    currentUrl={driverProfile?.national_id_document}
+                    onChange={(field, file) =>
+                      setIdentityForm((current) => ({
+                        ...current,
+                        [field]: file,
+                      }))
+                    }
+                  />
+                  <button
+                    type="submit"
+                    disabled={identitySaving}
+                    style={{
+                      ...saveVehicleButtonStyle,
+                      opacity: identitySaving ? 0.7 : 1,
+                    }}
+                  >
+                    {identitySaving ? "Saving..." : "Save National ID"}
+                  </button>
+                </form>
+              </>
+            )}
+          </section>
+
+          <section>
+            <MenuSectionTitle
+              title="Support and Resources"
+              open={openMenuSections.support}
+              onClick={() => toggleMenuSection("support")}
+            />
+            {openMenuSections.support &&
+              MARKET.emergencyNumbers.map((item) => (
+                <a key={item.number} href={`tel:${item.number}`} style={menuEmergencyRowStyle}>
+                  <span>{item.label}</span>
+                  <strong>{item.number}</strong>
+                </a>
+              ))}
+          </section>
+
+          <button
+            onClick={() => {
+              localStorage.removeItem("access");
+              localStorage.removeItem("refresh");
+              localStorage.removeItem("user");
+              window.location.href = "/";
+            }}
+            style={logoutRowStyle}
+          >
+            <span>⇱</span>
+            Log out
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MenuSectionTitle({ title, open = false, onClick }) {
+  return (
+    <button type="button" onClick={onClick} style={menuSectionTitleStyle}>
+      <h2>{title}</h2>
+      <span>{open ? "⌃" : "⌄"}</span>
+    </button>
+  );
+}
+
+function MenuRow({ icon, label, badge, onClick }) {
+  return (
+    <button type="button" onClick={onClick} style={menuRowStyle}>
+      <span style={menuRowIconStyle}>{icon}</span>
+      <span>{label}</span>
+      {badge && <em style={menuBadgeStyle}>{badge}</em>}
+    </button>
+  );
+}
+
+function MenuInfoRow({ label, value }) {
+  return (
+    <div style={menuInfoRowStyle}>
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+function DocumentUploadField({ label, field, file, currentUrl, onChange }) {
+  return (
+    <label style={documentUploadStyle}>
+      <span>{label}</span>
+      <input
+        type="file"
+        accept="image/*,.pdf"
+        onChange={(event) => onChange(field, event.target.files?.[0] || null)}
+        style={documentFileInputStyle}
+      />
+      <small style={documentUploadHintStyle}>
+        {file ? file.name : currentUrl ? "Current file uploaded" : "No file uploaded"}
+      </small>
+      {currentUrl && (
+        <a href={currentUrl} target="_blank" rel="noreferrer" style={documentLinkStyle}>
+          View current file
+        </a>
+      )}
+    </label>
+  );
+}
+
+const pageStyle = {
+  minHeight: "100vh",
+  background: "#f3f4f6",
+  color: "#111827",
+  fontFamily: "Inter, Arial, sans-serif",
+};
+
+const mapStageStyle = {
+  position: "relative",
+  height: "calc(100vh - 340px)",
+  minHeight: "430px",
+  background: "#e5e7eb",
+  overflow: "hidden",
+};
+
+const driverMapFullStyle = {
+  position: "absolute",
+  inset: 0,
+};
+
+const driverTopControlsStyle = {
+  position: "absolute",
+  zIndex: 1000,
+  top: "18px",
+  left: "18px",
+  right: "18px",
+  display: "grid",
+  gridTemplateColumns: "76px minmax(120px, auto) 56px",
+  alignItems: "start",
+  justifyItems: "center",
+};
+
+const topLeftStackStyle = {
+  display: "grid",
+  gap: "12px",
+  pointerEvents: "auto",
+};
+
+const floatingIconButtonStyle = {
+  width: "60px",
+  height: "60px",
+  border: "none",
+  borderRadius: "16px",
+  background: "white",
+  color: "#111827",
+  boxShadow: "0 10px 26px rgba(15, 23, 42, 0.18)",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  fontSize: "1.3rem",
+  fontWeight: 900,
+  cursor: "pointer",
+  zIndex: 1001,
+};
+
+const hamburgerGroupStyle = {
+  display: "grid",
+  gap: "4px",
+};
+
+const hamburgerLineStyle = {
+  display: "block",
+  width: "24px",
+  height: "3px",
+  background: "#111827",
+  borderRadius: "999px",
+};
+
+const earningsPillStyle = {
+  background: "white",
+  color: "#160014",
+  borderRadius: "999px",
+  padding: "12px 24px",
+  fontSize: "2rem",
+  lineHeight: 1,
+  fontWeight: 950,
+  boxShadow: "0 12px 26px rgba(15, 23, 42, 0.22)",
+  pointerEvents: "auto",
+};
+
+const rightControlStackStyle = {
+  display: "grid",
+  gap: "12px",
+};
+
+const driverSafetyPanelStyle = {
+  position: "absolute",
+  zIndex: 25,
+  top: "88px",
+  right: "18px",
+  width: "260px",
+  background: "white",
+  borderRadius: "16px",
+  padding: "14px",
+  boxShadow: "0 18px 42px rgba(15, 23, 42, 0.24)",
+  display: "grid",
+  gap: "8px",
+};
+
+const driverSafetyHintStyle = {
+  color: "#667085",
+  fontSize: "0.86rem",
+  fontWeight: 700,
+};
+
+const driverSafetyLinkStyle = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  background: "#fff5f5",
+  color: "#991b1b",
+  textDecoration: "none",
+  borderRadius: "12px",
+  padding: "11px 12px",
+  fontWeight: 900,
+};
+
+const cornerAvatarStyle = {
+  width: "60px",
+  height: "60px",
+  borderRadius: "999px",
+  overflow: "hidden",
+  background: "#111827",
+  border: "3px solid white",
+  boxShadow: "0 10px 26px rgba(15, 23, 42, 0.18)",
+};
+
+const avatarImageStyle = {
+  width: "100%",
+  height: "100%",
+  objectFit: "cover",
+  display: "block",
+};
+
+const avatarFallbackStyle = {
+  width: "100%",
+  height: "100%",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  color: "white",
+  fontSize: "1rem",
+  fontWeight: 900,
+};
+
+const locateButtonStyle = {
+  position: "absolute",
+  zIndex: 15,
+  right: "20px",
+  bottom: "22px",
+  width: "56px",
+  height: "56px",
+  border: "none",
+  borderRadius: "16px",
+  background: "white",
+  fontSize: "2rem",
+  fontWeight: 900,
+  color: "#111827",
+  boxShadow: "0 12px 28px rgba(15, 23, 42, 0.18)",
+};
+
+const bottomSheetStyle = {
+  position: "relative",
+  zIndex: 30,
+  marginTop: "-20px",
+  background: "#f7f6f3",
+  borderRadius: "24px 24px 0 0",
+  boxShadow: "0 -14px 38px rgba(15, 23, 42, 0.18)",
+  padding: "14px 28px 28px",
+};
+
+const sheetHandleStyle = {
+  width: "78px",
+  height: "6px",
+  borderRadius: "999px",
+  background: "#888",
+  margin: "0 auto 24px",
+};
+
+const sheetHeaderStyle = {
+  display: "flex",
+  justifyContent: "space-between",
+  gap: "16px",
+  alignItems: "start",
+};
+
+const waitTitleStyle = {
+  margin: 0,
+  fontSize: "2rem",
+  letterSpacing: 0,
+  color: "#0b0b13",
+};
+
+const waitSubtitleStyle = {
+  margin: "12px 0 0",
+  color: "#667085",
+  fontSize: "1.08rem",
+  fontWeight: 700,
+};
+
+const noticeStyle = {
+  margin: "12px 0 0",
+  color: "#b91c1c",
+  background: "#fee2e2",
+  border: "1px solid #fecaca",
+  borderRadius: "10px",
+  padding: "10px 12px",
+  fontWeight: 900,
+};
+
+const sheetStatusPillStyle = {
+  borderRadius: "999px",
+  padding: "10px 14px",
+  fontWeight: 900,
+  whiteSpace: "nowrap",
+};
+
+const sheetDividerStyle = {
+  height: "1px",
+  background: "#d6d3cc",
+  margin: "26px 0",
+};
+
+const driverPerksGridStyle = {
+  display: "grid",
+  gap: "16px",
+};
+
+const driverPerkCardStyle = {
+  minHeight: "86px",
+  background: "white",
+  border: "1px solid #e7e5df",
+  borderRadius: "18px",
+  padding: "18px",
+  display: "grid",
+  gridTemplateColumns: "42px 1fr",
+  gap: "14px",
+  alignItems: "center",
+};
+
+const perkIconStyle = {
+  color: "#6b7280",
+  fontSize: "2rem",
+  fontWeight: 900,
+};
+
+const primaryActionRowStyle = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) 86px",
+  gap: "20px",
+  marginTop: "24px",
+};
+
+const driverGoOnlineButtonStyle = {
+  minHeight: "72px",
+  border: "none",
+  borderRadius: "999px",
+  color: "white",
+  fontSize: "1.5rem",
+  fontWeight: 950,
+  cursor: "pointer",
+  boxShadow: "0 14px 28px rgba(155, 0, 137, 0.28)",
+};
+
+const filterButtonStyle = {
+  minHeight: "72px",
+  border: "none",
+  borderRadius: "999px",
+  background: "#edecea",
+  color: "#111827",
+  fontSize: "2rem",
+  fontWeight: 900,
+  cursor: "pointer",
+};
+
+const activeRouteCardStyle = {
+  marginTop: "18px",
+  background: "white",
+  border: "1px solid #e7e5df",
+  borderRadius: "18px",
+  padding: "16px",
+};
+
+const smallLabelStyle = {
+  margin: "0 0 4px",
+  color: "#667085",
+  fontSize: "0.78rem",
+  fontWeight: 900,
+  textTransform: "uppercase",
+};
+
+const activeRouteTitleStyle = {
+  display: "block",
+  marginTop: "4px",
+  color: "#111827",
+  fontSize: "1.05rem",
+};
+
+const routeLineStyle = {
+  display: "grid",
+  gridTemplateColumns: "14px minmax(0, 1fr)",
+  gap: "10px",
+  alignItems: "start",
+  marginTop: "12px",
+};
+
+const routePointStyle = {
+  width: "11px",
+  height: "11px",
+  borderRadius: "999px",
+  background: "#12b76a",
+  marginTop: "5px",
+};
+
+const routeLabelStyle = {
+  display: "block",
+  color: "#667085",
+  fontSize: "0.76rem",
+  fontWeight: 900,
+};
+
+const routeTextStyle = {
+  margin: "3px 0 0",
+  color: "#111827",
+  fontWeight: 800,
+  overflowWrap: "anywhere",
+};
+
+const tripDetailsStyle = {
+  marginTop: "18px",
+};
+
+const tripSummaryStyle = {
+  cursor: "pointer",
+  fontWeight: 950,
+  fontSize: "1.05rem",
+  padding: "14px 0",
+};
+
+const menuOverlayStyle = {
+  position: "fixed",
+  inset: 0,
+  zIndex: 3000,
+  background: "white",
+  color: "#160014",
+  padding: "34px 28px",
+  overflowY: "auto",
+};
+
+const menuCloseButtonStyle = {
+  width: "48px",
+  height: "48px",
+  border: "none",
+  background: "transparent",
+  color: "#160014",
+  fontSize: "3rem",
+  lineHeight: 1,
+  cursor: "pointer",
+};
+
+const menuProfileStyle = {
+  display: "grid",
+  gridTemplateColumns: "180px minmax(0, 1fr)",
+  gap: "28px",
+  alignItems: "center",
+  marginTop: "16px",
+};
+
+const menuAvatarWrapStyle = {
+  position: "relative",
+  width: "150px",
+  height: "150px",
+  borderRadius: "999px",
+  padding: "7px",
+  background: "linear-gradient(135deg, #ff007f, #6d28d9)",
+};
+
+const menuAvatarFallbackStyle = {
+  width: "100%",
+  height: "100%",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  borderRadius: "999px",
+  background: "#111827",
+  color: "white",
+  fontSize: "2.4rem",
+  fontWeight: 950,
+};
+
+const eliteBadgeStyle = {
+  position: "absolute",
+  left: "18px",
+  bottom: "-12px",
+  borderRadius: "999px",
+  padding: "8px 18px",
+  fontWeight: 900,
+  boxShadow: "0 8px 18px rgba(15,23,42,0.18)",
+};
+
+const driverCategoryStyles = {
+  gold: {
+    background: "#fef3c7",
+    color: "#92400e",
+  },
+  platinum: {
+    background: "#e0f2fe",
+    color: "#075985",
+  },
+  diamond: {
+    background: "#ede9fe",
+    color: "#5b21b6",
+  },
+  elite: {
+    background: "#4b303d",
+    color: "white",
+  },
+};
+
+const menuProfileTextStyle = {
+  minWidth: 0,
+};
+
+const viewAsRiderStyle = {
+  border: "none",
+  background: "transparent",
+  color: "#9b0089",
+  fontWeight: 950,
+  fontSize: "1rem",
+  padding: 0,
+  cursor: "pointer",
+};
+
+const menuContactStyle = {
+  margin: "8px 0 10px",
+  color: "#667085",
+  fontWeight: 700,
+  overflowWrap: "anywhere",
+};
+
+const menuStatsCardStyle = {
+  marginTop: "34px",
+  background: "white",
+  borderRadius: "8px",
+  boxShadow: "0 8px 24px rgba(15,23,42,0.18)",
+  border: "1px solid #e5e7eb",
+  padding: "22px",
+  display: "grid",
+  gridTemplateColumns: "1fr 1px 1fr 1px 1fr",
+  textAlign: "center",
+  alignItems: "center",
+};
+
+const menuDividerStyle = {
+  height: "42px",
+  background: "#d1d5db",
+};
+
+const menuSectionStyle = {
+  marginTop: "34px",
+};
+
+const menuSectionTitleStyle = {
+  width: "100%",
+  borderTop: "1px solid #e5e7eb",
+  borderRight: "none",
+  borderBottom: "none",
+  borderLeft: "none",
+  background: "transparent",
+  padding: "24px 0 18px",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "16px",
+  color: "#160014",
+  cursor: "pointer",
+  textAlign: "left",
+};
+
+const menuRowStyle = {
+  width: "100%",
+  minHeight: "68px",
+  border: "none",
+  background: "transparent",
+  padding: 0,
+  display: "grid",
+  gridTemplateColumns: "48px minmax(0, 1fr) auto",
+  alignItems: "center",
+  gap: "12px",
+  fontSize: "1.1rem",
+  color: "#160014",
+  cursor: "pointer",
+  textAlign: "left",
+};
+
+const menuMessageStyle = {
+  margin: "24px 0 -8px",
+  borderRadius: "8px",
+  background: "#fff1fb",
+  color: "#7a006d",
+  border: "1px solid #ffd0f0",
+  padding: "12px 14px",
+  fontWeight: 800,
+  lineHeight: 1.35,
+};
+
+const menuRowIconStyle = {
+  fontSize: "1.7rem",
+};
+
+const menuInfoRowStyle = {
+  minHeight: "50px",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "16px",
+  borderTop: "1px solid #f0f0f0",
+  color: "#4b5563",
+};
+
+const editVehicleButtonStyle = {
+  width: "100%",
+  minHeight: "52px",
+  border: "none",
+  borderRadius: "8px",
+  background: "#111827",
+  color: "white",
+  fontWeight: 950,
+  cursor: "pointer",
+  margin: "14px 0 8px",
+};
+
+const vehicleFormStyle = {
+  display: "grid",
+  gap: "12px",
+  background: "#f8fafc",
+  border: "1px solid #e5e7eb",
+  borderRadius: "8px",
+  padding: "14px",
+  marginTop: "10px",
+};
+
+const vehicleFieldStyle = {
+  display: "grid",
+  gap: "7px",
+  color: "#334155",
+  fontWeight: 900,
+};
+
+const vehicleInputStyle = {
+  width: "100%",
+  minHeight: "44px",
+  border: "1px solid #cbd5e1",
+  borderRadius: "8px",
+  background: "white",
+  color: "#111827",
+  padding: "0 12px",
+  fontWeight: 800,
+  boxSizing: "border-box",
+};
+
+const documentUploadGridStyle = {
+  display: "grid",
+  gap: "12px",
+  marginTop: "4px",
+};
+
+const documentUploadStyle = {
+  display: "grid",
+  gap: "7px",
+  background: "white",
+  border: "1px solid #e5e7eb",
+  borderRadius: "8px",
+  padding: "12px",
+  color: "#334155",
+  fontWeight: 900,
+};
+
+const documentFileInputStyle = {
+  width: "100%",
+  fontWeight: 800,
+};
+
+const documentUploadHintStyle = {
+  color: "#64748b",
+  fontWeight: 800,
+  overflowWrap: "anywhere",
+};
+
+const documentLinkStyle = {
+  color: "#9b0089",
+  fontWeight: 900,
+  textDecoration: "none",
+};
+
+const withdrawalListStyle = {
+  display: "grid",
+  gap: "8px",
+  marginTop: "10px",
+};
+
+const withdrawalItemStyle = {
+  minHeight: "44px",
+  border: "1px solid #e5e7eb",
+  borderRadius: "8px",
+  background: "white",
+  padding: "0 12px",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "12px",
+  textTransform: "capitalize",
+};
+
+const saveVehicleButtonStyle = {
+  minHeight: "52px",
+  border: "none",
+  borderRadius: "999px",
+  background: "#9b0089",
+  color: "white",
+  fontWeight: 950,
+  cursor: "pointer",
+};
+
+const menuEmergencyRowStyle = {
+  minHeight: "52px",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "16px",
+  color: "#991b1b",
+  background: "#fff5f5",
+  textDecoration: "none",
+  borderRadius: "12px",
+  padding: "0 14px",
+  marginTop: "8px",
+  fontWeight: 900,
+};
+
+const menuBadgeStyle = {
+  background: "#ffe4f3",
+  color: "#9b0089",
+  borderRadius: "999px",
+  padding: "7px 12px",
+  fontStyle: "normal",
+  fontWeight: 900,
+};
+
+const logoutRowStyle = {
+  marginTop: "20px",
+  border: "none",
+  background: "transparent",
+  display: "inline-flex",
+  alignItems: "center",
+  gap: "16px",
+  color: "#160014",
+  fontSize: "1.2rem",
+  cursor: "pointer",
+};

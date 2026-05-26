@@ -1,107 +1,355 @@
-from rest_framework.decorators import api_view
+from datetime import timedelta
+
+from django.shortcuts import get_object_or_404
+from django.db.models import Sum
+from django.utils.timezone import now
+
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
+from rest_framework import status
+
+from taxi.market import MARKET, calculate_app_fee, calculate_fare
+from payments.services import (
+    authorize_ride_payment,
+    cancel_ride_payment,
+    capture_ride_payment,
+)
 
 from .models import Ride
+from .serializers import RideSerializer
 
 
-def ride_to_dict(ride):
-    return {
-        "id": ride.id,
-        "pickup_lat": ride.pickup_lat,
-        "pickup_lng": ride.pickup_lng,
-        "destination_lat": ride.destination_lat,
-        "destination_lng": ride.destination_lng,
-        "ride_type": ride.ride_type,
-        "estimated_price": ride.estimated_price,
-        "status": ride.status,
-    }
+def calculate_money(ride):
+    fare = ride.fare or 0
+    app_fee = calculate_app_fee(fare)
+    driver_earning = fare - app_fee
+
+    ride.app_fee = app_fee
+    ride.driver_earning = driver_earning
+    ride.save()
+
+    return ride
 
 
 @api_view(["POST"])
+@permission_classes([IsAuthenticated])
 def request_ride(request):
+    if not request.user.profile_picture:
+        return Response(
+            {"detail": "Rider profile photo is required before requesting a ride."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if not request.user.phone_number:
+        return Response(
+            {"detail": "Rider phone number is required before requesting a ride."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    distance_km = request.data.get("distance_km", request.data.get("distance", 0))
+    ride_type = request.data.get("ride_type", "regular")
+    fare = request.data.get("fare") or calculate_fare(ride_type, distance_km)
+
     ride = Ride.objects.create(
-        rider=request.user if request.user.is_authenticated else None,
-        pickup_lat=request.data.get("pickup_lat", 18.0735),
-        pickup_lng=request.data.get("pickup_lng", -15.9582),
-        destination_lat=request.data.get("destination_lat", 18.0896),
-        destination_lng=request.data.get("destination_lng", -15.9754),
-        ride_type=request.data.get("ride_type", "regular"),
-        estimated_price=request.data.get("estimated_price", 200),
+        rider=request.user,
+        pickup=request.data.get("pickup", MARKET["default_pickup"]),
+        destination=request.data.get("destination", MARKET["default_destination"]),
+        pickup_lat=request.data.get("pickup_lat", MARKET["default_pickup_lat"]),
+        pickup_lng=request.data.get("pickup_lng", MARKET["default_pickup_lng"]),
+        destination_lat=request.data.get(
+            "destination_lat",
+            MARKET["default_destination_lat"],
+        ),
+        destination_lng=request.data.get(
+            "destination_lng",
+            MARKET["default_destination_lng"],
+        ),
+        distance_km=distance_km,
+        ride_type=ride_type,
+        fare=fare,
         status="requested",
     )
 
-    return Response({"message": "Ride requested successfully", "ride": ride_to_dict(ride)})
+    authorize_ride_payment(ride)
+
+    serializer = RideSerializer(ride, context={"request": request})
+    return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 @api_view(["GET"])
-def rides_history(request):
-    rides = Ride.objects.all().order_by("-id")
-    return Response([ride_to_dict(ride) for ride in rides])
-
-
-@api_view(["GET"])
+@permission_classes([AllowAny])
 def available_rides(request):
-    rides = Ride.objects.filter(status="requested").order_by("-id")
-    return Response([ride_to_dict(ride) for ride in rides])
+    rides = Ride.objects.filter(
+        status="requested",
+        driver__isnull=True,
+    ).order_by("-id")
+
+    serializer = RideSerializer(
+        rides,
+        many=True,
+        context={"request": request},
+    )
+
+    return Response(serializer.data)
 
 
 @api_view(["GET"])
-def ride_detail(request, id):
-    try:
-        ride = Ride.objects.get(id=id)
-    except Ride.DoesNotExist:
-        return Response({"error": "Ride not found"}, status=404)
+@permission_classes([IsAuthenticated])
+def ride_history(request):
+    if request.user.is_staff:
+        rides = Ride.objects.all().order_by("-id")
+    else:
+        rides = Ride.objects.filter(
+            rider=request.user,
+        ).order_by("-id")
 
-    return Response(ride_to_dict(ride))
+    serializer = RideSerializer(
+        rides,
+        many=True,
+        context={"request": request},
+    )
+
+    return Response(serializer.data)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def driver_rides(request):
+    rides = Ride.objects.filter(
+        driver=request.user,
+    ).order_by("-id")
+
+    serializer = RideSerializer(
+        rides,
+        many=True,
+        context={"request": request},
+    )
+
+    return Response(serializer.data)
 
 
 @api_view(["POST"])
-def accept_ride(request, id):
-    try:
-        ride = Ride.objects.get(id=id)
-    except Ride.DoesNotExist:
-        return Response({"error": "Ride not found"}, status=404)
+@permission_classes([IsAuthenticated])
+def accept_ride(request, ride_id):
+    ride = get_object_or_404(Ride, id=ride_id)
 
-    ride.status = "accepted"
-    ride.save()
+    if ride.driver is not None:
+        return Response(
+            {"detail": "Ride already accepted."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
-    return Response({"message": "Ride accepted", "ride": ride_to_dict(ride)})
-
-
-@api_view(["POST"])
-def driver_arriving(request, id):
-    try:
-        ride = Ride.objects.get(id=id)
-    except Ride.DoesNotExist:
-        return Response({"error": "Ride not found"}, status=404)
-
+    ride.driver = request.user
     ride.status = "driver_arriving"
     ride.save()
 
-    return Response({"message": "Driver arriving", "ride": ride_to_dict(ride)})
+    serializer = RideSerializer(ride, context={"request": request})
+    return Response(serializer.data)
 
 
 @api_view(["POST"])
-def start_ride(request, id):
-    try:
-        ride = Ride.objects.get(id=id)
-    except Ride.DoesNotExist:
-        return Response({"error": "Ride not found"}, status=404)
+@permission_classes([IsAuthenticated])
+def start_ride(request, ride_id):
+    ride = get_object_or_404(
+        Ride,
+        id=ride_id,
+        driver=request.user,
+    )
 
     ride.status = "in_progress"
     ride.save()
 
-    return Response({"message": "Ride started", "ride": ride_to_dict(ride)})
+    serializer = RideSerializer(ride, context={"request": request})
+    return Response(serializer.data)
 
 
 @api_view(["POST"])
-def complete_ride(request, id):
-    try:
-        ride = Ride.objects.get(id=id)
-    except Ride.DoesNotExist:
-        return Response({"error": "Ride not found"}, status=404)
+@permission_classes([IsAuthenticated])
+def complete_ride(request, ride_id):
+    ride = get_object_or_404(
+        Ride,
+        id=ride_id,
+        driver=request.user,
+    )
 
     ride.status = "completed"
+    ride.completed_at = now()
+    ride.save(update_fields=["status", "completed_at"])
+
+    captured_payment = capture_ride_payment(ride)
+
+    if not captured_payment:
+        calculate_money(ride)
+
+    serializer = RideSerializer(ride, context={"request": request})
+    return Response(serializer.data)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def cancel_ride(request, ride_id):
+    ride = get_object_or_404(Ride, id=ride_id)
+
+    if (
+        ride.rider_id != request.user.id
+        and ride.driver_id != request.user.id
+        and not request.user.is_staff
+    ):
+        return Response(
+            {"detail": "Only the rider, assigned driver, or admin can cancel this ride."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    if ride.status == "completed":
+        return Response(
+            {"detail": "Completed ride cannot be cancelled."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    ride.status = "cancelled"
     ride.save()
 
-    return Response({"message": "Ride completed", "ride": ride_to_dict(ride)})
+    cancel_ride_payment(ride)
+
+    serializer = RideSerializer(ride, context={"request": request})
+    return Response(serializer.data)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def rate_ride(request, ride_id):
+    ride = get_object_or_404(
+        Ride,
+        id=ride_id,
+        rider=request.user,
+    )
+
+    rating = request.data.get("rating")
+    review = request.data.get("review", "")
+
+    if not rating:
+        return Response(
+            {"detail": "Rating is required."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    ride.rating = rating
+    ride.review = review
+    ride.save()
+
+    serializer = RideSerializer(ride, context={"request": request})
+
+    return Response(
+        {
+            "message": "Rating submitted successfully",
+            "ride": serializer.data,
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def rate_rider(request, ride_id):
+    ride = get_object_or_404(
+        Ride,
+        id=ride_id,
+        driver=request.user,
+    )
+
+    if ride.status != "completed":
+        return Response(
+            {"detail": "Only completed rides can be rated."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    rating = request.data.get("rating")
+    review = request.data.get("review", "")
+
+    if not rating:
+        return Response(
+            {"detail": "Rating is required."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        rating_value = int(rating)
+    except (TypeError, ValueError):
+        return Response(
+            {"detail": "Rating must be a number."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if rating_value < 1 or rating_value > 5:
+        return Response(
+            {"detail": "Rating must be between 1 and 5."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    ride.driver_rating = rating_value
+    ride.driver_review = review
+    ride.save()
+
+    serializer = RideSerializer(ride, context={"request": request})
+
+    return Response(
+        {
+            "message": "Rider rating submitted successfully",
+            "ride": serializer.data,
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def driver_earnings_summary(request):
+    driver = request.user
+
+    completed_rides = Ride.objects.filter(
+        driver=driver,
+        status="completed",
+    )
+
+    today = now().date()
+
+    today_rides = completed_rides.filter(
+        completed_at__date=today,
+    )
+
+    today_earnings = today_rides.aggregate(
+        total=Sum("driver_earning")
+    )["total"] or 0
+
+    week_start = today - timedelta(days=today.weekday())
+    week_rides = completed_rides.filter(
+        completed_at__date__gte=week_start,
+    )
+
+    week_earnings = week_rides.aggregate(
+        total=Sum("driver_earning")
+    )["total"] or 0
+
+    total_earnings = completed_rides.aggregate(
+        total=Sum("driver_earning")
+    )["total"] or 0
+
+    try:
+        from payments.views import driver_withdrawal_balance
+
+        withdrawable_balance = driver_withdrawal_balance(driver)
+    except Exception:
+        withdrawable_balance = total_earnings
+
+    return Response(
+        {
+            "today_earnings": float(today_earnings),
+            "week_earnings": float(week_earnings),
+            "total_earnings": float(total_earnings),
+            "withdrawable_balance": float(withdrawable_balance),
+            "completed_rides": completed_rides.count(),
+            "today_completed_rides": today_rides.count(),
+        },
+        status=status.HTTP_200_OK,
+    )

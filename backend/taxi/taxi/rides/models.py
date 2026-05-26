@@ -1,29 +1,29 @@
-from django.db import models
+from decimal import Decimal
+
 from django.conf import settings
+from django.db import models
 
 
 class Ride(models.Model):
-
     STATUS_CHOICES = [
         ("requested", "Requested"),
-        ("accepted", "Accepted"),
         ("driver_arriving", "Driver Arriving"),
         ("in_progress", "In Progress"),
         ("completed", "Completed"),
         ("cancelled", "Cancelled"),
     ]
 
-    RIDE_TYPE_CHOICES = [
-        ("regular", "Regular"),
-        ("xl", "XL"),
-        ("comfort", "Comfort"),
-        ("share", "Share"),
+    RIDE_TYPES = [
+        ("Regular", "Regular"),
+        ("XL", "XL"),
+        ("Comfort", "Comfort"),
+        ("Share", "Share"),
     ]
 
     rider = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name="rider_rides"
+        related_name="rider_rides",
     )
 
     driver = models.ForeignKey(
@@ -31,36 +31,76 @@ class Ride(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name="driver_rides"
+        related_name="driver_rides",
     )
 
-    pickup_lat = models.FloatField()
-    pickup_lng = models.FloatField()
+    pickup = models.CharField(max_length=255)
+    destination = models.CharField(max_length=255)
 
-    destination_lat = models.FloatField()
-    destination_lng = models.FloatField()
+    pickup_lat = models.FloatField(default=18.0735)
+    pickup_lng = models.FloatField(default=-15.9582)
+
+    destination_lat = models.FloatField(default=18.0896)
+    destination_lng = models.FloatField(default=-15.9754)
 
     ride_type = models.CharField(
         max_length=20,
-        choices=RIDE_TYPE_CHOICES,
-        default="regular"
+        choices=RIDE_TYPES,
+        default="Regular",
     )
 
-    estimated_price = models.DecimalField(
+    distance_km = models.DecimalField(
+        max_digits=6,
+        decimal_places=2,
+        default=0,
+    )
+
+    fare = models.DecimalField(
         max_digits=10,
         decimal_places=2,
-        default=200
+        default=0,
+    )
+
+    app_fee = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+    )
+
+    driver_earning = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
     )
 
     status = models.CharField(
         max_length=30,
         choices=STATUS_CHOICES,
-        default="requested"
+        default="requested",
     )
 
-    created_at = models.DateTimeField(
-        auto_now_add=True
+    rating = models.IntegerField(
+        null=True,
+        blank=True,
     )
+
+    review = models.TextField(
+        blank=True,
+        default="",
+    )
+
+    driver_rating = models.IntegerField(
+        null=True,
+        blank=True,
+    )
+
+    driver_review = models.TextField(
+        blank=True,
+        default="",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
-        return f"Ride {self.id} - {self.ride_type} - {self.status}"
+        return f"Ride #{self.id} - {self.rider.email}"

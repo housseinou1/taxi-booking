@@ -1,109 +1,168 @@
 import React, { useState } from "react";
+import axios from "axios";
+import { API_URL } from "../apiConfig";
 
-function Login() {
+const logoSrc = "/sakho-brand-logo.jpeg";
+
+export default function Login() {
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const loginUser = async (e) => {
-    e.preventDefault();
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = async () => {
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/auth/login/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: email,
+
+      setLoading(true);
+
+      const response = await axios.post(
+        `${API_URL}/auth/login/`,
+        {
+          email: email.trim().toLowerCase(),
           password: password,
-        }),
-      });
+        }
+      );
 
-      const data = await response.json();
+      console.log(response.data);
 
-      if (response.ok) {
-        localStorage.setItem("access", data.access);
-        localStorage.setItem("refresh", data.refresh);
+      localStorage.setItem(
+        "access",
+        response.data.access
+      );
 
-        alert("Login successful ✅");
-        window.location.href = "/rider";
+      localStorage.setItem(
+        "refresh",
+        response.data.refresh
+      );
+
+      localStorage.setItem(
+        "user",
+        JSON.stringify(response.data)
+      );
+
+      if (response.data.is_staff) {
+
+        window.location.href = "/admin-dashboard";
+
+      } else if (response.data.is_driver) {
+
+        window.location.href = "/driver";
+
       } else {
-        console.log("Login error:", data);
-        alert(data.detail || "Invalid email or password");
+
+        window.location.href = "/rider-dashboard";
       }
+
     } catch (error) {
-      console.error("Server error:", error);
-      alert("Server error. Make sure Django is running.");
+
+      console.log(error.response?.data);
+
+      alert(
+        error.response?.data?.error ||
+        "Login failed"
+      );
+
+    } finally {
+
+      setLoading(false);
     }
   };
 
   return (
-    <div style={page}>
-      <div style={card}>
-        <h1>🔐 Login</h1>
+    <div
+      style={{
+        background: "#020617",
+        height: "100vh",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+      }}
+    >
 
-        <form onSubmit={loginUser}>
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            style={input}
-          />
+      <div
+        style={{
+          width: "320px",
+          background: "#ffffff",
+          padding: "24px",
+          borderRadius: "20px",
+          textAlign: "center",
+          boxShadow: "0 24px 54px rgba(0, 0, 0, 0.35)",
+        }}
+      >
 
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            style={input}
-          />
+        <img
+          src={logoSrc}
+          alt="Sakho Express"
+          style={{
+            width: "100%",
+            aspectRatio: "1.35 / 1",
+            objectFit: "cover",
+            borderRadius: "16px",
+            marginBottom: "20px",
+            display: "block",
+          }}
+        />
 
-          <button type="submit" style={button}>
-            Login
-          </button>
-        </form>
+        <h1
+          style={{
+            fontSize: "28px",
+            margin: "0 0 22px",
+            color: "#0f172a",
+            letterSpacing: 0,
+          }}
+        >
+          Login
+        </h1>
 
-        <p style={{ marginTop: "15px" }}>
-          No account? <a href="/register">Register here</a>
-        </p>
+        <input
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          style={{
+            width: "100%",
+            padding: "15px",
+            marginBottom: "15px",
+            borderRadius: "10px",
+            border: "1px solid #cbd5e1",
+          }}
+        />
+
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          style={{
+            width: "100%",
+            padding: "15px",
+            marginBottom: "20px",
+            borderRadius: "10px",
+            border: "1px solid #cbd5e1",
+          }}
+        />
+
+        <button
+          onClick={handleLogin}
+          disabled={loading}
+          style={{
+            width: "100%",
+            padding: "15px",
+            background: "green",
+            color: "white",
+            border: "none",
+            borderRadius: "10px",
+            fontWeight: "bold",
+            cursor: "pointer",
+          }}
+        >
+          {loading ? "Logging in..." : "Login"}
+        </button>
+
       </div>
+
     </div>
   );
 }
-
-const page = {
-  display: "flex",
-  justifyContent: "center",
-  alignItems: "center",
-  minHeight: "100vh",
-  background: "#f4f7fb",
-};
-
-const card = {
-  background: "white",
-  padding: "40px",
-  borderRadius: "20px",
-  width: "400px",
-  boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
-};
-
-const input = {
-  width: "100%",
-  padding: "14px",
-  marginBottom: "15px",
-  borderRadius: "10px",
-  border: "1px solid #ccc",
-};
-
-const button = {
-  width: "100%",
-  padding: "14px",
-  border: "none",
-  borderRadius: "10px",
-  background: "black",
-  color: "white",
-  cursor: "pointer",
-};
-
-export default Login;

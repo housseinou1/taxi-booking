@@ -1,71 +1,182 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
+import { API_URL } from "../apiConfig";
+import { MARKET, formatMoney } from "../marketConfig";
+
+const MARKET_OWNER_PERCENT = MARKET.ownerCommissionPercent;
+
+const formatDocumentStatus = (status) => {
+  if (status === "valid") return "Valid";
+  if (status === "expiring_soon") return "Expiring soon";
+  if (status === "expired") return "Expired";
+  return "Missing expiration";
+};
+
+const documentStatusStyle = (status) => ({
+  color:
+    status === "valid"
+      ? "#166534"
+      : status === "expiring_soon"
+        ? "#92400e"
+        : "#991b1b",
+  fontWeight: 900,
+});
+
+const formatYearsUsingApp = (years) => {
+  const value = Number(years || 0);
+  return `${value} ${value === 1 ? "year" : "years"} using app`;
+};
+
+const getAlphabetName = (item) =>
+  (
+    item.full_name ||
+    item.driver_name ||
+    `${item.first_name || ""} ${item.last_name || ""}`.trim() ||
+    item.email ||
+    item.driver_email ||
+    ""
+  ).toLowerCase();
+
+const sortAlphabetically = (items) =>
+  [...items].sort((first, second) =>
+    getAlphabetName(first).localeCompare(getAlphabetName(second), undefined, {
+      sensitivity: "base",
+    })
+  );
 
 function AdminDashboard() {
-  const [page, setPage] = useState("drivers");
+  const DRIVER_CATEGORIES = [
+    { value: "gold", label: "Gold" },
+    { value: "platinum", label: "Platinum" },
+    { value: "diamond", label: "Diamond" },
+    { value: "elite", label: "Elite" },
+  ];
+
+  const [page, setPage] = useState("verification");
   const [drivers, setDrivers] = useState([]);
+  const [users, setUsers] = useState([]);
   const [rides, setRides] = useState([]);
   const [withdrawals, setWithdrawals] = useState([]);
+  const [ownerPayoutSummary, setOwnerPayoutSummary] = useState({
+    owner_commission_percent: MARKET_OWNER_PERCENT,
+    owner_commission_balance: 0,
+    methods: [],
+  });
+  const [ownerPayoutSaving, setOwnerPayoutSaving] = useState(false);
+  const [ownerPayoutMessage, setOwnerPayoutMessage] = useState("");
+  const [ownerPayoutForm, setOwnerPayoutForm] = useState({
+    payout_type: "bank_account",
+    account_holder_name: "",
+    bank_name: "",
+    account_reference: "",
+    phone_number: "",
+    wallet_id: "",
+  });
 
-  useEffect(() => {
-    fetchDrivers();
-    fetchRides();
-    fetchWithdrawals();
-  }, []);
+  const getToken = () => {
+    return localStorage.getItem("access");
+  };
 
-  const fetchDrivers = async () => {
+  const authHeaders = useCallback(() => ({
+    Authorization: `Bearer ${getToken()}`,
+  }), []);
+
+  const fetchDrivers = useCallback(async () => {
     try {
-      const response = await fetch("http://127.0.0.1:8000/drivers/");
+      const response = await fetch(`${API_URL}/drivers/list/`);
       const data = await response.json();
-
       setDrivers(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error fetching drivers:", error);
       setDrivers([]);
     }
-  };
+  }, []);
 
-  const fetchRides = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
-      const response = await fetch("http://127.0.0.1:8000/rides/history/");
+      const response = await fetch(`${API_URL}/auth/users/`, {
+        headers: authHeaders(),
+      });
       const data = await response.json();
+      setUsers(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      setUsers([]);
+    }
+  }, [authHeaders]);
 
+  const fetchRides = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_URL}/rides/history/`, {
+        headers: authHeaders(),
+      });
+      const data = await response.json();
       setRides(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error fetching rides:", error);
       setRides([]);
     }
-  };
+  }, [authHeaders]);
 
-  const fetchWithdrawals = async () => {
+  const fetchWithdrawals = useCallback(async () => {
     try {
-      const response = await fetch(
-        "http://127.0.0.1:8000/payments/withdrawals/"
-      );
-
+      const response = await fetch(`${API_URL}/payments/withdrawals/`, {
+        headers: authHeaders(),
+      });
       const data = await response.json();
-
       setWithdrawals(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Withdrawal fetch error:", error);
       setWithdrawals([]);
     }
-  };
+  }, [authHeaders]);
+
+  const fetchOwnerPayout = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_URL}/payments/owner-payout/`, {
+        headers: authHeaders(),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        setOwnerPayoutSummary((current) => ({
+          ...current,
+          methods: [],
+        }));
+        return;
+      }
+
+      setOwnerPayoutSummary({
+        owner_commission_percent: data.owner_commission_percent || MARKET_OWNER_PERCENT,
+        owner_commission_balance: data.owner_commission_balance || 0,
+        methods: Array.isArray(data.methods) ? data.methods : [],
+      });
+    } catch (error) {
+      console.error("Owner payout fetch error:", error);
+    }
+  }, [authHeaders]);
+
+  useEffect(() => {
+    fetchDrivers();
+    fetchUsers();
+    fetchRides();
+    fetchWithdrawals();
+    fetchOwnerPayout();
+  }, [fetchDrivers, fetchOwnerPayout, fetchRides, fetchUsers, fetchWithdrawals]);
 
   const approveDriver = async (id) => {
     try {
-      const response = await fetch(
-        `http://127.0.0.1:8000/drivers/${id}/approve/`,
-        {
-          method: "POST",
-        }
-      );
+      const response = await fetch(`${API_URL}/drivers/approve/${id}/`, {
+        method: "POST",
+        headers: {
+          ...authHeaders(),
+        },
+      });
 
       if (response.ok) {
         alert("Driver approved ✅");
         fetchDrivers();
       } else {
-        const data = await response.json();
-        alert(data.error || "Could not approve driver");
+        alert("Could not approve driver");
       }
     } catch (error) {
       console.error(error);
@@ -75,19 +186,18 @@ function AdminDashboard() {
 
   const rejectDriver = async (id) => {
     try {
-      const response = await fetch(
-        `http://127.0.0.1:8000/drivers/${id}/reject/`,
-        {
-          method: "POST",
-        }
-      );
+      const response = await fetch(`${API_URL}/drivers/reject/${id}/`, {
+        method: "POST",
+        headers: {
+          ...authHeaders(),
+        },
+      });
 
       if (response.ok) {
         alert("Driver rejected ❌");
         fetchDrivers();
       } else {
-        const data = await response.json();
-        alert(data.error || "Could not reject driver");
+        alert("Could not reject driver");
       }
     } catch (error) {
       console.error(error);
@@ -95,12 +205,108 @@ function AdminDashboard() {
     }
   };
 
+  const reintegrateDriver = async (id) => {
+    try {
+      const response = await fetch(`${API_URL}/drivers/reintegrate/${id}/`, {
+        method: "POST",
+        headers: {
+          ...authHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          status: "approved",
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(data.error || "Could not reintegrate driver");
+        return;
+      }
+
+      alert(data.message || "Driver reintegrated");
+      fetchDrivers();
+      fetchUsers();
+    } catch (error) {
+      console.error(error);
+      alert("Server error reintegrating driver");
+    }
+  };
+
+  const setUserBlocked = async (userId, shouldBlock) => {
+    try {
+      const endpoint = shouldBlock ? "block" : "unblock";
+      const response = await fetch(`${API_URL}/auth/users/${userId}/${endpoint}/`, {
+        method: "POST",
+        headers: authHeaders(),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(data.error || "Could not update user");
+        return;
+      }
+
+      alert(data.message || "User updated");
+      fetchUsers();
+      fetchDrivers();
+    } catch (error) {
+      console.error(error);
+      alert("Server error updating user");
+    }
+  };
+
+  const updateDriverCategory = async (driverId, driverCategory) => {
+    try {
+      const token = getToken();
+
+      if (!token) {
+        alert("Please log in as admin before changing driver category.");
+        window.location.href = "/login";
+        return;
+      }
+
+      const response = await fetch(`${API_URL}/drivers/category/${driverId}/`, {
+        method: "POST",
+        headers: {
+          ...authHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          driver_category: driverCategory,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(data.error || data.detail || "Could not update driver category");
+
+        if (response.status === 401 || response.status === 403) {
+          window.location.href = "/login";
+        }
+
+        return;
+      }
+
+      alert(data.message || "Driver category updated");
+      fetchDrivers();
+      fetchUsers();
+    } catch (error) {
+      console.error(error);
+      alert("Server error updating driver category");
+    }
+  };
+
   const approveWithdrawal = async (id) => {
     try {
       const response = await fetch(
-        `http://127.0.0.1:8000/payments/withdrawals/${id}/approve/`,
+        `${API_URL}/payments/withdrawals/${id}/approve/`,
         {
           method: "POST",
+          headers: authHeaders(),
         }
       );
 
@@ -119,9 +325,10 @@ function AdminDashboard() {
   const rejectWithdrawal = async (id) => {
     try {
       const response = await fetch(
-        `http://127.0.0.1:8000/payments/withdrawals/${id}/reject/`,
+        `${API_URL}/payments/withdrawals/${id}/reject/`,
         {
           method: "POST",
+          headers: authHeaders(),
         }
       );
 
@@ -137,22 +344,84 @@ function AdminDashboard() {
     }
   };
 
-  const menuItems = [
-    { key: "drivers", label: "Driver Management" },
-    { key: "verification", label: "Driver Verification" },
-    { key: "rides", label: "Ride Dispatch" },
-    { key: "vehicles", label: "Vehicle Management" },
-    { key: "payments", label: "Payment Management" },
-    { key: "withdrawals", label: "Withdrawal Requests" },
-    { key: "analytics", label: "Ride Analytics" },
-  ];
+  const updateOwnerPayoutForm = (field, value) => {
+    setOwnerPayoutForm((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  };
 
-  const getImageUrl = (path) => {
+  const saveOwnerPayoutMethod = async (event) => {
+    event.preventDefault();
+
+    try {
+      setOwnerPayoutSaving(true);
+      setOwnerPayoutMessage("");
+
+      const response = await fetch(`${API_URL}/payments/owner-payout/save/`, {
+        method: "POST",
+        headers: {
+          ...authHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(ownerPayoutForm),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setOwnerPayoutMessage(
+          data.error ||
+            data.detail ||
+            (Array.isArray(data.non_field_errors) ? data.non_field_errors.join(" ") : "") ||
+            "Could not save owner payout method."
+        );
+        return;
+      }
+
+      setOwnerPayoutMessage("Owner payout method saved successfully.");
+      fetchOwnerPayout();
+    } catch (error) {
+      console.error("Owner payout save error:", error);
+      setOwnerPayoutMessage("Server error saving owner payout method.");
+    } finally {
+      setOwnerPayoutSaving(false);
+    }
+  };
+
+  const getFileUrl = (path) => {
     if (!path) return null;
     if (path.startsWith("http")) return path;
-
-    return `http://127.0.0.1:8000${path}`;
+    return `${API_URL}${path}`;
   };
+
+  const menuItems = [
+    { key: "verification", label: "Verification" },
+    { key: "riders", label: "Riders" },
+    { key: "drivers", label: "Drivers" },
+    { key: "rides", label: "Dispatch" },
+    { key: "vehicles", label: "Vehicles" },
+    { key: "payments", label: "Payments" },
+    { key: "withdrawals", label: "Withdrawals" },
+    { key: "analytics", label: "Analytics" },
+  ];
+
+  const alphabetDrivers = sortAlphabetically(drivers);
+  const pendingDrivers = alphabetDrivers.filter((driver) => driver.status === "pending");
+  const approvedDrivers = alphabetDrivers.filter(
+    (driver) => driver.status === "approved"
+  );
+  const rejectedDrivers = alphabetDrivers.filter(
+    (driver) => driver.status === "rejected"
+  );
+  const onlineDrivers = drivers.filter((driver) => driver.is_available);
+  const riders = sortAlphabetically(
+    users.filter((user) => user.is_rider && !user.is_staff)
+  );
+  const platformDrivers = sortAlphabetically(
+    users.filter((user) => user.is_driver && !user.is_staff)
+  );
+  const blockedUsers = users.filter((user) => !user.is_active && !user.is_staff);
 
   const paidRides = rides.filter((ride) => ride.payment_status === "paid");
   const unpaidRides = rides.filter((ride) => ride.payment_status !== "paid");
@@ -162,22 +431,31 @@ function AdminDashboard() {
   const pendingWithdrawals = withdrawals.filter(
     (item) => item.status === "pending"
   );
-
   const approvedWithdrawals = withdrawals.filter(
     (item) => item.status === "approved"
   );
-
   const rejectedWithdrawals = withdrawals.filter(
     (item) => item.status === "rejected"
   );
 
-  const totalRevenue = paidRides.reduce(
+  const totalRevenue = rides.reduce(
     (total, ride) => total + Number(ride.fare || 0),
     0
   );
 
-  const platformCommission = totalRevenue * 0.2;
-  const driverPayouts = totalRevenue * 0.8;
+  const platformCommission = rides.reduce(
+    (total, ride) => total + Number(ride.app_fee || 0),
+    0
+  );
+
+  const driverPayouts = rides.reduce(
+    (total, ride) => total + Number(ride.driver_earning || 0),
+    0
+  );
+  const ownerCommissionPercent =
+    totalRevenue > 0
+      ? Math.round((platformCommission / totalRevenue) * 1000) / 10
+      : MARKET_OWNER_PERCENT;
 
   const totalWithdrawRequested = withdrawals.reduce(
     (total, item) => total + Number(item.amount || 0),
@@ -192,12 +470,24 @@ function AdminDashboard() {
   return (
     <div style={pageStyle}>
       <div style={sidebar}>
-        <h2>⚙️ Admin Panel</h2>
+        <div style={sidebarBrandStyle}>
+          <span style={brandMarkStyle}>SE</span>
+          <div>
+            <h2 style={sidebarTitle}>Sakho Admin</h2>
+            <p style={sidebarSubtitleStyle}>Operations console</p>
+          </div>
+        </div>
 
         {menuItems.map((item) => (
           <button
             key={item.key}
-            style={menuButton}
+            style={{
+              ...menuButton,
+              background: page === item.key ? "#12b76a" : "transparent",
+              color: page === item.key ? "#062e1a" : "#d1d5db",
+              borderColor:
+                page === item.key ? "rgba(18, 183, 106, 0.7)" : "rgba(255, 255, 255, 0.08)",
+            }}
             onClick={() => setPage(item.key)}
           >
             {item.label}
@@ -206,89 +496,133 @@ function AdminDashboard() {
       </div>
 
       <div style={content}>
-        {page === "drivers" && (
+        <section style={opsHeroStyle}>
+          <div>
+            <span style={opsKickerStyle}>Three app platform</span>
+            <h1 style={opsTitleStyle}>Admin operations center</h1>
+            <p style={opsSubtitleStyle}>
+              Monitor riders, drivers, dispatch, payments, and approvals from one place.
+            </p>
+          </div>
+
+          <div style={opsStatsGridStyle}>
+            <StatCard title="Drivers" value={drivers.length} />
+            <StatCard title="Online" value={onlineDrivers.length} />
+            <StatCard title="Blocked" value={blockedUsers.length} />
+            <StatCard title="Trips" value={rides.length} />
+            <StatCard title="Revenue" value={formatMoney(totalRevenue)} />
+          </div>
+        </section>
+
+        {page === "verification" && (
           <div style={card}>
-            <h1>👨‍✈️ Driver Management</h1>
+            <SectionTitle title="Driver verification" subtitle="Approve or reject new driver applications." />
 
-            {drivers.length === 0 ? (
-              <p>No drivers found.</p>
+            <div style={statsGrid}>
+              <StatCard title="Pending" value={pendingDrivers.length} />
+              <StatCard title="Approved" value={approvedDrivers.length} />
+              <StatCard title="Rejected" value={rejectedDrivers.length} />
+            </div>
+
+            <h2 style={subHeadingStyle}>Pending driver applications</h2>
+
+            {pendingDrivers.length === 0 ? (
+              <p>No pending driver applications.</p>
             ) : (
-              drivers.map((driver) => (
-                <div key={driver.id} style={listCard}>
-                  {driver.profile_picture ? (
-                    <img
-                      src={getImageUrl(driver.profile_picture)}
-                      alt="Driver"
-                      style={driverPhoto}
-                    />
-                  ) : (
-                    <div style={placeholderPhoto}>👤</div>
-                  )}
-
-                  <p>
-                    <b>Name:</b> {driver.first_name} {driver.last_name}
-                  </p>
-
-                  <p>
-                    <b>Email:</b> {driver.email}
-                  </p>
-
-                  <p>
-                    <b>Status:</b> {driver.status}
-                  </p>
-
-                  <p>
-                    <b>Vehicle:</b> {driver.vehicle_make} {driver.vehicle_model}
-                  </p>
-
-                  <p>
-                    <b>Color:</b> {driver.vehicle_color || "N/A"}
-                  </p>
-
-                  <p>
-                    <b>Plate:</b> {driver.vehicle_plate}
-                  </p>
-                </div>
+              pendingDrivers.map((driver) => (
+                <DriverVerificationCard
+                  key={driver.id}
+                  driver={driver}
+                  getFileUrl={getFileUrl}
+                  approveDriver={approveDriver}
+                  rejectDriver={rejectDriver}
+                />
               ))
             )}
           </div>
         )}
 
-        {page === "verification" && (
+        {page === "riders" && (
           <div style={card}>
-            <h1>✅ Driver Verification</h1>
+            <SectionTitle
+              title="Riders list"
+              subtitle="Manage rider accounts, rider quality scores, and account access."
+            />
 
-            {drivers.length === 0 ? (
+            <div style={statsGrid}>
+              <StatCard title="Total Riders" value={riders.length} />
+              <StatCard
+                title="Blocked Riders"
+                value={riders.filter((user) => !user.is_active).length}
+              />
+              <StatCard
+                title="Rated Riders"
+                value={riders.filter((user) => Number(user.rider_rating_count || 0) > 0).length}
+              />
+            </div>
+
+            {riders.length === 0 ? (
+              <p>No riders found.</p>
+            ) : (
+              riders.map((user) => (
+                <UserAccessCard
+                  key={user.id}
+                  user={user}
+                  setUserBlocked={setUserBlocked}
+                />
+              ))
+            )}
+
+          </div>
+        )}
+
+        {page === "drivers" && (
+          <div style={card}>
+            <SectionTitle
+              title="Drivers list"
+              subtitle="Manage driver accounts, driver quality scores, approval status, and access."
+            />
+
+            <div style={statsGrid}>
+              <StatCard title="Total Drivers" value={platformDrivers.length} />
+              <StatCard title="Online Drivers" value={onlineDrivers.length} />
+              <StatCard
+                title="Blocked Drivers"
+                value={platformDrivers.filter((user) => !user.is_active).length}
+              />
+              <StatCard
+                title="Rated Drivers"
+                value={platformDrivers.filter((user) => Number(user.driver_rating_count || 0) > 0).length}
+              />
+            </div>
+
+            <h2 style={subHeadingStyle}>Driver accounts</h2>
+            {platformDrivers.length === 0 ? (
               <p>No drivers found.</p>
             ) : (
-              drivers.map((driver) => (
-                <div key={driver.id} style={listCard}>
-                  <p>
-                    <b>Driver:</b> {driver.first_name} {driver.last_name}
-                  </p>
+              platformDrivers.map((user) => (
+                <UserAccessCard
+                  key={user.id}
+                  user={user}
+                  setUserBlocked={setUserBlocked}
+                />
+              ))
+            )}
 
-                  <p>
-                    <b>Email:</b> {driver.email}
-                  </p>
-
-                  <p>
-                    <b>Status:</b> {driver.status}
-                  </p>
-
-                  <button
-                    style={approveButton}
-                    onClick={() => approveDriver(driver.id)}
-                  >
-                    Approve
-                  </button>
-
-                  <button
-                    style={rejectButton}
-                    onClick={() => rejectDriver(driver.id)}
-                  >
-                    Reject
-                  </button>
-                </div>
+            <h2 style={subHeadingStyle}>Vehicle and document profiles</h2>
+            {drivers.length === 0 ? (
+              <p>No driver profiles found.</p>
+            ) : (
+              alphabetDrivers.map((driver) => (
+                <DriverInfoCard
+                  key={driver.id}
+                  driver={driver}
+                  getFileUrl={getFileUrl}
+                  setUserBlocked={setUserBlocked}
+                  updateDriverCategory={updateDriverCategory}
+                  reintegrateDriver={reintegrateDriver}
+                  driverCategories={DRIVER_CATEGORIES}
+                />
               ))
             )}
           </div>
@@ -296,7 +630,7 @@ function AdminDashboard() {
 
         {page === "rides" && (
           <div style={card}>
-            <h1>🚖 Ride Dispatch</h1>
+            <SectionTitle title="Ride dispatch" subtitle="Watch active and historic trip activity." />
 
             {rides.length === 0 ? (
               <p>No rides found.</p>
@@ -312,31 +646,31 @@ function AdminDashboard() {
                   </p>
 
                   <p>
-                    <b>Payment:</b>{" "}
-                    {ride.payment_status === "paid" ? "Paid ✅" : "Unpaid ❌"}
+                    <b>Pickup:</b> {ride.pickup}
                   </p>
 
                   <p>
-                    <b>Pickup:</b>{" "}
-                    {ride.pickup_address ||
-                      `${ride.pickup_lat}, ${ride.pickup_lng}`}
+                    <b>Destination:</b> {ride.destination}
                   </p>
 
                   <p>
-                    <b>Destination:</b>{" "}
-                    {ride.destination_address ||
-                      `${ride.destination_lat}, ${ride.destination_lng}`}
+                    <b>Distance:</b> {ride.distance_km || 0} KM
                   </p>
 
                   <p>
-                    <b>Fare:</b> ${ride.fare || "0.00"}
+                    <b>Fare:</b> {formatMoney(ride.fare)}
                   </p>
 
                   <p>
-                    <b>Driver:</b>{" "}
-                    {ride.driver_first_name
-                      ? `${ride.driver_first_name} ${ride.driver_last_name}`
-                      : "Not assigned"}
+                    <b>App Fee:</b> {formatMoney(ride.app_fee)}
+                  </p>
+
+                  <p>
+                    <b>Tip:</b> {formatMoney(ride.payment_tip_amount)}
+                  </p>
+
+                  <p>
+                    <b>Driver Earning:</b> {formatMoney(ride.driver_earning)}
                   </p>
                 </div>
               ))
@@ -346,19 +680,23 @@ function AdminDashboard() {
 
         {page === "vehicles" && (
           <div style={card}>
-            <h1>🚘 Vehicle Management</h1>
+            <SectionTitle title="Vehicle management" subtitle="Review car type, plate, registration, and insurance." />
 
             {drivers.length === 0 ? (
               <p>No vehicles found.</p>
             ) : (
-              drivers.map((driver) => (
+              alphabetDrivers.map((driver) => (
                 <div key={driver.id} style={listCard}>
                   <p>
-                    <b>Driver:</b> {driver.first_name} {driver.last_name}
+                    <b>Driver:</b> {driver.driver_name || "N/A"}
                   </p>
 
                   <p>
                     <b>Vehicle:</b> {driver.vehicle_make} {driver.vehicle_model}
+                  </p>
+
+                  <p>
+                    <b>Type:</b> {driver.car_type}
                   </p>
 
                   <p>
@@ -368,6 +706,70 @@ function AdminDashboard() {
                   <p>
                     <b>Plate:</b> {driver.vehicle_plate}
                   </p>
+                  {driver.document_rejection_reason && (
+                    <p style={documentStatusStyle("expired")}>
+                      {driver.document_rejection_reason}
+                    </p>
+                  )}
+
+                  {driver.license_file && (
+                    <p>
+                      <a
+                        href={getFileUrl(driver.license_file)}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        View Driver License
+                      </a>
+                    </p>
+                  )}
+                  <p>
+                    <b>License expiration:</b>{" "}
+                    <span style={documentStatusStyle(driver.license_status)}>
+                      {formatDocumentStatus(driver.license_status)}
+                    </span>
+                    {driver.license_expires_at ? ` · ${driver.license_expires_at}` : ""}
+                  </p>
+
+                  {driver.vehicle_registration && (
+                    <p>
+                      <a
+                        href={getFileUrl(driver.vehicle_registration)}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        View Vehicle Registration
+                      </a>
+                    </p>
+                  )}
+                  <p>
+                    <b>Registration expiration:</b>{" "}
+                    <span style={documentStatusStyle(driver.vehicle_registration_status)}>
+                      {formatDocumentStatus(driver.vehicle_registration_status)}
+                    </span>
+                    {driver.vehicle_registration_expires_at
+                      ? ` · ${driver.vehicle_registration_expires_at}`
+                      : ""}
+                  </p>
+
+                  {driver.insurance_document && (
+                    <p>
+                      <a
+                        href={getFileUrl(driver.insurance_document)}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        View Insurance Document
+                      </a>
+                    </p>
+                  )}
+                  <p>
+                    <b>Insurance expiration:</b>{" "}
+                    <span style={documentStatusStyle(driver.insurance_status)}>
+                      {formatDocumentStatus(driver.insurance_status)}
+                    </span>
+                    {driver.insurance_expires_at ? ` · ${driver.insurance_expires_at}` : ""}
+                  </p>
                 </div>
               ))
             )}
@@ -376,104 +778,158 @@ function AdminDashboard() {
 
         {page === "payments" && (
           <div style={card}>
-            <h1>💳 Payment Management</h1>
+            <SectionTitle title="Payment management" subtitle="Track rider payments, platform commission, and driver earnings." />
 
             <div style={statsGrid}>
-              <div style={statCard}>
-                <h2>{paidRides.length}</h2>
-                <p>Paid Rides ✅</p>
-              </div>
-
-              <div style={statCard}>
-                <h2>{unpaidRides.length}</h2>
-                <p>Unpaid Rides ❌</p>
-              </div>
-
-              <div style={statCard}>
-                <h2>${totalRevenue.toFixed(2)}</h2>
-                <p>Total Revenue 💵</p>
-              </div>
-
-              <div style={statCard}>
-                <h2>${platformCommission.toFixed(2)}</h2>
-                <p>Platform Commission 🏦</p>
-              </div>
-
-              <div style={statCard}>
-                <h2>${driverPayouts.toFixed(2)}</h2>
-                <p>Driver Payouts 🚕</p>
-              </div>
+              <StatCard title="Paid Rides" value={paidRides.length} />
+              <StatCard title="Unpaid Rides" value={unpaidRides.length} />
+              <StatCard
+                title="Total Revenue"
+                value={formatMoney(totalRevenue)}
+              />
+              <StatCard
+                title={`Owner Commission (${ownerCommissionPercent}%)`}
+                value={formatMoney(platformCommission)}
+              />
+              <StatCard
+                title="Driver Payouts"
+                value={formatMoney(driverPayouts)}
+              />
+              <StatCard
+                title="Owner Available"
+                value={formatMoney(ownerPayoutSummary.owner_commission_balance)}
+              />
             </div>
 
-            <h2 style={{ marginTop: "30px" }}>Payment Records</h2>
+            <section style={ownerPayoutPanelStyle}>
+              <div>
+                <SectionTitle
+                  title="Owner payout method"
+                  subtitle={`Save where the platform owner receives the ${ownerPayoutSummary.owner_commission_percent}% commission.`}
+                />
 
-            {rides.length === 0 ? (
-              <p>No payment records yet.</p>
-            ) : (
-              rides.map((ride) => (
-                <div key={ride.id} style={listCard}>
-                  <p>
-                    <b>Ride ID:</b> {ride.id}
-                  </p>
+                {ownerPayoutSummary.methods.length === 0 ? (
+                  <p style={accessMetaStyle}>No owner payout method saved yet.</p>
+                ) : (
+                  ownerPayoutSummary.methods.map((method) => (
+                    <div key={method.id} style={ownerPayoutSavedStyle}>
+                      <strong>{method.display_name}</strong>
+                      <span>{method.payout_type.replace("_", " ")}</span>
+                    </div>
+                  ))
+                )}
+              </div>
 
-                  <p>
-                    <b>Fare:</b> ${ride.fare || "0.00"}
-                  </p>
+              <form onSubmit={saveOwnerPayoutMethod} style={ownerPayoutFormStyle}>
+                <label style={ownerPayoutFieldStyle}>
+                  <span>Payout method</span>
+                  <select
+                    value={ownerPayoutForm.payout_type}
+                    onChange={(event) => updateOwnerPayoutForm("payout_type", event.target.value)}
+                    style={ownerPayoutInputStyle}
+                  >
+                    <option value="bank_account">Bank account</option>
+                    <option value="bankily">Bankily</option>
+                    <option value="masrvi">Masravi</option>
+                    <option value="seddad">Seddad</option>
+                  </select>
+                </label>
 
-                  <p>
-                    <b>Payment Status:</b>{" "}
-                    {ride.payment_status === "paid" ? "Paid ✅" : "Unpaid ❌"}
-                  </p>
+                <label style={ownerPayoutFieldStyle}>
+                  <span>Account holder name</span>
+                  <input
+                    value={ownerPayoutForm.account_holder_name}
+                    onChange={(event) =>
+                      updateOwnerPayoutForm("account_holder_name", event.target.value)
+                    }
+                    style={ownerPayoutInputStyle}
+                    placeholder="Owner name"
+                  />
+                </label>
 
-                  <p>
-                    <b>Payment Date:</b>{" "}
-                    {ride.payment_date
-                      ? new Date(ride.payment_date).toLocaleString()
-                      : "N/A"}
-                  </p>
-                </div>
-              ))
-            )}
+                {ownerPayoutForm.payout_type === "bank_account" ? (
+                  <>
+                    <label style={ownerPayoutFieldStyle}>
+                      <span>Bank name</span>
+                      <input
+                        value={ownerPayoutForm.bank_name}
+                        onChange={(event) => updateOwnerPayoutForm("bank_name", event.target.value)}
+                        style={ownerPayoutInputStyle}
+                        placeholder="Bank name"
+                      />
+                    </label>
+                    <label style={ownerPayoutFieldStyle}>
+                      <span>Account number / RIB</span>
+                      <input
+                        value={ownerPayoutForm.account_reference}
+                        onChange={(event) =>
+                          updateOwnerPayoutForm("account_reference", event.target.value)
+                        }
+                        style={ownerPayoutInputStyle}
+                        placeholder="Account number or RIB"
+                      />
+                    </label>
+                  </>
+                ) : (
+                  <>
+                    <label style={ownerPayoutFieldStyle}>
+                      <span>Phone number</span>
+                      <input
+                        value={ownerPayoutForm.phone_number}
+                        onChange={(event) =>
+                          updateOwnerPayoutForm("phone_number", event.target.value)
+                        }
+                        style={ownerPayoutInputStyle}
+                        placeholder="Mobile money phone number"
+                      />
+                    </label>
+                    <label style={ownerPayoutFieldStyle}>
+                      <span>Wallet ID</span>
+                      <input
+                        value={ownerPayoutForm.wallet_id}
+                        onChange={(event) => updateOwnerPayoutForm("wallet_id", event.target.value)}
+                        style={ownerPayoutInputStyle}
+                        placeholder="Optional wallet ID"
+                      />
+                    </label>
+                  </>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={ownerPayoutSaving}
+                  style={ownerPayoutButtonStyle}
+                >
+                  {ownerPayoutSaving ? "Saving..." : "Save owner payout"}
+                </button>
+                {ownerPayoutMessage && (
+                  <p style={ownerPayoutMessageStyle}>{ownerPayoutMessage}</p>
+                )}
+              </form>
+            </section>
           </div>
         )}
 
         {page === "withdrawals" && (
           <div style={card}>
-            <h1>💵 Withdrawal Requests</h1>
+            <SectionTitle title="Withdrawal requests" subtitle="Approve driver payout requests when they are ready." />
 
             <div style={statsGrid}>
-              <div style={statCard}>
-                <h2>{withdrawals.length}</h2>
-                <p>Total Requests</p>
-              </div>
-
-              <div style={statCard}>
-                <h2>{pendingWithdrawals.length}</h2>
-                <p>Pending Requests ⏳</p>
-              </div>
-
-              <div style={statCard}>
-                <h2>{approvedWithdrawals.length}</h2>
-                <p>Approved Requests ✅</p>
-              </div>
-
-              <div style={statCard}>
-                <h2>{rejectedWithdrawals.length}</h2>
-                <p>Rejected Requests ❌</p>
-              </div>
-
-              <div style={statCard}>
-                <h2>${totalWithdrawRequested.toFixed(2)}</h2>
-                <p>Total Requested 💵</p>
-              </div>
-
-              <div style={statCard}>
-                <h2>${totalApprovedWithdrawals.toFixed(2)}</h2>
-                <p>Total Approved 💰</p>
-              </div>
+              <StatCard title="Total Requests" value={withdrawals.length} />
+              <StatCard title="Pending" value={pendingWithdrawals.length} />
+              <StatCard title="Approved" value={approvedWithdrawals.length} />
+              <StatCard title="Rejected" value={rejectedWithdrawals.length} />
+              <StatCard
+                title="Total Requested"
+                value={formatMoney(totalWithdrawRequested)}
+              />
+              <StatCard
+                title="Total Approved"
+                value={formatMoney(totalApprovedWithdrawals)}
+              />
             </div>
 
-            <h2 style={{ marginTop: "30px" }}>Requests List</h2>
+            <h2 style={subHeadingStyle}>Requests list</h2>
 
             {withdrawals.length === 0 ? (
               <p>No withdrawal requests.</p>
@@ -488,19 +944,22 @@ function AdminDashboard() {
                     <b>Driver:</b> {item.driver}
                   </p>
 
+                  {item.driver_name && (
+                    <p>
+                      <b>Name:</b> {item.driver_name}
+                    </p>
+                  )}
+
                   <p>
-                    <b>Amount:</b> ${item.amount}
+                    <b>Payout:</b> {item.payout_method_display || "N/A"}
+                  </p>
+
+                  <p>
+                    <b>Amount:</b> {formatMoney(item.amount)}
                   </p>
 
                   <p>
                     <b>Status:</b> {item.status}
-                  </p>
-
-                  <p>
-                    <b>Created:</b>{" "}
-                    {item.created_at
-                      ? new Date(item.created_at).toLocaleString()
-                      : "N/A"}
                   </p>
 
                   {item.status === "pending" && (
@@ -528,53 +987,27 @@ function AdminDashboard() {
 
         {page === "analytics" && (
           <div style={card}>
-            <h1>📊 Platform Analytics</h1>
+            <SectionTitle title="Platform analytics" subtitle="Understand marketplace volume, revenue, and trip outcomes." />
 
             <div style={statsGrid}>
-              <div style={statCard}>
-                <h2>{drivers.length}</h2>
-                <p>Total Drivers 👨‍✈️</p>
-              </div>
-
-              <div style={statCard}>
-                <h2>{rides.length}</h2>
-                <p>Total Rides 🚖</p>
-              </div>
-
-              <div style={statCard}>
-                <h2>{completedRides.length}</h2>
-                <p>Completed Rides ✅</p>
-              </div>
-
-              <div style={statCard}>
-                <h2>{cancelledRides.length}</h2>
-                <p>Cancelled Rides ❌</p>
-              </div>
-
-              <div style={statCard}>
-                <h2>{paidRides.length}</h2>
-                <p>Paid Rides 💳</p>
-              </div>
-
-              <div style={statCard}>
-                <h2>{unpaidRides.length}</h2>
-                <p>Unpaid Rides 🚫</p>
-              </div>
-
-              <div style={statCard}>
-                <h2>${totalRevenue.toFixed(2)}</h2>
-                <p>Total Platform Revenue 💵</p>
-              </div>
-
-              <div style={statCard}>
-                <h2>${platformCommission.toFixed(2)}</h2>
-                <p>Platform Commission 🏦</p>
-              </div>
-
-              <div style={statCard}>
-                <h2>${driverPayouts.toFixed(2)}</h2>
-                <p>Driver Payouts 🚕</p>
-              </div>
+              <StatCard title="Total Drivers" value={drivers.length} />
+              <StatCard title="Total Rides" value={rides.length} />
+              <StatCard title="Completed Rides" value={completedRides.length} />
+              <StatCard title="Cancelled Rides" value={cancelledRides.length} />
+              <StatCard title="Paid Rides" value={paidRides.length} />
+              <StatCard title="Unpaid Rides" value={unpaidRides.length} />
+              <StatCard
+                title="Total Revenue"
+                value={formatMoney(totalRevenue)}
+              />
+              <StatCard
+                title={`Owner Commission (${ownerCommissionPercent}%)`}
+                value={formatMoney(platformCommission)}
+              />
+              <StatCard
+                title="Driver Payouts"
+                value={formatMoney(driverPayouts)}
+              />
             </div>
           </div>
         )}
@@ -583,102 +1016,673 @@ function AdminDashboard() {
   );
 }
 
+function DriverVerificationCard({
+  driver,
+  getFileUrl,
+  approveDriver,
+  rejectDriver,
+}) {
+  return (
+    <div style={verificationCard}>
+      <div>
+        {driver.driver_photo ? (
+          <img
+            src={getFileUrl(driver.driver_photo)}
+            alt="Driver"
+            style={driverPhoto}
+          />
+        ) : (
+          <div style={placeholderPhoto}>👤</div>
+        )}
+      </div>
+
+      <div style={{ flex: 1 }}>
+        <h2>{driver.driver_name || "Driver Name"}</h2>
+
+        <p>
+          <b>Email:</b> {driver.driver_email || "N/A"}
+        </p>
+
+        <p>
+          <b>Status:</b> {driver.status}
+        </p>
+
+        <p>
+          <b>Phone:</b> {driver.phone_number || "N/A"}
+        </p>
+
+        <p>
+          <b>Vehicle:</b> {driver.vehicle_make} {driver.vehicle_model}
+        </p>
+
+        <p>
+          <b>Type:</b> {driver.car_type}
+        </p>
+
+        <p>
+          <b>Color:</b> {driver.vehicle_color}
+        </p>
+
+        <p>
+          <b>Plate:</b> {driver.vehicle_plate}
+        </p>
+
+        <div style={documentLinks}>
+          {driver.vehicle_registration && (
+            <a
+              href={getFileUrl(driver.vehicle_registration)}
+              target="_blank"
+              rel="noreferrer"
+              style={documentButton}
+            >
+              View Vehicle Registration
+            </a>
+          )}
+
+          {driver.insurance_document && (
+            <a
+              href={getFileUrl(driver.insurance_document)}
+              target="_blank"
+              rel="noreferrer"
+              style={documentButton}
+            >
+              View Insurance
+            </a>
+          )}
+        </div>
+
+        <div style={{ marginTop: "15px" }}>
+          <button
+            style={approveButton}
+            onClick={() => approveDriver(driver.id)}
+          >
+            Approve Driver
+          </button>
+
+          <button style={rejectButton} onClick={() => rejectDriver(driver.id)}>
+            Reject Driver
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function UserAccessCard({ user, setUserBlocked }) {
+  return (
+    <div style={accessCardStyle}>
+      <div>
+        <h3 style={accessTitleStyle}>{user.full_name || "User"}</h3>
+        <p style={accessMetaStyle}>{user.email}</p>
+        <div style={accessPillRowStyle}>
+          <span style={rolePillStyle}>{user.is_driver ? "Driver" : "Rider"}</span>
+          <span style={rolePillStyle}>
+            Driver score {Number(user.driver_average_rating || 0).toFixed(1)}
+          </span>
+          <span style={rolePillStyle}>
+            Rider score {Number(user.rider_average_rating || 0).toFixed(1)}
+          </span>
+          <span
+            style={{
+              ...rolePillStyle,
+              background: user.is_active ? "#ecfdf3" : "#fee2e2",
+              color: user.is_active ? "#166534" : "#b91c1c",
+            }}
+          >
+            {user.is_active ? "Active" : "Blocked"}
+          </span>
+          <span
+            style={{
+              ...rolePillStyle,
+              background:
+                user.national_id_number && user.has_national_id_document
+                  ? "#ecfdf3"
+                  : "#fff7ed",
+              color:
+                user.national_id_number && user.has_national_id_document
+                  ? "#166534"
+                  : "#9a3412",
+            }}
+          >
+            {user.national_id_number && user.has_national_id_document
+              ? "National ID complete"
+              : "National ID missing"}
+          </span>
+          <span style={rolePillStyle}>
+            Since {user.member_since_year || "N/A"}
+          </span>
+          <span style={rolePillStyle}>
+            {formatYearsUsingApp(user.years_using_app)}
+          </span>
+          {user.is_driver && user.driver_status && (
+            <span style={rolePillStyle}>{user.driver_status}</span>
+          )}
+          {user.is_driver && user.driver_category_label && (
+            <span style={rolePillStyle}>{user.driver_category_label}</span>
+          )}
+        </div>
+        <p style={accessMetaStyle}>
+          {user.is_driver
+            ? `${user.driver_rating_count || 0} driver reviews`
+            : `${user.rider_rating_count || 0} rider reviews`}
+        </p>
+        <p style={accessMetaStyle}>
+          National ID: {user.national_id_number || "Not added"}
+          {user.national_id_document && (
+            <>
+              {" · "}
+              <a href={user.national_id_document} target="_blank" rel="noreferrer">
+                View ID
+              </a>
+            </>
+          )}
+        </p>
+      </div>
+
+      <button
+        style={user.is_active ? blockButtonStyle : unblockButtonStyle}
+        onClick={() => setUserBlocked(user.id, user.is_active)}
+      >
+        {user.is_active ? "Block user" : "Unblock user"}
+      </button>
+    </div>
+  );
+}
+
+function DriverInfoCard({
+  driver,
+  getFileUrl,
+  setUserBlocked,
+  updateDriverCategory,
+  reintegrateDriver,
+  driverCategories,
+}) {
+  return (
+    <div style={listCard}>
+      {driver.driver_photo ? (
+        <img
+          src={getFileUrl(driver.driver_photo)}
+          alt="Driver"
+          style={driverPhoto}
+        />
+      ) : (
+        <div style={placeholderPhoto}>👤</div>
+      )}
+
+      <p>
+        <b>Name:</b> {driver.driver_name || "N/A"}
+      </p>
+
+      <p>
+        <b>Email:</b> {driver.driver_email || "N/A"}
+      </p>
+
+      <p>
+        <b>Status:</b> {driver.status}
+      </p>
+
+      <p>
+        <b>Member since:</b> {driver.member_since_year || "N/A"} (
+        {formatYearsUsingApp(driver.years_using_app)})
+      </p>
+
+      <p>
+        <b>Category:</b> {driver.driver_category_label || "Gold"}
+      </p>
+
+      <label style={driverCategoryControlStyle}>
+        <span>Driver category</span>
+        <select
+          value={driver.driver_category || "gold"}
+          onChange={(event) => updateDriverCategory(driver.id, event.target.value)}
+          style={driverCategorySelectStyle}
+        >
+          {driverCategories.map((category) => (
+            <option key={category.value} value={category.value}>
+              {category.label}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <p>
+        <b>Access:</b> {driver.is_active ? "Active" : "Blocked"}
+      </p>
+
+      <p>
+        <b>Phone:</b> {driver.phone_number || "N/A"}
+      </p>
+
+      <p>
+        <b>Vehicle:</b> {driver.vehicle_make} {driver.vehicle_model}
+      </p>
+
+      <p>
+        <b>Plate:</b> {driver.vehicle_plate}
+      </p>
+
+      <button
+        style={driver.is_active ? blockButtonStyle : unblockButtonStyle}
+        onClick={() => setUserBlocked(driver.user_id, driver.is_active)}
+      >
+        {driver.is_active ? "Block Driver" : "Unblock Driver"}
+      </button>
+
+      <button
+        style={{
+          ...approveButton,
+          opacity: driver.is_active && driver.status === "approved" ? 0.55 : 1,
+          cursor: driver.is_active && driver.status === "approved" ? "not-allowed" : "pointer",
+        }}
+        disabled={driver.is_active && driver.status === "approved"}
+        onClick={() => reintegrateDriver(driver.id)}
+      >
+        Reintegrate Driver
+      </button>
+
+      {driver.is_active && driver.status === "approved" && (
+        <p style={accessMetaStyle}>
+          Driver is already active and approved.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function StatCard({ title, value }) {
+  return (
+    <div style={statCard}>
+      <h2>{value}</h2>
+      <p>{title}</p>
+    </div>
+  );
+}
+
+function SectionTitle({ title, subtitle }) {
+  return (
+    <div style={sectionTitleWrapStyle}>
+      <span style={sectionKickerStyle}>Admin app</span>
+      <h1 style={sectionTitleStyle}>{title}</h1>
+      <p style={sectionSubtitleStyle}>{subtitle}</p>
+    </div>
+  );
+}
+
 const pageStyle = {
-  display: "flex",
+  display: "grid",
+  gridTemplateColumns: "280px minmax(0, 1fr)",
   minHeight: "100vh",
-  background: "#f4f7fb",
+  background: "#eef2f6",
 };
 
 const sidebar = {
-  width: "280px",
-  background: "black",
+  background: "#020617",
   color: "white",
-  padding: "30px",
+  padding: "24px",
+  borderRight: "1px solid rgba(255, 255, 255, 0.08)",
+};
+
+const sidebarBrandStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: "12px",
+  marginBottom: "26px",
+};
+
+const brandMarkStyle = {
+  width: "44px",
+  height: "44px",
+  borderRadius: "12px",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  background: "#12b76a",
+  color: "#052e1a",
+  fontWeight: 900,
+};
+
+const sidebarTitle = {
+  margin: 0,
+  fontSize: "1.1rem",
+};
+
+const sidebarSubtitleStyle = {
+  margin: "3px 0 0",
+  color: "#9ca3af",
+  fontSize: "0.78rem",
+  fontWeight: 800,
 };
 
 const menuButton = {
   width: "100%",
-  padding: "14px",
-  marginBottom: "12px",
-  border: "none",
+  padding: "13px 14px",
+  marginBottom: "9px",
+  border: "1px solid",
   borderRadius: "10px",
-  background: "#222",
-  color: "white",
   cursor: "pointer",
   textAlign: "left",
+  fontWeight: 900,
 };
 
 const content = {
-  flex: 1,
-  padding: "40px",
+  padding: "24px",
+  minWidth: 0,
+};
+
+const opsHeroStyle = {
+  background: "linear-gradient(135deg, #111827 0%, #1f2937 55%, #064e3b 100%)",
+  color: "white",
+  borderRadius: "18px",
+  padding: "24px",
+  display: "grid",
+  gridTemplateColumns: "minmax(260px, 0.8fr) minmax(300px, 1.2fr)",
+  gap: "18px",
+  alignItems: "center",
+  marginBottom: "18px",
+  boxShadow: "0 18px 42px rgba(15, 23, 42, 0.14)",
+};
+
+const opsKickerStyle = {
+  color: "#a7f3d0",
+  fontSize: "0.78rem",
+  fontWeight: 900,
+  textTransform: "uppercase",
+};
+
+const opsTitleStyle = {
+  margin: "7px 0 8px",
+  fontSize: "2rem",
+  letterSpacing: 0,
+};
+
+const opsSubtitleStyle = {
+  margin: 0,
+  color: "#d1d5db",
+  lineHeight: 1.5,
+  maxWidth: "560px",
+};
+
+const opsStatsGridStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
+  gap: "10px",
 };
 
 const card = {
   background: "white",
-  padding: "30px",
-  borderRadius: "20px",
-  boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
+  padding: "24px",
+  borderRadius: "18px",
+  border: "1px solid #e5e7eb",
+  boxShadow: "0 18px 42px rgba(15,23,42,0.08)",
 };
 
 const listCard = {
-  background: "#f9fafc",
+  background: "#f8fafc",
   padding: "20px",
-  borderRadius: "15px",
-  marginBottom: "20px",
+  borderRadius: "12px",
+  marginBottom: "14px",
+  border: "1px solid #e5e7eb",
+};
+
+const verificationCard = {
+  display: "flex",
+  gap: "25px",
+  background: "#f8fafc",
+  padding: "25px",
+  borderRadius: "14px",
+  marginBottom: "16px",
+  border: "1px solid #e5e7eb",
 };
 
 const statsGrid = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+  gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
   gap: "20px",
   marginTop: "25px",
 };
 
 const statCard = {
-  background: "#f9fafc",
-  padding: "25px",
-  borderRadius: "15px",
-  border: "1px solid #e5e7eb",
-  textAlign: "center",
+  background: "#f8fafc",
+  padding: "18px",
+  borderRadius: "12px",
+  border: "1px solid rgba(148, 163, 184, 0.2)",
+  minHeight: "94px",
+};
+
+const sectionTitleWrapStyle = {
+  marginBottom: "18px",
+};
+
+const sectionKickerStyle = {
+  display: "block",
+  color: "#64748b",
+  fontSize: "0.76rem",
+  fontWeight: 900,
+  textTransform: "uppercase",
+  marginBottom: "4px",
+};
+
+const sectionTitleStyle = {
+  margin: 0,
+  color: "#111827",
+  fontSize: "1.65rem",
+};
+
+const sectionSubtitleStyle = {
+  margin: "6px 0 0",
+  color: "#64748b",
+  lineHeight: 1.45,
+};
+
+const subHeadingStyle = {
+  marginTop: "26px",
+  color: "#111827",
 };
 
 const approveButton = {
   padding: "10px 20px",
   border: "none",
   borderRadius: "8px",
-  background: "green",
+  background: "#16a34a",
   color: "white",
   marginRight: "10px",
   cursor: "pointer",
+  fontWeight: "bold",
 };
 
 const rejectButton = {
   padding: "10px 20px",
   border: "none",
   borderRadius: "8px",
-  background: "red",
+  background: "#dc2626",
   color: "white",
+  cursor: "pointer",
+  fontWeight: "bold",
+};
+
+const accessCardStyle = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: "16px",
+  background: "#f8fafc",
+  padding: "18px",
+  borderRadius: "12px",
+  marginBottom: "12px",
+  border: "1px solid #e5e7eb",
+  flexWrap: "wrap",
+};
+
+const accessTitleStyle = {
+  margin: 0,
+  color: "#111827",
+};
+
+const accessMetaStyle = {
+  margin: "4px 0 10px",
+  color: "#64748b",
+  fontWeight: 700,
+};
+
+const accessPillRowStyle = {
+  display: "flex",
+  gap: "8px",
+  flexWrap: "wrap",
+};
+
+const rolePillStyle = {
+  background: "#eef2ff",
+  color: "#3730a3",
+  borderRadius: "999px",
+  padding: "7px 10px",
+  fontSize: "0.78rem",
+  fontWeight: 900,
+  textTransform: "capitalize",
+};
+
+const driverCategoryControlStyle = {
+  display: "grid",
+  gap: "8px",
+  margin: "14px 0",
+  maxWidth: "280px",
+  color: "#334155",
+  fontWeight: 900,
+};
+
+const driverCategorySelectStyle = {
+  width: "100%",
+  minHeight: "44px",
+  border: "1px solid #cbd5e1",
+  borderRadius: "8px",
+  background: "white",
+  color: "#111827",
+  padding: "0 12px",
+  fontWeight: 900,
   cursor: "pointer",
 };
 
+const ownerPayoutPanelStyle = {
+  marginTop: "26px",
+  background: "#f8fafc",
+  border: "1px solid #e5e7eb",
+  borderRadius: "14px",
+  padding: "20px",
+  display: "grid",
+  gridTemplateColumns: "minmax(260px, 1fr) minmax(280px, 430px)",
+  gap: "20px",
+  alignItems: "start",
+};
+
+const ownerPayoutSavedStyle = {
+  background: "white",
+  border: "1px solid #e5e7eb",
+  borderRadius: "10px",
+  padding: "12px",
+  marginBottom: "10px",
+  display: "grid",
+  gap: "5px",
+  color: "#111827",
+  textTransform: "capitalize",
+};
+
+const ownerPayoutFormStyle = {
+  display: "grid",
+  gap: "12px",
+};
+
+const ownerPayoutFieldStyle = {
+  display: "grid",
+  gap: "7px",
+  color: "#334155",
+  fontWeight: 900,
+};
+
+const ownerPayoutInputStyle = {
+  width: "100%",
+  minHeight: "44px",
+  border: "1px solid #cbd5e1",
+  borderRadius: "8px",
+  background: "white",
+  color: "#111827",
+  padding: "0 12px",
+  fontWeight: 800,
+  boxSizing: "border-box",
+};
+
+const ownerPayoutButtonStyle = {
+  minHeight: "46px",
+  border: "none",
+  borderRadius: "8px",
+  background: "#111827",
+  color: "white",
+  cursor: "pointer",
+  fontWeight: 900,
+};
+
+const ownerPayoutMessageStyle = {
+  margin: 0,
+  padding: "10px 12px",
+  borderRadius: "8px",
+  background: "#ecfdf3",
+  color: "#166534",
+  fontWeight: 900,
+};
+
+const blockButtonStyle = {
+  padding: "11px 16px",
+  border: "none",
+  borderRadius: "8px",
+  background: "#dc2626",
+  color: "white",
+  cursor: "pointer",
+  fontWeight: 900,
+};
+
+const unblockButtonStyle = {
+  padding: "11px 16px",
+  border: "none",
+  borderRadius: "8px",
+  background: "#16a34a",
+  color: "white",
+  cursor: "pointer",
+  fontWeight: 900,
+};
+
 const driverPhoto = {
-  width: "90px",
-  height: "90px",
+  width: "110px",
+  height: "110px",
   borderRadius: "50%",
   objectFit: "cover",
   marginBottom: "10px",
 };
 
 const placeholderPhoto = {
-  width: "90px",
-  height: "90px",
+  width: "110px",
+  height: "110px",
   borderRadius: "50%",
   background: "#ddd",
   display: "flex",
   justifyContent: "center",
   alignItems: "center",
-  fontSize: "40px",
+  fontSize: "45px",
   marginBottom: "10px",
+};
+
+const documentLinks = {
+  display: "flex",
+  gap: "10px",
+  flexWrap: "wrap",
+  marginTop: "15px",
+};
+
+const documentButton = {
+  display: "inline-block",
+  padding: "10px 14px",
+  background: "#111827",
+  color: "white",
+  borderRadius: "8px",
+  textDecoration: "none",
+  fontWeight: "bold",
 };
 
 export default AdminDashboard;

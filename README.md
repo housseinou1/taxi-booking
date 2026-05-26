@@ -1,67 +1,55 @@
-# Online Taxi Booking Web Application React js and Django
+# Sakho Express Taxi Platform
 
+Sakho Express is a Django and React taxi-booking platform for Mauritania with separate Rider, Driver, and Admin experiences.
 
-# Project Purpose
+## Current Features
 
-This project aims to create a comprehensive online platform facilitating taxi bookings for both riders and drivers. It provides a seamless interface for users to book rides, manage trips, and interact efficiently within a secure environment.
+- Rider app: request rides, automatic distance, live route preview, payment, tips, ratings, National ID upload, and accepted-driver details.
+- Driver app: map-first dashboard, go online/offline, sound alerts, ride acceptance, driver photo, vehicle information, document uploads, document expiration checks, National ID, payout methods, and withdrawal requests.
+- Admin app: driver verification, riders and drivers separated alphabetically, block/unblock, driver reintegration, driver categories, ratings, payments, owner commission, owner payout method, and driver withdrawal approval.
+- Market setup: Mauritania cities including Nouakchott, Nouadhibou, Kaedi, Selibaby, Rosso, and Nouakchott-area locations.
+- Platform commission: owner/app fee is set to 30%.
+- PWA: the app can be opened and installed from a phone browser while testing.
 
-# Technologies Used:
+## Local Development
 
-Django Rest Framework: Utilized for building robust APIs to handle backend operations.
+Backend:
 
-React.js: Powering the frontend to deliver a dynamic and interactive user experience.
+```bash
+cd backend/taxi
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py runserver 0.0.0.0:8000
+```
 
-Mapbox API: Integrated for mapping functionalities, enhancing location-based features.
+Frontend:
 
-Tailwind CSS: Employed for styling and design, ensuring a sleek and responsive UI.
+```bash
+cd frontend
+npm install
+npm start
+```
 
-# Authentication Mechanism
+Use the computer IP address on the same Wi-Fi to test from a phone, for example:
 
-The application uses JWT (JSON Web Tokens) for user authentication, ensuring secure access and interaction throughout the platform.
+```text
+http://192.168.12.138:3000/driver
+http://192.168.12.138:3000/rider-dashboard
+http://192.168.12.138:3000/admin
+```
 
-# Description
+## Important Pages
 
-This Online Taxi Booking Web Application brings together the power of Django Rest Framework and React.js to create a feature-rich platform for both riders and drivers. Users can seamlessly book rides, manage their trips, track routes through Mapbox integration, and experience a user-friendly interface built upon modern design principles using Tailwind CSS.
+- `/` Home
+- `/login` Login
+- `/register` Register
+- `/rider-dashboard` Rider dashboard
+- `/driver` Driver app
+- `/admin` Admin dashboard
+- `/terms` Terms and Conditions
+- `/privacy` Privacy Policy
+- `/support` Support and Safety
 
-# Features
+## Production Notes
 
-User Roles: Distinct roles for riders and drivers, each with tailored functionalities.
-
-Ride Booking: Seamless process for users to book rides based on their preferences.
-
-Trip Management: Efficient management of ongoing and past trips.
-
-Map Integration: Mapbox API integration to visualize and navigate routes.
-
-# Installation Guide
-
-Clone this repository.
-
-Set up the backend using Django Rest Framework.
-
-Set up the frontend using React.js.
-
-Configure Mapbox API keys for mapping functionality.
-
-Run the application and start exploring the features!
-
-# Getting Started
-
-Backend Setup:
-
-Navigate to the backend directory.
-
-Install dependencies: pip install -r requirements.txt.
-
-Run migrations: python manage.py migrate.
-
-Start the server: python manage.py runserver.
-
-Frontend Setup:
-
-Go to the frontend directory.
-
-Install dependencies: npm install.
-
-Start the frontend: npm run dev.
-
+See `DEPLOYMENT.md` for the launch checklist. Public launch still requires hosting, domain, HTTPS, production database, real Bankily/Masravi/Seddad credentials, bank payout setup, and final legal review.
