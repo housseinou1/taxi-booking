@@ -112,6 +112,18 @@ function RideDashboard({ rides = [], availableRides = [], isOnline, fetchRides }
 
   return (
     <div style={dashboardStyle}>
+      <style>
+        {`
+          @keyframes rideRequestPulse {
+            0%, 100% { box-shadow: 0 18px 32px rgba(17,24,39,0.18); border-color: rgba(255,255,255,0.08); }
+            50% { box-shadow: 0 24px 42px rgba(91,33,182,0.35); border-color: rgba(196,181,253,0.55); }
+          }
+          @keyframes driverAcceptedGlow {
+            0%, 100% { box-shadow: 0 18px 32px rgba(17,24,39,0.18); border-color: rgba(255,255,255,0.08); }
+            50% { box-shadow: 0 22px 40px rgba(34,197,94,0.32); border-color: rgba(134,239,172,0.65); }
+          }
+        `}
+      </style>
       <section style={queuePanelStyle}>
         <SectionHeader
           label="Incoming"
@@ -342,8 +354,20 @@ function EmptyState({ title, text }) {
 }
 
 function RideCard({ ride, badge, badgeStyle, children, footer }) {
+  const isIncoming = ["requested", "pending"].includes(ride.status);
+  const isAcceptedFlow = ["accepted", "driver_arriving", "in_progress"].includes(ride.status);
   return (
-    <article style={rideCardStyle}>
+    <article
+      style={{
+        ...rideCardStyle,
+        transform: isIncoming ? "translateY(0)" : "translateY(0)",
+        animation: isIncoming
+          ? "rideRequestPulse 1.6s ease-in-out infinite"
+          : isAcceptedFlow
+            ? "driverAcceptedGlow 2s ease-in-out infinite"
+            : "none",
+      }}
+    >
       <div style={cardHeaderStyle}>
         <div>
           <p style={rideIdStyle}>Ride #{ride.id}</p>
@@ -501,6 +525,8 @@ const rideCardStyle = {
   borderRadius: "16px",
   padding: "16px",
   boxShadow: "0 18px 32px rgba(17, 24, 39, 0.18)",
+  transition: "transform 260ms ease, box-shadow 260ms ease, border-color 260ms ease",
+  border: "1px solid rgba(255,255,255,0.08)",
 };
 
 const cardHeaderStyle = {

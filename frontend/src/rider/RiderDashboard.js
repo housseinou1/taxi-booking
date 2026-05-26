@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 
 import { API_URL } from "../apiConfig";
@@ -57,6 +57,7 @@ const getStatusLabel = (status) => {
 };
 
 const liveDriverStatuses = new Set(["accepted", "driver_arriving", "in_progress"]);
+const lerp = (start, end, progress) => start + (end - start) * progress;
 
 export default function RiderDashboard() {
   const [city, setCity] = useState(MARKET.defaultCity);
@@ -72,9 +73,16 @@ export default function RiderDashboard() {
   const [fare, setFare] = useState(calculateFare("regular", 10));
   const [requesting, setRequesting] = useState(false);
   const [routePath, setRoutePath] = useState([]);
+  const [tripRoutePath, setTripRoutePath] = useState([]);
   const [routeInfo, setRouteInfo] = useState(null);
+  const [liveEtaMinutes, setLiveEtaMinutes] = useState(null);
+  const [liveDistanceKm, setLiveDistanceKm] = useState(null);
   const [currentRide, setCurrentRide] = useState(null);
   const [driverPosition, setDriverPosition] = useState(null);
+  const [animatedDriverPosition, setAnimatedDriverPosition] = useState(null);
+  const [driverHeading, setDriverHeading] = useState(0);
+  const animationFrameRef = useRef(null);
+  const lastAnimatedDriverRef = useRef(null);
   const [riderIdentity, setRiderIdentity] = useState({
     phone_number: "",
     national_id_number: "",
@@ -104,6 +112,16 @@ export default function RiderDashboard() {
   const shouldTrackDriver = liveDriverStatuses.has(currentRide?.status);
   const hasRequiredRiderProfile =
     riderIdentity.has_profile_picture && Boolean(riderIdentity.phone_number?.trim());
+  const tripProgressPercent = useMemo(() => {
+    const status = currentRide?.status;
+    if (!status) return 4;
+    if (["requested", "pending"].includes(status)) return 16;
+    if (["accepted", "driver_arriving"].includes(status)) return 42;
+    if (status === "in_progress") return 78;
+    if (status === "completed") return 100;
+    if (status === "cancelled") return 0;
+    return 8;
+  }, [currentRide?.status]);
 
   const mapMarkers = useMemo(
     () =>
@@ -121,18 +139,20 @@ export default function RiderDashboard() {
           label: "D",
         },
         shouldTrackDriver &&
-          driverPosition && {
-          id: "driver",
-          position: driverPosition,
-          title: "Driver live location",
-          label: "C",
-          type: "driver",
-        },
+          animatedDriverPosition && {
+            id: "driver",
+            position: animatedDriverPosition,
+            title: "Driver live location",
+            label: "C",
+            type: "driver",
+            rotation: driverHeading,
+          },
       ].filter(Boolean),
     [
+      animatedDriverPosition,
       destination,
       destinationPosition,
-      driverPosition,
+      driverHeading,
       pickup,
       pickupPosition,
       shouldTrackDriver,
@@ -182,6 +202,7 @@ export default function RiderDashboard() {
         if (cancelled) return;
 
         setRoutePath(route?.points || fallbackRoute);
+        setTripRoutePath(route?.points || fallbackRoute);
         setRouteInfo(route);
 
         if (route?.distanceKm) {
@@ -192,6 +213,7 @@ export default function RiderDashboard() {
         if (cancelled) return;
 
         setRoutePath(fallbackRoute);
+        setTripRoutePath(fallbackRoute);
         setRouteInfo(null);
       }
     };
@@ -284,6 +306,12 @@ export default function RiderDashboard() {
   useEffect(() => {
     if (!shouldTrackDriver) {
       setDriverPosition(null);
+      setAnimatedDriverPosition(null);
+      lastAnimatedDriverRef.current = null;
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
       return;
     }
 
@@ -295,6 +323,79 @@ export default function RiderDashboard() {
 
     return () => clearInterval(interval);
   }, [fetchDriverLocation, shouldTrackDriver]);
+
+  useEffect(() => {
+    if (!shouldTrackDriver || !driverPosition) return;
+
+    const previousPoint = lastAnimatedDriverRef.current || driverPosition;
+    const nextPoint = driverPosition;
+
+    const latDelta = nextPoint[0] - previousPoint[0];
+    const lngDelta = nextPoint[1] - previousPoint[1];
+    if (latDelta !== 0 || lngDelta !== 0) {
+      const heading = (Math.atan2(lngDelta, latDelta) * 180) / Math.PI;
+      setDriverHeading((heading + 360) % 360);
+    }
+
+    const durationMs = 1200;
+    const startTime = performance.now();
+
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
+
+    const animate = (timestamp) => {
+      const progress = Math.min((timestamp - startTime) / durationMs, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const interpolated = [
+        lerp(previousPoint[0], nextPoint[0], eased),
+        lerp(previousPoint[1], nextPoint[1], eased),
+      ];
+      setAnimatedDriverPosition(interpolated);
+
+      if (progress < 1) {
+        animationFrameRef.current = requestAnimationFrame(animate);
+      } else {
+        lastAnimatedDriverRef.current = nextPoint;
+        animationFrameRef.current = null;
+      }
+    };
+
+    animationFrameRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+    };
+  }, [driverPosition, shouldTrackDriver]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const updateLiveRoute = async () => {
+      if (!driverPosition || !currentRide) return;
+      const target =
+        currentRide.status === "in_progress" ? destinationPosition : pickupPosition;
+      try {
+        const route = await fetchDrivingRoute(driverPosition, target);
+        if (cancelled) return;
+        if (route) {
+          setLiveEtaMinutes(route.etaMinutes);
+          setLiveDistanceKm(Number(route.distanceKm.toFixed(1)));
+          setRoutePath(route.points || []);
+        }
+      } catch (error) {
+        console.log("Live route update error:", error);
+      }
+    };
+    updateLiveRoute();
+    const i = setInterval(updateLiveRoute, 5000);
+    return () => {
+      cancelled = true;
+      clearInterval(i);
+    };
+  }, [currentRide, destinationPosition, driverPosition, pickupPosition]);
 
   const requestRide = async () => {
     try {
@@ -441,6 +542,13 @@ export default function RiderDashboard() {
           markers={mapMarkers}
           polylines={[
             {
+              id: "pickup-destination-route",
+              path: tripRoutePath.length ? tripRoutePath : [pickupPosition, destinationPosition],
+              color: "#4f46e5",
+              weight: 6,
+              opacity: 0.45,
+            },
+            {
               id: "rider-route",
               path: routePath.length ? routePath : [pickupPosition, destinationPosition],
               color: "#111827",
@@ -482,6 +590,18 @@ export default function RiderDashboard() {
           </button>
         </div>
 
+        <div style={floatingEtaCardStyle}>
+          <span style={floatingEtaLabelStyle}>Driver ETA</span>
+          <strong style={floatingEtaValueStyle}>
+            {liveEtaMinutes || routeInfo?.etaMinutes
+              ? `${liveEtaMinutes || routeInfo?.etaMinutes} min`
+              : "--"}
+          </strong>
+          <span style={floatingEtaMetaStyle}>
+            {liveDistanceKm || distance || 0} km · {activeStatus}
+          </span>
+        </div>
+
         <div style={floatingSummaryStyle}>
           <div style={summaryItemStyle}>
             <span style={summaryLabelStyle}>Estimated fare</span>
@@ -489,11 +609,11 @@ export default function RiderDashboard() {
           </div>
           <div style={summaryItemStyle}>
             <span style={summaryLabelStyle}>ETA</span>
-            <strong>{routeInfo ? `${routeInfo.etaMinutes} min` : "--"}</strong>
+            <strong>{liveEtaMinutes || routeInfo?.etaMinutes ? `${liveEtaMinutes || routeInfo?.etaMinutes} min` : "--"}</strong>
           </div>
           <div style={summaryItemStyle}>
             <span style={summaryLabelStyle}>Distance</span>
-            <strong>{distance || 0} km</strong>
+            <strong>{liveDistanceKm || distance || 0} km</strong>
           </div>
         </div>
       </section>
@@ -567,6 +687,14 @@ export default function RiderDashboard() {
             <div>
               <span style={tinyLabelStyle}>Current ride</span>
               <h2 style={panelTitleStyle}>{activeStatus}</h2>
+              <p style={etaSubtextStyle}>
+                {liveEtaMinutes
+                  ? `Driver ETA ${liveEtaMinutes} min · ${liveDistanceKm || "--"} km away`
+                  : "Fetching live ETA..."}
+              </p>
+              <div style={progressTrackStyle}>
+                <div style={{ ...progressFillStyle, width: `${tripProgressPercent}%` }} />
+              </div>
             </div>
             <span style={statusPillStyle}>{currentRide.status}</span>
           </section>
@@ -708,15 +836,17 @@ export default function RiderDashboard() {
 
 const pageStyle = {
   minHeight: "100vh",
-  background: "#f2f4f7",
-  color: "#111827",
+  background: "#0b0b0f",
+  color: "#f8fafc",
+  position: "relative",
+  fontFamily: 'Inter, "SF Pro Display", "Segoe UI", sans-serif',
 };
 
 const mapStageStyle = {
   position: "relative",
-  height: "52vh",
-  minHeight: "390px",
-  background: "#e5e7eb",
+  height: "100vh",
+  minHeight: "640px",
+  background: "#09090b",
 };
 
 const mapStyle = {
@@ -726,9 +856,9 @@ const mapStyle = {
 
 const topOverlayStyle = {
   position: "absolute",
-  top: "18px",
-  left: "18px",
-  right: "18px",
+  top: "20px",
+  left: "20px",
+  right: "20px",
   zIndex: 5,
   display: "flex",
   justifyContent: "space-between",
@@ -738,12 +868,12 @@ const topOverlayStyle = {
 };
 
 const roundButtonStyle = {
-  width: "48px",
-  height: "48px",
+  width: "52px",
+  height: "52px",
   borderRadius: "50%",
-  border: "1px solid rgba(17, 24, 39, 0.08)",
-  background: "#ffffff",
-  color: "#111827",
+  border: "1px solid rgba(255, 255, 255, 0.18)",
+  background: "rgba(17, 17, 24, 0.86)",
+  color: "#f8fafc",
   fontWeight: 950,
   boxShadow: "0 12px 28px rgba(15, 23, 42, 0.16)",
   cursor: "pointer",
@@ -759,15 +889,15 @@ const accountPhotoStyle = {
 };
 
 const locationPillStyle = {
-  minHeight: "48px",
+  minHeight: "52px",
   display: "grid",
   gridTemplateColumns: "28px auto",
   columnGap: "8px",
   alignContent: "center",
   alignItems: "center",
   justifyItems: "start",
-  background: "rgba(255, 255, 255, 0.95)",
-  border: "1px solid rgba(17, 24, 39, 0.08)",
+  background: "rgba(17, 17, 24, 0.9)",
+  border: "1px solid rgba(255, 255, 255, 0.18)",
   borderRadius: "999px",
   padding: "7px 18px",
   boxShadow: "0 12px 28px rgba(15, 23, 42, 0.14)",
@@ -784,7 +914,7 @@ const locationLogoStyle = {
 const floatingSummaryStyle = {
   position: "absolute",
   left: "50%",
-  bottom: "24px",
+  bottom: "260px",
   transform: "translateX(-50%)",
   zIndex: 5,
   display: "grid",
@@ -792,48 +922,92 @@ const floatingSummaryStyle = {
   gap: "1px",
   overflow: "hidden",
   borderRadius: "999px",
-  background: "#e5e7eb",
+  background: "rgba(255, 255, 255, 0.12)",
   boxShadow: "0 18px 34px rgba(15, 23, 42, 0.18)",
 };
 
+const floatingEtaCardStyle = {
+  position: "absolute",
+  top: "96px",
+  left: "50%",
+  transform: "translateX(-50%)",
+  zIndex: 6,
+  display: "grid",
+  gap: "2px",
+  textAlign: "center",
+  minWidth: "180px",
+  padding: "10px 16px",
+  borderRadius: "16px",
+  border: "1px solid rgba(255, 255, 255, 0.2)",
+  background: "rgba(7, 10, 17, 0.9)",
+  color: "#f8fafc",
+  boxShadow: "0 14px 28px rgba(2, 6, 23, 0.28)",
+  backdropFilter: "blur(6px)",
+};
+
+const floatingEtaLabelStyle = {
+  fontSize: "0.68rem",
+  textTransform: "uppercase",
+  letterSpacing: "0.08em",
+  color: "#93c5fd",
+  fontWeight: 800,
+};
+
+const floatingEtaValueStyle = {
+  fontSize: "1.12rem",
+  lineHeight: 1.2,
+};
+
+const floatingEtaMetaStyle = {
+  fontSize: "0.72rem",
+  color: "#cbd5e1",
+  fontWeight: 700,
+};
+
 const summaryItemStyle = {
-  background: "rgba(255, 255, 255, 0.96)",
+  background: "rgba(8, 8, 12, 0.92)",
   padding: "10px 14px",
   textAlign: "center",
   minWidth: "88px",
+  color: "#f8fafc",
 };
 
 const summaryLabelStyle = {
   display: "block",
-  color: "#667085",
+  color: "#cbd5e1",
   fontSize: "0.72rem",
   fontWeight: 800,
 };
 
 const sheetStyle = {
-  position: "relative",
-  margin: "-18px auto 0",
-  zIndex: 10,
-  width: "min(780px, 100%)",
-  minHeight: "48vh",
-  background: "#ffffff",
-  borderRadius: "22px 22px 0 0",
-  padding: "10px 18px 24px",
-  boxShadow: "0 -18px 34px rgba(15, 23, 42, 0.16)",
+  position: "absolute",
+  left: "50%",
+  bottom: "18px",
+  transform: "translateX(-50%)",
+  zIndex: 12,
+  width: "min(520px, calc(100% - 28px))",
+  maxHeight: "76vh",
+  overflowY: "auto",
+  background: "rgba(13, 13, 18, 0.94)",
+  border: "1px solid rgba(255, 255, 255, 0.14)",
+  borderRadius: "24px",
+  padding: "14px 20px 28px",
+  boxShadow: "0 28px 80px rgba(0, 0, 0, 0.58)",
   boxSizing: "border-box",
+  backdropFilter: "blur(8px)",
 };
 
 const sheetHandleStyle = {
   width: "54px",
   height: "5px",
   borderRadius: "999px",
-  background: "#d0d5dd",
+  background: "rgba(255,255,255,0.35)",
   margin: "0 auto 16px",
 };
 
 const tinyLabelStyle = {
   display: "block",
-  color: "#667085",
+  color: "#94a3b8",
   fontSize: "0.74rem",
   fontWeight: 900,
   textTransform: "uppercase",
@@ -842,40 +1016,40 @@ const tinyLabelStyle = {
 
 const panelTitleStyle = {
   margin: "3px 0 0",
-  color: "#111827",
-  fontSize: "1.25rem",
+  color: "#f8fafc",
+  fontSize: "1.38rem",
 };
 
 const accountPanelStyle = {
   display: "grid",
-  gap: "10px",
-  background: "#f8fafc",
-  border: "1px solid #e5e7eb",
-  borderRadius: "12px",
+  gap: "12px",
+  background: "rgba(255, 255, 255, 0.05)",
+  border: "1px solid rgba(255, 255, 255, 0.14)",
+  borderRadius: "14px",
   padding: "14px",
   marginBottom: "12px",
 };
 
 const inputStyle = {
   width: "100%",
-  minHeight: "44px",
-  border: "1px solid #d0d5dd",
-  borderRadius: "8px",
+  minHeight: "48px",
+  border: "1px solid rgba(255,255,255,0.24)",
+  borderRadius: "10px",
   padding: "0 12px",
   boxSizing: "border-box",
   fontSize: "1rem",
 };
 
 const fileInputStyle = {
-  color: "#344054",
+  color: "#cbd5e1",
   fontWeight: 800,
 };
 
 const secondaryActionStyle = {
-  minHeight: "44px",
+  minHeight: "48px",
   border: "none",
-  borderRadius: "8px",
-  background: "#111827",
+  borderRadius: "10px",
+  background: "#000000",
   color: "white",
   fontWeight: 900,
   cursor: "pointer",
@@ -883,7 +1057,7 @@ const secondaryActionStyle = {
 
 const noticeTextStyle = {
   margin: 0,
-  color: "#166534",
+  color: "#86efac",
   fontWeight: 800,
 };
 
@@ -914,7 +1088,7 @@ const profileFallbackStyle = {
 
 const profileHintStyle = {
   display: "block",
-  color: "#667085",
+  color: "#94a3b8",
   fontSize: "0.86rem",
   fontWeight: 700,
   marginTop: "2px",
@@ -927,11 +1101,31 @@ const liveTripStyle = {
   gap: "12px",
   padding: "10px 0 14px",
 };
+const etaSubtextStyle = {
+  margin: "6px 0 10px",
+  color: "#cbd5e1",
+  fontSize: "0.9rem",
+  fontWeight: 700,
+};
+const progressTrackStyle = {
+  width: "100%",
+  maxWidth: "320px",
+  height: "8px",
+  borderRadius: "999px",
+  background: "rgba(255,255,255,0.12)",
+  overflow: "hidden",
+};
+const progressFillStyle = {
+  height: "100%",
+  borderRadius: "999px",
+  background: "linear-gradient(90deg, #22c55e 0%, #3b82f6 100%)",
+  transition: "width 420ms ease",
+};
 
 const statusPillStyle = {
   borderRadius: "999px",
-  background: "#ecfdf3",
-  color: "#166534",
+  background: "rgba(34, 197, 94, 0.18)",
+  color: "#bbf7d0",
   padding: "8px 11px",
   fontWeight: 900,
   textTransform: "capitalize",
@@ -942,8 +1136,8 @@ const driverPanelStyle = {
   alignItems: "center",
   gap: "12px",
   padding: "12px",
-  background: "#f8fafc",
-  border: "1px solid #e5e7eb",
+  background: "rgba(255, 255, 255, 0.05)",
+  border: "1px solid rgba(255, 255, 255, 0.14)",
   borderRadius: "14px",
   marginBottom: "12px",
 };
@@ -974,7 +1168,7 @@ const driverInfoStyle = {
 };
 
 const privateCallHintStyle = {
-  color: "#475467",
+  color: "#cbd5e1",
   fontSize: "0.82rem",
   fontWeight: 800,
 };
@@ -1001,8 +1195,8 @@ const shareButtonStyle = {
   minHeight: "36px",
   border: "none",
   borderRadius: "999px",
-  background: "#eef2ff",
-  color: "#3730a3",
+  background: "rgba(255, 255, 255, 0.1)",
+  color: "#f1f5f9",
   fontWeight: 900,
   cursor: "pointer",
 };
@@ -1014,10 +1208,11 @@ const routeEditorStyle = {
 
 const citySelectStyle = {
   width: "100%",
-  minHeight: "44px",
-  border: "1px solid #d0d5dd",
+  minHeight: "48px",
+  border: "1px solid rgba(255,255,255,0.24)",
   borderRadius: "999px",
-  background: "#f9fafb",
+  background: "rgba(255,255,255,0.08)",
+  color: "#f8fafc",
   padding: "0 14px",
   fontWeight: 900,
 };
@@ -1051,7 +1246,7 @@ const dropoffDotStyle = {
 const routeLineStyle = {
   width: "2px",
   minHeight: "40px",
-  background: "#d0d5dd",
+  background: "rgba(148, 163, 184, 0.45)",
 };
 
 const addressInputsStyle = {
@@ -1063,11 +1258,11 @@ const addressInputStyle = {
   width: "100%",
   minHeight: "48px",
   border: "none",
-  borderRadius: "8px",
-  background: "#f2f4f7",
+  borderRadius: "10px",
+  background: "rgba(255,255,255,0.08)",
   padding: "0 14px",
   boxSizing: "border-box",
-  color: "#111827",
+  color: "#f8fafc",
   fontWeight: 900,
   fontSize: "1rem",
 };
@@ -1080,8 +1275,8 @@ const rideOptionsStyle = {
 
 const rideOptionStyle = {
   minHeight: "68px",
-  border: "2px solid #e5e7eb",
-  borderRadius: "12px",
+  border: "1px solid rgba(255,255,255,0.16)",
+  borderRadius: "14px",
   display: "grid",
   gridTemplateColumns: "48px 1fr auto",
   gap: "12px",
@@ -1089,13 +1284,14 @@ const rideOptionStyle = {
   padding: "10px 12px",
   cursor: "pointer",
   textAlign: "left",
+  transition: "transform 180ms ease, border-color 180ms ease, background 180ms ease",
 };
 
 const rideMarkStyle = {
   width: "42px",
   height: "42px",
   borderRadius: "50%",
-  background: "#111827",
+  background: "#000000",
   color: "white",
   display: "grid",
   placeItems: "center",
@@ -1109,13 +1305,15 @@ const rideTextStyle = {
 
 const primaryActionStyle = {
   width: "100%",
-  minHeight: "54px",
+  minHeight: "56px",
   marginTop: "14px",
   border: "none",
   borderRadius: "999px",
-  background: "#111827",
+  background: "linear-gradient(135deg, #000000 0%, #1f2937 100%)",
   color: "white",
   fontWeight: 950,
   fontSize: "1.05rem",
   cursor: "pointer",
+  transition: "transform 180ms ease, box-shadow 220ms ease, opacity 180ms ease",
+  boxShadow: "0 12px 30px rgba(2, 6, 23, 0.35)",
 };

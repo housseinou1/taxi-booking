@@ -138,12 +138,13 @@ export default function GoogleTripMap({
           const markerIcon =
             marker.type === "driver" && window.google?.maps
               ? {
-                  path: window.google.maps.SymbolPath.CIRCLE,
+                  path: window.google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
                   fillColor: "#2563eb",
                   fillOpacity: 1,
                   strokeColor: "#ffffff",
-                  strokeWeight: 4,
-                  scale: 11,
+                  strokeWeight: 2,
+                  scale: 7.5,
+                  rotation: Number(marker.rotation || 0),
                 }
               : undefined;
 

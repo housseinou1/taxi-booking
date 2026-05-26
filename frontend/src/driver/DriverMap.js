@@ -16,13 +16,16 @@ function DriverMap({ driverLocation, activeRide, availableRides = [] }) {
   const [routeSummary, setRouteSummary] = React.useState(null);
   const currentLat = Number(driverLocation?.current_lat || 18.0735);
   const currentLng = Number(driverLocation?.current_lng || -15.9582);
+  const livePoint = React.useMemo(() => [currentLat, currentLng], [currentLat, currentLng]);
+  const [animatedDriverPoint, setAnimatedDriverPoint] = React.useState(livePoint);
+  const [driverHeading, setDriverHeading] = React.useState(0);
   const mapRide = activeRide || availableRides[0] || null;
   const pickupLat = mapRide?.pickup_lat;
   const pickupLng = mapRide?.pickup_lng;
   const dropoffLat = mapRide?.destination_lat;
   const dropoffLng = mapRide?.destination_lng;
 
-  const driverPoint = React.useMemo(() => [currentLat, currentLng], [currentLat, currentLng]);
+  const driverPoint = animatedDriverPoint;
   const pickupPoint = React.useMemo(() => toPoint(pickupLat, pickupLng), [pickupLat, pickupLng]);
   const dropoffPoint = React.useMemo(
     () => toPoint(dropoffLat, dropoffLng),
@@ -32,6 +35,41 @@ function DriverMap({ driverLocation, activeRide, availableRides = [] }) {
     activeRide?.status === "in_progress"
       ? dropoffPoint
       : pickupPoint;
+
+  React.useEffect(() => {
+    let frameId = null;
+    let startedAt = null;
+    const durationMs = 1800;
+    const from = animatedDriverPoint;
+    const to = livePoint;
+
+    const deltaLat = to[0] - from[0];
+    const deltaLng = to[1] - from[1];
+    if (Math.abs(deltaLat) < 0.000001 && Math.abs(deltaLng) < 0.000001) return undefined;
+
+    const heading = (Math.atan2(deltaLng, deltaLat) * 180) / Math.PI;
+    setDriverHeading(heading);
+
+    const tick = (ts) => {
+      if (!startedAt) startedAt = ts;
+      const progress = Math.min(1, (ts - startedAt) / durationMs);
+      const eased = 1 - Math.pow(1 - progress, 3);
+
+      setAnimatedDriverPoint([
+        from[0] + deltaLat * eased,
+        from[1] + deltaLng * eased,
+      ]);
+
+      if (progress < 1) {
+        frameId = window.requestAnimationFrame(tick);
+      }
+    };
+
+    frameId = window.requestAnimationFrame(tick);
+    return () => {
+      if (frameId) window.cancelAnimationFrame(frameId);
+    };
+  }, [livePoint]); // eslint-disable-line react-hooks/exhaustive-deps
 
   React.useEffect(() => {
     let cancelled = false;
@@ -116,6 +154,7 @@ function DriverMap({ driverLocation, activeRide, availableRides = [] }) {
             title: `Your live location ${currentLat.toFixed(5)}, ${currentLng.toFixed(5)}`,
             label: "D",
             type: "driver",
+            rotation: driverHeading,
           },
           pickupPoint && {
             id: "pickup",
