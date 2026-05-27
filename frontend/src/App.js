@@ -252,76 +252,52 @@ function App() {
   return withInstall(
     <div style={pageStyle}>
       <div style={homeShellStyle}>
+        <header style={navStyle}>
+          <div style={topBrandStyle}>
+            <BrandLogo />
+            <strong style={{ color: "#f8fafc", fontSize: "1rem" }}>{MARKET.brandName}</strong>
+          </div>
+          <div style={authRowStyle}>
+            <button onClick={() => (window.location.href = "/login")} style={lightButtonStyle}>Login</button>
+            <button onClick={() => (window.location.href = "/register")} style={lightButtonStyle}>Register</button>
+          </div>
+        </header>
         <section style={landingHeroStyle}>
           <div style={landingCopyStyle}>
-            <BrandLogo variant="hero" />
-            <span style={brandPillStyle}>{MARKET.country} premium rideshare network</span>
-            <h1 style={titleStyle}>Move smarter with {MARKET.brandName}</h1>
-            <p style={subtitleStyle}>
-              Fast, safe, and reliable rides with premium rider and driver tools across
-              Nouakchott, Nouadhibou, Kaedi, Selibaby, and Rosso.
-            </p>
-
+            <span style={brandPillStyle}>{MARKET.country} · Luxury mobility</span>
+            <h1 style={titleStyle}>{MARKET.brandName} for the next billion trips</h1>
+            <p style={subtitleStyle}>Premium rides, live trip intelligence, and five-star service for riders and drivers across every city in your network.</p>
             <div style={ctaRowStyle}>
-              <button onClick={() => (window.location.href = "/rider-dashboard")} style={primaryButtonStyle}>
-                Book a ride
-              </button>
-
-              <button onClick={() => (window.location.href = "/driver")} style={secondaryButtonStyle}>
-                Drive with us
-              </button>
+              <button onClick={() => (window.location.href = "/rider-dashboard")} style={primaryButtonStyle}>Ride now</button>
+              <button onClick={() => (window.location.href = "/driver")} style={secondaryButtonStyle}>Become a driver</button>
             </div>
-
-            <div style={roleSelectorStyle}>
-              <button onClick={() => (window.location.href = "/rider-dashboard")} style={roleCardStyle}>
-                <span style={roleLabelStyle}>For riders</span>
-                <strong style={roleTitleStyle}>Request and track in real-time</strong>
-              </button>
-              <button onClick={() => (window.location.href = "/driver")} style={roleCardStyle}>
-                <span style={roleLabelStyle}>For drivers</span>
-                <strong style={roleTitleStyle}>Go online and maximize earnings</strong>
-              </button>
+            <div style={statsGridStyle}>
+              <div style={statCardStyle}><strong>4.96★</strong><span>Average rider rating</span></div>
+              <div style={statCardStyle}><strong>2.4m+</strong><span>Trips completed safely</span></div>
+              <div style={statCardStyle}><strong>3 min</strong><span>Median pickup time</span></div>
             </div>
           </div>
-
           <div style={dispatchPanelStyle}>
-            <div style={dispatchHeaderStyle}>
-              <div>
-                <span style={panelKickerStyle}>Live operations</span>
-                <h2 style={panelTitleStyle}>Platform control center</h2>
-              </div>
-              <span style={onlineBadgeStyle}>MRU Active</span>
+            <div style={phoneMockStyle}>
+              <div style={liveHeaderStyle}><span>Live Trip</span><strong>Driver arriving · 2 min</strong></div>
+              <div style={liveMapStyle} />
+              <div style={liveRowStyle}><span>Premium Black</span><strong>MRU 1450</strong></div>
+              <div style={liveRowStyle}><span>Captain Ahmed</span><strong>4.9 ★</strong></div>
             </div>
-
-            <div style={platformGridStyle}>
-              <PlatformTile title="Rider App" text="Request, track, pay, tip, and rate trips." path="/rider-dashboard" />
-              <PlatformTile title="Driver App" text="Accept rides, navigate routes, and earn." path="/driver" />
-              <PlatformTile title="Payments" text="Bankily, Masravi, Seddad, card, and cash." path="/rider-payments" />
-              <PlatformTile title="Admin" text="Manage operations and marketplace health." path="/admin" />
+            <div style={roleSelectorStyle}>
+              <button onClick={() => (window.location.href = "/rider-dashboard")} style={roleCardStyle}><span style={roleLabelStyle}>For riders</span><strong style={roleTitleStyle}>Tap, track, pay instantly</strong></button>
+              <button onClick={() => (window.location.href = "/driver")} style={roleCardStyle}><span style={roleLabelStyle}>For drivers</span><strong style={roleTitleStyle}>Go online, earn smarter</strong></button>
             </div>
-
-            <EmergencyPanel />
           </div>
         </section>
-
-        <section style={cityStripStyle}>
-          {MARKET.cities.map((city) => (
-            <div key={city.label} style={cityPillStyle}>
-              {city.label}
-            </div>
-          ))}
+        <section style={platformGridStyle}>
+          <PlatformTile title="Economy" text="Best everyday value with short ETAs." path="/rider-dashboard" />
+          <PlatformTile title="Premium Black" text="Executive rides with top-rated drivers." path="/rider-dashboard" />
+          <PlatformTile title="XL Family" text="Extra seats, luggage room, and comfort." path="/rider-dashboard" />
+          <PlatformTile title="Driver Pro" text="Real-time demand heatmaps and earning tools." path="/driver" />
         </section>
-
-        <div style={authRowStyle}>
-          <button onClick={() => (window.location.href = "/login")} style={lightButtonStyle}>
-            Login
-          </button>
-
-          <button onClick={() => (window.location.href = "/register")} style={lightButtonStyle}>
-            Register
-          </button>
-        </div>
-
+        <section style={cityStripStyle}>{MARKET.cities.map((city) => <div key={city.label} style={cityPillStyle}>{city.label}</div>)}</section>
+        <EmergencyPanel />
         <FooterLinks />
       </div>
     </div>
@@ -635,17 +611,30 @@ const emptyPageStyle = {
 
 const pageStyle = {
   minHeight: "100vh",
-  background: "radial-gradient(circle at 8% 10%, #18212f 0%, #111827 36%, #06080f 100%)",
+  background: "radial-gradient(circle at 15% 10%, #1f2a44 0%, #090d19 48%, #04050b 100%)",
   display: "flex",
   justifyContent: "center",
-  alignItems: "center",
+  alignItems: "flex-start",
   fontFamily: 'Inter, "SF Pro Display", "Segoe UI", sans-serif',
-  padding: "22px",
+  padding: "20px 20px 36px",
 };
 
 const homeShellStyle = {
-  maxWidth: "1200px",
+  maxWidth: "1240px",
   width: "100%",
+};
+const navStyle = {
+  background: "rgba(15, 23, 42, 0.55)",
+  border: "1px solid rgba(255,255,255,0.16)",
+  borderRadius: "18px",
+  backdropFilter: "blur(10px)",
+  padding: "10px 14px",
+  marginBottom: "18px",
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: "10px",
+  flexWrap: "wrap",
 };
 
 const landingHeroStyle = {
@@ -656,7 +645,9 @@ const landingHeroStyle = {
 };
 
 const landingCopyStyle = {
-  background: "linear-gradient(150deg, #0b1220 0%, #131d32 48%, #1f2a44 100%)",
+  background: "linear-gradient(152deg, rgba(16,24,40,0.86) 0%, rgba(15,23,42,0.7) 100%)",
+  border: "1px solid rgba(255, 255, 255, 0.2)",
+  boxShadow: "0 30px 80px rgba(2, 6, 23, 0.45)",
   color: "white",
   padding: "44px",
   borderRadius: "28px",
@@ -697,7 +688,7 @@ const brandPillStyle = {
 };
 
 const titleStyle = {
-  fontSize: "clamp(2.2rem, 5vw, 4.2rem)",
+  fontSize: "clamp(2.5rem, 5vw, 4.7rem)",
   margin: "0 0 14px",
   color: "white",
   letterSpacing: 0,
@@ -718,14 +709,16 @@ const ctaRowStyle = {
 };
 
 const primaryButtonStyle = {
-  background: "linear-gradient(135deg, #ffffff 0%, #e5e7eb 100%)",
-  color: "#0b1220",
-  border: "1px solid #ffffff",
+  background: "linear-gradient(135deg, #67e8f9 0%, #22d3ee 40%, #06b6d4 100%)",
+  color: "#001219",
+  border: "1px solid rgba(255,255,255,0.6)",
   padding: "15px 18px",
   borderRadius: "14px",
   fontWeight: 900,
   fontSize: "15px",
   cursor: "pointer",
+  transition: "transform .25s ease, box-shadow .25s ease",
+  boxShadow: "0 10px 24px rgba(6, 182, 212, 0.35)",
 };
 
 const secondaryButtonStyle = {
@@ -737,12 +730,13 @@ const secondaryButtonStyle = {
   fontWeight: 900,
   fontSize: "15px",
   cursor: "pointer",
+  transition: "transform .25s ease, border-color .25s ease",
 };
 
 const lightButtonStyle = {
-  background: "#ffffff",
-  color: "#111827",
-  border: "1px solid #d1d5db",
+  background: "rgba(255,255,255,0.08)",
+  color: "#f8fafc",
+  border: "1px solid rgba(255,255,255,0.25)",
   padding: "12px 16px",
   borderRadius: "10px",
   fontWeight: 900,
@@ -751,11 +745,11 @@ const lightButtonStyle = {
 };
 
 const dispatchPanelStyle = {
-  background: "linear-gradient(180deg, #f8fbff 0%, #eef3ff 100%)",
-  border: "1px solid #e6e8ef",
+  background: "linear-gradient(180deg, rgba(15,23,42,0.72) 0%, rgba(30,41,59,0.6) 100%)",
+  border: "1px solid rgba(255,255,255,0.2)",
   borderRadius: "28px",
   padding: "22px",
-  boxShadow: "0 18px 42px rgba(15, 23, 42, 0.08)",
+  boxShadow: "0 22px 70px rgba(2, 6, 23, 0.4)",
 };
 
 const dispatchHeaderStyle = {
@@ -792,19 +786,23 @@ const onlineBadgeStyle = {
 
 const platformGridStyle = {
   display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
   gap: "14px",
+  marginTop: "18px",
 };
 
 const platformTileStyle = {
   textAlign: "left",
-  border: "1px solid #d5deef",
-  background: "#f8f9ff",
+  border: "1px solid rgba(255,255,255,0.16)",
+  background: "rgba(15, 23, 42, 0.5)",
   borderRadius: "14px",
   padding: "16px",
   cursor: "pointer",
   display: "grid",
   gap: "6px",
-  color: "#111827",
+  color: "#e2e8f0",
+  transition: "transform .25s ease, box-shadow .25s ease",
+  boxShadow: "0 12px 24px rgba(2,6,23,.22)",
 };
 
 const emergencyPanelStyle = {
@@ -844,18 +842,18 @@ const cityStripStyle = {
 };
 
 const cityPillStyle = {
-  background: "linear-gradient(160deg, #ffffff 0%, #f8fbff 100%)",
-  border: "1px solid #d5deef",
+  background: "rgba(255,255,255,.08)",
+  border: "1px solid rgba(255,255,255,.2)",
   borderRadius: "999px",
   padding: "10px 16px",
-  color: "#334155",
+  color: "#e2e8f0",
   fontWeight: 900,
   boxShadow: "0 8px 20px rgba(15, 23, 42, 0.06)",
 };
 
 const authRowStyle = {
   display: "flex",
-  justifyContent: "center",
+  justifyContent: "flex-end",
   gap: "10px",
   flexWrap: "wrap",
   marginTop: "18px",
@@ -871,12 +869,18 @@ const footerLinksStyle = {
 
 const footerLinkStyle = {
   background: "transparent",
-  color: "#334155",
+  color: "#cbd5e1",
   border: "none",
   fontWeight: 900,
   cursor: "pointer",
   textDecoration: "underline",
 };
+const statsGridStyle = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "12px", marginTop: "22px" };
+const statCardStyle = { background: "rgba(255,255,255,.08)", border: "1px solid rgba(255,255,255,.24)", borderRadius: "14px", padding: "12px", color: "#f8fafc", display: "grid", gap: "6px", boxShadow: "0 10px 24px rgba(2,6,23,.2)" };
+const phoneMockStyle = { background: "rgba(15,23,42,.65)", border: "1px solid rgba(255,255,255,.24)", borderRadius: "26px", padding: "16px", display: "grid", gap: "12px", backdropFilter: "blur(12px)" };
+const liveHeaderStyle = { display: "flex", justifyContent: "space-between", alignItems: "center", color: "#e2e8f0", fontSize: ".85rem" };
+const liveMapStyle = { minHeight: "180px", borderRadius: "16px", background: "linear-gradient(130deg, rgba(56,189,248,.3), rgba(59,130,246,.14), rgba(14,116,144,.3))", border: "1px solid rgba(255,255,255,.14)" };
+const liveRowStyle = { display: "flex", justifyContent: "space-between", color: "#e2e8f0", borderTop: "1px solid rgba(255,255,255,.12)", paddingTop: "8px" };
 
 const legalPageStyle = {
   minHeight: "100vh",
