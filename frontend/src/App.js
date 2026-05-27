@@ -255,26 +255,31 @@ function App() {
         <section style={landingHeroStyle}>
           <div style={landingCopyStyle}>
             <BrandLogo variant="hero" />
-            <span style={brandPillStyle}>{MARKET.country} ride platform</span>
-            <h1 style={titleStyle}>{MARKET.brandName}</h1>
+            <span style={brandPillStyle}>{MARKET.country} premium rideshare network</span>
+            <h1 style={titleStyle}>Move smarter with {MARKET.brandName}</h1>
             <p style={subtitleStyle}>
-              Book rides, manage drivers, collect payments, and operate across
+              Fast, safe, and reliable rides with premium rider and driver tools across
               Nouakchott, Nouadhibou, Kaedi, Selibaby, and Rosso.
             </p>
 
             <div style={ctaRowStyle}>
-              <button
-                onClick={() => (window.location.href = "/rider-dashboard")}
-                style={primaryButtonStyle}
-              >
-                Open rider app
+              <button onClick={() => (window.location.href = "/rider-dashboard")} style={primaryButtonStyle}>
+                Book a ride
               </button>
 
-              <button
-                onClick={() => (window.location.href = "/driver")}
-                style={secondaryButtonStyle}
-              >
-                Open driver app
+              <button onClick={() => (window.location.href = "/driver")} style={secondaryButtonStyle}>
+                Drive with us
+              </button>
+            </div>
+
+            <div style={roleSelectorStyle}>
+              <button onClick={() => (window.location.href = "/rider-dashboard")} style={roleCardStyle}>
+                <span style={roleLabelStyle}>For riders</span>
+                <strong style={roleTitleStyle}>Request and track in real-time</strong>
+              </button>
+              <button onClick={() => (window.location.href = "/driver")} style={roleCardStyle}>
+                <span style={roleLabelStyle}>For drivers</span>
+                <strong style={roleTitleStyle}>Go online and maximize earnings</strong>
               </button>
             </div>
           </div>
@@ -283,16 +288,16 @@ function App() {
             <div style={dispatchHeaderStyle}>
               <div>
                 <span style={panelKickerStyle}>Live operations</span>
-                <h2 style={panelTitleStyle}>Platform control</h2>
+                <h2 style={panelTitleStyle}>Platform control center</h2>
               </div>
-              <span style={onlineBadgeStyle}>MRU</span>
+              <span style={onlineBadgeStyle}>MRU Active</span>
             </div>
 
             <div style={platformGridStyle}>
-              <PlatformTile title="Riders" text="Request, track, pay, tip, and rate trips." path="/rider-dashboard" />
-              <PlatformTile title="Drivers" text="Go online, accept trips, navigate, and earn." path="/driver" />
-              <PlatformTile title="Payments" text="Cash, Bankily, Masravi, card, and receipts." path="/rider-payments" />
-              <PlatformTile title="Admin" text="Approve drivers and monitor the marketplace." path="/admin" />
+              <PlatformTile title="Rider App" text="Request, track, pay, tip, and rate trips." path="/rider-dashboard" />
+              <PlatformTile title="Driver App" text="Accept rides, navigate routes, and earn." path="/driver" />
+              <PlatformTile title="Payments" text="Bankily, Masravi, Seddad, card, and cash." path="/rider-payments" />
+              <PlatformTile title="Admin" text="Manage operations and marketplace health." path="/admin" />
             </div>
 
             <EmergencyPanel />
@@ -308,17 +313,11 @@ function App() {
         </section>
 
         <div style={authRowStyle}>
-          <button
-            onClick={() => (window.location.href = "/login")}
-            style={lightButtonStyle}
-          >
+          <button onClick={() => (window.location.href = "/login")} style={lightButtonStyle}>
             Login
           </button>
 
-          <button
-            onClick={() => (window.location.href = "/register")}
-            style={lightButtonStyle}
-          >
+          <button onClick={() => (window.location.href = "/register")} style={lightButtonStyle}>
             Register
           </button>
         </div>
@@ -355,6 +354,40 @@ function EmergencyPanel() {
     </div>
   );
 }
+
+
+const roleSelectorStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+  gap: "12px",
+  marginTop: "24px",
+};
+
+const roleCardStyle = {
+  border: "1px solid rgba(255, 255, 255, 0.2)",
+  background: "rgba(255, 255, 255, 0.08)",
+  color: "white",
+  borderRadius: "16px",
+  padding: "14px",
+  textAlign: "left",
+  display: "grid",
+  gap: "4px",
+  cursor: "pointer",
+  boxShadow: "0 12px 30px rgba(2, 6, 23, 0.2)",
+};
+
+const roleLabelStyle = {
+  color: "#cbd5e1",
+  fontSize: "0.78rem",
+  textTransform: "uppercase",
+  letterSpacing: "0.04em",
+  fontWeight: 800,
+};
+
+const roleTitleStyle = {
+  fontSize: "0.98rem",
+  lineHeight: 1.35,
+};
 
 function FooterLinks() {
   return (
@@ -602,32 +635,32 @@ const emptyPageStyle = {
 
 const pageStyle = {
   minHeight: "100vh",
-  background: "radial-gradient(circle at 14% 20%, #ffffff 0%, #f6f7fb 45%, #eceff5 100%)",
+  background: "radial-gradient(circle at 8% 10%, #18212f 0%, #111827 36%, #06080f 100%)",
   display: "flex",
   justifyContent: "center",
   alignItems: "center",
   fontFamily: 'Inter, "SF Pro Display", "Segoe UI", sans-serif',
-  padding: "24px",
+  padding: "22px",
 };
 
 const homeShellStyle = {
-  maxWidth: "1160px",
+  maxWidth: "1200px",
   width: "100%",
 };
 
 const landingHeroStyle = {
   display: "grid",
   gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 360px), 1fr))",
-  gap: "18px",
+  gap: "24px",
   alignItems: "stretch",
 };
 
 const landingCopyStyle = {
-  background: "linear-gradient(152deg, #0a0a0a 0%, #171717 62%, #262626 100%)",
+  background: "linear-gradient(150deg, #0b1220 0%, #131d32 48%, #1f2a44 100%)",
   color: "white",
-  padding: "34px",
-  borderRadius: "24px",
-  minHeight: "430px",
+  padding: "44px",
+  borderRadius: "28px",
+  minHeight: "520px",
   display: "flex",
   flexDirection: "column",
   justifyContent: "center",
@@ -664,14 +697,14 @@ const brandPillStyle = {
 };
 
 const titleStyle = {
-  fontSize: "3rem",
+  fontSize: "clamp(2.2rem, 5vw, 4.2rem)",
   margin: "0 0 14px",
   color: "white",
   letterSpacing: 0,
 };
 
 const subtitleStyle = {
-  fontSize: "1.08rem",
+  fontSize: "1.13rem",
   lineHeight: 1.55,
   color: "#d1d5db",
   margin: "0 0 28px",
@@ -680,27 +713,27 @@ const subtitleStyle = {
 
 const ctaRowStyle = {
   display: "flex",
-  gap: "12px",
+  gap: "14px",
   flexWrap: "wrap",
 };
 
 const primaryButtonStyle = {
-  background: "#000000",
-  color: "white",
-  border: "1px solid #111111",
+  background: "linear-gradient(135deg, #ffffff 0%, #e5e7eb 100%)",
+  color: "#0b1220",
+  border: "1px solid #ffffff",
   padding: "15px 18px",
-  borderRadius: "12px",
+  borderRadius: "14px",
   fontWeight: 900,
   fontSize: "15px",
   cursor: "pointer",
 };
 
 const secondaryButtonStyle = {
-  background: "rgba(255, 255, 255, 0.14)",
+  background: "rgba(255, 255, 255, 0.08)",
   color: "#f8fafc",
-  border: "1px solid rgba(255, 255, 255, 0.38)",
+  border: "1px solid rgba(255, 255, 255, 0.3)",
   padding: "15px 18px",
-  borderRadius: "12px",
+  borderRadius: "14px",
   fontWeight: 900,
   fontSize: "15px",
   cursor: "pointer",
@@ -718,10 +751,10 @@ const lightButtonStyle = {
 };
 
 const dispatchPanelStyle = {
-  background: "linear-gradient(180deg, #ffffff 0%, #f7f8fb 100%)",
+  background: "linear-gradient(180deg, #f8fbff 0%, #eef3ff 100%)",
   border: "1px solid #e6e8ef",
-  borderRadius: "24px",
-  padding: "24px",
+  borderRadius: "28px",
+  padding: "22px",
   boxShadow: "0 18px 42px rgba(15, 23, 42, 0.08)",
 };
 
@@ -759,14 +792,14 @@ const onlineBadgeStyle = {
 
 const platformGridStyle = {
   display: "grid",
-  gap: "12px",
+  gap: "14px",
 };
 
 const platformTileStyle = {
   textAlign: "left",
-  border: "1px solid #e5e7eb",
+  border: "1px solid #d5deef",
   background: "#f8f9ff",
-  borderRadius: "8px",
+  borderRadius: "14px",
   padding: "16px",
   cursor: "pointer",
   display: "grid",
@@ -779,10 +812,10 @@ const emergencyPanelStyle = {
   border: "1px solid #fecaca",
   background: "#fff7f7",
   color: "#7f1d1d",
-  borderRadius: "8px",
+  borderRadius: "14px",
   padding: "14px",
   display: "grid",
-  gap: "12px",
+  gap: "14px",
 };
 
 const emergencyLinksStyle = {
@@ -796,7 +829,7 @@ const emergencyLinkStyle = {
   justifyContent: "center",
   alignItems: "center",
   minHeight: "40px",
-  borderRadius: "8px",
+  borderRadius: "14px",
   background: "#dc2626",
   color: "white",
   fontWeight: 900,
@@ -811,10 +844,10 @@ const cityStripStyle = {
 };
 
 const cityPillStyle = {
-  background: "white",
-  border: "1px solid #e5e7eb",
+  background: "linear-gradient(160deg, #ffffff 0%, #f8fbff 100%)",
+  border: "1px solid #d5deef",
   borderRadius: "999px",
-  padding: "10px 14px",
+  padding: "10px 16px",
   color: "#334155",
   fontWeight: 900,
   boxShadow: "0 8px 20px rgba(15, 23, 42, 0.06)",
@@ -822,7 +855,7 @@ const cityPillStyle = {
 
 const authRowStyle = {
   display: "flex",
-  justifyContent: "flex-end",
+  justifyContent: "center",
   gap: "10px",
   flexWrap: "wrap",
   marginTop: "18px",
@@ -854,9 +887,9 @@ const legalPageStyle = {
 const legalCardStyle = {
   maxWidth: "980px",
   margin: "0 auto",
-  background: "linear-gradient(180deg, #ffffff 0%, #f7f8fb 100%)",
+  background: "linear-gradient(180deg, #f8fbff 0%, #eef3ff 100%)",
   border: "1px solid #e6e8ef",
-  borderRadius: "24px",
+  borderRadius: "28px",
   padding: "28px",
   boxShadow: "0 16px 38px rgba(15, 23, 42, 0.08)",
 };
@@ -880,8 +913,8 @@ const legalSectionGridStyle = {
 
 const legalSectionStyle = {
   background: "#f8f9ff",
-  border: "1px solid #e5e7eb",
-  borderRadius: "8px",
+  border: "1px solid #d5deef",
+  borderRadius: "14px",
   padding: "18px",
   color: "#334155",
   lineHeight: 1.55,
@@ -889,7 +922,7 @@ const legalSectionStyle = {
 
 const topBarStyle = {
   background: "#0c0c14",
-  color: "white",
+  color: "#0b1220",
   padding: "12px 24px",
   display: "flex",
   justifyContent: "space-between",
@@ -903,7 +936,7 @@ const topBarStyle = {
 const topBrandStyle = {
   display: "flex",
   alignItems: "center",
-  gap: "12px",
+  gap: "14px",
 };
 
 const brandLogoWrapStyle = {
@@ -928,7 +961,7 @@ const brandLogoImageStyle = {
 const topTitleStyle = {
   margin: 0,
   fontSize: "18px",
-  color: "white",
+  color: "#0b1220",
 };
 
 const topSubtitleStyle = {
@@ -952,10 +985,10 @@ const safetyMenuWrapStyle = {
 
 const safetyButtonStyle = {
   background: "#dc2626",
-  color: "white",
+  color: "#0b1220",
   border: "1px solid rgba(255, 255, 255, 0.2)",
   padding: "10px 12px",
-  borderRadius: "8px",
+  borderRadius: "14px",
   fontWeight: 900,
   cursor: "pointer",
 };
@@ -966,9 +999,9 @@ const safetyDropdownStyle = {
   right: 0,
   zIndex: 50,
   width: "260px",
-  background: "white",
+  background: "linear-gradient(160deg, #ffffff 0%, #f8fbff 100%)",
   border: "1px solid #fecaca",
-  borderRadius: "12px",
+  borderRadius: "14px",
   padding: "12px",
   boxShadow: "0 20px 40px rgba(15, 23, 42, 0.24)",
 };
@@ -984,7 +1017,7 @@ const safetyCallRowStyle = {
   display: "flex",
   justifyContent: "space-between",
   alignItems: "center",
-  gap: "12px",
+  gap: "14px",
   minHeight: "44px",
   padding: "10px 12px",
   borderRadius: "10px",
@@ -999,7 +1032,7 @@ const topButtonStyle = {
   background: "rgba(255, 255, 255, 0.08)",
   color: "#f9fafb",
   border: "1px solid rgba(255, 255, 255, 0.18)",
-  padding: "10px 14px",
+  padding: "10px 16px",
   borderRadius: "10px",
   fontWeight: "bold",
   cursor: "pointer",
@@ -1009,7 +1042,7 @@ const logoutButtonStyle = {
   background: "rgba(220, 38, 38, 0.22)",
   color: "#ffe4e6",
   border: "1px solid rgba(254, 202, 202, 0.24)",
-  padding: "10px 14px",
+  padding: "10px 16px",
   borderRadius: "10px",
   fontWeight: "bold",
   cursor: "pointer",
@@ -1047,9 +1080,9 @@ const continueButtonStyle = {
   marginTop: "25px",
   padding: "16px",
   background: "#0c0c14",
-  color: "white",
+  color: "#0b1220",
   border: "1px solid #1f2937",
-  borderRadius: "12px",
+  borderRadius: "14px",
   fontWeight: "bold",
   fontSize: "16px",
   cursor: "pointer",
