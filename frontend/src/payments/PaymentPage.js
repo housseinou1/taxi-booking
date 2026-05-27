@@ -123,10 +123,6 @@ function PaymentPage({ ride }) {
 
   return (
     <div style={pageStyle}>
-      <style>{`
-        @keyframes paymentSuccessPop { from { opacity: 0; transform: translateY(10px) scale(0.98);} to { opacity: 1; transform: translateY(0) scale(1);} }
-        @keyframes paymentBannerIn { from { opacity: 0; transform: translateY(-8px);} to { opacity: 1; transform: translateY(0);} }
-      `}</style>
       <section style={headerStyle}>
         <span style={eyebrowStyle}>Checkout</span>
         <h2 style={titleStyle}>Complete your ride payment</h2>
@@ -142,7 +138,6 @@ function PaymentPage({ ride }) {
           background: isCancelled ? "#fef2f2" : isAutoPaid ? "#ecfdf3" : "#eff6ff",
           color: isCancelled ? "#991b1b" : isAutoPaid ? "#166534" : "#1d4ed8",
           borderColor: isCancelled ? "#fecaca" : isAutoPaid ? "#bbf7d0" : "#bfdbfe",
-          animation: "paymentBannerIn 320ms ease",
         }}
       >
         <strong>
@@ -245,7 +240,6 @@ function PaymentPage({ ride }) {
               ...buttonStyle,
               background: isCancelled || isAutoPaid || isAuthorized ? "#94a3b8" : "#111827",
               cursor: isCancelled || isAutoPaid || isAuthorized ? "not-allowed" : "pointer",
-              transition: "transform 180ms ease, box-shadow 180ms ease, background 220ms ease",
             }}
             disabled={isCancelled || isAutoPaid || isAuthorized}
             onClick={() => makePayment(selectedMethod)}
@@ -262,7 +256,7 @@ function PaymentPage({ ride }) {
       </div>
 
       {payment && (
-        <div style={{ ...receiptStyle, animation: "paymentSuccessPop 340ms ease" }}>
+        <div style={receiptStyle}>
           <h3 style={subTitleStyle}>Sakho Express Receipt</h3>
 
           <p>
@@ -357,7 +351,7 @@ function PaymentPage({ ride }) {
         </div>
       )}
       {ratingSubmitted && (
-        <div style={{ ...successStyle, animation: "paymentSuccessPop 380ms ease" }}>
+        <div style={successStyle}>
           ✅ Thank you! Your rating has been submitted.
         </div>
       )}
