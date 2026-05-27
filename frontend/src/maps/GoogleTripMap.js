@@ -6,6 +6,7 @@ import {
 } from "@react-google-maps/api";
 
 const GOOGLE_MAPS_API_KEY = process.env.REACT_APP_GOOGLE_MAPS_API_KEY;
+const GOOGLE_MAP_LIBRARIES = ["places"];
 
 const toLatLng = (point) => {
   if (!point) return null;
@@ -85,7 +86,7 @@ export default function GoogleTripMap({
   const { isLoaded, loadError } = useJsApiLoader({
     id: "sakho-express-google-map",
     googleMapsApiKey: GOOGLE_MAPS_API_KEY || "",
-    libraries: ["places"],
+    libraries: GOOGLE_MAP_LIBRARIES,
   });
 
   if (!GOOGLE_MAPS_API_KEY || GOOGLE_MAPS_API_KEY.includes("your_")) {

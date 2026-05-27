@@ -20,6 +20,10 @@ from .models import Ride
 from .serializers import RideSerializer
 
 
+OPEN_RIDE_STATUSES = ["requested", "driver_arriving", "in_progress"]
+DRIVER_ACTIVE_STATUSES = ["driver_arriving", "in_progress"]
+
+
 def calculate_money(ride):
     fare = ride.fare or 0
     app_fee = calculate_app_fee(fare)
@@ -35,6 +39,30 @@ def calculate_money(ride):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def request_ride(request):
+    if getattr(request.user, "rider_status", "approved") != "approved":
+        return Response(
+            {"detail": "Rider account must be approved by admin before requesting a ride."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    existing_ride = (
+        Ride.objects.filter(rider=request.user, status__in=OPEN_RIDE_STATUSES)
+        .order_by("-id")
+        .first()
+    )
+
+    if existing_ride:
+        return Response(
+            {
+                "detail": (
+                    "You already have an open ride. Complete or cancel it before "
+                    "requesting another ride."
+                ),
+                "ride_id": existing_ride.id,
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
     if not request.user.profile_picture:
         return Response(
             {"detail": "Rider profile photo is required before requesting a ride."},
@@ -134,9 +162,33 @@ def driver_rides(request):
 def accept_ride(request, ride_id):
     ride = get_object_or_404(Ride, id=ride_id)
 
+    if ride.status != "requested":
+        return Response(
+            {"detail": "This ride is no longer available."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
     if ride.driver is not None:
         return Response(
             {"detail": "Ride already accepted."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    active_driver_ride = (
+        Ride.objects.filter(driver=request.user, status__in=DRIVER_ACTIVE_STATUSES)
+        .exclude(id=ride.id)
+        .order_by("-id")
+        .first()
+    )
+
+    if active_driver_ride:
+        return Response(
+            {
+                "detail": (
+                    "Finish your current active ride before accepting another request."
+                ),
+                "ride_id": active_driver_ride.id,
+            },
             status=status.HTTP_400_BAD_REQUEST,
         )
 
@@ -335,6 +387,58 @@ def driver_earnings_summary(request):
         total=Sum("driver_earning")
     )["total"] or 0
 
+    def sum_for_range(start_date, end_date):
+        return completed_rides.filter(
+            completed_at__date__gte=start_date,
+            completed_at__date__lte=end_date,
+        ).aggregate(total=Sum("driver_earning"))["total"] or 0
+
+    daily_chart = []
+    for days_ago in range(6, -1, -1):
+        day = today - timedelta(days=days_ago)
+        daily_chart.append(
+            {
+                "label": day.strftime("%a"),
+                "date": day.isoformat(),
+                "earnings": float(sum_for_range(day, day)),
+            }
+        )
+
+    weekly_chart = []
+    for weeks_ago in range(3, -1, -1):
+        start = week_start - timedelta(days=weeks_ago * 7)
+        end = start + timedelta(days=6)
+        weekly_chart.append(
+            {
+                "label": f"{start.strftime('%b')} {start.day}",
+                "start_date": start.isoformat(),
+                "end_date": end.isoformat(),
+                "earnings": float(sum_for_range(start, end)),
+            }
+        )
+
+    monthly_chart = []
+    month_cursor = today.replace(day=1)
+    for months_ago in range(5, -1, -1):
+        month = month_cursor
+        for _ in range(months_ago):
+            month = (month.replace(day=1) - timedelta(days=1)).replace(day=1)
+
+        next_month = (
+            month.replace(year=month.year + 1, month=1, day=1)
+            if month.month == 12
+            else month.replace(month=month.month + 1, day=1)
+        )
+        end = next_month - timedelta(days=1)
+        monthly_chart.append(
+            {
+                "label": month.strftime("%b"),
+                "start_date": month.isoformat(),
+                "end_date": end.isoformat(),
+                "earnings": float(sum_for_range(month, end)),
+            }
+        )
+
     try:
         from payments.views import driver_withdrawal_balance
 
@@ -350,6 +454,11 @@ def driver_earnings_summary(request):
             "withdrawable_balance": float(withdrawable_balance),
             "completed_rides": completed_rides.count(),
             "today_completed_rides": today_rides.count(),
+            "charts": {
+                "daily": daily_chart,
+                "weekly": weekly_chart,
+                "monthly": monthly_chart,
+            },
         },
         status=status.HTTP_200_OK,
     )

@@ -9,6 +9,84 @@ import RideStatusButtons from "../RideStatusButtons";
 
 const logoSrc = "/sakho-brand-logo.jpeg";
 
+function DriverEarningsDashboard({
+  todayEarnings,
+  totalEarnings,
+  withdrawableBalance,
+  charts,
+}) {
+  const [period, setPeriod] = useState("daily");
+  const chartData = charts?.[period] || [];
+  const maxEarning = Math.max(...chartData.map((item) => Number(item.earnings || 0)), 1);
+  const periodLabel =
+    period === "daily" ? "Last 7 days" : period === "weekly" ? "Last 4 weeks" : "Last 6 months";
+
+  return (
+    <section style={earningsDashboardStyle}>
+      <div style={earningsDashboardHeaderStyle}>
+        <div>
+          <span style={smallLabelStyle}>Earnings dashboard</span>
+          <h2 style={earningsDashboardTitleStyle}>{periodLabel}</h2>
+        </div>
+        <div style={earningsSegmentStyle}>
+          {["daily", "weekly", "monthly"].map((item) => (
+            <button
+              key={item}
+              type="button"
+              onClick={() => setPeriod(item)}
+              style={{
+                ...earningsSegmentButtonStyle,
+                background: period === item ? "#111827" : "transparent",
+                color: period === item ? "white" : "#475467",
+              }}
+            >
+              {item}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={earningsStatsGridStyle}>
+        <MetricTile label="Today" value={formatMoney(todayEarnings)} />
+        <MetricTile label="Total" value={formatMoney(totalEarnings)} />
+        <MetricTile label="Withdrawable" value={formatMoney(withdrawableBalance)} />
+      </div>
+
+      <div style={barChartStyle}>
+        {chartData.map((item) => {
+          const value = Number(item.earnings || 0);
+          const height = Math.max(8, Math.round((value / maxEarning) * 100));
+
+          return (
+            <div key={`${period}-${item.label}-${item.date || item.start_date}`} style={barItemStyle}>
+              <div style={barColumnStyle}>
+                <span
+                  title={`${item.label}: ${formatMoney(value)}`}
+                  style={{
+                    ...barStyle,
+                    height: `${height}%`,
+                  }}
+                />
+              </div>
+              <strong style={barValueStyle}>{formatMoney(value)}</strong>
+              <span style={barLabelStyle}>{item.label}</span>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function MetricTile({ label, value }) {
+  return (
+    <div style={metricTileStyle}>
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
 export default function DriverApp() {
   const [availableRides, setAvailableRides] = useState([]);
   const [driverRides, setDriverRides] = useState([]);
@@ -16,6 +94,11 @@ export default function DriverApp() {
   const [earnings, setEarnings] = useState(0);
   const [todayEarnings, setTodayEarnings] = useState(0);
   const [todayCompletedRides, setTodayCompletedRides] = useState(0);
+  const [earningsCharts, setEarningsCharts] = useState({
+    daily: [],
+    weekly: [],
+    monthly: [],
+  });
   const [completedRides, setCompletedRides] = useState(0);
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [driverProfile, setDriverProfile] = useState(null);
@@ -323,6 +406,7 @@ export default function DriverApp() {
       setEarnings(response.data.total_earnings || 0);
       setTodayEarnings(response.data.today_earnings || 0);
       setTodayCompletedRides(response.data.today_completed_rides || 0);
+      setEarningsCharts(response.data.charts || { daily: [], weekly: [], monthly: [] });
       setWithdrawableBalance(response.data.withdrawable_balance || 0);
       setCompletedRides(response.data.completed_rides || 0);
     } catch (error) {
@@ -923,6 +1007,13 @@ export default function DriverApp() {
             </div>
           </div>
         </div>
+
+        <DriverEarningsDashboard
+          todayEarnings={todayEarnings}
+          totalEarnings={earnings}
+          withdrawableBalance={withdrawableBalance}
+          charts={earningsCharts}
+        />
 
         <div style={primaryActionRowStyle}>
           <button
@@ -1916,6 +2007,109 @@ const perkMetaStyle = {
   fontSize: "0.88rem",
   fontWeight: 800,
   lineHeight: 1.2,
+};
+
+const earningsDashboardStyle = {
+  marginTop: "16px",
+  background: "#111827",
+  borderRadius: "18px",
+  padding: "16px",
+  color: "white",
+  boxShadow: "0 18px 42px rgba(15, 23, 42, 0.12)",
+};
+
+const earningsDashboardHeaderStyle = {
+  display: "flex",
+  alignItems: "flex-start",
+  justifyContent: "space-between",
+  gap: "12px",
+  flexWrap: "wrap",
+};
+
+const earningsDashboardTitleStyle = {
+  margin: "4px 0 0",
+  fontSize: "1.2rem",
+  color: "white",
+};
+
+const earningsSegmentStyle = {
+  display: "flex",
+  gap: "4px",
+  padding: "4px",
+  background: "rgba(255, 255, 255, 0.08)",
+  borderRadius: "999px",
+};
+
+const earningsSegmentButtonStyle = {
+  border: "none",
+  borderRadius: "999px",
+  padding: "8px 10px",
+  fontWeight: 900,
+  textTransform: "capitalize",
+  cursor: "pointer",
+};
+
+const earningsStatsGridStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+  gap: "8px",
+  marginTop: "14px",
+};
+
+const metricTileStyle = {
+  background: "rgba(255, 255, 255, 0.08)",
+  border: "1px solid rgba(255, 255, 255, 0.1)",
+  borderRadius: "12px",
+  padding: "10px",
+  display: "grid",
+  gap: "5px",
+};
+
+const barChartStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(48px, 1fr))",
+  gap: "8px",
+  alignItems: "end",
+  marginTop: "16px",
+  minHeight: "190px",
+};
+
+const barItemStyle = {
+  display: "grid",
+  gridTemplateRows: "120px auto auto",
+  gap: "7px",
+  alignItems: "end",
+  textAlign: "center",
+  minWidth: 0,
+};
+
+const barColumnStyle = {
+  height: "120px",
+  display: "flex",
+  alignItems: "flex-end",
+  justifyContent: "center",
+  background: "rgba(255, 255, 255, 0.06)",
+  borderRadius: "12px",
+  padding: "6px",
+};
+
+const barStyle = {
+  width: "100%",
+  borderRadius: "999px 999px 5px 5px",
+  background: "linear-gradient(180deg, #22c55e 0%, #14b8a6 100%)",
+  minHeight: "8px",
+};
+
+const barValueStyle = {
+  color: "white",
+  fontSize: "0.72rem",
+  overflowWrap: "anywhere",
+};
+
+const barLabelStyle = {
+  color: "#9ca3af",
+  fontSize: "0.74rem",
+  fontWeight: 900,
 };
 
 const primaryActionRowStyle = {

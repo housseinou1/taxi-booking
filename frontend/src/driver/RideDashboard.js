@@ -274,7 +274,7 @@ function RiderRatingForm({ ride, onRated }) {
   if (ride.driver_rating) {
     return (
       <div style={ratingDoneStyle}>
-        Rider rating: {ride.driver_rating}/5
+        Rider rating: {"★".repeat(Number(ride.driver_rating || 0))}
         {ride.driver_review ? ` - ${ride.driver_review}` : ""}
       </div>
     );
@@ -283,22 +283,7 @@ function RiderRatingForm({ ride, onRated }) {
   return (
     <div style={riderRatingBoxStyle}>
       <span style={navigationTitleStyle}>Rate this rider</span>
-      <div style={ratingButtonRowStyle}>
-        {[1, 2, 3, 4, 5].map((value) => (
-          <button
-            key={value}
-            type="button"
-            onClick={() => setRating(value)}
-            style={{
-              ...ratingButtonStyle,
-              background: rating >= value ? "#f59e0b" : "rgba(255,255,255,0.12)",
-              color: rating >= value ? "#111827" : "#d1d5db",
-            }}
-          >
-            {value}
-          </button>
-        ))}
-      </div>
+      <StarRating value={rating} onChange={setRating} />
       <textarea
         value={review}
         onChange={(event) => setReview(event.target.value)}
@@ -316,6 +301,28 @@ function RiderRatingForm({ ride, onRated }) {
       >
         {saving ? "Saving..." : "Submit rider rating"}
       </button>
+    </div>
+  );
+}
+
+function StarRating({ value, onChange }) {
+  return (
+    <div style={ratingButtonRowStyle} aria-label="Choose rating">
+      {[1, 2, 3, 4, 5].map((star) => (
+        <button
+          key={star}
+          type="button"
+          onClick={() => onChange(star)}
+          aria-label={`${star} star${star === 1 ? "" : "s"}`}
+          style={{
+            ...ratingButtonStyle,
+            color: value >= star ? "#f59e0b" : "#6b7280",
+            transform: value >= star ? "scale(1.05)" : "scale(1)",
+          }}
+        >
+          ★
+        </button>
+      ))}
     </div>
   );
 }
@@ -753,18 +760,23 @@ const riderRatingBoxStyle = {
 };
 
 const ratingButtonRowStyle = {
-  display: "grid",
-  gridTemplateColumns: "repeat(5, 1fr)",
+  display: "flex",
   gap: "8px",
   marginTop: "10px",
+  marginBottom: "10px",
 };
 
 const ratingButtonStyle = {
-  minHeight: "38px",
+  width: "42px",
+  height: "42px",
   border: "none",
-  borderRadius: "10px",
+  borderRadius: "50%",
+  background: "rgba(255,255,255,0.1)",
+  fontSize: "1.45rem",
+  lineHeight: 1,
   fontWeight: 900,
   cursor: "pointer",
+  transition: "transform 120ms ease, color 120ms ease",
 };
 
 const ratingTextareaStyle = {

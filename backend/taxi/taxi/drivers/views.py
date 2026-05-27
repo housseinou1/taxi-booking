@@ -101,6 +101,10 @@ def serialize_driver(profile, request):
     expired_documents = enforce_document_expiration(profile)
     driver_name = f"{profile.user.first_name} {profile.user.last_name}".strip()
 
+    if (not profile.user.is_active or profile.status != "approved") and profile.is_available:
+        profile.is_available = False
+        profile.save(update_fields=["is_available"])
+
     return {
         "id": profile.id,
         "user_id": profile.user.id,
@@ -213,6 +217,20 @@ def driver_location(request, driver_id):
 def toggle_availability(request):
     profile = get_or_create_driver_profile(request.user)
     expired_documents = enforce_document_expiration(profile)
+
+    if not request.user.is_active:
+        if profile.is_available:
+            profile.is_available = False
+            profile.save(update_fields=["is_available"])
+
+        return Response(
+            {
+                "error": "This driver account is blocked or rejected by admin.",
+                "status": profile.status,
+                "is_available": False,
+            },
+            status=403,
+        )
 
     if expired_documents:
         return Response(
@@ -437,7 +455,10 @@ def reject_driver(request, driver_id):
     profile = get_object_or_404(DriverProfile, id=driver_id)
     profile.status = "rejected"
     profile.is_available = False
-    profile.save()
+    profile.save(update_fields=["status", "is_available"])
+
+    profile.user.is_active = False
+    profile.user.save(update_fields=["is_active"])
 
     return Response({
         "message": "Driver rejected",

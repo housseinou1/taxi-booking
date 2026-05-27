@@ -3,6 +3,17 @@ import { API_URL } from "../apiConfig";
 import { MARKET, formatMoney } from "../marketConfig";
 
 const MARKET_OWNER_PERCENT = MARKET.ownerCommissionPercent;
+const logoSrc = "/sakho-brand-logo.jpeg";
+
+const normalizeText = (value) => String(value || "").toLowerCase();
+
+const matchesSearch = (item, query, fields) => {
+  const normalizedQuery = normalizeText(query).trim();
+
+  if (!normalizedQuery) return true;
+
+  return fields.some((field) => normalizeText(item[field]).includes(normalizedQuery));
+};
 
 const formatDocumentStatus = (status) => {
   if (status === "valid") return "Valid";
@@ -24,6 +35,32 @@ const documentStatusStyle = (status) => ({
 const formatYearsUsingApp = (years) => {
   const value = Number(years || 0);
   return `${value} ${value === 1 ? "year" : "years"} using app`;
+};
+
+const getStatusBadgeStyle = (status) => {
+  const normalized = String(status || "").toLowerCase();
+
+  if (normalized === "approved" || normalized === "active" || normalized === "valid") {
+    return {
+      background: "#ecfdf3",
+      color: "#166534",
+      borderColor: "#bbf7d0",
+    };
+  }
+
+  if (normalized === "rejected" || normalized === "blocked" || normalized === "expired") {
+    return {
+      background: "#fee2e2",
+      color: "#b91c1c",
+      borderColor: "#fecaca",
+    };
+  }
+
+  return {
+    background: "#fff7ed",
+    color: "#9a3412",
+    borderColor: "#fed7aa",
+  };
 };
 
 const getAlphabetName = (item) =>
@@ -52,6 +89,7 @@ function AdminDashboard() {
   ];
 
   const [page, setPage] = useState("verification");
+  const [searchQuery, setSearchQuery] = useState("");
   const [drivers, setDrivers] = useState([]);
   const [users, setUsers] = useState([]);
   const [rides, setRides] = useState([]);
@@ -258,6 +296,28 @@ function AdminDashboard() {
     }
   };
 
+  const updateRiderApproval = async (userId, action) => {
+    try {
+      const response = await fetch(`${API_URL}/auth/users/${userId}/${action}-rider/`, {
+        method: "POST",
+        headers: authHeaders(),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(data.error || data.detail || "Could not update rider application");
+        return;
+      }
+
+      alert(data.message || "Rider application updated");
+      fetchUsers();
+    } catch (error) {
+      console.error(error);
+      alert("Server error updating rider application");
+    }
+  };
+
   const updateDriverCategory = async (driverId, driverCategory) => {
     try {
       const token = getToken();
@@ -418,6 +478,9 @@ function AdminDashboard() {
   const riders = sortAlphabetically(
     users.filter((user) => user.is_rider && !user.is_staff)
   );
+  const pendingRiders = riders.filter((user) => user.rider_status === "pending");
+  const approvedRiders = riders.filter((user) => user.rider_status === "approved");
+  const rejectedRiders = riders.filter((user) => user.rider_status === "rejected");
   const platformDrivers = sortAlphabetically(
     users.filter((user) => user.is_driver && !user.is_staff)
   );
@@ -466,12 +529,93 @@ function AdminDashboard() {
     (total, item) => total + Number(item.amount || 0),
     0
   );
+  const menuCounts = {
+    verification: pendingDrivers.length,
+    riders: riders.length,
+    drivers: platformDrivers.length,
+    rides: rides.length,
+    vehicles: drivers.length,
+    payments: paidRides.length,
+    withdrawals: pendingWithdrawals.length,
+    analytics: completedRides.length,
+  };
+  const currentViewTitle =
+    menuItems.find((item) => item.key === page)?.label || "Admin";
+  const filteredRiders = riders.filter((user) =>
+    matchesSearch(user, searchQuery, [
+      "full_name",
+      "email",
+      "phone_number",
+      "national_id_number",
+    ])
+  );
+  const filteredPlatformDrivers = platformDrivers.filter((user) =>
+    matchesSearch(user, searchQuery, [
+      "full_name",
+      "email",
+      "phone_number",
+      "driver_status",
+      "driver_category_label",
+      "national_id_number",
+    ])
+  );
+  const filteredDriverProfiles = alphabetDrivers.filter((driver) =>
+    matchesSearch(driver, searchQuery, [
+      "driver_name",
+      "driver_email",
+      "phone_number",
+      "vehicle_make",
+      "vehicle_model",
+      "vehicle_plate",
+      "driver_category_label",
+      "status",
+    ])
+  );
+  const filteredPendingDrivers = pendingDrivers.filter((driver) =>
+    matchesSearch(driver, searchQuery, [
+      "driver_name",
+      "driver_email",
+      "phone_number",
+      "vehicle_make",
+      "vehicle_model",
+      "vehicle_plate",
+    ])
+  );
+  const filteredRides = rides.filter((ride) =>
+    matchesSearch(ride, searchQuery, [
+      "id",
+      "status",
+      "pickup",
+      "destination",
+      "rider_email",
+      "driver_email",
+      "rider_name",
+      "driver_name",
+    ])
+  );
+  const filteredWithdrawals = withdrawals.filter((item) =>
+    matchesSearch(item, searchQuery, [
+      "id",
+      "driver",
+      "driver_name",
+      "status",
+      "payout_method_display",
+    ])
+  );
+
+  const refreshAdminData = () => {
+    fetchDrivers();
+    fetchUsers();
+    fetchRides();
+    fetchWithdrawals();
+    fetchOwnerPayout();
+  };
 
   return (
     <div style={pageStyle}>
       <div style={sidebar}>
         <div style={sidebarBrandStyle}>
-          <span style={brandMarkStyle}>SE</span>
+          <img src={logoSrc} alt={`${MARKET.brandName} logo`} style={brandLogoStyle} />
           <div>
             <h2 style={sidebarTitle}>Sakho Admin</h2>
             <p style={sidebarSubtitleStyle}>Operations console</p>
@@ -490,12 +634,31 @@ function AdminDashboard() {
             }}
             onClick={() => setPage(item.key)}
           >
-            {item.label}
+            <span>{item.label}</span>
+            <span style={menuCountStyle}>{menuCounts[item.key] || 0}</span>
           </button>
         ))}
       </div>
 
       <div style={content}>
+        <header style={topBarStyle}>
+          <div>
+            <span style={topBarKickerStyle}>Admin app</span>
+            <h1 style={topBarTitleStyle}>{currentViewTitle}</h1>
+          </div>
+          <div style={topBarActionsStyle}>
+            <input
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Search users, rides, vehicles"
+              style={searchInputStyle}
+            />
+            <button type="button" onClick={refreshAdminData} style={refreshButtonStyle}>
+              Refresh
+            </button>
+          </div>
+        </header>
+
         <section style={opsHeroStyle}>
           <div>
             <span style={opsKickerStyle}>Three app platform</span>
@@ -522,20 +685,37 @@ function AdminDashboard() {
               <StatCard title="Pending" value={pendingDrivers.length} />
               <StatCard title="Approved" value={approvedDrivers.length} />
               <StatCard title="Rejected" value={rejectedDrivers.length} />
+              <StatCard title="Rider Applications" value={pendingRiders.length} />
             </div>
 
             <h2 style={subHeadingStyle}>Pending driver applications</h2>
 
-            {pendingDrivers.length === 0 ? (
+            {filteredPendingDrivers.length === 0 ? (
               <p>No pending driver applications.</p>
             ) : (
-              pendingDrivers.map((driver) => (
+              filteredPendingDrivers.map((driver) => (
                 <DriverVerificationCard
                   key={driver.id}
                   driver={driver}
                   getFileUrl={getFileUrl}
                   approveDriver={approveDriver}
                   rejectDriver={rejectDriver}
+                />
+              ))
+            )}
+
+            <h2 style={subHeadingStyle}>Pending rider applications</h2>
+
+            {pendingRiders.length === 0 ? (
+              <p>No pending rider applications.</p>
+            ) : (
+              pendingRiders.map((user) => (
+                <UserAccessCard
+                  key={user.id}
+                  user={user}
+                  setUserBlocked={setUserBlocked}
+                  updateRiderApproval={updateRiderApproval}
+                  showApprovalActions
                 />
               ))
             )}
@@ -551,6 +731,10 @@ function AdminDashboard() {
 
             <div style={statsGrid}>
               <StatCard title="Total Riders" value={riders.length} />
+              <StatCard title="Showing" value={filteredRiders.length} />
+              <StatCard title="Pending Approval" value={pendingRiders.length} />
+              <StatCard title="Approved Riders" value={approvedRiders.length} />
+              <StatCard title="Rejected Riders" value={rejectedRiders.length} />
               <StatCard
                 title="Blocked Riders"
                 value={riders.filter((user) => !user.is_active).length}
@@ -561,14 +745,16 @@ function AdminDashboard() {
               />
             </div>
 
-            {riders.length === 0 ? (
+            {filteredRiders.length === 0 ? (
               <p>No riders found.</p>
             ) : (
-              riders.map((user) => (
+              filteredRiders.map((user) => (
                 <UserAccessCard
                   key={user.id}
                   user={user}
                   setUserBlocked={setUserBlocked}
+                  updateRiderApproval={updateRiderApproval}
+                  showApprovalActions
                 />
               ))
             )}
@@ -585,6 +771,7 @@ function AdminDashboard() {
 
             <div style={statsGrid}>
               <StatCard title="Total Drivers" value={platformDrivers.length} />
+              <StatCard title="Showing" value={filteredPlatformDrivers.length} />
               <StatCard title="Online Drivers" value={onlineDrivers.length} />
               <StatCard
                 title="Blocked Drivers"
@@ -597,10 +784,10 @@ function AdminDashboard() {
             </div>
 
             <h2 style={subHeadingStyle}>Driver accounts</h2>
-            {platformDrivers.length === 0 ? (
+            {filteredPlatformDrivers.length === 0 ? (
               <p>No drivers found.</p>
             ) : (
-              platformDrivers.map((user) => (
+              filteredPlatformDrivers.map((user) => (
                 <UserAccessCard
                   key={user.id}
                   user={user}
@@ -610,15 +797,17 @@ function AdminDashboard() {
             )}
 
             <h2 style={subHeadingStyle}>Vehicle and document profiles</h2>
-            {drivers.length === 0 ? (
+            {filteredDriverProfiles.length === 0 ? (
               <p>No driver profiles found.</p>
             ) : (
-              alphabetDrivers.map((driver) => (
+              filteredDriverProfiles.map((driver) => (
                 <DriverInfoCard
                   key={driver.id}
                   driver={driver}
                   getFileUrl={getFileUrl}
                   setUserBlocked={setUserBlocked}
+                  approveDriver={approveDriver}
+                  rejectDriver={rejectDriver}
                   updateDriverCategory={updateDriverCategory}
                   reintegrateDriver={reintegrateDriver}
                   driverCategories={DRIVER_CATEGORIES}
@@ -632,10 +821,10 @@ function AdminDashboard() {
           <div style={card}>
             <SectionTitle title="Ride dispatch" subtitle="Watch active and historic trip activity." />
 
-            {rides.length === 0 ? (
+            {filteredRides.length === 0 ? (
               <p>No rides found.</p>
             ) : (
-              rides.map((ride) => (
+              filteredRides.map((ride) => (
                 <div key={ride.id} style={listCard}>
                   <p>
                     <b>Ride ID:</b> {ride.id}
@@ -682,10 +871,10 @@ function AdminDashboard() {
           <div style={card}>
             <SectionTitle title="Vehicle management" subtitle="Review car type, plate, registration, and insurance." />
 
-            {drivers.length === 0 ? (
+            {filteredDriverProfiles.length === 0 ? (
               <p>No vehicles found.</p>
             ) : (
-              alphabetDrivers.map((driver) => (
+              filteredDriverProfiles.map((driver) => (
                 <div key={driver.id} style={listCard}>
                   <p>
                     <b>Driver:</b> {driver.driver_name || "N/A"}
@@ -931,10 +1120,10 @@ function AdminDashboard() {
 
             <h2 style={subHeadingStyle}>Requests list</h2>
 
-            {withdrawals.length === 0 ? (
+            {filteredWithdrawals.length === 0 ? (
               <p>No withdrawal requests.</p>
             ) : (
-              withdrawals.map((item) => (
+              filteredWithdrawals.map((item) => (
                 <div key={item.id} style={listCard}>
                   <p>
                     <b>Request ID:</b> {item.id}
@@ -1024,7 +1213,7 @@ function DriverVerificationCard({
 }) {
   return (
     <div style={verificationCard}>
-      <div>
+      <div style={profilePhotoColumnStyle}>
         {driver.driver_photo ? (
           <img
             src={getFileUrl(driver.driver_photo)}
@@ -1036,36 +1225,26 @@ function DriverVerificationCard({
         )}
       </div>
 
-      <div style={{ flex: 1 }}>
-        <h2>{driver.driver_name || "Driver Name"}</h2>
+      <div style={reviewContentStyle}>
+        <div style={reviewHeaderStyle}>
+          <div>
+            <span style={sectionKickerStyle}>Driver application</span>
+            <h2 style={reviewTitleStyle}>{driver.driver_name || "Driver Name"}</h2>
+            <p style={accessMetaStyle}>{driver.driver_email || "No email"}</p>
+          </div>
+          <StatusBadge label={driver.status || "pending"} />
+        </div>
 
-        <p>
-          <b>Email:</b> {driver.driver_email || "N/A"}
-        </p>
-
-        <p>
-          <b>Status:</b> {driver.status}
-        </p>
-
-        <p>
-          <b>Phone:</b> {driver.phone_number || "N/A"}
-        </p>
-
-        <p>
-          <b>Vehicle:</b> {driver.vehicle_make} {driver.vehicle_model}
-        </p>
-
-        <p>
-          <b>Type:</b> {driver.car_type}
-        </p>
-
-        <p>
-          <b>Color:</b> {driver.vehicle_color}
-        </p>
-
-        <p>
-          <b>Plate:</b> {driver.vehicle_plate}
-        </p>
+        <div style={detailGridStyle}>
+          <DetailItem label="Phone" value={driver.phone_number || "N/A"} />
+          <DetailItem
+            label="Vehicle"
+            value={`${driver.vehicle_make || ""} ${driver.vehicle_model || ""}`.trim() || "N/A"}
+          />
+          <DetailItem label="Type" value={driver.car_type || "N/A"} />
+          <DetailItem label="Color" value={driver.vehicle_color || "N/A"} />
+          <DetailItem label="Plate" value={driver.vehicle_plate || "N/A"} />
+        </div>
 
         <div style={documentLinks}>
           {driver.vehicle_registration && (
@@ -1091,24 +1270,29 @@ function DriverVerificationCard({
           )}
         </div>
 
-        <div style={{ marginTop: "15px" }}>
-          <button
-            style={approveButton}
-            onClick={() => approveDriver(driver.id)}
-          >
-            Approve Driver
-          </button>
-
-          <button style={rejectButton} onClick={() => rejectDriver(driver.id)}>
-            Reject Driver
-          </button>
-        </div>
+        <ReviewActions
+          approveLabel="Approve Driver"
+          rejectLabel="Reject Driver"
+          onApprove={() => approveDriver(driver.id)}
+          onReject={() => rejectDriver(driver.id)}
+          canApprove={driver.status !== "approved"}
+          canReject={driver.status !== "rejected"}
+        />
       </div>
     </div>
   );
 }
 
-function UserAccessCard({ user, setUserBlocked }) {
+function UserAccessCard({
+  user,
+  setUserBlocked,
+  updateRiderApproval,
+  showApprovalActions = false,
+}) {
+  const isRider = user.is_rider && !user.is_driver;
+  const canApproveRider = isRider && user.rider_status !== "approved";
+  const canRejectRider = isRider && user.rider_status !== "rejected";
+
   return (
     <div style={accessCardStyle}>
       <div>
@@ -1116,6 +1300,27 @@ function UserAccessCard({ user, setUserBlocked }) {
         <p style={accessMetaStyle}>{user.email}</p>
         <div style={accessPillRowStyle}>
           <span style={rolePillStyle}>{user.is_driver ? "Driver" : "Rider"}</span>
+          {isRider && (
+            <span
+              style={{
+                ...rolePillStyle,
+                background:
+                  user.rider_status === "approved"
+                    ? "#ecfdf3"
+                    : user.rider_status === "rejected"
+                      ? "#fee2e2"
+                      : "#fff7ed",
+                color:
+                  user.rider_status === "approved"
+                    ? "#166534"
+                    : user.rider_status === "rejected"
+                      ? "#b91c1c"
+                      : "#9a3412",
+              }}
+            >
+              Rider {user.rider_status_label || user.rider_status || "Pending"}
+            </span>
+          )}
           <span style={rolePillStyle}>
             Driver score {Number(user.driver_average_rating || 0).toFixed(1)}
           </span>
@@ -1179,12 +1384,25 @@ function UserAccessCard({ user, setUserBlocked }) {
         </p>
       </div>
 
-      <button
-        style={user.is_active ? blockButtonStyle : unblockButtonStyle}
-        onClick={() => setUserBlocked(user.id, user.is_active)}
-      >
-        {user.is_active ? "Block user" : "Unblock user"}
-      </button>
+      <div style={actionClusterStyle}>
+        {showApprovalActions && isRider && (
+          <ReviewActions
+            approveLabel="Approve Rider"
+            rejectLabel="Reject Rider"
+            onApprove={() => updateRiderApproval(user.id, "approve")}
+            onReject={() => updateRiderApproval(user.id, "reject")}
+            canApprove={canApproveRider}
+            canReject={canRejectRider}
+          />
+        )}
+
+        <button
+          style={user.is_active ? blockButtonStyle : unblockButtonStyle}
+          onClick={() => setUserBlocked(user.id, user.is_active)}
+        >
+          {user.is_active ? "Block user" : "Unblock user"}
+        </button>
+      </div>
     </div>
   );
 }
@@ -1193,98 +1411,114 @@ function DriverInfoCard({
   driver,
   getFileUrl,
   setUserBlocked,
+  approveDriver,
+  rejectDriver,
   updateDriverCategory,
   reintegrateDriver,
   driverCategories,
 }) {
+  const canApproveDriver = driver.status !== "approved";
+  const canRejectDriver = driver.status !== "rejected";
+
   return (
-    <div style={listCard}>
-      {driver.driver_photo ? (
-        <img
-          src={getFileUrl(driver.driver_photo)}
-          alt="Driver"
-          style={driverPhoto}
+    <div style={driverProfileCardStyle}>
+      <div style={driverProfileMainStyle}>
+        <div style={profilePhotoColumnStyle}>
+          {driver.driver_photo ? (
+            <img
+              src={getFileUrl(driver.driver_photo)}
+              alt="Driver"
+              style={driverPhoto}
+            />
+          ) : (
+            <div style={placeholderPhoto}>DR</div>
+          )}
+          <StatusBadge label={driver.is_active ? "Active" : "Blocked"} />
+        </div>
+
+        <div style={reviewContentStyle}>
+          <div style={reviewHeaderStyle}>
+            <div>
+              <span style={sectionKickerStyle}>Driver profile</span>
+              <h3 style={reviewTitleStyle}>{driver.driver_name || "N/A"}</h3>
+              <p style={accessMetaStyle}>{driver.driver_email || "N/A"}</p>
+            </div>
+            <StatusBadge label={driver.status || "pending"} />
+          </div>
+
+          <div style={detailGridStyle}>
+            <DetailItem label="Phone" value={driver.phone_number || "N/A"} />
+            <DetailItem
+              label="Member since"
+              value={`${driver.member_since_year || "N/A"} · ${formatYearsUsingApp(driver.years_using_app)}`}
+            />
+            <DetailItem label="Category" value={driver.driver_category_label || "Gold"} />
+            <DetailItem
+              label="Vehicle"
+              value={`${driver.vehicle_make || ""} ${driver.vehicle_model || ""}`.trim() || "N/A"}
+            />
+            <DetailItem label="Plate" value={driver.vehicle_plate || "N/A"} />
+          </div>
+
+          <label style={driverCategoryControlStyle}>
+            <span>Driver category</span>
+            <select
+              value={driver.driver_category || "gold"}
+              onChange={(event) => updateDriverCategory(driver.id, event.target.value)}
+              style={driverCategorySelectStyle}
+            >
+              {driverCategories.map((category) => (
+                <option key={category.value} value={category.value}>
+                  {category.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <div style={reviewPanelStyle}>
+        <div>
+          <span style={sectionKickerStyle}>Application review</span>
+          <p style={reviewHintStyle}>
+            Approve qualified drivers, reject incomplete applications, or reintegrate a driver after review.
+          </p>
+        </div>
+
+        <ReviewActions
+          approveLabel="Approve Driver"
+          rejectLabel="Reject Driver"
+          onApprove={() => approveDriver(driver.id)}
+          onReject={() => rejectDriver(driver.id)}
+          canApprove={canApproveDriver}
+          canReject={canRejectDriver}
         />
-      ) : (
-        <div style={placeholderPhoto}>👤</div>
-      )}
 
-      <p>
-        <b>Name:</b> {driver.driver_name || "N/A"}
-      </p>
+        <div style={actionClusterStyle}>
+          <button
+            style={driver.is_active ? dangerOutlineButtonStyle : successOutlineButtonStyle}
+            onClick={() => setUserBlocked(driver.user_id, driver.is_active)}
+          >
+            {driver.is_active ? "Block Driver" : "Unblock Driver"}
+          </button>
 
-      <p>
-        <b>Email:</b> {driver.driver_email || "N/A"}
-      </p>
+          <button
+            style={{
+              ...neutralButtonStyle,
+              opacity: driver.is_active && driver.status === "approved" ? 0.55 : 1,
+              cursor: driver.is_active && driver.status === "approved" ? "not-allowed" : "pointer",
+            }}
+            disabled={driver.is_active && driver.status === "approved"}
+            onClick={() => reintegrateDriver(driver.id)}
+          >
+            Reintegrate Driver
+          </button>
+        </div>
 
-      <p>
-        <b>Status:</b> {driver.status}
-      </p>
-
-      <p>
-        <b>Member since:</b> {driver.member_since_year || "N/A"} (
-        {formatYearsUsingApp(driver.years_using_app)})
-      </p>
-
-      <p>
-        <b>Category:</b> {driver.driver_category_label || "Gold"}
-      </p>
-
-      <label style={driverCategoryControlStyle}>
-        <span>Driver category</span>
-        <select
-          value={driver.driver_category || "gold"}
-          onChange={(event) => updateDriverCategory(driver.id, event.target.value)}
-          style={driverCategorySelectStyle}
-        >
-          {driverCategories.map((category) => (
-            <option key={category.value} value={category.value}>
-              {category.label}
-            </option>
-          ))}
-        </select>
-      </label>
-
-      <p>
-        <b>Access:</b> {driver.is_active ? "Active" : "Blocked"}
-      </p>
-
-      <p>
-        <b>Phone:</b> {driver.phone_number || "N/A"}
-      </p>
-
-      <p>
-        <b>Vehicle:</b> {driver.vehicle_make} {driver.vehicle_model}
-      </p>
-
-      <p>
-        <b>Plate:</b> {driver.vehicle_plate}
-      </p>
-
-      <button
-        style={driver.is_active ? blockButtonStyle : unblockButtonStyle}
-        onClick={() => setUserBlocked(driver.user_id, driver.is_active)}
-      >
-        {driver.is_active ? "Block Driver" : "Unblock Driver"}
-      </button>
-
-      <button
-        style={{
-          ...approveButton,
-          opacity: driver.is_active && driver.status === "approved" ? 0.55 : 1,
-          cursor: driver.is_active && driver.status === "approved" ? "not-allowed" : "pointer",
-        }}
-        disabled={driver.is_active && driver.status === "approved"}
-        onClick={() => reintegrateDriver(driver.id)}
-      >
-        Reintegrate Driver
-      </button>
-
-      {driver.is_active && driver.status === "approved" && (
-        <p style={accessMetaStyle}>
-          Driver is already active and approved.
-        </p>
-      )}
+        {driver.is_active && driver.status === "approved" && (
+          <p style={reviewDoneStyle}>Driver is active and approved.</p>
+        )}
+      </div>
     </div>
   );
 }
@@ -1294,6 +1528,61 @@ function StatCard({ title, value }) {
     <div style={statCard}>
       <h2>{value}</h2>
       <p>{title}</p>
+    </div>
+  );
+}
+
+function StatusBadge({ label }) {
+  return (
+    <span style={{ ...statusBadgeStyle, ...getStatusBadgeStyle(label) }}>
+      {String(label || "pending").replace("_", " ")}
+    </span>
+  );
+}
+
+function DetailItem({ label, value }) {
+  return (
+    <div style={detailItemStyle}>
+      <span style={detailItemLabelStyle}>{label}</span>
+      <strong style={detailItemValueStyle}>{value}</strong>
+    </div>
+  );
+}
+
+function ReviewActions({
+  approveLabel,
+  rejectLabel,
+  onApprove,
+  onReject,
+  canApprove = true,
+  canReject = true,
+}) {
+  return (
+    <div style={reviewActionsStyle}>
+      <button
+        type="button"
+        style={{
+          ...reviewApproveButtonStyle,
+          opacity: canApprove ? 1 : 0.55,
+          cursor: canApprove ? "pointer" : "not-allowed",
+        }}
+        disabled={!canApprove}
+        onClick={onApprove}
+      >
+        {approveLabel}
+      </button>
+      <button
+        type="button"
+        style={{
+          ...reviewRejectButtonStyle,
+          opacity: canReject ? 1 : 0.55,
+          cursor: canReject ? "pointer" : "not-allowed",
+        }}
+        disabled={!canReject}
+        onClick={onReject}
+      >
+        {rejectLabel}
+      </button>
     </div>
   );
 }
@@ -1310,16 +1599,22 @@ function SectionTitle({ title, subtitle }) {
 
 const pageStyle = {
   display: "grid",
-  gridTemplateColumns: "280px minmax(0, 1fr)",
+  gridTemplateColumns: "300px minmax(0, 1fr)",
   minHeight: "100vh",
-  background: "#eef2f6",
+  background: "#0b0f14",
+  color: "#f8fafc",
 };
 
 const sidebar = {
-  background: "#020617",
+  position: "sticky",
+  top: 0,
+  height: "100vh",
+  background: "#000000",
   color: "white",
   padding: "24px",
-  borderRight: "1px solid rgba(255, 255, 255, 0.08)",
+  borderRight: "1px solid #1f2937",
+  boxSizing: "border-box",
+  overflowY: "auto",
 };
 
 const sidebarBrandStyle = {
@@ -1329,16 +1624,13 @@ const sidebarBrandStyle = {
   marginBottom: "26px",
 };
 
-const brandMarkStyle = {
-  width: "44px",
-  height: "44px",
-  borderRadius: "12px",
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  background: "#12b76a",
-  color: "#052e1a",
-  fontWeight: 900,
+const brandLogoStyle = {
+  width: "48px",
+  height: "48px",
+  borderRadius: "14px",
+  objectFit: "cover",
+  border: "1px solid rgba(255, 255, 255, 0.16)",
+  boxShadow: "0 14px 28px rgba(0, 0, 0, 0.28)",
 };
 
 const sidebarTitle = {
@@ -1358,28 +1650,104 @@ const menuButton = {
   padding: "13px 14px",
   marginBottom: "9px",
   border: "1px solid",
-  borderRadius: "10px",
+  borderRadius: "8px",
   cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "10px",
   textAlign: "left",
   fontWeight: 900,
+  transition: "background 160ms ease, border-color 160ms ease, color 160ms ease",
+};
+
+const menuCountStyle = {
+  minWidth: "30px",
+  height: "24px",
+  borderRadius: "999px",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  background: "rgba(255, 255, 255, 0.14)",
+  fontSize: "0.76rem",
+  fontWeight: 950,
 };
 
 const content = {
-  padding: "24px",
+  padding: "22px",
   minWidth: 0,
 };
 
-const opsHeroStyle = {
-  background: "linear-gradient(135deg, #111827 0%, #1f2937 55%, #064e3b 100%)",
+const topBarStyle = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "16px",
+  background: "#111827",
+  border: "1px solid #1f2937",
+  borderRadius: "10px",
+  padding: "16px 18px",
+  marginBottom: "16px",
+  boxShadow: "0 18px 36px rgba(0, 0, 0, 0.22)",
+};
+
+const topBarKickerStyle = {
+  color: "#64748b",
+  fontSize: "0.72rem",
+  fontWeight: 950,
+  textTransform: "uppercase",
+};
+
+const topBarTitleStyle = {
+  margin: "3px 0 0",
   color: "white",
-  borderRadius: "18px",
+  fontSize: "1.45rem",
+  letterSpacing: 0,
+};
+
+const topBarActionsStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: "10px",
+  flexWrap: "wrap",
+  justifyContent: "flex-end",
+};
+
+const searchInputStyle = {
+  width: "min(360px, 48vw)",
+  minHeight: "44px",
+  border: "1px solid #374151",
+  borderRadius: "8px",
+  padding: "0 14px",
+  color: "white",
+  fontWeight: 800,
+  background: "#0b0f14",
+  outline: "none",
+};
+
+const refreshButtonStyle = {
+  minHeight: "44px",
+  border: "none",
+  borderRadius: "8px",
+  background: "white",
+  color: "#111827",
+  padding: "0 16px",
+  cursor: "pointer",
+  fontWeight: 950,
+};
+
+const opsHeroStyle = {
+  background: "#111827",
+  color: "white",
+  borderRadius: "10px",
   padding: "24px",
   display: "grid",
   gridTemplateColumns: "minmax(260px, 0.8fr) minmax(300px, 1.2fr)",
   gap: "18px",
   alignItems: "center",
   marginBottom: "18px",
-  boxShadow: "0 18px 42px rgba(15, 23, 42, 0.14)",
+  border: "1px solid #1f2937",
+  boxShadow: "0 18px 36px rgba(0, 0, 0, 0.22)",
 };
 
 const opsKickerStyle = {
@@ -1409,29 +1777,31 @@ const opsStatsGridStyle = {
 };
 
 const card = {
-  background: "white",
+  background: "#111827",
   padding: "24px",
-  borderRadius: "18px",
-  border: "1px solid #e5e7eb",
-  boxShadow: "0 18px 42px rgba(15,23,42,0.08)",
+  borderRadius: "10px",
+  border: "1px solid #1f2937",
+  boxShadow: "0 18px 36px rgba(0, 0, 0, 0.2)",
 };
 
 const listCard = {
-  background: "#f8fafc",
-  padding: "20px",
-  borderRadius: "12px",
+  background: "#0b0f14",
+  padding: "16px",
+  borderRadius: "8px",
   marginBottom: "14px",
-  border: "1px solid #e5e7eb",
+  border: "1px solid #1f2937",
+  boxShadow: "none",
 };
 
 const verificationCard = {
   display: "flex",
-  gap: "25px",
-  background: "#f8fafc",
-  padding: "25px",
-  borderRadius: "14px",
+  gap: "18px",
+  background: "#0b0f14",
+  padding: "18px",
+  borderRadius: "8px",
   marginBottom: "16px",
-  border: "1px solid #e5e7eb",
+  border: "1px solid #1f2937",
+  boxShadow: "none",
 };
 
 const statsGrid = {
@@ -1442,11 +1812,12 @@ const statsGrid = {
 };
 
 const statCard = {
-  background: "#f8fafc",
-  padding: "18px",
-  borderRadius: "12px",
-  border: "1px solid rgba(148, 163, 184, 0.2)",
-  minHeight: "94px",
+  background: "#0b0f14",
+  padding: "16px",
+  borderRadius: "8px",
+  border: "1px solid #1f2937",
+  minHeight: "86px",
+  boxShadow: "none",
 };
 
 const sectionTitleWrapStyle = {
@@ -1464,40 +1835,40 @@ const sectionKickerStyle = {
 
 const sectionTitleStyle = {
   margin: 0,
-  color: "#111827",
+  color: "white",
   fontSize: "1.65rem",
 };
 
 const sectionSubtitleStyle = {
   margin: "6px 0 0",
-  color: "#64748b",
+  color: "#9ca3af",
   lineHeight: 1.45,
 };
 
 const subHeadingStyle = {
   marginTop: "26px",
-  color: "#111827",
+  color: "white",
 };
 
 const approveButton = {
-  padding: "10px 20px",
+  padding: "11px 18px",
   border: "none",
-  borderRadius: "8px",
-  background: "#16a34a",
+  borderRadius: "12px",
+  background: "#12b76a",
   color: "white",
   marginRight: "10px",
   cursor: "pointer",
-  fontWeight: "bold",
+  fontWeight: 950,
 };
 
 const rejectButton = {
-  padding: "10px 20px",
+  padding: "11px 18px",
   border: "none",
-  borderRadius: "8px",
+  borderRadius: "12px",
   background: "#dc2626",
   color: "white",
   cursor: "pointer",
-  fontWeight: "bold",
+  fontWeight: 950,
 };
 
 const accessCardStyle = {
@@ -1505,17 +1876,18 @@ const accessCardStyle = {
   justifyContent: "space-between",
   alignItems: "center",
   gap: "16px",
-  background: "#f8fafc",
-  padding: "18px",
-  borderRadius: "12px",
+  background: "#0b0f14",
+  padding: "16px",
+  borderRadius: "8px",
   marginBottom: "12px",
-  border: "1px solid #e5e7eb",
+  border: "1px solid #1f2937",
   flexWrap: "wrap",
+  boxShadow: "none",
 };
 
 const accessTitleStyle = {
   margin: 0,
-  color: "#111827",
+  color: "white",
 };
 
 const accessMetaStyle = {
@@ -1528,6 +1900,176 @@ const accessPillRowStyle = {
   display: "flex",
   gap: "8px",
   flexWrap: "wrap",
+};
+
+const actionClusterStyle = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "flex-end",
+  gap: "10px",
+  flexWrap: "wrap",
+};
+
+const driverProfileCardStyle = {
+  background: "#0b0f14",
+  border: "1px solid #1f2937",
+  borderRadius: "8px",
+  padding: "16px",
+  marginBottom: "14px",
+  display: "grid",
+  gap: "16px",
+  boxShadow: "none",
+};
+
+const driverProfileMainStyle = {
+  display: "grid",
+  gridTemplateColumns: "132px minmax(0, 1fr)",
+  gap: "18px",
+  alignItems: "start",
+};
+
+const profilePhotoColumnStyle = {
+  display: "grid",
+  justifyItems: "center",
+  gap: "10px",
+};
+
+const reviewContentStyle = {
+  minWidth: 0,
+};
+
+const reviewHeaderStyle = {
+  display: "flex",
+  alignItems: "flex-start",
+  justifyContent: "space-between",
+  gap: "12px",
+  marginBottom: "12px",
+};
+
+const reviewTitleStyle = {
+  margin: "2px 0 0",
+  color: "white",
+  fontSize: "1.25rem",
+  letterSpacing: 0,
+};
+
+const detailGridStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+  gap: "10px",
+};
+
+const detailItemStyle = {
+  display: "grid",
+  gap: "4px",
+  background: "#111827",
+  border: "1px solid #1f2937",
+  borderRadius: "8px",
+  padding: "10px 12px",
+  minWidth: 0,
+};
+
+const detailItemLabelStyle = {
+  color: "#64748b",
+  fontSize: "0.72rem",
+  fontWeight: 950,
+  textTransform: "uppercase",
+};
+
+const detailItemValueStyle = {
+  color: "white",
+  fontSize: "0.92rem",
+  overflowWrap: "anywhere",
+};
+
+const reviewPanelStyle = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "14px",
+  flexWrap: "wrap",
+  borderTop: "1px solid #1f2937",
+  paddingTop: "14px",
+};
+
+const reviewHintStyle = {
+  margin: "4px 0 0",
+  color: "#64748b",
+  fontWeight: 700,
+  maxWidth: "560px",
+};
+
+const reviewActionsStyle = {
+  display: "inline-flex",
+  gap: "8px",
+  padding: "5px",
+  borderRadius: "8px",
+  background: "#111827",
+  border: "1px solid #1f2937",
+  flexWrap: "wrap",
+};
+
+const reviewApproveButtonStyle = {
+  minHeight: "42px",
+  border: "none",
+  borderRadius: "6px",
+  background: "#16a34a",
+  color: "white",
+  padding: "0 14px",
+  fontWeight: 950,
+};
+
+const reviewRejectButtonStyle = {
+  ...reviewApproveButtonStyle,
+  background: "#ef4444",
+};
+
+const statusBadgeStyle = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  minHeight: "30px",
+  borderRadius: "999px",
+  border: "1px solid",
+  padding: "0 10px",
+  fontSize: "0.76rem",
+  fontWeight: 950,
+  textTransform: "capitalize",
+  whiteSpace: "nowrap",
+};
+
+const neutralButtonStyle = {
+  minHeight: "42px",
+  border: "1px solid #374151",
+  borderRadius: "6px",
+  background: "#111827",
+  color: "white",
+  padding: "0 14px",
+  cursor: "pointer",
+  fontWeight: 950,
+};
+
+const dangerOutlineButtonStyle = {
+  ...neutralButtonStyle,
+  borderColor: "#fecaca",
+  color: "#b91c1c",
+  background: "#fff7f7",
+};
+
+const successOutlineButtonStyle = {
+  ...neutralButtonStyle,
+  borderColor: "#bbf7d0",
+  color: "#166534",
+  background: "#f0fdf4",
+};
+
+const reviewDoneStyle = {
+  margin: 0,
+  padding: "10px 12px",
+  borderRadius: "12px",
+  background: "#ecfdf3",
+  color: "#166534",
+  fontWeight: 900,
 };
 
 const rolePillStyle = {
@@ -1545,17 +2087,17 @@ const driverCategoryControlStyle = {
   gap: "8px",
   margin: "14px 0",
   maxWidth: "280px",
-  color: "#334155",
+  color: "#d1d5db",
   fontWeight: 900,
 };
 
 const driverCategorySelectStyle = {
   width: "100%",
   minHeight: "44px",
-  border: "1px solid #cbd5e1",
-  borderRadius: "8px",
-  background: "white",
-  color: "#111827",
+  border: "1px solid #374151",
+  borderRadius: "6px",
+  background: "#0b0f14",
+  color: "white",
   padding: "0 12px",
   fontWeight: 900,
   cursor: "pointer",
@@ -1563,9 +2105,9 @@ const driverCategorySelectStyle = {
 
 const ownerPayoutPanelStyle = {
   marginTop: "26px",
-  background: "#f8fafc",
-  border: "1px solid #e5e7eb",
-  borderRadius: "14px",
+  background: "#0b0f14",
+  border: "1px solid #1f2937",
+  borderRadius: "8px",
   padding: "20px",
   display: "grid",
   gridTemplateColumns: "minmax(260px, 1fr) minmax(280px, 430px)",
@@ -1574,14 +2116,14 @@ const ownerPayoutPanelStyle = {
 };
 
 const ownerPayoutSavedStyle = {
-  background: "white",
-  border: "1px solid #e5e7eb",
-  borderRadius: "10px",
+  background: "#111827",
+  border: "1px solid #1f2937",
+  borderRadius: "8px",
   padding: "12px",
   marginBottom: "10px",
   display: "grid",
   gap: "5px",
-  color: "#111827",
+  color: "white",
   textTransform: "capitalize",
 };
 
@@ -1593,17 +2135,17 @@ const ownerPayoutFormStyle = {
 const ownerPayoutFieldStyle = {
   display: "grid",
   gap: "7px",
-  color: "#334155",
+  color: "#d1d5db",
   fontWeight: 900,
 };
 
 const ownerPayoutInputStyle = {
   width: "100%",
   minHeight: "44px",
-  border: "1px solid #cbd5e1",
-  borderRadius: "8px",
-  background: "white",
-  color: "#111827",
+  border: "1px solid #374151",
+  borderRadius: "6px",
+  background: "#0b0f14",
+  color: "white",
   padding: "0 12px",
   fontWeight: 800,
   boxSizing: "border-box",
@@ -1612,9 +2154,9 @@ const ownerPayoutInputStyle = {
 const ownerPayoutButtonStyle = {
   minHeight: "46px",
   border: "none",
-  borderRadius: "8px",
-  background: "#111827",
-  color: "white",
+  borderRadius: "6px",
+  background: "white",
+  color: "#111827",
   cursor: "pointer",
   fontWeight: 900,
 };
@@ -1631,7 +2173,7 @@ const ownerPayoutMessageStyle = {
 const blockButtonStyle = {
   padding: "11px 16px",
   border: "none",
-  borderRadius: "8px",
+  borderRadius: "6px",
   background: "#dc2626",
   color: "white",
   cursor: "pointer",
@@ -1641,7 +2183,7 @@ const blockButtonStyle = {
 const unblockButtonStyle = {
   padding: "11px 16px",
   border: "none",
-  borderRadius: "8px",
+  borderRadius: "6px",
   background: "#16a34a",
   color: "white",
   cursor: "pointer",
@@ -1649,22 +2191,24 @@ const unblockButtonStyle = {
 };
 
 const driverPhoto = {
-  width: "110px",
-  height: "110px",
-  borderRadius: "50%",
+  width: "96px",
+  height: "96px",
+  borderRadius: "8px",
   objectFit: "cover",
   marginBottom: "10px",
 };
 
 const placeholderPhoto = {
-  width: "110px",
-  height: "110px",
-  borderRadius: "50%",
-  background: "#ddd",
+  width: "96px",
+  height: "96px",
+  borderRadius: "8px",
+  background: "#1f2937",
+  color: "#9ca3af",
   display: "flex",
   justifyContent: "center",
   alignItems: "center",
-  fontSize: "45px",
+  fontSize: "1rem",
+  fontWeight: 950,
   marginBottom: "10px",
 };
 
@@ -1678,9 +2222,9 @@ const documentLinks = {
 const documentButton = {
   display: "inline-block",
   padding: "10px 14px",
-  background: "#111827",
-  color: "white",
-  borderRadius: "8px",
+  background: "white",
+  color: "#111827",
+  borderRadius: "6px",
   textDecoration: "none",
   fontWeight: "bold",
 };

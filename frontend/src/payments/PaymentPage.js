@@ -5,7 +5,7 @@ import { formatMoney } from "../marketConfig";
 
 function PaymentPage({ ride }) {
   const [payment, setPayment] = useState(null);
-  const [tipPercentage, setTipPercentage] = useState(15);
+  const [tipPercentage, setTipPercentage] = useState(10);
   const [selectedMethod, setSelectedMethod] = useState("cash");
 
   const [rating, setRating] = useState(0);
@@ -20,6 +20,7 @@ function PaymentPage({ ride }) {
   const isCancelled = rideStatus === "cancelled" || paymentStatus === "cancelled";
   const isAutoPaid = paymentStatus === "paid";
   const isAuthorized = paymentStatus === "authorized";
+  const isLockedForCancellation = isCancelled;
 
   const paymentMethods = [
     {
@@ -180,7 +181,7 @@ function PaymentPage({ ride }) {
           <p style={hintStyle}>Tips go directly to the driver after drop-off.</p>
 
           <div style={tipGridStyle}>
-            {[10, 15, 20].map((percent) => (
+            {[0, 5, 10, 15, 20].map((percent) => (
               <button
                 key={percent}
                 onClick={() => setTipPercentage(percent)}
@@ -238,18 +239,18 @@ function PaymentPage({ ride }) {
           <button
             style={{
               ...buttonStyle,
-              background: isCancelled || isAutoPaid || isAuthorized ? "#94a3b8" : "#111827",
-              cursor: isCancelled || isAutoPaid || isAuthorized ? "not-allowed" : "pointer",
+              background: isLockedForCancellation ? "#94a3b8" : "#111827",
+              cursor: isLockedForCancellation ? "not-allowed" : "pointer",
             }}
-            disabled={isCancelled || isAutoPaid || isAuthorized}
+            disabled={isLockedForCancellation}
             onClick={() => makePayment(selectedMethod)}
           >
             {isCancelled
               ? "Ride cancelled"
               : isAutoPaid
-                ? "Payment already completed"
+                ? `Update tip to ${tipPercentage}%`
                 : isAuthorized
-                  ? "Payment authorized"
+                  ? `Save ${tipPercentage}% tip`
                   : `Pay ${formatMoney(totalAmount)}`}
           </button>
         </section>
@@ -315,20 +316,7 @@ function PaymentPage({ ride }) {
         <div style={ratingBoxStyle}>
           <h3>⭐ Rate Your Driver</h3>
 
-          <div style={starsBoxStyle}>
-            {[1, 2, 3, 4, 5].map((star) => (
-              <button
-                key={star}
-                onClick={() => setRating(star)}
-                style={{
-                  ...starButtonStyle,
-                  background: rating >= star ? "#f59e0b" : "#e5e7eb",
-                }}
-              >
-                ⭐
-              </button>
-            ))}
-          </div>
+          <StarRating value={rating} onChange={setRating} />
 
           <textarea
             value={review}
@@ -364,6 +352,28 @@ function SummaryRow({ label, value }) {
     <div style={summaryRowStyle}>
       <span>{label}</span>
       <strong>{value}</strong>
+    </div>
+  );
+}
+
+function StarRating({ value, onChange }) {
+  return (
+    <div style={starsBoxStyle} aria-label="Choose rating">
+      {[1, 2, 3, 4, 5].map((star) => (
+        <button
+          key={star}
+          type="button"
+          onClick={() => onChange(star)}
+          aria-label={`${star} star${star === 1 ? "" : "s"}`}
+          style={{
+            ...starButtonStyle,
+            color: value >= star ? "#f59e0b" : "#cbd5e1",
+            transform: value >= star ? "scale(1.05)" : "scale(1)",
+          }}
+        >
+          ★
+        </button>
+      ))}
     </div>
   );
 }
@@ -573,11 +583,16 @@ const starsBoxStyle = {
 };
 
 const starButtonStyle = {
-  fontSize: "24px",
-  padding: "10px",
+  width: "46px",
+  height: "46px",
+  fontSize: "30px",
   border: "none",
-  borderRadius: "10px",
+  borderRadius: "50%",
+  background: "white",
   cursor: "pointer",
+  lineHeight: 1,
+  boxShadow: "0 8px 18px rgba(15, 23, 42, 0.08)",
+  transition: "transform 120ms ease, color 120ms ease",
 };
 
 const textareaStyle = {

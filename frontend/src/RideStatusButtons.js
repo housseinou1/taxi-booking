@@ -1,10 +1,37 @@
-import React, { useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { API_URL } from "./apiConfig";
 
 function RideStatusButtons({ ride, onStatusChange }) {
   const [workingAction, setWorkingAction] = useState("");
+  const [navigationStarted, setNavigationStarted] = useState(() =>
+    localStorage.getItem(`ride_${ride.id}_navigation_started`) === "true"
+  );
+  const pickupNavigationUrls = getNavigationUrls(ride, "pickup");
+
+  const markNavigationStarted = useCallback(() => {
+    localStorage.setItem(`ride_${ride.id}_navigation_started`, "true");
+    setNavigationStarted(true);
+  }, [ride.id]);
+
+  useEffect(() => {
+    if (
+      !["accepted", "driver_arriving"].includes(ride.status) ||
+      navigationStarted ||
+      !pickupNavigationUrls
+    ) {
+      return;
+    }
+
+    markNavigationStarted();
+    window.open(pickupNavigationUrls.google, "_blank", "noopener,noreferrer");
+  }, [markNavigationStarted, navigationStarted, pickupNavigationUrls, ride.status]);
 
   const updateRideStatus = async (endpoint) => {
+    if (endpoint === "start" && !navigationStarted) {
+      alert("Choose Google Maps or Waze before starting the ride.");
+      return;
+    }
+
     try {
       setWorkingAction(endpoint);
 
@@ -49,14 +76,22 @@ function RideStatusButtons({ ride, onStatusChange }) {
       )}
 
       {["accepted", "driver_arriving"].includes(ride.status) && (
-        <SlideRideAction
-          label="Slide to start ride"
-          completeLabel="Starting ride..."
-          color="#f97316"
-          disabled={Boolean(workingAction)}
-          isWorking={workingAction === "start"}
-          onComplete={() => updateRideStatus("start")}
-        />
+        <>
+          <NavigationChoice
+            urls={pickupNavigationUrls}
+            selected={navigationStarted}
+            onChoose={markNavigationStarted}
+          />
+          <SlideRideAction
+            label={navigationStarted ? "Slide to start ride" : "Opening map..."}
+            completeLabel="Starting ride..."
+            color="#f97316"
+            disabled={Boolean(workingAction) || !navigationStarted}
+            isWorking={workingAction === "start"}
+            onComplete={() => updateRideStatus("start")}
+            onDisabledAttempt={() => alert("Choose Google Maps or Waze before starting the ride.")}
+          />
+        </>
       )}
 
       {ride.status === "in_progress" && (
@@ -76,6 +111,73 @@ function RideStatusButtons({ ride, onStatusChange }) {
   );
 }
 
+const getRidePoint = (ride, target) => {
+  const lat = target === "pickup" ? ride.pickup_lat : ride.destination_lat;
+  const lng = target === "pickup" ? ride.pickup_lng : ride.destination_lng;
+
+  if (lat === null || lat === undefined || lng === null || lng === undefined) {
+    return null;
+  }
+
+  return {
+    lat: Number(lat),
+    lng: Number(lng),
+  };
+};
+
+const getNavigationUrls = (ride, target) => {
+  const point = getRidePoint(ride, target);
+
+  if (!point || Number.isNaN(point.lat) || Number.isNaN(point.lng)) {
+    return null;
+  }
+
+  const destination = `${point.lat},${point.lng}`;
+
+  return {
+    google: `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}&travelmode=driving`,
+    waze: `https://www.waze.com/ul?ll=${encodeURIComponent(destination)}&navigate=yes&zoom=17`,
+  };
+};
+
+function NavigationChoice({ urls, selected, onChoose }) {
+  if (!urls) {
+    return (
+      <div style={navigationNoticeStyle}>
+        Pickup GPS is missing. Admin must update the ride pickup location.
+      </div>
+    );
+  }
+
+  return (
+    <div style={navigationChoiceStyle}>
+      <span style={navigationTitleStyle}>
+        {selected ? "Navigation selected" : "Choose map before starting"}
+      </span>
+      <div style={navigationButtonGridStyle}>
+        <a
+          href={urls.google}
+          target="_blank"
+          rel="noreferrer"
+          onClick={onChoose}
+          style={navigationButtonStyle}
+        >
+          Google Maps
+        </a>
+        <a
+          href={urls.waze}
+          target="_blank"
+          rel="noreferrer"
+          onClick={onChoose}
+          style={{ ...navigationButtonStyle, ...wazeButtonStyle }}
+        >
+          Waze
+        </a>
+      </div>
+    </div>
+  );
+}
+
 function SlideRideAction({
   label,
   completeLabel,
@@ -83,6 +185,7 @@ function SlideRideAction({
   disabled = false,
   isWorking = false,
   onComplete,
+  onDisabledAttempt,
 }) {
   const trackRef = useRef(null);
   const [dragging, setDragging] = useState(false);
@@ -116,7 +219,10 @@ function SlideRideAction({
   };
 
   const handlePointerDown = (event) => {
-    if (disabled) return;
+    if (disabled) {
+      onDisabledAttempt?.();
+      return;
+    }
 
     event.currentTarget.setPointerCapture?.(event.pointerId);
     setDragging(true);
@@ -189,6 +295,54 @@ const baseButtonStyle = {
 const primaryButtonStyle = {
   ...baseButtonStyle,
   background: "#12b76a",
+};
+
+const navigationChoiceStyle = {
+  display: "grid",
+  gap: "8px",
+  padding: "12px",
+  borderRadius: "14px",
+  background: "rgba(17, 24, 39, 0.06)",
+  border: "1px solid rgba(17, 24, 39, 0.1)",
+};
+
+const navigationTitleStyle = {
+  color: "#374151",
+  fontSize: "0.78rem",
+  fontWeight: 900,
+  textTransform: "uppercase",
+};
+
+const navigationButtonGridStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: "8px",
+};
+
+const navigationButtonStyle = {
+  minHeight: "42px",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  borderRadius: "12px",
+  background: "#111827",
+  color: "white",
+  fontWeight: 900,
+  textDecoration: "none",
+  textAlign: "center",
+  padding: "0 10px",
+};
+
+const wazeButtonStyle = {
+  background: "#0891b2",
+};
+
+const navigationNoticeStyle = {
+  padding: "12px",
+  borderRadius: "14px",
+  background: "#fef3c7",
+  color: "#92400e",
+  fontWeight: 800,
 };
 
 const slideTrackStyle = {

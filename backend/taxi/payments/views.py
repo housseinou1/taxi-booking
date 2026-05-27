@@ -115,12 +115,40 @@ def create_payment(request):
             "paid",
             "pending_verification",
         ]:
+            payment_amount = amount or existing_payment.amount or ride.fare
+            (
+                payment_amount,
+                app_fee,
+                tip_percentage,
+                tip_amount,
+                driver_earning,
+            ) = calculate_payment_amounts(payment_amount, tip_percentage)
+
+            existing_payment.amount = payment_amount
+            existing_payment.app_fee = app_fee
+            existing_payment.tip_percentage = tip_percentage
+            existing_payment.tip_amount = tip_amount
+            existing_payment.driver_earning = driver_earning
+            existing_payment.save(
+                update_fields=[
+                    "amount",
+                    "app_fee",
+                    "tip_percentage",
+                    "tip_amount",
+                    "driver_earning",
+                ]
+            )
+
+            ride.app_fee = app_fee
+            ride.driver_earning = driver_earning
+            ride.save(update_fields=["app_fee", "driver_earning"])
+
             return Response(
                 {
-                    "error": (
-                        "Ride payment is already authorized"
+                    "message": (
+                        "Tip updated before payment capture"
                         if existing_payment.status == "authorized"
-                        else "Ride already has a payment"
+                        else "Driver tip updated"
                     ),
                     "payment": PaymentSerializer(existing_payment).data,
                 },

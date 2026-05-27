@@ -51,6 +51,8 @@ def build_user_response(user):
         "is_rider": not is_driver,
         "is_staff": user.is_staff,
         "is_active": user.is_active,
+        "rider_status": user.rider_status,
+        "rider_status_label": user.get_rider_status_display(),
         "date_joined": user.date_joined,
         "member_since_year": user.date_joined.year if user.date_joined else "",
         "years_using_app": years_using_app(user),
@@ -89,6 +91,8 @@ def serialize_user(user):
         "is_rider": not is_driver,
         "is_staff": user.is_staff,
         "is_active": user.is_active,
+        "rider_status": user.rider_status,
+        "rider_status_label": user.get_rider_status_display(),
         "date_joined": user.date_joined,
         "member_since_year": user.date_joined.year if user.date_joined else "",
         "years_using_app": years_using_app(user),
@@ -261,5 +265,53 @@ def unblock_user(request, user_id):
 
     return Response({
         "message": "User unblocked",
+        "user": serialize_user(user),
+    })
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def approve_rider(request, user_id):
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return Response({"error": "Rider not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    if user.is_staff or DriverProfile.objects.filter(user=user).exists():
+        return Response(
+            {"error": "Only rider accounts can be approved here."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    user.rider_status = "approved"
+    user.is_active = True
+    user.save(update_fields=["rider_status", "is_active"])
+
+    return Response({
+        "message": "Rider approved",
+        "user": serialize_user(user),
+    })
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def reject_rider(request, user_id):
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return Response({"error": "Rider not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    if user.is_staff or DriverProfile.objects.filter(user=user).exists():
+        return Response(
+            {"error": "Only rider accounts can be rejected here."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    user.rider_status = "rejected"
+    user.is_active = False
+    user.save(update_fields=["rider_status", "is_active"])
+
+    return Response({
+        "message": "Rider rejected",
         "user": serialize_user(user),
     })

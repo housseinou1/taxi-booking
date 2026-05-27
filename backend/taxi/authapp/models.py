@@ -13,6 +13,12 @@ class User(AbstractUser):
         ("Female", "Female"),
     )
 
+    RIDER_STATUS_CHOICES = (
+        ("pending", "Pending"),
+        ("approved", "Approved"),
+        ("rejected", "Rejected"),
+    )
+
     username = None
 
     email = models.EmailField(unique=True)
@@ -36,6 +42,12 @@ class User(AbstractUser):
         max_length=20,
         choices=USER_TYPES,
         default="rider",
+    )
+
+    rider_status = models.CharField(
+        max_length=20,
+        choices=RIDER_STATUS_CHOICES,
+        default="approved",
     )
 
     national_id_number = models.CharField(

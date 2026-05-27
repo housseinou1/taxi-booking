@@ -56,6 +56,14 @@ const getStatusLabel = (status) => {
   return status.replace("_", " ");
 };
 
+const activeRideStatuses = new Set([
+  "requested",
+  "pending",
+  "accepted",
+  "driver_arriving",
+  "in_progress",
+]);
+
 const liveDriverStatuses = new Set(["accepted", "driver_arriving", "in_progress"]);
 
 export default function RiderDashboard() {
@@ -239,7 +247,12 @@ export default function RiderDashboard() {
       });
 
       if (Array.isArray(response.data) && response.data.length > 0) {
-        setCurrentRide(response.data[0]);
+        const activeRide = response.data.find((ride) =>
+          activeRideStatuses.has(ride.status)
+        );
+        setCurrentRide(activeRide || null);
+      } else {
+        setCurrentRide(null);
       }
     } catch (error) {
       console.log("Ride history error:", error.response?.data || error);
@@ -332,8 +345,13 @@ export default function RiderDashboard() {
       setCurrentRide(response.data);
       fetchCurrentRide();
     } catch (error) {
+      const requestError =
+        error.response?.data?.detail ||
+        error.response?.data?.error ||
+        "Ride request failed";
+
       console.log("Ride request error:", error.response?.data || error);
-      alert("Ride request failed");
+      alert(requestError);
     } finally {
       setRequesting(false);
     }

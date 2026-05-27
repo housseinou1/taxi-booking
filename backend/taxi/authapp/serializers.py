@@ -67,6 +67,7 @@ class RegisterSerializer(serializers.ModelSerializer):
             gender=validated_data.get("gender", ""),
             phone_number=validated_data.get("phone_number", ""),
             user_type=user_type,
+            rider_status="pending" if user_type == "rider" else "approved",
             profile_picture=profile_picture,
         )
 

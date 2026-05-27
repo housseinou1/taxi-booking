@@ -32,6 +32,13 @@ function DriverMap({ driverLocation, activeRide, availableRides = [] }) {
     activeRide?.status === "in_progress"
       ? dropoffPoint
       : pickupPoint;
+  const etaTitle = mapRide
+    ? activeRide?.status === "in_progress"
+      ? "Drop-off ETA"
+      : "Pickup ETA"
+    : "Ready for requests";
+  const etaValue = routeSummary ? `${routeSummary.etaMinutes} min` : "--";
+  const distanceValue = routeSummary ? `${routeSummary.distanceKm.toFixed(1)} km` : "--";
 
   React.useEffect(() => {
     let cancelled = false;
@@ -102,6 +109,12 @@ function DriverMap({ driverLocation, activeRide, availableRides = [] }) {
               : `${nextStop[0].toFixed(5)}, ${nextStop[1].toFixed(5)}`}
           </span>
         )}
+      </div>
+
+      <div style={floatingEtaCardStyle}>
+        <span style={etaLabelStyle}>{etaTitle}</span>
+        <strong style={etaValueStyle}>{etaValue}</strong>
+        <span style={etaDistanceStyle}>{distanceValue}</span>
       </div>
 
       <GoogleTripMap
@@ -198,6 +211,43 @@ const mapCoordsStyle = {
   fontSize: "0.78rem",
   fontWeight: 900,
   boxShadow: "0 12px 24px rgba(15, 23, 42, 0.16)",
+};
+
+const floatingEtaCardStyle = {
+  position: "absolute",
+  zIndex: 520,
+  top: "74px",
+  left: "50%",
+  transform: "translateX(-50%)",
+  minWidth: "156px",
+  padding: "10px 14px",
+  borderRadius: "18px",
+  background: "rgba(255, 255, 255, 0.96)",
+  color: "#111827",
+  boxShadow: "0 18px 38px rgba(15, 23, 42, 0.22)",
+  display: "grid",
+  justifyItems: "center",
+  gap: "3px",
+  pointerEvents: "none",
+};
+
+const etaLabelStyle = {
+  color: "#667085",
+  fontSize: "0.72rem",
+  fontWeight: 950,
+  textTransform: "uppercase",
+};
+
+const etaValueStyle = {
+  fontSize: "1.55rem",
+  lineHeight: 1,
+  fontWeight: 950,
+};
+
+const etaDistanceStyle = {
+  color: "#475467",
+  fontSize: "0.86rem",
+  fontWeight: 900,
 };
 
 export default DriverMap;
