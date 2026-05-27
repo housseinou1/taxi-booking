@@ -602,7 +602,8 @@ const emptyPageStyle = {
 
 const pageStyle = {
   minHeight: "100vh",
-  background: "radial-gradient(circle at 12% 12%, #ffffff 0%, #f4f6fb 38%, #e9edf5 100%)",
+  background:
+    "radial-gradient(1200px 600px at 8% -10%, #e2e8f0 0%, rgba(226,232,240,0) 55%), radial-gradient(1000px 620px at 100% 0%, #dbe4f5 0%, rgba(219,228,245,0) 52%), linear-gradient(180deg, #f8fafc 0%, #eef2f8 100%)",
   display: "flex",
   justifyContent: "center",
   alignItems: "center",
@@ -611,23 +612,24 @@ const pageStyle = {
 };
 
 const homeShellStyle = {
-  maxWidth: "1200px",
+  maxWidth: "1240px",
   width: "100%",
 };
 
 const landingHeroStyle = {
   display: "grid",
   gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 360px), 1fr))",
-  gap: "28px",
+  gap: "24px",
   alignItems: "stretch",
 };
 
 const landingCopyStyle = {
-  background: "linear-gradient(154deg, #07080c 0%, #10131a 56%, #1b2230 100%)",
+  background:
+    "radial-gradient(120% 140% at 0% 0%, rgba(71, 85, 105, 0.3) 0%, rgba(71, 85, 105, 0) 45%), linear-gradient(155deg, #05070d 0%, #0b1020 55%, #111827 100%)",
   color: "white",
-  padding: "44px",
-  borderRadius: "32px",
-  minHeight: "430px",
+  padding: "48px",
+  borderRadius: "34px",
+  minHeight: "500px",
   display: "flex",
   flexDirection: "column",
   justifyContent: "center",
@@ -636,15 +638,15 @@ const landingCopyStyle = {
 };
 
 const heroLogoWrapStyle = {
-  width: "min(420px, 100%)",
-  aspectRatio: "1.55 / 1",
-  borderRadius: "18px",
+  width: "min(460px, 100%)",
+  aspectRatio: "1.6 / 1",
+  borderRadius: "22px",
   background: "#0c0c14",
   border: "1px solid rgba(255, 255, 255, 0.14)",
   display: "block",
   overflow: "hidden",
-  marginBottom: "18px",
-  boxShadow: "0 18px 36px rgba(2, 6, 23, 0.24)",
+  marginBottom: "22px",
+  boxShadow: "0 24px 46px rgba(2, 6, 23, 0.3)",
 };
 
 const heroLogoImageStyle = {
@@ -659,53 +661,57 @@ const brandPillStyle = {
   color: "#f4f4f5",
   border: "1px solid rgba(255, 255, 255, 0.2)",
   borderRadius: "999px",
-  padding: "10px 14px",
+  padding: "10px 16px",
   fontWeight: 900,
   fontSize: "0.82rem",
-  marginBottom: "18px",
+  marginBottom: "20px",
 };
 
 const titleStyle = {
-  fontSize: "3.1rem",
-  margin: "0 0 14px",
+  fontSize: "clamp(2.2rem, 4vw, 3.45rem)",
+  margin: "0 0 16px",
   color: "white",
   letterSpacing: 0,
 };
 
 const subtitleStyle = {
-  fontSize: "1.04rem",
-  lineHeight: 1.6,
+  fontSize: "1.08rem",
+  lineHeight: 1.62,
   color: "#d1d5db",
-  margin: "0 0 28px",
-  maxWidth: "620px",
+  margin: "0 0 34px",
+  maxWidth: "560px",
 };
 
 const ctaRowStyle = {
   display: "flex",
-  gap: "14px",
+  gap: "12px",
   flexWrap: "wrap",
 };
 
 const primaryButtonStyle = {
-  background: "linear-gradient(180deg, #111827 0%, #020617 100%)",
-  color: "white",
-  border: "1px solid #1e293b",
-  padding: "15px 22px",
-  borderRadius: "14px",
+  background: "linear-gradient(180deg, #ffffff 0%, #e2e8f0 100%)",
+  color: "#020617",
+  border: "1px solid #cbd5e1",
+  padding: "15px 24px",
+  borderRadius: "13px",
   fontWeight: 900,
   fontSize: "15px",
+  letterSpacing: "0.01em",
   cursor: "pointer",
+  boxShadow: "0 10px 18px rgba(15, 23, 42, 0.2)",
 };
 
 const secondaryButtonStyle = {
-  background: "rgba(255, 255, 255, 0.1)",
-  color: "#f8fafc",
-  border: "1px solid rgba(255, 255, 255, 0.38)",
-  padding: "15px 22px",
-  borderRadius: "14px",
+  background: "rgba(15, 23, 42, 0.5)",
+  color: "white",
+  border: "1px solid rgba(148, 163, 184, 0.44)",
+  padding: "15px 24px",
+  borderRadius: "13px",
   fontWeight: 900,
   fontSize: "15px",
+  letterSpacing: "0.01em",
   cursor: "pointer",
+  backdropFilter: "blur(2px)",
 };
 
 const lightButtonStyle = {
@@ -720,11 +726,11 @@ const lightButtonStyle = {
 };
 
 const dispatchPanelStyle = {
-  background: "linear-gradient(180deg, #ffffff 0%, #f8fafd 100%)",
-  border: "1px solid #dde3ee",
-  borderRadius: "30px",
-  padding: "32px",
-  boxShadow: "0 26px 64px rgba(15, 23, 42, 0.14)",
+  background: "linear-gradient(180deg, #ffffff 0%, #f8fbff 100%)",
+  border: "1px solid #d8e0ec",
+  borderRadius: "28px",
+  padding: "30px 28px",
+  boxShadow: "0 20px 48px rgba(15, 23, 42, 0.12)",
 };
 
 const dispatchHeaderStyle = {
@@ -747,7 +753,7 @@ const panelKickerStyle = {
 const panelTitleStyle = {
   margin: 0,
   color: "#111827",
-  fontSize: "1.5rem",
+  fontSize: "1.6rem",
 };
 
 const onlineBadgeStyle = {
@@ -766,10 +772,10 @@ const platformGridStyle = {
 
 const platformTileStyle = {
   textAlign: "left",
-  border: "1px solid #e5e7eb",
-  background: "#f8f9ff",
+  border: "1px solid #e2e8f0",
+  background: "#fbfdff",
   borderRadius: "14px",
-  padding: "18px",
+  padding: "16px",
   cursor: "pointer",
   display: "grid",
   gap: "6px",
@@ -807,19 +813,19 @@ const emergencyLinkStyle = {
 
 const cityStripStyle = {
   display: "flex",
-  gap: "10px",
+  gap: "11px",
   flexWrap: "wrap",
-  marginTop: "20px",
+  marginTop: "18px",
 };
 
 const cityPillStyle = {
-  background: "rgba(255, 255, 255, 0.86)",
+  background: "rgba(255, 255, 255, 0.92)",
   border: "1px solid #e2e8f0",
   borderRadius: "999px",
-  padding: "10px 14px",
+  padding: "10px 15px",
   color: "#334155",
   fontWeight: 900,
-  boxShadow: "0 10px 22px rgba(15, 23, 42, 0.07)",
+  boxShadow: "0 10px 22px rgba(15, 23, 42, 0.08)",
 };
 
 const authRowStyle = {
@@ -827,7 +833,7 @@ const authRowStyle = {
   justifyContent: "flex-end",
   gap: "10px",
   flexWrap: "wrap",
-  marginTop: "18px",
+  marginTop: "20px",
 };
 
 const footerLinksStyle = {
