@@ -98,6 +98,7 @@ export default function RiderDashboard() {
   const [identitySaving, setIdentitySaving] = useState(false);
   const [identityMessage, setIdentityMessage] = useState("");
   const [showAccountPanel, setShowAccountPanel] = useState(false);
+  const [rideHistory, setRideHistory] = useState([]);
 
   const token = localStorage.getItem("access");
 
@@ -247,17 +248,35 @@ export default function RiderDashboard() {
       });
 
       if (Array.isArray(response.data) && response.data.length > 0) {
+        setRideHistory(response.data);
         const activeRide = response.data.find((ride) =>
           activeRideStatuses.has(ride.status)
         );
         setCurrentRide(activeRide || null);
       } else {
+        setRideHistory([]);
         setCurrentRide(null);
       }
     } catch (error) {
       console.log("Ride history error:", error.response?.data || error);
     }
   }, [token]);
+
+  const spendingHistory = useMemo(() => {
+    const monthly = {};
+    let total = 0;
+    rideHistory.forEach((ride) => {
+      if (ride.status !== "completed") return;
+      const amount = Number(ride.fare || 0);
+      total += amount;
+      const date = new Date(ride.completed_at || ride.updated_at || ride.created_at || Date.now());
+      const label = date.toLocaleString("en-US", { month: "short", year: "2-digit" });
+      monthly[label] = (monthly[label] || 0) + amount;
+    });
+
+    const trend = Object.entries(monthly).slice(-6).map(([label, value]) => ({ label, value }));
+    return { total, trend };
+  }, [rideHistory]);
 
   const fetchDriverLocation = useCallback(async () => {
     try {
@@ -626,6 +645,26 @@ export default function RiderDashboard() {
             </div>
           </section>
         )}
+
+        <section style={analyticsCardStyle}>
+          <h3 style={{ margin: 0 }}>Rider spending history</h3>
+          <p style={{ margin: "6px 0 14px", color: "#6b7280" }}>
+            Total completed trip spending: <strong>{formatMoney(spendingHistory.total)}</strong>
+          </p>
+          <div style={spendingBarsStyle}>
+            {(spendingHistory.trend.length ? spendingHistory.trend : [{ label: "No data", value: 0 }]).map((item) => {
+              const maxValue = Math.max(...(spendingHistory.trend.length ? spendingHistory.trend : [{ value: 1 }]).map((entry) => entry.value), 1);
+              const barHeight = `${Math.max(10, (item.value / maxValue) * 80)}px`;
+              return (
+                <div key={item.label} style={{ textAlign: "center" }}>
+                  <div style={{ ...spendingBarStyle, height: barHeight }} />
+                  <small>{item.label}</small>
+                  <div style={{ fontWeight: 800, fontSize: "12px" }}>{formatMoney(item.value)}</div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
 
         <section style={routeEditorStyle}>
           <select
@@ -1094,6 +1133,26 @@ const rideOptionsStyle = {
   display: "grid",
   gap: "8px",
   marginTop: "14px",
+};
+
+const analyticsCardStyle = {
+  marginTop: "14px",
+  border: "1px solid #e5e7eb",
+  borderRadius: "16px",
+  padding: "14px",
+  background: "#ffffff",
+};
+
+const spendingBarsStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(56px, 1fr))",
+  gap: "8px",
+  alignItems: "end",
+};
+
+const spendingBarStyle = {
+  background: "linear-gradient(180deg, #60a5fa 0%, #2563eb 100%)",
+  borderRadius: "8px 8px 4px 4px",
 };
 
 const rideOptionStyle = {

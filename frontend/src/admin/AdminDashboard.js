@@ -519,6 +519,19 @@ function AdminDashboard() {
     totalRevenue > 0
       ? Math.round((platformCommission / totalRevenue) * 1000) / 10
       : MARKET_OWNER_PERCENT;
+  const monthlyRevenueMap = rides.reduce((accumulator, ride) => {
+    const date = new Date(ride.completed_at || ride.updated_at || ride.created_at || Date.now());
+    const label = date.toLocaleString("en-US", { month: "short", year: "2-digit" });
+    accumulator[label] = (accumulator[label] || 0) + Number(ride.fare || 0);
+    return accumulator;
+  }, {});
+  const monthlyRevenue = Object.entries(monthlyRevenueMap)
+    .slice(-6)
+    .map(([label, value]) => ({ label, value }));
+  const rideOutcome = [
+    { label: "Completed", value: completedRides.length, color: "#16a34a" },
+    { label: "Cancelled", value: cancelledRides.length, color: "#dc2626" },
+  ];
 
   const totalWithdrawRequested = withdrawals.reduce(
     (total, item) => total + Number(item.amount || 0),
@@ -1198,9 +1211,53 @@ function AdminDashboard() {
                 value={formatMoney(driverPayouts)}
               />
             </div>
+            <div style={analyticsChartsGridStyle}>
+              <SimpleBarChart
+                title="Admin revenue analytics (monthly)"
+                data={monthlyRevenue.length ? monthlyRevenue : [{ label: "No data", value: 0 }]}
+              />
+              <SimpleOutcomeChart title="Ride outcomes" data={rideOutcome} />
+            </div>
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function SimpleBarChart({ title, data }) {
+  const maxValue = Math.max(...data.map((item) => item.value), 1);
+  return (
+    <div style={analyticsChartCardStyle}>
+      <h3 style={chartTitleStyle}>{title}</h3>
+      <div style={chartBarsWrapStyle}>
+        {data.map((item) => (
+          <div key={item.label} style={chartBarItemStyle}>
+            <div style={{ ...chartBarStyle, height: `${Math.max(10, (item.value / maxValue) * 120)}px` }} />
+            <small>{item.label}</small>
+            <strong>{formatMoney(item.value)}</strong>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SimpleOutcomeChart({ title, data }) {
+  const total = data.reduce((sum, item) => sum + item.value, 0) || 1;
+  return (
+    <div style={analyticsChartCardStyle}>
+      <h3 style={chartTitleStyle}>{title}</h3>
+      {data.map((item) => (
+        <div key={item.label} style={{ marginBottom: "12px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
+            <span>{item.label}</span><strong>{item.value}</strong>
+          </div>
+          <div style={chartTrackStyle}>
+            <div style={{ ...chartFillStyle, width: `${(item.value / total) * 100}%`, background: item.color }} />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -2230,3 +2287,51 @@ const documentButton = {
 };
 
 export default AdminDashboard;
+
+const analyticsChartsGridStyle = {
+  marginTop: "20px",
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+  gap: "14px",
+};
+
+const analyticsChartCardStyle = {
+  background: "#ffffff",
+  border: "1px solid #e5e7eb",
+  borderRadius: "14px",
+  padding: "14px",
+};
+
+const chartTitleStyle = {
+  marginTop: 0,
+  marginBottom: "12px",
+};
+
+const chartBarsWrapStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(58px, 1fr))",
+  gap: "8px",
+  alignItems: "end",
+  minHeight: "150px",
+};
+
+const chartBarItemStyle = {
+  textAlign: "center",
+};
+
+const chartBarStyle = {
+  background: "linear-gradient(180deg, #38bdf8 0%, #2563eb 100%)",
+  borderRadius: "8px 8px 4px 4px",
+};
+
+const chartTrackStyle = {
+  height: "10px",
+  borderRadius: "999px",
+  background: "#e5e7eb",
+  overflow: "hidden",
+};
+
+const chartFillStyle = {
+  height: "100%",
+  borderRadius: "999px",
+};
