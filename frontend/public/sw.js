@@ -53,3 +53,56 @@ self.addEventListener("fetch", (event) => {
       )
   );
 });
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+
+  const targetUrl = event.notification?.data?.url || "/";
+  const absoluteUrl = new URL(targetUrl, self.location.origin).href;
+
+  event.waitUntil(
+    self.clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((clientList) => {
+        const matchingClient = clientList.find((client) =>
+          client.url.startsWith(self.location.origin)
+        );
+
+        if (matchingClient) {
+          matchingClient.focus();
+          return matchingClient.navigate(absoluteUrl);
+        }
+
+        return self.clients.openWindow(absoluteUrl);
+      })
+  );
+});
+
+self.addEventListener("push", (event) => {
+  let payload = {
+    title: "Sakho Express",
+    body: "You have a new update.",
+    url: "/",
+  };
+
+  try {
+    if (event.data) {
+      payload = { ...payload, ...event.data.json() };
+    }
+  } catch (error) {
+    payload.body = event.data?.text() || payload.body;
+  }
+
+  event.waitUntil(
+    self.registration.showNotification(payload.title, {
+      body: payload.body,
+      icon: payload.icon || "/logo192.png",
+      badge: payload.badge || "/logo192.png",
+      tag: payload.tag || "sakho-express-update",
+      vibrate: payload.vibrate || [120, 80, 120],
+      data: {
+        url: payload.url || "/",
+      },
+    })
+  );
+});

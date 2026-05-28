@@ -355,6 +355,9 @@ def register_driver(request):
     if request.FILES.get("license_file"):
         profile.license_file = request.FILES.get("license_file")
 
+    if request.FILES.get("vehicle_registration"):
+        profile.vehicle_registration = request.FILES.get("vehicle_registration")
+
     if request.FILES.get("insurance_document"):
         profile.insurance_document = request.FILES.get("insurance_document")
 

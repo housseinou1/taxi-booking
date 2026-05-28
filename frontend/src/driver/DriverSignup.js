@@ -29,6 +29,7 @@ function DriverSignup() {
 
   const [driverPhoto, setDriverPhoto] = useState(null);
   const [licenseFile, setLicenseFile] = useState(null);
+  const [vehicleRegistrationFile, setVehicleRegistrationFile] = useState(null);
   const [insuranceDocument, setInsuranceDocument] = useState(null);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -56,6 +57,21 @@ function DriverSignup() {
         return;
       }
 
+      const missingDocuments = [
+        !driverPhoto && "profile photo",
+        !licenseFile && "driver license",
+        !vehicleRegistrationFile && "vehicle registration",
+        !insuranceDocument && "insurance document",
+        !formData.license_expires_at && "license expiration date",
+        !formData.vehicle_registration_expires_at && "registration expiration date",
+        !formData.insurance_expires_at && "insurance expiration date",
+      ].filter(Boolean);
+
+      if (missingDocuments.length) {
+        alert(`Please add: ${missingDocuments.join(", ")}.`);
+        return;
+      }
+
       const data = new FormData();
 
       data.append("phone_number", formData.phone_number);
@@ -78,6 +94,10 @@ function DriverSignup() {
         data.append("license_file", licenseFile);
       }
 
+      if (vehicleRegistrationFile) {
+        data.append("vehicle_registration", vehicleRegistrationFile);
+      }
+
       if (insuranceDocument) {
         data.append("insurance_document", insuranceDocument);
       }
@@ -97,7 +117,7 @@ function DriverSignup() {
         return;
       }
 
-      alert("Driver application submitted successfully ✅");
+      alert("Driver application submitted successfully. Admin approval is now pending.");
 
       localStorage.removeItem("needs_vehicle_setup");
 
@@ -113,7 +133,21 @@ function DriverSignup() {
   return (
     <div style={pageStyle}>
       <div style={cardStyle}>
-        <h1 style={titleStyle}>🚗 Driver Vehicle Setup</h1>
+        <div style={heroStyle}>
+          <span style={eyebrowStyle}>Sakho Express driver verification</span>
+          <h1 style={titleStyle}>Submit your driver application</h1>
+          <p style={subtitleStyle}>
+            Upload the required documents. Admin approval is required before you can go online.
+          </p>
+        </div>
+
+        <div style={statusStripStyle}>
+          <span style={statusDotStyle} />
+          <div>
+            <strong>Pending after submission</strong>
+            <small>License, insurance, registration, and profile photo will be reviewed.</small>
+          </div>
+        </div>
 
         <input
           type="text"
@@ -172,7 +206,7 @@ function DriverSignup() {
           style={inputStyle}
         />
 
-        <label style={labelStyle}>👤 Upload Driver Picture</label>
+        <label style={labelStyle}>Upload driver profile photo</label>
         <input
           type="file"
           accept="image/*"
@@ -180,7 +214,7 @@ function DriverSignup() {
           style={fileStyle}
         />
 
-        <label style={labelStyle}>📄 Upload Driver License</label>
+        <label style={labelStyle}>Upload driver license</label>
         <input
           type="file"
           onChange={(e) => setLicenseFile(e.target.files[0])}
@@ -195,6 +229,12 @@ function DriverSignup() {
           style={inputStyle}
         />
 
+        <label style={labelStyle}>Upload vehicle registration</label>
+        <input
+          type="file"
+          onChange={(e) => setVehicleRegistrationFile(e.target.files[0])}
+          style={fileStyle}
+        />
         <label style={labelStyle}>Vehicle registration expiration date</label>
         <input
           type="date"
@@ -204,7 +244,7 @@ function DriverSignup() {
           style={inputStyle}
         />
 
-        <label style={labelStyle}>🛡️ Upload Insurance</label>
+        <label style={labelStyle}>Upload insurance document</label>
         <input
           type="file"
           onChange={(e) => setInsuranceDocument(e.target.files[0])}
@@ -264,55 +304,108 @@ function DriverSignup() {
 const pageStyle = {
   display: "flex",
   justifyContent: "center",
-  alignItems: "center",
-  padding: "30px",
-  fontFamily: "Arial, sans-serif",
+  alignItems: "flex-start",
+  minHeight: "100vh",
+  padding: "36px 18px",
+  fontFamily: "Inter, Arial, sans-serif",
+  background:
+    "radial-gradient(circle at top left, rgba(155,0,137,0.24), transparent 34%), linear-gradient(135deg, #05070d 0%, #111827 48%, #05070d 100%)",
 };
 
 const cardStyle = {
-  background: "white",
-  padding: "30px",
-  borderRadius: "22px",
+  background: "rgba(11, 18, 32, 0.94)",
+  color: "white",
+  padding: "28px",
+  borderRadius: "18px",
   width: "100%",
-  maxWidth: "430px",
-  boxShadow: "0 10px 30px rgba(0,0,0,0.1)",
+  maxWidth: "760px",
+  boxShadow: "0 24px 70px rgba(0,0,0,0.45)",
+  border: "1px solid rgba(255,255,255,0.1)",
+};
+
+const heroStyle = {
+  marginBottom: "18px",
+};
+
+const eyebrowStyle = {
+  color: "#facc15",
+  fontWeight: 950,
+  textTransform: "uppercase",
+  letterSpacing: "0.08em",
+  fontSize: "0.78rem",
 };
 
 const titleStyle = {
-  textAlign: "center",
-  color: "#111827",
+  color: "white",
+  margin: "8px 0 10px",
+  fontSize: "2rem",
+  lineHeight: 1.08,
+};
+
+const subtitleStyle = {
+  margin: 0,
+  color: "#cbd5e1",
+  lineHeight: 1.5,
+  fontWeight: 700,
+};
+
+const statusStripStyle = {
+  display: "grid",
+  gridTemplateColumns: "12px minmax(0, 1fr)",
+  gap: "12px",
+  alignItems: "center",
+  background: "rgba(250, 204, 21, 0.12)",
+  border: "1px solid rgba(250, 204, 21, 0.25)",
+  borderRadius: "14px",
+  padding: "14px",
   marginBottom: "22px",
+};
+
+const statusDotStyle = {
+  width: "12px",
+  height: "12px",
+  borderRadius: "999px",
+  background: "#facc15",
+  boxShadow: "0 0 0 6px rgba(250, 204, 21, 0.12)",
 };
 
 const inputStyle = {
   width: "100%",
   padding: "14px",
   marginBottom: "14px",
-  borderRadius: "12px",
-  border: "1px solid #d1d5db",
+  borderRadius: "10px",
+  border: "1px solid rgba(255,255,255,0.14)",
+  background: "rgba(255,255,255,0.08)",
+  color: "white",
+  outline: "none",
+  boxSizing: "border-box",
+  fontWeight: 800,
 };
 
 const labelStyle = {
   display: "block",
   marginTop: "12px",
   marginBottom: "8px",
-  fontWeight: "bold",
-  color: "#111827",
+  fontWeight: 900,
+  color: "#e5e7eb",
 };
 
 const fileStyle = {
   width: "100%",
   padding: "12px",
-  border: "1px solid #d1d5db",
+  border: "1px dashed rgba(255,255,255,0.28)",
   borderRadius: "12px",
   marginBottom: "12px",
+  background: "rgba(255,255,255,0.06)",
+  color: "#e5e7eb",
+  boxSizing: "border-box",
 };
 
 const termsBoxStyle = {
   marginTop: "18px",
-  border: "1px solid #d7dde7",
-  borderRadius: "12px",
-  background: "#f8fafc",
+  border: "1px solid rgba(255,255,255,0.12)",
+  borderRadius: "14px",
+  background: "rgba(255,255,255,0.06)",
   padding: "14px",
 };
 
@@ -321,7 +414,7 @@ const termsHeaderStyle = {
   justifyContent: "space-between",
   gap: "10px",
   alignItems: "center",
-  color: "#111827",
+  color: "white",
   fontWeight: 900,
   marginBottom: "10px",
 };
@@ -336,7 +429,7 @@ const termsListStyle = {
 
 const termItemStyle = {
   margin: 0,
-  color: "#334155",
+  color: "#cbd5e1",
   fontSize: "0.92rem",
   lineHeight: 1.4,
 };
@@ -347,7 +440,7 @@ const termsCheckStyle = {
   gridTemplateColumns: "20px minmax(0, 1fr)",
   gap: "10px",
   alignItems: "start",
-  color: "#111827",
+  color: "white",
   fontWeight: 800,
   lineHeight: 1.35,
 };
@@ -355,13 +448,14 @@ const termsCheckStyle = {
 const buttonStyle = {
   width: "100%",
   padding: "14px",
-  background: "#111827",
-  color: "white",
+  background: "linear-gradient(135deg, #facc15, #f97316)",
+  color: "#111827",
   border: "none",
-  borderRadius: "12px",
-  fontWeight: "bold",
+  borderRadius: "999px",
+  fontWeight: 950,
   cursor: "pointer",
   marginTop: "16px",
+  boxShadow: "0 16px 34px rgba(249, 115, 22, 0.24)",
 };
 
 export default DriverSignup;

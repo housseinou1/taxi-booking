@@ -324,6 +324,31 @@ def my_payments(request):
     return Response(serializer.data)
 
 
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def delete_payment_method(request, method_id):
+    try:
+        method = RiderPaymentMethod.objects.get(id=method_id, rider=request.user)
+    except RiderPaymentMethod.DoesNotExist:
+        return Response(
+            {"error": "Payment method not found"},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    was_default = method.is_default
+    method.delete()
+
+    if was_default:
+        next_method = RiderPaymentMethod.objects.filter(
+            rider=request.user
+        ).order_by("-created_at").first()
+        if next_method:
+            next_method.is_default = True
+            next_method.save(update_fields=["is_default"])
+
+    return Response({"message": "Payment method removed"})
+
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def withdrawal_requests(request):

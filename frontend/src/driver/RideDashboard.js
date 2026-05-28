@@ -43,6 +43,9 @@ const getDriverEarning = (ride) => {
   return Number(ride.driver_earning ?? fare - appFee + tip);
 };
 
+const canCancelBeforeStart = (ride) =>
+  ["accepted", "driver_arriving", "driver_arrived"].includes(ride.status);
+
 const NavigationLinks = ({ ride, target }) => {
   const urls = getNavigationUrls(ride, target);
 
@@ -73,10 +76,19 @@ const NavigationLinks = ({ ride, target }) => {
 };
 
 function RideDashboard({ rides = [], availableRides = [], isOnline, fetchRides }) {
+  const [cancelRideTarget, setCancelRideTarget] = useState(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelSaving, setCancelSaving] = useState(false);
+  const [cancelNotice, setCancelNotice] = useState(null);
+
   const activeRides = rides.filter((ride) =>
-    ["driver_arriving", "accepted", "in_progress"].includes(ride.status)
+    ["driver_arriving", "accepted", "driver_arrived", "in_progress"].includes(ride.status)
   );
-  const completedRides = rides.filter((ride) => ride.status === "completed");
+  const completedRidesNeedingAction = rides.filter(
+    (ride) =>
+      ride.status === "completed" &&
+      (ride.payment_status === "pending_verification" || !ride.driver_rating)
+  );
   const cancelledRides = rides.filter((ride) => ride.status === "cancelled");
 
   const refreshAfterAction = () => {
@@ -107,6 +119,66 @@ function RideDashboard({ rides = [], availableRides = [], isOnline, fetchRides }
     } catch (error) {
       console.error(error);
       alert("Server error confirming payment");
+    }
+  };
+
+  const openCancelModal = (ride) => {
+    setCancelRideTarget(ride);
+    setCancelReason("");
+    setCancelNotice(null);
+  };
+
+  const submitCancellation = async () => {
+    if (!cancelRideTarget || !canCancelBeforeStart(cancelRideTarget)) return;
+
+    if (!cancelReason.trim()) {
+      setCancelNotice({
+        type: "warning",
+        text: "Please choose a cancellation reason before closing this trip.",
+      });
+      return;
+    }
+
+    try {
+      setCancelSaving(true);
+
+      const response = await fetch(`${API_URL}/rides/cancel/${cancelRideTarget.id}/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("access")}`,
+        },
+        body: JSON.stringify({
+          reason: cancelReason.trim(),
+          cancelled_by: "driver",
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setCancelNotice({
+          type: "error",
+          text: data.detail || data.error || "Could not cancel trip.",
+        });
+        return;
+      }
+
+      setCancelNotice({
+        type: "success",
+        text: `${data.refund_status || "Authorization released or no charge captured"}. Cancellation fee: ${formatMoney(data.cancellation_fee)}.`,
+      });
+      setCancelRideTarget(null);
+      setCancelReason("");
+      refreshAfterAction();
+    } catch (error) {
+      console.error(error);
+      setCancelNotice({
+        type: "error",
+        text: "Server error cancelling trip.",
+      });
+    } finally {
+      setCancelSaving(false);
     }
   };
 
@@ -156,7 +228,20 @@ function RideDashboard({ rides = [], availableRides = [], isOnline, fetchRides }
                 ride={ride}
                 badge={formatStatus(ride.status)}
                 badgeStyle={activeBadgeStyle}
-                footer={<RideStatusButtons ride={ride} onStatusChange={refreshAfterAction} />}
+                footer={
+                  <div style={activeActionStackStyle}>
+                    <RideStatusButtons ride={ride} onStatusChange={refreshAfterAction} />
+                    {canCancelBeforeStart(ride) && (
+                      <button
+                        type="button"
+                        onClick={() => openCancelModal(ride)}
+                        style={cancelTripButtonStyle}
+                      >
+                        Cancel before start
+                      </button>
+                    )}
+                  </div>
+                }
               >
                 <RiderInfo ride={ride} />
                 <RouteBlock ride={ride} />
@@ -172,13 +257,20 @@ function RideDashboard({ rides = [], availableRides = [], isOnline, fetchRides }
       </section>
 
       <section style={queuePanelStyle}>
-        <SectionHeader label="History" title="Completed trips" count={completedRides.length} />
+        <SectionHeader
+          label="Action needed"
+          title="Completed trips"
+          count={completedRidesNeedingAction.length}
+        />
 
-        {completedRides.length === 0 ? (
-          <EmptyState title="No completed trips yet" text="Finished rides and payments will be listed here." />
+        {completedRidesNeedingAction.length === 0 ? (
+          <EmptyState
+            title="No completed trips need action"
+            text="Rated and fully paid trips leave this driver work queue."
+          />
         ) : (
           <div style={cardListStyle}>
-            {completedRides.map((ride) => (
+            {completedRidesNeedingAction.map((ride) => (
               <RideCard
                 key={ride.id}
                 ride={ride}
@@ -220,11 +312,98 @@ function RideDashboard({ rides = [], availableRides = [], isOnline, fetchRides }
               >
                 <RiderInfo ride={ride} />
                 <RouteBlock ride={ride} />
+                <RefundStatusCard />
               </RideCard>
             ))}
           </div>
         </section>
       )}
+
+      {cancelNotice && !cancelRideTarget && (
+        <div
+          style={{
+            ...cancelNoticeStyle,
+            borderColor:
+              cancelNotice.type === "error"
+                ? "rgba(248, 113, 113, 0.38)"
+                : cancelNotice.type === "warning"
+                  ? "rgba(245, 158, 11, 0.38)"
+                  : "rgba(34, 197, 94, 0.38)",
+          }}
+        >
+          {cancelNotice.text}
+        </div>
+      )}
+
+      {cancelRideTarget && (
+        <CancellationModal
+          ride={cancelRideTarget}
+          reason={cancelReason}
+          saving={cancelSaving}
+          notice={cancelNotice}
+          onReasonChange={setCancelReason}
+          onClose={() => setCancelRideTarget(null)}
+          onSubmit={submitCancellation}
+        />
+      )}
+    </div>
+  );
+}
+
+function CancellationModal({
+  ride,
+  reason,
+  saving,
+  notice,
+  onReasonChange,
+  onClose,
+  onSubmit,
+}) {
+  return (
+    <div style={modalBackdropStyle}>
+      <section style={modalCardStyle} role="dialog" aria-modal="true" aria-label="Cancel trip">
+        <span style={sectionLabelStyle}>Cancel trip #{ride.id}</span>
+        <h2 style={modalTitleStyle}>Why are you cancelling?</h2>
+        <p style={modalTextStyle}>
+          Drivers can cancel before the trip starts. The cancellation fee logic is a placeholder and currently shows 0 MRU.
+        </p>
+        <select
+          value={reason}
+          onChange={(event) => onReasonChange(event.target.value)}
+          style={modalSelectStyle}
+        >
+          <option value="">Select a reason</option>
+          <option value="Rider did not answer">Rider did not answer</option>
+          <option value="Pickup is unsafe">Pickup is unsafe</option>
+          <option value="Vehicle issue">Vehicle issue</option>
+          <option value="Wrong pickup location">Wrong pickup location</option>
+          <option value="Other">Other</option>
+        </select>
+        {notice && <p style={modalNoticeStyle}>{notice.text}</p>}
+        <div style={modalActionsStyle}>
+          <button type="button" onClick={onClose} style={modalGhostButtonStyle}>
+            Keep trip
+          </button>
+          <button
+            type="button"
+            onClick={onSubmit}
+            disabled={saving}
+            style={{ ...modalDangerButtonStyle, opacity: saving ? 0.72 : 1 }}
+          >
+            {saving ? "Cancelling..." : "Cancel trip"}
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function RefundStatusCard() {
+  return (
+    <div style={refundStatusCardStyle}>
+      <span style={navigationTitleStyle}>Refund status</span>
+      <strong>Authorization released or no charge captured</strong>
+      <small>Cancellation fee placeholder: {formatMoney(0)}</small>
     </div>
   );
 }
@@ -733,6 +912,22 @@ const footerStyle = {
   marginTop: "12px",
 };
 
+const activeActionStackStyle = {
+  display: "grid",
+  gap: "10px",
+};
+
+const cancelTripButtonStyle = {
+  width: "100%",
+  minHeight: "46px",
+  border: "1px solid rgba(248, 113, 113, 0.36)",
+  borderRadius: "14px",
+  background: "rgba(127, 29, 29, 0.36)",
+  color: "#fecaca",
+  fontWeight: 950,
+  cursor: "pointer",
+};
+
 const confirmPaymentButtonStyle = {
   width: "100%",
   marginTop: "12px",
@@ -749,6 +944,104 @@ const paymentTextStyle = {
   margin: "12px 0 0",
   color: "#d1d5db",
   fontWeight: 800,
+};
+
+const refundStatusCardStyle = {
+  display: "grid",
+  gap: "5px",
+  marginTop: "12px",
+  padding: "12px",
+  borderRadius: "14px",
+  border: "1px solid rgba(34, 197, 94, 0.24)",
+  background: "rgba(34, 197, 94, 0.1)",
+  color: "#dcfce7",
+};
+
+const cancelNoticeStyle = {
+  padding: "13px",
+  borderRadius: "14px",
+  border: "1px solid rgba(34, 197, 94, 0.38)",
+  background: "#111827",
+  color: "#ffffff",
+  fontWeight: 900,
+  boxShadow: "0 18px 32px rgba(17, 24, 39, 0.14)",
+};
+
+const modalBackdropStyle = {
+  position: "fixed",
+  inset: 0,
+  zIndex: 80,
+  display: "grid",
+  placeItems: "center",
+  padding: "18px",
+  background: "rgba(3, 7, 18, 0.72)",
+  backdropFilter: "blur(10px)",
+};
+
+const modalCardStyle = {
+  width: "min(440px, 100%)",
+  borderRadius: "22px",
+  border: "1px solid rgba(255, 255, 255, 0.12)",
+  background: "linear-gradient(180deg, #111827 0%, #030712 100%)",
+  color: "#ffffff",
+  padding: "20px",
+  boxShadow: "0 26px 70px rgba(0, 0, 0, 0.42)",
+};
+
+const modalTitleStyle = {
+  margin: "4px 0 8px",
+  color: "#ffffff",
+  fontSize: "1.45rem",
+};
+
+const modalTextStyle = {
+  margin: "0 0 14px",
+  color: "rgba(255,255,255,0.68)",
+  lineHeight: 1.5,
+};
+
+const modalSelectStyle = {
+  width: "100%",
+  minHeight: "48px",
+  borderRadius: "12px",
+  border: "1px solid rgba(255,255,255,0.14)",
+  background: "#0b1220",
+  color: "#ffffff",
+  padding: "0 12px",
+  fontWeight: 850,
+};
+
+const modalNoticeStyle = {
+  margin: "12px 0 0",
+  color: "#fecaca",
+  fontWeight: 850,
+};
+
+const modalActionsStyle = {
+  display: "grid",
+  gridTemplateColumns: "1fr 1fr",
+  gap: "10px",
+  marginTop: "16px",
+};
+
+const modalGhostButtonStyle = {
+  minHeight: "46px",
+  border: "1px solid rgba(255,255,255,0.14)",
+  borderRadius: "999px",
+  background: "rgba(255,255,255,0.06)",
+  color: "#ffffff",
+  fontWeight: 900,
+  cursor: "pointer",
+};
+
+const modalDangerButtonStyle = {
+  minHeight: "46px",
+  border: "none",
+  borderRadius: "999px",
+  background: "#dc2626",
+  color: "#ffffff",
+  fontWeight: 950,
+  cursor: "pointer",
 };
 
 const riderRatingBoxStyle = {

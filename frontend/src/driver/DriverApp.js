@@ -4,10 +4,55 @@ import axios from "axios";
 import DriverMap from "./DriverMap";
 import RideDashboard from "./RideDashboard";
 import { API_URL } from "../apiConfig";
+import SafetyEmergencyPanel from "../safety/SafetyEmergencyPanel";
 import { MARKET, formatMoney, isPointInServiceArea } from "../marketConfig";
 import RideStatusButtons from "../RideStatusButtons";
 
 const logoSrc = "/sakho-brand-logo.jpeg";
+
+const getDriverApprovalMessage = (profile) => {
+  const status = profile?.status || "pending";
+
+  if (status === "approved") {
+    return "Verified driver. You can go online and receive ride requests.";
+  }
+
+  if (status === "rejected") {
+    return (
+      profile?.document_rejection_reason ||
+      "Your driver application was rejected. Update your documents and submit again for admin review."
+    );
+  }
+
+  return "Your driver application is pending admin review. You cannot go online until your documents are approved.";
+};
+
+const getVerificationBadge = (status) => {
+  if (status === "approved") {
+    return {
+      label: "Verified",
+      background: "#dcfce7",
+      color: "#166534",
+      border: "#86efac",
+    };
+  }
+
+  if (status === "rejected") {
+    return {
+      label: "Rejected",
+      background: "#fee2e2",
+      color: "#991b1b",
+      border: "#fecaca",
+    };
+  }
+
+  return {
+    label: "Pending review",
+    background: "#fff7ed",
+    color: "#9a3412",
+    border: "#fed7aa",
+  };
+};
 
 function DriverEarningsDashboard({
   todayEarnings,
@@ -295,10 +340,35 @@ export default function DriverApp() {
 
   const ringForNewRequest = useCallback(async () => {
     if ("Notification" in window && Notification.permission === "granted") {
-      new Notification("New rider request", {
+      const notificationOptions = {
         body: "Open Sakho Express Driver to accept the trip.",
         icon: "/logo192.png",
-      });
+        badge: "/logo192.png",
+        tag: "sakho-new-ride-request",
+        vibrate: [250, 120, 250],
+        data: {
+          url: "/driver",
+        },
+      };
+
+      try {
+        if ("serviceWorker" in navigator) {
+          const registration = await navigator.serviceWorker.ready;
+          if (registration?.showNotification) {
+            registration.showNotification("New ride request", notificationOptions);
+          } else {
+            new Notification("New ride request", notificationOptions);
+          }
+        } else {
+          new Notification("New ride request", notificationOptions);
+        }
+      } catch (error) {
+        console.log("Driver push notification error:", error);
+        new Notification("New ride request", {
+          body: notificationOptions.body,
+          icon: notificationOptions.icon,
+        });
+      }
     }
 
     await playNotificationSound();
@@ -588,6 +658,12 @@ export default function DriverApp() {
   const toggleAvailability = async () => {
     const nextAvailability = !isOnline;
 
+    if (nextAvailability && driverProfile?.status !== "approved") {
+      setDriverNotice(getDriverApprovalMessage(driverProfile));
+      setShowDriverMenu(true);
+      return;
+    }
+
     try {
       setDriverNotice("");
       await unlockNotificationSound();
@@ -614,6 +690,36 @@ export default function DriverApp() {
           error.response?.data?.detail ||
           "Could not change driver status. Please check approval and login."
       );
+    }
+  };
+
+  const shareDriverTrip = async () => {
+    if (!activeRide) {
+      setDriverNotice("No active ride to share yet.");
+      return;
+    }
+
+    const tripText = `Sakho Express driver trip #${activeRide.id}: ${
+      activeRide.pickup || activeRide.pickup_address || "Pickup"
+    } to ${activeRide.destination || activeRide.destination_address || "Destination"}. Status: ${
+      activeRide.status
+    }. Rider: ${activeRiderName || "rider"}.`;
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: "Sakho Express driver trip",
+          text: tripText,
+          url: window.location.href,
+        });
+        return;
+      }
+
+      await navigator.clipboard.writeText(`${tripText} ${window.location.href}`);
+      setDriverNotice("Trip status copied for sharing.");
+    } catch (error) {
+      console.log("Driver trip share error:", error);
+      setDriverNotice(tripText);
     }
   };
 
@@ -844,6 +950,9 @@ export default function DriverApp() {
   const driverEmail = driverProfile?.driver_email || driverProfile?.email || "No email";
   const driverPhone = driverProfile?.phone_number || "No phone";
   const driverStatus = driverProfile?.status || "pending";
+  const isDriverApproved = driverStatus === "approved";
+  const verificationBadge = getVerificationBadge(driverStatus);
+  const approvalMessage = getDriverApprovalMessage(driverProfile);
   const vehicleColor = driverProfile?.vehicle_color || "";
   const carType = driverProfile?.car_type || "Regular";
   const driverCategory = driverProfile?.driver_category || "gold";
@@ -889,6 +998,17 @@ export default function DriverApp() {
                 <span style={avatarFallbackStyle}>{driverInitials || "DR"}</span>
               )}
             </div>
+
+            <span
+              style={{
+                ...driverVerificationBadgeStyle,
+                background: verificationBadge.background,
+                color: verificationBadge.color,
+                borderColor: verificationBadge.border,
+              }}
+            >
+              {verificationBadge.label}
+            </span>
           </div>
 
           <div style={earningsPillStyle}>
@@ -902,10 +1022,10 @@ export default function DriverApp() {
           <div style={rightControlStackStyle}>
             <button
               onClick={() => setShowSafety((current) => !current)}
-              style={floatingIconButtonStyle}
+              style={{ ...floatingIconButtonStyle, ...driverSosButtonStyle }}
               aria-label="Safety"
             >
-              !
+              SOS
             </button>
             <button
               onClick={() => {
@@ -926,14 +1046,12 @@ export default function DriverApp() {
 
         {showSafety && (
           <div style={driverSafetyPanelStyle}>
-            <strong>Emergency help</strong>
-            <span style={driverSafetyHintStyle}>Tap a number to call</span>
-            {MARKET.emergencyNumbers.map((item) => (
-              <a key={item.number} href={`tel:${item.number}`} style={driverSafetyLinkStyle}>
-                <span>{item.label}</span>
-                <strong>{item.number}</strong>
-              </a>
-            ))}
+            <SafetyEmergencyPanel
+              role="driver"
+              currentRide={activeRide}
+              onShareTrip={shareDriverTrip}
+              onClose={() => setShowSafety(false)}
+            />
           </div>
         )}
 
@@ -980,6 +1098,34 @@ export default function DriverApp() {
           </span>
         </div>
 
+        <div
+          style={{
+            ...driverApprovalCardStyle,
+            borderColor: verificationBadge.border,
+            background: isDriverApproved ? "#f0fdf4" : driverStatus === "rejected" ? "#fff1f2" : "#fff7ed",
+          }}
+        >
+          <span
+            style={{
+              ...driverApprovalIconStyle,
+              background: verificationBadge.background,
+              color: verificationBadge.color,
+            }}
+          >
+            {isDriverApproved ? "✓" : "!"}
+          </span>
+          <div>
+            <strong style={driverApprovalTitleStyle}>
+              {isDriverApproved
+                ? "Driver verification approved"
+                : driverStatus === "rejected"
+                  ? "Driver verification rejected"
+                  : "Driver verification pending"}
+            </strong>
+            <p style={driverApprovalTextStyle}>{approvalMessage}</p>
+          </div>
+        </div>
+
         <div style={sheetDividerStyle} />
 
         <div style={driverPerksGridStyle}>
@@ -1018,12 +1164,18 @@ export default function DriverApp() {
         <div style={primaryActionRowStyle}>
           <button
             onClick={toggleAvailability}
+            disabled={!isOnline && !isDriverApproved}
             style={{
               ...driverGoOnlineButtonStyle,
-              background: isOnline ? "#111827" : "#9b0089",
+              background: isOnline ? "#111827" : isDriverApproved ? "#9b0089" : "#98a2b3",
+              cursor: !isOnline && !isDriverApproved ? "not-allowed" : "pointer",
+              boxShadow:
+                !isOnline && !isDriverApproved
+                  ? "none"
+                  : "0 14px 28px rgba(155, 0, 137, 0.28)",
             }}
           >
-            {isOnline ? "Go Offline" : "Go Online"}
+            {isOnline ? "Go Offline" : isDriverApproved ? "Go Online" : "Approval required"}
           </button>
           <button
             onClick={() => setShowTripDetails((current) => !current)}
@@ -1137,7 +1289,19 @@ export default function DriverApp() {
             </div>
 
             <div style={menuProfileTextStyle}>
-              <h1>{driverName}</h1>
+              <div style={menuNameRowStyle}>
+                <h1>{driverName}</h1>
+                <span
+                  style={{
+                    ...menuVerificationBadgeStyle,
+                    background: verificationBadge.background,
+                    color: verificationBadge.color,
+                    borderColor: verificationBadge.border,
+                  }}
+                >
+                  {verificationBadge.label}
+                </span>
+              </div>
               <p>
                 {[vehicleColor, vehicleSummary].filter(Boolean).join(" ") || "Vehicle not added"}
                 {plateNumber ? ` · ${plateNumber}` : ""}
@@ -1821,36 +1985,19 @@ const rightControlStackStyle = {
   gap: "12px",
 };
 
+const driverSosButtonStyle = {
+  background: "#dc2626",
+  color: "white",
+  fontSize: "0.78rem",
+  boxShadow: "0 14px 30px rgba(220, 38, 38, 0.34)",
+};
+
 const driverSafetyPanelStyle = {
   position: "absolute",
   zIndex: 25,
   top: "88px",
   right: "18px",
-  width: "260px",
-  background: "white",
-  borderRadius: "16px",
-  padding: "14px",
-  boxShadow: "0 18px 42px rgba(15, 23, 42, 0.24)",
-  display: "grid",
-  gap: "8px",
-};
-
-const driverSafetyHintStyle = {
-  color: "#667085",
-  fontSize: "0.86rem",
-  fontWeight: 700,
-};
-
-const driverSafetyLinkStyle = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  background: "#fff5f5",
-  color: "#991b1b",
-  textDecoration: "none",
-  borderRadius: "12px",
-  padding: "11px 12px",
-  fontWeight: 900,
+  width: "min(620px, calc(100vw - 36px))",
 };
 
 const cornerAvatarStyle = {
@@ -1861,6 +2008,16 @@ const cornerAvatarStyle = {
   background: "#111827",
   border: "3px solid white",
   boxShadow: "0 10px 26px rgba(15, 23, 42, 0.18)",
+};
+
+const driverVerificationBadgeStyle = {
+  border: "1px solid",
+  borderRadius: "999px",
+  padding: "7px 10px",
+  fontSize: "0.72rem",
+  fontWeight: 950,
+  boxShadow: "0 8px 18px rgba(15, 23, 42, 0.12)",
+  whiteSpace: "nowrap",
 };
 
 const avatarImageStyle = {
@@ -1944,6 +2101,41 @@ const noticeStyle = {
   borderRadius: "10px",
   padding: "10px 12px",
   fontWeight: 900,
+};
+
+const driverApprovalCardStyle = {
+  marginTop: "18px",
+  border: "1px solid",
+  borderRadius: "18px",
+  padding: "14px",
+  display: "grid",
+  gridTemplateColumns: "44px minmax(0, 1fr)",
+  gap: "12px",
+  alignItems: "center",
+};
+
+const driverApprovalIconStyle = {
+  width: "44px",
+  height: "44px",
+  borderRadius: "14px",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  fontWeight: 950,
+  fontSize: "1.1rem",
+};
+
+const driverApprovalTitleStyle = {
+  display: "block",
+  color: "#111827",
+  fontWeight: 950,
+};
+
+const driverApprovalTextStyle = {
+  margin: "4px 0 0",
+  color: "#475467",
+  lineHeight: 1.35,
+  fontWeight: 800,
 };
 
 const sheetStatusPillStyle = {
@@ -2334,6 +2526,21 @@ const driverCategoryStyles = {
 
 const menuProfileTextStyle = {
   minWidth: 0,
+};
+
+const menuNameRowStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: "10px",
+  flexWrap: "wrap",
+};
+
+const menuVerificationBadgeStyle = {
+  border: "1px solid",
+  borderRadius: "999px",
+  padding: "7px 11px",
+  fontSize: "0.78rem",
+  fontWeight: 950,
 };
 
 const viewAsRiderStyle = {

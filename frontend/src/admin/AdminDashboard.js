@@ -88,7 +88,7 @@ function AdminDashboard() {
     { value: "elite", label: "Elite" },
   ];
 
-  const [page, setPage] = useState("verification");
+  const [page, setPage] = useState("overview");
   const [searchQuery, setSearchQuery] = useState("");
   const [drivers, setDrivers] = useState([]);
   const [users, setUsers] = useState([]);
@@ -456,14 +456,17 @@ function AdminDashboard() {
   };
 
   const menuItems = [
+    { key: "overview", label: "Overview" },
     { key: "verification", label: "Verification" },
     { key: "riders", label: "Riders" },
     { key: "drivers", label: "Drivers" },
     { key: "rides", label: "Dispatch" },
+    { key: "emergency", label: "Emergency" },
     { key: "vehicles", label: "Vehicles" },
     { key: "payments", label: "Payments" },
     { key: "withdrawals", label: "Withdrawals" },
     { key: "analytics", label: "Analytics" },
+    { key: "reports", label: "Reports" },
   ];
 
   const alphabetDrivers = sortAlphabetically(drivers);
@@ -490,6 +493,18 @@ function AdminDashboard() {
   const unpaidRides = rides.filter((ride) => ride.payment_status !== "paid");
   const completedRides = rides.filter((ride) => ride.status === "completed");
   const cancelledRides = rides.filter((ride) => ride.status === "cancelled");
+  const activeRideStatuses = [
+    "requested",
+    "pending",
+    "accepted",
+    "driver_arriving",
+    "driver_arrived",
+    "in_progress",
+  ];
+  const activeRides = rides.filter((ride) => activeRideStatuses.includes(ride.status));
+  const driverArrivingRides = rides.filter((ride) => ride.status === "driver_arriving");
+  const inProgressRides = rides.filter((ride) => ride.status === "in_progress");
+  const pendingRideRequests = rides.filter((ride) => ["requested", "pending"].includes(ride.status));
 
   const pendingWithdrawals = withdrawals.filter(
     (item) => item.status === "pending"
@@ -529,15 +544,45 @@ function AdminDashboard() {
     (total, item) => total + Number(item.amount || 0),
     0
   );
+  const completionRate =
+    rides.length > 0 ? Math.round((completedRides.length / rides.length) * 100) : 0;
+  const cancellationRate =
+    rides.length > 0 ? Math.round((cancelledRides.length / rides.length) * 100) : 0;
+  const averageFare =
+    rides.length > 0 ? Math.round(totalRevenue / rides.length) : 0;
+  const emergencyWatchList = [
+    ...activeRides.slice(0, 5).map((ride) => ({
+      id: `ride-${ride.id}`,
+      title: `Ride #${ride.id}`,
+      status: ride.status,
+      detail: `${ride.pickup || "Pickup"} to ${ride.destination || "Destination"}`,
+      severity:
+        ride.status === "in_progress"
+          ? "medium"
+          : ride.status === "driver_arriving"
+            ? "low"
+            : "watch",
+    })),
+    ...blockedUsers.slice(0, 3).map((user) => ({
+      id: `blocked-${user.id}`,
+      title: user.full_name || user.email || "Blocked user",
+      status: "blocked",
+      detail: "Account blocked. Support may need to review access.",
+      severity: "high",
+    })),
+  ];
   const menuCounts = {
+    overview: activeRides.length,
     verification: pendingDrivers.length,
     riders: riders.length,
     drivers: platformDrivers.length,
     rides: rides.length,
+    emergency: emergencyWatchList.length,
     vehicles: drivers.length,
     payments: paidRides.length,
     withdrawals: pendingWithdrawals.length,
     analytics: completedRides.length,
+    reports: emergencyWatchList.length + cancelledRides.length + pendingWithdrawals.length,
   };
   const currentViewTitle =
     menuItems.find((item) => item.key === page)?.label || "Admin";
@@ -670,12 +715,71 @@ function AdminDashboard() {
 
           <div style={opsStatsGridStyle}>
             <StatCard title="Drivers" value={drivers.length} />
+            <StatCard title="Riders" value={riders.length} />
             <StatCard title="Online" value={onlineDrivers.length} />
-            <StatCard title="Blocked" value={blockedUsers.length} />
-            <StatCard title="Trips" value={rides.length} />
+            <StatCard title="Active rides" value={activeRides.length} />
             <StatCard title="Revenue" value={formatMoney(totalRevenue)} />
           </div>
         </section>
+
+        {page === "overview" && (
+          <div style={adminOverviewGridStyle}>
+            <section style={card}>
+              <SectionTitle
+                title="Marketplace command center"
+                subtitle="A live executive view of approvals, active trips, revenue, and platform safety."
+              />
+
+              <div style={premiumMetricGridStyle}>
+                <PremiumMetric title="Active rides" value={activeRides.length} tone="green" />
+                <PremiumMetric title="Total riders" value={riders.length} tone="blue" />
+                <PremiumMetric title="Total drivers" value={platformDrivers.length} tone="gold" />
+                <PremiumMetric title="Pending drivers" value={pendingDrivers.length} tone="amber" />
+                <PremiumMetric title="Pending riders" value={pendingRiders.length} tone="amber" />
+                <PremiumMetric title="Online drivers" value={onlineDrivers.length} tone="blue" />
+                <PremiumMetric title="Revenue" value={formatMoney(totalRevenue)} tone="gold" />
+                <PremiumMetric title="Owner commission" value={formatMoney(platformCommission)} tone="green" />
+              </div>
+
+              <div style={overviewPanelsStyle}>
+                <RideAnalyticsPanel
+                  completed={completedRides.length}
+                  cancelled={cancelledRides.length}
+                  active={activeRides.length}
+                  pending={pendingRideRequests.length}
+                  completionRate={completionRate}
+                  cancellationRate={cancellationRate}
+                />
+                <RevenueAnalyticsPanel
+                  totalRevenue={totalRevenue}
+                  platformCommission={platformCommission}
+                  driverPayouts={driverPayouts}
+                  averageFare={averageFare}
+                />
+              </div>
+            </section>
+
+            <section style={card}>
+              <SectionTitle
+                title="Live active rides"
+                subtitle="Trips that need operational visibility right now."
+              />
+              <LiveRidesList rides={activeRides} />
+            </section>
+
+            <section style={card}>
+              <SectionTitle
+                title="Emergency monitoring"
+                subtitle="Watch active trips, blocked accounts, and emergency contacts."
+              />
+              <EmergencyMonitor
+                items={emergencyWatchList}
+                activeRides={activeRides.length}
+                blockedUsers={blockedUsers.length}
+              />
+            </section>
+          </div>
+        )}
 
         {page === "verification" && (
           <div style={card}>
@@ -821,6 +925,18 @@ function AdminDashboard() {
           <div style={card}>
             <SectionTitle title="Ride dispatch" subtitle="Watch active and historic trip activity." />
 
+            <div style={liveOpsStripStyle}>
+              <PremiumMetric title="Waiting requests" value={pendingRideRequests.length} tone="amber" />
+              <PremiumMetric title="Driver arriving" value={driverArrivingRides.length} tone="blue" />
+              <PremiumMetric title="In progress" value={inProgressRides.length} tone="green" />
+              <PremiumMetric title="Completed" value={completedRides.length} tone="gold" />
+            </div>
+
+            <h2 style={subHeadingStyle}>Live active rides</h2>
+            <LiveRidesList rides={activeRides} />
+
+            <h2 style={subHeadingStyle}>All rides</h2>
+
             {filteredRides.length === 0 ? (
               <p>No rides found.</p>
             ) : (
@@ -864,6 +980,21 @@ function AdminDashboard() {
                 </div>
               ))
             )}
+          </div>
+        )}
+
+        {page === "emergency" && (
+          <div style={card}>
+            <SectionTitle
+              title="Emergency monitoring"
+              subtitle="Monitor urgent ride conditions, active support risk, and emergency numbers."
+            />
+
+            <EmergencyMonitor
+              items={emergencyWatchList}
+              activeRides={activeRides.length}
+              blockedUsers={blockedUsers.length}
+            />
           </div>
         )}
 
@@ -1178,6 +1309,23 @@ function AdminDashboard() {
           <div style={card}>
             <SectionTitle title="Platform analytics" subtitle="Understand marketplace volume, revenue, and trip outcomes." />
 
+            <div style={overviewPanelsStyle}>
+              <RideAnalyticsPanel
+                completed={completedRides.length}
+                cancelled={cancelledRides.length}
+                active={activeRides.length}
+                pending={pendingRideRequests.length}
+                completionRate={completionRate}
+                cancellationRate={cancellationRate}
+              />
+              <RevenueAnalyticsPanel
+                totalRevenue={totalRevenue}
+                platformCommission={platformCommission}
+                driverPayouts={driverPayouts}
+                averageFare={averageFare}
+              />
+            </div>
+
             <div style={statsGrid}>
               <StatCard title="Total Drivers" value={drivers.length} />
               <StatCard title="Total Rides" value={rides.length} />
@@ -1198,6 +1346,34 @@ function AdminDashboard() {
                 value={formatMoney(driverPayouts)}
               />
             </div>
+          </div>
+        )}
+
+        {page === "reports" && (
+          <div style={card}>
+            <SectionTitle
+              title="Reports center"
+              subtitle="Operational reports for safety, revenue, approvals, rides, and account health."
+            />
+
+            <ReportsSection
+              riders={riders}
+              drivers={platformDrivers}
+              pendingDrivers={pendingDrivers}
+              pendingRiders={pendingRiders}
+              activeRides={activeRides}
+              completedRides={completedRides}
+              cancelledRides={cancelledRides}
+              blockedUsers={blockedUsers}
+              paidRides={paidRides}
+              unpaidRides={unpaidRides}
+              withdrawals={withdrawals}
+              pendingWithdrawals={pendingWithdrawals}
+              totalRevenue={totalRevenue}
+              platformCommission={platformCommission}
+              driverPayouts={driverPayouts}
+              emergencyWatchList={emergencyWatchList}
+            />
           </div>
         )}
       </div>
@@ -1221,7 +1397,7 @@ function DriverVerificationCard({
             style={driverPhoto}
           />
         ) : (
-          <div style={placeholderPhoto}>👤</div>
+          <div style={placeholderPhoto}>DR</div>
         )}
       </div>
 
@@ -1281,6 +1457,331 @@ function DriverVerificationCard({
       </div>
     </div>
   );
+}
+
+function PremiumMetric({ title, value, tone = "blue" }) {
+  const toneStyle = premiumMetricToneStyles[tone] || premiumMetricToneStyles.blue;
+
+  return (
+    <div style={{ ...premiumMetricStyle, ...toneStyle }}>
+      <span>{title}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+function RideAnalyticsPanel({
+  completed,
+  cancelled,
+  active,
+  pending,
+  completionRate,
+  cancellationRate,
+}) {
+  const rows = [
+    { label: "Completed", value: completed, tone: "#16a34a" },
+    { label: "Active", value: active, tone: "#2563eb" },
+    { label: "Waiting", value: pending, tone: "#f59e0b" },
+    { label: "Cancelled", value: cancelled, tone: "#ef4444" },
+  ];
+  const maxValue = Math.max(...rows.map((item) => Number(item.value || 0)), 1);
+
+  return (
+    <div style={analyticsPanelStyle}>
+      <div style={analyticsPanelHeaderStyle}>
+        <div>
+          <span style={sectionKickerStyle}>Ride analytics</span>
+          <h3 style={analyticsPanelTitleStyle}>Trip health</h3>
+        </div>
+        <StatusBadge label={`${completionRate}% complete`} />
+      </div>
+
+      <div style={analyticsBarListStyle}>
+        {rows.map((item) => (
+          <div key={item.label} style={analyticsBarRowStyle}>
+            <span>{item.label}</span>
+            <div style={analyticsBarTrackStyle}>
+              <div
+                style={{
+                  ...analyticsBarFillStyle,
+                  width: `${Math.max(8, (item.value / maxValue) * 100)}%`,
+                  background: item.tone,
+                }}
+              />
+            </div>
+            <strong>{item.value}</strong>
+          </div>
+        ))}
+      </div>
+
+      <div style={analyticsSplitStyle}>
+        <DetailItem label="Completion rate" value={`${completionRate}%`} />
+        <DetailItem label="Cancellation rate" value={`${cancellationRate}%`} />
+      </div>
+    </div>
+  );
+}
+
+function RevenueAnalyticsPanel({
+  totalRevenue,
+  platformCommission,
+  driverPayouts,
+  averageFare,
+}) {
+  const maxValue = Math.max(totalRevenue, platformCommission, driverPayouts, averageFare, 1);
+  const rows = [
+    { label: "Total revenue", value: totalRevenue, tone: "#f59e0b" },
+    { label: "Owner commission", value: platformCommission, tone: "#16a34a" },
+    { label: "Driver earnings", value: driverPayouts, tone: "#2563eb" },
+    { label: "Average fare", value: averageFare, tone: "#a855f7" },
+  ];
+
+  return (
+    <div style={analyticsPanelStyle}>
+      <div style={analyticsPanelHeaderStyle}>
+        <div>
+          <span style={sectionKickerStyle}>Revenue analytics</span>
+          <h3 style={analyticsPanelTitleStyle}>Money flow</h3>
+        </div>
+        <StatusBadge label="MRU" />
+      </div>
+
+      <div style={revenueBarsStyle}>
+        {rows.map((item) => (
+          <div key={item.label} style={revenueBarItemStyle}>
+            <div style={revenueBarColumnStyle}>
+              <span
+                style={{
+                  ...revenueBarFillStyle,
+                  height: `${Math.max(10, (Number(item.value || 0) / maxValue) * 100)}%`,
+                  background: item.tone,
+                }}
+              />
+            </div>
+            <strong>{formatMoney(item.value)}</strong>
+            <small>{item.label}</small>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function LiveRidesList({ rides }) {
+  if (rides.length === 0) {
+    return (
+      <div style={emptyStateStyle}>
+        <strong>No active rides right now.</strong>
+        <span>New requests, driver arrival, and in-progress trips will appear here.</span>
+      </div>
+    );
+  }
+
+  return (
+    <div style={liveRideGridStyle}>
+      {rides.slice(0, 8).map((ride) => (
+        <article key={ride.id} style={liveRideCardStyle}>
+          <div style={liveRideHeaderStyle}>
+            <div>
+              <span style={sectionKickerStyle}>Ride #{ride.id}</span>
+              <h3 style={liveRideTitleStyle}>{ride.status}</h3>
+            </div>
+            <StatusBadge label={ride.payment_status || "payment"} />
+          </div>
+
+          <div style={detailGridStyle}>
+            <DetailItem label="Pickup" value={ride.pickup || "N/A"} />
+            <DetailItem label="Destination" value={ride.destination || "N/A"} />
+            <DetailItem label="Fare" value={formatMoney(ride.fare)} />
+            <DetailItem label="Distance" value={`${ride.distance_km || 0} KM`} />
+          </div>
+
+          <p style={accessMetaStyle}>
+            Rider: {ride.rider_name || ride.rider_email || "N/A"} · Driver:{" "}
+            {ride.driver_name || ride.driver_email || "Unassigned"}
+          </p>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function EmergencyMonitor({ items, activeRides, blockedUsers }) {
+  return (
+    <div style={emergencyLayoutStyle}>
+      <div style={emergencyContactGridStyle}>
+        {MARKET.emergencyNumbers.map((contact) => (
+          <a
+            key={contact.number}
+            href={`tel:${contact.number}`}
+            style={emergencyContactCardStyle}
+          >
+            <span>{contact.label}</span>
+            <strong>{contact.number}</strong>
+            <small>{contact.description}</small>
+          </a>
+        ))}
+      </div>
+
+      <div style={premiumMetricGridStyle}>
+        <PremiumMetric title="Active rides watched" value={activeRides} tone="blue" />
+        <PremiumMetric title="Blocked accounts" value={blockedUsers} tone="red" />
+        <PremiumMetric title="Emergency contacts" value={MARKET.emergencyNumbers.length} tone="gold" />
+      </div>
+
+      <div style={emergencyWatchListStyle}>
+        {items.length === 0 ? (
+          <div style={emptyStateStyle}>
+            <strong>No emergency items.</strong>
+            <span>Active trips and blocked-account reviews will appear here.</span>
+          </div>
+        ) : (
+          items.map((item) => (
+            <article key={item.id} style={emergencyItemStyle}>
+              <span style={{ ...severityDotStyle, ...severityToneStyle(item.severity) }} />
+              <div>
+                <h3 style={emergencyItemTitleStyle}>{item.title}</h3>
+                <p style={accessMetaStyle}>{item.detail}</p>
+              </div>
+              <StatusBadge label={item.status} />
+            </article>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ReportsSection({
+  riders,
+  drivers,
+  pendingDrivers,
+  pendingRiders,
+  activeRides,
+  completedRides,
+  cancelledRides,
+  blockedUsers,
+  paidRides,
+  unpaidRides,
+  withdrawals,
+  pendingWithdrawals,
+  totalRevenue,
+  platformCommission,
+  driverPayouts,
+  emergencyWatchList,
+}) {
+  const reportCards = [
+    {
+      title: "Marketplace summary",
+      tone: "blue",
+      rows: [
+        ["Total riders", riders.length],
+        ["Total drivers", drivers.length],
+        ["Active rides", activeRides.length],
+        ["Completed rides", completedRides.length],
+      ],
+    },
+    {
+      title: "Driver approval system",
+      tone: "amber",
+      rows: [
+        ["Pending drivers", pendingDrivers.length],
+        ["Pending riders", pendingRiders.length],
+        ["Blocked accounts", blockedUsers.length],
+        ["Pending withdrawals", pendingWithdrawals.length],
+      ],
+    },
+    {
+      title: "Earnings analytics",
+      tone: "gold",
+      rows: [
+        ["Total revenue", formatMoney(totalRevenue)],
+        ["Sakho fee", formatMoney(platformCommission)],
+        ["Driver earnings", formatMoney(driverPayouts)],
+        ["Withdrawals", withdrawals.length],
+      ],
+    },
+    {
+      title: "Payment report",
+      tone: "green",
+      rows: [
+        ["Paid rides", paidRides.length],
+        ["Unpaid rides", unpaidRides.length],
+        ["Cancelled rides", cancelledRides.length],
+        ["Payment risk", unpaidRides.length + cancelledRides.length],
+      ],
+    },
+    {
+      title: "Emergency alerts",
+      tone: "red",
+      rows: [
+        ["Watch list", emergencyWatchList.length],
+        ["Active rides watched", activeRides.length],
+        ["Blocked users", blockedUsers.length],
+        ["Emergency contacts", MARKET.emergencyNumbers.length],
+      ],
+    },
+  ];
+
+  return (
+    <div style={reportsLayoutStyle}>
+      <div style={reportsHeroStyle}>
+        <div>
+          <span style={opsKickerStyle}>Live reports</span>
+          <h2 style={reportsHeroTitleStyle}>Sakho Express operating report</h2>
+          <p style={opsSubtitleStyle}>
+            Review marketplace health before approving drivers, responding to emergencies,
+            and reconciling platform earnings.
+          </p>
+        </div>
+        <StatusBadge label={`${emergencyWatchList.length} alerts`} />
+      </div>
+
+      <div style={reportsGridStyle}>
+        {reportCards.map((report) => (
+          <article key={report.title} style={reportCardStyle}>
+            <div style={reportHeaderStyle}>
+              <span style={{ ...severityDotStyle, ...reportToneStyle(report.tone) }} />
+              <h3 style={reportTitleStyle}>{report.title}</h3>
+            </div>
+            <div style={reportRowsStyle}>
+              {report.rows.map(([label, value]) => (
+                <DetailItem key={label} label={label} value={value} />
+              ))}
+            </div>
+          </article>
+        ))}
+      </div>
+
+      <div style={reportActionBarStyle}>
+        <button type="button" style={refreshButtonStyle} onClick={() => window.print()}>
+          Print report
+        </button>
+        <button
+          type="button"
+          style={neutralButtonStyle}
+          onClick={() => (window.location.href = "/support")}
+        >
+          Open support process
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function reportToneStyle(tone) {
+  if (tone === "red") return { background: "#ef4444" };
+  if (tone === "amber") return { background: "#f59e0b" };
+  if (tone === "gold") return { background: "#facc15" };
+  if (tone === "green") return { background: "#16a34a" };
+  return { background: "#2563eb" };
+}
+
+function severityToneStyle(severity) {
+  if (severity === "high") return { background: "#ef4444" };
+  if (severity === "medium") return { background: "#f59e0b" };
+  if (severity === "low") return { background: "#16a34a" };
+  return { background: "#2563eb" };
 }
 
 function UserAccessCard({
@@ -1419,6 +1920,18 @@ function DriverInfoCard({
 }) {
   const canApproveDriver = driver.status !== "approved";
   const canRejectDriver = driver.status !== "rejected";
+  const uploadedDriverDocs = [
+    driver.driver_photo,
+    driver.license_file,
+    driver.vehicle_registration,
+    driver.insurance_document,
+  ].filter(Boolean).length;
+  const verificationLabel =
+    driver.status === "approved"
+      ? "Verified profile"
+      : driver.status === "rejected"
+        ? "Rejected profile"
+        : "Needs review";
 
   return (
     <div style={driverProfileCardStyle}>
@@ -1443,7 +1956,10 @@ function DriverInfoCard({
               <h3 style={reviewTitleStyle}>{driver.driver_name || "N/A"}</h3>
               <p style={accessMetaStyle}>{driver.driver_email || "N/A"}</p>
             </div>
-            <StatusBadge label={driver.status || "pending"} />
+            <div style={driverVerificationStackStyle}>
+              <StatusBadge label={driver.status || "pending"} />
+              <span style={driverVerificationMiniBadgeStyle}>{verificationLabel}</span>
+            </div>
           </div>
 
           <div style={detailGridStyle}>
@@ -1458,6 +1974,7 @@ function DriverInfoCard({
               value={`${driver.vehicle_make || ""} ${driver.vehicle_model || ""}`.trim() || "N/A"}
             />
             <DetailItem label="Plate" value={driver.vehicle_plate || "N/A"} />
+            <DetailItem label="Documents" value={`${uploadedDriverDocs}/4 uploaded`} />
           </div>
 
           <label style={driverCategoryControlStyle}>
@@ -1596,6 +2113,314 @@ function SectionTitle({ title, subtitle }) {
     </div>
   );
 }
+
+const adminOverviewGridStyle = {
+  display: "grid",
+  gap: "18px",
+};
+
+const premiumMetricGridStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
+  gap: "12px",
+};
+
+const premiumMetricStyle = {
+  minHeight: "104px",
+  border: "1px solid",
+  borderRadius: "8px",
+  padding: "16px",
+  display: "grid",
+  alignContent: "space-between",
+  boxShadow: "0 16px 34px rgba(0, 0, 0, 0.18)",
+};
+
+const premiumMetricToneStyles = {
+  green: {
+    background: "linear-gradient(135deg, rgba(22, 163, 74, 0.22), rgba(22, 163, 74, 0.06))",
+    borderColor: "rgba(34, 197, 94, 0.34)",
+    color: "#dcfce7",
+  },
+  amber: {
+    background: "linear-gradient(135deg, rgba(245, 158, 11, 0.22), rgba(245, 158, 11, 0.06))",
+    borderColor: "rgba(245, 158, 11, 0.34)",
+    color: "#fef3c7",
+  },
+  blue: {
+    background: "linear-gradient(135deg, rgba(37, 99, 235, 0.22), rgba(37, 99, 235, 0.06))",
+    borderColor: "rgba(96, 165, 250, 0.34)",
+    color: "#dbeafe",
+  },
+  gold: {
+    background: "linear-gradient(135deg, rgba(250, 204, 21, 0.22), rgba(250, 204, 21, 0.06))",
+    borderColor: "rgba(250, 204, 21, 0.34)",
+    color: "#fef9c3",
+  },
+  red: {
+    background: "linear-gradient(135deg, rgba(239, 68, 68, 0.22), rgba(239, 68, 68, 0.06))",
+    borderColor: "rgba(248, 113, 113, 0.34)",
+    color: "#fee2e2",
+  },
+};
+
+const overviewPanelsStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+  gap: "16px",
+  marginTop: "18px",
+};
+
+const analyticsPanelStyle = {
+  background: "#0b0f14",
+  border: "1px solid #1f2937",
+  borderRadius: "8px",
+  padding: "18px",
+};
+
+const analyticsPanelHeaderStyle = {
+  display: "flex",
+  justifyContent: "space-between",
+  gap: "12px",
+  alignItems: "flex-start",
+  marginBottom: "16px",
+};
+
+const analyticsPanelTitleStyle = {
+  margin: "3px 0 0",
+  color: "white",
+  fontSize: "1.25rem",
+};
+
+const analyticsBarListStyle = {
+  display: "grid",
+  gap: "12px",
+};
+
+const analyticsBarRowStyle = {
+  display: "grid",
+  gridTemplateColumns: "92px 1fr 38px",
+  gap: "10px",
+  alignItems: "center",
+  color: "#d1d5db",
+  fontWeight: 900,
+};
+
+const analyticsBarTrackStyle = {
+  height: "10px",
+  borderRadius: "999px",
+  background: "#1f2937",
+  overflow: "hidden",
+};
+
+const analyticsBarFillStyle = {
+  display: "block",
+  height: "100%",
+  borderRadius: "999px",
+};
+
+const analyticsSplitStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: "10px",
+  marginTop: "16px",
+};
+
+const revenueBarsStyle = {
+  minHeight: "230px",
+  display: "grid",
+  gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+  gap: "12px",
+  alignItems: "end",
+};
+
+const revenueBarItemStyle = {
+  display: "grid",
+  gap: "8px",
+  color: "#d1d5db",
+  textAlign: "center",
+  fontWeight: 900,
+};
+
+const revenueBarColumnStyle = {
+  height: "142px",
+  borderRadius: "8px",
+  background: "#111827",
+  border: "1px solid #1f2937",
+  display: "flex",
+  alignItems: "end",
+  justifyContent: "center",
+  padding: "8px",
+};
+
+const revenueBarFillStyle = {
+  display: "block",
+  width: "100%",
+  borderRadius: "6px",
+};
+
+const liveOpsStripStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
+  gap: "12px",
+  marginBottom: "18px",
+};
+
+const liveRideGridStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+  gap: "12px",
+  marginBottom: "18px",
+};
+
+const liveRideCardStyle = {
+  background: "#0b0f14",
+  border: "1px solid #1f2937",
+  borderRadius: "8px",
+  padding: "16px",
+};
+
+const liveRideHeaderStyle = {
+  display: "flex",
+  justifyContent: "space-between",
+  gap: "12px",
+  alignItems: "flex-start",
+  marginBottom: "14px",
+};
+
+const liveRideTitleStyle = {
+  margin: "4px 0 0",
+  color: "white",
+  textTransform: "capitalize",
+};
+
+const emptyStateStyle = {
+  display: "grid",
+  gap: "5px",
+  border: "1px dashed #334155",
+  borderRadius: "8px",
+  padding: "18px",
+  background: "#0b0f14",
+  color: "#d1d5db",
+};
+
+const emergencyLayoutStyle = {
+  display: "grid",
+  gap: "16px",
+};
+
+const emergencyContactGridStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
+  gap: "12px",
+};
+
+const emergencyContactCardStyle = {
+  display: "grid",
+  gap: "7px",
+  minHeight: "118px",
+  alignContent: "center",
+  padding: "16px",
+  borderRadius: "8px",
+  border: "1px solid rgba(248, 113, 113, 0.34)",
+  background: "linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(239, 68, 68, 0.06))",
+  color: "white",
+  textDecoration: "none",
+  fontWeight: 900,
+};
+
+const emergencyWatchListStyle = {
+  display: "grid",
+  gap: "10px",
+};
+
+const emergencyItemStyle = {
+  display: "grid",
+  gridTemplateColumns: "14px minmax(0, 1fr) auto",
+  gap: "12px",
+  alignItems: "center",
+  background: "#0b0f14",
+  border: "1px solid #1f2937",
+  borderRadius: "8px",
+  padding: "14px",
+};
+
+const severityDotStyle = {
+  width: "12px",
+  height: "12px",
+  borderRadius: "50%",
+  boxShadow: "0 0 0 5px rgba(255, 255, 255, 0.06)",
+};
+
+const emergencyItemTitleStyle = {
+  margin: 0,
+  color: "white",
+  fontSize: "1rem",
+};
+
+const reportsLayoutStyle = {
+  display: "grid",
+  gap: "16px",
+};
+
+const reportsHeroStyle = {
+  display: "flex",
+  justifyContent: "space-between",
+  gap: "16px",
+  alignItems: "flex-start",
+  border: "1px solid rgba(250, 204, 21, 0.24)",
+  borderRadius: "14px",
+  padding: "18px",
+  background:
+    "radial-gradient(circle at 90% 10%, rgba(250, 204, 21, 0.16), transparent 34%), #0b0f14",
+};
+
+const reportsHeroTitleStyle = {
+  margin: "6px 0 8px",
+  color: "white",
+  fontSize: "1.65rem",
+  letterSpacing: 0,
+};
+
+const reportsGridStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+  gap: "12px",
+};
+
+const reportCardStyle = {
+  display: "grid",
+  gap: "14px",
+  border: "1px solid #1f2937",
+  borderRadius: "14px",
+  padding: "16px",
+  background: "#0b0f14",
+  boxShadow: "0 16px 34px rgba(0, 0, 0, 0.16)",
+};
+
+const reportHeaderStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: "10px",
+};
+
+const reportTitleStyle = {
+  margin: 0,
+  color: "white",
+  fontSize: "1rem",
+};
+
+const reportRowsStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: "10px",
+};
+
+const reportActionBarStyle = {
+  display: "flex",
+  justifyContent: "flex-end",
+  gap: "10px",
+  flexWrap: "wrap",
+};
 
 const pageStyle = {
   display: "grid",
@@ -1944,6 +2769,23 @@ const reviewHeaderStyle = {
   justifyContent: "space-between",
   gap: "12px",
   marginBottom: "12px",
+};
+
+const driverVerificationStackStyle = {
+  display: "grid",
+  justifyItems: "end",
+  gap: "8px",
+};
+
+const driverVerificationMiniBadgeStyle = {
+  border: "1px solid rgba(250, 204, 21, 0.28)",
+  borderRadius: "999px",
+  background: "rgba(250, 204, 21, 0.12)",
+  color: "#fde68a",
+  padding: "7px 10px",
+  fontSize: "0.72rem",
+  fontWeight: 950,
+  whiteSpace: "nowrap",
 };
 
 const reviewTitleStyle = {

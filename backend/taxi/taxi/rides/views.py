@@ -253,11 +253,13 @@ def cancel_ride(request, ride_id):
             status=status.HTTP_403_FORBIDDEN,
         )
 
-    if ride.status == "completed":
+    if ride.status in ["in_progress", "completed"]:
         return Response(
-            {"detail": "Completed ride cannot be cancelled."},
+            {"detail": "Ride can only be cancelled before the trip starts."},
             status=status.HTTP_400_BAD_REQUEST,
         )
+
+    cancellation_reason = request.data.get("reason", "")
 
     ride.status = "cancelled"
     ride.save()
@@ -265,7 +267,11 @@ def cancel_ride(request, ride_id):
     cancel_ride_payment(ride)
 
     serializer = RideSerializer(ride, context={"request": request})
-    return Response(serializer.data)
+    data = serializer.data
+    data["cancellation_reason"] = cancellation_reason
+    data["cancellation_fee"] = "0.00"
+    data["refund_status"] = "Authorization released or no charge captured"
+    return Response(data)
 
 
 @api_view(["POST"])

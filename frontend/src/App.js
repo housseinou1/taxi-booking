@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import { useTranslation } from "react-i18next";
 
 import Login from "./auth/Login";
 import Register from "./auth/Register";
@@ -12,10 +13,14 @@ import DriverSignup from "./driver/DriverSignup";
 
 import AdminDashboard from "./admin/AdminDashboard";
 import InstallAppButton from "./InstallAppButton";
+import NotificationCenter from "./components/NotificationCenter";
+import SettingsPageView from "./settings/SettingsPage";
 
 import AddPaymentMethod from "./payments/AddPaymentMethod";
 import SavedPaymentMethods from "./payments/SavedPaymentMethods";
 import RiderPayments from "./payments/PaymentPage";
+import { DriverProfilePage, RiderProfilePage } from "./profile/ProfilePages";
+import SupportCenter from "./support/SupportCenter";
 import { API_URL } from "./apiConfig";
 import { MARKET } from "./marketConfig";
 
@@ -28,18 +33,23 @@ function App() {
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [refreshCards, setRefreshCards] = useState(0);
   const [selectedRide, setSelectedRide] = useState(null);
+  const [sessionChecked, setSessionChecked] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(hasValidAccessToken());
 
   useEffect(() => {
     if (currentPath === "/payment-setup") setPage("payment-setup");
     else if (currentPath === "/driver-vehicle-setup") setPage("driver-vehicle-setup");
     else if (currentPath === "/rider-dashboard") setPage("rider-dashboard");
+    else if (currentPath === "/rider-profile") setPage("rider-profile");
     else if (currentPath === "/rider-payments") setPage("rider-payments");
     else if (currentPath === "/rider") setPage("rider");
+    else if (currentPath === "/driver-profile") setPage("driver-profile");
     else if (currentPath === "/driver") setPage("driver");
     else if (currentPath === "/register") setPage("register");
     else if (currentPath === "/login") setPage("login");
     else if (currentPath === "/admin-dashboard") setPage("admin");
     else if (currentPath === "/admin") setPage("admin");
+    else if (currentPath === "/settings") setPage("settings");
     else if (currentPath === "/terms") setPage("terms");
     else if (currentPath === "/privacy") setPage("privacy");
     else if (currentPath === "/support") setPage("support");
@@ -51,6 +61,53 @@ function App() {
       fetchSelectedRide();
     }
   }, [page]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const restoreSession = async () => {
+      const access = localStorage.getItem("access");
+
+      if (!isJwtUsable(access)) {
+        clearAuthSession();
+        if (isMounted) {
+          setIsAuthenticated(false);
+          setSessionChecked(true);
+        }
+        return;
+      }
+
+      try {
+        const storedUser = localStorage.getItem("user");
+
+        if (!storedUser) {
+          const response = await axios.get(`${API_URL}/auth/me/`, {
+            headers: {
+              Authorization: `Bearer ${access}`,
+            },
+          });
+          localStorage.setItem("user", JSON.stringify(response.data));
+        }
+
+        if (isMounted) {
+          setIsAuthenticated(true);
+          setSessionChecked(true);
+        }
+      } catch (error) {
+        clearAuthSession();
+        if (isMounted) {
+          setIsAuthenticated(false);
+          setSessionChecked(true);
+        }
+      }
+    };
+
+    restoreSession();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const fetchSelectedRide = async () => {
     try {
@@ -92,27 +149,37 @@ function App() {
   };
 
   const logout = () => {
-    localStorage.removeItem("access");
-    localStorage.removeItem("refresh");
-    localStorage.removeItem("user");
-    localStorage.removeItem("selectedRideId");
-    localStorage.removeItem("needs_payment_setup");
-    localStorage.removeItem("needs_vehicle_setup");
+    clearAuthSession();
     window.location.href = "/";
   };
 
-  const withInstall = (content) => (
+  const withInstall = (content, options = {}) => (
     <>
       {content}
+      {options.showNotifications !== false && isAuthenticated && <NotificationCenter />}
       <InstallAppButton />
     </>
   );
 
-  if (page === "login") return withInstall(<Login />);
-  if (page === "register") return withInstall(<Register />);
+  if (page === "login") return withInstall(<Login />, { showNotifications: false });
+  if (page === "register") return withInstall(<Register />, { showNotifications: false });
+
+  if (isProtectedPage(page)) {
+    if (!sessionChecked) {
+      return withInstall(<AuthLoadingScreen />);
+    }
+
+    if (!isAuthenticated) {
+      return withInstall(<LoginRequiredRedirect path={currentPath} />);
+    }
+  }
 
   if (page === "rider-dashboard") {
     return withInstall(<RiderDashboard goBack={() => (window.location.href = "/rider")} />);
+  }
+
+  if (page === "rider-profile") {
+    return withInstall(<RiderProfilePage />);
   }
 
   if (page === "rider-payments") {
@@ -231,6 +298,10 @@ function App() {
     return withInstall(<DriverApp />);
   }
 
+  if (page === "driver-profile") {
+    return withInstall(<DriverProfilePage />);
+  }
+
   if (page === "admin") {
     return withInstall(
       <div>
@@ -240,7 +311,20 @@ function App() {
     );
   }
 
-  if (["terms", "privacy", "support"].includes(page)) {
+  if (page === "settings") {
+    return withInstall(<SettingsPageView onLogout={logout} />);
+  }
+
+  if (page === "support") {
+    return withInstall(
+      <div>
+        <TopBar title={`${MARKET.brandName} Support`} goHome={goHome} logout={logout} />
+        <SupportCenter />
+      </div>
+    );
+  }
+
+  if (["terms", "privacy"].includes(page)) {
     return withInstall(
       <div>
         <TopBar title={`${MARKET.brandName} ${page}`} goHome={goHome} logout={logout} />
@@ -249,135 +333,2338 @@ function App() {
     );
   }
 
-  return withInstall(
-    <div style={pageStyle}>
-      <div style={homeShellStyle}>
-        <header style={navStyle}>
-          <div style={topBrandStyle}>
-            <BrandLogo />
-            <strong style={{ color: "#f8fafc", fontSize: "1rem" }}>{MARKET.brandName}</strong>
-          </div>
-          <div style={authRowStyle}>
-            <button onClick={() => (window.location.href = "/login")} style={lightButtonStyle}>Login</button>
-            <button onClick={() => (window.location.href = "/register")} style={lightButtonStyle}>Register</button>
-          </div>
-        </header>
-        <section style={landingHeroStyle}>
-          <div style={landingCopyStyle}>
-            <span style={brandPillStyle}>{MARKET.country} · Luxury mobility</span>
-            <h1 style={titleStyle}>{MARKET.brandName} for the next billion trips</h1>
-            <p style={subtitleStyle}>Premium rides, live trip intelligence, and five-star service for riders and drivers across every city in your network.</p>
-            <div style={ctaRowStyle}>
-              <button onClick={() => (window.location.href = "/rider-dashboard")} style={primaryButtonStyle}>Ride now</button>
-              <button onClick={() => (window.location.href = "/driver")} style={secondaryButtonStyle}>Become a driver</button>
+  return withInstall(<LandingPage />);
+}
+
+function isProtectedPage(page) {
+  return [
+    "admin",
+    "driver",
+    "driver-profile",
+    "driver-vehicle-setup",
+    "payment-setup",
+    "rider",
+    "rider-dashboard",
+    "rider-profile",
+    "rider-payments",
+    "settings",
+  ].includes(page);
+}
+
+function hasValidAccessToken() {
+  return isJwtUsable(localStorage.getItem("access"));
+}
+
+function isJwtUsable(token) {
+  if (!token) return false;
+
+  try {
+    const [, payload] = token.split(".");
+    if (!payload) return true;
+
+    const decoded = JSON.parse(window.atob(payload.replace(/-/g, "+").replace(/_/g, "/")));
+    if (!decoded.exp) return true;
+
+    return decoded.exp * 1000 > Date.now() + 30000;
+  } catch (error) {
+    return Boolean(token);
+  }
+}
+
+function clearAuthSession() {
+  localStorage.removeItem("access");
+  localStorage.removeItem("refresh");
+  localStorage.removeItem("user");
+  localStorage.removeItem("selectedRideId");
+  localStorage.removeItem("needs_payment_setup");
+  localStorage.removeItem("needs_vehicle_setup");
+}
+
+function LoginRequiredRedirect({ path }) {
+  useEffect(() => {
+    const redirectPath = path && path !== "/login" ? path : "/rider-dashboard";
+    localStorage.setItem("sx_login_redirect", redirectPath);
+    window.location.replace(`/login?next=${encodeURIComponent(redirectPath)}`);
+  }, [path]);
+
+  return <AuthLoadingScreen message="Taking you to secure login..." />;
+}
+
+function AuthLoadingScreen({ message = "Checking your secure session..." }) {
+  return (
+    <main style={authLoadingStyle}>
+      <div style={authLoadingCardStyle}>
+        <img src={LOGO_SRC} alt={`${MARKET.brandName} logo`} style={authLoadingLogoStyle} />
+        <h1 style={authLoadingTitleStyle}>{MARKET.brandName}</h1>
+        <p style={authLoadingTextStyle}>{message}</p>
+      </div>
+    </main>
+  );
+}
+
+function LandingPage() {
+  const { t } = useTranslation();
+
+  return (
+    <main className="sx-landing">
+      <LandingStyles />
+      <SakhoNavbar />
+
+      <section className="sx-hero">
+        <div className="sx-gradient" />
+        <div className="sx-hero-glow sx-hero-glow-one" />
+        <div className="sx-hero-glow sx-hero-glow-two" />
+        <div className="sx-hero-inner">
+          <div className="sx-hero-copy">
+            <span className="sx-eyebrow">{t("landing.eyebrow")}</span>
+            <h1>{t("landing.title")}</h1>
+            <p>{t("landing.subtitle")}</p>
+
+            <div className="sx-cta-row">
+              <button className="sx-primary-cta" onClick={() => (window.location.href = "/rider-dashboard")}>
+                {t("landing.bookRide")}
+              </button>
+              <button className="sx-secondary-cta" onClick={() => (window.location.href = "/driver")}>
+                {t("landing.startDriving")}
+              </button>
             </div>
-            <div style={statsGridStyle}>
-              <div style={statCardStyle}><strong>4.96★</strong><span>Average rider rating</span></div>
-              <div style={statCardStyle}><strong>2.4m+</strong><span>Trips completed safely</span></div>
-              <div style={statCardStyle}><strong>3 min</strong><span>Median pickup time</span></div>
+
+            <div className="sx-trust-row">
+              <span>{t("landing.commission")}</span>
+              <span>{t("landing.privateCall")}</span>
+              <span>{t("landing.wallets")}</span>
+            </div>
+
+            <div className="sx-hero-metrics">
+              <div>
+                <strong>14+</strong>
+                <span>{t("landing.cities")}</span>
+              </div>
+              <div>
+                <strong>24/7</strong>
+                <span>{t("landing.operations")}</span>
+              </div>
+              <div>
+                <strong>3 apps</strong>
+                <span>{t("landing.apps")}</span>
+              </div>
             </div>
           </div>
-          <div style={dispatchPanelStyle}>
-            <div style={phoneMockStyle}>
-              <div style={liveHeaderStyle}><span>Live Trip</span><strong>Driver arriving · 2 min</strong></div>
-              <div style={liveMapStyle} />
-              <div style={liveRowStyle}><span>Premium Black</span><strong>MRU 1450</strong></div>
-              <div style={liveRowStyle}><span>Captain Ahmed</span><strong>4.9 ★</strong></div>
-            </div>
-            <div style={roleSelectorStyle}>
-              <button onClick={() => (window.location.href = "/rider-dashboard")} style={roleCardStyle}><span style={roleLabelStyle}>For riders</span><strong style={roleTitleStyle}>Tap, track, pay instantly</strong></button>
-              <button onClick={() => (window.location.href = "/driver")} style={roleCardStyle}><span style={roleLabelStyle}>For drivers</span><strong style={roleTitleStyle}>Go online, earn smarter</strong></button>
-            </div>
+
+          <PhoneMockup />
+        </div>
+      </section>
+
+      <section className="sx-services">
+        <div className="sx-section-heading">
+          <span>{t("landing.onePlatform")}</span>
+          <h2>{t("landing.servicesTitle")}</h2>
+        </div>
+        <div className="sx-card-grid">
+          <ServiceCard
+            title={t("landing.rideTitle")}
+            text={t("landing.rideText")}
+            path="/rider-dashboard"
+          />
+          <ServiceCard
+            title={t("landing.deliveryTitle")}
+            text={t("landing.deliveryText")}
+            path="/rider-dashboard"
+          />
+          <ServiceCard
+            title={t("landing.driverTitle")}
+            text={t("landing.driverText")}
+            path="/driver"
+          />
+        </div>
+      </section>
+
+      <DownloadSection />
+      <SafetySection />
+      <TestimonialsSection />
+      <DriverSignupCTA />
+      <LandingFooter />
+    </main>
+  );
+}
+
+function SakhoNavbar() {
+  const { t } = useTranslation();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const navItems = [
+    { label: t("common.home"), path: "/" },
+    { label: t("common.rider"), path: "/rider-dashboard" },
+    { label: t("common.driver"), path: "/driver" },
+    { label: t("common.settings"), path: "/settings" },
+  ];
+
+  const goTo = (path) => {
+    setMenuOpen(false);
+    window.location.href = path;
+  };
+
+  return (
+    <header className="sakho-navbar-shell">
+      <NavbarStyles />
+      <nav className="sakho-navbar" aria-label="Main navigation">
+        <button className="sakho-nav-logo" onClick={() => goTo("/")}>
+          <img src={LOGO_SRC} alt={`${MARKET.brandName} logo`} />
+          <span>{t("common.brand")}</span>
+        </button>
+
+        <div className="sakho-nav-links">
+          {navItems.map((item) => (
+            <button key={item.path} onClick={() => goTo(item.path)}>
+              {item.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="sakho-nav-auth">
+          <button className="sakho-login-link" onClick={() => goTo("/login")}>
+            {t("common.login")}
+          </button>
+          <button className="sakho-register-link" onClick={() => goTo("/register")}>
+            {t("common.register")}
+          </button>
+        </div>
+
+        <button
+          className={`sakho-menu-button ${menuOpen ? "open" : ""}`}
+          onClick={() => setMenuOpen((current) => !current)}
+          aria-label="Open navigation menu"
+          aria-expanded={menuOpen}
+        >
+          <span />
+          <span />
+          <span />
+        </button>
+      </nav>
+
+      {menuOpen && (
+        <div className="sakho-mobile-menu">
+          {navItems.map((item) => (
+            <button key={item.path} onClick={() => goTo(item.path)}>
+              {item.label}
+            </button>
+          ))}
+          <div className="sakho-mobile-auth">
+            <button onClick={() => goTo("/login")}>{t("common.login")}</button>
+            <button onClick={() => goTo("/register")}>{t("common.register")}</button>
           </div>
-        </section>
-        <section style={platformGridStyle}>
-          <PlatformTile title="Economy" text="Best everyday value with short ETAs." path="/rider-dashboard" />
-          <PlatformTile title="Premium Black" text="Executive rides with top-rated drivers." path="/rider-dashboard" />
-          <PlatformTile title="XL Family" text="Extra seats, luggage room, and comfort." path="/rider-dashboard" />
-          <PlatformTile title="Driver Pro" text="Real-time demand heatmaps and earning tools." path="/driver" />
-        </section>
-        <section style={cityStripStyle}>{MARKET.cities.map((city) => <div key={city.label} style={cityPillStyle}>{city.label}</div>)}</section>
-        <EmergencyPanel />
-        <FooterLinks />
+        </div>
+      )}
+    </header>
+  );
+}
+
+function NavbarStyles() {
+  return (
+    <style>{`
+      .sakho-navbar-shell {
+        position: sticky;
+        top: 12px;
+        z-index: 100;
+        width: min(1180px, calc(100% - 28px));
+        margin: 12px auto 0;
+      }
+
+      .sakho-navbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        min-height: 68px;
+        padding: 10px 12px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 22px;
+        background: rgba(5, 7, 13, 0.78);
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.34);
+        backdrop-filter: blur(22px);
+      }
+
+      .sakho-nav-logo,
+      .sakho-nav-links button,
+      .sakho-nav-auth button,
+      .sakho-menu-button,
+      .sakho-mobile-menu button {
+        border: 0;
+        font: inherit;
+        cursor: pointer;
+      }
+
+      .sakho-nav-logo {
+        display: inline-flex;
+        align-items: center;
+        gap: 11px;
+        min-width: 0;
+        background: transparent;
+        color: #fff;
+        font-weight: 950;
+      }
+
+      .sakho-nav-logo img {
+        width: 46px;
+        height: 46px;
+        border-radius: 14px;
+        object-fit: cover;
+        box-shadow: 0 0 0 1px rgba(250, 204, 21, 0.34);
+      }
+
+      .sakho-nav-logo span {
+        white-space: nowrap;
+      }
+
+      .sakho-nav-links {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.06);
+      }
+
+      .sakho-nav-links button,
+      .sakho-login-link {
+        min-height: 40px;
+        padding: 0 14px;
+        border-radius: 999px;
+        background: transparent;
+        color: rgba(255, 255, 255, 0.78);
+        font-size: 14px;
+        font-weight: 850;
+        transition: background 180ms ease, color 180ms ease, transform 180ms ease;
+      }
+
+      .sakho-nav-links button:hover,
+      .sakho-login-link:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: #fff;
+        transform: translateY(-1px);
+      }
+
+      .sakho-nav-auth {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .sakho-register-link {
+        min-height: 44px;
+        padding: 0 18px;
+        border-radius: 999px;
+        background: #fff;
+        color: #070a12;
+        font-weight: 950;
+        box-shadow: 0 14px 34px rgba(255, 255, 255, 0.18);
+        transition: transform 180ms ease, box-shadow 180ms ease;
+      }
+
+      .sakho-register-link:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 18px 44px rgba(255, 255, 255, 0.24);
+      }
+
+      .sakho-menu-button {
+        display: none;
+        width: 46px;
+        height: 46px;
+        place-items: center;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      .sakho-menu-button span {
+        display: block;
+        width: 20px;
+        height: 2px;
+        margin: 3px auto;
+        border-radius: 999px;
+        background: #fff;
+        transition: transform 180ms ease, opacity 180ms ease;
+      }
+
+      .sakho-menu-button.open span:nth-child(1) {
+        transform: translateY(5px) rotate(45deg);
+      }
+
+      .sakho-menu-button.open span:nth-child(2) {
+        opacity: 0;
+      }
+
+      .sakho-menu-button.open span:nth-child(3) {
+        transform: translateY(-5px) rotate(-45deg);
+      }
+
+      .sakho-mobile-menu {
+        display: none;
+      }
+
+      @media (max-width: 860px) {
+        .sakho-navbar-shell {
+          top: 8px;
+          width: calc(100% - 20px);
+          margin-top: 8px;
+        }
+
+        .sakho-nav-links,
+        .sakho-nav-auth {
+          display: none;
+        }
+
+        .sakho-menu-button {
+          display: grid;
+        }
+
+        .sakho-mobile-menu {
+          display: grid;
+          gap: 8px;
+          margin-top: 10px;
+          padding: 12px;
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          border-radius: 22px;
+          background: rgba(5, 7, 13, 0.92);
+          box-shadow: 0 24px 70px rgba(0, 0, 0, 0.34);
+          backdrop-filter: blur(22px);
+        }
+
+        .sakho-mobile-menu button {
+          min-height: 48px;
+          padding: 0 14px;
+          border-radius: 16px;
+          background: rgba(255, 255, 255, 0.07);
+          color: #fff;
+          text-align: left;
+          font-weight: 900;
+        }
+
+        .sakho-mobile-auth {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 8px;
+          margin-top: 4px;
+        }
+
+        .sakho-mobile-auth button:last-child {
+          background: #fff;
+          color: #070a12;
+          text-align: center;
+        }
+
+        .sakho-mobile-auth button:first-child {
+          text-align: center;
+        }
+      }
+
+      @media (max-width: 460px) {
+        .sakho-nav-logo span {
+          max-width: 142px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .sakho-navbar {
+          min-height: 64px;
+          border-radius: 18px;
+        }
+      }
+    `}</style>
+  );
+}
+
+function PhoneMockup() {
+  const { t } = useTranslation();
+
+  return (
+    <div className="sx-phone-wrap" aria-label="Sakho Express app previews">
+      <div className="sx-mini-phone sx-mini-driver">
+        <span>{t("common.driver")}</span>
+        <strong>7,278 MRU</strong>
+        <small>Today online</small>
+        <div className="sx-mini-bars">
+          <i />
+          <i />
+          <i />
+          <i />
+        </div>
+      </div>
+
+      <div className="sx-phone">
+        <div className="sx-phone-top">
+          <span>9:41</span>
+          <strong>Online</strong>
+        </div>
+        <div className="sx-map-preview">
+          <div className="sx-road sx-road-one" />
+          <div className="sx-road sx-road-two" />
+          <div className="sx-road sx-road-three" />
+          <div className="sx-route-line" />
+          <span className="sx-pin sx-pickup" />
+          <span className="sx-pin sx-dropoff" />
+          <div className="sx-driver-dot">S</div>
+        </div>
+        <div className="sx-phone-sheet">
+          <span className="sx-sheet-handle" />
+          <strong>3 min pickup</strong>
+          <p>Arafat to Tevragh Zeina</p>
+          <div className="sx-fare-row">
+            <span>Regular</span>
+            <strong>330 MRU</strong>
+          </div>
+          <button onClick={() => (window.location.href = "/rider-dashboard")}>
+            {t("dashboard.requestRide")}
+          </button>
+        </div>
+      </div>
+
+      <div className="sx-mini-phone sx-mini-admin">
+        <span>{t("common.admin")}</span>
+        <strong>Live ops</strong>
+        <small>Approve drivers, monitor rides</small>
+        <div className="sx-mini-status">
+          <i />
+          <i />
+          <i />
+        </div>
       </div>
     </div>
   );
 }
 
-function PlatformTile({ title, text, path }) {
+function ServiceCard({ title, text, path }) {
   return (
-    <button onClick={() => (window.location.href = path)} style={platformTileStyle}>
-      <strong>{title}</strong>
-      <span>{text}</span>
+    <button className="sx-service-card" onClick={() => (window.location.href = path)}>
+      <span>{title.slice(0, 1)}</span>
+      <h3>{title}</h3>
+      <p>{text}</p>
     </button>
   );
 }
 
-function EmergencyPanel() {
+function DownloadSection() {
+  const { t } = useTranslation();
+
   return (
-    <div style={emergencyPanelStyle}>
+    <section className="sx-download">
       <div>
-        <strong>Emergency contacts</strong>
-        <span>Tap to call from a phone</span>
+        <span className="sx-eyebrow">{t("landing.downloadEyebrow")}</span>
+        <h2>{t("landing.downloadTitle")}</h2>
+        <p>{t("landing.downloadText")}</p>
       </div>
-      <div style={emergencyLinksStyle}>
-        {MARKET.emergencyNumbers.map((item) => (
-          <a key={item.number} href={`tel:${item.number}`} style={emergencyLinkStyle}>
-            {item.label} {item.number}
-          </a>
-        ))}
+      <div className="sx-download-actions">
+        <button onClick={() => (window.location.href = "/rider-dashboard")}>{t("landing.riderApp")}</button>
+        <button onClick={() => (window.location.href = "/driver")}>{t("landing.driverApp")}</button>
       </div>
-    </div>
+    </section>
   );
 }
 
+function TestimonialsSection() {
+  const { t } = useTranslation();
+  const testimonials = [
+    {
+      quote: "The driver app feels clear. I can see trips, earnings, and payouts without confusion.",
+      name: "Moussa",
+      role: "Driver partner",
+    },
+    {
+      quote: "I like that payment, safety, and driver information are all in one place.",
+      name: "Aminata",
+      role: "Rider",
+    },
+    {
+      quote: "The admin dashboard gives the control needed to approve drivers and watch the market.",
+      name: "Sakho Express",
+      role: "Operations team",
+    },
+  ];
 
-const roleSelectorStyle = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-  gap: "12px",
-  marginTop: "24px",
-};
-
-const roleCardStyle = {
-  border: "1px solid rgba(255, 255, 255, 0.2)",
-  background: "rgba(255, 255, 255, 0.08)",
-  color: "white",
-  borderRadius: "16px",
-  padding: "14px",
-  textAlign: "left",
-  display: "grid",
-  gap: "4px",
-  cursor: "pointer",
-  boxShadow: "0 12px 30px rgba(2, 6, 23, 0.2)",
-};
-
-const roleLabelStyle = {
-  color: "#cbd5e1",
-  fontSize: "0.78rem",
-  textTransform: "uppercase",
-  letterSpacing: "0.04em",
-  fontWeight: 800,
-};
-
-const roleTitleStyle = {
-  fontSize: "0.98rem",
-  lineHeight: 1.35,
-};
-
-function FooterLinks() {
   return (
-    <div style={footerLinksStyle}>
-      <button onClick={() => (window.location.href = "/terms")} style={footerLinkStyle}>
-        Terms
-      </button>
-      <button onClick={() => (window.location.href = "/privacy")} style={footerLinkStyle}>
-        Privacy
-      </button>
-      <button onClick={() => (window.location.href = "/support")} style={footerLinkStyle}>
-        Support
-      </button>
-    </div>
+    <section className="sx-testimonials">
+      <div className="sx-section-heading">
+        <span>{t("landing.testimonialsEyebrow")}</span>
+        <h2>{t("landing.testimonialsTitle")}</h2>
+      </div>
+      <div className="sx-testimonial-grid">
+        {testimonials.map((item) => (
+          <article key={item.name}>
+            <p>"{item.quote}"</p>
+            <div>
+              <strong>{item.name}</strong>
+              <span>{item.role}</span>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function SafetySection() {
+  const { t } = useTranslation();
+
+  return (
+    <section className="sx-safety">
+      <div className="sx-section-heading">
+        <span>{t("landing.safetyEyebrow")}</span>
+        <h2>{t("landing.safetyTitle")}</h2>
+      </div>
+      <div className="sx-safety-grid">
+        <article>
+          <strong>{t("landing.verifiedTitle")}</strong>
+          <p>{t("landing.verifiedText")}</p>
+        </article>
+        <article>
+          <strong>{t("landing.privateCallingTitle")}</strong>
+          <p>{t("landing.privateCallingText")}</p>
+        </article>
+        <article>
+          <strong>{t("landing.emergencyTitle")}</strong>
+          <p>{t("landing.emergencyText")}</p>
+        </article>
+      </div>
+    </section>
+  );
+}
+
+function DriverSignupCTA() {
+  const { t } = useTranslation();
+
+  return (
+    <section className="sx-driver-cta">
+      <div>
+        <span className="sx-eyebrow">{t("landing.driverCtaEyebrow")}</span>
+        <h2>{t("landing.driverCtaTitle")}</h2>
+        <p>{t("landing.driverCtaText")}</p>
+      </div>
+      <button onClick={() => (window.location.href = "/register")}>{t("landing.applyDrive")}</button>
+    </section>
+  );
+}
+
+function LandingFooter() {
+  const { t } = useTranslation();
+
+  return (
+    <footer className="sx-footer">
+      <div>
+        <img src={LOGO_SRC} alt={`${MARKET.brandName} logo`} />
+        <strong>{MARKET.brandName}</strong>
+      </div>
+      <div className="sx-footer-links">
+        <button onClick={() => (window.location.href = "/terms")}>{t("common.terms")}</button>
+        <button onClick={() => (window.location.href = "/privacy")}>{t("common.privacy")}</button>
+        <button onClick={() => (window.location.href = "/support")}>{t("common.support")}</button>
+        <button onClick={() => (window.location.href = "/settings")}>{t("common.settings")}</button>
+      </div>
+    </footer>
+  );
+}
+
+function LandingStyles() {
+  return (
+    <style>{`
+      .sx-landing {
+        min-height: 100vh;
+        overflow-x: hidden;
+        background: #03050a;
+        color: #f8fafc;
+        font-family: Inter, "SF Pro Display", "Segoe UI", Arial, sans-serif;
+      }
+
+      .sx-landing * {
+        box-sizing: border-box;
+      }
+
+      .sx-navbar {
+        position: fixed;
+        top: 18px;
+        left: 50%;
+        z-index: 50;
+        display: flex;
+        width: min(1180px, calc(100% - 32px));
+        transform: translateX(-50%);
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        padding: 10px 12px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 18px;
+        background: rgba(5, 7, 13, 0.72);
+        box-shadow: 0 22px 70px rgba(0, 0, 0, 0.36);
+        backdrop-filter: blur(22px);
+      }
+
+      .sx-nav-brand,
+      .sx-nav-links button,
+      .sx-auth-actions button,
+      .sx-primary-cta,
+      .sx-secondary-cta,
+      .sx-service-card,
+      .sx-download-actions button,
+      .sx-footer-links button,
+      .sx-phone-sheet button {
+        border: 0;
+        font: inherit;
+        cursor: pointer;
+      }
+
+      .sx-nav-brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+        background: transparent;
+        color: #fff;
+        font-weight: 850;
+      }
+
+      .sx-nav-brand img,
+      .sx-footer img {
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        object-fit: cover;
+        box-shadow: 0 0 0 1px rgba(250, 204, 21, 0.28);
+      }
+
+      .sx-nav-links {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.06);
+      }
+
+      .sx-nav-links button,
+      .sx-auth-ghost,
+      .sx-footer-links button {
+        border-radius: 999px;
+        background: transparent;
+        color: rgba(255, 255, 255, 0.78);
+        font-size: 14px;
+        font-weight: 750;
+        transition: color 180ms ease, background 180ms ease, transform 180ms ease;
+      }
+
+      .sx-nav-links button {
+        padding: 9px 13px;
+      }
+
+      .sx-nav-links button:hover,
+      .sx-auth-ghost:hover,
+      .sx-footer-links button:hover {
+        color: #fff;
+        background: rgba(255, 255, 255, 0.1);
+        transform: translateY(-1px);
+      }
+
+      .sx-auth-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .sx-auth-ghost,
+      .sx-auth-solid {
+        padding: 10px 16px;
+      }
+
+      .sx-auth-solid {
+        border-radius: 999px;
+        background: #fff;
+        color: #05060a;
+        font-weight: 850;
+        box-shadow: 0 12px 30px rgba(255, 255, 255, 0.18);
+        transition: transform 180ms ease, box-shadow 180ms ease;
+      }
+
+      .sx-auth-solid:hover,
+      .sx-primary-cta:hover,
+      .sx-secondary-cta:hover,
+      .sx-download-actions button:hover,
+      .sx-phone-sheet button:hover {
+        transform: translateY(-2px);
+      }
+
+      .sx-hero {
+        position: relative;
+        min-height: 780px;
+        padding: 150px 24px 92px;
+        background:
+          radial-gradient(circle at 10% 10%, rgba(234, 179, 8, 0.18), transparent 28%),
+          radial-gradient(circle at 88% 16%, rgba(220, 38, 38, 0.2), transparent 30%),
+          linear-gradient(135deg, #03050a 0%, #080b12 45%, #040407 100%);
+      }
+
+      .sx-hero::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: -1px;
+        height: 140px;
+        background: linear-gradient(180deg, transparent, #03050a);
+        pointer-events: none;
+      }
+
+      .sx-gradient {
+        position: absolute;
+        inset: -22%;
+        opacity: 0.72;
+        background:
+          linear-gradient(115deg, transparent 0 18%, rgba(16, 185, 129, 0.2) 28%, transparent 42%),
+          linear-gradient(245deg, transparent 0 22%, rgba(245, 158, 11, 0.24) 34%, transparent 48%),
+          radial-gradient(circle at 55% 35%, rgba(168, 85, 247, 0.16), transparent 28%);
+        filter: blur(34px);
+        animation: sxGradientShift 12s ease-in-out infinite alternate;
+      }
+
+      .sx-hero-glow {
+        position: absolute;
+        width: 260px;
+        height: 260px;
+        border-radius: 50%;
+        opacity: 0.54;
+        filter: blur(28px);
+        animation: sxPulseGlow 7s ease-in-out infinite;
+      }
+
+      .sx-hero-glow-one {
+        left: 8%;
+        bottom: 18%;
+        background: rgba(22, 163, 74, 0.28);
+      }
+
+      .sx-hero-glow-two {
+        top: 18%;
+        right: 16%;
+        background: rgba(245, 158, 11, 0.32);
+        animation-delay: -2.4s;
+      }
+
+      .sx-hero-inner {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.8fr);
+        gap: 56px;
+        align-items: center;
+        width: min(1180px, 100%);
+        margin: 0 auto;
+      }
+
+      .sx-hero-copy {
+        max-width: 680px;
+      }
+
+      .sx-eyebrow,
+      .sx-section-heading span {
+        display: inline-flex;
+        align-items: center;
+        width: max-content;
+        max-width: 100%;
+        margin-bottom: 18px;
+        padding: 8px 12px;
+        border: 1px solid rgba(250, 204, 21, 0.24);
+        border-radius: 999px;
+        background: rgba(250, 204, 21, 0.08);
+        color: #facc15;
+        font-size: 12px;
+        font-weight: 850;
+        letter-spacing: 0;
+        text-transform: uppercase;
+      }
+
+      .sx-hero h1 {
+        margin: 0;
+        max-width: 760px;
+        color: #fff;
+        font-size: clamp(46px, 7vw, 86px);
+        line-height: 0.94;
+        letter-spacing: 0;
+      }
+
+      .sx-hero-copy p,
+      .sx-download p,
+      .sx-service-card p,
+      .sx-safety article p,
+      .sx-phone-sheet p {
+        color: rgba(248, 250, 252, 0.68);
+        line-height: 1.65;
+      }
+
+      .sx-hero-copy > p {
+        max-width: 640px;
+        margin: 24px 0 0;
+        font-size: 18px;
+      }
+
+      .sx-cta-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px;
+        margin-top: 34px;
+      }
+
+      .sx-primary-cta,
+      .sx-secondary-cta,
+      .sx-download-actions button {
+        min-height: 54px;
+        padding: 0 24px;
+        border-radius: 999px;
+        font-weight: 900;
+        transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease;
+      }
+
+      .sx-primary-cta {
+        background: linear-gradient(135deg, #facc15, #f59e0b);
+        color: #111827;
+        box-shadow: 0 22px 45px rgba(245, 158, 11, 0.28);
+      }
+
+      .sx-primary-cta:hover {
+        box-shadow: 0 28px 55px rgba(245, 158, 11, 0.36);
+      }
+
+      .sx-secondary-cta {
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        background: rgba(255, 255, 255, 0.08);
+        color: #fff;
+      }
+
+      .sx-secondary-cta:hover {
+        background: rgba(255, 255, 255, 0.14);
+      }
+
+      .sx-trust-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 30px;
+      }
+
+      .sx-trust-row span {
+        padding: 9px 12px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.06);
+        color: rgba(255, 255, 255, 0.72);
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .sx-hero-metrics {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+        max-width: 620px;
+        margin-top: 30px;
+      }
+
+      .sx-hero-metrics div {
+        min-height: 96px;
+        padding: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.06);
+        backdrop-filter: blur(18px);
+      }
+
+      .sx-hero-metrics strong {
+        display: block;
+        color: #fff;
+        font-size: 28px;
+      }
+
+      .sx-hero-metrics span {
+        display: block;
+        margin-top: 5px;
+        color: rgba(248, 250, 252, 0.62);
+        font-size: 13px;
+        font-weight: 750;
+      }
+
+      .sx-phone-wrap {
+        position: relative;
+        justify-self: end;
+        perspective: 1100px;
+      }
+
+      .sx-phone {
+        position: relative;
+        width: min(360px, 82vw);
+        min-height: 680px;
+        overflow: hidden;
+        border: 10px solid #0b0d12;
+        border-radius: 42px;
+        background: #f4f5f0;
+        color: #10131a;
+        box-shadow:
+          0 44px 90px rgba(0, 0, 0, 0.52),
+          inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+        transform: rotateX(3deg) rotateY(-10deg);
+        animation: sxFloat 5.8s ease-in-out infinite;
+      }
+
+      .sx-mini-phone {
+        position: absolute;
+        z-index: 5;
+        width: 170px;
+        min-height: 182px;
+        padding: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 26px;
+        background: rgba(10, 13, 20, 0.82);
+        color: #fff;
+        box-shadow: 0 28px 60px rgba(0, 0, 0, 0.38);
+        backdrop-filter: blur(18px);
+        animation: sxMiniFloat 6.4s ease-in-out infinite;
+      }
+
+      .sx-mini-phone span,
+      .sx-mini-phone small {
+        color: rgba(248, 250, 252, 0.68);
+        font-weight: 850;
+      }
+
+      .sx-mini-phone strong {
+        display: block;
+        margin: 12px 0 4px;
+        font-size: 22px;
+      }
+
+      .sx-mini-driver {
+        left: -94px;
+        top: 86px;
+      }
+
+      .sx-mini-admin {
+        right: -70px;
+        bottom: 126px;
+        animation-delay: -2s;
+      }
+
+      .sx-mini-bars {
+        display: flex;
+        align-items: end;
+        gap: 7px;
+        height: 54px;
+        margin-top: 18px;
+      }
+
+      .sx-mini-bars i {
+        display: block;
+        flex: 1;
+        border-radius: 999px;
+        background: linear-gradient(180deg, #facc15, #16a34a);
+      }
+
+      .sx-mini-bars i:nth-child(1) { height: 30%; }
+      .sx-mini-bars i:nth-child(2) { height: 66%; }
+      .sx-mini-bars i:nth-child(3) { height: 48%; }
+      .sx-mini-bars i:nth-child(4) { height: 88%; }
+
+      .sx-mini-status {
+        display: grid;
+        gap: 9px;
+        margin-top: 18px;
+      }
+
+      .sx-mini-status i {
+        display: block;
+        height: 10px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.15);
+        overflow: hidden;
+      }
+
+      .sx-mini-status i::before {
+        content: "";
+        display: block;
+        height: 100%;
+        width: 72%;
+        border-radius: inherit;
+        background: #16a34a;
+      }
+
+      .sx-phone-top {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 4;
+        display: flex;
+        justify-content: space-between;
+        padding: 18px 22px;
+        font-weight: 900;
+      }
+
+      .sx-phone-top strong {
+        color: #047857;
+      }
+
+      .sx-map-preview {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+        background:
+          linear-gradient(90deg, rgba(15, 23, 42, 0.04) 1px, transparent 1px),
+          linear-gradient(0deg, rgba(15, 23, 42, 0.04) 1px, transparent 1px),
+          #e8ebe4;
+        background-size: 48px 48px;
+      }
+
+      .sx-road {
+        position: absolute;
+        height: 12px;
+        border-radius: 999px;
+        background: rgba(148, 163, 184, 0.6);
+        box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.58);
+      }
+
+      .sx-road-one {
+        top: 155px;
+        left: -45px;
+        width: 440px;
+        transform: rotate(32deg);
+      }
+
+      .sx-road-two {
+        top: 320px;
+        right: -80px;
+        width: 520px;
+        transform: rotate(-25deg);
+      }
+
+      .sx-road-three {
+        top: 110px;
+        right: 70px;
+        width: 390px;
+        transform: rotate(92deg);
+      }
+
+      .sx-route-line {
+        position: absolute;
+        left: 158px;
+        top: 128px;
+        width: 88px;
+        height: 285px;
+        border: 7px solid #111827;
+        border-left: 0;
+        border-bottom: 0;
+        border-radius: 0 58px 0 0;
+        transform: rotate(8deg);
+      }
+
+      .sx-pin {
+        position: absolute;
+        width: 22px;
+        height: 22px;
+        border: 5px solid #fff;
+        border-radius: 999px;
+        box-shadow: 0 12px 26px rgba(0, 0, 0, 0.24);
+      }
+
+      .sx-pickup {
+        left: 134px;
+        top: 126px;
+        background: #16a34a;
+      }
+
+      .sx-dropoff {
+        right: 95px;
+        top: 380px;
+        background: #dc2626;
+      }
+
+      .sx-driver-dot {
+        position: absolute;
+        left: 182px;
+        top: 262px;
+        display: grid;
+        width: 48px;
+        height: 48px;
+        place-items: center;
+        border: 4px solid #fff;
+        border-radius: 18px;
+        background: #020617;
+        color: #facc15;
+        font-weight: 950;
+        box-shadow: 0 18px 30px rgba(0, 0, 0, 0.28);
+      }
+
+      .sx-phone-sheet {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 3;
+        padding: 16px 18px 20px;
+        border-radius: 30px 30px 0 0;
+        background: rgba(255, 255, 255, 0.96);
+        box-shadow: 0 -22px 45px rgba(15, 23, 42, 0.14);
+      }
+
+      .sx-sheet-handle {
+        display: block;
+        width: 44px;
+        height: 5px;
+        margin: 0 auto 14px;
+        border-radius: 999px;
+        background: #cbd5e1;
+      }
+
+      .sx-phone-sheet strong {
+        font-size: 23px;
+        letter-spacing: 0;
+      }
+
+      .sx-phone-sheet p {
+        margin: 4px 0 14px;
+        color: #64748b;
+      }
+
+      .sx-fare-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+        padding: 13px 14px;
+        border-radius: 18px;
+        background: #f1f5f9;
+      }
+
+      .sx-fare-row strong {
+        font-size: 18px;
+      }
+
+      .sx-phone-sheet button {
+        width: 100%;
+        min-height: 50px;
+        border-radius: 16px;
+        background: #05060a;
+        color: #fff;
+        font-weight: 900;
+        transition: transform 180ms ease, background 180ms ease;
+      }
+
+      .sx-phone-sheet button:hover {
+        background: #111827;
+      }
+
+      .sx-services,
+      .sx-download,
+      .sx-safety,
+      .sx-testimonials,
+      .sx-driver-cta,
+      .sx-footer {
+        width: min(1180px, calc(100% - 32px));
+        margin: 0 auto;
+      }
+
+      .sx-services,
+      .sx-safety,
+      .sx-testimonials {
+        padding: 88px 0;
+      }
+
+      .sx-section-heading {
+        max-width: 720px;
+        margin-bottom: 32px;
+      }
+
+      .sx-section-heading h2,
+      .sx-download h2 {
+        margin: 0;
+        color: #fff;
+        font-size: clamp(32px, 4vw, 54px);
+        line-height: 1.02;
+        letter-spacing: 0;
+      }
+
+      .sx-card-grid,
+      .sx-safety-grid,
+      .sx-testimonial-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 18px;
+      }
+
+      .sx-service-card,
+      .sx-safety article,
+      .sx-testimonial-grid article {
+        min-height: 230px;
+        padding: 26px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 28px;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.095), rgba(255, 255, 255, 0.035)),
+          #090d14;
+        text-align: left;
+        transition: transform 200ms ease, border-color 200ms ease, background 200ms ease;
+      }
+
+      .sx-service-card:hover,
+      .sx-testimonial-grid article:hover {
+        transform: translateY(-6px);
+        border-color: rgba(250, 204, 21, 0.38);
+        background:
+          linear-gradient(180deg, rgba(250, 204, 21, 0.14), rgba(255, 255, 255, 0.045)),
+          #090d14;
+      }
+
+      .sx-service-card span {
+        display: grid;
+        width: 48px;
+        height: 48px;
+        margin-bottom: 34px;
+        place-items: center;
+        border-radius: 16px;
+        background: #facc15;
+        color: #111827;
+        font-weight: 950;
+      }
+
+      .sx-service-card h3 {
+        margin: 0 0 10px;
+        color: #fff;
+        font-size: 26px;
+      }
+
+      .sx-service-card p,
+      .sx-safety article p,
+      .sx-testimonial-grid article p,
+      .sx-driver-cta p {
+        margin: 0;
+      }
+
+      .sx-testimonial-grid article {
+        min-height: 260px;
+        display: grid;
+        align-content: space-between;
+      }
+
+      .sx-testimonial-grid article p {
+        color: rgba(248, 250, 252, 0.78);
+        font-size: 18px;
+        line-height: 1.65;
+      }
+
+      .sx-testimonial-grid article strong {
+        display: block;
+        color: #fff;
+        margin-bottom: 5px;
+      }
+
+      .sx-testimonial-grid article span {
+        color: #facc15;
+        font-weight: 850;
+      }
+
+      .sx-download {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 32px;
+        align-items: center;
+        padding: 48px;
+        border: 1px solid rgba(250, 204, 21, 0.22);
+        border-radius: 34px;
+        background:
+          radial-gradient(circle at 15% 0%, rgba(250, 204, 21, 0.22), transparent 30%),
+          linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.04));
+        box-shadow: 0 34px 80px rgba(0, 0, 0, 0.24);
+      }
+
+      .sx-download p {
+        max-width: 640px;
+        margin: 18px 0 0;
+      }
+
+      .sx-download-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        min-width: 180px;
+      }
+
+      .sx-download-actions button:first-child {
+        background: #fff;
+        color: #020617;
+      }
+
+      .sx-download-actions button:last-child {
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        background: rgba(255, 255, 255, 0.08);
+        color: #fff;
+      }
+
+      .sx-safety article {
+        min-height: 180px;
+      }
+
+      .sx-safety article strong {
+        display: block;
+        margin-bottom: 12px;
+        color: #fff;
+        font-size: 20px;
+      }
+
+      .sx-driver-cta {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 28px;
+        align-items: center;
+        margin-bottom: 74px;
+        padding: 52px;
+        border: 1px solid rgba(22, 163, 74, 0.26);
+        border-radius: 34px;
+        background:
+          radial-gradient(circle at 84% 22%, rgba(22, 163, 74, 0.28), transparent 28%),
+          linear-gradient(135deg, rgba(255, 255, 255, 0.105), rgba(255, 255, 255, 0.035)),
+          #07100d;
+        box-shadow: 0 34px 80px rgba(0, 0, 0, 0.26);
+      }
+
+      .sx-driver-cta h2 {
+        margin: 0;
+        max-width: 760px;
+        color: #fff;
+        font-size: clamp(32px, 4vw, 56px);
+        line-height: 1.02;
+      }
+
+      .sx-driver-cta p {
+        max-width: 690px;
+        margin-top: 18px;
+        color: rgba(248, 250, 252, 0.68);
+        line-height: 1.7;
+      }
+
+      .sx-driver-cta button {
+        min-height: 58px;
+        padding: 0 28px;
+        border: 0;
+        border-radius: 999px;
+        background: #fff;
+        color: #05110b;
+        font: inherit;
+        font-weight: 950;
+        cursor: pointer;
+        box-shadow: 0 18px 44px rgba(255, 255, 255, 0.18);
+        transition: transform 180ms ease, box-shadow 180ms ease;
+      }
+
+      .sx-driver-cta button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 26px 58px rgba(255, 255, 255, 0.24);
+      }
+
+      .sx-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        padding: 34px 0 46px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .sx-footer > div:first-child {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        color: #fff;
+        font-size: 18px;
+      }
+
+      .sx-footer-links {
+        display: flex;
+        gap: 8px;
+      }
+
+      .sx-footer-links button {
+        padding: 10px 14px;
+      }
+
+      @keyframes sxGradientShift {
+        from {
+          transform: translate3d(-2%, -1%, 0) scale(1);
+        }
+        to {
+          transform: translate3d(2%, 3%, 0) scale(1.08);
+        }
+      }
+
+      @keyframes sxFloat {
+        0%, 100% {
+          transform: rotateX(3deg) rotateY(-10deg) translateY(0);
+        }
+        50% {
+          transform: rotateX(3deg) rotateY(-10deg) translateY(-16px);
+        }
+      }
+
+      @keyframes sxMiniFloat {
+        0%, 100% {
+          transform: translateY(0) rotate(-3deg);
+        }
+        50% {
+          transform: translateY(-18px) rotate(2deg);
+        }
+      }
+
+      @keyframes sxPulseGlow {
+        0%, 100% {
+          transform: scale(0.95);
+          opacity: 0.42;
+        }
+        50% {
+          transform: scale(1.12);
+          opacity: 0.7;
+        }
+      }
+
+      @media (max-width: 940px) {
+        .sx-navbar {
+          top: 10px;
+          width: calc(100% - 20px);
+        }
+
+        .sx-nav-links {
+          display: none;
+        }
+
+        .sx-hero {
+          min-height: auto;
+          padding: 116px 18px 70px;
+        }
+
+        .sx-hero-inner {
+          grid-template-columns: 1fr;
+          gap: 46px;
+        }
+
+        .sx-phone-wrap {
+          justify-self: center;
+        }
+
+        .sx-phone {
+          min-height: 610px;
+          transform: none;
+        }
+
+        .sx-mini-driver {
+          left: -10px;
+          top: 26px;
+        }
+
+        .sx-mini-admin {
+          right: -8px;
+          bottom: 90px;
+        }
+
+        .sx-card-grid,
+        .sx-safety-grid,
+        .sx-testimonial-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .sx-download,
+        .sx-driver-cta {
+          grid-template-columns: 1fr;
+          padding: 30px;
+        }
+
+        .sx-download-actions {
+          flex-direction: row;
+          flex-wrap: wrap;
+        }
+      }
+
+      @media (max-width: 560px) {
+        .sx-navbar {
+          border-radius: 16px;
+        }
+
+        .sx-nav-brand span {
+          max-width: 124px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .sx-auth-actions {
+          gap: 4px;
+        }
+
+        .sx-auth-ghost,
+        .sx-auth-solid {
+          padding: 9px 11px;
+          font-size: 13px;
+        }
+
+        .sx-hero h1 {
+          font-size: 44px;
+        }
+
+        .sx-hero-copy > p {
+          font-size: 16px;
+        }
+
+        .sx-primary-cta,
+        .sx-secondary-cta,
+        .sx-download-actions button,
+        .sx-driver-cta button {
+          width: 100%;
+        }
+
+        .sx-hero-metrics {
+          grid-template-columns: 1fr;
+        }
+
+        .sx-phone {
+          width: min(330px, 100%);
+          min-height: 580px;
+          border-width: 8px;
+          border-radius: 34px;
+        }
+
+        .sx-services,
+        .sx-safety,
+        .sx-testimonials {
+          padding: 64px 0;
+        }
+
+        .sx-service-card,
+        .sx-safety article,
+        .sx-testimonial-grid article {
+          border-radius: 22px;
+          padding: 22px;
+        }
+
+        .sx-download {
+          border-radius: 24px;
+          padding: 24px;
+        }
+
+        .sx-mini-phone {
+          position: relative;
+          left: auto;
+          right: auto;
+          top: auto;
+          bottom: auto;
+          width: 100%;
+          margin-bottom: 12px;
+          animation: none;
+        }
+
+        .sx-phone-wrap {
+          display: grid;
+          width: min(330px, 100%);
+          gap: 10px;
+        }
+
+        .sx-footer {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+      }
+    `}</style>
+  );
+}
+
+// Kept temporarily for reference while /settings uses frontend/src/settings/SettingsPage.js.
+// eslint-disable-next-line no-unused-vars
+function SettingsPage({ logout }) {
+  const user = getStoredUser();
+  const [language, setLanguage] = useState(localStorage.getItem("sx_language") || "English");
+  const [theme, setTheme] = useState(localStorage.getItem("sx_theme") || "Dark");
+  const [notificationsEnabled, setNotificationsEnabled] = useState(
+    localStorage.getItem("sx_notifications") !== "off"
+  );
+
+  const saveLanguage = (value) => {
+    setLanguage(value);
+    localStorage.setItem("sx_language", value);
+  };
+
+  const saveTheme = (value) => {
+    setTheme(value);
+    localStorage.setItem("sx_theme", value);
+  };
+
+  const toggleNotifications = () => {
+    const nextValue = !notificationsEnabled;
+    setNotificationsEnabled(nextValue);
+    localStorage.setItem("sx_notifications", nextValue ? "on" : "off");
+  };
+
+  const settingsOptions = [
+    {
+      title: "Profile",
+      text: "Name, phone, photo, identity, and account details.",
+      value: user?.email || user?.phone || "Manage account",
+      action: () => (window.location.href = "/rider-dashboard"),
+    },
+    {
+      title: "Safety & Emergency",
+      text: "Emergency contacts, private calls, trip sharing, and safety rules.",
+      value: "Police 117",
+      action: () => (window.location.href = "/support"),
+    },
+    {
+      title: "Payment Methods",
+      text: "Card, cash, Bankily, Masravi, Seddad, and bank account options.",
+      value: "Manage",
+      action: () => (window.location.href = "/rider-payments"),
+    },
+    {
+      title: "Privacy",
+      text: "Location, data protection, phone privacy, and platform policies.",
+      value: "View policy",
+      action: () => (window.location.href = "/privacy"),
+    },
+    {
+      title: "Help & Support",
+      text: "Trip issues, payments, blocked accounts, documents, and payout help.",
+      value: "Open help",
+      action: () => (window.location.href = "/support"),
+    },
+  ];
+
+  return (
+    <main className={`settings-page settings-${theme.toLowerCase()}`}>
+      <SettingsStyles />
+      <SakhoNavbar />
+
+      <section className="settings-hero">
+        <div>
+          <span className="settings-kicker">Account center</span>
+          <h1>Settings</h1>
+          <p>
+            Manage your Sakho Express profile, language, safety, notifications, payments,
+            privacy, and support preferences from one professional control center.
+          </p>
+        </div>
+        <div className="settings-profile-card">
+          <img src={LOGO_SRC} alt={`${MARKET.brandName} account`} />
+          <div>
+            <strong>{user?.first_name || user?.name || MARKET.brandName}</strong>
+            <span>{user?.email || "Mobility account"}</span>
+          </div>
+        </div>
+      </section>
+
+      <section className="settings-grid">
+        <article className="settings-panel settings-control-panel">
+          <div className="settings-panel-heading">
+            <span>Preferences</span>
+            <h2>App experience</h2>
+          </div>
+
+          <div className="settings-control">
+            <div>
+              <strong>Language</strong>
+              <span>Choose the language used in the app.</span>
+            </div>
+            <div className="settings-segmented">
+              {["English", "French", "Arabic"].map((item) => (
+                <button
+                  key={item}
+                  className={language === item ? "active" : ""}
+                  onClick={() => saveLanguage(item)}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="settings-control">
+            <div>
+              <strong>Theme</strong>
+              <span>Switch between a bright or dark app style.</span>
+            </div>
+            <div className="settings-segmented compact">
+              {["Light", "Dark"].map((item) => (
+                <button
+                  key={item}
+                  className={theme === item ? "active" : ""}
+                  onClick={() => saveTheme(item)}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="settings-control">
+            <div>
+              <strong>Notifications</strong>
+              <span>Ride requests, trip updates, payments, and support alerts.</span>
+            </div>
+            <button
+              className={`settings-toggle ${notificationsEnabled ? "on" : ""}`}
+              onClick={toggleNotifications}
+              aria-label="Toggle notifications"
+            >
+              <span />
+            </button>
+          </div>
+        </article>
+
+        <article className="settings-panel">
+          <div className="settings-panel-heading">
+            <span>Quick access</span>
+            <h2>Manage account</h2>
+          </div>
+          <div className="settings-list">
+            {settingsOptions.map((item) => (
+              <button key={item.title} onClick={item.action}>
+                <div>
+                  <strong>{item.title}</strong>
+                  <span>{item.text}</span>
+                </div>
+                <em>{item.value}</em>
+              </button>
+            ))}
+          </div>
+        </article>
+      </section>
+
+      <section className="settings-emergency">
+        <div>
+          <span className="settings-kicker">Safety & Emergency</span>
+          <h2>Fast help when it matters.</h2>
+          <p>Emergency numbers stay close for riders, drivers, and admin operations.</p>
+        </div>
+        <div className="settings-emergency-links">
+          {MARKET.emergencyNumbers.map((item) => (
+            <a key={item.number} href={`tel:${item.number}`} title={item.description}>
+              <span>{item.label}</span>
+              <strong>{item.number}</strong>
+            </a>
+          ))}
+        </div>
+      </section>
+
+      <section className="settings-logout-panel">
+        <div>
+          <strong>Logout</strong>
+          <span>Sign out from this device and return to the landing page.</span>
+        </div>
+        <button onClick={logout}>Log out</button>
+      </section>
+    </main>
+  );
+}
+
+function getStoredUser() {
+  try {
+    return JSON.parse(localStorage.getItem("user") || "{}");
+  } catch (error) {
+    return {};
+  }
+}
+
+function SettingsStyles() {
+  return (
+    <style>{`
+      .settings-page {
+        min-height: 100vh;
+        padding: 22px;
+        font-family: Inter, "SF Pro Display", "Segoe UI", Arial, sans-serif;
+        transition: background 220ms ease, color 220ms ease;
+      }
+
+      .settings-page * {
+        box-sizing: border-box;
+      }
+
+      .settings-dark {
+        background:
+          radial-gradient(circle at 12% 10%, rgba(250, 204, 21, 0.16), transparent 26%),
+          radial-gradient(circle at 88% 12%, rgba(21, 128, 61, 0.18), transparent 28%),
+          #05070c;
+        color: #f8fafc;
+      }
+
+      .settings-light {
+        background:
+          radial-gradient(circle at 12% 10%, rgba(250, 204, 21, 0.2), transparent 26%),
+          #f5f7fb;
+        color: #0f172a;
+      }
+
+      .settings-nav,
+      .settings-hero,
+      .settings-grid,
+      .settings-emergency,
+      .settings-logout-panel {
+        width: min(1120px, 100%);
+        margin-left: auto;
+        margin-right: auto;
+      }
+
+      .settings-nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        padding: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 18px;
+        background: rgba(8, 11, 18, 0.74);
+        box-shadow: 0 20px 54px rgba(0, 0, 0, 0.18);
+        backdrop-filter: blur(18px);
+      }
+
+      .settings-light .settings-nav {
+        border-color: rgba(15, 23, 42, 0.08);
+        background: rgba(255, 255, 255, 0.82);
+      }
+
+      .settings-brand,
+      .settings-nav-actions button,
+      .settings-segmented button,
+      .settings-list button,
+      .settings-toggle,
+      .settings-logout-panel button {
+        border: 0;
+        font: inherit;
+        cursor: pointer;
+      }
+
+      .settings-brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+        background: transparent;
+        color: inherit;
+        font-weight: 900;
+      }
+
+      .settings-brand img,
+      .settings-profile-card img {
+        width: 44px;
+        height: 44px;
+        border-radius: 13px;
+        object-fit: cover;
+      }
+
+      .settings-nav-actions {
+        display: flex;
+        gap: 8px;
+      }
+
+      .settings-nav-actions button {
+        padding: 10px 14px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.08);
+        color: inherit;
+        font-weight: 850;
+        transition: transform 180ms ease, background 180ms ease;
+      }
+
+      .settings-light .settings-nav-actions button {
+        background: rgba(15, 23, 42, 0.06);
+      }
+
+      .settings-nav-actions button:hover,
+      .settings-list button:hover,
+      .settings-logout-panel button:hover {
+        transform: translateY(-2px);
+      }
+
+      .settings-hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 24px;
+        align-items: end;
+        padding: 70px 0 32px;
+      }
+
+      .settings-kicker,
+      .settings-panel-heading span {
+        display: inline-flex;
+        width: max-content;
+        max-width: 100%;
+        margin-bottom: 12px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: rgba(250, 204, 21, 0.12);
+        color: #facc15;
+        font-size: 12px;
+        font-weight: 900;
+        text-transform: uppercase;
+      }
+
+      .settings-light .settings-kicker,
+      .settings-light .settings-panel-heading span {
+        color: #92400e;
+        background: rgba(245, 158, 11, 0.14);
+      }
+
+      .settings-hero h1 {
+        margin: 0;
+        font-size: clamp(42px, 7vw, 74px);
+        line-height: 0.94;
+        letter-spacing: 0;
+      }
+
+      .settings-hero p,
+      .settings-control span,
+      .settings-list span,
+      .settings-emergency p,
+      .settings-logout-panel span {
+        color: rgba(226, 232, 240, 0.72);
+        line-height: 1.55;
+      }
+
+      .settings-light .settings-hero p,
+      .settings-light .settings-control span,
+      .settings-light .settings-list span,
+      .settings-light .settings-emergency p,
+      .settings-light .settings-logout-panel span {
+        color: #64748b;
+      }
+
+      .settings-hero p {
+        max-width: 680px;
+        margin: 18px 0 0;
+        font-size: 17px;
+      }
+
+      .settings-profile-card {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 280px;
+        padding: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 24px;
+        background: rgba(255, 255, 255, 0.08);
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.18);
+      }
+
+      .settings-light .settings-profile-card,
+      .settings-light .settings-panel,
+      .settings-light .settings-emergency,
+      .settings-light .settings-logout-panel {
+        border-color: rgba(15, 23, 42, 0.08);
+        background: rgba(255, 255, 255, 0.86);
+      }
+
+      .settings-profile-card strong,
+      .settings-profile-card span {
+        display: block;
+      }
+
+      .settings-profile-card strong {
+        font-size: 17px;
+      }
+
+      .settings-profile-card span {
+        margin-top: 3px;
+        color: #94a3b8;
+        font-size: 13px;
+      }
+
+      .settings-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+        gap: 18px;
+      }
+
+      .settings-panel,
+      .settings-emergency,
+      .settings-logout-panel {
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 28px;
+        background: rgba(255, 255, 255, 0.07);
+        box-shadow: 0 24px 62px rgba(0, 0, 0, 0.16);
+        backdrop-filter: blur(18px);
+      }
+
+      .settings-panel {
+        padding: 24px;
+      }
+
+      .settings-panel-heading h2 {
+        margin: 0 0 22px;
+        font-size: 30px;
+        line-height: 1.05;
+      }
+
+      .settings-control {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 18px;
+        align-items: center;
+        padding: 18px 0;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .settings-light .settings-control {
+        border-top-color: rgba(15, 23, 42, 0.08);
+      }
+
+      .settings-control strong,
+      .settings-list strong,
+      .settings-logout-panel strong {
+        display: block;
+        margin-bottom: 5px;
+        font-size: 17px;
+      }
+
+      .settings-segmented {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        justify-content: flex-end;
+        padding: 5px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.08);
+      }
+
+      .settings-light .settings-segmented {
+        background: rgba(15, 23, 42, 0.06);
+      }
+
+      .settings-segmented button {
+        min-height: 38px;
+        padding: 0 12px;
+        border-radius: 999px;
+        background: transparent;
+        color: inherit;
+        font-weight: 850;
+        transition: background 180ms ease, color 180ms ease;
+      }
+
+      .settings-segmented button.active {
+        background: #fff;
+        color: #111827;
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.14);
+      }
+
+      .settings-light .settings-segmented button.active {
+        background: #111827;
+        color: #fff;
+      }
+
+      .settings-toggle {
+        position: relative;
+        width: 66px;
+        height: 38px;
+        border-radius: 999px;
+        background: rgba(148, 163, 184, 0.38);
+        transition: background 180ms ease;
+      }
+
+      .settings-toggle span {
+        position: absolute;
+        top: 5px;
+        left: 5px;
+        width: 28px;
+        height: 28px;
+        border-radius: 999px;
+        background: #fff;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.16);
+        transition: transform 180ms ease;
+      }
+
+      .settings-toggle.on {
+        background: #16a34a;
+      }
+
+      .settings-toggle.on span {
+        transform: translateX(28px);
+      }
+
+      .settings-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .settings-list button {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 12px;
+        align-items: center;
+        width: 100%;
+        padding: 17px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.06);
+        color: inherit;
+        text-align: left;
+        transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+      }
+
+      .settings-light .settings-list button {
+        border-color: rgba(15, 23, 42, 0.08);
+        background: rgba(248, 250, 252, 0.72);
+      }
+
+      .settings-list button:hover {
+        border-color: rgba(250, 204, 21, 0.35);
+        background: rgba(250, 204, 21, 0.08);
+      }
+
+      .settings-list em {
+        color: #facc15;
+        font-style: normal;
+        font-weight: 900;
+        white-space: nowrap;
+      }
+
+      .settings-light .settings-list em {
+        color: #92400e;
+      }
+
+      .settings-emergency,
+      .settings-logout-panel {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 18px;
+        align-items: center;
+        margin-top: 18px;
+        padding: 24px;
+      }
+
+      .settings-emergency h2 {
+        margin: 0;
+        font-size: 30px;
+      }
+
+      .settings-emergency p {
+        margin: 8px 0 0;
+      }
+
+      .settings-emergency-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        justify-content: flex-end;
+      }
+
+      .settings-emergency-links a {
+        display: grid;
+        min-width: 118px;
+        padding: 12px 14px;
+        border-radius: 16px;
+        background: #dc2626;
+        color: #fff;
+        text-decoration: none;
+        box-shadow: 0 16px 30px rgba(220, 38, 38, 0.22);
+      }
+
+      .settings-emergency-links span {
+        font-size: 12px;
+        font-weight: 800;
+        opacity: 0.82;
+      }
+
+      .settings-emergency-links strong {
+        margin-top: 3px;
+        font-size: 18px;
+      }
+
+      .settings-logout-panel {
+        margin-bottom: 34px;
+      }
+
+      .settings-logout-panel button {
+        min-height: 48px;
+        padding: 0 20px;
+        border-radius: 999px;
+        background: #fff;
+        color: #111827;
+        font-weight: 900;
+        transition: transform 180ms ease, box-shadow 180ms ease;
+      }
+
+      .settings-light .settings-logout-panel button {
+        background: #111827;
+        color: #fff;
+      }
+
+      @media (max-width: 880px) {
+        .settings-page {
+          padding: 14px;
+        }
+
+        .settings-nav,
+        .settings-hero,
+        .settings-grid,
+        .settings-emergency,
+        .settings-logout-panel {
+          width: 100%;
+        }
+
+        .settings-nav {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        .settings-nav-actions {
+          width: 100%;
+          overflow-x: auto;
+          padding-bottom: 2px;
+        }
+
+        .settings-hero,
+        .settings-grid,
+        .settings-emergency,
+        .settings-logout-panel {
+          grid-template-columns: 1fr;
+        }
+
+        .settings-hero {
+          padding-top: 44px;
+        }
+
+        .settings-profile-card {
+          min-width: 0;
+        }
+
+        .settings-control {
+          grid-template-columns: 1fr;
+        }
+
+        .settings-segmented {
+          justify-content: flex-start;
+          border-radius: 18px;
+        }
+
+        .settings-emergency-links {
+          justify-content: flex-start;
+        }
+      }
+
+      @media (max-width: 540px) {
+        .settings-hero h1 {
+          font-size: 44px;
+        }
+
+        .settings-panel,
+        .settings-emergency,
+        .settings-logout-panel {
+          border-radius: 22px;
+          padding: 20px;
+        }
+
+        .settings-list button {
+          grid-template-columns: 1fr;
+        }
+
+        .settings-list em {
+          white-space: normal;
+        }
+      }
+    `}</style>
   );
 }
 
@@ -518,6 +2805,7 @@ function LegalPage({ page }) {
 }
 
 function TopBar({ title, goHome, logout }) {
+  const { t } = useTranslation();
   const [showSafety, setShowSafety] = useState(false);
 
   return (
@@ -538,13 +2826,13 @@ function TopBar({ title, goHome, logout }) {
             onClick={() => setShowSafety((current) => !current)}
             style={safetyButtonStyle}
           >
-            Safety
+            {t("settings.safetyEmergency")}
           </button>
 
           {showSafety && (
             <div style={safetyDropdownStyle}>
               <div style={safetyHeaderStyle}>
-                <strong>Emergency help</strong>
+                <strong>{t("settings.emergency")}</strong>
                 <span>Tap a number to call</span>
               </div>
 
@@ -564,42 +2852,52 @@ function TopBar({ title, goHome, logout }) {
         </div>
 
         <button onClick={() => (window.location.href = "/rider-dashboard")} style={topButtonStyle}>
-          Rider
+          {t("common.rider")}
         </button>
 
         <button onClick={() => (window.location.href = "/driver")} style={topButtonStyle}>
-          Driver
+          {t("common.driver")}
+        </button>
+
+        <button onClick={() => (window.location.href = "/rider-profile")} style={topButtonStyle}>
+          {t("profile.riderProfile")}
+        </button>
+
+        <button onClick={() => (window.location.href = "/driver-profile")} style={topButtonStyle}>
+          {t("profile.driverProfile")}
         </button>
 
         <button onClick={() => (window.location.href = "/admin")} style={topButtonStyle}>
-          Admin
+          {t("common.admin")}
         </button>
 
         <button onClick={goHome} style={topButtonStyle}>
-          Home
+          {t("common.home")}
         </button>
 
         <button onClick={() => (window.location.href = "/support")} style={topButtonStyle}>
-          Support
+          {t("common.support")}
+        </button>
+
+        <button onClick={() => (window.location.href = "/settings")} style={topButtonStyle}>
+          {t("common.settings")}
         </button>
 
         <button onClick={logout} style={logoutButtonStyle}>
-          Logout
+          {t("common.logout")}
         </button>
       </div>
     </div>
   );
 }
 
-function BrandLogo({ variant = "default" }) {
-  const isHero = variant === "hero";
-
+function BrandLogo() {
   return (
-    <div style={isHero ? heroLogoWrapStyle : brandLogoWrapStyle}>
+    <div style={brandLogoWrapStyle}>
       <img
         src={LOGO_SRC}
         alt={`${MARKET.brandName} logo`}
-        style={isHero ? heroLogoImageStyle : brandLogoImageStyle}
+        style={brandLogoImageStyle}
       />
     </div>
   );
@@ -609,278 +2907,55 @@ const emptyPageStyle = {
   padding: "30px",
 };
 
-const pageStyle = {
+const authLoadingStyle = {
   minHeight: "100vh",
-  background: "radial-gradient(circle at 15% 10%, #1f2a44 0%, #090d19 48%, #04050b 100%)",
-  display: "flex",
-  justifyContent: "center",
-  alignItems: "flex-start",
-  fontFamily: 'Inter, "SF Pro Display", "Segoe UI", sans-serif',
-  padding: "20px 20px 36px",
-};
-
-const homeShellStyle = {
-  maxWidth: "1240px",
-  width: "100%",
-};
-const navStyle = {
-  background: "rgba(15, 23, 42, 0.55)",
-  border: "1px solid rgba(255,255,255,0.16)",
-  borderRadius: "18px",
-  backdropFilter: "blur(10px)",
-  padding: "10px 14px",
-  marginBottom: "18px",
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  gap: "10px",
-  flexWrap: "wrap",
-};
-
-const landingHeroStyle = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 360px), 1fr))",
-  gap: "24px",
-  alignItems: "stretch",
+  placeItems: "center",
+  padding: "24px",
+  background:
+    "radial-gradient(circle at 20% 10%, rgba(250, 204, 21, 0.18), transparent 28%), #05070c",
+  fontFamily: 'Inter, "SF Pro Display", "Segoe UI", sans-serif',
 };
 
-const landingCopyStyle = {
-  background: "linear-gradient(152deg, rgba(16,24,40,0.86) 0%, rgba(15,23,42,0.7) 100%)",
-  border: "1px solid rgba(255, 255, 255, 0.2)",
-  boxShadow: "0 30px 80px rgba(2, 6, 23, 0.45)",
+const authLoadingCardStyle = {
+  width: "min(360px, 100%)",
+  padding: "26px",
+  border: "1px solid rgba(255,255,255,0.12)",
+  borderRadius: "24px",
+  background: "rgba(255,255,255,0.08)",
   color: "white",
-  padding: "44px",
-  borderRadius: "28px",
-  minHeight: "520px",
-  display: "flex",
-  flexDirection: "column",
-  justifyContent: "center",
+  textAlign: "center",
+  boxShadow: "0 24px 70px rgba(0,0,0,0.32)",
 };
 
-const heroLogoWrapStyle = {
-  width: "min(420px, 100%)",
-  aspectRatio: "1.55 / 1",
-  borderRadius: "18px",
-  background: "#0c0c14",
-  border: "1px solid rgba(255, 255, 255, 0.14)",
-  display: "block",
-  overflow: "hidden",
-  marginBottom: "18px",
-  boxShadow: "0 18px 36px rgba(2, 6, 23, 0.24)",
-};
-
-const heroLogoImageStyle = {
-  width: "100%",
-  height: "100%",
+const authLoadingLogoStyle = {
+  width: "78px",
+  height: "78px",
+  borderRadius: "20px",
   objectFit: "cover",
+};
+
+const authLoadingTitleStyle = {
+  margin: "14px 0 6px",
+  fontSize: "26px",
+};
+
+const authLoadingTextStyle = {
+  margin: 0,
+  color: "rgba(255,255,255,0.7)",
 };
 
 const brandPillStyle = {
   width: "fit-content",
-  background: "rgba(255, 255, 255, 0.08)",
-  color: "#f4f4f5",
-  border: "1px solid rgba(255, 255, 255, 0.2)",
-  borderRadius: "999px",
-  padding: "9px 12px",
-  fontWeight: 900,
-  fontSize: "0.82rem",
-  marginBottom: "18px",
-};
-
-const titleStyle = {
-  fontSize: "clamp(2.5rem, 5vw, 4.7rem)",
-  margin: "0 0 14px",
-  color: "white",
-  letterSpacing: 0,
-};
-
-const subtitleStyle = {
-  fontSize: "1.13rem",
-  lineHeight: 1.55,
-  color: "#d1d5db",
-  margin: "0 0 28px",
-  maxWidth: "620px",
-};
-
-const ctaRowStyle = {
-  display: "flex",
-  gap: "14px",
-  flexWrap: "wrap",
-};
-
-const primaryButtonStyle = {
-  background: "linear-gradient(135deg, #67e8f9 0%, #22d3ee 40%, #06b6d4 100%)",
-  color: "#001219",
-  border: "1px solid rgba(255,255,255,0.6)",
-  padding: "15px 18px",
-  borderRadius: "14px",
-  fontWeight: 900,
-  fontSize: "15px",
-  cursor: "pointer",
-  transition: "transform .25s ease, box-shadow .25s ease",
-  boxShadow: "0 10px 24px rgba(6, 182, 212, 0.35)",
-};
-
-const secondaryButtonStyle = {
-  background: "rgba(255, 255, 255, 0.08)",
-  color: "#f8fafc",
-  border: "1px solid rgba(255, 255, 255, 0.3)",
-  padding: "15px 18px",
-  borderRadius: "14px",
-  fontWeight: 900,
-  fontSize: "15px",
-  cursor: "pointer",
-  transition: "transform .25s ease, border-color .25s ease",
-};
-
-const lightButtonStyle = {
-  background: "rgba(255,255,255,0.08)",
-  color: "#f8fafc",
-  border: "1px solid rgba(255,255,255,0.25)",
-  padding: "12px 16px",
-  borderRadius: "10px",
-  fontWeight: 900,
-  fontSize: "15px",
-  cursor: "pointer",
-};
-
-const dispatchPanelStyle = {
-  background: "linear-gradient(180deg, rgba(15,23,42,0.72) 0%, rgba(30,41,59,0.6) 100%)",
-  border: "1px solid rgba(255,255,255,0.2)",
-  borderRadius: "28px",
-  padding: "22px",
-  boxShadow: "0 22px 70px rgba(2, 6, 23, 0.4)",
-};
-
-const dispatchHeaderStyle = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  gap: "14px",
-  marginBottom: "18px",
-};
-
-const panelKickerStyle = {
-  display: "block",
-  color: "#64748b",
-  fontSize: "0.76rem",
-  fontWeight: 900,
-  textTransform: "uppercase",
-  marginBottom: "4px",
-};
-
-const panelTitleStyle = {
-  margin: 0,
+  background: "rgba(255, 255, 255, 0.92)",
   color: "#111827",
-  fontSize: "1.35rem",
-};
-
-const onlineBadgeStyle = {
-  background: "#ecfdf5",
-  color: "#047857",
-  border: "1px solid #bbf7d0",
+  border: "1px solid rgba(255, 255, 255, 0.4)",
   borderRadius: "999px",
   padding: "8px 12px",
   fontWeight: 900,
+  fontSize: "0.78rem",
+  marginBottom: "14px",
 };
-
-const platformGridStyle = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-  gap: "14px",
-  marginTop: "18px",
-};
-
-const platformTileStyle = {
-  textAlign: "left",
-  border: "1px solid rgba(255,255,255,0.16)",
-  background: "rgba(15, 23, 42, 0.5)",
-  borderRadius: "14px",
-  padding: "16px",
-  cursor: "pointer",
-  display: "grid",
-  gap: "6px",
-  color: "#e2e8f0",
-  transition: "transform .25s ease, box-shadow .25s ease",
-  boxShadow: "0 12px 24px rgba(2,6,23,.22)",
-};
-
-const emergencyPanelStyle = {
-  marginTop: "16px",
-  border: "1px solid #fecaca",
-  background: "#fff7f7",
-  color: "#7f1d1d",
-  borderRadius: "14px",
-  padding: "14px",
-  display: "grid",
-  gap: "14px",
-};
-
-const emergencyLinksStyle = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
-  gap: "8px",
-};
-
-const emergencyLinkStyle = {
-  display: "inline-flex",
-  justifyContent: "center",
-  alignItems: "center",
-  minHeight: "40px",
-  borderRadius: "14px",
-  background: "#dc2626",
-  color: "white",
-  fontWeight: 900,
-  textDecoration: "none",
-};
-
-const cityStripStyle = {
-  display: "flex",
-  gap: "10px",
-  flexWrap: "wrap",
-  marginTop: "16px",
-};
-
-const cityPillStyle = {
-  background: "rgba(255,255,255,.08)",
-  border: "1px solid rgba(255,255,255,.2)",
-  borderRadius: "999px",
-  padding: "10px 16px",
-  color: "#e2e8f0",
-  fontWeight: 900,
-  boxShadow: "0 8px 20px rgba(15, 23, 42, 0.06)",
-};
-
-const authRowStyle = {
-  display: "flex",
-  justifyContent: "flex-end",
-  gap: "10px",
-  flexWrap: "wrap",
-  marginTop: "18px",
-};
-
-const footerLinksStyle = {
-  display: "flex",
-  justifyContent: "center",
-  gap: "10px",
-  flexWrap: "wrap",
-  marginTop: "22px",
-};
-
-const footerLinkStyle = {
-  background: "transparent",
-  color: "#cbd5e1",
-  border: "none",
-  fontWeight: 900,
-  cursor: "pointer",
-  textDecoration: "underline",
-};
-const statsGridStyle = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "12px", marginTop: "22px" };
-const statCardStyle = { background: "rgba(255,255,255,.08)", border: "1px solid rgba(255,255,255,.24)", borderRadius: "14px", padding: "12px", color: "#f8fafc", display: "grid", gap: "6px", boxShadow: "0 10px 24px rgba(2,6,23,.2)" };
-const phoneMockStyle = { background: "rgba(15,23,42,.65)", border: "1px solid rgba(255,255,255,.24)", borderRadius: "26px", padding: "16px", display: "grid", gap: "12px", backdropFilter: "blur(12px)" };
-const liveHeaderStyle = { display: "flex", justifyContent: "space-between", alignItems: "center", color: "#e2e8f0", fontSize: ".85rem" };
-const liveMapStyle = { minHeight: "180px", borderRadius: "16px", background: "linear-gradient(130deg, rgba(56,189,248,.3), rgba(59,130,246,.14), rgba(14,116,144,.3))", border: "1px solid rgba(255,255,255,.14)" };
-const liveRowStyle = { display: "flex", justifyContent: "space-between", color: "#e2e8f0", borderTop: "1px solid rgba(255,255,255,.12)", paddingTop: "8px" };
 
 const legalPageStyle = {
   minHeight: "100vh",
@@ -1054,7 +3129,8 @@ const logoutButtonStyle = {
 
 const setupPageStyle = {
   minHeight: "100vh",
-  background: "#f3f4f9",
+  background:
+    "radial-gradient(circle at 14% 10%, rgba(250,204,21,0.16), transparent 28%), #030712",
   padding: "30px",
   fontFamily: 'Inter, "SF Pro Display", "Segoe UI", sans-serif',
 };
@@ -1062,20 +3138,21 @@ const setupPageStyle = {
 const setupCardStyle = {
   maxWidth: "900px",
   margin: "0 auto",
-  background: "#ffffff",
+  background: "rgba(255,255,255,0.07)",
   padding: "32px",
   borderRadius: "20px",
-  border: "1px solid #e4e7ec",
-  boxShadow: "0 10px 25px rgba(16,24,40,0.08)",
+  border: "1px solid rgba(255,255,255,0.12)",
+  boxShadow: "0 24px 70px rgba(0,0,0,0.28)",
+  color: "#f8fafc",
 };
 
 const setupTitleStyle = {
   marginTop: 0,
-  color: "#111827",
+  color: "#ffffff",
 };
 
 const setupSubtitleStyle = {
-  color: "#6b7280",
+  color: "#cbd5e1",
   marginBottom: "20px",
 };
 
@@ -1083,10 +3160,10 @@ const continueButtonStyle = {
   width: "100%",
   marginTop: "25px",
   padding: "16px",
-  background: "#0c0c14",
-  color: "#0b1220",
-  border: "1px solid #1f2937",
-  borderRadius: "14px",
+  background: "#facc15",
+  color: "#111827",
+  border: "1px solid #facc15",
+  borderRadius: "999px",
   fontWeight: "bold",
   fontSize: "16px",
   cursor: "pointer",

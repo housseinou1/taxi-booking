@@ -3,6 +3,7 @@ from django.urls import path
 from .views import (
     save_payment_method,
     my_payment_methods,
+    delete_payment_method,
     create_payment,
     my_payments,
     rider_mark_paid,
@@ -20,6 +21,7 @@ from .views import (
 urlpatterns = [
     path("methods/save/", save_payment_method),
     path("methods/", my_payment_methods),
+    path("methods/<int:method_id>/", delete_payment_method),
 
     path("create/", create_payment),
     path("my-payments/", my_payments),

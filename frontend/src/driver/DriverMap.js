@@ -150,6 +150,7 @@ function DriverMap({ driverLocation, activeRide, availableRides = [] }) {
             color: "#2563eb",
             weight: 5,
             opacity: 0.72,
+            animated: true,
           },
           {
             id: "trip-route",
@@ -157,6 +158,7 @@ function DriverMap({ driverLocation, activeRide, availableRides = [] }) {
             color: "#f97316",
             weight: 5,
             opacity: 0.72,
+            animated: activeRide?.status === "in_progress",
           },
         ]}
       />
