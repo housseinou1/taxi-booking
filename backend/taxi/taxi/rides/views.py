@@ -5,7 +5,7 @@ from django.db.models import Sum
 from django.utils.timezone import now
 
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 
@@ -22,6 +22,115 @@ from .serializers import RideSerializer
 
 OPEN_RIDE_STATUSES = ["requested", "driver_arriving", "in_progress"]
 DRIVER_ACTIVE_STATUSES = ["driver_arriving", "in_progress"]
+
+
+def ride_date(ride):
+    return (ride.completed_at or ride.created_at or now()).date()
+
+
+def money_total(rides, field):
+    return float(sum((getattr(ride, field) or 0) for ride in rides))
+
+
+def count_for_range(rides, start_date, end_date):
+    return sum(1 for ride in rides if start_date <= ride_date(ride) <= end_date)
+
+
+def total_for_range(rides, field, start_date, end_date):
+    return float(
+        sum(
+            (getattr(ride, field) or 0)
+            for ride in rides
+            if start_date <= ride_date(ride) <= end_date
+        )
+    )
+
+
+def month_window(today, months_ago):
+    month = today.replace(day=1)
+    for _ in range(months_ago):
+        month = (month.replace(day=1) - timedelta(days=1)).replace(day=1)
+
+    next_month = (
+        month.replace(year=month.year + 1, month=1, day=1)
+        if month.month == 12
+        else month.replace(month=month.month + 1, day=1)
+    )
+    return month, next_month - timedelta(days=1)
+
+
+def build_money_charts(rides, field):
+    today = now().date()
+    week_start = today - timedelta(days=today.weekday())
+
+    daily = []
+    for days_ago in range(6, -1, -1):
+        day = today - timedelta(days=days_ago)
+        daily.append({
+            "label": day.strftime("%a"),
+            "date": day.isoformat(),
+            "value": total_for_range(rides, field, day, day),
+        })
+
+    weekly = []
+    for weeks_ago in range(3, -1, -1):
+        start = week_start - timedelta(days=weeks_ago * 7)
+        end = start + timedelta(days=6)
+        weekly.append({
+            "label": f"{start.strftime('%b')} {start.day}",
+            "start_date": start.isoformat(),
+            "end_date": end.isoformat(),
+            "value": total_for_range(rides, field, start, end),
+        })
+
+    monthly = []
+    for months_ago in range(5, -1, -1):
+        start, end = month_window(today, months_ago)
+        monthly.append({
+            "label": start.strftime("%b"),
+            "start_date": start.isoformat(),
+            "end_date": end.isoformat(),
+            "value": total_for_range(rides, field, start, end),
+        })
+
+    return {"daily": daily, "weekly": weekly, "monthly": monthly}
+
+
+def build_count_charts(rides):
+    today = now().date()
+    week_start = today - timedelta(days=today.weekday())
+
+    daily = []
+    for days_ago in range(6, -1, -1):
+        day = today - timedelta(days=days_ago)
+        daily.append({
+            "label": day.strftime("%a"),
+            "date": day.isoformat(),
+            "count": count_for_range(rides, day, day),
+        })
+
+    weekly = []
+    for weeks_ago in range(3, -1, -1):
+        start = week_start - timedelta(days=weeks_ago * 7)
+        end = start + timedelta(days=6)
+        weekly.append({
+            "label": f"{start.strftime('%b')} {start.day}",
+            "start_date": start.isoformat(),
+            "end_date": end.isoformat(),
+            "count": count_for_range(rides, start, end),
+        })
+
+    monthly = []
+    for months_ago in range(5, -1, -1):
+        start, end = month_window(today, months_ago)
+        monthly.append({
+            "label": start.strftime("%b"),
+            "start_date": start.isoformat(),
+            "end_date": end.isoformat(),
+            "count": count_for_range(rides, start, end),
+        })
+
+    return {"daily": daily, "weekly": weekly, "monthly": monthly}
 
 
 def calculate_money(ride):
@@ -106,7 +215,7 @@ def request_ride(request):
 
 
 @api_view(["GET"])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def available_rides(request):
     rides = Ride.objects.filter(
         status="requested",
@@ -461,4 +570,68 @@ def driver_earnings_summary(request):
             },
         },
         status=status.HTTP_200_OK,
+    )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def rider_spending_summary(request):
+    completed_rides = list(
+        Ride.objects.filter(
+            rider=request.user,
+            status="completed",
+        ).order_by("completed_at", "created_at")
+    )
+    cancelled_rides = list(
+        Ride.objects.filter(
+            rider=request.user,
+            status="cancelled",
+        ).order_by("created_at")
+    )
+
+    return Response(
+        {
+            "total_spending": money_total(completed_rides, "fare"),
+            "completed_rides": len(completed_rides),
+            "cancelled_rides": len(cancelled_rides),
+            "charts": build_money_charts(completed_rides, "fare"),
+            "completed_charts": build_count_charts(completed_rides),
+            "cancelled_charts": build_count_charts(cancelled_rides),
+        }
+    )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def admin_revenue_analytics(request):
+    if not request.user.is_staff:
+        return Response(
+            {"detail": "Only admins can view revenue analytics."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    completed_rides = list(
+        Ride.objects.filter(status="completed").order_by("completed_at", "created_at")
+    )
+    cancelled_rides = list(Ride.objects.filter(status="cancelled").order_by("created_at"))
+    all_rides = list(Ride.objects.all().order_by("created_at"))
+
+    revenue_charts = build_money_charts(completed_rides, "fare")
+    commission_charts = build_money_charts(completed_rides, "app_fee")
+    completed_charts = build_count_charts(completed_rides)
+    cancelled_charts = build_count_charts(cancelled_rides)
+
+    return Response(
+        {
+            "total_rides": len(all_rides),
+            "completed_rides": len(completed_rides),
+            "cancelled_rides": len(cancelled_rides),
+            "total_revenue": money_total(completed_rides, "fare"),
+            "platform_commission": money_total(completed_rides, "app_fee"),
+            "driver_payouts": money_total(completed_rides, "driver_earning"),
+            "revenue_charts": revenue_charts,
+            "commission_charts": commission_charts,
+            "completed_charts": completed_charts,
+            "cancelled_charts": cancelled_charts,
+        }
     )

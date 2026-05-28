@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { API_URL } from "../apiConfig";
+import { API_URL, authFetch } from "../apiConfig";
 
 const DRIVER_TERMS_VERSION = "driver-terms-2026-05";
 
@@ -82,7 +82,7 @@ function DriverSignup() {
         data.append("insurance_document", insuranceDocument);
       }
 
-      const response = await fetch(`${API_URL}/drivers/register/`, {
+      const response = await authFetch(`${API_URL}/drivers/register/`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,

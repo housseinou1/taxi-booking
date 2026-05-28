@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { API_URL } from "../apiConfig";
+import { API_URL, authFetch } from "../apiConfig";
 
 function DriverVerification({ onBack }) {
   const [drivers, setDrivers] = useState([]);
@@ -7,7 +7,7 @@ function DriverVerification({ onBack }) {
 
   const fetchDrivers = async () => {
     try {
-      const res = await fetch(`${API_URL}/drivers/`);
+      const res = await authFetch(`${API_URL}/drivers/list/`);
       const data = await res.json();
       setDrivers(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -23,7 +23,7 @@ function DriverVerification({ onBack }) {
   }, []);
 
   const approveDriver = async (id) => {
-    await fetch(`${API_URL}/drivers/${id}/approve/`, {
+    await authFetch(`${API_URL}/drivers/approve/${id}/`, {
       method: "POST",
     });
 
@@ -31,7 +31,7 @@ function DriverVerification({ onBack }) {
   };
 
   const rejectDriver = async (id) => {
-    await fetch(`${API_URL}/drivers/${id}/reject/`, {
+    await authFetch(`${API_URL}/drivers/reject/${id}/`, {
       method: "POST",
     });
 

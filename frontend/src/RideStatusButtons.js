@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { API_URL } from "./apiConfig";
+import { API_URL, authFetch } from "./apiConfig";
 
 function RideStatusButtons({ ride, onStatusChange }) {
   const [workingAction, setWorkingAction] = useState("");
@@ -35,7 +35,7 @@ function RideStatusButtons({ ride, onStatusChange }) {
     try {
       setWorkingAction(endpoint);
 
-      const response = await fetch(`${API_URL}/rides/${endpoint}/${ride.id}/`, {
+      const response = await authFetch(`${API_URL}/rides/${endpoint}/${ride.id}/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

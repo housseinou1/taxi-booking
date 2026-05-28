@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { API_URL } from "../apiConfig";
+import { API_URL, authFetch } from "../apiConfig";
 
 function RateRide({ ride, onRated }) {
   const [rating, setRating] = useState(5);
@@ -10,7 +10,7 @@ function RateRide({ ride, onRated }) {
     try {
       setLoading(true);
 
-      const response = await fetch(`${API_URL}/rides/rate/${ride.id}/`, {
+      const response = await authFetch(`${API_URL}/rides/rate/${ride.id}/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

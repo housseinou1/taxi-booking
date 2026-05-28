@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
-import { API_URL, WS_URL } from "../apiConfig";
+import { API_URL, WS_URL, authFetch } from "../apiConfig";
 import GoogleTripMap from "../maps/GoogleTripMap";
 import { MARKET, calculateFare, formatMoney } from "../marketConfig";
 
@@ -28,7 +28,7 @@ function RiderApp() {
 
       if (!token) return;
 
-      const response = await fetch(`${API_URL}/rides/history/`, {
+      const response = await authFetch(`${API_URL}/rides/history/`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -86,7 +86,7 @@ function RiderApp() {
         return;
       }
 
-      const response = await fetch(`${API_URL}/rides/request/`, {
+      const response = await authFetch(`${API_URL}/rides/request/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -129,7 +129,7 @@ function RiderApp() {
     try {
       const token = getToken();
 
-      const response = await fetch(
+      const response = await authFetch(
         `${API_URL}/rides/cancel/${currentRide.id}/`,
         {
           method: "POST",

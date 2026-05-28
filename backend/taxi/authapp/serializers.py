@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 
@@ -90,3 +91,44 @@ class RegisterSerializer(serializers.ModelSerializer):
             )
 
         return user
+
+
+class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
+    username_field = User.EMAIL_FIELD
+
+    def validate(self, attrs):
+        if "username" in attrs and "email" not in attrs:
+            attrs["email"] = attrs["username"]
+
+        data = super().validate(attrs)
+        data.update(self.get_user_payload(self.user))
+        return data
+
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        token["email"] = user.email
+        token["is_staff"] = user.is_staff
+        token["is_driver"] = DriverProfile.objects.filter(user=user).exists()
+        token["is_rider"] = not token["is_driver"]
+        return token
+
+    @staticmethod
+    def get_user_payload(user):
+        profile = DriverProfile.objects.filter(user=user).first()
+        is_driver = profile is not None
+
+        return {
+            "id": user.id,
+            "email": user.email,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "phone_number": user.phone_number or "",
+            "is_driver": is_driver,
+            "is_rider": not is_driver,
+            "is_staff": user.is_staff,
+            "is_active": user.is_active,
+            "rider_status": user.rider_status,
+            "driver_profile_id": profile.id if profile else None,
+            "driver_status": profile.status if profile else "",
+        }

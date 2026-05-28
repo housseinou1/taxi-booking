@@ -63,7 +63,7 @@ function AuthPage({ onLogin }) {
 
   const login = async () => {
     try {
-      const res = await fetch(`${API_URL}/api/token/`, {
+      const res = await fetch(`${API_URL}/auth/login/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -79,9 +79,17 @@ function AuthPage({ onLogin }) {
       if (res.ok) {
         localStorage.setItem("access", data.access);
         localStorage.setItem("refresh", data.refresh);
-        localStorage.setItem("userType", userType);
+        localStorage.setItem("user", JSON.stringify(data));
 
-        onLogin(userType);
+        if (data.is_staff) {
+          window.location.href = "/admin-dashboard";
+        } else if (data.is_driver) {
+          window.location.href = "/driver-dashboard";
+        } else {
+          window.location.href = "/rider-dashboard";
+        }
+
+        if (onLogin) onLogin(data.is_driver ? "driver" : "rider");
 
         alert("Login successful ✅");
       } else {

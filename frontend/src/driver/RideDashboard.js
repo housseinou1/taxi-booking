@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 
-import { API_URL } from "../apiConfig";
+import { API_URL, authFetch } from "../apiConfig";
 import RideStatusButtons from "../RideStatusButtons";
 import { formatMoney } from "../marketConfig";
 
@@ -87,7 +87,7 @@ function RideDashboard({ rides = [], availableRides = [], isOnline, fetchRides }
 
   const confirmPaymentReceived = async (rideId) => {
     try {
-      const response = await fetch(`${API_URL}/payments/confirm-payment/${rideId}/`, {
+      const response = await authFetch(`${API_URL}/payments/confirm-payment/${rideId}/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -242,7 +242,7 @@ function RiderRatingForm({ ride, onRated }) {
 
     try {
       setSaving(true);
-      const response = await fetch(`${API_URL}/rides/rate-rider/${ride.id}/`, {
+      const response = await authFetch(`${API_URL}/rides/rate-rider/${ride.id}/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

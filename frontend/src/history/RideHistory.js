@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { API_URL } from "../apiConfig";
+import { API_URL, authFetch } from "../apiConfig";
 import { formatMoney } from "../marketConfig";
 
 function RideHistory() {
@@ -7,7 +7,7 @@ function RideHistory() {
 
   const fetchRideHistory = async () => {
     try {
-      const res = await fetch(`${API_URL}/rides/history/`);
+      const res = await authFetch(`${API_URL}/rides/history/`);
       const data = await res.json();
 
       if (Array.isArray(data)) {

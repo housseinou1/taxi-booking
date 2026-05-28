@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { API_URL } from "../apiConfig";
+import { API_URL, authFetch } from "../apiConfig";
 
 import {
   MapContainer,
@@ -29,14 +29,14 @@ function LiveRideTracking({ ride }) {
 
   const fetchDriverLocation = async () => {
     try {
-      const response = await fetch(`${API_URL}/drivers/list/`);
+      const response = await authFetch(`${API_URL}/drivers/list/`);
 
       const data = await response.json();
 
       if (!Array.isArray(data)) return;
 
       const currentDriver = data.find(
-        (driver) => Number(driver.id) === Number(ride?.driver)
+        (driver) => Number(driver.user_id || driver.id) === Number(ride?.driver)
       );
 
       if (!currentDriver) return;

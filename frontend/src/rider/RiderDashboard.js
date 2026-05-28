@@ -1,5 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 import { API_URL } from "../apiConfig";
 import GoogleTripMap from "../maps/GoogleTripMap";
@@ -98,6 +107,8 @@ export default function RiderDashboard() {
   const [identitySaving, setIdentitySaving] = useState(false);
   const [identityMessage, setIdentityMessage] = useState("");
   const [showAccountPanel, setShowAccountPanel] = useState(false);
+  const [rideHistory, setRideHistory] = useState([]);
+  const [spendingSummary, setSpendingSummary] = useState(null);
 
   const token = localStorage.getItem("access");
 
@@ -247,15 +258,68 @@ export default function RiderDashboard() {
       });
 
       if (Array.isArray(response.data) && response.data.length > 0) {
+        setRideHistory(response.data);
         const activeRide = response.data.find((ride) =>
           activeRideStatuses.has(ride.status)
         );
         setCurrentRide(activeRide || null);
       } else {
+        setRideHistory([]);
         setCurrentRide(null);
       }
     } catch (error) {
       console.log("Ride history error:", error.response?.data || error);
+    }
+  }, [token]);
+
+  const spendingHistory = useMemo(() => {
+    if (spendingSummary) {
+      const monthly = spendingSummary.charts?.monthly || [];
+      return {
+        total: Number(spendingSummary.total_spending || 0),
+        completed: Number(spendingSummary.completed_rides || 0),
+        cancelled: Number(spendingSummary.cancelled_rides || 0),
+        trend: monthly.map((item) => ({
+          label: item.label,
+          value: Number(item.value || 0),
+        })),
+      };
+    }
+
+    const monthly = {};
+    let total = 0;
+    let completed = 0;
+    let cancelled = 0;
+
+    rideHistory.forEach((ride) => {
+      if (ride.status === "cancelled") cancelled += 1;
+      if (ride.status !== "completed") return;
+      completed += 1;
+      const amount = Number(ride.fare || 0);
+      total += amount;
+      const date = new Date(ride.completed_at || ride.updated_at || ride.created_at || Date.now());
+      const label = date.toLocaleString("en-US", { month: "short", year: "2-digit" });
+      monthly[label] = (monthly[label] || 0) + amount;
+    });
+
+    const trend = Object.entries(monthly).slice(-6).map(([label, value]) => ({ label, value }));
+    return { total, completed, cancelled, trend };
+  }, [rideHistory, spendingSummary]);
+
+  const fetchSpendingSummary = useCallback(async () => {
+    try {
+      if (!token) return;
+
+      const response = await axios.get(`${API_URL}/rides/rider/spending/`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      setSpendingSummary(response.data || null);
+    } catch (error) {
+      console.log("Rider spending analytics error:", error.response?.data || error);
+      setSpendingSummary(null);
     }
   }, [token]);
 
@@ -286,13 +350,14 @@ export default function RiderDashboard() {
   useEffect(() => {
     fetchCurrentRide();
     fetchRiderIdentity();
+    fetchSpendingSummary();
 
     const interval = setInterval(() => {
       fetchCurrentRide();
     }, 2000);
 
     return () => clearInterval(interval);
-  }, [fetchCurrentRide, fetchRiderIdentity]);
+  }, [fetchCurrentRide, fetchRiderIdentity, fetchSpendingSummary]);
 
   useEffect(() => {
     if (!shouldTrackDriver) {
@@ -626,6 +691,37 @@ export default function RiderDashboard() {
             </div>
           </section>
         )}
+
+        <section style={analyticsCardStyle}>
+          <div style={analyticsHeaderStyle}>
+            <div>
+              <span style={tinyLabelStyle}>Spending analytics</span>
+              <h3 style={{ margin: 0 }}>Rider spending history</h3>
+            </div>
+            <strong style={analyticsTotalStyle}>{formatMoney(spendingHistory.total)}</strong>
+          </div>
+          <div style={analyticsMetricRowStyle}>
+            <span>{spendingHistory.completed || 0} completed trips</span>
+            <span>{spendingHistory.cancelled || 0} cancellations</span>
+          </div>
+          <div style={spendingChartStyle}>
+            <ResponsiveContainer width="100%" height={210}>
+              <AreaChart data={spendingHistory.trend.length ? spendingHistory.trend : [{ label: "No data", value: 0 }]}>
+                <defs>
+                  <linearGradient id="riderSpendGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#2563eb" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="#2563eb" stopOpacity={0.04} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid stroke="#e5e7eb" vertical={false} />
+                <XAxis dataKey="label" tickLine={false} axisLine={false} />
+                <YAxis tickFormatter={(value) => formatMoney(value)} tickLine={false} axisLine={false} width={72} />
+                <Tooltip formatter={(value) => [formatMoney(value), "Spending"]} />
+                <Area type="monotone" dataKey="value" stroke="#2563eb" fill="url(#riderSpendGradient)" strokeWidth={3} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </section>
 
         <section style={routeEditorStyle}>
           <select
@@ -1094,6 +1190,40 @@ const rideOptionsStyle = {
   display: "grid",
   gap: "8px",
   marginTop: "14px",
+};
+
+const analyticsCardStyle = {
+  marginTop: "14px",
+  border: "1px solid #e5e7eb",
+  borderRadius: "16px",
+  padding: "14px",
+  background: "#ffffff",
+};
+
+const analyticsHeaderStyle = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "flex-start",
+  gap: "12px",
+};
+
+const analyticsTotalStyle = {
+  color: "#111827",
+  fontSize: "1.2rem",
+};
+
+const analyticsMetricRowStyle = {
+  display: "flex",
+  gap: "10px",
+  flexWrap: "wrap",
+  color: "#6b7280",
+  fontWeight: 800,
+  marginTop: "10px",
+};
+
+const spendingChartStyle = {
+  marginTop: "12px",
+  height: "220px",
 };
 
 const rideOptionStyle = {

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { API_URL } from "../apiConfig";
+import { API_URL, authFetch } from "../apiConfig";
 
 function VehicleInfo({ setShowRegister }) {
   const [vehicleData, setVehicleData] = useState({
@@ -49,7 +49,7 @@ function VehicleInfo({ setShowRegister }) {
     try {
       const token = localStorage.getItem("access");
 
-      const response = await fetch(`${API_URL}/drivers/profile/update/`, {
+      const response = await authFetch(`${API_URL}/drivers/profile/update/`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,

@@ -35,7 +35,7 @@ function App() {
     else if (currentPath === "/rider-dashboard") setPage("rider-dashboard");
     else if (currentPath === "/rider-payments") setPage("rider-payments");
     else if (currentPath === "/rider") setPage("rider");
-    else if (currentPath === "/driver") setPage("driver");
+    else if (currentPath === "/driver" || currentPath === "/driver-dashboard") setPage("driver");
     else if (currentPath === "/register") setPage("register");
     else if (currentPath === "/login") setPage("login");
     else if (currentPath === "/admin-dashboard") setPage("admin");
@@ -47,6 +47,21 @@ function App() {
   }, [currentPath]);
 
   useEffect(() => {
+    const protectedPages = new Set([
+      "admin",
+      "driver",
+      "driver-vehicle-setup",
+      "payment-setup",
+      "rider",
+      "rider-dashboard",
+      "rider-payments",
+    ]);
+
+    if (protectedPages.has(page) && !localStorage.getItem("access") && !localStorage.getItem("refresh")) {
+      window.location.href = "/login";
+      return;
+    }
+
     if (page === "rider-payments") {
       fetchSelectedRide();
     }

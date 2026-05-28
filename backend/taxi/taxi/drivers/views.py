@@ -1,5 +1,5 @@
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from django.shortcuts import get_object_or_404
@@ -166,14 +166,14 @@ def driver_me(request):
 
 
 @api_view(["GET"])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def driver_list(request):
     drivers = DriverProfile.objects.all().order_by("-id")
     return Response([serialize_driver(driver, request) for driver in drivers])
 
 
 @api_view(["GET"])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def available_drivers(request):
     for profile in DriverProfile.objects.filter(status="approved"):
         enforce_document_expiration(profile)
@@ -192,7 +192,7 @@ def available_drivers(request):
 
 
 @api_view(["GET"])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def driver_location(request, driver_id):
     profile = get_object_or_404(
         DriverProfile,

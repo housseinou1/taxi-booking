@@ -1,5 +1,20 @@
-import React, { useCallback, useEffect, useState } from "react";
-import { API_URL } from "../apiConfig";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import { API_URL, authFetch } from "../apiConfig";
 import { MARKET, formatMoney } from "../marketConfig";
 
 const MARKET_OWNER_PERCENT = MARKET.ownerCommissionPercent;
@@ -94,6 +109,7 @@ function AdminDashboard() {
   const [users, setUsers] = useState([]);
   const [rides, setRides] = useState([]);
   const [withdrawals, setWithdrawals] = useState([]);
+  const [adminAnalytics, setAdminAnalytics] = useState(null);
   const [ownerPayoutSummary, setOwnerPayoutSummary] = useState({
     owner_commission_percent: MARKET_OWNER_PERCENT,
     owner_commission_balance: 0,
@@ -120,7 +136,7 @@ function AdminDashboard() {
 
   const fetchDrivers = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/drivers/list/`);
+      const response = await authFetch(`${API_URL}/drivers/list/`);
       const data = await response.json();
       setDrivers(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -131,7 +147,7 @@ function AdminDashboard() {
 
   const fetchUsers = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/auth/users/`, {
+      const response = await authFetch(`${API_URL}/auth/users/`, {
         headers: authHeaders(),
       });
       const data = await response.json();
@@ -144,7 +160,7 @@ function AdminDashboard() {
 
   const fetchRides = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/rides/history/`, {
+      const response = await authFetch(`${API_URL}/rides/history/`, {
         headers: authHeaders(),
       });
       const data = await response.json();
@@ -157,7 +173,7 @@ function AdminDashboard() {
 
   const fetchWithdrawals = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/payments/withdrawals/`, {
+      const response = await authFetch(`${API_URL}/payments/withdrawals/`, {
         headers: authHeaders(),
       });
       const data = await response.json();
@@ -168,9 +184,26 @@ function AdminDashboard() {
     }
   }, [authHeaders]);
 
+
+  const fetchAdminAnalytics = useCallback(async () => {
+    try {
+      const response = await authFetch(`${API_URL}/rides/admin/analytics/`, {
+        headers: authHeaders(),
+      });
+      const data = await response.json();
+
+      if (response.ok) {
+        setAdminAnalytics(data || null);
+      }
+    } catch (error) {
+      console.error("Admin analytics fetch error:", error);
+      setAdminAnalytics(null);
+    }
+  }, [authHeaders]);
+
   const fetchOwnerPayout = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/payments/owner-payout/`, {
+      const response = await authFetch(`${API_URL}/payments/owner-payout/`, {
         headers: authHeaders(),
       });
       const data = await response.json();
@@ -199,11 +232,12 @@ function AdminDashboard() {
     fetchRides();
     fetchWithdrawals();
     fetchOwnerPayout();
-  }, [fetchDrivers, fetchOwnerPayout, fetchRides, fetchUsers, fetchWithdrawals]);
+    fetchAdminAnalytics();
+  }, [fetchAdminAnalytics, fetchDrivers, fetchOwnerPayout, fetchRides, fetchUsers, fetchWithdrawals]);
 
   const approveDriver = async (id) => {
     try {
-      const response = await fetch(`${API_URL}/drivers/approve/${id}/`, {
+      const response = await authFetch(`${API_URL}/drivers/approve/${id}/`, {
         method: "POST",
         headers: {
           ...authHeaders(),
@@ -224,7 +258,7 @@ function AdminDashboard() {
 
   const rejectDriver = async (id) => {
     try {
-      const response = await fetch(`${API_URL}/drivers/reject/${id}/`, {
+      const response = await authFetch(`${API_URL}/drivers/reject/${id}/`, {
         method: "POST",
         headers: {
           ...authHeaders(),
@@ -245,7 +279,7 @@ function AdminDashboard() {
 
   const reintegrateDriver = async (id) => {
     try {
-      const response = await fetch(`${API_URL}/drivers/reintegrate/${id}/`, {
+      const response = await authFetch(`${API_URL}/drivers/reintegrate/${id}/`, {
         method: "POST",
         headers: {
           ...authHeaders(),
@@ -275,7 +309,7 @@ function AdminDashboard() {
   const setUserBlocked = async (userId, shouldBlock) => {
     try {
       const endpoint = shouldBlock ? "block" : "unblock";
-      const response = await fetch(`${API_URL}/auth/users/${userId}/${endpoint}/`, {
+      const response = await authFetch(`${API_URL}/auth/users/${userId}/${endpoint}/`, {
         method: "POST",
         headers: authHeaders(),
       });
@@ -298,7 +332,7 @@ function AdminDashboard() {
 
   const updateRiderApproval = async (userId, action) => {
     try {
-      const response = await fetch(`${API_URL}/auth/users/${userId}/${action}-rider/`, {
+      const response = await authFetch(`${API_URL}/auth/users/${userId}/${action}-rider/`, {
         method: "POST",
         headers: authHeaders(),
       });
@@ -328,7 +362,7 @@ function AdminDashboard() {
         return;
       }
 
-      const response = await fetch(`${API_URL}/drivers/category/${driverId}/`, {
+      const response = await authFetch(`${API_URL}/drivers/category/${driverId}/`, {
         method: "POST",
         headers: {
           ...authHeaders(),
@@ -362,7 +396,7 @@ function AdminDashboard() {
 
   const approveWithdrawal = async (id) => {
     try {
-      const response = await fetch(
+      const response = await authFetch(
         `${API_URL}/payments/withdrawals/${id}/approve/`,
         {
           method: "POST",
@@ -384,7 +418,7 @@ function AdminDashboard() {
 
   const rejectWithdrawal = async (id) => {
     try {
-      const response = await fetch(
+      const response = await authFetch(
         `${API_URL}/payments/withdrawals/${id}/reject/`,
         {
           method: "POST",
@@ -418,7 +452,7 @@ function AdminDashboard() {
       setOwnerPayoutSaving(true);
       setOwnerPayoutMessage("");
 
-      const response = await fetch(`${API_URL}/payments/owner-payout/save/`, {
+      const response = await authFetch(`${API_URL}/payments/owner-payout/save/`, {
         method: "POST",
         headers: {
           ...authHeaders(),
@@ -501,17 +535,17 @@ function AdminDashboard() {
     (item) => item.status === "rejected"
   );
 
-  const totalRevenue = rides.reduce(
+  const totalRevenue = completedRides.reduce(
     (total, ride) => total + Number(ride.fare || 0),
     0
   );
 
-  const platformCommission = rides.reduce(
+  const platformCommission = completedRides.reduce(
     (total, ride) => total + Number(ride.app_fee || 0),
     0
   );
 
-  const driverPayouts = rides.reduce(
+  const driverPayouts = completedRides.reduce(
     (total, ride) => total + Number(ride.driver_earning || 0),
     0
   );
@@ -519,6 +553,59 @@ function AdminDashboard() {
     totalRevenue > 0
       ? Math.round((platformCommission / totalRevenue) * 1000) / 10
       : MARKET_OWNER_PERCENT;
+  const analyticsSummary = useMemo(() => {
+    const completedSource = adminAnalytics?.completed_rides ?? completedRides.length;
+    const cancelledSource = adminAnalytics?.cancelled_rides ?? cancelledRides.length;
+    const revenueSource = adminAnalytics?.total_revenue ?? totalRevenue;
+    const commissionSource = adminAnalytics?.platform_commission ?? platformCommission;
+    const payoutsSource = adminAnalytics?.driver_payouts ?? driverPayouts;
+    const monthlyRevenueSource = adminAnalytics?.revenue_charts?.monthly;
+    const monthlyCompletedSource = adminAnalytics?.completed_charts?.monthly;
+    const monthlyCancelledSource = adminAnalytics?.cancelled_charts?.monthly;
+
+    const fallbackMonthlyRevenueMap = rides.reduce((accumulator, ride) => {
+      if (ride.status !== "completed") return accumulator;
+      const date = new Date(ride.completed_at || ride.updated_at || ride.created_at || Date.now());
+      const label = date.toLocaleString("en-US", { month: "short" });
+      accumulator[label] = (accumulator[label] || 0) + Number(ride.fare || 0);
+      return accumulator;
+    }, {});
+
+    const monthlyRevenue = (monthlyRevenueSource?.length
+      ? monthlyRevenueSource
+      : Object.entries(fallbackMonthlyRevenueMap).slice(-6).map(([label, value]) => ({ label, value })))
+      .map((item) => ({ label: item.label, value: Number(item.value || 0) }));
+
+    const completedByLabel = new Map(
+      (monthlyCompletedSource || []).map((item) => [item.label, Number(item.count || 0)])
+    );
+    const cancelledByLabel = new Map(
+      (monthlyCancelledSource || []).map((item) => [item.label, Number(item.count || 0)])
+    );
+    const rideVolumeLabels = Array.from(new Set([
+      ...(monthlyCompletedSource || []).map((item) => item.label),
+      ...(monthlyCancelledSource || []).map((item) => item.label),
+    ]));
+    const rideVolume = rideVolumeLabels.map((label) => ({
+      label,
+      completed: completedByLabel.get(label) || 0,
+      cancelled: cancelledByLabel.get(label) || 0,
+    }));
+
+    return {
+      completed: Number(completedSource || 0),
+      cancelled: Number(cancelledSource || 0),
+      revenue: Number(revenueSource || 0),
+      commission: Number(commissionSource || 0),
+      payouts: Number(payoutsSource || 0),
+      monthlyRevenue,
+      rideVolume,
+      outcomes: [
+        { name: "Completed", value: Number(completedSource || 0), color: "#16a34a" },
+        { name: "Cancelled", value: Number(cancelledSource || 0), color: "#dc2626" },
+      ],
+    };
+  }, [adminAnalytics, cancelledRides.length, completedRides.length, driverPayouts, platformCommission, rides, totalRevenue]);
 
   const totalWithdrawRequested = withdrawals.reduce(
     (total, item) => total + Number(item.amount || 0),
@@ -1180,27 +1267,93 @@ function AdminDashboard() {
 
             <div style={statsGrid}>
               <StatCard title="Total Drivers" value={drivers.length} />
-              <StatCard title="Total Rides" value={rides.length} />
-              <StatCard title="Completed Rides" value={completedRides.length} />
-              <StatCard title="Cancelled Rides" value={cancelledRides.length} />
+              <StatCard title="Total Rides" value={adminAnalytics?.total_rides ?? rides.length} />
+              <StatCard title="Completed Rides" value={analyticsSummary.completed} />
+              <StatCard title="Cancelled Rides" value={analyticsSummary.cancelled} />
               <StatCard title="Paid Rides" value={paidRides.length} />
               <StatCard title="Unpaid Rides" value={unpaidRides.length} />
               <StatCard
-                title="Total Revenue"
-                value={formatMoney(totalRevenue)}
+                title="Completed Revenue"
+                value={formatMoney(analyticsSummary.revenue)}
               />
               <StatCard
                 title={`Owner Commission (${ownerCommissionPercent}%)`}
-                value={formatMoney(platformCommission)}
+                value={formatMoney(analyticsSummary.commission)}
               />
               <StatCard
                 title="Driver Payouts"
-                value={formatMoney(driverPayouts)}
+                value={formatMoney(analyticsSummary.payouts)}
               />
+            </div>
+            <div style={analyticsChartsGridStyle}>
+              <RevenueLineChart
+                title="Admin revenue analytics"
+                data={analyticsSummary.monthlyRevenue.length ? analyticsSummary.monthlyRevenue : [{ label: "No data", value: 0 }]}
+              />
+              <RideVolumeChart
+                title="Completed rides and cancellations"
+                data={analyticsSummary.rideVolume.length ? analyticsSummary.rideVolume : [{ label: "No data", completed: 0, cancelled: 0 }]}
+              />
+              <RideOutcomePie title="Ride outcome mix" data={analyticsSummary.outcomes} />
             </div>
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function RevenueLineChart({ title, data }) {
+  return (
+    <div style={analyticsChartCardStyle}>
+      <h3 style={chartTitleStyle}>{title}</h3>
+      <ResponsiveContainer width="100%" height={260}>
+        <LineChart data={data} margin={{ top: 12, right: 16, left: 0, bottom: 0 }}>
+          <CartesianGrid stroke="#e5e7eb" vertical={false} />
+          <XAxis dataKey="label" tickLine={false} axisLine={false} />
+          <YAxis tickFormatter={(value) => formatMoney(value)} tickLine={false} axisLine={false} width={82} />
+          <Tooltip formatter={(value) => [formatMoney(value), "Revenue"]} />
+          <Line type="monotone" dataKey="value" stroke="#2563eb" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function RideVolumeChart({ title, data }) {
+  return (
+    <div style={analyticsChartCardStyle}>
+      <h3 style={chartTitleStyle}>{title}</h3>
+      <ResponsiveContainer width="100%" height={260}>
+        <BarChart data={data} margin={{ top: 12, right: 16, left: 0, bottom: 0 }}>
+          <CartesianGrid stroke="#e5e7eb" vertical={false} />
+          <XAxis dataKey="label" tickLine={false} axisLine={false} />
+          <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
+          <Tooltip />
+          <Legend />
+          <Bar dataKey="completed" name="Completed" fill="#16a34a" radius={[8, 8, 0, 0]} />
+          <Bar dataKey="cancelled" name="Cancelled" fill="#dc2626" radius={[8, 8, 0, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function RideOutcomePie({ title, data }) {
+  return (
+    <div style={analyticsChartCardStyle}>
+      <h3 style={chartTitleStyle}>{title}</h3>
+      <ResponsiveContainer width="100%" height={260}>
+        <PieChart>
+          <Pie data={data} dataKey="value" nameKey="name" innerRadius={58} outerRadius={92} paddingAngle={4}>
+            {data.map((entry) => (
+              <Cell key={entry.name} fill={entry.color} />
+            ))}
+          </Pie>
+          <Tooltip />
+          <Legend />
+        </PieChart>
+      </ResponsiveContainer>
     </div>
   );
 }
@@ -1812,12 +1965,13 @@ const statsGrid = {
 };
 
 const statCard = {
-  background: "#0b0f14",
-  padding: "16px",
-  borderRadius: "8px",
-  border: "1px solid #1f2937",
-  minHeight: "86px",
-  boxShadow: "none",
+  background: "linear-gradient(135deg, #0f172a 0%, #111827 100%)",
+  color: "white",
+  padding: "18px",
+  borderRadius: "16px",
+  border: "1px solid rgba(148, 163, 184, 0.18)",
+  minHeight: "98px",
+  boxShadow: "0 18px 38px rgba(15, 23, 42, 0.16)",
 };
 
 const sectionTitleWrapStyle = {
@@ -2230,3 +2384,24 @@ const documentButton = {
 };
 
 export default AdminDashboard;
+
+const analyticsChartsGridStyle = {
+  marginTop: "20px",
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+  gap: "14px",
+};
+
+const analyticsChartCardStyle = {
+  background: "#ffffff",
+  border: "1px solid #e5e7eb",
+  borderRadius: "18px",
+  padding: "18px",
+  minHeight: "330px",
+  boxShadow: "0 18px 38px rgba(15, 23, 42, 0.08)",
+};
+
+const chartTitleStyle = {
+  marginTop: 0,
+  marginBottom: "12px",
+};

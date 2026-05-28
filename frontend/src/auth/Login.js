@@ -48,7 +48,7 @@ export default function Login() {
 
       } else if (response.data.is_driver) {
 
-        window.location.href = "/driver";
+        window.location.href = "/driver-dashboard";
 
       } else {
 

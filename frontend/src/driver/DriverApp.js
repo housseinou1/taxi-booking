@@ -1,5 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 import DriverMap from "./DriverMap";
 import RideDashboard from "./RideDashboard";
@@ -16,8 +25,10 @@ function DriverEarningsDashboard({
   charts,
 }) {
   const [period, setPeriod] = useState("daily");
-  const chartData = charts?.[period] || [];
-  const maxEarning = Math.max(...chartData.map((item) => Number(item.earnings || 0)), 1);
+  const chartData = (charts?.[period] || []).map((item) => ({
+    ...item,
+    earnings: Number(item.earnings || item.value || 0),
+  }));
   const periodLabel =
     period === "daily" ? "Last 7 days" : period === "weekly" ? "Last 4 weeks" : "Last 6 months";
 
@@ -52,27 +63,26 @@ function DriverEarningsDashboard({
         <MetricTile label="Withdrawable" value={formatMoney(withdrawableBalance)} />
       </div>
 
-      <div style={barChartStyle}>
-        {chartData.map((item) => {
-          const value = Number(item.earnings || 0);
-          const height = Math.max(8, Math.round((value / maxEarning) * 100));
-
-          return (
-            <div key={`${period}-${item.label}-${item.date || item.start_date}`} style={barItemStyle}>
-              <div style={barColumnStyle}>
-                <span
-                  title={`${item.label}: ${formatMoney(value)}`}
-                  style={{
-                    ...barStyle,
-                    height: `${height}%`,
-                  }}
-                />
-              </div>
-              <strong style={barValueStyle}>{formatMoney(value)}</strong>
-              <span style={barLabelStyle}>{item.label}</span>
-            </div>
-          );
-        })}
+      <div style={rechartsPanelStyle}>
+        <ResponsiveContainer width="100%" height={230}>
+          <BarChart data={chartData} margin={{ top: 12, right: 8, left: 0, bottom: 0 }}>
+            <CartesianGrid stroke="rgba(255,255,255,0.12)" vertical={false} />
+            <XAxis dataKey="label" stroke="rgba(255,255,255,0.72)" tickLine={false} axisLine={false} />
+            <YAxis
+              stroke="rgba(255,255,255,0.72)"
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={(value) => formatMoney(value)}
+              width={74}
+            />
+            <Tooltip
+              cursor={{ fill: "rgba(255,255,255,0.08)" }}
+              formatter={(value) => [formatMoney(value), "Earnings"]}
+              contentStyle={darkTooltipStyle}
+            />
+            <Bar dataKey="earnings" fill="#22d3ee" radius={[10, 10, 4, 4]} />
+          </BarChart>
+        </ResponsiveContainer>
       </div>
     </section>
   );
@@ -2065,51 +2075,16 @@ const metricTileStyle = {
   gap: "5px",
 };
 
-const barChartStyle = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(48px, 1fr))",
-  gap: "8px",
-  alignItems: "end",
+const rechartsPanelStyle = {
   marginTop: "16px",
-  minHeight: "190px",
+  height: "240px",
 };
 
-const barItemStyle = {
-  display: "grid",
-  gridTemplateRows: "120px auto auto",
-  gap: "7px",
-  alignItems: "end",
-  textAlign: "center",
-  minWidth: 0,
-};
-
-const barColumnStyle = {
-  height: "120px",
-  display: "flex",
-  alignItems: "flex-end",
-  justifyContent: "center",
-  background: "rgba(255, 255, 255, 0.06)",
+const darkTooltipStyle = {
+  background: "#0f172a",
+  border: "1px solid rgba(255,255,255,0.16)",
   borderRadius: "12px",
-  padding: "6px",
-};
-
-const barStyle = {
-  width: "100%",
-  borderRadius: "999px 999px 5px 5px",
-  background: "linear-gradient(180deg, #22c55e 0%, #14b8a6 100%)",
-  minHeight: "8px",
-};
-
-const barValueStyle = {
-  color: "white",
-  fontSize: "0.72rem",
-  overflowWrap: "anywhere",
-};
-
-const barLabelStyle = {
-  color: "#9ca3af",
-  fontSize: "0.74rem",
-  fontWeight: 900,
+  color: "#ffffff",
 };
 
 const primaryActionRowStyle = {

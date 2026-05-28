@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { API_URL } from "../apiConfig";
+import { API_URL, authFetch } from "../apiConfig";
 
 import {
   CardElement,
@@ -34,7 +34,7 @@ function CheckoutForm() {
     setLoading(true);
 
     try {
-      const response = await fetch(
+      const response = await authFetch(
         `${API_URL}/payments/create-payment-intent/`,
         {
           method: "POST",

@@ -12,6 +12,8 @@ from .views import (
     rate_ride,
     rate_rider,
     driver_earnings_summary,
+    rider_spending_summary,
+    admin_revenue_analytics,
 )
 
 urlpatterns = [
@@ -28,4 +30,6 @@ urlpatterns = [
     path("rate-rider/<int:ride_id>/", rate_rider),
 
     path("driver/earnings/", driver_earnings_summary),
+    path("rider/spending/", rider_spending_summary),
+    path("admin/analytics/", admin_revenue_analytics),
 ]
