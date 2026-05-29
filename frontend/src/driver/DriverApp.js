@@ -7,6 +7,7 @@ import { API_URL } from "../apiConfig";
 import SafetyEmergencyPanel from "../safety/SafetyEmergencyPanel";
 import { MARKET, formatMoney, isPointInServiceArea } from "../marketConfig";
 import RideStatusButtons from "../RideStatusButtons";
+import AnalyticsDashboard from "../admin/AnalyticsDashboard";
 
 const logoSrc = "/sakho-brand-logo.jpeg";
 
@@ -1160,6 +1161,9 @@ export default function DriverApp() {
           withdrawableBalance={withdrawableBalance}
           charts={earningsCharts}
         />
+
+        {/* Full analytics dashboard */}
+        <AnalyticsDashboard mode="driver" token={localStorage.getItem("access")} />
 
         <div style={primaryActionRowStyle}>
           <button

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { API_URL } from "../apiConfig";
 import { MARKET, formatMoney } from "../marketConfig";
+import AnalyticsDashboard from "./AnalyticsDashboard";
 
 const MARKET_OWNER_PERCENT = MARKET.ownerCommissionPercent;
 const logoSrc = "/sakho-brand-logo.jpeg";
@@ -1306,47 +1307,7 @@ function AdminDashboard() {
         )}
 
         {page === "analytics" && (
-          <div style={card}>
-            <SectionTitle title="Platform analytics" subtitle="Understand marketplace volume, revenue, and trip outcomes." />
-
-            <div style={overviewPanelsStyle}>
-              <RideAnalyticsPanel
-                completed={completedRides.length}
-                cancelled={cancelledRides.length}
-                active={activeRides.length}
-                pending={pendingRideRequests.length}
-                completionRate={completionRate}
-                cancellationRate={cancellationRate}
-              />
-              <RevenueAnalyticsPanel
-                totalRevenue={totalRevenue}
-                platformCommission={platformCommission}
-                driverPayouts={driverPayouts}
-                averageFare={averageFare}
-              />
-            </div>
-
-            <div style={statsGrid}>
-              <StatCard title="Total Drivers" value={drivers.length} />
-              <StatCard title="Total Rides" value={rides.length} />
-              <StatCard title="Completed Rides" value={completedRides.length} />
-              <StatCard title="Cancelled Rides" value={cancelledRides.length} />
-              <StatCard title="Paid Rides" value={paidRides.length} />
-              <StatCard title="Unpaid Rides" value={unpaidRides.length} />
-              <StatCard
-                title="Total Revenue"
-                value={formatMoney(totalRevenue)}
-              />
-              <StatCard
-                title={`Owner Commission (${ownerCommissionPercent}%)`}
-                value={formatMoney(platformCommission)}
-              />
-              <StatCard
-                title="Driver Payouts"
-                value={formatMoney(driverPayouts)}
-              />
-            </div>
-          </div>
+          <AnalyticsDashboard mode="admin" token={getToken()} />
         )}
 
         {page === "reports" && (
@@ -3072,3 +3033,5 @@ const documentButton = {
 };
 
 export default AdminDashboard;
+
+

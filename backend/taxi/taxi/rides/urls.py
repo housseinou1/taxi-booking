@@ -13,6 +13,7 @@ from .views import (
     rate_rider,
     driver_earnings_summary,
 )
+from .analytics import driver_analytics, rider_analytics, admin_analytics
 
 urlpatterns = [
     path("request/", request_ride),
@@ -28,4 +29,9 @@ urlpatterns = [
     path("rate-rider/<int:ride_id>/", rate_rider),
 
     path("driver/earnings/", driver_earnings_summary),
+
+    # Analytics endpoints
+    path("analytics/driver/", driver_analytics),
+    path("analytics/rider/", rider_analytics),
+    path("analytics/admin/", admin_analytics),
 ]

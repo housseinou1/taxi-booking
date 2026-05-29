@@ -1,8 +1,9 @@
-import { render, screen } from '@testing-library/react';
-import App from './App';
+import { render, screen } from "@testing-library/react";
+import App from "./App";
 
-test('renders learn react link', () => {
+test("renders the Sakho Express landing page", () => {
   render(<App />);
-  const linkElement = screen.getByText(/learn react/i);
-  expect(linkElement).toBeInTheDocument();
+  // The landing page always shows the brand name
+  const brandElements = screen.getAllByText(/sakho express/i);
+  expect(brandElements.length).toBeGreaterThan(0);
 });
