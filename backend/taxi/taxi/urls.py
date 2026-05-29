@@ -14,6 +14,8 @@ urlpatterns = [
     path("drivers/", include("taxi.drivers.urls")),
 
     path("payments/", include("payments.urls")),
+
+    path("notifications/", include("notifications.urls")),
 ]
 
 

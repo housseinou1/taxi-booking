@@ -50,6 +50,8 @@ class User(AbstractUser):
         default="approved",
     )
 
+    email_verified = models.BooleanField(default=False)
+
     national_id_number = models.CharField(
         max_length=50,
         unique=True,

@@ -1,40 +1,28 @@
 import React, { useState } from "react";
-
 import { API_URL } from "../apiConfig";
 import RideStatusButtons from "../RideStatusButtons";
 import { formatMoney } from "../marketConfig";
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 const getRidePoint = (ride, target) => {
   const lat = target === "pickup" ? ride.pickup_lat : ride.destination_lat;
   const lng = target === "pickup" ? ride.pickup_lng : ride.destination_lng;
-
-  if (lat === null || lat === undefined || lng === null || lng === undefined) {
-    return null;
-  }
-
-  return {
-    lat: Number(lat),
-    lng: Number(lng),
-  };
+  if (lat == null || lng == null) return null;
+  return { lat: Number(lat), lng: Number(lng) };
 };
 
 const getNavigationUrls = (ride, target) => {
   const point = getRidePoint(ride, target);
-
-  if (!point || Number.isNaN(point.lat) || Number.isNaN(point.lng)) {
-    return null;
-  }
-
-  const destination = `${point.lat},${point.lng}`;
-
+  if (!point || Number.isNaN(point.lat) || Number.isNaN(point.lng)) return null;
+  const dest = `${point.lat},${point.lng}`;
   return {
-    google: `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}&travelmode=driving`,
-    waze: `https://www.waze.com/ul?ll=${encodeURIComponent(destination)}&navigate=yes&zoom=17`,
+    google: `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(dest)}&travelmode=driving`,
+    waze: `https://www.waze.com/ul?ll=${encodeURIComponent(dest)}&navigate=yes&zoom=17`,
   };
 };
 
 const getAddress = (ride, key) =>
-  ride[key] || ride[`${key}_address`] || (key === "pickup" ? "Pickup unavailable" : "Destination unavailable");
+  ride[key] || ride[`${key}_address`] || (key === "pickup" ? "Pickup" : "Destination");
 
 const getDriverEarning = (ride) => {
   const fare = Number(ride.fare || 0);
@@ -46,1063 +34,355 @@ const getDriverEarning = (ride) => {
 const canCancelBeforeStart = (ride) =>
   ["accepted", "driver_arriving", "driver_arrived"].includes(ride.status);
 
-const NavigationLinks = ({ ride, target }) => {
-  const urls = getNavigationUrls(ride, target);
+const formatStatus = (status) =>
+  String(status || "Active").replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
 
-  if (!urls) {
-    return null;
-  }
-
-  return (
-    <div style={navigationBoxStyle}>
-      <span style={navigationTitleStyle}>
-        {target === "pickup" ? "Navigate to pickup" : "Navigate to drop-off"}
-      </span>
-      <div style={navigationActionsStyle}>
-        <a href={urls.google} target="_blank" rel="noreferrer" style={navigationButtonStyle}>
-          Google Maps
-        </a>
-        <a
-          href={urls.waze}
-          target="_blank"
-          rel="noreferrer"
-          style={{ ...navigationButtonStyle, ...wazeButtonStyle }}
-        >
-          Waze
-        </a>
-      </div>
-    </div>
-  );
-};
-
+// ─── Main Component ──────────────────────────────────────────────────────────
 function RideDashboard({ rides = [], availableRides = [], isOnline, fetchRides }) {
-  const [cancelRideTarget, setCancelRideTarget] = useState(null);
+  const [cancelTarget, setCancelTarget] = useState(null);
   const [cancelReason, setCancelReason] = useState("");
   const [cancelSaving, setCancelSaving] = useState(false);
   const [cancelNotice, setCancelNotice] = useState(null);
 
-  const activeRides = rides.filter((ride) =>
-    ["driver_arriving", "accepted", "driver_arrived", "in_progress"].includes(ride.status)
+  const activeRides = rides.filter((r) =>
+    ["driver_arriving", "accepted", "driver_arrived", "in_progress"].includes(r.status)
   );
-  const completedRidesNeedingAction = rides.filter(
-    (ride) =>
-      ride.status === "completed" &&
-      (ride.payment_status === "pending_verification" || !ride.driver_rating)
+  const completedNeedAction = rides.filter(
+    (r) => r.status === "completed" && (r.payment_status === "pending_verification" || !r.driver_rating)
   );
-  const cancelledRides = rides.filter((ride) => ride.status === "cancelled");
+  const cancelledRides = rides.filter((r) => r.status === "cancelled");
 
-  const refreshAfterAction = () => {
-    if (fetchRides) {
-      fetchRides();
-    }
-  };
+  const refresh = () => fetchRides && fetchRides();
 
-  const confirmPaymentReceived = async (rideId) => {
+  const confirmPayment = async (rideId) => {
     try {
-      const response = await fetch(`${API_URL}/payments/confirm-payment/${rideId}/`, {
+      const res = await fetch(`${API_URL}/payments/confirm-payment/${rideId}/`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("access")}`,
-        },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("access")}` },
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        alert(data.error || "Could not confirm payment");
-        return;
-      }
-
-      alert("Payment confirmed");
-      refreshAfterAction();
-    } catch (error) {
-      console.error(error);
-      alert("Server error confirming payment");
-    }
+      const data = await res.json();
+      if (!res.ok) { alert(data.error || "Could not confirm"); return; }
+      refresh();
+    } catch (e) { alert("Server error"); }
   };
 
-  const openCancelModal = (ride) => {
-    setCancelRideTarget(ride);
-    setCancelReason("");
-    setCancelNotice(null);
-  };
-
-  const submitCancellation = async () => {
-    if (!cancelRideTarget || !canCancelBeforeStart(cancelRideTarget)) return;
-
-    if (!cancelReason.trim()) {
-      setCancelNotice({
-        type: "warning",
-        text: "Please choose a cancellation reason before closing this trip.",
-      });
-      return;
-    }
-
+  const submitCancel = async () => {
+    if (!cancelTarget || !canCancelBeforeStart(cancelTarget)) return;
+    if (!cancelReason.trim()) { setCancelNotice({ type: "warning", text: "Select a reason" }); return; }
     try {
       setCancelSaving(true);
-
-      const response = await fetch(`${API_URL}/rides/cancel/${cancelRideTarget.id}/`, {
+      const res = await fetch(`${API_URL}/rides/cancel/${cancelTarget.id}/`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("access")}`,
-        },
-        body: JSON.stringify({
-          reason: cancelReason.trim(),
-          cancelled_by: "driver",
-        }),
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("access")}` },
+        body: JSON.stringify({ reason: cancelReason.trim(), cancelled_by: "driver" }),
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setCancelNotice({
-          type: "error",
-          text: data.detail || data.error || "Could not cancel trip.",
-        });
-        return;
-      }
-
-      setCancelNotice({
-        type: "success",
-        text: `${data.refund_status || "Authorization released or no charge captured"}. Cancellation fee: ${formatMoney(data.cancellation_fee)}.`,
-      });
-      setCancelRideTarget(null);
-      setCancelReason("");
-      refreshAfterAction();
-    } catch (error) {
-      console.error(error);
-      setCancelNotice({
-        type: "error",
-        text: "Server error cancelling trip.",
-      });
-    } finally {
-      setCancelSaving(false);
-    }
+      const data = await res.json();
+      if (!res.ok) { setCancelNotice({ type: "error", text: data.detail || "Failed" }); return; }
+      setCancelNotice({ type: "success", text: data.refund_status || "Cancelled" });
+      setCancelTarget(null); setCancelReason(""); refresh();
+    } catch (e) { setCancelNotice({ type: "error", text: "Server error" }); }
+    finally { setCancelSaving(false); }
   };
 
   return (
-    <div style={dashboardStyle}>
-      <section style={queuePanelStyle}>
-        <SectionHeader
-          label="Incoming"
-          title="Ride requests"
-          count={isOnline ? availableRides.length : 0}
-        />
+    <div style={S.root}>
+      {/* ── Incoming Requests ── */}
+      <Section icon="📍" title="Ride Requests" count={isOnline ? availableRides.length : 0}>
+        {!isOnline ? <Empty text="Go online to receive requests" /> :
+         availableRides.length === 0 ? <Empty text="No requests right now" /> :
+         availableRides.map((ride) => (
+          <Card key={ride.id} ride={ride} tag="New" tagColor="#06c167">
+            <RiderRow ride={ride} />
+            <Route ride={ride} />
+            <Facts ride={ride} />
+            <NavLinks ride={ride} target="pickup" />
+            <div style={S.footer}><RideStatusButtons ride={ride} onStatusChange={refresh} /></div>
+          </Card>
+        ))}
+      </Section>
 
-        {!isOnline ? (
-          <EmptyState title="You are offline" text="Go online to receive rider requests." />
-        ) : availableRides.length === 0 ? (
-          <EmptyState title="No requests right now" text="New rider requests will appear here." />
-        ) : (
-          <div style={cardListStyle}>
-            {availableRides.map((ride) => (
-              <RideCard
-                key={ride.id}
-                ride={ride}
-                badge="Request"
-                badgeStyle={requestBadgeStyle}
-                footer={<RideStatusButtons ride={ride} onStatusChange={refreshAfterAction} />}
-              >
-                <RiderInfo ride={ride} />
-                <RouteBlock ride={ride} />
-                <TripFacts ride={ride} />
-                <NavigationLinks ride={ride} target="pickup" />
-              </RideCard>
-            ))}
-          </div>
-        )}
-      </section>
+      {/* ── Active Trips ── */}
+      <Section icon="🚗" title="Active Trip" count={activeRides.length}>
+        {activeRides.length === 0 ? <Empty text="No active trip" /> :
+         activeRides.map((ride) => (
+          <Card key={ride.id} ride={ride} tag={formatStatus(ride.status)} tagColor="#f59e0b">
+            <RiderRow ride={ride} />
+            <Route ride={ride} />
+            <Facts ride={ride} showEarnings />
+            <NavLinks ride={ride} target={ride.status === "in_progress" ? "destination" : "pickup"} />
+            <div style={S.footer}>
+              <RideStatusButtons ride={ride} onStatusChange={refresh} />
+              {canCancelBeforeStart(ride) && (
+                <button onClick={() => { setCancelTarget(ride); setCancelNotice(null); }} style={S.cancelBtn}>
+                  Cancel trip
+                </button>
+              )}
+            </div>
+          </Card>
+        ))}
+      </Section>
 
-      <section style={queuePanelStyle}>
-        <SectionHeader label="Now" title="Active trips" count={activeRides.length} />
-
-        {activeRides.length === 0 ? (
-          <EmptyState title="No active trip" text="Accepted rides move here until they are completed." />
-        ) : (
-          <div style={cardListStyle}>
-            {activeRides.map((ride) => (
-              <RideCard
-                key={ride.id}
-                ride={ride}
-                badge={formatStatus(ride.status)}
-                badgeStyle={activeBadgeStyle}
-                footer={
-                  <div style={activeActionStackStyle}>
-                    <RideStatusButtons ride={ride} onStatusChange={refreshAfterAction} />
-                    {canCancelBeforeStart(ride) && (
-                      <button
-                        type="button"
-                        onClick={() => openCancelModal(ride)}
-                        style={cancelTripButtonStyle}
-                      >
-                        Cancel before start
-                      </button>
-                    )}
-                  </div>
-                }
-              >
-                <RiderInfo ride={ride} />
-                <RouteBlock ride={ride} />
-                <TripFacts ride={ride} showEarnings />
-                <NavigationLinks
-                  ride={ride}
-                  target={ride.status === "in_progress" ? "destination" : "pickup"}
-                />
-              </RideCard>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section style={queuePanelStyle}>
-        <SectionHeader
-          label="Action needed"
-          title="Completed trips"
-          count={completedRidesNeedingAction.length}
-        />
-
-        {completedRidesNeedingAction.length === 0 ? (
-          <EmptyState
-            title="No completed trips need action"
-            text="Rated and fully paid trips leave this driver work queue."
-          />
-        ) : (
-          <div style={cardListStyle}>
-            {completedRidesNeedingAction.map((ride) => (
-              <RideCard
-                key={ride.id}
-                ride={ride}
-                badge="Completed"
-                badgeStyle={completedBadgeStyle}
-              >
-                <RiderInfo ride={ride} />
-                <RouteBlock ride={ride} />
-                <TripFacts ride={ride} showEarnings />
-                {ride.payment_status === "pending_verification" ? (
-                  <button
-                    onClick={() => confirmPaymentReceived(ride.id)}
-                    style={confirmPaymentButtonStyle}
-                  >
-                    Confirm cash received
-                  </button>
-                ) : (
-                  <p style={paymentTextStyle}>
-                    Payment: {ride.payment_status === "paid" ? "Paid" : "Not paid yet"}
-                  </p>
-                )}
-                <RiderRatingForm ride={ride} onRated={refreshAfterAction} />
-              </RideCard>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {cancelledRides.length > 0 && (
-        <section style={queuePanelStyle}>
-          <SectionHeader label="Closed" title="Cancelled trips" count={cancelledRides.length} />
-          <div style={cardListStyle}>
-            {cancelledRides.map((ride) => (
-              <RideCard
-                key={ride.id}
-                ride={ride}
-                badge="Cancelled"
-                badgeStyle={cancelledBadgeStyle}
-              >
-                <RiderInfo ride={ride} />
-                <RouteBlock ride={ride} />
-                <RefundStatusCard />
-              </RideCard>
-            ))}
-          </div>
-        </section>
+      {/* ── Completed needing action ── */}
+      {completedNeedAction.length > 0 && (
+        <Section icon="✅" title="Needs Action" count={completedNeedAction.length}>
+          {completedNeedAction.map((ride) => (
+            <Card key={ride.id} ride={ride} tag="Done" tagColor="#3b82f6">
+              <RiderRow ride={ride} />
+              <Route ride={ride} />
+              <Facts ride={ride} showEarnings />
+              {ride.payment_status === "pending_verification" && (
+                <button onClick={() => confirmPayment(ride.id)} style={S.confirmBtn}>Confirm payment received</button>
+              )}
+              <RiderRating ride={ride} onRated={refresh} />
+            </Card>
+          ))}
+        </Section>
       )}
 
-      {cancelNotice && !cancelRideTarget && (
-        <div
-          style={{
-            ...cancelNoticeStyle,
-            borderColor:
-              cancelNotice.type === "error"
-                ? "rgba(248, 113, 113, 0.38)"
-                : cancelNotice.type === "warning"
-                  ? "rgba(245, 158, 11, 0.38)"
-                  : "rgba(34, 197, 94, 0.38)",
-          }}
-        >
+      {/* ── Cancelled ── */}
+      {cancelledRides.length > 0 && (
+        <Section icon="❌" title="Cancelled" count={cancelledRides.length}>
+          {cancelledRides.slice(0, 3).map((ride) => (
+            <Card key={ride.id} ride={ride} tag="Cancelled" tagColor="#ef4444">
+              <Route ride={ride} />
+              <div style={S.refund}>Authorization released · No charge</div>
+            </Card>
+          ))}
+        </Section>
+      )}
+
+      {/* ── Cancel Modal ── */}
+      {cancelTarget && (
+        <div style={S.backdrop}>
+          <div style={S.modal}>
+            <h3 style={S.modalTitle}>Cancel trip #{cancelTarget.id}?</h3>
+            <select value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} style={S.select}>
+              <option value="">Select reason</option>
+              <option value="Rider not responding">Rider not responding</option>
+              <option value="Unsafe pickup">Unsafe pickup</option>
+              <option value="Vehicle issue">Vehicle issue</option>
+              <option value="Wrong location">Wrong location</option>
+              <option value="Other">Other</option>
+            </select>
+            {cancelNotice && <p style={{ ...S.notice, color: cancelNotice.type === "error" ? "#ef4444" : "#f59e0b" }}>{cancelNotice.text}</p>}
+            <div style={S.modalActions}>
+              <button onClick={() => setCancelTarget(null)} style={S.ghostBtn}>Keep trip</button>
+              <button onClick={submitCancel} disabled={cancelSaving} style={S.dangerBtn}>
+                {cancelSaving ? "Cancelling..." : "Cancel trip"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {cancelNotice && !cancelTarget && (
+        <div style={{ ...S.toast, borderColor: cancelNotice.type === "success" ? "#06c167" : "#ef4444" }}>
           {cancelNotice.text}
         </div>
       )}
-
-      {cancelRideTarget && (
-        <CancellationModal
-          ride={cancelRideTarget}
-          reason={cancelReason}
-          saving={cancelSaving}
-          notice={cancelNotice}
-          onReasonChange={setCancelReason}
-          onClose={() => setCancelRideTarget(null)}
-          onSubmit={submitCancellation}
-        />
-      )}
     </div>
   );
 }
 
-function CancellationModal({
-  ride,
-  reason,
-  saving,
-  notice,
-  onReasonChange,
-  onClose,
-  onSubmit,
-}) {
+// ─── Sub-components ──────────────────────────────────────────────────────────
+function Section({ icon, title, count, children }) {
   return (
-    <div style={modalBackdropStyle}>
-      <section style={modalCardStyle} role="dialog" aria-modal="true" aria-label="Cancel trip">
-        <span style={sectionLabelStyle}>Cancel trip #{ride.id}</span>
-        <h2 style={modalTitleStyle}>Why are you cancelling?</h2>
-        <p style={modalTextStyle}>
-          Drivers can cancel before the trip starts. The cancellation fee logic is a placeholder and currently shows 0 MRU.
-        </p>
-        <select
-          value={reason}
-          onChange={(event) => onReasonChange(event.target.value)}
-          style={modalSelectStyle}
-        >
-          <option value="">Select a reason</option>
-          <option value="Rider did not answer">Rider did not answer</option>
-          <option value="Pickup is unsafe">Pickup is unsafe</option>
-          <option value="Vehicle issue">Vehicle issue</option>
-          <option value="Wrong pickup location">Wrong pickup location</option>
-          <option value="Other">Other</option>
-        </select>
-        {notice && <p style={modalNoticeStyle}>{notice.text}</p>}
-        <div style={modalActionsStyle}>
-          <button type="button" onClick={onClose} style={modalGhostButtonStyle}>
-            Keep trip
-          </button>
-          <button
-            type="button"
-            onClick={onSubmit}
-            disabled={saving}
-            style={{ ...modalDangerButtonStyle, opacity: saving ? 0.72 : 1 }}
-          >
-            {saving ? "Cancelling..." : "Cancel trip"}
-          </button>
+    <section style={S.section}>
+      <div style={S.sectionHead}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 18 }}>{icon}</span>
+          <h2 style={S.sectionTitle}>{title}</h2>
         </div>
-      </section>
-    </div>
+        <span style={S.badge}>{count}</span>
+      </div>
+      <div style={S.cardList}>{children}</div>
+    </section>
   );
 }
 
-function RefundStatusCard() {
+function Empty({ text }) {
+  return <div style={S.empty}>{text}</div>;
+}
+
+function Card({ ride, tag, tagColor, children }) {
   return (
-    <div style={refundStatusCardStyle}>
-      <span style={navigationTitleStyle}>Refund status</span>
-      <strong>Authorization released or no charge captured</strong>
-      <small>Cancellation fee placeholder: {formatMoney(0)}</small>
+    <article style={S.card}>
+      <div style={S.cardHead}>
+        <div>
+          <span style={S.rideId}>#{ride.id}</span>
+          <span style={S.fare}>{formatMoney(ride.fare)}</span>
+        </div>
+        <span style={{ ...S.tag, background: tagColor + "18", color: tagColor }}>{tag}</span>
+      </div>
+      {children}
+    </article>
+  );
+}
+
+function RiderRow({ ride }) {
+  const name = ride.rider_name || "Rider";
+  const phone = ride.private_call_number || ride.rider_phone || "";
+  return (
+    <div style={S.riderRow}>
+      {ride.rider_picture ? (
+        <img src={ride.rider_picture} alt={name} style={S.avatar} />
+      ) : (
+        <div style={S.avatarFallback}>{name[0]}</div>
+      )}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={S.riderName}>{name}</div>
+        {phone && <div style={S.riderPhone}>{phone}</div>}
+      </div>
+      {phone && <a href={`tel:${phone}`} style={S.callBtn}>Call</a>}
     </div>
   );
 }
 
-function RiderRatingForm({ ride, onRated }) {
+function Route({ ride }) {
+  return (
+    <div style={S.route}>
+      <div style={S.routeRow}>
+        <span style={{ ...S.dot, background: "#06c167" }} />
+        <div style={S.routeText}>{getAddress(ride, "pickup")}</div>
+      </div>
+      <div style={S.routeLine} />
+      <div style={S.routeRow}>
+        <span style={{ ...S.dot, background: "#f59e0b" }} />
+        <div style={S.routeText}>{getAddress(ride, "destination")}</div>
+      </div>
+    </div>
+  );
+}
+
+function Facts({ ride, showEarnings = false }) {
+  const items = [
+    ["Type", ride.ride_type || "Regular"],
+    ["Distance", `${ride.distance_km || 0} km`],
+    ["Fee", formatMoney(ride.app_fee)],
+  ];
+  if (showEarnings) items.push(["You earn", formatMoney(getDriverEarning(ride))]);
+  return (
+    <div style={S.facts}>
+      {items.map(([l, v]) => (
+        <div key={l} style={S.fact}>
+          <span style={S.factLabel}>{l}</span>
+          <span style={S.factValue}>{v}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function NavLinks({ ride, target }) {
+  const urls = getNavigationUrls(ride, target);
+  if (!urls) return null;
+  return (
+    <div style={S.navBox}>
+      <a href={urls.google} target="_blank" rel="noreferrer" style={S.navBtn}>Google Maps</a>
+      <a href={urls.waze} target="_blank" rel="noreferrer" style={{ ...S.navBtn, background: "#0891b2", borderColor: "#0891b2" }}>Waze</a>
+    </div>
+  );
+}
+
+function RiderRating({ ride, onRated }) {
   const [rating, setRating] = useState(ride.driver_rating || 0);
-  const [review, setReview] = useState(ride.driver_review || "");
+  const [review, setReview] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const submitRating = async () => {
-    if (!rating) {
-      alert("Please select a rider rating.");
-      return;
-    }
-
-    try {
-      setSaving(true);
-      const response = await fetch(`${API_URL}/rides/rate-rider/${ride.id}/`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("access")}`,
-        },
-        body: JSON.stringify({
-          rating,
-          review,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        alert(data.detail || data.error || "Could not rate rider");
-        return;
-      }
-
-      alert("Rider rating submitted");
-      if (onRated) onRated();
-    } catch (error) {
-      console.error(error);
-      alert("Server error rating rider");
-    } finally {
-      setSaving(false);
-    }
-  };
-
   if (ride.driver_rating) {
-    return (
-      <div style={ratingDoneStyle}>
-        Rider rating: {"★".repeat(Number(ride.driver_rating || 0))}
-        {ride.driver_review ? ` - ${ride.driver_review}` : ""}
-      </div>
-    );
+    return <div style={S.ratedDone}>Rated: {"★".repeat(ride.driver_rating)}</div>;
   }
 
+  const submit = async () => {
+    if (!rating) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`${API_URL}/rides/rate-rider/${ride.id}/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("access")}` },
+        body: JSON.stringify({ rating, review }),
+      });
+      if (res.ok && onRated) onRated();
+    } catch (e) { /* */ }
+    finally { setSaving(false); }
+  };
+
   return (
-    <div style={riderRatingBoxStyle}>
-      <span style={navigationTitleStyle}>Rate this rider</span>
-      <StarRating value={rating} onChange={setRating} />
-      <textarea
-        value={review}
-        onChange={(event) => setReview(event.target.value)}
-        placeholder="Optional note about rider behavior"
-        style={ratingTextareaStyle}
-      />
-      <button
-        onClick={submitRating}
-        disabled={saving}
-        style={{
-          ...confirmPaymentButtonStyle,
-          background: rating ? "#12b76a" : "#64748b",
-          cursor: rating && !saving ? "pointer" : "not-allowed",
-        }}
-      >
-        {saving ? "Saving..." : "Submit rider rating"}
+    <div style={S.ratingBox}>
+      <div style={S.stars}>
+        {[1,2,3,4,5].map((s) => (
+          <button key={s} onClick={() => setRating(s)} style={{ ...S.star, color: rating >= s ? "#f59e0b" : "#404040" }}>★</button>
+        ))}
+      </div>
+      <textarea value={review} onChange={(e) => setReview(e.target.value)} placeholder="Note (optional)" style={S.textarea} />
+      <button onClick={submit} disabled={saving || !rating} style={{ ...S.confirmBtn, opacity: rating ? 1 : 0.5 }}>
+        {saving ? "Saving..." : "Rate rider"}
       </button>
     </div>
   );
 }
 
-function StarRating({ value, onChange }) {
-  return (
-    <div style={ratingButtonRowStyle} aria-label="Choose rating">
-      {[1, 2, 3, 4, 5].map((star) => (
-        <button
-          key={star}
-          type="button"
-          onClick={() => onChange(star)}
-          aria-label={`${star} star${star === 1 ? "" : "s"}`}
-          style={{
-            ...ratingButtonStyle,
-            color: value >= star ? "#f59e0b" : "#6b7280",
-            transform: value >= star ? "scale(1.05)" : "scale(1)",
-          }}
-        >
-          ★
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function SectionHeader({ label, title, count }) {
-  return (
-    <div style={sectionHeaderStyle}>
-      <div>
-        <p style={sectionLabelStyle}>{label}</p>
-        <h2 style={sectionTitleStyle}>{title}</h2>
-      </div>
-      <span style={countPillStyle}>{count}</span>
-    </div>
-  );
-}
-
-function EmptyState({ title, text }) {
-  return (
-    <div style={emptyStyle}>
-      <strong>{title}</strong>
-      <span>{text}</span>
-    </div>
-  );
-}
-
-function RideCard({ ride, badge, badgeStyle, children, footer }) {
-  return (
-    <article style={rideCardStyle}>
-      <div style={cardHeaderStyle}>
-        <div>
-          <p style={rideIdStyle}>Ride #{ride.id}</p>
-          <h3 style={rideTitleStyle}>{formatMoney(ride.fare)}</h3>
-        </div>
-        <span style={{ ...badgeBaseStyle, ...badgeStyle }}>{badge}</span>
-      </div>
-      {children}
-      {footer && <div style={footerStyle}>{footer}</div>}
-    </article>
-  );
-}
-
-function RiderInfo({ ride }) {
-  const riderName = ride.rider_name || "Rider";
-  const initial = riderName.slice(0, 1).toUpperCase();
-  const phone = ride.private_call_number || ride.rider_phone || "";
-  const yearsUsingApp = Number(ride.rider_years_using_app || 0);
-
-  return (
-    <div style={riderInfoStyle}>
-      {ride.rider_picture ? (
-        <img src={ride.rider_picture} alt={riderName} style={riderPhotoStyle} />
-      ) : (
-        <div style={riderFallbackStyle}>{initial}</div>
-      )}
-      <div style={riderTextStyle}>
-        <span style={routeLabelStyle}>Rider</span>
-        <strong>{riderName}</strong>
-        <span>
-          {phone ? `Private call: ${phone}` : "Private call not ready"}
-          {ride.rider_member_since_year ? ` · Since ${ride.rider_member_since_year}` : ""}
-          {yearsUsingApp ? ` · ${yearsUsingApp} years` : ""}
-        </span>
-      </div>
-      {phone && (
-        <a href={`tel:${phone}`} style={riderCallStyle}>
-          Private call
-        </a>
-      )}
-    </div>
-  );
-}
-
-function RouteBlock({ ride }) {
-  return (
-    <div style={routeBoxStyle}>
-      <div style={routeRowStyle}>
-        <span style={pickupDotStyle} />
-        <div>
-          <span style={routeLabelStyle}>Pickup</span>
-          <p style={routeTextStyle}>{getAddress(ride, "pickup")}</p>
-        </div>
-      </div>
-      <div style={routeConnectorStyle} />
-      <div style={routeRowStyle}>
-        <span style={dropoffDotStyle} />
-        <div>
-          <span style={routeLabelStyle}>Drop-off</span>
-          <p style={routeTextStyle}>{getAddress(ride, "destination")}</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function TripFacts({ ride, showEarnings = false }) {
-  const facts = [
-    ["Type", ride.ride_type || "Regular"],
-    ["Distance", `${ride.distance_km || 0} km`],
-    ["App fee", formatMoney(ride.app_fee)],
-  ];
-
-  if (Number(ride.payment_tip_amount || 0) > 0) {
-    facts.push(["Tip", formatMoney(ride.payment_tip_amount)]);
-  }
-
-  if (showEarnings) {
-    facts.push(["You earn", formatMoney(getDriverEarning(ride))]);
-  }
-
-  return (
-    <div style={factsGridStyle}>
-      {facts.map(([label, value]) => (
-        <div key={label} style={factStyle}>
-          <span style={factLabelStyle}>{label}</span>
-          <strong style={factValueStyle}>{value}</strong>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function formatStatus(status) {
-  return String(status || "Active")
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
-
-const dashboardStyle = {
-  display: "grid",
-  gap: "16px",
-};
-
-const queuePanelStyle = {
-  background: "white",
-  border: "1px solid #e5e7eb",
-  borderRadius: "18px",
-  padding: "16px",
-  boxShadow: "0 18px 42px rgba(15, 23, 42, 0.08)",
-};
-
-const sectionHeaderStyle = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  gap: "12px",
-  marginBottom: "12px",
-};
-
-const sectionLabelStyle = {
-  margin: "0 0 3px",
-  color: "#64748b",
-  fontSize: "0.72rem",
-  fontWeight: 900,
-  textTransform: "uppercase",
-};
-
-const sectionTitleStyle = {
-  margin: 0,
-  color: "#111827",
-  fontSize: "1.15rem",
-};
-
-const countPillStyle = {
-  minWidth: "38px",
-  height: "38px",
-  borderRadius: "999px",
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  background: "#111827",
-  color: "white",
-  fontWeight: 900,
-};
-
-const cardListStyle = {
-  display: "grid",
-  gap: "12px",
-};
-
-const rideCardStyle = {
-  background: "#111827",
-  color: "white",
-  borderRadius: "16px",
-  padding: "16px",
-  boxShadow: "0 18px 32px rgba(17, 24, 39, 0.18)",
-};
-
-const cardHeaderStyle = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "flex-start",
-  gap: "12px",
-  marginBottom: "14px",
-};
-
-const rideIdStyle = {
-  margin: "0 0 4px",
-  color: "#9ca3af",
-  fontWeight: 800,
-  fontSize: "0.78rem",
-};
-
-const rideTitleStyle = {
-  margin: 0,
-  fontSize: "1.4rem",
-  color: "white",
-};
-
-const badgeBaseStyle = {
-  borderRadius: "999px",
-  padding: "7px 10px",
-  fontWeight: 900,
-  fontSize: "0.76rem",
-  whiteSpace: "nowrap",
-};
-
-const requestBadgeStyle = {
-  background: "#ecfdf5",
-  color: "#047857",
-};
-
-const activeBadgeStyle = {
-  background: "#fff7ed",
-  color: "#c2410c",
-};
-
-const completedBadgeStyle = {
-  background: "#dbeafe",
-  color: "#1d4ed8",
-};
-
-const cancelledBadgeStyle = {
-  background: "#fee2e2",
-  color: "#b91c1c",
-};
-
-const routeBoxStyle = {
-  border: "1px solid rgba(255, 255, 255, 0.1)",
-  borderRadius: "14px",
-  padding: "12px",
-  background: "rgba(255, 255, 255, 0.04)",
-};
-
-const riderInfoStyle = {
-  display: "grid",
-  gridTemplateColumns: "52px minmax(0, 1fr) auto",
-  gap: "12px",
-  alignItems: "center",
-  border: "1px solid rgba(255, 255, 255, 0.1)",
-  borderRadius: "14px",
-  padding: "12px",
-  background: "rgba(255, 255, 255, 0.06)",
-  marginBottom: "12px",
-};
-
-const riderPhotoStyle = {
-  width: "52px",
-  height: "52px",
-  borderRadius: "50%",
-  objectFit: "cover",
-};
-
-const riderFallbackStyle = {
-  width: "52px",
-  height: "52px",
-  borderRadius: "50%",
-  display: "grid",
-  placeItems: "center",
-  background: "#f59e0b",
-  color: "#111827",
-  fontWeight: 950,
-};
-
-const riderTextStyle = {
-  display: "grid",
-  gap: "3px",
-  minWidth: 0,
-};
-
-const riderCallStyle = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  minHeight: "38px",
-  borderRadius: "999px",
-  padding: "0 12px",
-  background: "#12b76a",
-  color: "white",
-  fontWeight: 900,
-  textDecoration: "none",
-};
-
-const routeRowStyle = {
-  display: "grid",
-  gridTemplateColumns: "14px minmax(0, 1fr)",
-  gap: "10px",
-  alignItems: "start",
-};
-
-const routeConnectorStyle = {
-  width: "2px",
-  height: "18px",
-  background: "rgba(255, 255, 255, 0.16)",
-  margin: "3px 0 3px 5px",
-};
-
-const pickupDotStyle = {
-  width: "11px",
-  height: "11px",
-  borderRadius: "999px",
-  background: "#22c55e",
-  marginTop: "5px",
-};
-
-const dropoffDotStyle = {
-  ...pickupDotStyle,
-  background: "#f97316",
-};
-
-const routeLabelStyle = {
-  display: "block",
-  color: "#9ca3af",
-  fontSize: "0.72rem",
-  fontWeight: 900,
-  textTransform: "uppercase",
-};
-
-const routeTextStyle = {
-  margin: "3px 0 0",
-  color: "white",
-  fontWeight: 800,
-  overflowWrap: "anywhere",
-};
-
-const factsGridStyle = {
-  display: "grid",
-  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-  gap: "8px",
-  marginTop: "12px",
-};
-
-const factStyle = {
-  background: "rgba(255, 255, 255, 0.07)",
-  borderRadius: "12px",
-  padding: "10px",
-  minWidth: 0,
-};
-
-const factLabelStyle = {
-  display: "block",
-  color: "#9ca3af",
-  fontSize: "0.72rem",
-  fontWeight: 900,
-  marginBottom: "4px",
-};
-
-const factValueStyle = {
-  display: "block",
-  color: "white",
-  fontSize: "0.92rem",
-  overflowWrap: "anywhere",
-};
-
-const navigationBoxStyle = {
-  background: "rgba(255, 255, 255, 0.06)",
-  border: "1px solid rgba(255, 255, 255, 0.1)",
-  borderRadius: "14px",
-  padding: "12px",
-  marginTop: "12px",
-};
-
-const navigationTitleStyle = {
-  display: "block",
-  color: "#d1d5db",
-  fontSize: "0.8rem",
-  fontWeight: 900,
-  marginBottom: "10px",
-};
-
-const navigationActionsStyle = {
-  display: "grid",
-  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-  gap: "8px",
-};
-
-const navigationButtonStyle = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  minHeight: "42px",
-  borderRadius: "12px",
-  border: "1px solid rgba(96, 165, 250, 0.5)",
-  background: "rgba(37, 99, 235, 0.22)",
-  color: "#bfdbfe",
-  fontWeight: 900,
-  textDecoration: "none",
-  fontSize: "0.88rem",
-  textAlign: "center",
-};
-
-const wazeButtonStyle = {
-  borderColor: "rgba(34, 211, 238, 0.5)",
-  background: "rgba(8, 145, 178, 0.22)",
-  color: "#a5f3fc",
-};
-
-const footerStyle = {
-  marginTop: "12px",
-};
-
-const activeActionStackStyle = {
-  display: "grid",
-  gap: "10px",
-};
-
-const cancelTripButtonStyle = {
-  width: "100%",
-  minHeight: "46px",
-  border: "1px solid rgba(248, 113, 113, 0.36)",
-  borderRadius: "14px",
-  background: "rgba(127, 29, 29, 0.36)",
-  color: "#fecaca",
-  fontWeight: 950,
-  cursor: "pointer",
-};
-
-const confirmPaymentButtonStyle = {
-  width: "100%",
-  marginTop: "12px",
-  padding: "13px",
-  background: "#12b76a",
-  color: "white",
-  border: "none",
-  borderRadius: "12px",
-  fontWeight: 900,
-  cursor: "pointer",
-};
-
-const paymentTextStyle = {
-  margin: "12px 0 0",
-  color: "#d1d5db",
-  fontWeight: 800,
-};
-
-const refundStatusCardStyle = {
-  display: "grid",
-  gap: "5px",
-  marginTop: "12px",
-  padding: "12px",
-  borderRadius: "14px",
-  border: "1px solid rgba(34, 197, 94, 0.24)",
-  background: "rgba(34, 197, 94, 0.1)",
-  color: "#dcfce7",
-};
-
-const cancelNoticeStyle = {
-  padding: "13px",
-  borderRadius: "14px",
-  border: "1px solid rgba(34, 197, 94, 0.38)",
-  background: "#111827",
-  color: "#ffffff",
-  fontWeight: 900,
-  boxShadow: "0 18px 32px rgba(17, 24, 39, 0.14)",
-};
-
-const modalBackdropStyle = {
-  position: "fixed",
-  inset: 0,
-  zIndex: 80,
-  display: "grid",
-  placeItems: "center",
-  padding: "18px",
-  background: "rgba(3, 7, 18, 0.72)",
-  backdropFilter: "blur(10px)",
-};
-
-const modalCardStyle = {
-  width: "min(440px, 100%)",
-  borderRadius: "22px",
-  border: "1px solid rgba(255, 255, 255, 0.12)",
-  background: "linear-gradient(180deg, #111827 0%, #030712 100%)",
-  color: "#ffffff",
-  padding: "20px",
-  boxShadow: "0 26px 70px rgba(0, 0, 0, 0.42)",
-};
-
-const modalTitleStyle = {
-  margin: "4px 0 8px",
-  color: "#ffffff",
-  fontSize: "1.45rem",
-};
-
-const modalTextStyle = {
-  margin: "0 0 14px",
-  color: "rgba(255,255,255,0.68)",
-  lineHeight: 1.5,
-};
-
-const modalSelectStyle = {
-  width: "100%",
-  minHeight: "48px",
-  borderRadius: "12px",
-  border: "1px solid rgba(255,255,255,0.14)",
-  background: "#0b1220",
-  color: "#ffffff",
-  padding: "0 12px",
-  fontWeight: 850,
-};
-
-const modalNoticeStyle = {
-  margin: "12px 0 0",
-  color: "#fecaca",
-  fontWeight: 850,
-};
-
-const modalActionsStyle = {
-  display: "grid",
-  gridTemplateColumns: "1fr 1fr",
-  gap: "10px",
-  marginTop: "16px",
-};
-
-const modalGhostButtonStyle = {
-  minHeight: "46px",
-  border: "1px solid rgba(255,255,255,0.14)",
-  borderRadius: "999px",
-  background: "rgba(255,255,255,0.06)",
-  color: "#ffffff",
-  fontWeight: 900,
-  cursor: "pointer",
-};
-
-const modalDangerButtonStyle = {
-  minHeight: "46px",
-  border: "none",
-  borderRadius: "999px",
-  background: "#dc2626",
-  color: "#ffffff",
-  fontWeight: 950,
-  cursor: "pointer",
-};
-
-const riderRatingBoxStyle = {
-  marginTop: "12px",
-  background: "rgba(255, 255, 255, 0.06)",
-  border: "1px solid rgba(255, 255, 255, 0.1)",
-  borderRadius: "14px",
-  padding: "12px",
-};
-
-const ratingButtonRowStyle = {
-  display: "flex",
-  gap: "8px",
-  marginTop: "10px",
-  marginBottom: "10px",
-};
-
-const ratingButtonStyle = {
-  width: "42px",
-  height: "42px",
-  border: "none",
-  borderRadius: "50%",
-  background: "rgba(255,255,255,0.1)",
-  fontSize: "1.45rem",
-  lineHeight: 1,
-  fontWeight: 900,
-  cursor: "pointer",
-  transition: "transform 120ms ease, color 120ms ease",
-};
-
-const ratingTextareaStyle = {
-  width: "100%",
-  minHeight: "72px",
-  marginTop: "10px",
-  borderRadius: "12px",
-  border: "1px solid rgba(255, 255, 255, 0.14)",
-  background: "rgba(255, 255, 255, 0.08)",
-  color: "white",
-  padding: "10px",
-  boxSizing: "border-box",
-  resize: "vertical",
-};
-
-const ratingDoneStyle = {
-  marginTop: "12px",
-  background: "rgba(245, 158, 11, 0.16)",
-  color: "#fde68a",
-  border: "1px solid rgba(245, 158, 11, 0.28)",
-  borderRadius: "12px",
-  padding: "12px",
-  fontWeight: 900,
-};
-
-const emptyStyle = {
-  display: "grid",
-  gap: "6px",
-  color: "#64748b",
-  background: "#f8fafc",
-  border: "1px dashed #cbd5e1",
-  borderRadius: "14px",
-  padding: "18px",
+// ─── Styles (Uber/Lyft inspired) ────────────────────────────────────────────
+const S = {
+  root: { display: "flex", flexDirection: "column", gap: 16, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' },
+
+  section: { background: "#141414", borderRadius: 20, padding: "20px", boxShadow: "0 2px 12px rgba(0,0,0,0.3)" },
+  sectionHead: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 },
+  sectionTitle: { margin: 0, fontSize: 17, fontWeight: 700, color: "#fff" },
+  badge: { minWidth: 30, height: 30, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: "#262626", color: "#fff", fontSize: 13, fontWeight: 700 },
+
+  cardList: { display: "flex", flexDirection: "column", gap: 12 },
+  card: { background: "#1a1a1a", borderRadius: 16, padding: 18, border: "1px solid #262626", transition: "border-color 0.2s" },
+  cardHead: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 },
+  rideId: { color: "#737373", fontSize: 12, fontWeight: 600, marginRight: 8 },
+  fare: { color: "#fff", fontSize: 22, fontWeight: 700, letterSpacing: "-0.02em" },
+  tag: { padding: "5px 10px", borderRadius: 8, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.03em" },
+
+  riderRow: { display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: "#222", borderRadius: 12, marginBottom: 12 },
+  avatar: { width: 44, height: 44, borderRadius: "50%", objectFit: "cover", flexShrink: 0 },
+  avatarFallback: { width: 44, height: 44, borderRadius: "50%", background: "#f59e0b", color: "#000", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 16, flexShrink: 0 },
+  riderName: { color: "#fff", fontWeight: 600, fontSize: 14 },
+  riderPhone: { color: "#737373", fontSize: 12, marginTop: 2 },
+  callBtn: { padding: "8px 14px", borderRadius: 999, background: "#06c167", color: "#fff", fontWeight: 700, fontSize: 12, textDecoration: "none", whiteSpace: "nowrap" },
+
+  route: { padding: "14px 16px", background: "#222", borderRadius: 12, marginBottom: 12 },
+  routeRow: { display: "flex", alignItems: "center", gap: 10 },
+  routeLine: { width: 2, height: 16, background: "#404040", marginLeft: 5, marginTop: 4, marginBottom: 4 },
+  dot: { width: 10, height: 10, borderRadius: "50%", flexShrink: 0 },
+  routeText: { color: "#e5e5e5", fontSize: 14, fontWeight: 500 },
+
+  facts: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 },
+  fact: { background: "#262626", borderRadius: 10, padding: "10px 12px" },
+  factLabel: { display: "block", color: "#737373", fontSize: 11, fontWeight: 600, marginBottom: 3 },
+  factValue: { display: "block", color: "#fff", fontSize: 14, fontWeight: 700 },
+
+  navBox: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 },
+  navBtn: { display: "flex", alignItems: "center", justifyContent: "center", height: 42, borderRadius: 10, background: "#276ef1", color: "#fff", fontWeight: 700, fontSize: 13, textDecoration: "none", border: "1px solid #276ef1" },
+
+  footer: { display: "flex", flexDirection: "column", gap: 8, marginTop: 4 },
+  cancelBtn: { width: "100%", height: 44, border: "1px solid #7f1d1d", borderRadius: 10, background: "rgba(127,29,29,0.3)", color: "#fca5a5", fontWeight: 700, fontSize: 13, cursor: "pointer" },
+  confirmBtn: { width: "100%", height: 44, border: 0, borderRadius: 10, background: "#06c167", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", marginTop: 8 },
+
+  refund: { padding: "12px 14px", borderRadius: 10, background: "rgba(6,193,103,0.08)", border: "1px solid rgba(6,193,103,0.2)", color: "#86efac", fontSize: 13, fontWeight: 600 },
+  ratedDone: { padding: "10px 14px", borderRadius: 10, background: "rgba(245,158,11,0.1)", color: "#fde68a", fontWeight: 700, fontSize: 13, marginTop: 8 },
+
+  ratingBox: { marginTop: 12, padding: "14px", background: "#222", borderRadius: 12 },
+  stars: { display: "flex", gap: 6, marginBottom: 10 },
+  star: { width: 36, height: 36, border: 0, borderRadius: "50%", background: "#262626", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "color 0.15s" },
+  textarea: { width: "100%", minHeight: 60, borderRadius: 10, border: "1px solid #333", background: "#1a1a1a", color: "#fff", padding: 10, boxSizing: "border-box", resize: "vertical", fontSize: 13 },
+
+  empty: { padding: "24px 16px", textAlign: "center", color: "#737373", fontSize: 14, background: "#1a1a1a", borderRadius: 12, border: "1px dashed #333" },
+
+  backdrop: { position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, background: "rgba(0,0,0,0.8)", backdropFilter: "blur(8px)" },
+  modal: { width: "min(400px, 100%)", background: "#1a1a1a", borderRadius: 20, padding: 24, border: "1px solid #333" },
+  modalTitle: { margin: "0 0 16px", color: "#fff", fontSize: 18, fontWeight: 700 },
+  select: { width: "100%", height: 46, borderRadius: 10, border: "1px solid #333", background: "#262626", color: "#fff", padding: "0 12px", fontSize: 14, fontWeight: 600 },
+  notice: { margin: "12px 0 0", fontSize: 13, fontWeight: 600 },
+  modalActions: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 18 },
+  ghostBtn: { height: 44, borderRadius: 10, border: "1px solid #404040", background: "transparent", color: "#fff", fontWeight: 700, cursor: "pointer" },
+  dangerBtn: { height: 44, borderRadius: 10, border: 0, background: "#e11900", color: "#fff", fontWeight: 700, cursor: "pointer" },
+
+  toast: { padding: "14px 18px", borderRadius: 12, border: "1px solid #06c167", background: "#141414", color: "#fff", fontWeight: 600, fontSize: 13 },
 };
 
 export default RideDashboard;

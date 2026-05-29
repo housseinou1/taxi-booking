@@ -4,6 +4,7 @@ import axios from "axios";
 import { API_URL } from "../apiConfig";
 import GoogleTripMap from "../maps/GoogleTripMap";
 import SafetyEmergencyPanel from "../safety/SafetyEmergencyPanel";
+import { subscribeRideUpdates, sendRideUpdate } from "../socket";
 import {
   MARKET,
   calculateDistanceKm,
@@ -382,7 +383,14 @@ export default function RiderDashboard() {
       fetchCurrentRide();
     }, 2000);
 
-    return () => clearInterval(interval);
+    // Real-time: refresh immediately on WebSocket ride updates
+    const unsub = subscribeRideUpdates((msg) => {
+      if (msg && (msg.type === "ride_update" || msg.status || msg.ride_id)) {
+        fetchCurrentRide();
+      }
+    });
+
+    return () => { clearInterval(interval); unsub(); };
   }, [fetchCurrentRide, fetchRiderIdentity]);
 
   useEffect(() => {
@@ -474,6 +482,7 @@ export default function RiderDashboard() {
       );
 
       setCurrentRide(response.data);
+      sendRideUpdate({ ride_id: response.data.id, status: response.data.status, type: "ride_update" });
       fetchCurrentRide();
     } catch (error) {
       const requestError =
@@ -822,6 +831,30 @@ export default function RiderDashboard() {
               {identitySaving ? "Saving..." : "Save profile"}
             </button>
             {identityMessage && <p style={noticeTextStyle}>{identityMessage}</p>}
+            <button
+              type="button"
+              onClick={() => {
+                localStorage.removeItem("access");
+                localStorage.removeItem("refresh");
+                localStorage.removeItem("user");
+                localStorage.removeItem("selectedRideId");
+                window.location.href = "/";
+              }}
+              style={{
+                width: "100%",
+                marginTop: 12,
+                minHeight: 46,
+                border: "1px solid #fecaca",
+                borderRadius: 999,
+                background: "rgba(220,38,38,0.1)",
+                color: "#ef4444",
+                fontWeight: 900,
+                fontSize: 14,
+                cursor: "pointer",
+              }}
+            >
+              Logout
+            </button>
           </form>
         )}
 

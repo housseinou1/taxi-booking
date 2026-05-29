@@ -102,5 +102,14 @@ class Ride(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     completed_at = models.DateTimeField(null=True, blank=True)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=["status"], name="ride_status_idx"),
+            models.Index(fields=["rider", "status"], name="ride_rider_status_idx"),
+            models.Index(fields=["driver", "status"], name="ride_driver_status_idx"),
+            models.Index(fields=["-completed_at"], name="ride_completed_idx"),
+            models.Index(fields=["-created_at"], name="ride_created_idx"),
+        ]
+
     def __str__(self):
         return f"Ride #{self.id} - {self.rider.email}"

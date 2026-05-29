@@ -8,6 +8,7 @@ import SafetyEmergencyPanel from "../safety/SafetyEmergencyPanel";
 import { MARKET, formatMoney, isPointInServiceArea } from "../marketConfig";
 import RideStatusButtons from "../RideStatusButtons";
 import AnalyticsDashboard from "../admin/AnalyticsDashboard";
+import { subscribeRideUpdates } from "../socket";
 
 const logoSrc = "/sakho-brand-logo.jpeg";
 
@@ -540,7 +541,15 @@ export default function DriverApp() {
   useEffect(() => {
     fetchAllDriverData();
     const interval = setInterval(fetchAllDriverData, 3000);
-    return () => clearInterval(interval);
+
+    // Real-time: refresh immediately when a ride update comes via WebSocket
+    const unsub = subscribeRideUpdates((msg) => {
+      if (msg && (msg.type === "ride_update" || msg.status || msg.ride_id)) {
+        fetchAllDriverData();
+      }
+    });
+
+    return () => { clearInterval(interval); unsub(); };
   }, [fetchAllDriverData]);
 
   useEffect(() => {

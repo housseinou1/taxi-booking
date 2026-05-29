@@ -4,6 +4,9 @@ from django.shortcuts import get_object_or_404
 from django.db.models import Sum
 from django.utils.timezone import now
 
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
+
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
@@ -18,6 +21,26 @@ from payments.services import (
 
 from .models import Ride
 from .serializers import RideSerializer
+
+
+def broadcast_ride_update(ride):
+    """Send a ride status update to all connected WebSocket clients."""
+    try:
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            "rides",
+            {
+                "type": "ride_update",
+                "message": {
+                    "ride_id": ride.id,
+                    "status": ride.status,
+                    "rider_id": ride.rider_id,
+                    "driver_id": ride.driver_id,
+                },
+            },
+        )
+    except Exception:
+        pass  # Don't break the request if channel layer is unavailable
 
 
 OPEN_RIDE_STATUSES = ["requested", "driver_arriving", "in_progress"]
@@ -100,6 +123,7 @@ def request_ride(request):
     )
 
     authorize_ride_payment(ride)
+    broadcast_ride_update(ride)
 
     serializer = RideSerializer(ride, context={"request": request})
     return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -195,6 +219,7 @@ def accept_ride(request, ride_id):
     ride.driver = request.user
     ride.status = "driver_arriving"
     ride.save()
+    broadcast_ride_update(ride)
 
     serializer = RideSerializer(ride, context={"request": request})
     return Response(serializer.data)
@@ -211,6 +236,7 @@ def start_ride(request, ride_id):
 
     ride.status = "in_progress"
     ride.save()
+    broadcast_ride_update(ride)
 
     serializer = RideSerializer(ride, context={"request": request})
     return Response(serializer.data)
@@ -233,6 +259,8 @@ def complete_ride(request, ride_id):
 
     if not captured_payment:
         calculate_money(ride)
+
+    broadcast_ride_update(ride)
 
     serializer = RideSerializer(ride, context={"request": request})
     return Response(serializer.data)
@@ -265,6 +293,7 @@ def cancel_ride(request, ride_id):
     ride.save()
 
     cancel_ride_payment(ride)
+    broadcast_ride_update(ride)
 
     serializer = RideSerializer(ride, context={"request": request})
     data = serializer.data

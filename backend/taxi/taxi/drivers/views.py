@@ -160,7 +160,15 @@ def serialize_driver(profile, request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def driver_me(request):
-    profile = get_or_create_driver_profile(request.user)
+    # Only create a profile if user is actually a driver (has existing profile or user_type=driver)
+    profile = DriverProfile.objects.filter(user=request.user).first()
+    if not profile:
+        if getattr(request.user, "user_type", "rider") != "driver":
+            return Response(
+                {"error": "This account is not a driver account."},
+                status=403,
+            )
+        profile = get_or_create_driver_profile(request.user)
     enforce_document_expiration(profile)
     return Response(serialize_driver(profile, request))
 

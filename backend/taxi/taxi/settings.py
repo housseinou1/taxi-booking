@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "channels",
     "taxi.drivers",
     "payments",
+    "notifications",
 ]
 
 MIDDLEWARE = [
@@ -81,9 +82,14 @@ WSGI_APPLICATION = "taxi.wsgi.application"
 ASGI_APPLICATION = "taxi.asgi.application"
 
 CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels.layers.InMemoryChannelLayer",
-    },
+    "default": (
+        {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {"hosts": [os.getenv("REDIS_URL", "redis://localhost:6379/0")]},
+        }
+        if os.getenv("REDIS_URL")
+        else {"BACKEND": "channels.layers.InMemoryChannelLayer"}
+    ),
 }
 
 DATABASES = {
@@ -181,6 +187,24 @@ CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS")
 # ── Stripe ────────────────────────────────────────────────────────────────────
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
 STRIPE_PUBLIC_KEY = os.getenv("STRIPE_PUBLIC_KEY", "")
+
+# ── Email ─────────────────────────────────────────────────────────────────────
+EMAIL_BACKEND = os.getenv(
+    "EMAIL_BACKEND",
+    "django.core.mail.backends.console.EmailBackend" if DEBUG else "django.core.mail.backends.smtp.EmailBackend",
+)
+EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
+EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", True)
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "Sakho Express <noreply@sakhoexpress.com>")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+
+# ── Push Notifications (Web Push / VAPID) ─────────────────────────────────────
+PUSH_PRIVATE_KEY = os.getenv("PUSH_PRIVATE_KEY", "")
+PUSH_PUBLIC_KEY = os.getenv("PUSH_PUBLIC_KEY", "")
+PUSH_CLAIMS_EMAIL = os.getenv("PUSH_CLAIMS_EMAIL", "mailto:admin@sakhoexpress.com")
 
 # ── DRF Spectacular ───────────────────────────────────────────────────────────
 SPECTACULAR_SETTINGS = {
