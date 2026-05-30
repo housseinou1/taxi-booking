@@ -1105,6 +1105,21 @@ export default function RiderDashboard() {
                 : "Add rider phone and photo"}
           </button>
         )}
+
+        {/* Schedule for later */}
+        {!currentRide && (
+          <ScheduleRideButton
+            pickup={pickup}
+            destination={destination}
+            pickupPosition={pickupPosition}
+            destinationPosition={destinationPosition}
+            distance={distance}
+            rideType={rideType}
+            fare={fare}
+            token={token}
+            hasProfile={hasRequiredRiderProfile}
+          />
+        )}
       </section>
 
       {cancelModalOpen && (
@@ -1306,6 +1321,63 @@ function RiderTrackingStyles() {
         }
       }
     `}</style>
+  );
+}
+
+function ScheduleRideButton({ pickup, destination, pickupPosition, destinationPosition, distance, rideType, fare, token, hasProfile }) {
+  const [showPicker, setShowPicker] = useState(false);
+  const [dateTime, setDateTime] = useState("");
+  const [scheduling, setScheduling] = useState(false);
+  const [message, setMessage] = useState("");
+
+  const scheduleRide = async () => {
+    if (!hasProfile) { setMessage("Add phone and photo first."); return; }
+    if (!dateTime) { setMessage("Pick a date and time."); return; }
+    try {
+      setScheduling(true); setMessage("");
+      const res = await axios.post(`${API_URL}/rides/schedule/`, {
+        pickup, destination,
+        pickup_lat: pickupPosition[0], pickup_lng: pickupPosition[1],
+        destination_lat: destinationPosition[0], destination_lng: destinationPosition[1],
+        distance_km: distance, ride_type: rideType, fare,
+        scheduled_at: new Date(dateTime).toISOString(),
+      }, { headers: { Authorization: `Bearer ${token}` } });
+      setMessage(`Ride scheduled for ${new Date(dateTime).toLocaleString()}`);
+      setShowPicker(false); setDateTime("");
+    } catch (err) {
+      setMessage(err.response?.data?.detail || "Could not schedule ride.");
+    } finally { setScheduling(false); }
+  };
+
+  return (
+    <div style={{ marginTop: 10 }}>
+      <button type="button" onClick={() => setShowPicker(!showPicker)} style={{
+        width: "100%", minHeight: 44, border: "1px solid rgba(255,255,255,0.12)",
+        borderRadius: 999, background: "rgba(255,255,255,0.06)", color: "#D4AF37",
+        fontWeight: 800, fontSize: 14, cursor: "pointer",
+      }}>
+        🕐 Schedule for later
+      </button>
+      {showPicker && (
+        <div style={{ marginTop: 10, padding: 14, background: "#1a1a1a", borderRadius: 14, border: "1px solid #333" }}>
+          <input
+            type="datetime-local"
+            value={dateTime}
+            onChange={(e) => setDateTime(e.target.value)}
+            min={new Date(Date.now() + 600000).toISOString().slice(0, 16)}
+            style={{ width: "100%", padding: 12, borderRadius: 10, border: "1px solid #444", background: "#262626", color: "#fff", fontSize: 14 }}
+          />
+          <button onClick={scheduleRide} disabled={scheduling} style={{
+            width: "100%", marginTop: 10, minHeight: 44, border: 0, borderRadius: 999,
+            background: "#D4AF37", color: "#08111F", fontWeight: 800, fontSize: 14, cursor: "pointer",
+            opacity: scheduling ? 0.6 : 1,
+          }}>
+            {scheduling ? "Scheduling..." : "Confirm schedule"}
+          </button>
+          {message && <p style={{ margin: "8px 0 0", color: "#D4AF37", fontSize: 13, fontWeight: 700 }}>{message}</p>}
+        </div>
+      )}
+    </div>
   );
 }
 

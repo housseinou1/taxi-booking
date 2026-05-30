@@ -7,6 +7,7 @@ from django.db import models
 class Ride(models.Model):
     STATUS_CHOICES = [
         ("requested", "Requested"),
+        ("scheduled", "Scheduled"),
         ("driver_arriving", "Driver Arriving"),
         ("driver_arrived", "Driver Arrived"),
         ("in_progress", "In Progress"),
@@ -102,6 +103,7 @@ class Ride(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
     completed_at = models.DateTimeField(null=True, blank=True)
+    scheduled_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         indexes = [

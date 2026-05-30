@@ -73,6 +73,26 @@ export default function RideChat({ rideId, onClose }) {
     finally { setSending(false); }
   };
 
+  // Quick messages (Uber/Lyft style)
+  const userName = (() => {
+    try { const u = JSON.parse(localStorage.getItem("user") || "{}"); return u.first_name || ""; } catch(e) { return ""; }
+  })();
+
+  const quickMessages = [
+    `Hi, I'm ${userName || "your driver"}. On my way!`,
+    "I'm stuck in traffic, be there soon",
+    "I'm 2 minutes away",
+    "I've arrived at the pickup",
+    "I'm at the green gate",
+    "Can you come outside?",
+    "I'm waiting for you",
+    "Thank you, have a good day!",
+  ];
+
+  const sendQuick = (msg) => {
+    setText(msg);
+  };
+
   return (
     <div style={S.overlay}>
       <div style={S.container}>
@@ -85,7 +105,7 @@ export default function RideChat({ rideId, onClose }) {
         {/* Messages */}
         <div style={S.messageList}>
           {messages.length === 0 && (
-            <div style={S.empty}>No messages yet. Say hello!</div>
+            <div style={S.empty}>No messages yet. Tap a quick message below!</div>
           )}
           {messages.map((msg) => (
             <div key={msg.id} style={{ ...S.bubble, ...(msg.is_mine ? S.mine : S.theirs) }}>
@@ -95,6 +115,15 @@ export default function RideChat({ rideId, onClose }) {
             </div>
           ))}
           <div ref={bottomRef} />
+        </div>
+
+        {/* Quick messages */}
+        <div style={S.quickRow}>
+          {quickMessages.map((qm) => (
+            <button key={qm} type="button" onClick={() => sendQuick(qm)} style={S.quickBtn}>
+              {qm.length > 30 ? qm.slice(0, 28) + "…" : qm}
+            </button>
+          ))}
         </div>
 
         {/* Input */}
@@ -133,4 +162,6 @@ const S = {
   inputRow: { display: "flex", gap: 8, padding: "12px 16px", borderTop: "1px solid #262626", background: "#1a1a1a" },
   input: { flex: 1, height: 42, border: "1px solid #333", borderRadius: 999, background: "#262626", color: "#fff", padding: "0 16px", fontSize: 14, outline: "none" },
   sendBtn: { width: 42, height: 42, border: 0, borderRadius: "50%", background: "#00A651", color: "#fff", fontSize: 18, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" },
+  quickRow: { display: "flex", gap: 6, padding: "10px 16px", overflowX: "auto", borderTop: "1px solid #262626", background: "#1a1a1a", flexWrap: "nowrap" },
+  quickBtn: { flexShrink: 0, padding: "7px 14px", borderRadius: 999, border: "1px solid #333", background: "#262626", color: "#d4d4d4", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" },
 };

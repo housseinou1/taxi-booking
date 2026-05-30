@@ -43,7 +43,7 @@ def broadcast_ride_update(ride):
         pass  # Don't break the request if channel layer is unavailable
 
 
-OPEN_RIDE_STATUSES = ["requested", "driver_arriving", "driver_arrived", "in_progress"]
+OPEN_RIDE_STATUSES = ["requested", "scheduled", "driver_arriving", "driver_arrived", "in_progress"]
 DRIVER_ACTIVE_STATUSES = ["driver_arriving", "driver_arrived", "in_progress"]
 
 
@@ -127,6 +127,84 @@ def request_ride(request):
 
     serializer = RideSerializer(ride, context={"request": request})
     return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def schedule_ride(request):
+    """Schedule a ride for a future time."""
+    if getattr(request.user, "rider_status", "approved") != "approved":
+        return Response(
+            {"detail": "Rider account must be approved before scheduling a ride."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    scheduled_at = request.data.get("scheduled_at")
+    if not scheduled_at:
+        return Response(
+            {"detail": "scheduled_at is required (ISO format datetime)."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    from django.utils.dateparse import parse_datetime
+    scheduled_time = parse_datetime(scheduled_at)
+    if not scheduled_time:
+        return Response(
+            {"detail": "Invalid datetime format. Use ISO format: 2026-06-01T14:30:00"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if scheduled_time <= now():
+        return Response(
+            {"detail": "Scheduled time must be in the future."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    distance_km = request.data.get("distance_km", request.data.get("distance", 0))
+    ride_type = request.data.get("ride_type", "regular")
+    fare = request.data.get("fare") or calculate_fare(ride_type, distance_km)
+
+    ride = Ride.objects.create(
+        rider=request.user,
+        pickup=request.data.get("pickup", MARKET["default_pickup"]),
+        destination=request.data.get("destination", MARKET["default_destination"]),
+        pickup_lat=request.data.get("pickup_lat", MARKET["default_pickup_lat"]),
+        pickup_lng=request.data.get("pickup_lng", MARKET["default_pickup_lng"]),
+        destination_lat=request.data.get("destination_lat", MARKET["default_destination_lat"]),
+        destination_lng=request.data.get("destination_lng", MARKET["default_destination_lng"]),
+        distance_km=distance_km,
+        ride_type=ride_type,
+        fare=fare,
+        status="scheduled",
+        scheduled_at=scheduled_time,
+    )
+
+    serializer = RideSerializer(ride, context={"request": request})
+    return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def my_scheduled_rides(request):
+    """Get all scheduled rides for the current rider."""
+    rides = Ride.objects.filter(
+        rider=request.user,
+        status="scheduled",
+        scheduled_at__gte=now(),
+    ).order_by("scheduled_at")
+
+    serializer = RideSerializer(rides, many=True, context={"request": request})
+    return Response(serializer.data)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def cancel_scheduled_ride(request, ride_id):
+    """Cancel a scheduled ride."""
+    ride = get_object_or_404(Ride, id=ride_id, rider=request.user, status="scheduled")
+    ride.status = "cancelled"
+    ride.save()
+    return Response({"message": "Scheduled ride cancelled.", "ride_id": ride.id})
 
 
 @api_view(["GET"])

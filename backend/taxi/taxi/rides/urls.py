@@ -2,6 +2,9 @@ from django.urls import path
 
 from .views import (
     request_ride,
+    schedule_ride,
+    my_scheduled_rides,
+    cancel_scheduled_ride,
     available_rides,
     ride_history,
     driver_rides,
@@ -18,6 +21,9 @@ from .analytics import driver_analytics, rider_analytics, admin_analytics
 
 urlpatterns = [
     path("request/", request_ride),
+    path("schedule/", schedule_ride),
+    path("scheduled/", my_scheduled_rides),
+    path("scheduled/cancel/<int:ride_id>/", cancel_scheduled_ride),
     path("available/", available_rides),
     path("history/", ride_history),
     path("driver-rides/", driver_rides),
