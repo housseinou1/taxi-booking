@@ -3,7 +3,7 @@ import axios from "axios";
 import { useTranslation } from "react-i18next";
 import { API_URL } from "../apiConfig";
 
-const logoSrc = "/sakho-brand-logo.jpeg";
+const logoSrc = "/yala-logo.png";
 
 export default function Login() {
   const { t } = useTranslation();
@@ -53,7 +53,7 @@ export default function Login() {
       <AuthLoginStyles />
       <section style={heroStyle}>
         <div style={brandBlockStyle}>
-          <img src={logoSrc} alt="Sakho Express" style={brandLogoStyle} />
+          <img src={logoSrc} alt="Yala" style={brandLogoStyle} />
           <div>
             <span style={eyebrowStyle}>{t("auth.secureAccess")}</span>
             <h1 style={heroTitleStyle}>{t("auth.welcome")}</h1>

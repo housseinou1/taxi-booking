@@ -77,7 +77,7 @@ function AddPaymentMethod({ onCardSaved }) {
       <div className="sx-add-payment-head">
         <span>Payment setup</span>
         <h2>Add payment method</h2>
-        <p>Save a card, mobile wallet, cash preference, or bank account for Sakho Express rides.</p>
+        <p>Save a card, mobile wallet, cash preference, or bank account for Yala rides.</p>
       </div>
 
       <div className="sx-add-payment-grid">
@@ -91,7 +91,7 @@ function AddPaymentMethod({ onCardSaved }) {
           <small>
             {formData.payment_type === "card"
               ? formData.card_holder_name || "Card holder"
-              : selectedOption?.label || "Sakho Express"}
+              : selectedOption?.label || "Yala"}
           </small>
         </aside>
 

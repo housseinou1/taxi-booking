@@ -8,6 +8,7 @@ import SafetyEmergencyPanel from "../safety/SafetyEmergencyPanel";
 import { MARKET, formatMoney, isPointInServiceArea } from "../marketConfig";
 import RideStatusButtons from "../RideStatusButtons";
 import AnalyticsDashboard from "../admin/AnalyticsDashboard";
+import RideChat from "../components/RideChat";
 import { subscribeRideUpdates } from "../socket";
 
 const logoSrc = "/yala-logo.png";
@@ -151,6 +152,7 @@ export default function DriverApp() {
   const [driverProfile, setDriverProfile] = useState(null);
   const [showSafety, setShowSafety] = useState(false);
   const [showDriverMenu, setShowDriverMenu] = useState(false);
+  const [showChat, setShowChat] = useState(false);
   const [driverNotice, setDriverNotice] = useState("");
   const [showTripDetails, setShowTripDetails] = useState(false);
   const [menuMessage, setMenuMessage] = useState("");
@@ -343,7 +345,7 @@ export default function DriverApp() {
   const ringForNewRequest = useCallback(async () => {
     if ("Notification" in window && Notification.permission === "granted") {
       const notificationOptions = {
-        body: "Open Sakho Express Driver to accept the trip.",
+        body: "Open Yala Driver to accept the trip.",
         icon: "/logo192.png",
         badge: "/logo192.png",
         tag: "sakho-new-ride-request",
@@ -620,7 +622,7 @@ export default function DriverApp() {
 
           if (!isPointInServiceArea([liveLocation.current_lat, liveLocation.current_lng])) {
             startTestMovement(
-              "Your phone GPS is outside Mauritania, so Sakho Express is keeping the driver map inside the service area."
+              "Your phone GPS is outside Mauritania, so Yala is keeping the driver map inside the service area."
             );
             return;
           }
@@ -709,7 +711,7 @@ export default function DriverApp() {
       return;
     }
 
-    const tripText = `Sakho Express driver trip #${activeRide.id}: ${
+    const tripText = `Yala driver trip #${activeRide.id}: ${
       activeRide.pickup || activeRide.pickup_address || "Pickup"
     } to ${activeRide.destination || activeRide.destination_address || "Destination"}. Status: ${
       activeRide.status
@@ -718,7 +720,7 @@ export default function DriverApp() {
     try {
       if (navigator.share) {
         await navigator.share({
-          title: "Sakho Express driver trip",
+          title: "Yala driver trip",
           text: tripText,
           url: window.location.href,
         });
@@ -1237,6 +1239,9 @@ export default function DriverApp() {
                   Private call
                 </a>
               )}
+              <button type="button" onClick={() => setShowChat(true)} style={{ ...activeRiderCallStyle, background: "#00A651", textDecoration: "none", border: 0, cursor: "pointer" }}>
+                Chat
+              </button>
             </div>
           )}
           <div style={routeLineStyle}>
@@ -1275,6 +1280,11 @@ export default function DriverApp() {
         </details>
       </section>
 
+      {/* Chat overlay */}
+      {showChat && activeRide?.id && (
+        <RideChat rideId={activeRide.id} onClose={() => setShowChat(false)} />
+      )}
+
       {showDriverMenu && (
         <div style={menuOverlayStyle}>
           <button
@@ -1284,6 +1294,13 @@ export default function DriverApp() {
           >
             ×
           </button>
+
+          {/* Yala Logo */}
+          <div style={{ textAlign: "center", padding: "20px 0 10px" }}>
+            <img src={logoSrc} alt="Yala" style={{ width: 72, height: 72, borderRadius: "50%", boxShadow: "0 6px 20px rgba(212,175,55,0.3)" }} />
+            <div style={{ color: "#D4AF37", fontWeight: 900, fontSize: 18, marginTop: 8 }}>Yala Driver</div>
+            <div style={{ color: "#9ca3af", fontSize: 12, fontWeight: 700 }}>Fast. Safe. Local.</div>
+          </div>
 
           <section style={menuProfileStyle}>
             <div style={menuAvatarWrapStyle}>
@@ -1987,10 +2004,11 @@ const earningsLabelStyle = {
 
 const earningsLogoStyle = {
   width: "52px",
-  height: "42px",
-  borderRadius: "9px",
+  height: "52px",
+  borderRadius: "50%",
   objectFit: "cover",
   flex: "0 0 auto",
+  boxShadow: "0 4px 12px rgba(212,175,55,0.3)",
 };
 
 const rightControlStackStyle = {

@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { languageOptions, normalizeLanguageCode } from "../i18n";
 import { MARKET } from "../marketConfig";
 
-const LOGO_SRC = "/sakho-brand-logo.jpeg";
+const LOGO_SRC = "/yala-logo.png";
 
 function SettingsPage({ onLogout }) {
   const { t, i18n } = useTranslation();

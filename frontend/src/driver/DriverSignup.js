@@ -134,7 +134,7 @@ function DriverSignup() {
     <div style={pageStyle}>
       <div style={cardStyle}>
         <div style={heroStyle}>
-          <span style={eyebrowStyle}>Sakho Express driver verification</span>
+          <span style={eyebrowStyle}>Yala driver verification</span>
           <h1 style={titleStyle}>Submit your driver application</h1>
           <p style={subtitleStyle}>
             Upload the required documents. Admin approval is required before you can go online.

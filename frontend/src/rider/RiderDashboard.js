@@ -4,6 +4,7 @@ import axios from "axios";
 import { API_URL } from "../apiConfig";
 import GoogleTripMap from "../maps/GoogleTripMap";
 import SafetyEmergencyPanel from "../safety/SafetyEmergencyPanel";
+import RideChat from "../components/RideChat";
 import { subscribeRideUpdates, sendRideUpdate } from "../socket";
 import {
   MARKET,
@@ -150,6 +151,7 @@ export default function RiderDashboard() {
   const [showAccountPanel, setShowAccountPanel] = useState(false);
 
   const [showSafetyPanel, setShowSafetyPanel] = useState(false);
+  const [showChat, setShowChat] = useState(false);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [cancelSaving, setCancelSaving] = useState(false);
@@ -565,7 +567,7 @@ export default function RiderDashboard() {
   const shareTrip = async () => {
     if (!currentRide) return;
 
-    const tripText = `Sakho Express trip #${currentRide.id}: ${
+    const tripText = `Yala trip #${currentRide.id}: ${
       currentRide.pickup || currentRide.pickup_address
     } to ${currentRide.destination || currentRide.destination_address}. Status: ${
       currentRide.status
@@ -574,7 +576,7 @@ export default function RiderDashboard() {
     try {
       if (navigator.share) {
         await navigator.share({
-          title: "Sakho Express trip",
+          title: "Yala trip",
           text: tripText,
           url: window.location.href,
         });
@@ -775,6 +777,12 @@ export default function RiderDashboard() {
 
         {showAccountPanel && (
           <form onSubmit={saveRiderIdentity} style={accountPanelStyle}>
+            {/* Yala Rider Logo */}
+            <div style={{ textAlign: "center", marginBottom: 12 }}>
+              <img src={logoSrc} alt="Yala" style={{ width: 64, height: 64, borderRadius: "50%", boxShadow: "0 4px 16px rgba(0,166,81,0.25)" }} />
+              <div style={{ color: "#00A651", fontWeight: 900, fontSize: 16, marginTop: 6 }}>Yala Rider</div>
+              <div style={{ color: "#9ca3af", fontSize: 11, fontWeight: 700 }}>Fast. Safe. Local.</div>
+            </div>
             <div>
               <span style={tinyLabelStyle}>Account security</span>
               <h2 style={panelTitleStyle}>Rider profile</h2>
@@ -958,6 +966,9 @@ export default function RiderDashboard() {
                   Private call
                 </a>
               )}
+              <button type="button" onClick={() => setShowChat(true)} style={{ ...shareButtonStyle, background: "#00A651", color: "#fff" }}>
+                Chat
+              </button>
               <button type="button" onClick={shareTrip} style={shareButtonStyle}>
                 Share
               </button>
@@ -965,8 +976,13 @@ export default function RiderDashboard() {
           </section>
         )}
 
+        {/* Chat overlay */}
+        {showChat && currentRide?.id && (
+          <RideChat rideId={currentRide.id} onClose={() => setShowChat(false)} />
+        )}
 
-        {(showSafetyPanel || currentRide) && (
+
+        {showSafetyPanel && (
           <div style={safetyPanelWrapStyle}>
             <SafetyEmergencyPanel
               role="rider"
@@ -1374,10 +1390,11 @@ const locationPillStyle = {
 
 const locationLogoStyle = {
   gridRow: "1 / span 2",
-  width: "34px",
-  height: "28px",
-  borderRadius: "7px",
+  width: "48px",
+  height: "48px",
+  borderRadius: "50%",
   objectFit: "cover",
+  boxShadow: "0 4px 12px rgba(0,166,81,0.3)",
 };
 
 const floatingSummaryStyle = {
@@ -1664,13 +1681,16 @@ const routeEditorStyle = {
 
 const citySelectStyle = {
   width: "100%",
-  minHeight: "44px",
-  border: "1px solid rgba(255,255,255,0.12)",
-  borderRadius: "999px",
-  background: "rgba(255,255,255,0.06)",
+  minHeight: "48px",
+  border: "2px solid rgba(255,255,255,0.15)",
+  borderRadius: "12px",
+  background: "#1a1a1a",
   color: "#ffffff",
   padding: "0 14px",
-  fontWeight: 900,
+  fontWeight: 800,
+  fontSize: "15px",
+  appearance: "auto",
+  WebkitAppearance: "menulist",
 };
 
 const addressStackStyle = {

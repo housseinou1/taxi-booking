@@ -21,6 +21,7 @@ import SavedPaymentMethods from "./payments/SavedPaymentMethods";
 import RiderPayments from "./payments/PaymentPage";
 import { DriverProfilePage, RiderProfilePage } from "./profile/ProfilePages";
 import SupportCenter from "./support/SupportCenter";
+import LandingPage from "./landing/LandingPage";
 import { API_URL } from "./apiConfig";
 import { MARKET } from "./marketConfig";
 
@@ -402,7 +403,7 @@ function AuthLoadingScreen({ message = "Checking your secure session..." }) {
   );
 }
 
-function LandingPage() {
+function LandingPageOld() {
   const { t } = useTranslation();
 
   return (

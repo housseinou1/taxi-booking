@@ -668,6 +668,21 @@ function AdminDashboard() {
           </div>
         </div>
 
+        {/* Admin user info */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 0", marginBottom: 12, borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+          <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#00A651", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 900, fontSize: 14, flexShrink: 0 }}>
+            {(() => { try { const u = JSON.parse(localStorage.getItem("user") || "{}"); return (u.first_name || "A")[0].toUpperCase(); } catch(e) { return "A"; } })()}
+          </div>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ color: "#fff", fontWeight: 700, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {(() => { try { const u = JSON.parse(localStorage.getItem("user") || "{}"); return `${u.first_name || ""} ${u.last_name || ""}`.trim() || "Admin"; } catch(e) { return "Admin"; } })()}
+            </div>
+            <div style={{ color: "#9ca3af", fontSize: 11 }}>
+              {(() => { try { return JSON.parse(localStorage.getItem("user") || "{}").email || ""; } catch(e) { return ""; } })()}
+            </div>
+          </div>
+        </div>
+
         {menuItems.map((item) => (
           <button
             key={item.key}
@@ -1657,7 +1672,7 @@ function ReportsSection({
       tone: "gold",
       rows: [
         ["Total revenue", formatMoney(totalRevenue)],
-        ["Sakho fee", formatMoney(platformCommission)],
+        ["Yala fee", formatMoney(platformCommission)],
         ["Driver earnings", formatMoney(driverPayouts)],
         ["Withdrawals", withdrawals.length],
       ],
@@ -1689,7 +1704,7 @@ function ReportsSection({
       <div style={reportsHeroStyle}>
         <div>
           <span style={opsKickerStyle}>Live reports</span>
-          <h2 style={reportsHeroTitleStyle}>Sakho Express operating report</h2>
+          <h2 style={reportsHeroTitleStyle}>Yala operating report</h2>
           <p style={opsSubtitleStyle}>
             Review marketplace health before approving drivers, responding to emergencies,
             and reconciling platform earnings.
@@ -2411,12 +2426,11 @@ const sidebarBrandStyle = {
 };
 
 const brandLogoStyle = {
-  width: "48px",
-  height: "48px",
+  width: "56px",
+  height: "56px",
   borderRadius: "14px",
   objectFit: "cover",
-  border: "1px solid rgba(255, 255, 255, 0.16)",
-  boxShadow: "0 14px 28px rgba(0, 0, 0, 0.28)",
+  boxShadow: "0 4px 16px rgba(0,166,81,0.25)",
 };
 
 const sidebarTitle = {

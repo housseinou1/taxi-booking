@@ -4,7 +4,7 @@ function AuthHome({ setSelectedRole }) {
   return (
     <div style={pageStyle}>
       <div style={cardStyle}>
-        <h1 style={titleStyle}>🚖 Sakho Express</h1>
+        <h1 style={titleStyle}>🚖 Yala</h1>
 
         <p style={subtitleStyle}>
           Continue as Rider or Driver

@@ -364,7 +364,7 @@ function PaymentPage({ ride }) {
         <PaymentHistory payments={paymentHistory} loading={historyLoading} />
       </div>
 
-      {payment?.status === "paid" && !ratingSubmitted && (
+      {ride?.status === "completed" && !ratingSubmitted && (
         <section className="sx-rating-panel">
           <div>
             <span className="sx-payment-eyebrow">Driver rating</span>

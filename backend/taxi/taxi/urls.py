@@ -16,6 +16,8 @@ urlpatterns = [
     path("payments/", include("payments.urls")),
 
     path("notifications/", include("notifications.urls")),
+
+    path("chat/", include("chat.urls")),
 ]
 
 

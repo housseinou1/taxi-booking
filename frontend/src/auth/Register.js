@@ -3,7 +3,7 @@ import axios from "axios";
 import { useTranslation } from "react-i18next";
 import { API_URL } from "../apiConfig";
 
-const logoSrc = "/sakho-brand-logo.jpeg";
+const logoSrc = "/yala-logo.png";
 
 function Register() {
   const { t } = useTranslation();
@@ -103,7 +103,7 @@ function Register() {
     <main className="auth-register-page">
       <AuthRegisterStyles />
       <section className="auth-register-hero">
-        <img src={logoSrc} alt="Sakho Express" />
+        <img src={logoSrc} alt="Yala" />
         <span>{t("auth.join")}</span>
         <h1>{t("auth.registerTitle")}</h1>
         <p>{t("auth.registerSubtitle")}</p>

@@ -96,7 +96,7 @@ function AuthPage({ onLogin }) {
   return (
     <div style={page}>
       <div style={card}>
-        <h1 style={title}>🚖 Sakho Express</h1>
+        <h1 style={title}>🚖 Yala</h1>
 
         <div style={tabs}>
           <button
