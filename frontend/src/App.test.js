@@ -1,9 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import App from "./App";
 
-test("renders the Sakho Express landing page", () => {
+test("renders the Yala landing page", () => {
   render(<App />);
-  // The landing page always shows the brand name
-  const brandElements = screen.getAllByText(/sakho express/i);
+  const brandElements = screen.getAllByText(/yala/i);
   expect(brandElements.length).toBeGreaterThan(0);
 });

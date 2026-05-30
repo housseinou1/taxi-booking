@@ -1,17 +1,17 @@
 {
-  "short_name": "Sakho Express",
-  "name": "Sakho Express Rider and Driver",
-  "description": "Mauritania ride booking platform for riders, drivers, and admins.",
+  "short_name": "Yala",
+  "name": "Yala — Ride Anywhere",
+  "description": "Mauritania ride booking platform. Book rides, drive, earn, and manage operations.",
   "icons": [
     {
-      "src": "sakho-brand-logo.jpeg",
-      "type": "image/jpeg",
-      "sizes": "1080x1350",
+      "src": "yala-logo.png",
+      "type": "image/png",
+      "sizes": "512x512",
       "purpose": "any maskable"
     },
     {
       "src": "favicon.ico",
-      "sizes": "64x64 32x32 24x24 16x16",
+      "sizes": "32x32",
       "type": "image/x-icon"
     },
     {
@@ -29,23 +29,30 @@
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "theme_color": "#111827",
-  "background_color": "#f3f4f6",
+  "theme_color": "#00A651",
+  "background_color": "#08111F",
   "categories": ["travel", "navigation", "business"],
   "shortcuts": [
     {
-      "name": "Rider App",
+      "name": "Yala Rider",
       "short_name": "Rider",
       "description": "Book and track rides",
       "url": "/rider-dashboard",
-      "icons": [{ "src": "logo192.png", "type": "image/png", "sizes": "192x192" }]
+      "icons": [{ "src": "yala-rider-logo.png", "type": "image/png", "sizes": "512x512" }]
     },
     {
-      "name": "Driver App",
+      "name": "Yala Driver",
       "short_name": "Driver",
-      "description": "Go online and manage trips",
+      "description": "Go online and earn",
       "url": "/driver",
-      "icons": [{ "src": "logo192.png", "type": "image/png", "sizes": "192x192" }]
+      "icons": [{ "src": "yala-driver-logo.png", "type": "image/png", "sizes": "512x512" }]
+    },
+    {
+      "name": "Yala Admin",
+      "short_name": "Admin",
+      "description": "Manage platform operations",
+      "url": "/admin",
+      "icons": [{ "src": "yala-admin-logo.png", "type": "image/png", "sizes": "512x512" }]
     }
   ]
 }
