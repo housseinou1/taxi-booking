@@ -1,0 +1,38 @@
+# Environment files
+.env
+.env.local
+.env.production
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Node
+node_modules/
+
+# Build outputs
+frontend/build/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Database
+*.sqlite3
+
+# Media uploads
+backend/taxi/media/
+
+# Logs
+*.log
