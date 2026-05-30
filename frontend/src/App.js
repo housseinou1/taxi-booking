@@ -608,7 +608,7 @@ function NavbarStyles() {
         height: 46px;
         border-radius: 14px;
         object-fit: cover;
-        box-shadow: 0 0 0 1px rgba(250, 204, 21, 0.34);
+        box-shadow: 0 0 0 1px rgba(0, 166, 81, 0.34);
       }
 
       .sakho-nav-logo span {
@@ -1025,7 +1025,7 @@ function LandingStyles() {
         height: 42px;
         border-radius: 12px;
         object-fit: cover;
-        box-shadow: 0 0 0 1px rgba(250, 204, 21, 0.28);
+        box-shadow: 0 0 0 1px rgba(0, 166, 81, 0.28);
       }
 
       .sx-nav-links {
@@ -1115,7 +1115,7 @@ function LandingStyles() {
         opacity: 0.72;
         background:
           linear-gradient(115deg, transparent 0 18%, rgba(16, 185, 129, 0.2) 28%, transparent 42%),
-          linear-gradient(245deg, transparent 0 22%, rgba(245, 158, 11, 0.24) 34%, transparent 48%),
+          linear-gradient(245deg, transparent 0 22%, rgba(0, 166, 81, 0.24) 34%, transparent 48%),
           radial-gradient(circle at 55% 35%, rgba(168, 85, 247, 0.16), transparent 28%);
         filter: blur(34px);
         animation: sxGradientShift 12s ease-in-out infinite alternate;
@@ -1140,7 +1140,7 @@ function LandingStyles() {
       .sx-hero-glow-two {
         top: 18%;
         right: 16%;
-        background: rgba(245, 158, 11, 0.32);
+        background: rgba(0, 166, 81, 0.32);
         animation-delay: -2.4s;
       }
 
@@ -1167,10 +1167,10 @@ function LandingStyles() {
         max-width: 100%;
         margin-bottom: 18px;
         padding: 8px 12px;
-        border: 1px solid rgba(250, 204, 21, 0.24);
+        border: 1px solid rgba(0, 166, 81, 0.24);
         border-radius: 999px;
-        background: rgba(250, 204, 21, 0.08);
-        color: #facc15;
+        background: rgba(0, 166, 81, 0.08);
+        color: #00A651;
         font-size: 12px;
         font-weight: 850;
         letter-spacing: 0;
@@ -1219,13 +1219,13 @@ function LandingStyles() {
       }
 
       .sx-primary-cta {
-        background: linear-gradient(135deg, #facc15, #f59e0b);
+        background: linear-gradient(135deg, #00A651, #00A651);
         color: #111827;
-        box-shadow: 0 22px 45px rgba(245, 158, 11, 0.28);
+        box-shadow: 0 22px 45px rgba(0, 166, 81, 0.28);
       }
 
       .sx-primary-cta:hover {
-        box-shadow: 0 28px 55px rgba(245, 158, 11, 0.36);
+        box-shadow: 0 28px 55px rgba(0, 166, 81, 0.36);
       }
 
       .sx-secondary-cta {
@@ -1358,7 +1358,7 @@ function LandingStyles() {
         display: block;
         flex: 1;
         border-radius: 999px;
-        background: linear-gradient(180deg, #facc15, #16a34a);
+        background: linear-gradient(180deg, #00A651, #16a34a);
       }
 
       .sx-mini-bars i:nth-child(1) { height: 30%; }
@@ -1490,7 +1490,7 @@ function LandingStyles() {
         border: 4px solid #fff;
         border-radius: 18px;
         background: #020617;
-        color: #facc15;
+        color: #00A651;
         font-weight: 950;
         box-shadow: 0 18px 30px rgba(0, 0, 0, 0.28);
       }
@@ -1609,9 +1609,9 @@ function LandingStyles() {
       .sx-service-card:hover,
       .sx-testimonial-grid article:hover {
         transform: translateY(-6px);
-        border-color: rgba(250, 204, 21, 0.38);
+        border-color: rgba(0, 166, 81, 0.38);
         background:
-          linear-gradient(180deg, rgba(250, 204, 21, 0.14), rgba(255, 255, 255, 0.045)),
+          linear-gradient(180deg, rgba(0, 166, 81, 0.14), rgba(255, 255, 255, 0.045)),
           #090d14;
       }
 
@@ -1622,7 +1622,7 @@ function LandingStyles() {
         margin-bottom: 34px;
         place-items: center;
         border-radius: 16px;
-        background: #facc15;
+        background: #00A651;
         color: #111827;
         font-weight: 950;
       }
@@ -1659,7 +1659,7 @@ function LandingStyles() {
       }
 
       .sx-testimonial-grid article span {
-        color: #facc15;
+        color: #00A651;
         font-weight: 850;
       }
 
@@ -1669,10 +1669,10 @@ function LandingStyles() {
         gap: 32px;
         align-items: center;
         padding: 48px;
-        border: 1px solid rgba(250, 204, 21, 0.22);
+        border: 1px solid rgba(0, 166, 81, 0.22);
         border-radius: 34px;
         background:
-          radial-gradient(circle at 15% 0%, rgba(250, 204, 21, 0.22), transparent 30%),
+          radial-gradient(circle at 15% 0%, rgba(0, 166, 81, 0.22), transparent 30%),
           linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.04));
         box-shadow: 0 34px 80px rgba(0, 0, 0, 0.24);
       }
@@ -2184,7 +2184,7 @@ function SettingsStyles() {
 
       .settings-dark {
         background:
-          radial-gradient(circle at 12% 10%, rgba(250, 204, 21, 0.16), transparent 26%),
+          radial-gradient(circle at 12% 10%, rgba(0, 166, 81, 0.16), transparent 26%),
           radial-gradient(circle at 88% 12%, rgba(21, 128, 61, 0.18), transparent 28%),
           #05070c;
         color: #f8fafc;
@@ -2192,7 +2192,7 @@ function SettingsStyles() {
 
       .settings-light {
         background:
-          radial-gradient(circle at 12% 10%, rgba(250, 204, 21, 0.2), transparent 26%),
+          radial-gradient(circle at 12% 10%, rgba(0, 166, 81, 0.2), transparent 26%),
           #f5f7fb;
         color: #0f172a;
       }
@@ -2294,8 +2294,8 @@ function SettingsStyles() {
         margin-bottom: 12px;
         padding: 8px 12px;
         border-radius: 999px;
-        background: rgba(250, 204, 21, 0.12);
-        color: #facc15;
+        background: rgba(0, 166, 81, 0.12);
+        color: #00A651;
         font-size: 12px;
         font-weight: 900;
         text-transform: uppercase;
@@ -2304,7 +2304,7 @@ function SettingsStyles() {
       .settings-light .settings-kicker,
       .settings-light .settings-panel-heading span {
         color: #92400e;
-        background: rgba(245, 158, 11, 0.14);
+        background: rgba(0, 166, 81, 0.14);
       }
 
       .settings-hero h1 {
@@ -2509,12 +2509,12 @@ function SettingsStyles() {
       }
 
       .settings-list button:hover {
-        border-color: rgba(250, 204, 21, 0.35);
-        background: rgba(250, 204, 21, 0.08);
+        border-color: rgba(0, 166, 81, 0.35);
+        background: rgba(0, 166, 81, 0.08);
       }
 
       .settings-list em {
-        color: #facc15;
+        color: #00A651;
         font-style: normal;
         font-weight: 900;
         white-space: nowrap;
@@ -2913,7 +2913,7 @@ const authLoadingStyle = {
   placeItems: "center",
   padding: "24px",
   background:
-    "radial-gradient(circle at 20% 10%, rgba(250, 204, 21, 0.18), transparent 28%), #05070c",
+    "radial-gradient(circle at 20% 10%, rgba(0, 166, 81, 0.18), transparent 28%), #05070c",
   fontFamily: 'Inter, "SF Pro Display", "Segoe UI", sans-serif',
 };
 
@@ -3160,9 +3160,9 @@ const continueButtonStyle = {
   width: "100%",
   marginTop: "25px",
   padding: "16px",
-  background: "#facc15",
+  background: "#00A651",
   color: "#111827",
-  border: "1px solid #facc15",
+  border: "1px solid #00A651",
   borderRadius: "999px",
   fontWeight: "bold",
   fontSize: "16px",

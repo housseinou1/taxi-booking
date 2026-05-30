@@ -890,7 +890,7 @@ export default function RiderDashboard() {
                 lastCancellation.tone === "error"
                   ? "rgba(248, 113, 113, 0.35)"
                   : lastCancellation.tone === "warning"
-                    ? "rgba(250, 204, 21, 0.35)"
+                    ? "rgba(0, 166, 81, 0.35)"
                     : "rgba(34, 197, 94, 0.35)",
             }}
           >
@@ -1053,7 +1053,7 @@ export default function RiderDashboard() {
                 onClick={() => setRideType(type)}
                 style={{
                   ...rideOptionStyle,
-                  borderColor: selected ? "#facc15" : "rgba(255,255,255,0.1)",
+                  borderColor: selected ? "#00A651" : "rgba(255,255,255,0.1)",
                   background: selected ? "rgba(250,204,21,0.12)" : "rgba(255,255,255,0.04)",
                 }}
               >
@@ -1169,7 +1169,7 @@ function RiderTrackingStyles() {
       }
 
       .sx-live-hud span {
-        color: #facc15;
+        color: #00A651;
         font-size: 0.72rem;
         font-weight: 950;
         text-transform: uppercase;
@@ -1238,13 +1238,13 @@ function RiderTrackingStyles() {
       .sx-status-timeline article.done,
       .sx-status-timeline article.active {
         color: #fff;
-        border-color: rgba(250, 204, 21, 0.34);
-        background: rgba(250, 204, 21, 0.1);
+        border-color: rgba(0, 166, 81, 0.34);
+        background: rgba(0, 166, 81, 0.1);
       }
 
       .sx-status-timeline article.done > span,
       .sx-status-timeline article.active > span {
-        background: #facc15;
+        background: #00A651;
         color: #111827;
       }
 
@@ -1254,7 +1254,7 @@ function RiderTrackingStyles() {
 
       .sx-driver-info-card:hover {
         transform: translateY(-1px);
-        border-color: rgba(250, 204, 21, 0.38) !important;
+        border-color: rgba(0, 166, 81, 0.38) !important;
       }
 
       @media (max-width: 720px) {
@@ -1480,7 +1480,7 @@ const secondaryActionStyle = {
   minHeight: "44px",
   border: "none",
   borderRadius: "8px",
-  background: "#facc15",
+  background: "#00A651",
   color: "#111827",
   fontWeight: 900,
   cursor: "pointer",
@@ -1575,7 +1575,7 @@ const refundStatusStyle = {
 
 const refundFeePillStyle = {
   borderRadius: "999px",
-  background: "rgba(250, 204, 21, 0.14)",
+  background: "rgba(0, 166, 81, 0.14)",
   color: "#fde68a",
   padding: "8px 11px",
   fontWeight: 950,
@@ -1641,7 +1641,7 @@ const callButtonStyle = {
   minHeight: "36px",
   borderRadius: "999px",
   padding: "0 12px",
-  background: "#facc15",
+  background: "#00A651",
   color: "#111827",
   fontWeight: 900,
   textDecoration: "none",
@@ -1785,7 +1785,7 @@ const primaryActionStyle = {
   marginTop: "14px",
   border: "none",
   borderRadius: "999px",
-  background: "#facc15",
+  background: "#00A651",
   color: "#111827",
   fontWeight: 950,
   fontSize: "1.05rem",

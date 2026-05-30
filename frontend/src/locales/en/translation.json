@@ -1,6 +1,6 @@
 {
   "common": {
-    "brand": "Sakho Express",
+    "brand": "Yala",
     "home": "Home",
     "rider": "Rider",
     "driver": "Driver",
@@ -18,9 +18,9 @@
     "enable": "Enable"
   },
   "landing": {
-    "eyebrow": "Mauritania premium rideshare startup",
+    "eyebrow": "Mauritania ride platform",
     "title": "The modern way to move, earn, and operate rides.",
-    "subtitle": "Sakho Express brings rider booking, driver earnings, live tracking, safe payments, and admin operations into one polished platform built for Mauritania.",
+    "subtitle": "Yala brings rider booking, driver earnings, live tracking, safe payments, and admin operations into one polished platform built for Mauritania.",
     "bookRide": "Book a ride",
     "startDriving": "Start driving",
     "commission": "30% platform commission",
@@ -38,7 +38,7 @@
     "driverTitle": "Driver",
     "driverText": "Driver dashboard with online mode, trip requests, navigation, earnings, and payouts.",
     "downloadEyebrow": "Install on phone",
-    "downloadTitle": "Open Sakho Express from your home screen.",
+    "downloadTitle": "Open Yala from your home screen.",
     "downloadText": "Test the rider and driver apps on the same Wi-Fi today, then package the platform for public mobile distribution when production hosting is ready.",
     "riderApp": "Rider app",
     "driverApp": "Driver app",
@@ -52,7 +52,7 @@
     "emergencyText": "Police, ambulance, and fire contacts are available from rider and driver screens.",
     "testimonialsEyebrow": "Trusted experience",
     "testimonialsTitle": "Built for confidence on every side of the marketplace.",
-    "driverCtaEyebrow": "Drive with Sakho Express",
+    "driverCtaEyebrow": "Drive with Yala",
     "driverCtaTitle": "Turn your car into a professional earning tool.",
     "driverCtaText": "Drivers can submit documents, go online after approval, receive trips, navigate automatically, track daily earnings, and withdraw through local payout methods.",
     "applyDrive": "Apply to drive"
@@ -60,7 +60,7 @@
   "settings": {
     "accountCenter": "Account center",
     "title": "Settings",
-    "hero": "Control your Sakho Express profile, preferences, safety, payments, privacy, support, and session from one polished app screen.",
+    "hero": "Control your Yala profile, preferences, safety, payments, privacy, support, and session from one polished app screen.",
     "mobilityAccount": "Mobility account",
     "preferences": "Preferences",
     "appExperience": "App experience",
@@ -100,7 +100,7 @@
   },
   "auth": {
     "secureAccess": "Secure access",
-    "welcome": "Welcome back to Sakho Express.",
+    "welcome": "Welcome back to Yala.",
     "loginSubtitle": "Sign in to continue as rider, driver, or admin with your saved session.",
     "jwt": "JWT protected",
     "loginTitle": "Log in",
@@ -111,7 +111,7 @@
     "createAccount": "Create account",
     "enterCredentials": "Enter your email and password.",
     "loginFailed": "Login failed. Please try again.",
-    "join": "Join Sakho Express",
+    "join": "Join Yala",
     "registerTitle": "Create your mobility account.",
     "registerSubtitle": "Register as a rider or driver, keep your session active, and continue directly to setup after your account is created.",
     "riderAccount": "Rider account",

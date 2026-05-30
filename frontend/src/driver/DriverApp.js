@@ -1180,12 +1180,12 @@ export default function DriverApp() {
             disabled={!isOnline && !isDriverApproved}
             style={{
               ...driverGoOnlineButtonStyle,
-              background: isOnline ? "#111827" : isDriverApproved ? "#9b0089" : "#98a2b3",
+              background: isOnline ? "#111827" : isDriverApproved ? "#D4AF37" : "#98a2b3",
               cursor: !isOnline && !isDriverApproved ? "not-allowed" : "pointer",
               boxShadow:
                 !isOnline && !isDriverApproved
                   ? "none"
-                  : "0 14px 28px rgba(155, 0, 137, 0.28)",
+                  : "0 14px 28px rgba(212, 175, 55, 0.28)",
             }}
           >
             {isOnline ? "Go Offline" : isDriverApproved ? "Go Online" : "Approval required"}
@@ -1247,7 +1247,7 @@ export default function DriverApp() {
             </div>
           </div>
           <div style={routeLineStyle}>
-            <div style={{ ...routePointStyle, background: "#9b0089" }} />
+            <div style={{ ...routePointStyle, background: "#D4AF37" }} />
             <div>
               <span style={routeLabelStyle}>Drop-off</span>
               <p style={routeTextStyle}>{activeDestination}</p>
@@ -2332,7 +2332,7 @@ const driverGoOnlineButtonStyle = {
   fontSize: "1.5rem",
   fontWeight: 950,
   cursor: "pointer",
-  boxShadow: "0 14px 28px rgba(155, 0, 137, 0.28)",
+  boxShadow: "0 14px 28px rgba(212, 175, 55, 0.28)",
 };
 
 const filterButtonStyle = {
@@ -2559,7 +2559,7 @@ const menuVerificationBadgeStyle = {
 const viewAsRiderStyle = {
   border: "none",
   background: "transparent",
-  color: "#9b0089",
+  color: "#D4AF37",
   fontWeight: 950,
   fontSize: "1rem",
   padding: 0,
@@ -2723,7 +2723,7 @@ const documentUploadHintStyle = {
 };
 
 const documentLinkStyle = {
-  color: "#9b0089",
+  color: "#D4AF37",
   fontWeight: 900,
   textDecoration: "none",
 };
@@ -2751,7 +2751,7 @@ const saveVehicleButtonStyle = {
   minHeight: "52px",
   border: "none",
   borderRadius: "999px",
-  background: "#9b0089",
+  background: "#D4AF37",
   color: "white",
   fontWeight: 950,
   cursor: "pointer",
@@ -2774,7 +2774,7 @@ const menuEmergencyRowStyle = {
 
 const menuBadgeStyle = {
   background: "#ffe4f3",
-  color: "#9b0089",
+  color: "#D4AF37",
   borderRadius: "999px",
   padding: "7px 12px",
   fontStyle: "normal",

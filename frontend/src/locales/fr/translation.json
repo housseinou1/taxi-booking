@@ -1,6 +1,6 @@
 {
   "common": {
-    "brand": "Sakho Express",
+    "brand": "Yala",
     "home": "Accueil",
     "rider": "Client",
     "driver": "Chauffeur",
@@ -20,7 +20,7 @@
   "landing": {
     "eyebrow": "Startup de transport premium en Mauritanie",
     "title": "La facon moderne de se deplacer, gagner et gerer les courses.",
-    "subtitle": "Sakho Express rassemble reservation client, revenus chauffeur, suivi en direct, paiements securises et operations admin dans une plateforme professionnelle pour la Mauritanie.",
+    "subtitle": "Yala rassemble reservation client, revenus chauffeur, suivi en direct, paiements securises et operations admin dans une plateforme professionnelle pour la Mauritanie.",
     "bookRide": "Commander une course",
     "startDriving": "Devenir chauffeur",
     "commission": "Commission plateforme 30%",
@@ -38,7 +38,7 @@
     "driverTitle": "Chauffeur",
     "driverText": "Tableau chauffeur avec mode en ligne, demandes, navigation, revenus et retraits.",
     "downloadEyebrow": "Installer sur telephone",
-    "downloadTitle": "Ouvrez Sakho Express depuis votre ecran d'accueil.",
+    "downloadTitle": "Ouvrez Yala depuis votre ecran d'accueil.",
     "downloadText": "Testez les apps client et chauffeur sur le meme Wi-Fi, puis preparez la distribution mobile publique quand l'hebergement production est pret.",
     "riderApp": "App client",
     "driverApp": "App chauffeur",
@@ -52,7 +52,7 @@
     "emergencyText": "Police, ambulance et pompiers sont disponibles dans les ecrans client et chauffeur.",
     "testimonialsEyebrow": "Experience de confiance",
     "testimonialsTitle": "Concu pour donner confiance a chaque cote du marche.",
-    "driverCtaEyebrow": "Conduire avec Sakho Express",
+    "driverCtaEyebrow": "Conduire avec Yala",
     "driverCtaTitle": "Transformez votre voiture en outil de revenu professionnel.",
     "driverCtaText": "Les chauffeurs peuvent envoyer leurs documents, passer en ligne apres approbation, recevoir des courses, naviguer automatiquement, suivre les revenus et retirer par moyens locaux.",
     "applyDrive": "Postuler comme chauffeur"
@@ -60,7 +60,7 @@
   "settings": {
     "accountCenter": "Centre du compte",
     "title": "Parametres",
-    "hero": "Controlez votre profil Sakho Express, preferences, securite, paiements, confidentialite, support et session depuis un seul ecran.",
+    "hero": "Controlez votre profil Yala, preferences, securite, paiements, confidentialite, support et session depuis un seul ecran.",
     "mobilityAccount": "Compte mobilite",
     "preferences": "Preferences",
     "appExperience": "Experience app",
@@ -100,7 +100,7 @@
   },
   "auth": {
     "secureAccess": "Acces securise",
-    "welcome": "Bienvenue sur Sakho Express.",
+    "welcome": "Bienvenue sur Yala.",
     "loginSubtitle": "Connectez-vous comme client, chauffeur ou admin avec votre session.",
     "jwt": "Protege par JWT",
     "loginTitle": "Connexion",
@@ -111,7 +111,7 @@
     "createAccount": "Creer un compte",
     "enterCredentials": "Entrez votre email et mot de passe.",
     "loginFailed": "Connexion echouee. Veuillez reessayer.",
-    "join": "Rejoindre Sakho Express",
+    "join": "Rejoindre Yala",
     "registerTitle": "Creez votre compte mobilite.",
     "registerSubtitle": "Inscrivez-vous comme client ou chauffeur, gardez votre session active, puis continuez vers la configuration.",
     "riderAccount": "Compte client",

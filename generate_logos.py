@@ -1,196 +1,243 @@
 """
-Generate Yala logo package with Mauritania colors and flag element.
-Colors: Green #00A651, Gold #D4AF37, Dark Navy #08111F
+Yala Complete Branding Package Generator
+Colors: Green #00A651, Gold #D4AF37, Navy #08111F, White #FFFFFF
+Style: Modern flat design, Uber/Lyft inspired, Mauritania flag element
 """
-from PIL import Image, ImageDraw, ImageFont
+import math
 import os
+from PIL import Image, ImageDraw, ImageFont
 
-OUTPUT_DIR = "frontend/public"
-os.makedirs(OUTPUT_DIR, exist_ok=True)
+OUTPUT = "frontend/public"
+os.makedirs(OUTPUT, exist_ok=True)
 
-# Mauritania colors
-GREEN = "#00A651"
-GOLD = "#D4AF37"
-NAVY = "#08111F"
-WHITE = "#FFFFFF"
-
-GREEN_RGB = (0, 166, 81)
-GOLD_RGB = (212, 175, 55)
-NAVY_RGB = (8, 17, 31)
-WHITE_RGB = (255, 255, 255)
+# Brand colors
+GREEN = (0, 166, 81)
+GOLD = (212, 175, 55)
+NAVY = (8, 17, 31)
+WHITE = (255, 255, 255)
+TRANSPARENT = (0, 0, 0, 0)
 
 
-def draw_crescent_star(draw, cx, cy, size, color):
-    """Draw a simplified Mauritania crescent and star."""
-    r = size // 2
-    # Crescent: two overlapping circles
-    draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=color)
-    # Cut out inner circle (shifted up) to make crescent
-    inner_r = int(r * 0.82)
-    offset = int(r * 0.25)
-    # We'll draw the crescent by drawing arcs instead
-    # Simple approach: draw a filled circle, then overlay with background
-    return
+def star_points(cx, cy, outer_r, inner_r, points=5):
+    """Generate 5-pointed star polygon coordinates."""
+    pts = []
+    for i in range(points * 2):
+        angle = math.radians(-90 + i * 36)
+        r = outer_r if i % 2 == 0 else inner_r
+        pts.append((cx + r * math.cos(angle), cy + r * math.sin(angle)))
+    return pts
 
 
-def draw_star(draw, cx, cy, size, color):
-    """Draw a 5-pointed star."""
-    import math
-    points = []
-    for i in range(5):
-        angle = math.radians(-90 + i * 72)
-        points.append((cx + size * math.cos(angle), cy + size * math.sin(angle)))
-    # Connect every other point for star shape
-    star_points = []
-    for i in range(5):
-        star_points.append(points[i])
-        # Inner point
-        angle = math.radians(-90 + i * 72 + 36)
-        inner_r = size * 0.38
-        star_points.append((cx + inner_r * math.cos(angle), cy + inner_r * math.sin(angle)))
-    draw.polygon(star_points, fill=color)
-
-
-def draw_mauritania_element(draw, cx, cy, size, color):
-    """Draw crescent moon + star (Mauritania flag symbol)."""
-    import math
+def draw_crescent_star(draw, cx, cy, size, color, bg_color):
+    """Draw Mauritania flag crescent + star."""
     r = size
-    # Crescent: outer circle
+    # Outer moon circle
     draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=color)
-    # Inner circle offset upward to create crescent
-    inner_r = int(r * 0.8)
-    draw.ellipse([cx - inner_r, cy - inner_r - int(r * 0.3),
-                  cx + inner_r, cy + inner_r - int(r * 0.3)], fill=NAVY_RGB)
-    # Star above crescent
-    star_size = int(r * 0.3)
-    draw_star(draw, cx, cy - int(r * 1.1), star_size, color)
+    # Inner cut (creates crescent) - shifted up
+    cut_r = int(r * 0.78)
+    cut_offset = int(r * 0.32)
+    draw.ellipse([cx - cut_r, cy - cut_r - cut_offset,
+                  cx + cut_r, cy + cut_r - cut_offset], fill=bg_color)
+    # Star above
+    star_r = int(r * 0.28)
+    star_inner = int(star_r * 0.4)
+    star_cy = cy - int(r * 1.15)
+    pts = star_points(cx, star_cy, star_r, star_inner)
+    draw.polygon(pts, fill=color)
+
+
+def draw_y_letter(draw, cx, cy, size, color, weight):
+    """Draw a bold stylized Y letter."""
+    half = size // 2
+    top_y = cy - half
+    mid_y = cy
+    bot_y = cy + half
+    left_x = cx - int(half * 0.7)
+    right_x = cx + int(half * 0.7)
+    w = weight
+
+    # Left arm
+    draw.line([(left_x, top_y), (cx, mid_y)], fill=color, width=w)
+    # Right arm
+    draw.line([(right_x, top_y), (cx, mid_y)], fill=color, width=w)
+    # Stem
+    draw.line([(cx, mid_y), (cx, bot_y)], fill=color, width=w)
+    # Round caps
+    cap_r = w // 2
+    for pt in [(left_x, top_y), (right_x, top_y), (cx, mid_y), (cx, bot_y)]:
+        draw.ellipse([pt[0]-cap_r, pt[1]-cap_r, pt[0]+cap_r, pt[1]+cap_r], fill=color)
 
 
 def create_master_logo(size=512):
-    """Create the main Yala logo."""
-    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    """Main Yala logo: green circle, white Y, gold crescent+star."""
+    img = Image.new("RGBA", (size, size), TRANSPARENT)
     draw = ImageDraw.Draw(img)
-
-    # Background circle
-    margin = int(size * 0.05)
-    draw.ellipse([margin, margin, size - margin, size - margin], fill=GREEN_RGB)
-
-    # Mauritania element (crescent + star) in gold
-    center = size // 2
-    element_size = int(size * 0.18)
-    draw_mauritania_element(draw, center, int(center * 0.55), element_size, GOLD_RGB)
-
-    # "Y" letter stylized
-    y_top = int(size * 0.42)
-    y_bottom = int(size * 0.82)
-    y_mid = int(size * 0.62)
-    y_left = int(size * 0.28)
-    y_right = int(size * 0.72)
-    line_w = int(size * 0.06)
-
-    # Left arm of Y
-    draw.line([(y_left, y_top), (center, y_mid)], fill=WHITE_RGB, width=line_w)
-    # Right arm of Y
-    draw.line([(y_right, y_top), (center, y_mid)], fill=WHITE_RGB, width=line_w)
-    # Stem of Y
-    draw.line([(center, y_mid), (center, y_bottom)], fill=WHITE_RGB, width=line_w)
-
-    # Round the joints
-    joint_r = line_w // 2
-    for point in [(y_left, y_top), (y_right, y_top), (center, y_mid), (center, y_bottom)]:
-        draw.ellipse([point[0] - joint_r, point[1] - joint_r,
-                      point[0] + joint_r, point[1] + joint_r], fill=WHITE_RGB)
-
+    m = int(size * 0.04)
+    # Green circle background
+    draw.ellipse([m, m, size-m, size-m], fill=GREEN)
+    # Crescent + star in gold (top area)
+    cs_size = int(size * 0.13)
+    draw_crescent_star(draw, size//2, int(size*0.28), cs_size, GOLD, GREEN)
+    # White Y letter (center-bottom)
+    y_size = int(size * 0.28)
+    draw_y_letter(draw, size//2, int(size*0.6), y_size, WHITE, int(size*0.055))
     return img
 
 
-def create_variant_logo(size, bg_color, accent_color, label_color, label_text):
-    """Create a variant logo (Rider/Driver/Admin)."""
-    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+def create_rider_logo(size=512):
+    """Yala Rider: green rounded square, white Y, gold accent."""
+    img = Image.new("RGBA", (size, size), TRANSPARENT)
     draw = ImageDraw.Draw(img)
-
-    # Background rounded square
-    margin = int(size * 0.03)
-    radius = int(size * 0.18)
-    draw.rounded_rectangle([margin, margin, size - margin, size - margin],
-                           radius=radius, fill=bg_color)
-
-    # Mauritania element in accent color (smaller, top area)
-    center = size // 2
-    element_size = int(size * 0.12)
-    draw_mauritania_element(draw, center, int(size * 0.22), element_size, accent_color)
-
-    # "Y" letter
-    y_top = int(size * 0.35)
-    y_bottom = int(size * 0.65)
-    y_mid = int(size * 0.50)
-    y_left = int(size * 0.32)
-    y_right = int(size * 0.68)
-    line_w = int(size * 0.05)
-
-    draw.line([(y_left, y_top), (center, y_mid)], fill=WHITE_RGB, width=line_w)
-    draw.line([(y_right, y_top), (center, y_mid)], fill=WHITE_RGB, width=line_w)
-    draw.line([(center, y_mid), (center, y_bottom)], fill=WHITE_RGB, width=line_w)
-
-    joint_r = line_w // 2
-    for point in [(y_left, y_top), (y_right, y_top), (center, y_mid), (center, y_bottom)]:
-        draw.ellipse([point[0] - joint_r, point[1] - joint_r,
-                      point[0] + joint_r, point[1] + joint_r], fill=WHITE_RGB)
-
-    # Label text at bottom
-    label_y = int(size * 0.72)
+    m = int(size * 0.03)
+    r = int(size * 0.2)
+    draw.rounded_rectangle([m, m, size-m, size-m], radius=r, fill=GREEN)
+    # Crescent in gold
+    cs_size = int(size * 0.11)
+    draw_crescent_star(draw, size//2, int(size*0.24), cs_size, GOLD, GREEN)
+    # White Y
+    draw_y_letter(draw, size//2, int(size*0.55), int(size*0.24), WHITE, int(size*0.05))
+    # "RIDER" label
     try:
-        font = ImageFont.truetype("arial.ttf", int(size * 0.1))
+        font = ImageFont.truetype("arialbd.ttf", int(size*0.07))
     except (OSError, IOError):
         font = ImageFont.load_default()
-
-    bbox = draw.textbbox((0, 0), label_text, font=font)
-    text_w = bbox[2] - bbox[0]
-    draw.text(((size - text_w) // 2, label_y), label_text, fill=label_color, font=font)
-
+    bbox = draw.textbbox((0, 0), "RIDER", font=font)
+    tw = bbox[2] - bbox[0]
+    draw.text(((size-tw)//2, int(size*0.78)), "RIDER", fill=WHITE, font=font)
     return img
 
 
-def create_favicon(logo_img, size=32):
-    """Create favicon from logo."""
-    return logo_img.resize((size, size), Image.LANCZOS)
+def create_driver_logo(size=512):
+    """Yala Driver: gold rounded square, navy Y, green accent."""
+    img = Image.new("RGBA", (size, size), TRANSPARENT)
+    draw = ImageDraw.Draw(img)
+    m = int(size * 0.03)
+    r = int(size * 0.2)
+    draw.rounded_rectangle([m, m, size-m, size-m], radius=r, fill=GOLD)
+    # Crescent in green
+    cs_size = int(size * 0.11)
+    draw_crescent_star(draw, size//2, int(size*0.24), cs_size, GREEN, GOLD)
+    # Navy Y
+    draw_y_letter(draw, size//2, int(size*0.55), int(size*0.24), NAVY, int(size*0.05))
+    # "DRIVER" label
+    try:
+        font = ImageFont.truetype("arialbd.ttf", int(size*0.07))
+    except (OSError, IOError):
+        font = ImageFont.load_default()
+    bbox = draw.textbbox((0, 0), "DRIVER", font=font)
+    tw = bbox[2] - bbox[0]
+    draw.text(((size-tw)//2, int(size*0.78)), "DRIVER", fill=NAVY, font=font)
+    return img
 
 
-# Generate all logos
-print("Generating Yala logo package...")
+def create_admin_logo(size=512):
+    """Yala Admin: navy rounded square, gold Y, green accent."""
+    img = Image.new("RGBA", (size, size), TRANSPARENT)
+    draw = ImageDraw.Draw(img)
+    m = int(size * 0.03)
+    r = int(size * 0.2)
+    draw.rounded_rectangle([m, m, size-m, size-m], radius=r, fill=NAVY)
+    # Crescent in gold
+    cs_size = int(size * 0.11)
+    draw_crescent_star(draw, size//2, int(size*0.24), cs_size, GOLD, NAVY)
+    # White Y with gold tint
+    draw_y_letter(draw, size//2, int(size*0.55), int(size*0.24), GOLD, int(size*0.05))
+    # "ADMIN" label
+    try:
+        font = ImageFont.truetype("arialbd.ttf", int(size*0.07))
+    except (OSError, IOError):
+        font = ImageFont.load_default()
+    bbox = draw.textbbox((0, 0), "ADMIN", font=font)
+    tw = bbox[2] - bbox[0]
+    draw.text(((size-tw)//2, int(size*0.78)), "ADMIN", fill=GOLD, font=font)
+    return img
+
+
+def create_navbar_logo(size=48):
+    """Small navbar logo: green circle, white Y, no text."""
+    img = Image.new("RGBA", (size, size), TRANSPARENT)
+    draw = ImageDraw.Draw(img)
+    draw.ellipse([1, 1, size-2, size-2], fill=GREEN)
+    # Small crescent
+    cs = int(size * 0.1)
+    draw_crescent_star(draw, size//2, int(size*0.25), cs, GOLD, GREEN)
+    # Y
+    draw_y_letter(draw, size//2, int(size*0.58), int(size*0.22), WHITE, max(2, int(size*0.06)))
+    return img
+
+
+def create_splash(width=1080, height=1920, bg=NAVY):
+    """Splash screen with centered logo and slogan."""
+    img = Image.new("RGBA", (width, height), bg)
+    draw = ImageDraw.Draw(img)
+    # Center logo
+    logo_size = 280
+    logo = create_master_logo(logo_size)
+    x = (width - logo_size) // 2
+    y = (height - logo_size) // 2 - 100
+    img.paste(logo, (x, y), logo)
+    # Slogan
+    try:
+        font = ImageFont.truetype("arialbd.ttf", 36)
+        font_sm = ImageFont.truetype("arial.ttf", 24)
+    except (OSError, IOError):
+        font = ImageFont.load_default()
+        font_sm = font
+    slogan = "Fast. Safe. Local."
+    bbox = draw.textbbox((0, 0), slogan, font=font)
+    tw = bbox[2] - bbox[0]
+    draw.text(((width-tw)//2, y + logo_size + 60), slogan, fill=WHITE, font=font)
+    # Arabic tagline
+    tagline = "Ride Anywhere"
+    bbox2 = draw.textbbox((0, 0), tagline, font=font_sm)
+    tw2 = bbox2[2] - bbox2[0]
+    draw.text(((width-tw2)//2, y + logo_size + 110), tagline, fill=GOLD, font=font_sm)
+    return img
+
+
+# ─── Generate everything ──────────────────────────────────────────────────────
+print("🎨 Generating Yala branding package...")
+print()
 
 # Master logo
 master = create_master_logo(512)
-master.save(os.path.join(OUTPUT_DIR, "yala-logo.png"))
-print("  ✓ yala-logo.png (512x512)")
+master.save(f"{OUTPUT}/yala-logo.png")
+print("  ✓ yala-logo.png (512x512 master)")
 
-# Logo 192 (PWA)
-logo192 = master.resize((192, 192), Image.LANCZOS)
-logo192.save(os.path.join(OUTPUT_DIR, "logo192.png"))
-print("  ✓ logo192.png (192x192)")
-
-# Logo 512 (PWA)
-master.save(os.path.join(OUTPUT_DIR, "logo512.png"))
-print("  ✓ logo512.png (512x512)")
+# PWA icons
+master.resize((192, 192), Image.LANCZOS).save(f"{OUTPUT}/logo192.png")
+print("  ✓ logo192.png (192x192 PWA)")
+master.save(f"{OUTPUT}/logo512.png")
+print("  ✓ logo512.png (512x512 PWA)")
 
 # Favicon
-favicon = master.resize((32, 32), Image.LANCZOS)
-favicon.save(os.path.join(OUTPUT_DIR, "favicon.ico"), format="ICO", sizes=[(32, 32)])
+master.resize((32, 32), Image.LANCZOS).save(f"{OUTPUT}/favicon.ico", format="ICO", sizes=[(32, 32)])
 print("  ✓ favicon.ico (32x32)")
 
-# Yala Rider (Green background, gold accent)
-rider = create_variant_logo(512, GREEN_RGB, GOLD_RGB, WHITE_RGB, "RIDER")
-rider.save(os.path.join(OUTPUT_DIR, "yala-rider-logo.png"))
-print("  ✓ yala-rider-logo.png (Green)")
+# Variant logos
+rider = create_rider_logo(512)
+rider.save(f"{OUTPUT}/yala-rider-logo.png")
+print("  ✓ yala-rider-logo.png (green, rider)")
 
-# Yala Driver (Gold background, green accent)
-driver = create_variant_logo(512, GOLD_RGB, GREEN_RGB, NAVY_RGB, "DRIVER")
-driver.save(os.path.join(OUTPUT_DIR, "yala-driver-logo.png"))
-print("  ✓ yala-driver-logo.png (Gold)")
+driver = create_driver_logo(512)
+driver.save(f"{OUTPUT}/yala-driver-logo.png")
+print("  ✓ yala-driver-logo.png (gold, driver)")
 
-# Yala Admin (Navy background, gold accent)
-admin = create_variant_logo(512, NAVY_RGB, GOLD_RGB, WHITE_RGB, "ADMIN")
-admin.save(os.path.join(OUTPUT_DIR, "yala-admin-logo.png"))
-print("  ✓ yala-admin-logo.png (Navy)")
+admin = create_admin_logo(512)
+admin.save(f"{OUTPUT}/yala-admin-logo.png")
+print("  ✓ yala-admin-logo.png (navy, admin)")
 
-print("\nAll logos generated in frontend/public/")
+# Navbar logo (small)
+nav = create_navbar_logo(96)
+nav.save(f"{OUTPUT}/yala-nav-logo.png")
+print("  ✓ yala-nav-logo.png (96x96 navbar)")
+
+# Splash screens
+splash = create_splash(1080, 1920, NAVY)
+splash.save(f"{OUTPUT}/splash-screen.png")
+print("  ✓ splash-screen.png (1080x1920)")
+
+print()
+print("✅ All branding assets generated!")
+print("   Colors: Green #00A651 | Gold #D4AF37 | Navy #08111F")
+print("   Slogan: Yala — Fast. Safe. Local.")

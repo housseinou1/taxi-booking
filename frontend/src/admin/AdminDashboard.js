@@ -673,8 +673,8 @@ function AdminDashboard() {
             key={item.key}
             style={{
               ...menuButton,
-              background: page === item.key ? "#12b76a" : "transparent",
-              color: page === item.key ? "#062e1a" : "#d1d5db",
+              background: page === item.key ? "#00A651" : "transparent",
+              color: page === item.key ? "#08111F" : "#d1d5db",
               borderColor:
                 page === item.key ? "rgba(18, 183, 106, 0.7)" : "rgba(255, 255, 255, 0.08)",
             }}
@@ -2640,7 +2640,7 @@ const approveButton = {
   padding: "11px 18px",
   border: "none",
   borderRadius: "12px",
-  background: "#12b76a",
+  background: "#00A651",
   color: "white",
   marginRight: "10px",
   cursor: "pointer",

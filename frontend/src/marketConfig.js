@@ -2,6 +2,13 @@ export const MARKET = {
   brandName: "Yala",
   brandTagline: "Ride Anywhere",
   brandTaglineAr: "تنقل أينما كنت",
+  brandSlogan: "Fast. Safe. Local.",
+  brandColors: {
+    green: "#00A651",
+    gold: "#D4AF37",
+    navy: "#08111F",
+    white: "#FFFFFF",
+  },
   country: "Mauritania",
   defaultCity: "Nouakchott",
   currency: "MRU",
