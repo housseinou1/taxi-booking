@@ -10,7 +10,7 @@ import RideStatusButtons from "../RideStatusButtons";
 import AnalyticsDashboard from "../admin/AnalyticsDashboard";
 import { subscribeRideUpdates } from "../socket";
 
-const logoSrc = "/sakho-brand-logo.jpeg";
+const logoSrc = "/yala-logo.png";
 
 const getDriverApprovalMessage = (profile) => {
   const status = profile?.status || "pending";

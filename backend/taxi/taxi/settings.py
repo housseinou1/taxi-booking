@@ -198,18 +198,18 @@ EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
 EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", True)
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
-DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "Sakho Express <noreply@sakhoexpress.com>")
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "Yala <noreply@yala.mr>")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
 # ── Push Notifications (Web Push / VAPID) ─────────────────────────────────────
 PUSH_PRIVATE_KEY = os.getenv("PUSH_PRIVATE_KEY", "")
 PUSH_PUBLIC_KEY = os.getenv("PUSH_PUBLIC_KEY", "")
-PUSH_CLAIMS_EMAIL = os.getenv("PUSH_CLAIMS_EMAIL", "mailto:admin@sakhoexpress.com")
+PUSH_CLAIMS_EMAIL = os.getenv("PUSH_CLAIMS_EMAIL", "mailto:admin@yala.mr")
 
 # ── DRF Spectacular ───────────────────────────────────────────────────────────
 SPECTACULAR_SETTINGS = {
-    "TITLE": "Sakho Express API",
-    "DESCRIPTION": "Taxi booking platform API — riders, drivers, payments, analytics.",
+    "TITLE": "Yala API",
+    "DESCRIPTION": "Yala — Ride Anywhere. Taxi booking platform API for Mauritania.",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
 }

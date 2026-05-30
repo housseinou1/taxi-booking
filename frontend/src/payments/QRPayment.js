@@ -5,7 +5,7 @@ function QRPayment({ ride, paymentMethod }) {
   if (!ride) return null;
 
   const qrValue = JSON.stringify({
-    app: "Sakho Express",
+    app: "Yala",
     ride_id: ride.id,
     amount: ride.fare,
     currency: "MRU",

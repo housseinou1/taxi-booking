@@ -24,7 +24,7 @@ import SupportCenter from "./support/SupportCenter";
 import { API_URL } from "./apiConfig";
 import { MARKET } from "./marketConfig";
 
-const LOGO_SRC = "/sakho-brand-logo.jpeg";
+const LOGO_SRC = "/yala-logo.png";
 
 function App() {
   const currentPath = window.location.pathname;
@@ -776,7 +776,7 @@ function PhoneMockup() {
   const { t } = useTranslation();
 
   return (
-    <div className="sx-phone-wrap" aria-label="Sakho Express app previews">
+    <div className="sx-phone-wrap" aria-label="Yala app previews">
       <div className="sx-mini-phone sx-mini-driver">
         <span>{t("common.driver")}</span>
         <strong>7,278 MRU</strong>
@@ -874,7 +874,7 @@ function TestimonialsSection() {
     },
     {
       quote: "The admin dashboard gives the control needed to approve drivers and watch the market.",
-      name: "Sakho Express",
+      name: "Yala",
       role: "Operations team",
     },
   ];
@@ -2043,7 +2043,7 @@ function SettingsPage({ logout }) {
           <span className="settings-kicker">Account center</span>
           <h1>Settings</h1>
           <p>
-            Manage your Sakho Express profile, language, safety, notifications, payments,
+            Manage your Yala profile, language, safety, notifications, payments,
             privacy, and support preferences from one professional control center.
           </p>
         </div>

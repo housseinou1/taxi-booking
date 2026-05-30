@@ -1,12 +1,14 @@
 export const MARKET = {
-  brandName: "Sakho Express",
+  brandName: "Yala",
+  brandTagline: "Ride Anywhere",
+  brandTaglineAr: "تنقل أينما كنت",
   country: "Mauritania",
   defaultCity: "Nouakchott",
   currency: "MRU",
   ownerCommissionPercent: 30,
   phonePrefix: "+222",
   privateCallNumber: "+22245000001",
-  privateCallLabel: "Sakho Express private call",
+  privateCallLabel: "Yala private call",
   serviceBounds: {
     north: 27.5,
     south: 14.4,

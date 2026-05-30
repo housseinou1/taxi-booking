@@ -4,7 +4,7 @@ import { MARKET, formatMoney } from "../marketConfig";
 import AnalyticsDashboard from "./AnalyticsDashboard";
 
 const MARKET_OWNER_PERCENT = MARKET.ownerCommissionPercent;
-const logoSrc = "/sakho-brand-logo.jpeg";
+const logoSrc = "/yala-logo.png";
 
 const normalizeText = (value) => String(value || "").toLowerCase();
 
@@ -663,7 +663,7 @@ function AdminDashboard() {
         <div style={sidebarBrandStyle}>
           <img src={logoSrc} alt={`${MARKET.brandName} logo`} style={brandLogoStyle} />
           <div>
-            <h2 style={sidebarTitle}>Sakho Admin</h2>
+            <h2 style={sidebarTitle}>Yala Admin</h2>
             <p style={sidebarSubtitleStyle}>Operations console</p>
           </div>
         </div>

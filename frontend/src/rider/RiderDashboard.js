@@ -46,7 +46,7 @@ const rideSeats = {
   share: "Shared",
 };
 
-const logoSrc = "/sakho-brand-logo.jpeg";
+const logoSrc = "/yala-logo.png";
 
 const getStatusLabel = (status) => {
   if (!status) return "Ready";

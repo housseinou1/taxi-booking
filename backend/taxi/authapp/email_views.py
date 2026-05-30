@@ -27,7 +27,7 @@ def _send_verification_email(user, request=None):
     link = f"{FRONTEND_URL}/verify-email?uid={uid}&token={token}"
 
     send_mail(
-        subject="Sakho Express — Verify your email",
+        subject="Yala — Verify your email",
         message=f"Hi {user.first_name},\n\nClick this link to verify your email:\n{link}\n\nIf you didn't create this account, ignore this email.",
         from_email=settings.DEFAULT_FROM_EMAIL,
         recipient_list=[user.email],
@@ -104,7 +104,7 @@ def request_password_reset(request):
     link = f"{FRONTEND_URL}/reset-password?uid={uid}&token={token}"
 
     send_mail(
-        subject="Sakho Express — Reset your password",
+        subject="Yala — Reset your password",
         message=f"Hi {user.first_name},\n\nClick this link to reset your password:\n{link}\n\nIf you didn't request this, ignore this email.",
         from_email=settings.DEFAULT_FROM_EMAIL,
         recipient_list=[user.email],

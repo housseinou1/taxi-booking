@@ -33,7 +33,7 @@ const faqs = [
   {
     question: "Can I call emergency services from the app?",
     answer:
-      "Yes. Emergency numbers are available below. For immediate danger, call the correct emergency number first, then report the trip to Sakho Express support.",
+      "Yes. Emergency numbers are available below. For immediate danger, call the correct emergency number first, then report the trip to Yala support.",
   },
 ];
 
@@ -88,7 +88,7 @@ function SupportCenter() {
       ])
     );
 
-    setSubmitted(`Support case ${caseNumber} created. Sakho Express support can review it from this device.`);
+    setSubmitted(`Support case ${caseNumber} created. Yala support can review it from this device.`);
     setForm({
       name: "",
       email: "",
@@ -107,7 +107,7 @@ function SupportCenter() {
 
       <section className="sx-support-hero">
         <div>
-          <span>Sakho Express Help Center</span>
+          <span>Yala Help Center</span>
           <h1>Support for riders, drivers, payments, and safety.</h1>
           <p>
             Get help with rides, lost items, payment issues, account access, driver
@@ -268,7 +268,7 @@ function SupportCenter() {
           <h2>Call local emergency services first.</h2>
           <p>
             If anyone is in immediate danger, call police, ambulance, or fire support.
-            After the situation is safe, report the trip details to Sakho Express.
+            After the situation is safe, report the trip details to Yala.
           </p>
         </div>
 
@@ -316,7 +316,7 @@ function getTopicCopy(topic) {
 
   return {
     eyebrow: "Contact support",
-    title: "Contact Sakho Express support",
+    title: "Contact Yala support",
     description: "For account access, blocked accounts, driver approval, documents, or general help.",
     placeholder: "Tell us what you need help with and include any account or ride details.",
   };

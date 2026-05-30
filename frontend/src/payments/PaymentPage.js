@@ -56,11 +56,11 @@ function PaymentPage({ ride }) {
   const baseFare = Math.min(fare || 0, 60);
   const timeFare = Math.round(Math.max(0, tripMinutes) * 1.5);
   const taxes = Math.round(fare * TAX_RATE);
-  const sakhoFee = Math.round(Number(payment?.app_fee ?? ride?.app_fee ?? fare * 0.3));
+  const platformFee = Math.round(Number(payment?.app_fee ?? ride?.app_fee ?? fare * 0.3));
   const distanceFare = Math.max(0, Math.round(fare - baseFare - timeFare));
   const tipAmount = Math.round((fare * Number(tipPercentage || 0)) / 100);
   const totalAmount = fare + tipAmount;
-  const driverEarning = Number(payment?.driver_earning ?? ride?.driver_earning ?? fare - sakhoFee + tipAmount);
+  const driverEarning = Number(payment?.driver_earning ?? ride?.driver_earning ?? fare - platformFee + tipAmount);
   const rideStatus = ride?.status || "";
   const paymentStatus = payment?.status || ride?.payment_status || "";
   const isCancelled = rideStatus === "cancelled" || paymentStatus === "cancelled";
@@ -184,7 +184,7 @@ function PaymentPage({ ride }) {
 
       <section className="sx-payment-hero">
         <div>
-          <span className="sx-payment-eyebrow">Sakho Express Pay</span>
+          <span className="sx-payment-eyebrow">Yala Pay</span>
           <h1>Choose how you want to pay.</h1>
           <p>
             Your fare is protected. Card payments complete instantly, while cash and wallet
@@ -285,7 +285,7 @@ function PaymentPage({ ride }) {
             <SummaryRow label={`Distance (${distanceKm.toFixed(1)} km)`} value={formatMoney(distanceFare)} />
             <SummaryRow label={`Time (${tripMinutes} min)`} value={formatMoney(timeFare)} />
             <SummaryRow label="Taxes" value={formatMoney(taxes)} />
-            <SummaryRow label="Sakho fee" value={formatMoney(sakhoFee)} />
+            <SummaryRow label="Yala fee" value={formatMoney(platformFee)} />
             <SummaryRow label={`Tip (${tipPercentage}%)`} value={formatMoney(tipAmount)} />
             <SummaryRow label="Platform protection" value="Included" />
             <div className="sx-grand-total">
@@ -297,7 +297,7 @@ function PaymentPage({ ride }) {
           <div className="sx-driver-earnings-card">
             <span>Driver earnings</span>
             <strong>{formatMoney(driverEarning)}</strong>
-            <small>Fare minus Sakho fee plus rider tip</small>
+            <small>Fare minus Yala fee plus rider tip</small>
           </div>
         </section>
 
@@ -355,7 +355,7 @@ function PaymentPage({ ride }) {
             distanceFare,
             timeFare,
             taxes,
-            sakhoFee,
+            platformFee,
             driverEarning,
             distanceKm,
             tripMinutes,
@@ -388,7 +388,7 @@ function PaymentPage({ ride }) {
       {ratingSubmitted && (
         <section className="sx-payment-alert is-success">
           <strong>Rating submitted</strong>
-          <span>Thank you. Your feedback helps keep Sakho Express professional.</span>
+          <span>Thank you. Your feedback helps keep Yala professional.</span>
         </section>
       )}
     </main>
@@ -425,7 +425,7 @@ function ReceiptCard({ payment, ride, fare, tipAmount, total, breakdown }) {
       <div className="sx-payment-panel-head">
         <div>
           <span>Receipt</span>
-          <h2>{payment ? "Sakho Express receipt" : "Receipt preview"}</h2>
+          <h2>{payment ? "Yala receipt" : "Receipt preview"}</h2>
         </div>
         <b>{payment?.status || "ready"}</b>
       </div>
@@ -441,7 +441,7 @@ function ReceiptCard({ payment, ride, fare, tipAmount, total, breakdown }) {
         value={formatMoney(breakdown.timeFare)}
       />
       <SummaryRow label="Taxes" value={formatMoney(breakdown.taxes)} />
-      <SummaryRow label="Sakho fee" value={formatMoney(payment?.app_fee ?? breakdown.sakhoFee)} />
+      <SummaryRow label="Yala fee" value={formatMoney(payment?.app_fee ?? breakdown.platformFee)} />
       <SummaryRow label="Fare" value={formatMoney(payment?.amount ?? fare)} />
       <SummaryRow label="Tip" value={formatMoney(payment?.tip_amount ?? tipAmount)} />
       <SummaryRow

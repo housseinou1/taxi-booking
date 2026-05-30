@@ -20,7 +20,7 @@ def send_push_notification(user, title, body, data=None):
         return 0
 
     vapid_private_key = getattr(settings, "PUSH_PRIVATE_KEY", "")
-    vapid_claims_email = getattr(settings, "PUSH_CLAIMS_EMAIL", "mailto:admin@sakhoexpress.com")
+    vapid_claims_email = getattr(settings, "PUSH_CLAIMS_EMAIL", "mailto:admin@yala.mr")
 
     if not vapid_private_key:
         logger.debug("PUSH_PRIVATE_KEY not configured, skipping push")
