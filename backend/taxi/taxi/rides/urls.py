@@ -6,6 +6,7 @@ from .views import (
     ride_history,
     driver_rides,
     accept_ride,
+    arrived_ride,
     start_ride,
     complete_ride,
     cancel_ride,
@@ -22,6 +23,7 @@ urlpatterns = [
     path("driver-rides/", driver_rides),
 
     path("accept/<int:ride_id>/", accept_ride),
+    path("arrived/<int:ride_id>/", arrived_ride),
     path("start/<int:ride_id>/", start_ride),
     path("complete/<int:ride_id>/", complete_ride),
     path("cancel/<int:ride_id>/", cancel_ride),

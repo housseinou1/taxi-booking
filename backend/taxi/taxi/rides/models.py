@@ -8,6 +8,7 @@ class Ride(models.Model):
     STATUS_CHOICES = [
         ("requested", "Requested"),
         ("driver_arriving", "Driver Arriving"),
+        ("driver_arrived", "Driver Arrived"),
         ("in_progress", "In Progress"),
         ("completed", "Completed"),
         ("cancelled", "Cancelled"),

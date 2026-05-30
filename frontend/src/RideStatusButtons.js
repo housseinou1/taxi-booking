@@ -83,15 +83,26 @@ function RideStatusButtons({ ride, onStatusChange }) {
             onChoose={markNavigationStarted}
           />
           <SlideRideAction
-            label={navigationStarted ? "Slide to start ride" : "Opening map..."}
-            completeLabel="Starting ride..."
-            color="#f97316"
+            label={navigationStarted ? "Slide: I've arrived" : "Opening map..."}
+            completeLabel="Marking arrived..."
+            color="#D4AF37"
             disabled={Boolean(workingAction) || !navigationStarted}
-            isWorking={workingAction === "start"}
-            onComplete={() => updateRideStatus("start")}
-            onDisabledAttempt={() => alert("Choose Google Maps or Waze before starting the ride.")}
+            isWorking={workingAction === "arrived"}
+            onComplete={() => updateRideStatus("arrived")}
+            onDisabledAttempt={() => alert("Choose Google Maps or Waze before marking arrived.")}
           />
         </>
+      )}
+
+      {ride.status === "driver_arrived" && (
+        <SlideRideAction
+          label="Slide to start ride"
+          completeLabel="Starting ride..."
+          color="#f97316"
+          disabled={Boolean(workingAction)}
+          isWorking={workingAction === "start"}
+          onComplete={() => updateRideStatus("start")}
+        />
       )}
 
       {ride.status === "in_progress" && (

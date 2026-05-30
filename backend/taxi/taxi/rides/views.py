@@ -43,8 +43,8 @@ def broadcast_ride_update(ride):
         pass  # Don't break the request if channel layer is unavailable
 
 
-OPEN_RIDE_STATUSES = ["requested", "driver_arriving", "in_progress"]
-DRIVER_ACTIVE_STATUSES = ["driver_arriving", "in_progress"]
+OPEN_RIDE_STATUSES = ["requested", "driver_arriving", "driver_arrived", "in_progress"]
+DRIVER_ACTIVE_STATUSES = ["driver_arriving", "driver_arrived", "in_progress"]
 
 
 def calculate_money(ride):
@@ -227,12 +227,41 @@ def accept_ride(request, ride_id):
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
+def arrived_ride(request, ride_id):
+    ride = get_object_or_404(
+        Ride,
+        id=ride_id,
+        driver=request.user,
+    )
+
+    if ride.status != "driver_arriving":
+        return Response(
+            {"detail": "Ride can only be marked arrived when driver is arriving."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    ride.status = "driver_arrived"
+    ride.save()
+    broadcast_ride_update(ride)
+
+    serializer = RideSerializer(ride, context={"request": request})
+    return Response(serializer.data)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
 def start_ride(request, ride_id):
     ride = get_object_or_404(
         Ride,
         id=ride_id,
         driver=request.user,
     )
+
+    if ride.status not in ("driver_arriving", "driver_arrived"):
+        return Response(
+            {"detail": "Ride can only be started after driver arrives."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     ride.status = "in_progress"
     ride.save()
