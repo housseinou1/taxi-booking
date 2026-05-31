@@ -4,7 +4,7 @@ from django.utils import timezone
 
 from taxi.market import MARKET
 
-from .models import Ride
+from .models import Ride, RideStop
 
 
 def years_using_app(user):
@@ -51,6 +51,9 @@ class RideSerializer(serializers.ModelSerializer):
     payment_tip_amount = serializers.SerializerMethodField()
     private_call_number = serializers.SerializerMethodField()
     call_privacy_note = serializers.SerializerMethodField()
+    stops = serializers.SerializerMethodField()
+    has_stops = serializers.SerializerMethodField()
+    stop_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Ride
@@ -204,3 +207,58 @@ class RideSerializer(serializers.ModelSerializer):
 
     def get_call_privacy_note(self, obj):
         return "Calls use the Sakho Express private number. Real rider and driver numbers are hidden."
+
+    def get_stops(self, obj):
+        return [
+            {
+                "id": stop.id,
+                "ride": stop.ride_id,
+                "stop_order": stop.stop_order,
+                "location_name": stop.location_name,
+                "latitude": stop.latitude,
+                "longitude": stop.longitude,
+                "arrived_at": stop.arrived_at,
+                "departed_at": stop.departed_at,
+            }
+            for stop in obj.stops.order_by("stop_order")
+        ]
+
+    def get_has_stops(self, obj):
+        return obj.stops.exists()
+
+    def get_stop_count(self, obj):
+        return obj.stops.count()
+
+
+class RideStopSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RideStop
+        fields = [
+            "id",
+            "ride",
+            "stop_order",
+            "location_name",
+            "latitude",
+            "longitude",
+            "arrived_at",
+            "departed_at",
+        ]
+        read_only_fields = ["id", "arrived_at", "departed_at"]
+
+
+class RideWithStopsSerializer(RideSerializer):
+    """Extended ride serializer that includes multi-stop data."""
+
+    stops = RideStopSerializer(many=True, read_only=True)
+    has_stops = serializers.SerializerMethodField()
+    stop_count = serializers.SerializerMethodField()
+
+    class Meta(RideSerializer.Meta):
+        model = Ride
+        fields = "__all__"
+
+    def get_has_stops(self, obj):
+        return obj.stops.exists()
+
+    def get_stop_count(self, obj):
+        return obj.stops.count()

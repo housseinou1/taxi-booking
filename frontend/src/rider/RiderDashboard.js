@@ -16,10 +16,11 @@ import {
   isPointInServiceArea,
 } from "../marketConfig";
 
-const fetchDrivingRoute = async (start, end) => {
-  if (!start || !end) return null;
+const fetchDrivingRoute = async (points) => {
+  if (!Array.isArray(points) || points.length < 2 || points.some((point) => !point)) return null;
 
-  const url = `https://router.project-osrm.org/route/v1/driving/${start[1]},${start[0]};${end[1]},${end[0]}?overview=full&geometries=geojson`;
+  const coordinates = points.map((point) => `${point[1]},${point[0]}`).join(";");
+  const url = `https://router.project-osrm.org/route/v1/driving/${coordinates}?overview=full&geometries=geojson`;
   const response = await fetch(url);
   const data = await response.json();
   const route = data.routes?.[0];
@@ -47,7 +48,10 @@ const rideSeats = {
   share: "Shared",
 };
 
-const logoSrc = "/yala-logo.png";
+const logoSrc = "/yala-rider-logo.png";
+const RIDER_PURPLE = "#6D28D9";
+const RIDER_PURPLE_SOFT = "rgba(109, 40, 217, 0.14)";
+const RIDER_PURPLE_BORDER = "rgba(109, 40, 217, 0.35)";
 
 const getStatusLabel = (status) => {
   if (!status) return "Ready";
@@ -120,6 +124,8 @@ export default function RiderDashboard() {
   const [city, setCity] = useState(MARKET.defaultCity);
   const [pickup, setPickup] = useState(MARKET.defaultPickup.label);
   const [destination, setDestination] = useState(MARKET.defaultDestination.label);
+  const [addStop, setAddStop] = useState(false);
+  const [extraStop, setExtraStop] = useState("");
   const [distance, setDistance] = useState(
     calculateDistanceKm(
       MARKET.defaultPickup.position,
@@ -165,10 +171,16 @@ export default function RiderDashboard() {
   const cityLocations = getLocationsByCity(city);
   const selectedCity = MARKET.cities.find((item) => item.label === city);
   const pickupLocation = getLocationByLabel(pickup, city);
+  const extraStopLocation = addStop ? getLocationByLabel(extraStop, city) : null;
   const destinationLocation = getLocationByLabel(destination, city);
   const pickupPosition = pickupLocation?.position || MARKET.defaultPickup.position;
+  const extraStopPosition = extraStopLocation?.position || null;
   const destinationPosition =
     destinationLocation?.position || MARKET.defaultDestination.position;
+  const routePoints = useMemo(
+    () => [pickupPosition, extraStopPosition, destinationPosition].filter(Boolean),
+    [pickupPosition, extraStopPosition, destinationPosition]
+  );
   const activeStatus = getStatusLabel(currentRide?.status);
   const shouldTrackDriver = liveDriverStatuses.has(currentRide?.status);
   const statusStepIndex = getStatusStepIndex(currentRide?.status);
@@ -198,6 +210,12 @@ export default function RiderDashboard() {
           title: `Pickup: ${pickup}`,
           label: "P",
         },
+        extraStopPosition && {
+          id: "stop",
+          position: extraStopPosition,
+          title: `Stop: ${extraStop}`,
+          label: "S",
+        },
         {
           id: "destination",
           position: destinationPosition,
@@ -216,6 +234,8 @@ export default function RiderDashboard() {
     [
       destination,
       destinationPosition,
+      extraStop,
+      extraStopPosition,
       displayedDriverPosition,
       pickup,
       pickupPosition,
@@ -224,15 +244,16 @@ export default function RiderDashboard() {
   );
 
   useEffect(() => {
-    const automaticDistance = calculateDistanceKm(
-      pickupLocation?.position,
-      destinationLocation?.position
-    );
+    const firstLeg = calculateDistanceKm(pickupLocation?.position, extraStopPosition || destinationLocation?.position);
+    const secondLeg = extraStopPosition
+      ? calculateDistanceKm(extraStopPosition, destinationLocation?.position)
+      : 0;
+    const automaticDistance = firstLeg ? firstLeg + secondLeg : 0;
 
     if (automaticDistance) {
-      setDistance(automaticDistance);
+      setDistance(Number(automaticDistance.toFixed(1)));
     }
-  }, [pickupLocation, destinationLocation]);
+  }, [pickupLocation, extraStopPosition, destinationLocation]);
 
   useEffect(() => {
     const locations = getLocationsByCity(city);
@@ -240,12 +261,14 @@ export default function RiderDashboard() {
     if (locations.length >= 2) {
       setPickup(locations[0].label);
       setDestination(locations[1].label);
+      setExtraStop("");
       return;
     }
 
     if (locations.length === 1) {
       setPickup(locations[0].label);
       setDestination(locations[0].label);
+      setExtraStop("");
     }
   }, [city]);
 
@@ -255,14 +278,11 @@ export default function RiderDashboard() {
 
   useEffect(() => {
     let cancelled = false;
-    const start = [pickupPosition[0], pickupPosition[1]];
-    const end = [destinationPosition[0], destinationPosition[1]];
-
     const loadRoute = async () => {
-      const fallbackRoute = [start, end];
+      const fallbackRoute = routePoints;
 
       try {
-        const route = await fetchDrivingRoute(start, end);
+        const route = await fetchDrivingRoute(routePoints);
         if (cancelled) return;
 
         setRoutePath(route?.points || fallbackRoute);
@@ -285,7 +305,7 @@ export default function RiderDashboard() {
     return () => {
       cancelled = true;
     };
-  }, [pickupPosition, destinationPosition]);
+  }, [routePoints]);
 
   const fetchRiderIdentity = useCallback(async () => {
     try {
@@ -458,7 +478,21 @@ export default function RiderDashboard() {
         return;
       }
 
+      if (addStop && !extraStopLocation) {
+        alert("Choose a valid stop from the city list before requesting.");
+        return;
+      }
+
       setRequesting(true);
+
+      const stops = addStop && extraStopLocation
+        ? [{
+            location_name: extraStop,
+            latitude: extraStopPosition[0],
+            longitude: extraStopPosition[1],
+            stop_order: 1,
+          }]
+        : [];
 
       const response = await axios.post(
         `${API_URL}/rides/request/`,
@@ -475,6 +509,7 @@ export default function RiderDashboard() {
           distance,
           ride_type: rideType,
           fare,
+          stops,
         },
         {
           headers: {
@@ -779,8 +814,8 @@ export default function RiderDashboard() {
           <form onSubmit={saveRiderIdentity} style={accountPanelStyle}>
             {/* Yala Rider Logo */}
             <div style={{ textAlign: "center", marginBottom: 12 }}>
-              <img src={logoSrc} alt="Yala" style={{ width: 64, height: 64, borderRadius: "50%", boxShadow: "0 4px 16px rgba(0,166,81,0.25)" }} />
-              <div style={{ color: "#00A651", fontWeight: 900, fontSize: 16, marginTop: 6 }}>Yala Rider</div>
+              <img src={logoSrc} alt="Yala" style={{ width: 64, height: 64, borderRadius: "50%", boxShadow: "0 4px 16px rgba(109,40,217,0.25)" }} />
+              <div style={{ color: RIDER_PURPLE, fontWeight: 900, fontSize: 16, marginTop: 6 }}>Yala Rider</div>
               <div style={{ color: "#9ca3af", fontSize: 11, fontWeight: 700 }}>Fast. Safe. Local.</div>
             </div>
             <div>
@@ -898,8 +933,8 @@ export default function RiderDashboard() {
                 lastCancellation.tone === "error"
                   ? "rgba(248, 113, 113, 0.35)"
                   : lastCancellation.tone === "warning"
-                    ? "rgba(0, 166, 81, 0.35)"
-                    : "rgba(34, 197, 94, 0.35)",
+                    ? RIDER_PURPLE_BORDER
+                    : RIDER_PURPLE_BORDER,
             }}
           >
             <div>
@@ -966,7 +1001,7 @@ export default function RiderDashboard() {
                   Private call
                 </a>
               )}
-              <button type="button" onClick={() => setShowChat(true)} style={{ ...shareButtonStyle, background: "#00A651", color: "#fff" }}>
+              <button type="button" onClick={() => setShowChat(true)} style={{ ...shareButtonStyle, background: RIDER_PURPLE, color: "#fff" }}>
                 Chat
               </button>
               <button type="button" onClick={shareTrip} style={shareButtonStyle}>
@@ -1041,6 +1076,15 @@ export default function RiderDashboard() {
                 placeholder="Pickup"
                 style={addressInputStyle}
               />
+              {addStop && (
+                <input
+                  list="mauritania-locations"
+                  value={extraStop}
+                  onChange={(event) => setExtraStop(event.target.value)}
+                  placeholder="Add stop"
+                  style={addressInputStyle}
+                />
+              )}
               <input
                 list="mauritania-locations"
                 value={destination}
@@ -1050,6 +1094,17 @@ export default function RiderDashboard() {
               />
             </div>
           </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              setAddStop((current) => !current);
+              if (addStop) setExtraStop("");
+            }}
+            style={extraStopButtonStyle}
+          >
+            {addStop ? "Remove stop" : "+ Add another stop"}
+          </button>
 
           <datalist id="mauritania-locations">
             {cityLocations.map((location) => (
@@ -1069,8 +1124,8 @@ export default function RiderDashboard() {
                 onClick={() => setRideType(type)}
                 style={{
                   ...rideOptionStyle,
-                  borderColor: selected ? "#00A651" : "rgba(255,255,255,0.1)",
-                  background: selected ? "rgba(250,204,21,0.12)" : "rgba(255,255,255,0.04)",
+                  borderColor: selected ? RIDER_PURPLE : "rgba(255,255,255,0.1)",
+                  background: selected ? RIDER_PURPLE_SOFT : "rgba(255,255,255,0.04)",
                 }}
               >
                 <div style={rideMarkStyle}>{rideLabels[type]?.slice(0, 1) || "R"}</div>
@@ -1111,7 +1166,9 @@ export default function RiderDashboard() {
           <ScheduleRideButton
             pickup={pickup}
             destination={destination}
+            extraStop={addStop ? extraStop : ""}
             pickupPosition={pickupPosition}
+            extraStopPosition={extraStopPosition}
             destinationPosition={destinationPosition}
             distance={distance}
             rideType={rideType}
@@ -1200,7 +1257,7 @@ function RiderTrackingStyles() {
       }
 
       .sx-live-hud span {
-        color: #00A651;
+        color: #6D28D9;
         font-size: 0.72rem;
         font-weight: 950;
         text-transform: uppercase;
@@ -1269,13 +1326,13 @@ function RiderTrackingStyles() {
       .sx-status-timeline article.done,
       .sx-status-timeline article.active {
         color: #fff;
-        border-color: rgba(0, 166, 81, 0.34);
-        background: rgba(0, 166, 81, 0.1);
+        border-color: rgba(109, 40, 217, 0.34);
+        background: rgba(109, 40, 217, 0.1);
       }
 
       .sx-status-timeline article.done > span,
       .sx-status-timeline article.active > span {
-        background: #00A651;
+        background: #6D28D9;
         color: #111827;
       }
 
@@ -1285,7 +1342,7 @@ function RiderTrackingStyles() {
 
       .sx-driver-info-card:hover {
         transform: translateY(-1px);
-        border-color: rgba(0, 166, 81, 0.38) !important;
+        border-color: rgba(109, 40, 217, 0.38) !important;
       }
 
       @media (max-width: 720px) {
@@ -1324,7 +1381,19 @@ function RiderTrackingStyles() {
   );
 }
 
-function ScheduleRideButton({ pickup, destination, pickupPosition, destinationPosition, distance, rideType, fare, token, hasProfile }) {
+function ScheduleRideButton({
+  pickup,
+  destination,
+  extraStop,
+  pickupPosition,
+  extraStopPosition,
+  destinationPosition,
+  distance,
+  rideType,
+  fare,
+  token,
+  hasProfile,
+}) {
   const [showPicker, setShowPicker] = useState(false);
   const [dateTime, setDateTime] = useState("");
   const [scheduling, setScheduling] = useState(false);
@@ -1341,6 +1410,12 @@ function ScheduleRideButton({ pickup, destination, pickupPosition, destinationPo
         destination_lat: destinationPosition[0], destination_lng: destinationPosition[1],
         distance_km: distance, ride_type: rideType, fare,
         scheduled_at: new Date(dateTime).toISOString(),
+        stops: extraStop && extraStopPosition ? [{
+          location_name: extraStop,
+          latitude: extraStopPosition[0],
+          longitude: extraStopPosition[1],
+          stop_order: 1,
+        }] : [],
       }, { headers: { Authorization: `Bearer ${token}` } });
       setMessage(`Ride scheduled for ${new Date(dateTime).toLocaleString()}`);
       setShowPicker(false); setDateTime("");
@@ -1353,7 +1428,7 @@ function ScheduleRideButton({ pickup, destination, pickupPosition, destinationPo
     <div style={{ marginTop: 10 }}>
       <button type="button" onClick={() => setShowPicker(!showPicker)} style={{
         width: "100%", minHeight: 44, border: "1px solid rgba(255,255,255,0.12)",
-        borderRadius: 999, background: "rgba(255,255,255,0.06)", color: "#D4AF37",
+        borderRadius: 999, background: "rgba(255,255,255,0.06)", color: RIDER_PURPLE,
         fontWeight: 800, fontSize: 14, cursor: "pointer",
       }}>
         🕐 Schedule for later
@@ -1369,12 +1444,12 @@ function ScheduleRideButton({ pickup, destination, pickupPosition, destinationPo
           />
           <button onClick={scheduleRide} disabled={scheduling} style={{
             width: "100%", marginTop: 10, minHeight: 44, border: 0, borderRadius: 999,
-            background: "#D4AF37", color: "#08111F", fontWeight: 800, fontSize: 14, cursor: "pointer",
+            background: RIDER_PURPLE, color: "#ffffff", fontWeight: 800, fontSize: 14, cursor: "pointer",
             opacity: scheduling ? 0.6 : 1,
           }}>
             {scheduling ? "Scheduling..." : "Confirm schedule"}
           </button>
-          {message && <p style={{ margin: "8px 0 0", color: "#D4AF37", fontSize: 13, fontWeight: 700 }}>{message}</p>}
+          {message && <p style={{ margin: "8px 0 0", color: RIDER_PURPLE, fontSize: 13, fontWeight: 700 }}>{message}</p>}
         </div>
       )}
     </div>
@@ -1466,7 +1541,7 @@ const locationLogoStyle = {
   height: "48px",
   borderRadius: "50%",
   objectFit: "cover",
-  boxShadow: "0 4px 12px rgba(0,166,81,0.3)",
+  boxShadow: "0 4px 12px rgba(109,40,217,0.3)",
 };
 
 const floatingSummaryStyle = {
@@ -1569,7 +1644,7 @@ const secondaryActionStyle = {
   minHeight: "44px",
   border: "none",
   borderRadius: "8px",
-  background: "#00A651",
+  background: RIDER_PURPLE,
   color: "#111827",
   fontWeight: 900,
   cursor: "pointer",
@@ -1632,8 +1707,8 @@ const rideStatusActionStyle = {
 
 const statusPillStyle = {
   borderRadius: "999px",
-  background: "rgba(34, 197, 94, 0.15)",
-  color: "#86efac",
+  background: RIDER_PURPLE_SOFT,
+  color: "#ddd6fe",
   padding: "8px 11px",
   fontWeight: 900,
   textTransform: "capitalize",
@@ -1656,7 +1731,7 @@ const refundStatusStyle = {
   justifyContent: "space-between",
   gap: "12px",
   padding: "13px",
-  border: "1px solid rgba(34, 197, 94, 0.35)",
+  border: `1px solid ${RIDER_PURPLE_BORDER}`,
   borderRadius: "16px",
   background: "rgba(255,255,255,0.06)",
   marginBottom: "12px",
@@ -1664,8 +1739,8 @@ const refundStatusStyle = {
 
 const refundFeePillStyle = {
   borderRadius: "999px",
-  background: "rgba(0, 166, 81, 0.14)",
-  color: "#fde68a",
+  background: RIDER_PURPLE_SOFT,
+  color: "#ddd6fe",
   padding: "8px 11px",
   fontWeight: 950,
   whiteSpace: "nowrap",
@@ -1730,7 +1805,7 @@ const callButtonStyle = {
   minHeight: "36px",
   borderRadius: "999px",
   padding: "0 12px",
-  background: "#00A651",
+  background: RIDER_PURPLE,
   color: "#111827",
   fontWeight: 900,
   textDecoration: "none",
@@ -1800,6 +1875,17 @@ const routeLineStyle = {
 const addressInputsStyle = {
   display: "grid",
   gap: "8px",
+};
+
+const extraStopButtonStyle = {
+  width: "100%",
+  minHeight: "42px",
+  border: `1px solid ${RIDER_PURPLE_BORDER}`,
+  borderRadius: "999px",
+  background: RIDER_PURPLE_SOFT,
+  color: "#ddd6fe",
+  fontWeight: 900,
+  cursor: "pointer",
 };
 
 const addressInputStyle = {
@@ -1877,7 +1963,7 @@ const primaryActionStyle = {
   marginTop: "14px",
   border: "none",
   borderRadius: "999px",
-  background: "#00A651",
+  background: RIDER_PURPLE,
   color: "#111827",
   fontWeight: 950,
   fontSize: "1.05rem",

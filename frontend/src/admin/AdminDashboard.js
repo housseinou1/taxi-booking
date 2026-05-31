@@ -4,7 +4,13 @@ import { MARKET, formatMoney } from "../marketConfig";
 import AnalyticsDashboard from "./AnalyticsDashboard";
 
 const MARKET_OWNER_PERCENT = MARKET.ownerCommissionPercent;
-const logoSrc = "/yala-logo.png";
+const logoSrc = "/yala-admin-logo.png";
+const ADMIN_BLUE = "#1D4ED8";
+const ADMIN_BLUE_DARK = "#061A46";
+const ADMIN_BLUE_PANEL = "rgba(11, 42, 102, 0.9)";
+const ADMIN_BLUE_PANEL_DARK = "rgba(7, 31, 78, 0.88)";
+const ADMIN_BLUE_SOFT = "rgba(29, 78, 216, 0.16)";
+const ADMIN_BLUE_BORDER = "rgba(96, 165, 250, 0.38)";
 
 const normalizeText = (value) => String(value || "").toLowerCase();
 
@@ -670,7 +676,7 @@ function AdminDashboard() {
 
         {/* Admin user info */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 0", marginBottom: 12, borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-          <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#00A651", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 900, fontSize: 14, flexShrink: 0 }}>
+          <div style={{ width: 40, height: 40, borderRadius: "50%", background: ADMIN_BLUE, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 900, fontSize: 14, flexShrink: 0 }}>
             {(() => { try { const u = JSON.parse(localStorage.getItem("user") || "{}"); return (u.first_name || "A")[0].toUpperCase(); } catch(e) { return "A"; } })()}
           </div>
           <div style={{ minWidth: 0 }}>
@@ -688,10 +694,10 @@ function AdminDashboard() {
             key={item.key}
             style={{
               ...menuButton,
-              background: page === item.key ? "#00A651" : "transparent",
-              color: page === item.key ? "#08111F" : "#d1d5db",
+              background: page === item.key ? ADMIN_BLUE : "transparent",
+              color: page === item.key ? "#ffffff" : "#d1d5db",
               borderColor:
-                page === item.key ? "rgba(18, 183, 106, 0.7)" : "rgba(255, 255, 255, 0.08)",
+                page === item.key ? ADMIN_BLUE_BORDER : "rgba(255, 255, 255, 0.08)",
             }}
             onClick={() => setPage(item.key)}
           >
@@ -1455,8 +1461,8 @@ function RideAnalyticsPanel({
   cancellationRate,
 }) {
   const rows = [
-    { label: "Completed", value: completed, tone: "#16a34a" },
-    { label: "Active", value: active, tone: "#2563eb" },
+    { label: "Completed", value: completed, tone: "#38bdf8" },
+    { label: "Active", value: active, tone: ADMIN_BLUE },
     { label: "Waiting", value: pending, tone: "#f59e0b" },
     { label: "Cancelled", value: cancelled, tone: "#ef4444" },
   ];
@@ -1507,8 +1513,8 @@ function RevenueAnalyticsPanel({
   const maxValue = Math.max(totalRevenue, platformCommission, driverPayouts, averageFare, 1);
   const rows = [
     { label: "Total revenue", value: totalRevenue, tone: "#f59e0b" },
-    { label: "Owner commission", value: platformCommission, tone: "#16a34a" },
-    { label: "Driver earnings", value: driverPayouts, tone: "#2563eb" },
+    { label: "Owner commission", value: platformCommission, tone: "#38bdf8" },
+    { label: "Driver earnings", value: driverPayouts, tone: ADMIN_BLUE },
     { label: "Average fare", value: averageFare, tone: "#a855f7" },
   ];
 
@@ -1748,16 +1754,16 @@ function ReportsSection({
 function reportToneStyle(tone) {
   if (tone === "red") return { background: "#ef4444" };
   if (tone === "amber") return { background: "#f59e0b" };
-  if (tone === "gold") return { background: "#facc15" };
-  if (tone === "green") return { background: "#16a34a" };
-  return { background: "#2563eb" };
+  if (tone === "gold") return { background: "#38bdf8" };
+  if (tone === "green") return { background: ADMIN_BLUE };
+  return { background: ADMIN_BLUE };
 }
 
 function severityToneStyle(severity) {
   if (severity === "high") return { background: "#ef4444" };
   if (severity === "medium") return { background: "#f59e0b" };
-  if (severity === "low") return { background: "#16a34a" };
-  return { background: "#2563eb" };
+  if (severity === "low") return { background: "#38bdf8" };
+  return { background: ADMIN_BLUE };
 }
 
 function UserAccessCard({
@@ -2113,9 +2119,9 @@ const premiumMetricStyle = {
 
 const premiumMetricToneStyles = {
   green: {
-    background: "linear-gradient(135deg, rgba(22, 163, 74, 0.22), rgba(22, 163, 74, 0.06))",
-    borderColor: "rgba(34, 197, 94, 0.34)",
-    color: "#dcfce7",
+    background: "linear-gradient(135deg, rgba(29, 78, 216, 0.24), rgba(29, 78, 216, 0.07))",
+    borderColor: ADMIN_BLUE_BORDER,
+    color: "#dbeafe",
   },
   amber: {
     background: "linear-gradient(135deg, rgba(245, 158, 11, 0.22), rgba(245, 158, 11, 0.06))",
@@ -2124,13 +2130,13 @@ const premiumMetricToneStyles = {
   },
   blue: {
     background: "linear-gradient(135deg, rgba(37, 99, 235, 0.22), rgba(37, 99, 235, 0.06))",
-    borderColor: "rgba(96, 165, 250, 0.34)",
+    borderColor: ADMIN_BLUE_BORDER,
     color: "#dbeafe",
   },
   gold: {
-    background: "linear-gradient(135deg, rgba(250, 204, 21, 0.22), rgba(250, 204, 21, 0.06))",
-    borderColor: "rgba(250, 204, 21, 0.34)",
-    color: "#fef9c3",
+    background: "linear-gradient(135deg, rgba(56, 189, 248, 0.24), rgba(29, 78, 216, 0.07))",
+    borderColor: "rgba(56, 189, 248, 0.38)",
+    color: "#e0f2fe",
   },
   red: {
     background: "linear-gradient(135deg, rgba(239, 68, 68, 0.22), rgba(239, 68, 68, 0.06))",
@@ -2147,8 +2153,8 @@ const overviewPanelsStyle = {
 };
 
 const analyticsPanelStyle = {
-  background: "#0b0f14",
-  border: "1px solid #1f2937",
+  background: ADMIN_BLUE_PANEL_DARK,
+  border: `1px solid ${ADMIN_BLUE_BORDER}`,
   borderRadius: "8px",
   padding: "18px",
 };
@@ -2184,7 +2190,7 @@ const analyticsBarRowStyle = {
 const analyticsBarTrackStyle = {
   height: "10px",
   borderRadius: "999px",
-  background: "#1f2937",
+  background: "rgba(191, 219, 254, 0.16)",
   overflow: "hidden",
 };
 
@@ -2220,8 +2226,8 @@ const revenueBarItemStyle = {
 const revenueBarColumnStyle = {
   height: "142px",
   borderRadius: "8px",
-  background: "#111827",
-  border: "1px solid #1f2937",
+  background: ADMIN_BLUE_PANEL,
+  border: `1px solid ${ADMIN_BLUE_BORDER}`,
   display: "flex",
   alignItems: "end",
   justifyContent: "center",
@@ -2249,8 +2255,8 @@ const liveRideGridStyle = {
 };
 
 const liveRideCardStyle = {
-  background: "#0b0f14",
-  border: "1px solid #1f2937",
+  background: ADMIN_BLUE_PANEL_DARK,
+  border: `1px solid ${ADMIN_BLUE_BORDER}`,
   borderRadius: "8px",
   padding: "16px",
 };
@@ -2272,10 +2278,10 @@ const liveRideTitleStyle = {
 const emptyStateStyle = {
   display: "grid",
   gap: "5px",
-  border: "1px dashed #334155",
+  border: `1px dashed ${ADMIN_BLUE_BORDER}`,
   borderRadius: "8px",
   padding: "18px",
-  background: "#0b0f14",
+  background: ADMIN_BLUE_PANEL_DARK,
   color: "#d1d5db",
 };
 
@@ -2314,8 +2320,8 @@ const emergencyItemStyle = {
   gridTemplateColumns: "14px minmax(0, 1fr) auto",
   gap: "12px",
   alignItems: "center",
-  background: "#0b0f14",
-  border: "1px solid #1f2937",
+  background: ADMIN_BLUE_PANEL_DARK,
+  border: `1px solid ${ADMIN_BLUE_BORDER}`,
   borderRadius: "8px",
   padding: "14px",
 };
@@ -2343,11 +2349,11 @@ const reportsHeroStyle = {
   justifyContent: "space-between",
   gap: "16px",
   alignItems: "flex-start",
-  border: "1px solid rgba(250, 204, 21, 0.24)",
+  border: `1px solid ${ADMIN_BLUE_BORDER}`,
   borderRadius: "14px",
   padding: "18px",
   background:
-    "radial-gradient(circle at 90% 10%, rgba(250, 204, 21, 0.16), transparent 34%), #0b0f14",
+    `radial-gradient(circle at 90% 10%, rgba(96, 165, 250, 0.26), transparent 34%), ${ADMIN_BLUE_PANEL_DARK}`,
 };
 
 const reportsHeroTitleStyle = {
@@ -2366,10 +2372,10 @@ const reportsGridStyle = {
 const reportCardStyle = {
   display: "grid",
   gap: "14px",
-  border: "1px solid #1f2937",
+  border: `1px solid ${ADMIN_BLUE_BORDER}`,
   borderRadius: "14px",
   padding: "16px",
-  background: "#0b0f14",
+  background: ADMIN_BLUE_PANEL_DARK,
   boxShadow: "0 16px 34px rgba(0, 0, 0, 0.16)",
 };
 
@@ -2402,7 +2408,11 @@ const pageStyle = {
   display: "grid",
   gridTemplateColumns: "300px minmax(0, 1fr)",
   minHeight: "100vh",
-  background: "#0b0f14",
+  backgroundImage: `linear-gradient(135deg, rgba(6, 26, 70, 0.9) 0%, rgba(11, 42, 102, 0.78) 48%, rgba(16, 47, 122, 0.88) 100%), url("${logoSrc}")`,
+  backgroundSize: "cover, min(920px, 88vw)",
+  backgroundPosition: "center, center",
+  backgroundRepeat: "no-repeat, no-repeat",
+  backgroundAttachment: "fixed, fixed",
   color: "#f8fafc",
 };
 
@@ -2410,10 +2420,10 @@ const sidebar = {
   position: "sticky",
   top: 0,
   height: "100vh",
-  background: "#000000",
+  background: `linear-gradient(180deg, ${ADMIN_BLUE_DARK} 0%, ${ADMIN_BLUE_PANEL_DARK} 100%)`,
   color: "white",
   padding: "24px",
-  borderRight: "1px solid #1f2937",
+  borderRight: `1px solid ${ADMIN_BLUE_BORDER}`,
   boxSizing: "border-box",
   overflowY: "auto",
 };
@@ -2430,7 +2440,7 @@ const brandLogoStyle = {
   height: "56px",
   borderRadius: "14px",
   objectFit: "cover",
-  boxShadow: "0 4px 16px rgba(0,166,81,0.25)",
+  boxShadow: "0 4px 16px rgba(29,78,216,0.28)",
 };
 
 const sidebarTitle = {
@@ -2476,6 +2486,7 @@ const menuCountStyle = {
 const content = {
   padding: "22px",
   minWidth: 0,
+  background: "rgba(6, 26, 70, 0.2)",
 };
 
 const topBarStyle = {
@@ -2483,8 +2494,8 @@ const topBarStyle = {
   alignItems: "center",
   justifyContent: "space-between",
   gap: "16px",
-  background: "#111827",
-  border: "1px solid #1f2937",
+  background: ADMIN_BLUE_PANEL,
+  border: `1px solid ${ADMIN_BLUE_BORDER}`,
   borderRadius: "10px",
   padding: "16px 18px",
   marginBottom: "16px",
@@ -2516,12 +2527,12 @@ const topBarActionsStyle = {
 const searchInputStyle = {
   width: "min(360px, 48vw)",
   minHeight: "44px",
-  border: "1px solid #374151",
+  border: `1px solid ${ADMIN_BLUE_BORDER}`,
   borderRadius: "8px",
   padding: "0 14px",
   color: "white",
   fontWeight: 800,
-  background: "#0b0f14",
+  background: ADMIN_BLUE_PANEL_DARK,
   outline: "none",
 };
 
@@ -2529,15 +2540,15 @@ const refreshButtonStyle = {
   minHeight: "44px",
   border: "none",
   borderRadius: "8px",
-  background: "white",
-  color: "#111827",
+  background: "#dbeafe",
+  color: ADMIN_BLUE_DARK,
   padding: "0 16px",
   cursor: "pointer",
   fontWeight: 950,
 };
 
 const opsHeroStyle = {
-  background: "#111827",
+  background: `linear-gradient(135deg, ${ADMIN_BLUE_PANEL} 0%, ${ADMIN_BLUE_PANEL_DARK} 100%)`,
   color: "white",
   borderRadius: "10px",
   padding: "24px",
@@ -2546,12 +2557,12 @@ const opsHeroStyle = {
   gap: "18px",
   alignItems: "center",
   marginBottom: "18px",
-  border: "1px solid #1f2937",
+  border: `1px solid ${ADMIN_BLUE_BORDER}`,
   boxShadow: "0 18px 36px rgba(0, 0, 0, 0.22)",
 };
 
 const opsKickerStyle = {
-  color: "#a7f3d0",
+  color: "#bfdbfe",
   fontSize: "0.78rem",
   fontWeight: 900,
   textTransform: "uppercase",
@@ -2577,30 +2588,30 @@ const opsStatsGridStyle = {
 };
 
 const card = {
-  background: "#111827",
+  background: ADMIN_BLUE_PANEL,
   padding: "24px",
   borderRadius: "10px",
-  border: "1px solid #1f2937",
+  border: `1px solid ${ADMIN_BLUE_BORDER}`,
   boxShadow: "0 18px 36px rgba(0, 0, 0, 0.2)",
 };
 
 const listCard = {
-  background: "#0b0f14",
+  background: ADMIN_BLUE_PANEL_DARK,
   padding: "16px",
   borderRadius: "8px",
   marginBottom: "14px",
-  border: "1px solid #1f2937",
+  border: `1px solid ${ADMIN_BLUE_BORDER}`,
   boxShadow: "none",
 };
 
 const verificationCard = {
   display: "flex",
   gap: "18px",
-  background: "#0b0f14",
+  background: ADMIN_BLUE_PANEL_DARK,
   padding: "18px",
   borderRadius: "8px",
   marginBottom: "16px",
-  border: "1px solid #1f2937",
+  border: `1px solid ${ADMIN_BLUE_BORDER}`,
   boxShadow: "none",
 };
 
@@ -2612,10 +2623,10 @@ const statsGrid = {
 };
 
 const statCard = {
-  background: "#0b0f14",
+  background: ADMIN_BLUE_PANEL_DARK,
   padding: "16px",
   borderRadius: "8px",
-  border: "1px solid #1f2937",
+  border: `1px solid ${ADMIN_BLUE_BORDER}`,
   minHeight: "86px",
   boxShadow: "none",
 };
@@ -2654,7 +2665,7 @@ const approveButton = {
   padding: "11px 18px",
   border: "none",
   borderRadius: "12px",
-  background: "#00A651",
+  background: ADMIN_BLUE,
   color: "white",
   marginRight: "10px",
   cursor: "pointer",
@@ -2676,11 +2687,11 @@ const accessCardStyle = {
   justifyContent: "space-between",
   alignItems: "center",
   gap: "16px",
-  background: "#0b0f14",
+  background: ADMIN_BLUE_PANEL_DARK,
   padding: "16px",
   borderRadius: "8px",
   marginBottom: "12px",
-  border: "1px solid #1f2937",
+  border: `1px solid ${ADMIN_BLUE_BORDER}`,
   flexWrap: "wrap",
   boxShadow: "none",
 };
@@ -2711,8 +2722,8 @@ const actionClusterStyle = {
 };
 
 const driverProfileCardStyle = {
-  background: "#0b0f14",
-  border: "1px solid #1f2937",
+  background: ADMIN_BLUE_PANEL_DARK,
+  border: `1px solid ${ADMIN_BLUE_BORDER}`,
   borderRadius: "8px",
   padding: "16px",
   marginBottom: "14px",
@@ -2753,10 +2764,10 @@ const driverVerificationStackStyle = {
 };
 
 const driverVerificationMiniBadgeStyle = {
-  border: "1px solid rgba(250, 204, 21, 0.28)",
+  border: `1px solid ${ADMIN_BLUE_BORDER}`,
   borderRadius: "999px",
-  background: "rgba(250, 204, 21, 0.12)",
-  color: "#fde68a",
+  background: ADMIN_BLUE_SOFT,
+  color: "#dbeafe",
   padding: "7px 10px",
   fontSize: "0.72rem",
   fontWeight: 950,
@@ -2779,8 +2790,8 @@ const detailGridStyle = {
 const detailItemStyle = {
   display: "grid",
   gap: "4px",
-  background: "#111827",
-  border: "1px solid #1f2937",
+  background: ADMIN_BLUE_PANEL,
+  border: `1px solid ${ADMIN_BLUE_BORDER}`,
   borderRadius: "8px",
   padding: "10px 12px",
   minWidth: 0,
@@ -2805,7 +2816,7 @@ const reviewPanelStyle = {
   justifyContent: "space-between",
   gap: "14px",
   flexWrap: "wrap",
-  borderTop: "1px solid #1f2937",
+  borderTop: `1px solid ${ADMIN_BLUE_BORDER}`,
   paddingTop: "14px",
 };
 
@@ -2821,8 +2832,8 @@ const reviewActionsStyle = {
   gap: "8px",
   padding: "5px",
   borderRadius: "8px",
-  background: "#111827",
-  border: "1px solid #1f2937",
+  background: ADMIN_BLUE_PANEL,
+  border: `1px solid ${ADMIN_BLUE_BORDER}`,
   flexWrap: "wrap",
 };
 
@@ -2830,7 +2841,7 @@ const reviewApproveButtonStyle = {
   minHeight: "42px",
   border: "none",
   borderRadius: "6px",
-  background: "#16a34a",
+  background: ADMIN_BLUE,
   color: "white",
   padding: "0 14px",
   fontWeight: 950,
@@ -2857,9 +2868,9 @@ const statusBadgeStyle = {
 
 const neutralButtonStyle = {
   minHeight: "42px",
-  border: "1px solid #374151",
+  border: `1px solid ${ADMIN_BLUE_BORDER}`,
   borderRadius: "6px",
-  background: "#111827",
+  background: ADMIN_BLUE_PANEL,
   color: "white",
   padding: "0 14px",
   cursor: "pointer",
@@ -2911,9 +2922,9 @@ const driverCategoryControlStyle = {
 const driverCategorySelectStyle = {
   width: "100%",
   minHeight: "44px",
-  border: "1px solid #374151",
+  border: `1px solid ${ADMIN_BLUE_BORDER}`,
   borderRadius: "6px",
-  background: "#0b0f14",
+  background: ADMIN_BLUE_PANEL_DARK,
   color: "white",
   padding: "0 12px",
   fontWeight: 900,
@@ -2922,8 +2933,8 @@ const driverCategorySelectStyle = {
 
 const ownerPayoutPanelStyle = {
   marginTop: "26px",
-  background: "#0b0f14",
-  border: "1px solid #1f2937",
+  background: ADMIN_BLUE_PANEL_DARK,
+  border: `1px solid ${ADMIN_BLUE_BORDER}`,
   borderRadius: "8px",
   padding: "20px",
   display: "grid",
@@ -2933,8 +2944,8 @@ const ownerPayoutPanelStyle = {
 };
 
 const ownerPayoutSavedStyle = {
-  background: "#111827",
-  border: "1px solid #1f2937",
+  background: ADMIN_BLUE_PANEL,
+  border: `1px solid ${ADMIN_BLUE_BORDER}`,
   borderRadius: "8px",
   padding: "12px",
   marginBottom: "10px",
@@ -2959,9 +2970,9 @@ const ownerPayoutFieldStyle = {
 const ownerPayoutInputStyle = {
   width: "100%",
   minHeight: "44px",
-  border: "1px solid #374151",
+  border: `1px solid ${ADMIN_BLUE_BORDER}`,
   borderRadius: "6px",
-  background: "#0b0f14",
+  background: ADMIN_BLUE_PANEL_DARK,
   color: "white",
   padding: "0 12px",
   fontWeight: 800,
@@ -2972,8 +2983,8 @@ const ownerPayoutButtonStyle = {
   minHeight: "46px",
   border: "none",
   borderRadius: "6px",
-  background: "white",
-  color: "#111827",
+  background: "#dbeafe",
+  color: ADMIN_BLUE_DARK,
   cursor: "pointer",
   fontWeight: 900,
 };
@@ -3001,7 +3012,7 @@ const unblockButtonStyle = {
   padding: "11px 16px",
   border: "none",
   borderRadius: "6px",
-  background: "#16a34a",
+  background: ADMIN_BLUE,
   color: "white",
   cursor: "pointer",
   fontWeight: 900,
@@ -3019,7 +3030,7 @@ const placeholderPhoto = {
   width: "96px",
   height: "96px",
   borderRadius: "8px",
-  background: "#1f2937",
+  background: ADMIN_BLUE_PANEL,
   color: "#9ca3af",
   display: "flex",
   justifyContent: "center",
@@ -3039,8 +3050,8 @@ const documentLinks = {
 const documentButton = {
   display: "inline-block",
   padding: "10px 14px",
-  background: "white",
-  color: "#111827",
+  background: "#dbeafe",
+  color: ADMIN_BLUE_DARK,
   borderRadius: "6px",
   textDecoration: "none",
   fontWeight: "bold",

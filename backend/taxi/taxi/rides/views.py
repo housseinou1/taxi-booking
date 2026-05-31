@@ -2,6 +2,7 @@ from datetime import timedelta
 
 from django.shortcuts import get_object_or_404
 from django.db.models import Sum
+from django.db import transaction
 from django.utils.timezone import now
 
 from channels.layers import get_channel_layer
@@ -18,9 +19,14 @@ from payments.services import (
     cancel_ride_payment,
     capture_ride_payment,
 )
+from promotions.services import PromoCodeService
 
-from .models import Ride
+from .models import Ride, RideStop
 from .serializers import RideSerializer
+from .timeout import (
+    cancel_ride_request_timeout,
+    start_ride_request_timeout,
+)
 
 
 def broadcast_ride_update(ride):
@@ -57,6 +63,44 @@ def calculate_money(ride):
     ride.save()
 
     return ride
+
+
+def create_initial_stops(ride, stops):
+    if not stops:
+        return
+
+    if not isinstance(stops, list):
+        raise ValueError("stops must be a list.")
+
+    for index, stop in enumerate(stops, start=1):
+        location_name = stop.get("location_name")
+        latitude = stop.get("latitude")
+        longitude = stop.get("longitude")
+        stop_order = stop.get("stop_order") or index
+
+        if not location_name:
+            raise ValueError("Each stop must include location_name.")
+
+        if latitude is None or longitude is None:
+            raise ValueError("Each stop must include latitude and longitude.")
+
+        try:
+            latitude = float(latitude)
+            longitude = float(longitude)
+            stop_order = int(stop_order)
+        except (TypeError, ValueError):
+            raise ValueError("Stop latitude, longitude, and stop_order must be valid numbers.")
+
+        if stop_order < 1:
+            raise ValueError("stop_order must be at least 1.")
+
+        RideStop.objects.create(
+            ride=ride,
+            stop_order=stop_order,
+            location_name=location_name,
+            latitude=latitude,
+            longitude=longitude,
+        )
 
 
 @api_view(["POST"])
@@ -102,28 +146,48 @@ def request_ride(request):
     ride_type = request.data.get("ride_type", "regular")
     fare = request.data.get("fare") or calculate_fare(ride_type, distance_km)
 
-    ride = Ride.objects.create(
-        rider=request.user,
-        pickup=request.data.get("pickup", MARKET["default_pickup"]),
-        destination=request.data.get("destination", MARKET["default_destination"]),
-        pickup_lat=request.data.get("pickup_lat", MARKET["default_pickup_lat"]),
-        pickup_lng=request.data.get("pickup_lng", MARKET["default_pickup_lng"]),
-        destination_lat=request.data.get(
-            "destination_lat",
-            MARKET["default_destination_lat"],
-        ),
-        destination_lng=request.data.get(
-            "destination_lng",
-            MARKET["default_destination_lng"],
-        ),
-        distance_km=distance_km,
-        ride_type=ride_type,
-        fare=fare,
-        status="requested",
-    )
+    referral_code = request.data.get("referral_code") or None
 
-    authorize_ride_payment(ride)
+    try:
+        with transaction.atomic():
+            ride = Ride.objects.create(
+                rider=request.user,
+                pickup=request.data.get("pickup", MARKET["default_pickup"]),
+                destination=request.data.get("destination", MARKET["default_destination"]),
+                pickup_lat=request.data.get("pickup_lat", MARKET["default_pickup_lat"]),
+                pickup_lng=request.data.get("pickup_lng", MARKET["default_pickup_lng"]),
+                destination_lat=request.data.get(
+                    "destination_lat",
+                    MARKET["default_destination_lat"],
+                ),
+                destination_lng=request.data.get(
+                    "destination_lng",
+                    MARKET["default_destination_lng"],
+                ),
+                distance_km=distance_km,
+                ride_type=ride_type,
+                fare=fare,
+                status="requested",
+                referral_code=referral_code,
+            )
+            create_initial_stops(ride, request.data.get("stops", []))
+    except ValueError as exc:
+        return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+    # If a promo code is provided, validate it and pass the discount to payment
+    discount_amount = 0
+    promo_code = request.data.get("promo_code")
+    if promo_code:
+        service = PromoCodeService()
+        validation = service.validate_code(promo_code, request.user, fare)
+        if validation.valid:
+            discount_amount = validation.discount_amount
+
+    authorize_ride_payment(ride, discount_amount=discount_amount)
     broadcast_ride_update(ride)
+
+    # Start the 30-second timeout countdown for ride acceptance
+    start_ride_request_timeout(ride.id, driver_user_id=None)
 
     serializer = RideSerializer(ride, context={"request": request})
     return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -164,20 +228,25 @@ def schedule_ride(request):
     ride_type = request.data.get("ride_type", "regular")
     fare = request.data.get("fare") or calculate_fare(ride_type, distance_km)
 
-    ride = Ride.objects.create(
-        rider=request.user,
-        pickup=request.data.get("pickup", MARKET["default_pickup"]),
-        destination=request.data.get("destination", MARKET["default_destination"]),
-        pickup_lat=request.data.get("pickup_lat", MARKET["default_pickup_lat"]),
-        pickup_lng=request.data.get("pickup_lng", MARKET["default_pickup_lng"]),
-        destination_lat=request.data.get("destination_lat", MARKET["default_destination_lat"]),
-        destination_lng=request.data.get("destination_lng", MARKET["default_destination_lng"]),
-        distance_km=distance_km,
-        ride_type=ride_type,
-        fare=fare,
-        status="scheduled",
-        scheduled_at=scheduled_time,
-    )
+    try:
+        with transaction.atomic():
+            ride = Ride.objects.create(
+                rider=request.user,
+                pickup=request.data.get("pickup", MARKET["default_pickup"]),
+                destination=request.data.get("destination", MARKET["default_destination"]),
+                pickup_lat=request.data.get("pickup_lat", MARKET["default_pickup_lat"]),
+                pickup_lng=request.data.get("pickup_lng", MARKET["default_pickup_lng"]),
+                destination_lat=request.data.get("destination_lat", MARKET["default_destination_lat"]),
+                destination_lng=request.data.get("destination_lng", MARKET["default_destination_lng"]),
+                distance_km=distance_km,
+                ride_type=ride_type,
+                fare=fare,
+                status="scheduled",
+                scheduled_at=scheduled_time,
+            )
+            create_initial_stops(ride, request.data.get("stops", []))
+    except ValueError as exc:
+        return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
     serializer = RideSerializer(ride, context={"request": request})
     return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -297,6 +366,10 @@ def accept_ride(request, ride_id):
     ride.driver = request.user
     ride.status = "driver_arriving"
     ride.save()
+
+    # Cancel the timeout since the driver accepted
+    cancel_ride_request_timeout(ride.id)
+
     broadcast_ride_update(ride)
 
     serializer = RideSerializer(ride, context={"request": request})
@@ -362,6 +435,40 @@ def complete_ride(request, ride_id):
     ride.completed_at = now()
     ride.save(update_fields=["status", "completed_at"])
 
+    # Apply referral code if this is the rider's first completed ride
+    if ride.referral_code:
+        rider = ride.rider
+        # Check if this is the rider's first completed ride (only this one exists)
+        completed_count = Ride.objects.filter(
+            rider=rider, status="completed"
+        ).count()
+        if completed_count == 1:
+            try:
+                service = PromoCodeService()
+                referral_result = service.apply_referral(
+                    ride.referral_code, rider, ride, ride.fare
+                )
+                # If referral was successfully applied, apply referee discount to fare
+                if referral_result.success and referral_result.referee_discount > 0:
+                    from decimal import Decimal
+
+                    discount = min(referral_result.referee_discount, ride.fare)
+                    final_fare = max(ride.fare - discount, Decimal("0.00"))
+                    # Update the payment with the referral discount
+                    from payments.models import Payment
+
+                    payment = Payment.objects.filter(
+                        ride_id=ride.id,
+                        status__in=["authorized", "paid"],
+                    ).order_by("-created_at").first()
+                    if payment:
+                        payment.discount_amount = discount
+                        payment.amount = final_fare
+                        payment.save(update_fields=["discount_amount", "amount"])
+            except Exception:
+                # Referral application failure should not block ride completion
+                pass
+
     captured_payment = capture_ride_payment(ride)
 
     if not captured_payment:
@@ -398,6 +505,9 @@ def cancel_ride(request, ride_id):
 
     ride.status = "cancelled"
     ride.save()
+
+    # Cancel any active timeout timer for this ride
+    cancel_ride_request_timeout(ride.id)
 
     cancel_ride_payment(ride)
     broadcast_ride_update(ride)
