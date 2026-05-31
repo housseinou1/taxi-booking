@@ -11,7 +11,11 @@ import AnalyticsDashboard from "../admin/AnalyticsDashboard";
 import RideChat from "../components/RideChat";
 import { subscribeRideUpdates } from "../socket";
 
-const logoSrc = "/yala-logo.png";
+const logoSrc = "/yala-driver-logo.png";
+const DRIVER_GREEN = "#0F8F4D";
+const DRIVER_GREEN_BRIGHT = "#00A651";
+const DRIVER_GREEN_SOFT = "rgba(15, 143, 77, 0.14)";
+const DRIVER_GREEN_SHADOW = "rgba(15, 143, 77, 0.28)";
 
 const getDriverApprovalMessage = (profile) => {
   const status = profile?.status || "pending";
@@ -1182,12 +1186,12 @@ export default function DriverApp() {
             disabled={!isOnline && !isDriverApproved}
             style={{
               ...driverGoOnlineButtonStyle,
-              background: isOnline ? "#111827" : isDriverApproved ? "#D4AF37" : "#98a2b3",
+              background: isOnline ? "#111827" : isDriverApproved ? DRIVER_GREEN : "#98a2b3",
               cursor: !isOnline && !isDriverApproved ? "not-allowed" : "pointer",
               boxShadow:
                 !isOnline && !isDriverApproved
                   ? "none"
-                  : "0 14px 28px rgba(212, 175, 55, 0.28)",
+                  : `0 14px 28px ${DRIVER_GREEN_SHADOW}`,
             }}
           >
             {isOnline ? "Go Offline" : isDriverApproved ? "Go Online" : "Approval required"}
@@ -1239,7 +1243,7 @@ export default function DriverApp() {
                   Private call
                 </a>
               )}
-              <button type="button" onClick={() => setShowChat(true)} style={{ ...activeRiderCallStyle, background: "#00A651", textDecoration: "none", border: 0, cursor: "pointer" }}>
+              <button type="button" onClick={() => setShowChat(true)} style={{ ...activeRiderCallStyle, background: DRIVER_GREEN, textDecoration: "none", border: 0, cursor: "pointer" }}>
                 Chat
               </button>
             </div>
@@ -1252,7 +1256,7 @@ export default function DriverApp() {
             </div>
           </div>
           <div style={routeLineStyle}>
-            <div style={{ ...routePointStyle, background: "#D4AF37" }} />
+            <div style={{ ...routePointStyle, background: DRIVER_GREEN_BRIGHT }} />
             <div>
               <span style={routeLabelStyle}>Drop-off</span>
               <p style={routeTextStyle}>{activeDestination}</p>
@@ -1297,8 +1301,8 @@ export default function DriverApp() {
 
           {/* Yala Logo */}
           <div style={{ textAlign: "center", padding: "20px 0 10px" }}>
-            <img src={logoSrc} alt="Yala" style={{ width: 72, height: 72, borderRadius: "50%", boxShadow: "0 6px 20px rgba(212,175,55,0.3)" }} />
-            <div style={{ color: "#D4AF37", fontWeight: 900, fontSize: 18, marginTop: 8 }}>Yala Driver</div>
+            <img src={logoSrc} alt="Yala" style={{ width: 72, height: 72, borderRadius: "50%", boxShadow: `0 6px 20px ${DRIVER_GREEN_SHADOW}` }} />
+            <div style={{ color: DRIVER_GREEN, fontWeight: 900, fontSize: 18, marginTop: 8 }}>Yala Driver</div>
             <div style={{ color: "#9ca3af", fontSize: 12, fontWeight: 700 }}>Fast. Safe. Local.</div>
           </div>
 
@@ -2008,7 +2012,7 @@ const earningsLogoStyle = {
   borderRadius: "50%",
   objectFit: "cover",
   flex: "0 0 auto",
-  boxShadow: "0 4px 12px rgba(212,175,55,0.3)",
+  boxShadow: `0 4px 12px ${DRIVER_GREEN_SHADOW}`,
 };
 
 const rightControlStackStyle = {
@@ -2350,7 +2354,7 @@ const driverGoOnlineButtonStyle = {
   fontSize: "1.5rem",
   fontWeight: 950,
   cursor: "pointer",
-  boxShadow: "0 14px 28px rgba(212, 175, 55, 0.28)",
+  boxShadow: `0 14px 28px ${DRIVER_GREEN_SHADOW}`,
 };
 
 const filterButtonStyle = {
@@ -2510,7 +2514,7 @@ const menuAvatarWrapStyle = {
   height: "150px",
   borderRadius: "999px",
   padding: "7px",
-  background: "linear-gradient(135deg, #ff007f, #6d28d9)",
+  background: `linear-gradient(135deg, ${DRIVER_GREEN_BRIGHT}, ${DRIVER_GREEN})`,
 };
 
 const menuAvatarFallbackStyle = {
@@ -2577,7 +2581,7 @@ const menuVerificationBadgeStyle = {
 const viewAsRiderStyle = {
   border: "none",
   background: "transparent",
-  color: "#D4AF37",
+  color: DRIVER_GREEN,
   fontWeight: 950,
   fontSize: "1rem",
   padding: 0,
@@ -2649,9 +2653,9 @@ const menuRowStyle = {
 const menuMessageStyle = {
   margin: "24px 0 -8px",
   borderRadius: "8px",
-  background: "#fff1fb",
-  color: "#7a006d",
-  border: "1px solid #ffd0f0",
+  background: DRIVER_GREEN_SOFT,
+  color: DRIVER_GREEN,
+  border: "1px solid rgba(15, 143, 77, 0.22)",
   padding: "12px 14px",
   fontWeight: 800,
   lineHeight: 1.35,
@@ -2741,7 +2745,7 @@ const documentUploadHintStyle = {
 };
 
 const documentLinkStyle = {
-  color: "#D4AF37",
+  color: DRIVER_GREEN,
   fontWeight: 900,
   textDecoration: "none",
 };
@@ -2769,7 +2773,7 @@ const saveVehicleButtonStyle = {
   minHeight: "52px",
   border: "none",
   borderRadius: "999px",
-  background: "#D4AF37",
+  background: DRIVER_GREEN,
   color: "white",
   fontWeight: 950,
   cursor: "pointer",
@@ -2791,8 +2795,8 @@ const menuEmergencyRowStyle = {
 };
 
 const menuBadgeStyle = {
-  background: "#ffe4f3",
-  color: "#D4AF37",
+  background: DRIVER_GREEN_SOFT,
+  color: DRIVER_GREEN,
   borderRadius: "999px",
   padding: "7px 12px",
   fontStyle: "normal",

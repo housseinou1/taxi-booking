@@ -85,7 +85,7 @@ function RideStatusButtons({ ride, onStatusChange }) {
           <SlideRideAction
             label={navigationStarted ? "Slide: I've arrived" : "Opening map..."}
             completeLabel="Marking arrived..."
-            color="#D4AF37"
+            color="#0F8F4D"
             disabled={Boolean(workingAction) || !navigationStarted}
             isWorking={workingAction === "arrived"}
             onComplete={() => updateRideStatus("arrived")}
