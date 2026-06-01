@@ -1,0 +1,28 @@
+{
+  "rider": {
+    "appName": "Yala Rider - Book a Ride",
+    "bundleId": "com.yala.rider",
+    "category": "Travel",
+    "subcategory": "Transportation",
+    "primaryMarket": "Mauritania",
+    "currency": "MRU",
+    "languages": ["en", "fr", "ar"],
+    "ageRating": "4+",
+    "privacyPolicyUrl": "https://yala.mr/privacy",
+    "supportUrl": "https://yala.mr/support",
+    "marketingUrl": "https://yala.mr"
+  },
+  "driver": {
+    "appName": "Yala Driver - Earn Money",
+    "bundleId": "com.yala.driver",
+    "category": "Business",
+    "subcategory": "Transportation",
+    "primaryMarket": "Mauritania",
+    "currency": "MRU",
+    "languages": ["en", "fr", "ar"],
+    "ageRating": "4+",
+    "privacyPolicyUrl": "https://yala.mr/privacy",
+    "supportUrl": "https://yala.mr/support",
+    "marketingUrl": "https://yala.mr"
+  }
+}

@@ -30,8 +30,20 @@ import RideHistory from "./history/RideHistory";
 import { ShareBookingFlow, ShareRideScreen, ShareRideComplete, ShareAdminDashboard } from './components/share';
 import { API_URL } from "./apiConfig";
 import { MARKET } from "./marketConfig";
+import { getAppType, shouldShowInstallButton } from './native/platform';
 
 const LOGO_SRC = "/yala-logo.png";
+
+// Route filtering for native apps — only show relevant routes per app type
+const RIDER_ROUTES = ['/rider', '/rider-dashboard', '/rider-history', '/rider-reviews', '/saved-places', '/rider-profile', '/rider-payments', '/ride/share', '/login', '/register', '/settings', '/support', '/terms', '/privacy'];
+const DRIVER_ROUTES = ['/driver', '/driver/profile', '/driver/earnings', '/driver/feedback', '/driver/support', '/driver/achievements', '/driver/history', '/login', '/register', '/settings', '/support', '/terms', '/privacy'];
+
+function isRouteAllowed(path) {
+  const appType = getAppType();
+  if (appType === 'web') return true;
+  const routes = appType === 'rider' ? RIDER_ROUTES : DRIVER_ROUTES;
+  return routes.some(route => path === route || path.startsWith(route + '/'));
+}
 
 // Lazy-loaded driver screens (excluded from initial dashboard bundle)
 const LazyDriverEarnings = React.lazy(() => import("./driver/DriverEarnings"));
@@ -52,6 +64,13 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(hasValidAccessToken());
 
   useEffect(() => {
+    // Route filtering for native apps — redirect to default if route not allowed
+    if (!isRouteAllowed(currentPath)) {
+      const defaultRoute = getAppType() === 'driver' ? '/driver' : '/rider-dashboard';
+      window.location.href = defaultRoute;
+      return;
+    }
+
     if (currentPath === "/payment-setup") setPage("payment-setup");
     else if (currentPath === "/driver-vehicle-setup") setPage("driver-vehicle-setup");
     else if (currentPath === "/rider-dashboard") setPage("rider-dashboard");
@@ -185,7 +204,7 @@ function App() {
     <>
       {content}
       {options.showNotifications !== false && isAuthenticated && <NotificationCenter />}
-      <InstallAppButton />
+      {shouldShowInstallButton() && <InstallAppButton />}
     </>
   );
 
