@@ -6,7 +6,15 @@ function RideStatusButtons({ ride, onStatusChange }) {
   const [navigationStarted, setNavigationStarted] = useState(() =>
     localStorage.getItem(`ride_${ride.id}_navigation_started`) === "true"
   );
+  const sortedStops = Array.isArray(ride.stops)
+    ? [...ride.stops].sort((a, b) => Number(a.stop_order || 0) - Number(b.stop_order || 0))
+    : [];
+  const activeStop = sortedStops.find((stop) => stop.arrived_at && !stop.departed_at);
+  const nextStop = sortedStops.find((stop) => !stop.arrived_at);
+  const hasUnfinishedStops = Boolean(activeStop || nextStop);
   const pickupNavigationUrls = getNavigationUrls(ride, "pickup");
+  const stopNavigationUrls = nextStop ? getStopNavigationUrls(nextStop) : null;
+  const finalNavigationUrls = getNavigationUrls(ride, "destination");
 
   const markNavigationStarted = useCallback(() => {
     localStorage.setItem(`ride_${ride.id}_navigation_started`, "true");
@@ -59,6 +67,36 @@ function RideStatusButtons({ ride, onStatusChange }) {
     }
   };
 
+  const markStop = async (stop, endpoint) => {
+    if (!stop) return;
+
+    try {
+      setWorkingAction(`${endpoint}-${stop.id}`);
+
+      const response = await fetch(`${API_URL}/rides/${ride.id}/stops/${stop.id}/${endpoint}/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("access")}`,
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(data.detail || data.error || "Stop action failed");
+        return;
+      }
+
+      if (onStatusChange) onStatusChange(data);
+    } catch (error) {
+      console.error(error);
+      alert("Server error updating stop");
+    } finally {
+      setWorkingAction("");
+    }
+  };
+
   return (
     <div style={actionRowStyle}>
       {ride.status === "requested" && (
@@ -105,15 +143,59 @@ function RideStatusButtons({ ride, onStatusChange }) {
         />
       )}
 
-      {ride.status === "in_progress" && (
+      {ride.status === "in_progress" && sortedStops.length > 0 && (
+        <StopProgressCard stops={sortedStops} />
+      )}
+
+      {ride.status === "in_progress" && nextStop && (
+        <>
+          <NavigationChoice
+            urls={stopNavigationUrls}
+            selected={localStorage.getItem(`ride_${ride.id}_stop_${nextStop.id}_navigation_started`) === "true"}
+            onChoose={() => localStorage.setItem(`ride_${ride.id}_stop_${nextStop.id}_navigation_started`, "true")}
+            title={`Navigate to stop ${nextStop.stop_order}`}
+          />
+          <SlideRideAction
+            label={`Slide: arrived at stop ${nextStop.stop_order}`}
+            completeLabel="Marking stop arrived..."
+            color="#d4af37"
+            disabled={Boolean(workingAction)}
+            isWorking={workingAction === `arrived-${nextStop.id}`}
+            onComplete={() => markStop(nextStop, "arrived")}
+          />
+        </>
+      )}
+
+      {ride.status === "in_progress" && activeStop && (
         <SlideRideAction
-          label="Slide to finish ride"
-          completeLabel="Finishing ride..."
-          color="#2563eb"
+          label={`Slide: depart stop ${activeStop.stop_order}`}
+          completeLabel="Marking stop departed..."
+          color="#0F8F4D"
           disabled={Boolean(workingAction)}
-          isWorking={workingAction === "complete"}
-          onComplete={() => updateRideStatus("complete")}
+          isWorking={workingAction === `departed-${activeStop.id}`}
+          onComplete={() => markStop(activeStop, "departed")}
         />
+      )}
+
+      {ride.status === "in_progress" && !hasUnfinishedStops && (
+        <>
+          {sortedStops.length > 0 && (
+            <NavigationChoice
+              urls={finalNavigationUrls}
+              selected
+              onChoose={() => {}}
+              title="All stops complete. Navigate to drop-off"
+            />
+          )}
+          <SlideRideAction
+            label="Slide to finish ride"
+            completeLabel="Finishing ride..."
+            color="#2563eb"
+            disabled={Boolean(workingAction)}
+            isWorking={workingAction === "complete"}
+            onComplete={() => updateRideStatus("complete")}
+          />
+        </>
       )}
 
       {ride.status === "completed" && <span style={stateTextStyle}>Completed</span>}
@@ -151,7 +233,27 @@ const getNavigationUrls = (ride, target) => {
   };
 };
 
-function NavigationChoice({ urls, selected, onChoose }) {
+const getStopNavigationUrls = (stop) => {
+  if (!stop || stop.latitude === null || stop.latitude === undefined || stop.longitude === null || stop.longitude === undefined) {
+    return null;
+  }
+
+  const lat = Number(stop.latitude);
+  const lng = Number(stop.longitude);
+
+  if (Number.isNaN(lat) || Number.isNaN(lng)) {
+    return null;
+  }
+
+  const destination = `${lat},${lng}`;
+
+  return {
+    google: `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}&travelmode=driving`,
+    waze: `https://www.waze.com/ul?ll=${encodeURIComponent(destination)}&navigate=yes&zoom=17`,
+  };
+};
+
+function NavigationChoice({ urls, selected, onChoose, title }) {
   if (!urls) {
     return (
       <div style={navigationNoticeStyle}>
@@ -163,7 +265,7 @@ function NavigationChoice({ urls, selected, onChoose }) {
   return (
     <div style={navigationChoiceStyle}>
       <span style={navigationTitleStyle}>
-        {selected ? "Navigation selected" : "Choose map before starting"}
+        {title || (selected ? "Navigation selected" : "Choose map before starting")}
       </span>
       <div style={navigationButtonGridStyle}>
         <a
@@ -185,6 +287,26 @@ function NavigationChoice({ urls, selected, onChoose }) {
           Waze
         </a>
       </div>
+    </div>
+  );
+}
+
+function StopProgressCard({ stops }) {
+  return (
+    <div style={stopProgressStyle}>
+      <strong style={stopProgressTitleStyle}>Ride stops</strong>
+      {stops.map((stop) => {
+        const status = stop.departed_at ? "Departed" : stop.arrived_at ? "Arrived" : "Pending";
+        return (
+          <div key={stop.id} style={stopProgressRowStyle}>
+            <span style={stopProgressNumberStyle}>{stop.stop_order}</span>
+            <div>
+              <strong>{stop.location_name}</strong>
+              <small>{status}</small>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -354,6 +476,38 @@ const navigationNoticeStyle = {
   background: "#fef3c7",
   color: "#92400e",
   fontWeight: 800,
+};
+
+const stopProgressStyle = {
+  display: "grid",
+  gap: "8px",
+  padding: "12px",
+  borderRadius: "14px",
+  background: "rgba(15, 143, 77, 0.08)",
+  border: "1px solid rgba(15, 143, 77, 0.18)",
+};
+
+const stopProgressTitleStyle = {
+  color: "#111827",
+  fontSize: "0.86rem",
+};
+
+const stopProgressRowStyle = {
+  display: "grid",
+  gridTemplateColumns: "32px 1fr",
+  gap: "10px",
+  alignItems: "center",
+};
+
+const stopProgressNumberStyle = {
+  width: "30px",
+  height: "30px",
+  borderRadius: "50%",
+  display: "grid",
+  placeItems: "center",
+  background: "#0F8F4D",
+  color: "white",
+  fontWeight: 950,
 };
 
 const slideTrackStyle = {

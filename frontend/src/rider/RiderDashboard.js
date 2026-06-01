@@ -1,11 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import { useTranslation } from "react-i18next";
 
 import { API_URL } from "../apiConfig";
 import GoogleTripMap from "../maps/GoogleTripMap";
 import SafetyEmergencyPanel from "../safety/SafetyEmergencyPanel";
 import RideChat from "../components/RideChat";
 import { subscribeRideUpdates, sendRideUpdate } from "../socket";
+import {
+  languageOptions,
+  normalizeLanguageCode,
+} from "../i18n";
 import {
   MARKET,
   calculateDistanceKm,
@@ -34,41 +39,49 @@ const fetchDrivingRoute = async (points) => {
   };
 };
 
-const rideLabels = {
-  regular: "Regular",
-  comfort: "Comfort",
+const rideIcons = {
+  regular: "Y",
+  comfort: "C",
   xl: "XL",
-  share: "Share",
+  share: "S",
 };
 
-const rideSeats = {
-  regular: "1-4",
-  comfort: "1-4",
-  xl: "1-6",
-  share: "Shared",
-};
+const savedPlaces = [
+  { key: "home", detailKey: "homeDetail", icon: "H", type: "pickup" },
+  { key: "work", detailKey: "workDetail", icon: "W", type: "destination" },
+  { key: "favorites", detailKey: "favoritesDetail", icon: "F", type: "favorites" },
+];
+
+const riderQuickLinks = [
+  { key: "trips", path: "/rider-history" },
+  { key: "places", path: "/saved-places" },
+  { key: "reviews", path: "/rider-reviews" },
+  { key: "safety", action: "safety" },
+];
 
 const logoSrc = "/yala-rider-logo.png";
-const RIDER_PURPLE = "#6D28D9";
-const RIDER_PURPLE_SOFT = "rgba(109, 40, 217, 0.14)";
-const RIDER_PURPLE_BORDER = "rgba(109, 40, 217, 0.35)";
+const RIDER_PURPLE = "#00A651";
+const RIDER_PURPLE_SOFT = "rgba(0, 166, 81, 0.14)";
+const RIDER_PURPLE_BORDER = "rgba(0, 166, 81, 0.35)";
+const YALA_GOLD = "#F3BD34";
+const YALA_NAVY = "#08111F";
 
-const getStatusLabel = (status) => {
-  if (!status) return "Ready";
-  if (["requested", "pending"].includes(status)) return "Finding driver";
-  if (["accepted", "driver_arriving"].includes(status)) return "Driver arriving";
-  if (status === "driver_arrived") return "Driver arrived";
-  if (status === "in_progress") return "On trip";
-  if (status === "completed") return "Trip complete";
-  if (status === "cancelled") return "Cancelled";
+const getStatusLabel = (status, t) => {
+  if (!status) return t("riderDashboard.status.ready");
+  if (["requested", "pending"].includes(status)) return t("riderDashboard.status.requested");
+  if (["accepted", "driver_arriving"].includes(status)) return t("riderDashboard.status.driverArriving");
+  if (status === "driver_arrived") return t("riderDashboard.status.driverArrived");
+  if (status === "in_progress") return t("riderDashboard.status.inProgress");
+  if (status === "completed") return t("riderDashboard.status.completed");
+  if (status === "cancelled") return t("riderDashboard.status.cancelled");
   return status.replace("_", " ");
 };
 
 const rideStatusSteps = [
-  { key: "driver_arriving", title: "Driver arriving", text: "Your driver is on the way." },
-  { key: "driver_arrived", title: "Driver arrived", text: "Meet your driver at pickup." },
-  { key: "in_progress", title: "Trip started", text: "You are heading to destination." },
-  { key: "completed", title: "Trip completed", text: "Pay, tip, and rate your trip." },
+  { key: "driver_arriving", titleKey: "driverArrivingTitle", textKey: "driverArrivingText" },
+  { key: "driver_arrived", titleKey: "driverArrivedTitle", textKey: "driverArrivedText" },
+  { key: "in_progress", titleKey: "inProgressTitle", textKey: "inProgressText" },
+  { key: "completed", titleKey: "completedTitle", textKey: "completedText" },
 ];
 
 const getStatusStepIndex = (status) => {
@@ -121,11 +134,11 @@ const getPlateNumber = (ride) =>
   ride?.plate_number || ride?.vehicle_plate || ride?.plate || "pending";
 
 export default function RiderDashboard() {
+  const { t, i18n } = useTranslation();
   const [city, setCity] = useState(MARKET.defaultCity);
   const [pickup, setPickup] = useState(MARKET.defaultPickup.label);
   const [destination, setDestination] = useState(MARKET.defaultDestination.label);
-  const [addStop, setAddStop] = useState(false);
-  const [extraStop, setExtraStop] = useState("");
+  const [stops, setStops] = useState([]);
   const [distance, setDistance] = useState(
     calculateDistanceKm(
       MARKET.defaultPickup.position,
@@ -154,6 +167,7 @@ export default function RiderDashboard() {
   const [profilePictureFile, setProfilePictureFile] = useState(null);
   const [identitySaving, setIdentitySaving] = useState(false);
   const [identityMessage, setIdentityMessage] = useState("");
+  const [requestMessage, setRequestMessage] = useState("");
   const [showAccountPanel, setShowAccountPanel] = useState(false);
 
   const [showSafetyPanel, setShowSafetyPanel] = useState(false);
@@ -171,17 +185,28 @@ export default function RiderDashboard() {
   const cityLocations = getLocationsByCity(city);
   const selectedCity = MARKET.cities.find((item) => item.label === city);
   const pickupLocation = getLocationByLabel(pickup, city);
-  const extraStopLocation = addStop ? getLocationByLabel(extraStop, city) : null;
+  const stopLocations = useMemo(
+    () =>
+      stops.map((stop) => ({
+        id: stop.id,
+        label: stop.location,
+        location: stop.location ? getLocationByLabel(stop.location, city) : null,
+      })),
+    [stops, city]
+  );
   const destinationLocation = getLocationByLabel(destination, city);
   const pickupPosition = pickupLocation?.position || MARKET.defaultPickup.position;
-  const extraStopPosition = extraStopLocation?.position || null;
+  const stopPositions = useMemo(
+    () => stopLocations.map((stop) => stop.location?.position).filter(Boolean),
+    [stopLocations]
+  );
   const destinationPosition =
     destinationLocation?.position || MARKET.defaultDestination.position;
   const routePoints = useMemo(
-    () => [pickupPosition, extraStopPosition, destinationPosition].filter(Boolean),
-    [pickupPosition, extraStopPosition, destinationPosition]
+    () => [pickupPosition, ...stopPositions, destinationPosition].filter(Boolean),
+    [pickupPosition, stopPositions, destinationPosition]
   );
-  const activeStatus = getStatusLabel(currentRide?.status);
+  const activeStatus = getStatusLabel(currentRide?.status, t);
   const shouldTrackDriver = liveDriverStatuses.has(currentRide?.status);
   const statusStepIndex = getStatusStepIndex(currentRide?.status);
   const trackingTarget =
@@ -200,6 +225,65 @@ export default function RiderDashboard() {
     riderIdentity.has_profile_picture && Boolean(riderIdentity.phone_number?.trim());
   const canCancelCurrentRide =
     currentRide && cancellableRideStatuses.has(currentRide.status);
+  const rideName = useCallback((type) => t(`riderDashboard.rideTypes.${type}.name`), [t]);
+  const rideDescription = useCallback((type) => t(`riderDashboard.rideTypes.${type}.description`), [t]);
+  const rideSeatsLabel = useCallback((type) => t(`riderDashboard.rideTypes.${type}.seats`), [t]);
+  const rideEtaLabel = useCallback((type) => t(`riderDashboard.rideTypes.${type}.eta`), [t]);
+  const selectedRideLabel = rideName(rideType);
+  const currentLanguage = normalizeLanguageCode(i18n.language);
+
+  const changeLanguage = (event) => {
+    i18n.changeLanguage(normalizeLanguageCode(event.target.value));
+  };
+
+  const handleSavedPlace = (place) => {
+    if (place.type === "pickup") {
+      setPickup(MARKET.defaultPickup.label);
+      return;
+    }
+
+    if (place.type === "destination") {
+      const workLocation =
+        getLocationByLabel("Nouakchott Center", city) ||
+        getLocationByLabel("Centre Ville", city) ||
+        MARKET.defaultDestination;
+      setDestination(workLocation.label);
+      return;
+    }
+
+    window.location.href = "/saved-places";
+  };
+
+  const addRideStop = () => {
+    setStops((current) => [
+      ...current,
+      {
+        id: `stop-${Date.now()}-${current.length}`,
+        location: "",
+      },
+    ]);
+  };
+
+  const updateRideStop = (stopId, location) => {
+    setStops((current) =>
+      current.map((stop) => (stop.id === stopId ? { ...stop, location } : stop))
+    );
+  };
+
+  const removeRideStop = (stopId) => {
+    setStops((current) => current.filter((stop) => stop.id !== stopId));
+  };
+
+  const openQuickLink = (item) => {
+    if (item.action === "safety") {
+      setShowSafetyPanel(true);
+      return;
+    }
+
+    if (item.path) {
+      window.location.href = item.path;
+    }
+  };
 
   const mapMarkers = useMemo(
     () =>
@@ -210,12 +294,14 @@ export default function RiderDashboard() {
           title: `Pickup: ${pickup}`,
           label: "P",
         },
-        extraStopPosition && {
-          id: "stop",
-          position: extraStopPosition,
-          title: `Stop: ${extraStop}`,
-          label: "S",
-        },
+        ...stopLocations
+          .filter((stop) => stop.location?.position)
+          .map((stop, index) => ({
+            id: stop.id,
+            position: stop.location.position,
+            title: `Stop ${index + 1}: ${stop.label}`,
+            label: `${index + 1}`,
+          })),
         {
           id: "destination",
           position: destinationPosition,
@@ -234,41 +320,75 @@ export default function RiderDashboard() {
     [
       destination,
       destinationPosition,
-      extraStop,
-      extraStopPosition,
       displayedDriverPosition,
       pickup,
       pickupPosition,
       shouldTrackDriver,
+      stopLocations,
     ]
   );
 
   useEffect(() => {
-    const firstLeg = calculateDistanceKm(pickupLocation?.position, extraStopPosition || destinationLocation?.position);
-    const secondLeg = extraStopPosition
-      ? calculateDistanceKm(extraStopPosition, destinationLocation?.position)
-      : 0;
-    const automaticDistance = firstLeg ? firstLeg + secondLeg : 0;
+    const points = [
+      pickupLocation?.position,
+      ...stopPositions,
+      destinationLocation?.position,
+    ].filter(Boolean);
+    const automaticDistance = points.reduce((sum, point, index) => {
+      if (index === 0) return sum;
+      return sum + calculateDistanceKm(points[index - 1], point);
+    }, 0);
 
     if (automaticDistance) {
       setDistance(Number(automaticDistance.toFixed(1)));
     }
-  }, [pickupLocation, extraStopPosition, destinationLocation]);
+  }, [pickupLocation, stopPositions, destinationLocation]);
 
   useEffect(() => {
     const locations = getLocationsByCity(city);
+    const hasSavedPlaceIntent = Boolean(localStorage.getItem("yala_next_place"));
+
+    if (hasSavedPlaceIntent) return;
 
     if (locations.length >= 2) {
       setPickup(locations[0].label);
       setDestination(locations[1].label);
-      setExtraStop("");
+      setStops([]);
       return;
     }
 
     if (locations.length === 1) {
       setPickup(locations[0].label);
       setDestination(locations[0].label);
-      setExtraStop("");
+      setStops([]);
+    }
+  }, [city]);
+
+  useEffect(() => {
+    const rawPlace = localStorage.getItem("yala_next_place");
+    if (!rawPlace) return;
+
+    try {
+      const place = JSON.parse(rawPlace);
+      const nextCity = place.city || MARKET.defaultCity;
+      const nextLocation = place.location;
+      const target = place.target || "destination";
+
+      if (nextCity && nextCity !== city) {
+        setCity(nextCity);
+      }
+
+      if (nextLocation) {
+        if (target === "pickup") {
+          setPickup(nextLocation);
+        } else {
+          setDestination(nextLocation);
+        }
+      }
+    } catch (error) {
+      console.log("Saved place apply error:", error);
+    } finally {
+      localStorage.removeItem("yala_next_place");
     }
   }, [city]);
 
@@ -472,27 +592,33 @@ export default function RiderDashboard() {
 
   const requestRide = async () => {
     try {
+      setRequestMessage("");
+
       if (!hasRequiredRiderProfile) {
         setShowAccountPanel(true);
-        setIdentityMessage("Please add your rider phone number and profile photo before requesting a ride.");
+        setIdentityMessage(t("riderDashboard.messages.profileRequired"));
+        setRequestMessage(t("riderDashboard.messages.profileRequired"));
         return;
       }
 
-      if (addStop && !extraStopLocation) {
-        alert("Choose a valid stop from the city list before requesting.");
+      const invalidStop = stopLocations.find((stop) => stop.label && !stop.location);
+      const incompleteStop = stops.find((stop) => !stop.location.trim());
+
+      if (invalidStop || incompleteStop) {
+        setRequestMessage(t("riderDashboard.messages.invalidStop"));
         return;
       }
 
       setRequesting(true);
 
-      const stops = addStop && extraStopLocation
-        ? [{
-            location_name: extraStop,
-            latitude: extraStopPosition[0],
-            longitude: extraStopPosition[1],
-            stop_order: 1,
-          }]
-        : [];
+      const rideStops = stopLocations
+        .filter((stop) => stop.location?.position)
+        .map((stop, index) => ({
+          location_name: stop.label,
+          latitude: stop.location.position[0],
+          longitude: stop.location.position[1],
+          stop_order: index + 1,
+        }));
 
       const response = await axios.post(
         `${API_URL}/rides/request/`,
@@ -509,7 +635,7 @@ export default function RiderDashboard() {
           distance,
           ride_type: rideType,
           fare,
-          stops,
+          stops: rideStops,
         },
         {
           headers: {
@@ -518,17 +644,25 @@ export default function RiderDashboard() {
         }
       );
 
-      setCurrentRide(response.data);
-      sendRideUpdate({ ride_id: response.data.id, status: response.data.status, type: "ride_update" });
-      fetchCurrentRide();
+      const requestedRide = response.data?.ride || response.data;
+      setCurrentRide(requestedRide);
+      setRideHistory((current) => [
+        requestedRide,
+        ...current.filter((ride) => ride.id !== requestedRide.id),
+      ]);
+      setRequestMessage(t("riderDashboard.messages.rideRequested"));
+
+      if (requestedRide?.id) {
+        sendRideUpdate({ ride_id: requestedRide.id, status: requestedRide.status, type: "ride_update" });
+      }
     } catch (error) {
       const requestError =
         error.response?.data?.detail ||
         error.response?.data?.error ||
-        "Ride request failed";
+        t("riderDashboard.messages.requestFailed");
 
       console.log("Ride request error:", error.response?.data || error);
-      alert(requestError);
+      setRequestMessage(requestError);
     } finally {
       setRequesting(false);
     }
@@ -540,8 +674,8 @@ export default function RiderDashboard() {
     if (!cancelReason.trim()) {
       setLastCancellation({
         tone: "warning",
-        title: "Choose a cancellation reason",
-        text: "Please tell us why you are cancelling before we close this request.",
+        title: t("riderDashboard.cancel.chooseReasonTitle"),
+        text: t("riderDashboard.cancel.chooseReasonText"),
       });
       return;
     }
@@ -564,10 +698,10 @@ export default function RiderDashboard() {
 
       setLastCancellation({
         tone: "success",
-        title: "Ride cancelled",
+        title: t("riderDashboard.cancel.cancelledTitle"),
         text:
           response.data.refund_status ||
-          "Authorization released or no charge captured",
+          t("riderDashboard.cancel.refundReleased"),
         fee: response.data.cancellation_fee || "0.00",
         reason: cancelReason.trim(),
       });
@@ -583,7 +717,7 @@ export default function RiderDashboard() {
 
       setLastCancellation({
         tone: "error",
-        title: "Cancellation failed",
+        title: t("riderDashboard.cancel.failedTitle"),
         text: cancelError,
       });
     } finally {
@@ -619,7 +753,7 @@ export default function RiderDashboard() {
       }
 
       await navigator.clipboard.writeText(`${tripText} ${window.location.href}`);
-      alert("Trip details copied");
+      alert(t("riderDashboard.messages.tripCopied"));
     } catch (error) {
       console.log("Trip share error:", error);
       alert(tripText);
@@ -664,13 +798,13 @@ export default function RiderDashboard() {
       });
       setNationalIdFile(null);
       setProfilePictureFile(null);
-      setIdentityMessage("Account information updated.");
+      setIdentityMessage(t("riderDashboard.messages.identitySaved"));
     } catch (error) {
       console.log("Rider identity update error:", error.response?.data || error);
       setIdentityMessage(
         error.response?.data?.error ||
           error.response?.data?.detail ||
-          "Could not update National ID information."
+          t("riderDashboard.messages.identityFailed")
       );
     } finally {
       setIdentitySaving(false);
@@ -752,6 +886,21 @@ export default function RiderDashboard() {
             <strong>{city}</strong>
             <span>{activeStatus}</span>
           </div>
+          <label style={languageControlStyle}>
+            <span>{t("settings.language")}</span>
+            <select
+              aria-label={t("settings.language")}
+              value={currentLanguage}
+              onChange={changeLanguage}
+              style={languageSelectStyle}
+            >
+              {languageOptions.map((language) => (
+                <option key={language.code} value={language.code}>
+                  {language.nativeName}
+                </option>
+              ))}
+            </select>
+          </label>
           <button
             type="button"
             onClick={() => setShowSafetyPanel((current) => !current)}
@@ -779,12 +928,12 @@ export default function RiderDashboard() {
 
         <div style={floatingSummaryStyle}>
           <div style={summaryItemStyle}>
-            <span style={summaryLabelStyle}>Estimated fare</span>
+            <span style={summaryLabelStyle}>{t("riderDashboard.estimatedFare")}</span>
             <strong>{formatMoney(fare)}</strong>
           </div>
           <div style={summaryItemStyle}>
             <span style={summaryLabelStyle}>
-              {shouldTrackDriver ? "Live ETA" : "ETA"}
+              {shouldTrackDriver ? t("riderDashboard.liveEta") : t("riderDashboard.eta")}
             </span>
             <strong>
               {liveTrackingEta
@@ -796,7 +945,7 @@ export default function RiderDashboard() {
           </div>
           <div style={summaryItemStyle}>
             <span style={summaryLabelStyle}>
-              {shouldTrackDriver ? "Live distance" : "Distance"}
+              {shouldTrackDriver ? t("riderDashboard.liveDistance") : t("riderDashboard.distance")}
             </span>
             <strong>
               {liveTrackingDistance
@@ -810,17 +959,43 @@ export default function RiderDashboard() {
       <section className="sx-rider-bottom-sheet" style={sheetStyle}>
         <div style={sheetHandleStyle} />
 
+        <section style={bookingHeroStyle}>
+          <div>
+            <span style={tinyLabelStyle}>{t("riderDashboard.brand")}</span>
+            <h1 style={bookingTitleStyle}>
+              {currentRide ? activeStatus : t("riderDashboard.whereTo")}
+            </h1>
+            <p style={bookingSubtitleStyle}>
+              {currentRide
+                ? `${selectedRideLabel} · ${liveTrackingEta || routeInfo?.etaMinutes || "--"} min ETA`
+                : t("riderDashboard.bookingSubtitle")}
+            </p>
+          </div>
+          <div style={bookingFarePillStyle}>
+            <span>{t("riderDashboard.estimate")}</span>
+            <strong>{formatMoney(fare)}</strong>
+          </div>
+        </section>
+
+        <nav style={quickLinksStyle} aria-label="Rider shortcuts">
+          {riderQuickLinks.map((item) => (
+            <button key={item.key} type="button" onClick={() => openQuickLink(item)} style={quickLinkButtonStyle}>
+              {t(`riderDashboard.${item.key}`)}
+            </button>
+          ))}
+        </nav>
+
         {showAccountPanel && (
           <form onSubmit={saveRiderIdentity} style={accountPanelStyle}>
             {/* Yala Rider Logo */}
             <div style={{ textAlign: "center", marginBottom: 12 }}>
               <img src={logoSrc} alt="Yala" style={{ width: 64, height: 64, borderRadius: "50%", boxShadow: "0 4px 16px rgba(109,40,217,0.25)" }} />
-              <div style={{ color: RIDER_PURPLE, fontWeight: 900, fontSize: 16, marginTop: 6 }}>Yala Rider</div>
-              <div style={{ color: "#9ca3af", fontSize: 11, fontWeight: 700 }}>Fast. Safe. Local.</div>
+              <div style={{ color: RIDER_PURPLE, fontWeight: 900, fontSize: 16, marginTop: 6 }}>{t("riderDashboard.brand")}</div>
+              <div style={{ color: "#9ca3af", fontSize: 11, fontWeight: 700 }}>{t("riderDashboard.tagline")}</div>
             </div>
             <div>
-              <span style={tinyLabelStyle}>Account security</span>
-              <h2 style={panelTitleStyle}>Rider profile</h2>
+              <span style={tinyLabelStyle}>{t("riderDashboard.accountSecurity")}</span>
+              <h2 style={panelTitleStyle}>{t("riderDashboard.riderProfile")}</h2>
             </div>
             <div style={photoStatusStyle}>
               {riderIdentity.profile_picture ? (
@@ -829,9 +1004,9 @@ export default function RiderDashboard() {
                 <div style={profileFallbackStyle}>R</div>
               )}
               <div>
-                <strong>Rider photo is required</strong>
+                <strong>{t("riderDashboard.photoRequired")}</strong>
                 <span style={profileHintStyle}>
-                  Riders must keep a clear profile photo for safety.
+                  {t("riderDashboard.photoHelp")}
                 </span>
               </div>
             </div>
@@ -851,7 +1026,7 @@ export default function RiderDashboard() {
                 }))
               }
               style={inputStyle}
-              placeholder="+222 Phone number"
+              placeholder={t("riderDashboard.phonePlaceholder")}
             />
             <input
               value={riderIdentity.national_id_number}
@@ -862,7 +1037,7 @@ export default function RiderDashboard() {
                 }))
               }
               style={inputStyle}
-              placeholder="National ID number"
+              placeholder={t("riderDashboard.nationalIdPlaceholder")}
             />
             <input
               type="file"
@@ -871,7 +1046,7 @@ export default function RiderDashboard() {
               style={fileInputStyle}
             />
             <button type="submit" disabled={identitySaving} style={secondaryActionStyle}>
-              {identitySaving ? "Saving..." : "Save profile"}
+              {identitySaving ? t("riderDashboard.saving") : t("riderDashboard.saveProfile")}
             </button>
             {identityMessage && <p style={noticeTextStyle}>{identityMessage}</p>}
             <button
@@ -896,7 +1071,7 @@ export default function RiderDashboard() {
                 cursor: "pointer",
               }}
             >
-              Logout
+              {t("riderDashboard.logout")}
             </button>
           </form>
         )}
@@ -904,7 +1079,7 @@ export default function RiderDashboard() {
         {currentRide && (
           <section className="sx-live-trip-card" style={liveTripStyle}>
             <div>
-              <span style={tinyLabelStyle}>Current ride</span>
+              <span style={tinyLabelStyle}>{t("riderDashboard.currentRide")}</span>
               <h2 style={panelTitleStyle}>{activeStatus}</h2>
             </div>
             <div style={rideStatusActionStyle}>
@@ -918,7 +1093,7 @@ export default function RiderDashboard() {
                   }}
                   style={cancelRideButtonStyle}
                 >
-                  Cancel ride
+                  {t("riderDashboard.cancelRide")}
                 </button>
               )}
             </div>
@@ -938,13 +1113,13 @@ export default function RiderDashboard() {
             }}
           >
             <div>
-              <span style={tinyLabelStyle}>Refund status</span>
+              <span style={tinyLabelStyle}>{t("riderDashboard.refundStatus")}</span>
               <strong>{lastCancellation.title}</strong>
               <p>{lastCancellation.text}</p>
-              {lastCancellation.reason && <small>Reason: {lastCancellation.reason}</small>}
+              {lastCancellation.reason && <small>{t("riderDashboard.reason", { reason: lastCancellation.reason })}</small>}
             </div>
             {lastCancellation.fee && (
-              <span style={refundFeePillStyle}>Fee {formatMoney(lastCancellation.fee)}</span>
+              <span style={refundFeePillStyle}>{t("riderDashboard.fee", { fee: formatMoney(lastCancellation.fee) })}</span>
             )}
           </section>
         )}
@@ -962,8 +1137,8 @@ export default function RiderDashboard() {
                 >
                   <span>{isDone ? "✓" : index + 1}</span>
                   <div>
-                    <strong>{step.title}</strong>
-                    <small>{step.text}</small>
+                    <strong>{t(`riderDashboard.timeline.${step.titleKey}`)}</strong>
+                    <small>{t(`riderDashboard.timeline.${step.textKey}`)}</small>
                   </div>
                 </article>
               );
@@ -987,25 +1162,27 @@ export default function RiderDashboard() {
                 {getVehicleLabel(currentRide)} · Plate {getPlateNumber(currentRide)}
               </span>
               <span>
-                ★ {Number(currentRide.driver_rating || 5).toFixed(1)} rating ·{" "}
-                {currentRide.completed_trips || 0} trips
+                {t("riderDashboard.driverRating", {
+                  rating: Number(currentRide.driver_rating || 5).toFixed(1),
+                  trips: currentRide.completed_trips || 0,
+                })}
               </span>
               <span style={privateCallHintStyle}>
-                Private call: {currentRide.private_call_number || MARKET.privateCallNumber}
+                {t("riderDashboard.privateCallNumber", { number: currentRide.private_call_number || MARKET.privateCallNumber })}
               </span>
             </div>
 
             <div style={driverActionStyle}>
               {currentRide.driver_phone && (
                 <a href={`tel:${currentRide.driver_phone}`} style={callButtonStyle}>
-                  Private call
+                  {t("riderDashboard.privateCall")}
                 </a>
               )}
               <button type="button" onClick={() => setShowChat(true)} style={{ ...shareButtonStyle, background: RIDER_PURPLE, color: "#fff" }}>
-                Chat
+                {t("riderDashboard.chat")}
               </button>
               <button type="button" onClick={shareTrip} style={shareButtonStyle}>
-                Share
+                {t("riderDashboard.share")}
               </button>
             </div>
           </section>
@@ -1028,13 +1205,13 @@ export default function RiderDashboard() {
           </div>
         )}
 
-        <section style={analyticsCardStyle}>
-          <h3 style={{ margin: 0 }}>Rider spending history</h3>
+        <section id="history" style={analyticsCardStyle}>
+          <h3 style={{ margin: 0 }}>{t("riderDashboard.spendingHistory")}</h3>
           <p style={{ margin: "6px 0 14px", color: "#6b7280" }}>
-            Total completed trip spending: <strong>{formatMoney(spendingHistory.total)}</strong>
+            {t("riderDashboard.totalSpending")} <strong>{formatMoney(spendingHistory.total)}</strong>
           </p>
           <div style={spendingBarsStyle}>
-            {(spendingHistory.trend.length ? spendingHistory.trend : [{ label: "No data", value: 0 }]).map((item) => {
+            {(spendingHistory.trend.length ? spendingHistory.trend : [{ label: t("riderDashboard.noData"), value: 0 }]).map((item) => {
               const maxValue = Math.max(...(spendingHistory.trend.length ? spendingHistory.trend : [{ value: 1 }]).map((entry) => entry.value), 1);
               const barHeight = `${Math.max(10, (item.value / maxValue) * 80)}px`;
               return (
@@ -1049,6 +1226,10 @@ export default function RiderDashboard() {
         </section>
 
         <section style={routeEditorStyle}>
+          <div style={sectionHeadStyle}>
+            <span style={tinyLabelStyle}>{t("riderDashboard.search")}</span>
+            <strong>{t("riderDashboard.pickupDestination")}</strong>
+          </div>
           <select
             value={city}
             onChange={(event) => setCity(event.target.value)}
@@ -1073,37 +1254,61 @@ export default function RiderDashboard() {
                 list="mauritania-locations"
                 value={pickup}
                 onChange={(event) => setPickup(event.target.value)}
-                placeholder="Pickup"
+                placeholder={t("riderDashboard.enterPickup")}
                 style={addressInputStyle}
               />
-              {addStop && (
-                <input
-                  list="mauritania-locations"
-                  value={extraStop}
-                  onChange={(event) => setExtraStop(event.target.value)}
-                  placeholder="Add stop"
-                  style={addressInputStyle}
-                />
-              )}
+              {stops.map((stop, index) => (
+                <div key={stop.id} style={stopInputRowStyle}>
+                  <input
+                    list="mauritania-locations"
+                    value={stop.location}
+                    onChange={(event) => updateRideStop(stop.id, event.target.value)}
+                    placeholder={`${t("riderDashboard.addStop")} ${index + 1}`}
+                    style={addressInputStyle}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeRideStop(stop.id)}
+                    style={removeStopIconButtonStyle}
+                    aria-label={t("riderDashboard.removeStop")}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
               <input
                 list="mauritania-locations"
                 value={destination}
                 onChange={(event) => setDestination(event.target.value)}
-                placeholder="Where to?"
+                placeholder={t("riderDashboard.whereToPlaceholder")}
                 style={addressInputStyle}
               />
             </div>
           </div>
 
+          <div style={savedPlacesStyle} aria-label="Saved places">
+            {savedPlaces.map((place) => (
+              <button
+                key={place.key}
+                type="button"
+                onClick={() => handleSavedPlace(place)}
+                style={savedPlaceButtonStyle}
+              >
+                <span style={savedPlaceIconStyle}>{place.icon}</span>
+                <span>
+                  <strong>{t(`riderDashboard.${place.key}`)}</strong>
+                  <small>{t(`riderDashboard.${place.detailKey}`)}</small>
+                </span>
+              </button>
+            ))}
+          </div>
+
           <button
             type="button"
-            onClick={() => {
-              setAddStop((current) => !current);
-              if (addStop) setExtraStop("");
-            }}
+            onClick={addRideStop}
             style={extraStopButtonStyle}
           >
-            {addStop ? "Remove stop" : "+ Add another stop"}
+            {t("riderDashboard.addAnotherStop")}
           </button>
 
           <datalist id="mauritania-locations">
@@ -1114,6 +1319,10 @@ export default function RiderDashboard() {
         </section>
 
         <section style={rideOptionsStyle}>
+          <div style={sectionHeadStyle}>
+            <span style={tinyLabelStyle}>{t("riderDashboard.chooseRide")}</span>
+            <strong>{t("riderDashboard.fareBeforeBooking")}</strong>
+          </div>
           {Object.keys(MARKET.fare).map((type) => {
             const selected = type === rideType;
             const optionFare = calculateFare(type, distance);
@@ -1128,10 +1337,10 @@ export default function RiderDashboard() {
                   background: selected ? RIDER_PURPLE_SOFT : "rgba(255,255,255,0.04)",
                 }}
               >
-                <div style={rideMarkStyle}>{rideLabels[type]?.slice(0, 1) || "R"}</div>
+                <div style={rideMarkStyle}>{rideIcons[type] || "Y"}</div>
                 <div style={rideTextStyle}>
-                  <strong>{rideLabels[type] || type}</strong>
-                  <span>{rideSeats[type]} seats</span>
+                  <strong>{rideName(type)}</strong>
+                  <span>{rideDescription(type)} · {rideSeatsLabel(type)} · {rideEtaLabel(type)}</span>
                 </div>
                 <strong>{formatMoney(optionFare)}</strong>
               </button>
@@ -1141,7 +1350,7 @@ export default function RiderDashboard() {
 
         {currentRide?.status === "completed" ? (
           <button type="button" onClick={goToPayRate} style={primaryActionStyle}>
-            Pay and rate
+            {t("riderDashboard.payAndRate")}
           </button>
         ) : (
           <button
@@ -1154,21 +1363,22 @@ export default function RiderDashboard() {
             }}
           >
             {requesting
-              ? "Requesting..."
+              ? t("riderDashboard.requesting")
               : hasRequiredRiderProfile
-                ? `Confirm ${rideLabels[rideType]}`
-                : "Add rider phone and photo"}
+                ? t("riderDashboard.confirmRide", { ride: selectedRideLabel, fare: formatMoney(fare) })
+                : t("riderDashboard.addProfileRequired")}
           </button>
         )}
+
+        {requestMessage && <p style={rideRequestNoticeStyle}>{requestMessage}</p>}
 
         {/* Schedule for later */}
         {!currentRide && (
           <ScheduleRideButton
             pickup={pickup}
             destination={destination}
-            extraStop={addStop ? extraStop : ""}
             pickupPosition={pickupPosition}
-            extraStopPosition={extraStopPosition}
+            stops={stopLocations}
             destinationPosition={destinationPosition}
             distance={distance}
             rideType={rideType}
@@ -1182,22 +1392,22 @@ export default function RiderDashboard() {
       {cancelModalOpen && (
         <div style={modalBackdropStyle} role="presentation">
           <section style={modalCardStyle} role="dialog" aria-modal="true" aria-label="Cancel ride">
-            <span style={tinyLabelStyle}>Cancel ride</span>
-            <h2 style={modalTitleStyle}>Why are you cancelling?</h2>
+            <span style={tinyLabelStyle}>{t("riderDashboard.cancelRide")}</span>
+            <h2 style={modalTitleStyle}>{t("riderDashboard.cancel.title")}</h2>
             <p style={modalTextStyle}>
-              You can cancel before the trip starts. Cancellation fee logic is ready as a placeholder and currently shows 0 MRU.
+              {t("riderDashboard.cancel.description")}
             </p>
             <select
               value={cancelReason}
               onChange={(event) => setCancelReason(event.target.value)}
               style={modalSelectStyle}
             >
-              <option value="">Select a reason</option>
-              <option value="Driver is too far">Driver is too far</option>
-              <option value="Changed my plans">Changed my plans</option>
-              <option value="Pickup location is wrong">Pickup location is wrong</option>
-              <option value="Found another ride">Found another ride</option>
-              <option value="Other">Other</option>
+              <option value="">{t("riderDashboard.cancel.selectReason")}</option>
+              <option value="Driver is too far">{t("riderDashboard.cancel.tooFar")}</option>
+              <option value="Changed my plans">{t("riderDashboard.cancel.changedPlans")}</option>
+              <option value="Pickup location is wrong">{t("riderDashboard.cancel.wrongPickup")}</option>
+              <option value="Found another ride">{t("riderDashboard.cancel.foundAnother")}</option>
+              <option value="Other">{t("riderDashboard.cancel.other")}</option>
             </select>
             {lastCancellation?.tone === "warning" && (
               <p style={modalInlineNoticeStyle}>{lastCancellation.text}</p>
@@ -1208,7 +1418,7 @@ export default function RiderDashboard() {
                 onClick={() => setCancelModalOpen(false)}
                 style={modalGhostButtonStyle}
               >
-                Keep ride
+                {t("riderDashboard.cancel.keepRide")}
               </button>
               <button
                 type="button"
@@ -1219,7 +1429,7 @@ export default function RiderDashboard() {
                   opacity: cancelSaving ? 0.72 : 1,
                 }}
               >
-                {cancelSaving ? "Cancelling..." : "Cancel ride"}
+                {cancelSaving ? t("riderDashboard.cancel.cancelling") : t("riderDashboard.cancelRide")}
               </button>
             </div>
           </section>
@@ -1384,9 +1594,8 @@ function RiderTrackingStyles() {
 function ScheduleRideButton({
   pickup,
   destination,
-  extraStop,
   pickupPosition,
-  extraStopPosition,
+  stops,
   destinationPosition,
   distance,
   rideType,
@@ -1394,33 +1603,36 @@ function ScheduleRideButton({
   token,
   hasProfile,
 }) {
+  const { t } = useTranslation();
   const [showPicker, setShowPicker] = useState(false);
   const [dateTime, setDateTime] = useState("");
   const [scheduling, setScheduling] = useState(false);
   const [message, setMessage] = useState("");
 
   const scheduleRide = async () => {
-    if (!hasProfile) { setMessage("Add phone and photo first."); return; }
-    if (!dateTime) { setMessage("Pick a date and time."); return; }
+    if (!hasProfile) { setMessage(t("riderDashboard.addPhonePhotoFirst")); return; }
+    if (!dateTime) { setMessage(t("riderDashboard.pickDateTime")); return; }
     try {
       setScheduling(true); setMessage("");
-      const res = await axios.post(`${API_URL}/rides/schedule/`, {
+      await axios.post(`${API_URL}/rides/schedule/`, {
         pickup, destination,
         pickup_lat: pickupPosition[0], pickup_lng: pickupPosition[1],
         destination_lat: destinationPosition[0], destination_lng: destinationPosition[1],
         distance_km: distance, ride_type: rideType, fare,
         scheduled_at: new Date(dateTime).toISOString(),
-        stops: extraStop && extraStopPosition ? [{
-          location_name: extraStop,
-          latitude: extraStopPosition[0],
-          longitude: extraStopPosition[1],
-          stop_order: 1,
-        }] : [],
+        stops: stops
+          .filter((stop) => stop.location?.position)
+          .map((stop, index) => ({
+            location_name: stop.label,
+            latitude: stop.location.position[0],
+            longitude: stop.location.position[1],
+            stop_order: index + 1,
+          })),
       }, { headers: { Authorization: `Bearer ${token}` } });
       setMessage(`Ride scheduled for ${new Date(dateTime).toLocaleString()}`);
       setShowPicker(false); setDateTime("");
     } catch (err) {
-      setMessage(err.response?.data?.detail || "Could not schedule ride.");
+      setMessage(err.response?.data?.detail || t("riderDashboard.couldNotSchedule"));
     } finally { setScheduling(false); }
   };
 
@@ -1431,7 +1643,7 @@ function ScheduleRideButton({
         borderRadius: 999, background: "rgba(255,255,255,0.06)", color: RIDER_PURPLE,
         fontWeight: 800, fontSize: 14, cursor: "pointer",
       }}>
-        🕐 Schedule for later
+        {t("riderDashboard.scheduleRide")}
       </button>
       {showPicker && (
         <div style={{ marginTop: 10, padding: 14, background: "#1a1a1a", borderRadius: 14, border: "1px solid #333" }}>
@@ -1447,7 +1659,7 @@ function ScheduleRideButton({
             background: RIDER_PURPLE, color: "#ffffff", fontWeight: 800, fontSize: 14, cursor: "pointer",
             opacity: scheduling ? 0.6 : 1,
           }}>
-            {scheduling ? "Scheduling..." : "Confirm schedule"}
+            {scheduling ? t("riderDashboard.scheduling") : t("riderDashboard.confirmSchedule")}
           </button>
           {message && <p style={{ margin: "8px 0 0", color: RIDER_PURPLE, fontSize: 13, fontWeight: 700 }}>{message}</p>}
         </div>
@@ -1458,15 +1670,15 @@ function ScheduleRideButton({
 
 const pageStyle = {
   minHeight: "100vh",
-  background: "#030712",
+  background: YALA_NAVY,
   color: "#f8fafc",
 };
 
 const mapStageStyle = {
   position: "relative",
-  height: "52vh",
-  minHeight: "390px",
-  background: "#111827",
+  height: "100vh",
+  minHeight: "680px",
+  background: "#0b1220",
 };
 
 const mapStyle = {
@@ -1526,7 +1738,7 @@ const locationPillStyle = {
   alignContent: "center",
   alignItems: "center",
   justifyItems: "start",
-  background: "rgba(3, 7, 18, 0.88)",
+  background: "rgba(8, 17, 31, 0.88)",
   border: "1px solid rgba(255, 255, 255, 0.14)",
   borderRadius: "999px",
   padding: "7px 18px",
@@ -1544,10 +1756,37 @@ const locationLogoStyle = {
   boxShadow: "0 4px 12px rgba(109,40,217,0.3)",
 };
 
+const languageControlStyle = {
+  minHeight: "48px",
+  display: "flex",
+  alignItems: "center",
+  gap: "8px",
+  borderRadius: "999px",
+  border: "1px solid rgba(255,255,255,0.14)",
+  background: "rgba(8, 17, 31, 0.88)",
+  color: "#ffffff",
+  padding: "7px 10px 7px 14px",
+  boxShadow: "0 12px 28px rgba(0, 0, 0, 0.22)",
+  backdropFilter: "blur(12px)",
+  pointerEvents: "auto",
+};
+
+const languageSelectStyle = {
+  minWidth: "104px",
+  minHeight: "34px",
+  border: 0,
+  borderRadius: "999px",
+  background: "#ffffff",
+  color: YALA_NAVY,
+  padding: "0 10px",
+  fontWeight: 900,
+  cursor: "pointer",
+};
+
 const floatingSummaryStyle = {
   position: "absolute",
   left: "50%",
-  bottom: "24px",
+  bottom: "330px",
   transform: "translateX(-50%)",
   zIndex: 5,
   display: "grid",
@@ -1555,12 +1794,12 @@ const floatingSummaryStyle = {
   gap: "1px",
   overflow: "hidden",
   borderRadius: "999px",
-  background: "rgba(255,255,255,0.14)",
+  background: "rgba(255,255,255,0.18)",
   boxShadow: "0 18px 34px rgba(0, 0, 0, 0.3)",
 };
 
 const summaryItemStyle = {
-  background: "rgba(3, 7, 18, 0.9)",
+  background: "rgba(8, 17, 31, 0.92)",
   color: "#ffffff",
   padding: "10px 14px",
   textAlign: "center",
@@ -1577,13 +1816,13 @@ const summaryLabelStyle = {
 
 const sheetStyle = {
   position: "relative",
-  margin: "-18px auto 0",
+  margin: "-300px auto 0",
   zIndex: 10,
-  width: "min(780px, 100%)",
-  minHeight: "48vh",
-  background: "linear-gradient(180deg, #101827 0%, #070b14 100%)",
+  width: "min(760px, calc(100% - 18px))",
+  minHeight: "52vh",
+  background: "linear-gradient(180deg, rgba(8,17,31,0.98) 0%, rgba(5,11,20,0.98) 100%)",
   borderRadius: "22px 22px 0 0",
-  padding: "10px 18px 24px",
+  padding: "10px 16px 24px",
   border: "1px solid rgba(255, 255, 255, 0.1)",
   borderBottom: "none",
   boxShadow: "0 -18px 44px rgba(0, 0, 0, 0.34)",
@@ -1611,6 +1850,62 @@ const panelTitleStyle = {
   margin: "3px 0 0",
   color: "#ffffff",
   fontSize: "1.25rem",
+};
+
+const bookingHeroStyle = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) auto",
+  gap: "14px",
+  alignItems: "center",
+  marginBottom: "14px",
+};
+
+const bookingTitleStyle = {
+  margin: "4px 0 0",
+  color: "#ffffff",
+  fontSize: "clamp(1.65rem, 4vw, 2.25rem)",
+  lineHeight: 1.05,
+  letterSpacing: 0,
+};
+
+const bookingSubtitleStyle = {
+  margin: "8px 0 0",
+  color: "rgba(255,255,255,0.68)",
+  lineHeight: 1.45,
+  fontWeight: 650,
+};
+
+const bookingFarePillStyle = {
+  minWidth: "116px",
+  borderRadius: "18px",
+  padding: "12px 14px",
+  background: `linear-gradient(135deg, ${RIDER_PURPLE}, ${YALA_GOLD})`,
+  color: YALA_NAVY,
+  boxShadow: "0 18px 30px rgba(0,166,81,0.22)",
+  textAlign: "right",
+};
+
+const quickLinksStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+  gap: "8px",
+  marginBottom: "14px",
+};
+
+const quickLinkButtonStyle = {
+  minHeight: "42px",
+  border: "1px solid rgba(255,255,255,0.12)",
+  borderRadius: "999px",
+  background: "rgba(255,255,255,0.07)",
+  color: "#ffffff",
+  fontWeight: 900,
+  cursor: "pointer",
+};
+
+const sectionHeadStyle = {
+  display: "grid",
+  gap: "2px",
+  marginBottom: "2px",
 };
 
 const accountPanelStyle = {
@@ -1824,6 +2119,10 @@ const shareButtonStyle = {
 const routeEditorStyle = {
   display: "grid",
   gap: "12px",
+  border: "1px solid rgba(255,255,255,0.12)",
+  borderRadius: "18px",
+  padding: "14px",
+  background: "rgba(255,255,255,0.055)",
 };
 
 const citySelectStyle = {
@@ -1857,13 +2156,13 @@ const pickupDotStyle = {
   width: "9px",
   height: "9px",
   borderRadius: "50%",
-  background: "#111827",
+  background: RIDER_PURPLE,
 };
 
 const dropoffDotStyle = {
   width: "10px",
   height: "10px",
-  background: "#111827",
+  background: YALA_GOLD,
 };
 
 const routeLineStyle = {
@@ -1875,6 +2174,25 @@ const routeLineStyle = {
 const addressInputsStyle = {
   display: "grid",
   gap: "8px",
+};
+
+const stopInputRowStyle = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) 44px",
+  gap: "8px",
+  alignItems: "center",
+};
+
+const removeStopIconButtonStyle = {
+  width: "44px",
+  height: "44px",
+  border: "1px solid rgba(248, 113, 113, 0.32)",
+  borderRadius: "50%",
+  background: "rgba(248, 113, 113, 0.12)",
+  color: "#fecaca",
+  fontSize: "1.4rem",
+  fontWeight: 950,
+  cursor: "pointer",
 };
 
 const extraStopButtonStyle = {
@@ -1901,10 +2219,46 @@ const addressInputStyle = {
   fontSize: "1rem",
 };
 
+const savedPlacesStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+  gap: "8px",
+};
+
+const savedPlaceButtonStyle = {
+  minHeight: "68px",
+  border: "1px solid rgba(255,255,255,0.12)",
+  borderRadius: "14px",
+  background: "rgba(255,255,255,0.06)",
+  color: "#ffffff",
+  display: "grid",
+  gridTemplateColumns: "34px minmax(0, 1fr)",
+  gap: "8px",
+  alignItems: "center",
+  padding: "9px",
+  textAlign: "left",
+  cursor: "pointer",
+};
+
+const savedPlaceIconStyle = {
+  width: "34px",
+  height: "34px",
+  borderRadius: "50%",
+  display: "grid",
+  placeItems: "center",
+  background: "rgba(0,166,81,0.18)",
+  color: YALA_GOLD,
+  fontWeight: 950,
+};
+
 const rideOptionsStyle = {
   display: "grid",
   gap: "8px",
   marginTop: "14px",
+  border: "1px solid rgba(255,255,255,0.12)",
+  borderRadius: "18px",
+  padding: "14px",
+  background: "rgba(255,255,255,0.055)",
 };
 
 const analyticsCardStyle = {
@@ -1928,9 +2282,9 @@ const spendingBarStyle = {
 };
 
 const rideOptionStyle = {
-  minHeight: "68px",
+  minHeight: "76px",
   border: "2px solid rgba(255,255,255,0.1)",
-  borderRadius: "12px",
+  borderRadius: "16px",
   display: "grid",
   gridTemplateColumns: "48px 1fr auto",
   gap: "12px",
@@ -1944,9 +2298,9 @@ const rideOptionStyle = {
 const rideMarkStyle = {
   width: "42px",
   height: "42px",
-  borderRadius: "50%",
-  background: "#111827",
-  color: "white",
+  borderRadius: "14px",
+  background: `linear-gradient(135deg, ${YALA_NAVY}, ${RIDER_PURPLE})`,
+  color: "#ffffff",
   display: "grid",
   placeItems: "center",
   fontWeight: 950,
@@ -1968,6 +2322,17 @@ const primaryActionStyle = {
   fontWeight: 950,
   fontSize: "1.05rem",
   cursor: "pointer",
+};
+
+const rideRequestNoticeStyle = {
+  margin: "10px 0 0",
+  border: `1px solid ${RIDER_PURPLE_BORDER}`,
+  borderRadius: "14px",
+  padding: "10px 12px",
+  background: RIDER_PURPLE_SOFT,
+  color: "#d1fae5",
+  fontWeight: 850,
+  lineHeight: 1.4,
 };
 
 const modalBackdropStyle = {

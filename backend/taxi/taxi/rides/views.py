@@ -431,6 +431,22 @@ def complete_ride(request, ride_id):
         driver=request.user,
     )
 
+    unfinished_stop = (
+        ride.stops.filter(departed_at__isnull=True)
+        .order_by("stop_order")
+        .first()
+    )
+    if unfinished_stop:
+        return Response(
+            {
+                "detail": (
+                    f"Complete stop #{unfinished_stop.stop_order} before "
+                    "completing the ride."
+                )
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
     ride.status = "completed"
     ride.completed_at = now()
     ride.save(update_fields=["status", "completed_at"])

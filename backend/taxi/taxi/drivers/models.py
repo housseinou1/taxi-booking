@@ -24,6 +24,14 @@ class DriverProfile(models.Model):
         ("elite", "Elite"),
     ]
 
+    DRIVER_LEVEL_CHOICES = [
+        ("bronze", "Bronze"),
+        ("silver", "Silver"),
+        ("gold", "Gold"),
+        ("platinum", "Platinum"),
+        ("elite", "Elite"),
+    ]
+
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -58,6 +66,30 @@ class DriverProfile(models.Model):
         default="gold",
     )
 
+    # --- Driver Level System fields ---
+    driver_level = models.CharField(
+        max_length=20,
+        choices=DRIVER_LEVEL_CHOICES,
+        default="bronze",
+    )
+
+    # Performance metrics (cached for quick access)
+    total_rides_completed = models.IntegerField(default=0)
+    total_rides_accepted = models.IntegerField(default=0)
+    total_rides_received = models.IntegerField(default=0)
+    total_rides_cancelled = models.IntegerField(default=0)
+    average_rating = models.DecimalField(
+        max_digits=3, decimal_places=2, default=0.00
+    )
+
+    # Level demotion tracking
+    below_threshold_since = models.DateTimeField(null=True, blank=True)
+    demotion_warning_sent = models.BooleanField(default=False)
+
+    # Rewards
+    reward_points = models.IntegerField(default=0)
+
+    # --- Vehicle details ---
     vehicle_make = models.CharField(
         max_length=100,
         blank=True,
@@ -178,3 +210,205 @@ class DriverProfile(models.Model):
 
     def __str__(self):
         return f"{self.user.email} Driver Profile"
+
+
+class DriverDocument(models.Model):
+    DOCUMENT_TYPES = [
+        ("license", "Driver License"),
+        ("national_id", "National ID"),
+        ("insurance", "Insurance"),
+        ("vehicle_registration", "Vehicle Registration"),
+        ("profile_photo", "Profile Photo"),
+    ]
+
+    STATUS_CHOICES = [
+        ("pending_review", "Pending Review"),
+        ("approved", "Approved"),
+        ("rejected", "Rejected"),
+    ]
+
+    driver = models.ForeignKey(
+        DriverProfile,
+        on_delete=models.CASCADE,
+        related_name="documents",
+    )
+    document_type = models.CharField(max_length=30, choices=DOCUMENT_TYPES)
+    file = models.FileField(upload_to="driver/documents/")
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default="pending_review"
+    )
+    rejection_reason = models.TextField(blank=True, default="")
+    expires_at = models.DateField(null=True, blank=True)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="reviewed_documents",
+    )
+
+    def __str__(self):
+        return f"{self.driver} - {self.get_document_type_display()}"
+
+
+class Achievement(models.Model):
+    code = models.CharField(max_length=50, unique=True)
+    name = models.CharField(max_length=100)
+    description = models.TextField()
+    icon = models.CharField(max_length=100)
+
+    def __str__(self):
+        return self.name
+
+
+class DriverAchievement(models.Model):
+    driver = models.ForeignKey(
+        DriverProfile,
+        on_delete=models.CASCADE,
+        related_name="achievements",
+    )
+    achievement = models.ForeignKey(Achievement, on_delete=models.CASCADE)
+    earned_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ["driver", "achievement"]
+
+    def __str__(self):
+        return f"{self.driver} - {self.achievement.name}"
+
+
+class DriverFavoriteArea(models.Model):
+    driver = models.ForeignKey(
+        DriverProfile,
+        on_delete=models.CASCADE,
+        related_name="favorite_areas",
+    )
+    label = models.CharField(max_length=100)
+    center_lat = models.FloatField()
+    center_lng = models.FloatField()
+    radius_km = models.FloatField(default=3.0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(radius_km__gt=0),
+                name="positive_radius",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.driver} - {self.label}"
+
+
+class DriverSettings(models.Model):
+    LANGUAGE_CHOICES = [
+        ("en", "English"),
+        ("fr", "French"),
+        ("ar", "Arabic"),
+    ]
+
+    GPS_ACCURACY_CHOICES = [
+        ("high", "High Accuracy"),
+        ("battery_saver", "Battery Saver"),
+    ]
+
+    driver = models.OneToOneField(
+        DriverProfile,
+        on_delete=models.CASCADE,
+        related_name="settings",
+    )
+    language = models.CharField(
+        max_length=5, choices=LANGUAGE_CHOICES, default="en"
+    )
+    notifications_rides = models.BooleanField(default=True)
+    notifications_promotions = models.BooleanField(default=True)
+    notifications_system = models.BooleanField(default=True)
+    gps_accuracy = models.CharField(
+        max_length=20, choices=GPS_ACCURACY_CHOICES, default="high"
+    )
+    dark_mode = models.BooleanField(default=False)
+    pin_lock = models.CharField(max_length=6, blank=True, default="")
+    biometric_enabled = models.BooleanField(default=False)
+    privacy_show_name = models.BooleanField(default=True)
+    privacy_show_photo = models.BooleanField(default=True)
+    privacy_show_vehicle = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name_plural = "Driver settings"
+
+    def __str__(self):
+        return f"{self.driver} - Settings"
+
+
+class DriverCompliment(models.Model):
+    CATEGORY_CHOICES = [
+        ("professionalism", "Professionalism"),
+        ("clean_vehicle", "Clean Vehicle"),
+        ("safe_driving", "Safe Driving"),
+        ("friendliness", "Friendliness"),
+        ("punctuality", "Punctuality"),
+    ]
+
+    driver = models.ForeignKey(
+        DriverProfile,
+        on_delete=models.CASCADE,
+        related_name="compliments",
+    )
+    ride = models.ForeignKey(
+        "rides.Ride",
+        on_delete=models.CASCADE,
+    )
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.driver} - {self.get_category_display()}"
+
+
+class SupportTicket(models.Model):
+    TICKET_TYPES = [
+        ("emergency", "Emergency"),
+        ("live_chat", "Live Chat"),
+        ("contact_form", "Contact Form"),
+    ]
+
+    STATUS_CHOICES = [
+        ("open", "Open"),
+        ("in_progress", "In Progress"),
+        ("resolved", "Resolved"),
+        ("closed", "Closed"),
+    ]
+
+    driver = models.ForeignKey(
+        DriverProfile,
+        on_delete=models.CASCADE,
+        related_name="support_tickets",
+    )
+    ticket_type = models.CharField(max_length=20, choices=TICKET_TYPES)
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default="open"
+    )
+    subject = models.CharField(max_length=200, blank=True, default="")
+    message = models.TextField(blank=True, default="")
+    location_lat = models.FloatField(null=True, blank=True)
+    location_lng = models.FloatField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.driver} - {self.get_ticket_type_display()} ({self.status})"
+
+
+class HeatmapZone(models.Model):
+    center_lat = models.FloatField()
+    center_lng = models.FloatField()
+    radius_km = models.FloatField(default=1.0)
+    intensity = models.FloatField(default=0.5)
+    active = models.BooleanField(default=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"HeatmapZone ({self.center_lat}, {self.center_lng}) - intensity: {self.intensity}"

@@ -122,6 +122,7 @@ def create_payment(request):
                 tip_percentage,
                 tip_amount,
                 driver_earning,
+                _discount,
             ) = calculate_payment_amounts(payment_amount, tip_percentage)
 
             existing_payment.amount = payment_amount
@@ -167,7 +168,7 @@ def create_payment(request):
             else default_method.payment_type if default_method else "cash"
         )
 
-        amount, app_fee, tip_percentage, tip_amount, driver_earning = calculate_payment_amounts(
+        amount, app_fee, tip_percentage, tip_amount, driver_earning, _discount = calculate_payment_amounts(
             amount,
             tip_percentage,
         )

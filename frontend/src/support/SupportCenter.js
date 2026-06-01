@@ -1,43 +1,40 @@
 import React, { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { MARKET } from "../marketConfig";
 
 const supportTopics = [
-  "Contact support",
-  "Report a ride issue",
-  "Report payment issue",
-  "Lost item report",
+  "contact",
+  "ride",
+  "payment",
+  "lost",
 ];
 
 const faqs = [
   {
-    question: "How do I report a problem with a ride?",
-    answer:
-      "Choose Report a ride issue, add the ride number, pickup, drop-off, driver or rider name, and explain what happened. Safety reports should be sent as soon as possible.",
+    questionKey: "rideProblemQ",
+    answerKey: "rideProblemA",
   },
   {
-    question: "What should I do for a payment problem?",
-    answer:
-      "Use Report payment issue and include the payment method, fare amount, transaction status, and ride number. Admin can compare ride status, payment record, and provider confirmation.",
+    questionKey: "paymentProblemQ",
+    answerKey: "paymentProblemA",
   },
   {
-    question: "How do I recover a lost item?",
-    answer:
-      "Submit a Lost item report with the item description, ride details, and best contact number. Support can help contact the driver using platform records.",
+    questionKey: "lostItemQ",
+    answerKey: "lostItemA",
   },
   {
-    question: "Why is my driver account pending or rejected?",
-    answer:
-      "Driver accounts stay pending until admin approves license, insurance, vehicle registration, profile photo, and identity details. Expired or missing documents can be rejected.",
+    questionKey: "driverPendingQ",
+    answerKey: "driverPendingA",
   },
   {
-    question: "Can I call emergency services from the app?",
-    answer:
-      "Yes. Emergency numbers are available below. For immediate danger, call the correct emergency number first, then report the trip to Yala support.",
+    questionKey: "emergencyQ",
+    answerKey: "emergencyA",
   },
 ];
 
 function SupportCenter() {
+  const { t } = useTranslation();
   const [activeTopic, setActiveTopic] = useState(supportTopics[0]);
   const [submitted, setSubmitted] = useState("");
   const [form, setForm] = useState({
@@ -47,11 +44,11 @@ function SupportCenter() {
     rideId: "",
     paymentMethod: "",
     itemName: "",
-    urgency: "Normal",
+    urgency: "normal",
     message: "",
   });
 
-  const topicCopy = useMemo(() => getTopicCopy(activeTopic), [activeTopic]);
+  const topicCopy = useMemo(() => getTopicCopy(activeTopic, t), [activeTopic, t]);
 
   const updateForm = (field, value) => {
     setForm((current) => ({
@@ -64,12 +61,12 @@ function SupportCenter() {
     event.preventDefault();
 
     if (!form.phone.trim() && !form.email.trim()) {
-      setSubmitted("Please add a phone number or email so support can contact you.");
+      setSubmitted(t("supportCenter.messages.contactRequired"));
       return;
     }
 
     if (!form.message.trim()) {
-      setSubmitted("Please describe the issue before submitting.");
+      setSubmitted(t("supportCenter.messages.detailsRequired"));
       return;
     }
 
@@ -88,7 +85,7 @@ function SupportCenter() {
       ])
     );
 
-    setSubmitted(`Support case ${caseNumber} created. Yala support can review it from this device.`);
+    setSubmitted(t("supportCenter.messages.caseCreated", { caseNumber }));
     setForm({
       name: "",
       email: "",
@@ -96,7 +93,7 @@ function SupportCenter() {
       rideId: "",
       paymentMethod: "",
       itemName: "",
-      urgency: "Normal",
+      urgency: "normal",
       message: "",
     });
   };
@@ -107,25 +104,22 @@ function SupportCenter() {
 
       <section className="sx-support-hero">
         <div>
-          <span>Yala Help Center</span>
-          <h1>Support for riders, drivers, payments, and safety.</h1>
-          <p>
-            Get help with rides, lost items, payment issues, account access, driver
-            documents, and emergency situations from one professional support screen.
-          </p>
+          <span>{t("supportCenter.eyebrow")}</span>
+          <h1>{t("supportCenter.title")}</h1>
+          <p>{t("supportCenter.subtitle")}</p>
           <div className="sx-support-actions">
-            <a href="#support-form">Open a case</a>
-            <a href="#emergency" className="danger">Emergency support</a>
+            <a href="#support-form">{t("supportCenter.openCase")}</a>
+            <a href="#emergency" className="danger">{t("supportCenter.emergencySupport")}</a>
           </div>
         </div>
 
         <aside className="sx-support-status">
-          <strong>Priority routing</strong>
-          <p>Safety and emergency cases should be handled first. Payment and lost item reports follow with ride details.</p>
+          <strong>{t("supportCenter.priorityTitle")}</strong>
+          <p>{t("supportCenter.priorityText")}</p>
           <div>
-            <span>Ride issues</span>
-            <span>Payments</span>
-            <span>Lost items</span>
+            <span>{t("supportCenter.rideIssues")}</span>
+            <span>{t("supportCenter.payments")}</span>
+            <span>{t("supportCenter.lostItems")}</span>
           </div>
         </aside>
       </section>
@@ -133,15 +127,15 @@ function SupportCenter() {
       <section className="sx-support-grid">
         <article className="sx-support-panel sx-faq-panel">
           <div className="sx-panel-head">
-            <span>FAQ</span>
-            <h2>Quick answers</h2>
+            <span>{t("supportCenter.faq")}</span>
+            <h2>{t("supportCenter.quickAnswers")}</h2>
           </div>
 
           <div className="sx-faq-list">
             {faqs.map((faq) => (
-              <details key={faq.question}>
-                <summary>{faq.question}</summary>
-                <p>{faq.answer}</p>
+              <details key={faq.questionKey}>
+                <summary>{t(`supportCenter.faqs.${faq.questionKey}`)}</summary>
+                <p>{t(`supportCenter.faqs.${faq.answerKey}`)}</p>
               </details>
             ))}
           </div>
@@ -165,7 +159,7 @@ function SupportCenter() {
                   setSubmitted("");
                 }}
               >
-                {topic}
+                {t(`supportCenter.topics.${topic}`)}
               </button>
             ))}
           </div>
@@ -173,23 +167,23 @@ function SupportCenter() {
           <form onSubmit={submitSupport} className="sx-support-form">
             <div className="sx-form-grid">
               <label>
-                Name
+                {t("supportCenter.name")}
                 <input
                   value={form.name}
                   onChange={(event) => updateForm("name", event.target.value)}
-                  placeholder="Your name"
+                  placeholder={t("supportCenter.namePlaceholder")}
                 />
               </label>
               <label>
-                Phone
+                {t("supportCenter.phone")}
                 <input
                   value={form.phone}
                   onChange={(event) => updateForm("phone", event.target.value)}
-                  placeholder="+222 phone number"
+                  placeholder={t("supportCenter.phonePlaceholder")}
                 />
               </label>
               <label>
-                Email
+                {t("supportCenter.email")}
                 <input
                   type="email"
                   value={form.email}
@@ -198,53 +192,53 @@ function SupportCenter() {
                 />
               </label>
               <label>
-                Urgency
+                {t("supportCenter.urgency")}
                 <select
                   value={form.urgency}
                   onChange={(event) => updateForm("urgency", event.target.value)}
                 >
-                  <option>Normal</option>
-                  <option>High</option>
-                  <option>Emergency follow-up</option>
+                  <option value="normal">{t("supportCenter.urgencyNormal")}</option>
+                  <option value="high">{t("supportCenter.urgencyHigh")}</option>
+                  <option value="emergency">{t("supportCenter.urgencyEmergency")}</option>
                 </select>
               </label>
             </div>
 
-            {(activeTopic.includes("ride") || activeTopic.includes("Lost")) && (
+            {(activeTopic === "ride" || activeTopic === "lost") && (
               <label>
-                Ride number
+                {t("supportCenter.rideNumber")}
                 <input
                   value={form.rideId}
                   onChange={(event) => updateForm("rideId", event.target.value)}
-                  placeholder="Example: Ride #104"
+                  placeholder={t("supportCenter.rideNumberPlaceholder")}
                 />
               </label>
             )}
 
-            {activeTopic.includes("payment") && (
+            {activeTopic === "payment" && (
               <label>
-                Payment method
+                {t("supportCenter.paymentMethod")}
                 <input
                   value={form.paymentMethod}
                   onChange={(event) => updateForm("paymentMethod", event.target.value)}
-                  placeholder="Cash, card, Bankily, Masravi, Seddad"
+                  placeholder={t("supportCenter.paymentMethodPlaceholder")}
                 />
               </label>
             )}
 
-            {activeTopic.includes("Lost") && (
+            {activeTopic === "lost" && (
               <label>
-                Lost item
+                {t("supportCenter.lostItem")}
                 <input
                   value={form.itemName}
                   onChange={(event) => updateForm("itemName", event.target.value)}
-                  placeholder="Phone, wallet, bag, document..."
+                  placeholder={t("supportCenter.lostItemPlaceholder")}
                 />
               </label>
             )}
 
             <label>
-              Details
+              {t("supportCenter.details")}
               <textarea
                 value={form.message}
                 onChange={(event) => updateForm("message", event.target.value)}
@@ -256,7 +250,7 @@ function SupportCenter() {
             {submitted && <div className="sx-support-message">{submitted}</div>}
 
             <button type="submit" className="sx-submit-support">
-              Submit support request
+              {t("supportCenter.submit")}
             </button>
           </form>
         </article>
@@ -264,12 +258,9 @@ function SupportCenter() {
 
       <section className="sx-emergency-panel" id="emergency">
         <div>
-          <span>Emergency support</span>
-          <h2>Call local emergency services first.</h2>
-          <p>
-            If anyone is in immediate danger, call police, ambulance, or fire support.
-            After the situation is safe, report the trip details to Yala.
-          </p>
+          <span>{t("supportCenter.emergencyEyebrow")}</span>
+          <h2>{t("supportCenter.emergencyTitle")}</h2>
+          <p>{t("supportCenter.emergencyText")}</p>
         </div>
 
         <div className="sx-emergency-grid">
@@ -286,39 +277,39 @@ function SupportCenter() {
   );
 }
 
-function getTopicCopy(topic) {
-  if (topic === "Report a ride issue") {
+function getTopicCopy(topic, t) {
+  if (topic === "ride") {
     return {
-      eyebrow: "Ride issue",
-      title: "Report a ride problem",
-      description: "Wrong pickup, unsafe behavior, cancellation, route, rating, or trip dispute.",
-      placeholder: "Tell us the ride number, pickup, destination, driver or rider name, and what happened.",
+      eyebrow: t("supportCenter.copy.ride.eyebrow"),
+      title: t("supportCenter.copy.ride.title"),
+      description: t("supportCenter.copy.ride.description"),
+      placeholder: t("supportCenter.copy.ride.placeholder"),
     };
   }
 
-  if (topic === "Report payment issue") {
+  if (topic === "payment") {
     return {
-      eyebrow: "Payment issue",
-      title: "Report a payment problem",
-      description: "Cash, card, Bankily, Masravi, Seddad, receipt, tip, or payout issue.",
-      placeholder: "Tell us the amount, payment method, ride number, and what payment status you see.",
+      eyebrow: t("supportCenter.copy.payment.eyebrow"),
+      title: t("supportCenter.copy.payment.title"),
+      description: t("supportCenter.copy.payment.description"),
+      placeholder: t("supportCenter.copy.payment.placeholder"),
     };
   }
 
-  if (topic === "Lost item report") {
+  if (topic === "lost") {
     return {
-      eyebrow: "Lost item",
-      title: "Recover an item from a trip",
-      description: "Report phones, wallets, bags, documents, keys, or anything left in a vehicle.",
-      placeholder: "Describe the item, last place seen, ride details, and best way to contact you.",
+      eyebrow: t("supportCenter.copy.lost.eyebrow"),
+      title: t("supportCenter.copy.lost.title"),
+      description: t("supportCenter.copy.lost.description"),
+      placeholder: t("supportCenter.copy.lost.placeholder"),
     };
   }
 
   return {
-    eyebrow: "Contact support",
-    title: "Contact Yala support",
-    description: "For account access, blocked accounts, driver approval, documents, or general help.",
-    placeholder: "Tell us what you need help with and include any account or ride details.",
+    eyebrow: t("supportCenter.copy.contact.eyebrow"),
+    title: t("supportCenter.copy.contact.title"),
+    description: t("supportCenter.copy.contact.description"),
+    placeholder: t("supportCenter.copy.contact.placeholder"),
   };
 }
 
