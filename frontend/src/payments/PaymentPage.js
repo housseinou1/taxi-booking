@@ -46,7 +46,7 @@ function PaymentPage({ ride }) {
   const [paymentHistory, setPaymentHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [notice, setNotice] = useState("");
-  const [rating, setRating] = useState(0);
+  const [rating, setRating] = useState(5);
   const [review, setReview] = useState("");
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
 
@@ -138,6 +138,17 @@ function PaymentPage({ ride }) {
     try {
       const token = localStorage.getItem("access");
 
+      if (!token) {
+        setNotice("Please log in again before submitting your rating.");
+        window.location.href = `/login?next=${encodeURIComponent("/rider-payments")}`;
+        return;
+      }
+
+      if (!ride?.id) {
+        setNotice("No ride is selected for rating.");
+        return;
+      }
+
       if (!rating) {
         setNotice("Please select a rating.");
         return;
@@ -160,7 +171,11 @@ function PaymentPage({ ride }) {
       setNotice("Thank you. Your driver rating was submitted.");
     } catch (error) {
       console.log("Rating error:", error.response?.data || error);
-      setNotice("Could not submit rating");
+      const message =
+        error.response?.data?.detail ||
+        error.response?.data?.error ||
+        "Could not submit rating";
+      setNotice(message);
     }
   };
 
