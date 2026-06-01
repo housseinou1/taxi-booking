@@ -1,0 +1,30 @@
+{
+  "name": "yala-rider",
+  "version": "1.0.0",
+  "description": "Yala Rider - Book a Ride in Mauritania",
+  "private": true,
+  "scripts": {
+    "build": "cd ../frontend && cp .env.rider .env.local && npm run build && rm -rf ../rider-app/www && cp -r build ../rider-app/www",
+    "sync": "npx cap sync",
+    "open:ios": "npx cap open ios",
+    "open:android": "npx cap open android",
+    "run:ios": "npx cap run ios",
+    "run:android": "npx cap run android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/app": "^6.0.0",
+    "@capacitor/camera": "^6.0.0",
+    "@capacitor/cli": "^6.0.0",
+    "@capacitor/core": "^6.0.0",
+    "@capacitor/geolocation": "^6.0.0",
+    "@capacitor/ios": "^6.0.0",
+    "@capacitor/network": "^6.0.0",
+    "@capacitor/preferences": "^6.0.0",
+    "@capacitor/push-notifications": "^6.0.0",
+    "@capacitor/splash-screen": "^6.0.0",
+    "@capacitor-community/background-geolocation": "^3.0.0",
+    "capacitor-native-biometric": "^4.0.0",
+    "capacitor-secure-storage-plugin": "^0.9.0"
+  }
+}
