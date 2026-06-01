@@ -29,6 +29,7 @@ const LOGO_SRC = "/yala-logo.png";
 
 function App() {
   const currentPath = window.location.pathname;
+  const hasLiveAccessToken = hasValidAccessToken();
 
   const [page, setPage] = useState("home");
   const [paymentMethods, setPaymentMethods] = useState([]);
@@ -170,7 +171,7 @@ function App() {
       return withInstall(<AuthLoadingScreen />);
     }
 
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !hasLiveAccessToken) {
       return withInstall(<LoginRequiredRedirect path={currentPath} />);
     }
   }
