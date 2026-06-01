@@ -135,6 +135,10 @@ class Payment(models.Model):
     ride_id = models.IntegerField(default=0)
 
     amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    discount_amount = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, default=0,
+        help_text="Promo code discount amount applied to this payment.",
+    )
     app_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     tip_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     tip_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)

@@ -3,6 +3,8 @@
  * Clean, minimal, high-contrast with Yala brand colors.
  */
 import React from "react";
+import { useTranslation } from "react-i18next";
+import { languageOptions, normalizeLanguageCode } from "../i18n";
 import { MARKET } from "../marketConfig";
 
 const LOGO = "/yala-logo.png";
@@ -18,6 +20,13 @@ const C = {
 };
 
 export default function LandingPage() {
+  const { t, i18n } = useTranslation();
+  const currentLanguage = normalizeLanguageCode(i18n.language);
+
+  const changeLanguage = (event) => {
+    i18n.changeLanguage(normalizeLanguageCode(event.target.value));
+  };
+
   return (
     <div style={styles.page}>
       {/* ── Navbar ── */}
@@ -28,13 +37,30 @@ export default function LandingPage() {
             <span style={styles.navName}>Yala</span>
           </div>
           <div style={styles.navLinks}>
-            <button onClick={() => window.location.href = "/rider-dashboard"} style={styles.navLink}>Rider</button>
-            <button onClick={() => window.location.href = "/driver"} style={styles.navLink}>Driver</button>
-            <button onClick={() => window.location.href = "/admin"} style={styles.navLink}>Admin</button>
+            <button onClick={() => window.location.href = "/rider-dashboard"} style={styles.navLink}>{t("common.rider")}</button>
+            <button onClick={() => window.location.href = "/driver"} style={styles.navLink}>{t("common.driver")}</button>
+            <button onClick={() => window.location.href = "/admin"} style={styles.navLink}>{t("common.admin")}</button>
           </div>
-          <div style={styles.navAuth}>
-            <button onClick={() => window.location.href = "/login"} style={styles.loginBtn}>Log in</button>
-            <button onClick={() => window.location.href = "/register"} style={styles.signupBtn}>Sign up</button>
+          <div style={styles.navTools}>
+            <label style={styles.languageWrap}>
+              <span style={styles.languageLabel}>{t("settings.language")}</span>
+              <select
+                aria-label={t("settings.language")}
+                value={currentLanguage}
+                onChange={changeLanguage}
+                style={styles.languageSelect}
+              >
+                {languageOptions.map((language) => (
+                  <option key={language.code} value={language.code}>
+                    {language.nativeName}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div style={styles.navAuth}>
+              <button onClick={() => window.location.href = "/login"} style={styles.loginBtn}>{t("common.login")}</button>
+              <button onClick={() => window.location.href = "/register"} style={styles.signupBtn}>{t("common.register")}</button>
+            </div>
           </div>
         </div>
       </nav>
@@ -43,17 +69,17 @@ export default function LandingPage() {
       <section style={styles.hero}>
         <div style={styles.heroContent}>
           <div style={styles.heroText}>
-            <div style={styles.badge}>🇲🇷 Mauritania's ride platform</div>
-            <h1 style={styles.heroTitle}>Move freely.<br/>Earn daily.<br/>Manage everything.</h1>
+            <div style={styles.badge}>{t("landing.eyebrow")}</div>
+            <h1 style={styles.heroTitle}>{t("landing.title")}</h1>
             <p style={styles.heroSub}>
-              Yala connects riders, drivers, and operators across {MARKET.cities.length}+ cities in Mauritania. Fast. Safe. Local.
+              {t("landing.subtitle")}
             </p>
             <div style={styles.heroCtas}>
               <button onClick={() => window.location.href = "/rider-dashboard"} style={styles.ctaPrimary}>
-                Request a ride
+                {t("landing.bookRide")}
               </button>
               <button onClick={() => window.location.href = "/driver"} style={styles.ctaSecondary}>
-                Start driving
+                {t("landing.startDriving")}
               </button>
             </div>
           </div>
@@ -80,28 +106,28 @@ export default function LandingPage() {
 
       {/* ── Three Apps ── */}
       <section style={styles.section}>
-        <h2 style={styles.sectionTitle}>Three apps. One platform.</h2>
-        <p style={styles.sectionSub}>Everything riders, drivers, and admins need — built for Mauritania.</p>
+        <h2 style={styles.sectionTitle}>{t("landing.servicesTitle")}</h2>
+        <p style={styles.sectionSub}>{t("landing.subtitle")}</p>
         <div style={styles.appGrid}>
           <AppCard
             color={C.green}
-            title="Yala Rider"
-            desc="Book rides, track your driver live, pay with Bankily, Masravi, or cash."
-            cta="Open Rider"
+            title={t("landing.rideTitle")}
+            desc={t("landing.rideText")}
+            cta={t("common.rider")}
             path="/rider-dashboard"
           />
           <AppCard
             color={C.gold}
-            title="Yala Driver"
-            desc="Go online, accept trips, navigate, earn money, and withdraw instantly."
-            cta="Open Driver"
+            title={t("landing.driverTitle")}
+            desc={t("landing.driverText")}
+            cta={t("common.driver")}
             path="/driver"
           />
           <AppCard
             color={C.navy}
-            title="Yala Admin"
-            desc="Approve drivers, monitor rides, track revenue, and manage operations."
-            cta="Open Admin"
+            title={t("common.admin")}
+            desc={t("landing.apps")}
+            cta={t("common.admin")}
             path="/admin"
           />
         </div>
@@ -193,12 +219,16 @@ const styles = {
 
   // Nav
   nav: { position: "sticky", top: 0, zIndex: 100, background: "rgba(10,10,10,0.85)", backdropFilter: "blur(20px)", borderBottom: `1px solid ${C.border}` },
-  navInner: { maxWidth: 1200, margin: "0 auto", padding: "14px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" },
+  navInner: { maxWidth: 1200, margin: "0 auto", padding: "14px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" },
   navBrand: { display: "flex", alignItems: "center", gap: 10, cursor: "pointer" },
   navLogo: { width: 38, height: 38, borderRadius: 10, objectFit: "cover" },
   navName: { fontSize: 20, fontWeight: 800, color: C.text },
   navLinks: { display: "flex", gap: 4 },
   navLink: { padding: "8px 16px", border: 0, borderRadius: 8, background: "transparent", color: C.muted, fontWeight: 600, fontSize: 14, cursor: "pointer" },
+  navTools: { display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" },
+  languageWrap: { display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 8, border: `1px solid ${C.border}`, background: "rgba(255,255,255,0.06)" },
+  languageLabel: { color: C.muted, fontSize: 12, fontWeight: 800, whiteSpace: "nowrap" },
+  languageSelect: { minWidth: 118, border: 0, borderRadius: 6, padding: "8px 28px 8px 10px", background: C.text, color: C.navy, fontWeight: 800, fontSize: 13, cursor: "pointer" },
   navAuth: { display: "flex", gap: 8 },
   loginBtn: { padding: "9px 18px", border: 0, borderRadius: 8, background: "transparent", color: C.text, fontWeight: 600, fontSize: 14, cursor: "pointer" },
   signupBtn: { padding: "9px 18px", border: 0, borderRadius: 8, background: C.green, color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer" },

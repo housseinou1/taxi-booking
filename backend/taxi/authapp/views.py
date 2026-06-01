@@ -33,7 +33,7 @@ def file_url(request, field):
     if not field:
         return ""
     if request is None:
-        return f"http://127.0.0.1:8000{field.url}"
+        return field.url
     return request.build_absolute_uri(field.url)
 
 

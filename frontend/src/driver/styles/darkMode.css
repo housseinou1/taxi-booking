@@ -1,0 +1,74 @@
+/* ─── Yala Driver App - Dark Mode CSS Custom Properties ─────────────────── */
+
+:root {
+  --bg-primary: #0B1220;
+  --bg-secondary: rgba(255,255,255,0.06);
+  --bg-card: rgba(255,255,255,0.06);
+  --text-primary: #FFFFFF;
+  --text-secondary: rgba(255,255,255,0.7);
+  --border-color: rgba(255,255,255,0.1);
+  --accent-green: #00A651;
+  --accent-gold: #D4AF37;
+}
+
+/* Dark mode applied via data attribute on body */
+[data-theme="dark"] {
+  --bg-primary: #0B1220;
+  --bg-secondary: rgba(255,255,255,0.06);
+  --bg-card: rgba(255,255,255,0.06);
+  --text-primary: #FFFFFF;
+  --text-secondary: rgba(255,255,255,0.7);
+  --border-color: rgba(255,255,255,0.1);
+  --accent-green: #00A651;
+  --accent-gold: #D4AF37;
+}
+
+/* Light mode overrides (when user switches to light) */
+[data-theme="light"] {
+  --bg-primary: #FFFFFF;
+  --bg-secondary: #F5F7FA;
+  --bg-card: #FFFFFF;
+  --text-primary: #0B1220;
+  --text-secondary: rgba(11,18,32,0.7);
+  --border-color: rgba(11,18,32,0.1);
+  --accent-green: #00A651;
+  --accent-gold: #D4AF37;
+}
+
+/* ─── Dark Mode Base Styles ──────────────────────────────────────────────── */
+
+[data-theme="dark"] body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .driver-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .driver-text-secondary {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .driver-border {
+  border-color: var(--border-color);
+}
+
+[data-theme="dark"] .driver-input {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .driver-button-primary {
+  background-color: var(--accent-green);
+  color: #FFFFFF;
+}
+
+[data-theme="dark"] .driver-button-secondary {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+}

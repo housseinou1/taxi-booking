@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     "payments",
     "notifications",
     "chat",
+    "promotions",
 ]
 
 MIDDLEWARE = [
@@ -227,6 +228,22 @@ STORAGES = {
             else "django.contrib.staticfiles.storage.StaticFilesStorage"
         ),
     },
+}
+
+# ── Rate Limiting ─────────────────────────────────────────────────────────────
+RATELIMIT_USE_CACHE = "default"
+
+CACHES = {
+    "default": (
+        {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": os.getenv("REDIS_URL", "redis://localhost:6379/1"),
+        }
+        if os.getenv("REDIS_URL")
+        else {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        }
+    ),
 }
 
 # ── Production security (only when DEBUG=False) ───────────────────────────────

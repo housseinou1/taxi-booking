@@ -2,676 +2,850 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 
 import { API_URL } from "../apiConfig";
-import { formatMoney } from "../marketConfig";
-import LiveMap from "./map/LiveMap";
+import { MARKET, formatMoney } from "../marketConfig";
+import GoogleTripMap from "../maps/GoogleTripMap";
+import useDriverLocation from "./hooks/useDriverLocation";
+import useDriverWebSocket from "./hooks/useDriverWebSocket";
+import { useDriverContext } from "./context/DriverContext";
 import RideStatusButtons from "../RideStatusButtons";
+import RideRequestCard from "./components/RideRequestCard";
+import LevelBadge from "./components/LevelBadge";
 
-const activeStatuses = new Set(["accepted", "driver_arriving", "in_progress"]);
+// ─── Yala Branding Colors ───────────────────────────────────────────────────
+const COLORS = {
+  primaryGreen: "#00A651",
+  goldAccent: "#D4AF37",
+  darkNavy: "#0B1220",
+  white: "#FFFFFF",
+  errorRed: "#EF4444",
+  mauritaniaGreen: "#00A651",
+  mauritaniaGold: "#D4AF37",
+};
 
+// ─── Notification Count Formatter ───────────────────────────────────────────
+/**
+ * Formats notification count for display.
+ * Shows numeric count up to 99, shows "99+" when count exceeds 99.
+ * @param {number} count - The unread notification count
+ * @returns {string} Formatted count string
+ */
+export function formatNotificationCount(count) {
+  if (count <= 0) return "";
+  if (count > 99) return "99+";
+  return String(count);
+}
+
+// ─── Heatmap Refresh Interval (ms) ─────────────────────────────────────────
+const HEATMAP_REFRESH_INTERVAL = 60000;
+
+// ─── Ride Request Countdown (seconds) ──────────────────────────────────────
+const RIDE_REQUEST_COUNTDOWN = 30;
+
+// ─── Helper: convert lat/lng to map point ───────────────────────────────────
+const toPoint = (lat, lng) => {
+  const point = [Number(lat), Number(lng)];
+  return point.some(Number.isNaN) ? null : point;
+};
+
+// ─── Main Component ─────────────────────────────────────────────────────────
 export default function DriverDashboard() {
-  const [earnings, setEarnings] = useState({
-    today_earnings: 0,
-    week_earnings: 0,
-    total_earnings: 0,
-    completed_rides: 0,
-    today_completed_rides: 0,
-    charts: { daily: [], weekly: [], monthly: [] },
-  });
-  const [profile, setProfile] = useState(null);
-  const [availableRides, setAvailableRides] = useState([]);
-  const [driverRides, setDriverRides] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [notice, setNotice] = useState("");
-
   const token = localStorage.getItem("access");
+  const driverContext = useDriverContext();
+  const { state, setOnline, setActiveRide, setDriverProfile, setNotifications, setConnectionStatus, addNotification, setDriverLevel } = driverContext;
+
+  const [todayEarnings, setTodayEarnings] = useState(0);
+  const [rideRequest, setRideRequest] = useState(null);
+  const [heatmapZones, setHeatmapZones] = useState([]);
+  const [routeToPickup, setRouteToPickup] = useState([]);
 
   const authHeaders = useMemo(
-    () => ({
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }),
+    () => ({ headers: { Authorization: `Bearer ${token}` } }),
     [token]
   );
 
-  const activeRides = useMemo(
-    () => driverRides.filter((ride) => activeStatuses.has(ride.status)),
-    [driverRides]
+  const defaultLocation = useMemo(
+    () => ({ lat: MARKET.defaultPickup.position[0], lng: MARKET.defaultPickup.position[1] }),
+    []
   );
 
-  const completedRides = useMemo(
-    () => driverRides.filter((ride) => ride.status === "completed"),
-    [driverRides]
+  // ─── Location Tracking ──────────────────────────────────────────────────
+  const handleLocationUpdate = useCallback(
+    (coords) => {
+      if (!token) return;
+      axios
+        .post(
+          `${API_URL}/drivers/location/update/`,
+          { current_lat: coords.lat, current_lng: coords.lng },
+          authHeaders
+        )
+        .catch((err) => console.log("Location update error:", err));
+    },
+    [authHeaders, token]
   );
 
-  const cancelledRides = useMemo(
-    () => driverRides.filter((ride) => ride.status === "cancelled"),
-    [driverRides]
+  const { location, locationError, isTracking } = useDriverLocation({
+    isOnline: state.isOnline,
+    onLocationUpdate: handleLocationUpdate,
+    defaultLocation,
+  });
+
+  // ─── WebSocket ──────────────────────────────────────────────────────────
+  const handleWebSocketMessage = useCallback(
+    (data) => {
+      switch (data.type) {
+        case "ride_request":
+          setRideRequest(data);
+          break;
+        case "ride_status_update":
+          if (data.status === "cancelled" || data.status === "completed") {
+            setActiveRide(null);
+            setRideRequest(null);
+          }
+          break;
+        case "chat_message":
+          // Chat messages handled by CommunicationPanel
+          addNotification({
+            id: Date.now(),
+            type: "chat_message",
+            message: data.message || "New message from rider",
+            timestamp: new Date().toISOString(),
+          });
+          break;
+        case "document_status":
+          addNotification({
+            id: Date.now(),
+            type: "document_status",
+            message: data.message || `Document ${data.status || "updated"}`,
+            timestamp: new Date().toISOString(),
+          });
+          break;
+        case "achievement_unlocked":
+          addNotification({
+            id: Date.now(),
+            type: "achievement_unlocked",
+            message: data.message || `Achievement unlocked: ${data.name || ""}`,
+            achievement: data,
+            timestamp: new Date().toISOString(),
+          });
+          break;
+        case "level_change":
+          setDriverLevel({
+            level: data.new_level || data.level,
+            progress: data.progress || 0,
+          });
+          addNotification({
+            id: Date.now(),
+            type: "level_change",
+            message: data.message || `Level changed to ${data.new_level || data.level}`,
+            timestamp: new Date().toISOString(),
+          });
+          break;
+        case "location_update":
+          // Location updates from server (e.g., rider location during ride)
+          break;
+        default:
+          break;
+      }
+    },
+    [setActiveRide, addNotification, setDriverLevel]
   );
 
-  const acceptanceRate = useMemo(() => {
-    const total = driverRides.length + availableRides.length;
-    if (!total) return 100;
-    return Math.round((driverRides.length / total) * 100);
-  }, [availableRides.length, driverRides.length]);
+  const { isConnected, connectionError, sendMessage } = useDriverWebSocket({
+    isOnline: state.isOnline,
+    onMessage: handleWebSocketMessage,
+    token,
+  });
 
-  const isOnline = Boolean(profile?.is_available);
+  // Sync connection status to context
+  useEffect(() => {
+    setConnectionStatus({ isConnected, error: connectionError });
+  }, [isConnected, connectionError, setConnectionStatus]);
 
-  const fetchDashboardData = useCallback(async () => {
-    if (!token) {
-      setLoading(false);
-      setNotice("Please log in as a driver to view this dashboard.");
+  // ─── Fetch Driver Profile & Earnings ────────────────────────────────────
+  const fetchDriverData = useCallback(async () => {
+    if (!token) return;
+    try {
+      const [profileRes, earningsRes] = await Promise.all([
+        axios.get(`${API_URL}/drivers/me/`, authHeaders),
+        axios.get(`${API_URL}/rides/driver/earnings/`, authHeaders),
+      ]);
+      setDriverProfile(profileRes.data);
+      setOnline(Boolean(profileRes.data.is_available));
+      setTodayEarnings(earningsRes.data?.today_earnings || 0);
+    } catch (err) {
+      console.log("Dashboard data error:", err);
+    }
+  }, [authHeaders, token, setDriverProfile, setOnline]);
+
+  useEffect(() => {
+    fetchDriverData();
+  }, [fetchDriverData]);
+
+  // ─── Fetch Heatmap Zones (60-second refresh) ───────────────────────────
+  const fetchHeatmap = useCallback(async () => {
+    try {
+      const response = await axios.get(`${API_URL}/drivers/heatmap/`, authHeaders);
+      setHeatmapZones(Array.isArray(response.data) ? response.data : []);
+    } catch (err) {
+      // Heatmap endpoint may not exist yet; silently ignore
+      setHeatmapZones([]);
+    }
+  }, [authHeaders]);
+
+  useEffect(() => {
+    if (!state.isOnline) return;
+    fetchHeatmap();
+    const interval = setInterval(fetchHeatmap, HEATMAP_REFRESH_INTERVAL);
+    return () => clearInterval(interval);
+  }, [state.isOnline, fetchHeatmap]);
+
+  // ─── Fetch Notifications ────────────────────────────────────────────────
+  const fetchNotifications = useCallback(async () => {
+    if (!token) return;
+    try {
+      const response = await axios.get(`${API_URL}/drivers/me/notifications/`, authHeaders);
+      const data = response.data;
+      setNotifications({
+        items: data.items || [],
+        unreadCount: data.unread_count ?? data.unreadCount ?? 0,
+      });
+    } catch (err) {
+      // Notifications endpoint may not exist yet
+    }
+  }, [authHeaders, token, setNotifications]);
+
+  useEffect(() => {
+    fetchNotifications();
+  }, [fetchNotifications]);
+
+  // ─── Route Preview (driver → pickup) ───────────────────────────────────
+  const activeRide = state.activeRide || rideRequest;
+  const driverPoint = useMemo(
+    () => [location?.lat || defaultLocation.lat, location?.lng || defaultLocation.lng],
+    [location, defaultLocation]
+  );
+
+  const pickupPoint = useMemo(
+    () => toPoint(activeRide?.pickup_lat, activeRide?.pickup_lng),
+    [activeRide]
+  );
+
+  useEffect(() => {
+    if (!driverPoint || !pickupPoint) {
+      setRouteToPickup([]);
       return;
     }
 
-    try {
-      const [profileResponse, availableResponse, ridesResponse, earningsResponse] =
-        await Promise.all([
-          axios.get(`${API_URL}/drivers/me/`, authHeaders),
-          axios.get(`${API_URL}/rides/available/`),
-          axios.get(`${API_URL}/rides/driver-rides/`, authHeaders),
-          axios.get(`${API_URL}/rides/driver/earnings/`, authHeaders),
-        ]);
+    let cancelled = false;
 
-      setProfile(profileResponse.data);
-      setAvailableRides(Array.isArray(availableResponse.data) ? availableResponse.data : []);
-      setDriverRides(Array.isArray(ridesResponse.data) ? ridesResponse.data : []);
-      setEarnings(earningsResponse.data || {});
-      setNotice("");
-    } catch (error) {
-      console.log("Driver dashboard error:", error.response?.data || error);
-      setNotice(error.response?.data?.detail || "Could not load driver dashboard.");
-    } finally {
-      setLoading(false);
+    const fetchRoute = async () => {
+      try {
+        const url = `https://router.project-osrm.org/route/v1/driving/${driverPoint[1]},${driverPoint[0]};${pickupPoint[1]},${pickupPoint[0]}?overview=full&geometries=geojson`;
+        const response = await fetch(url);
+        const data = await response.json();
+        const route = data.routes?.[0];
+        if (!cancelled && route) {
+          setRouteToPickup(route.geometry.coordinates.map(([lng, lat]) => [lat, lng]));
+        }
+      } catch (err) {
+        if (!cancelled) {
+          // Fallback: straight line between driver and pickup
+          setRouteToPickup([driverPoint, pickupPoint]);
+        }
+      }
+    };
+
+    fetchRoute();
+    return () => { cancelled = true; };
+  }, [driverPoint, pickupPoint]);
+
+  // ─── Map Markers ───────────────────────────────────────────────────────
+  const markers = useMemo(() => {
+    const list = [
+      {
+        id: "driver",
+        position: driverPoint,
+        title: "Your location",
+        label: "D",
+        type: "driver",
+      },
+    ];
+    if (pickupPoint) {
+      list.push({
+        id: "pickup",
+        position: pickupPoint,
+        title: `Pickup: ${activeRide?.pickup || activeRide?.pickup_address || "Pickup"}`,
+        label: "P",
+      });
     }
-  }, [API_URL, authHeaders, token]);
+    return list;
+  }, [driverPoint, pickupPoint, activeRide]);
 
-  useEffect(() => {
-    fetchDashboardData();
-    const interval = setInterval(fetchDashboardData, 6000);
-    return () => clearInterval(interval);
-  }, [fetchDashboardData]);
+  // ─── Heatmap Circles for Map ───────────────────────────────────────────
+  const heatmapCircles = useMemo(
+    () =>
+      heatmapZones
+        .filter((zone) => zone.active !== false)
+        .map((zone, idx) => ({
+          id: `heatmap-${idx}`,
+          center: [zone.center_lat, zone.center_lng],
+          radius: (zone.radius_km || 1) * 1000,
+          color: `rgba(0, 166, 81, ${0.15 + (zone.intensity || 0.5) * 0.35})`,
+          fillColor: `rgba(0, 166, 81, ${0.1 + (zone.intensity || 0.5) * 0.25})`,
+        })),
+    [heatmapZones]
+  );
 
-  const toggleOnline = async () => {
-    try {
-      const nextAvailability = !isOnline;
-      const response = await axios.post(
-        `${API_URL}/drivers/availability/toggle/`,
-        { is_available: nextAvailability },
-        authHeaders
-      );
+  // ─── Polylines (route preview) ─────────────────────────────────────────
+  const polylines = useMemo(() => {
+    if (routeToPickup.length < 2) return [];
+    return [
+      {
+        id: "route-to-pickup",
+        path: routeToPickup,
+        color: COLORS.primaryGreen,
+        weight: 5,
+        opacity: 0.8,
+        animated: true,
+      },
+    ];
+  }, [routeToPickup]);
 
-      setProfile((current) => ({
-        ...(current || {}),
-        is_available: Boolean(response.data.is_available),
-        status: response.data.status || current?.status,
-      }));
-      setNotice(response.data.message || (nextAvailability ? "You are online." : "You are offline."));
-      fetchDashboardData();
-    } catch (error) {
-      console.log("Availability error:", error.response?.data || error);
-      setNotice(error.response?.data?.detail || "Could not change online status.");
-    }
-  };
-
-  return (
-    <main className="driver-pro-page">
-      <DriverDashboardStyles />
-
-      <section className="driver-hero">
-        <div>
-          <span className="driver-kicker">Driver command center</span>
-          <h1>Drive, earn, and manage every trip.</h1>
-          <p>
-            Track requests, control online status, monitor earnings, and review trip
-            performance from one professional dashboard.
+  // ─── GPS Unavailable Error State ───────────────────────────────────────
+  if (locationError && locationError.includes("Location access is required")) {
+    return (
+      <div style={gpsErrorContainerStyle}>
+        {/* Subtle Mauritania flag accent - green/gold stripe at top */}
+        <div style={mauritaniaAccentBarStyle} />
+        <div style={gpsErrorCardStyle}>
+          <div style={gpsErrorIconStyle}>📍</div>
+          <h2 style={gpsErrorTitleStyle}>GPS Unavailable</h2>
+          <p style={gpsErrorTextStyle}>
+            Location access is required to use the Yala Driver App.
+            Please enable location services in your device settings to
+            see the map and receive ride requests.
+          </p>
+          <button
+            style={gpsErrorButtonStyle}
+            onClick={() => window.location.reload()}
+            aria-label="Retry enabling GPS"
+          >
+            Enable Location & Retry
+          </button>
+          <p style={gpsErrorHintStyle}>
+            Settings → Privacy → Location Services → Enable
           </p>
         </div>
-
-        <div className="driver-online-card">
-          <div>
-            <span>Status</span>
-            <strong>{isOnline ? "Online" : "Offline"}</strong>
-            <p>{profile?.status ? `Account ${profile.status}` : "Driver profile"}</p>
-          </div>
-          <button className={isOnline ? "online" : ""} onClick={toggleOnline}>
-            <span />
-          </button>
-        </div>
-      </section>
-
-      {notice && <div className="driver-notice">{notice}</div>}
-
-      <section className="driver-earnings-grid">
-        <EarningCard label="Today" value={formatMoney(earnings.today_earnings)} tone="green" />
-        <EarningCard label="This week" value={formatMoney(earnings.week_earnings)} tone="blue" />
-        <EarningCard label="Total" value={formatMoney(earnings.total_earnings)} tone="gold" />
-        <EarningCard
-          label="Completed"
-          value={earnings.completed_rides || completedRides.length}
-          tone="dark"
-        />
-      </section>
-
-      <section className="driver-main-grid">
-        <div className="driver-left-stack">
-          <section className="driver-panel driver-map-panel">
-            <SectionHeader
-              title="Map"
-              subtitle={isOnline ? "Receiving nearby requests" : "Go online to receive trips"}
-            />
-            <div className="driver-map-wrap">
-              <LiveMap />
-            </div>
-          </section>
-
-          <section className="driver-panel">
-            <SectionHeader title="Incoming trip cards" subtitle={`${availableRides.length} request(s)`} />
-            <div className="driver-trip-list">
-              {loading ? (
-                <EmptyState title="Loading requests" text="Checking nearby riders." />
-              ) : !isOnline ? (
-                <EmptyState title="Offline" text="Turn on online mode to receive requests." />
-              ) : availableRides.length === 0 ? (
-                <EmptyState title="No incoming trips" text="New requests will appear here." />
-              ) : (
-                availableRides.slice(0, 4).map((ride) => (
-                  <TripCard key={ride.id} ride={ride} badge="New request">
-                    <RideFacts ride={ride} />
-                    <RideStatusButtons ride={ride} onStatusChange={fetchDashboardData} />
-                  </TripCard>
-                ))
-              )}
-            </div>
-          </section>
-        </div>
-
-        <aside className="driver-right-stack">
-          <section className="driver-panel">
-            <SectionHeader title="Trip analytics" subtitle="Live driver metrics" />
-            <div className="driver-analytics-grid">
-              <Metric label="Acceptance" value={`${acceptanceRate}%`} />
-              <Metric label="Active trips" value={activeRides.length} />
-              <Metric label="Cancelled" value={cancelledRides.length} />
-              <Metric label="Today rides" value={earnings.today_completed_rides || 0} />
-            </div>
-          </section>
-
-          <section className="driver-panel">
-            <SectionHeader title="Active ride" subtitle="Current trip status" />
-            {activeRides.length === 0 ? (
-              <EmptyState title="No active ride" text="Accepted trips move here." />
-            ) : (
-              activeRides.map((ride) => (
-                <TripCard key={ride.id} ride={ride} badge={formatStatus(ride.status)}>
-                  <RideFacts ride={ride} showDriverEarning />
-                  <RideStatusButtons ride={ride} onStatusChange={fetchDashboardData} />
-                </TripCard>
-              ))
-            )}
-          </section>
-
-          <section className="driver-panel">
-            <SectionHeader title="Ride history" subtitle="Recent completed rides" />
-            <div className="driver-history-list">
-              {completedRides.length === 0 ? (
-                <EmptyState title="No completed rides" text="Finished trips appear here." />
-              ) : (
-                completedRides.slice(0, 5).map((ride) => (
-                  <HistoryRow key={ride.id} ride={ride} />
-                ))
-              )}
-            </div>
-          </section>
-        </aside>
-      </section>
-    </main>
-  );
-}
-
-function EarningCard({ label, value, tone }) {
-  return (
-    <article className={`driver-earning-card ${tone}`}>
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </article>
-  );
-}
-
-function SectionHeader({ title, subtitle }) {
-  return (
-    <div className="driver-section-header">
-      <strong>{title}</strong>
-      <span>{subtitle}</span>
-    </div>
-  );
-}
-
-function Metric({ label, value }) {
-  return (
-    <div className="driver-metric">
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
-  );
-}
-
-function EmptyState({ title, text }) {
-  return (
-    <div className="driver-empty">
-      <strong>{title}</strong>
-      <span>{text}</span>
-    </div>
-  );
-}
-
-function TripCard({ ride, badge, children }) {
-  return (
-    <article className="driver-trip-card">
-      <div className="driver-trip-top">
-        <div>
-          <span>Ride #{ride.id}</span>
-          <strong>{formatMoney(ride.fare)}</strong>
-        </div>
-        <em>{badge}</em>
       </div>
-      <div className="driver-route">
-        <p>{ride.pickup || ride.pickup_address || "Pickup"}</p>
-        <p>{ride.destination || ride.destination_address || "Destination"}</p>
-      </div>
-      {children}
-    </article>
-  );
-}
-
-function RideFacts({ ride, showDriverEarning = false }) {
-  const earning = Number(ride.driver_earning ?? Number(ride.fare || 0) - Number(ride.app_fee || 0));
-  const facts = [
-    ["Type", ride.ride_type || "Regular"],
-    ["Distance", `${ride.distance_km || 0} km`],
-    ["App fee", formatMoney(ride.app_fee)],
-  ];
-
-  if (showDriverEarning) {
-    facts.push(["You earn", formatMoney(earning)]);
+    );
   }
 
-  return (
-    <div className="driver-facts">
-      {facts.map(([label, value]) => (
-        <div key={label}>
-          <span>{label}</span>
-          <strong>{value}</strong>
-        </div>
-      ))}
-    </div>
-  );
-}
+  const profile = state.driverProfile;
+  const unreadCount = state.notifications?.unreadCount || 0;
 
-function HistoryRow({ ride }) {
   return (
-    <div className="driver-history-row">
-      <div>
-        <strong>{ride.pickup || "Pickup"}</strong>
-        <span>{ride.destination || "Destination"}</span>
+    <div style={dashboardContainerStyle}>
+      {/* Full-Screen Map */}
+      <div style={fullScreenMapStyle}>
+        <GoogleTripMap
+          center={driverPoint}
+          zoom={15}
+          style={mapFillStyle}
+          fitPoints={[driverPoint, pickupPoint].filter(Boolean)}
+          markers={markers}
+          polylines={polylines}
+          circles={heatmapCircles}
+        />
       </div>
-      <em>{formatMoney(ride.driver_earning ?? ride.fare)}</em>
+
+      {/* Mauritania Identity: subtle crescent & star watermark */}
+      <div style={mauritaniaWatermarkStyle} aria-hidden="true">
+        ☪
+      </div>
+
+      {/* Top Bar Overlay: Profile + Notifications */}
+      <div style={topBarStyle}>
+        <div style={profileAreaStyle}>
+          {profile?.profile_picture || profile?.driver_photo ? (
+            <img
+              src={profile.profile_picture || profile.driver_photo}
+              alt={profile?.full_name || "Driver"}
+              style={profilePhotoStyle}
+            />
+          ) : (
+            <div style={profilePhotoPlaceholderStyle}>
+              {(profile?.full_name || "D")[0].toUpperCase()}
+            </div>
+          )}
+          <div style={profileInfoStyle}>
+            <span style={profileNameStyle}>
+              {profile?.full_name || profile?.first_name || "Driver"}
+            </span>
+            <div style={profileMetaStyle}>
+              <LevelBadge level={profile?.driver_level || profile?.driver_category || "bronze"} />
+              <span style={earningsTextStyle}>
+                {formatMoney(todayEarnings)} today
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div style={notificationAreaStyle}>
+          <button style={notificationButtonStyle} aria-label="Notifications">
+            <span style={bellIconStyle}>🔔</span>
+            {unreadCount > 0 && (
+              <span style={notificationBadgeStyle}>
+                {formatNotificationCount(unreadCount)}
+              </span>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Ride Request Card Overlay */}
+      {rideRequest && !state.activeRide && (
+        <div style={rideRequestOverlayStyle}>
+          <RideRequestCard
+            ride={rideRequest}
+            onAccept={() => {
+              setActiveRide(rideRequest);
+              setRideRequest(null);
+              sendMessage({ type: "ride_accept", ride_id: rideRequest.ride_id });
+            }}
+            onDecline={() => setRideRequest(null)}
+            onExpired={() => setRideRequest(null)}
+          />
+        </div>
+      )}
+
+      {/* Active Ride Card Overlay */}
+      {state.activeRide && (
+        <div style={activeRideOverlayStyle}>
+          <ActiveRideCard ride={state.activeRide} onStatusChange={fetchDriverData} />
+        </div>
+      )}
+
+      {/* Connection Error Banner */}
+      {connectionError && (
+        <div style={connectionBannerStyle}>
+          {connectionError}
+        </div>
+      )}
     </div>
   );
 }
 
-function formatStatus(status) {
-  if (!status) return "Ready";
-  return status.replace(/_/g, " ");
-}
+// ─── Sub-Components ─────────────────────────────────────────────────────────
 
-function DriverDashboardStyles() {
+function ActiveRideCard({ ride, onStatusChange }) {
+  const statusLabel = ride.status ? ride.status.replace(/_/g, " ") : "Active";
+
   return (
-    <style>{`
-      .driver-pro-page {
-        min-height: 100vh;
-        padding: 24px;
-        background:
-          radial-gradient(circle at 12% 8%, rgba(250, 204, 21, 0.14), transparent 26%),
-          radial-gradient(circle at 86% 12%, rgba(22, 163, 74, 0.14), transparent 26%),
-          #05070c;
-        color: #f8fafc;
-        font-family: Inter, "SF Pro Display", "Segoe UI", Arial, sans-serif;
-      }
-
-      .driver-pro-page * {
-        box-sizing: border-box;
-      }
-
-      .driver-hero,
-      .driver-earnings-grid,
-      .driver-main-grid,
-      .driver-notice {
-        width: min(1240px, 100%);
-        margin-left: auto;
-        margin-right: auto;
-      }
-
-      .driver-hero {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) 320px;
-        gap: 20px;
-        align-items: end;
-        padding: 28px 0 18px;
-      }
-
-      .driver-kicker {
-        display: inline-flex;
-        margin-bottom: 14px;
-        padding: 8px 12px;
-        border-radius: 999px;
-        background: rgba(250, 204, 21, 0.12);
-        color: #facc15;
-        font-size: 12px;
-        font-weight: 950;
-        text-transform: uppercase;
-      }
-
-      .driver-hero h1 {
-        max-width: 760px;
-        margin: 0;
-        font-size: clamp(42px, 6vw, 74px);
-        line-height: 0.95;
-        letter-spacing: 0;
-      }
-
-      .driver-hero p {
-        max-width: 680px;
-        margin: 18px 0 0;
-        color: rgba(248, 250, 252, 0.68);
-        line-height: 1.6;
-      }
-
-      .driver-online-card,
-      .driver-panel,
-      .driver-earning-card,
-      .driver-notice {
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        background: rgba(255, 255, 255, 0.07);
-        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.22);
-        backdrop-filter: blur(18px);
-      }
-
-      .driver-online-card {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 18px;
-        padding: 20px;
-        border-radius: 28px;
-      }
-
-      .driver-online-card span,
-      .driver-earning-card span,
-      .driver-section-header span,
-      .driver-metric span,
-      .driver-trip-top span,
-      .driver-facts span,
-      .driver-history-row span,
-      .driver-empty span {
-        color: rgba(226, 232, 240, 0.66);
-        font-size: 13px;
-        font-weight: 800;
-      }
-
-      .driver-online-card strong {
-        display: block;
-        margin: 4px 0;
-        font-size: 30px;
-      }
-
-      .driver-online-card p {
-        margin: 0;
-        color: #94a3b8;
-      }
-
-      .driver-online-card button {
-        position: relative;
-        width: 76px;
-        height: 42px;
-        border: 0;
-        border-radius: 999px;
-        background: rgba(148, 163, 184, 0.35);
-        cursor: pointer;
-      }
-
-      .driver-online-card button span {
-        position: absolute;
-        top: 5px;
-        left: 5px;
-        width: 32px;
-        height: 32px;
-        border-radius: 999px;
-        background: #fff;
-        transition: transform 180ms ease;
-      }
-
-      .driver-online-card button.online {
-        background: #16a34a;
-      }
-
-      .driver-online-card button.online span {
-        transform: translateX(34px);
-      }
-
-      .driver-notice {
-        margin-top: 10px;
-        padding: 14px 16px;
-        border-radius: 18px;
-        color: #fde68a;
-        font-weight: 850;
-      }
-
-      .driver-earnings-grid {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 14px;
-        margin-top: 16px;
-      }
-
-      .driver-earning-card {
-        min-height: 142px;
-        display: grid;
-        align-content: space-between;
-        padding: 20px;
-        border-radius: 26px;
-      }
-
-      .driver-earning-card strong {
-        font-size: clamp(24px, 3vw, 36px);
-      }
-
-      .driver-earning-card.green {
-        background: linear-gradient(135deg, rgba(22, 163, 74, 0.25), rgba(255, 255, 255, 0.07));
-      }
-
-      .driver-earning-card.blue {
-        background: linear-gradient(135deg, rgba(37, 99, 235, 0.25), rgba(255, 255, 255, 0.07));
-      }
-
-      .driver-earning-card.gold {
-        background: linear-gradient(135deg, rgba(250, 204, 21, 0.24), rgba(255, 255, 255, 0.07));
-      }
-
-      .driver-main-grid {
-        display: grid;
-        grid-template-columns: minmax(0, 1.35fr) minmax(340px, 0.85fr);
-        gap: 16px;
-        margin-top: 16px;
-      }
-
-      .driver-left-stack,
-      .driver-right-stack {
-        display: grid;
-        gap: 16px;
-      }
-
-      .driver-panel {
-        padding: 18px;
-        border-radius: 28px;
-      }
-
-      .driver-section-header {
-        display: flex;
-        justify-content: space-between;
-        gap: 12px;
-        align-items: center;
-        margin-bottom: 14px;
-      }
-
-      .driver-section-header strong {
-        font-size: 22px;
-      }
-
-      .driver-map-wrap {
-        min-height: 430px;
-        overflow: hidden;
-        border-radius: 24px;
-        background: #111827;
-      }
-
-      .driver-trip-list,
-      .driver-history-list {
-        display: grid;
-        gap: 12px;
-      }
-
-      .driver-trip-card,
-      .driver-empty,
-      .driver-history-row,
-      .driver-metric {
-        border: 1px solid rgba(255, 255, 255, 0.09);
-        border-radius: 22px;
-        background: rgba(255, 255, 255, 0.06);
-      }
-
-      .driver-trip-card {
-        padding: 16px;
-      }
-
-      .driver-trip-top,
-      .driver-history-row {
-        display: flex;
-        justify-content: space-between;
-        gap: 12px;
-        align-items: center;
-      }
-
-      .driver-trip-top strong {
-        display: block;
-        margin-top: 4px;
-        font-size: 28px;
-      }
-
-      .driver-trip-top em {
-        padding: 8px 10px;
-        border-radius: 999px;
-        background: rgba(250, 204, 21, 0.14);
-        color: #facc15;
-        font-size: 12px;
-        font-style: normal;
-       font-weight: 950;
-        text-transform: capitalize;
-      }
-
-      .driver-route {
-        display: grid;
-        gap: 8px;
-        margin: 14px 0;
-        padding-left: 14px;
-        border-left: 3px solid #facc15;
-      }
-
-      .driver-route p {
-        margin: 0;
-        color: #e2e8f0;
-        font-weight: 850;
-      }
-
-      .driver-facts,
-      .driver-analytics-grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 10px;
-      }
-
-      .driver-facts div,
-      .driver-metric {
-        padding: 12px;
-        border-radius: 16px;
-        background: rgba(15, 23, 42, 0.52);
-      }
-
-      .driver-facts strong,
-      .driver-metric strong {
-        display: block;
-        margin-top: 4px;
-        color: #fff;
-      }
-
-      .driver-empty {
-        display: grid;
-        gap: 6px;
-        padding: 18px;
-        color: #fff;
-      }
-
-      .driver-history-row {
-        padding: 14px;
-      }
-
-      .driver-history-row strong,
-      .driver-history-row span {
-        display: block;
-      }
-
-      .driver-history-row strong {
-        color: #fff;
-      }
-
-      .driver-history-row em {
-        color: #facc15;
-        font-style: normal;
-        font-weight: 950;
-      }
-
-      @media (max-width: 980px) {
-        .driver-hero,
-        .driver-main-grid {
-          grid-template-columns: 1fr;
-        }
-
-        .driver-earnings-grid {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-      }
-
-      @media (max-width: 560px) {
-        .driver-pro-page {
-          padding: 14px;
-        }
-
-        .driver-earnings-grid,
-        .driver-facts,
-        .driver-analytics-grid {
-          grid-template-columns: 1fr;
-        }
-
-        .driver-panel,
-        .driver-online-card,
-        .driver-earning-card {
-          border-radius: 22px;
-        }
-
-        .driver-map-wrap {
-          min-height: 320px;
-        }
-      }
-    `}</style>
+    <div style={activeRideCardStyle}>
+      <div style={rideCardHeaderStyle}>
+        <span style={rideCardLabelStyle}>{statusLabel}</span>
+        <strong style={rideCardFareStyle}>{formatMoney(ride.fare)}</strong>
+      </div>
+      <div style={rideCardBodyStyle}>
+        <p style={rideCardRouteStyle}>
+          <span style={routeIconStyle}>📍</span> {ride.pickup || ride.pickup_address || "Pickup"}
+        </p>
+        <p style={rideCardRouteStyle}>
+          <span style={routeIconStyle}>🏁</span> {ride.destination || ride.destination_address || "Destination"}
+        </p>
+      </div>
+      <RideStatusButtons ride={ride} onStatusChange={onStatusChange} />
+    </div>
   );
 }
+
+// ─── Styles ─────────────────────────────────────────────────────────────────
+
+const dashboardContainerStyle = {
+  position: "relative",
+  width: "100%",
+  height: "100vh",
+  overflow: "hidden",
+  backgroundColor: COLORS.darkNavy,
+};
+
+const fullScreenMapStyle = {
+  position: "absolute",
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  zIndex: 1,
+};
+
+const mapFillStyle = {
+  width: "100%",
+  height: "100%",
+};
+
+// ─── Mauritania Identity Elements ───────────────────────────────────────────
+
+const mauritaniaWatermarkStyle = {
+  position: "absolute",
+  bottom: "120px",
+  right: "16px",
+  zIndex: 2,
+  fontSize: "28px",
+  opacity: 0.12,
+  color: COLORS.mauritaniaGold,
+  pointerEvents: "none",
+  userSelect: "none",
+};
+
+const mauritaniaAccentBarStyle = {
+  position: "absolute",
+  top: 0,
+  left: 0,
+  right: 0,
+  height: "3px",
+  background: `linear-gradient(90deg, ${COLORS.mauritaniaGreen} 0%, ${COLORS.mauritaniaGold} 50%, ${COLORS.mauritaniaGreen} 100%)`,
+  zIndex: 1000,
+};
+
+// ─── Top Bar ────────────────────────────────────────────────────────────────
+
+const topBarStyle = {
+  position: "absolute",
+  top: 0,
+  left: 0,
+  right: 0,
+  zIndex: 100,
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  padding: "12px 16px",
+  background: "linear-gradient(180deg, rgba(11, 18, 32, 0.92) 0%, rgba(11, 18, 32, 0) 100%)",
+  pointerEvents: "none",
+};
+
+const profileAreaStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: "10px",
+  pointerEvents: "auto",
+};
+
+const profilePhotoStyle = {
+  width: "44px",
+  height: "44px",
+  borderRadius: "50%",
+  objectFit: "cover",
+  border: `2px solid ${COLORS.goldAccent}`,
+};
+
+const profilePhotoPlaceholderStyle = {
+  width: "44px",
+  height: "44px",
+  borderRadius: "50%",
+  backgroundColor: COLORS.primaryGreen,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  color: COLORS.white,
+  fontWeight: 900,
+  fontSize: "18px",
+  border: `2px solid ${COLORS.goldAccent}`,
+};
+
+const profileInfoStyle = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "2px",
+};
+
+const profileNameStyle = {
+  color: COLORS.white,
+  fontWeight: 800,
+  fontSize: "14px",
+};
+
+const profileMetaStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: "8px",
+};
+
+const earningsTextStyle = {
+  color: COLORS.goldAccent,
+  fontSize: "12px",
+  fontWeight: 700,
+};
+
+
+
+// ─── Notification ───────────────────────────────────────────────────────────
+
+const notificationAreaStyle = {
+  pointerEvents: "auto",
+};
+
+const notificationButtonStyle = {
+  position: "relative",
+  background: "rgba(255, 255, 255, 0.12)",
+  border: "none",
+  borderRadius: "50%",
+  width: "44px",
+  height: "44px",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  cursor: "pointer",
+  backdropFilter: "blur(8px)",
+};
+
+const bellIconStyle = {
+  fontSize: "20px",
+};
+
+const notificationBadgeStyle = {
+  position: "absolute",
+  top: "-2px",
+  right: "-2px",
+  minWidth: "18px",
+  height: "18px",
+  padding: "0 5px",
+  borderRadius: "999px",
+  backgroundColor: COLORS.errorRed,
+  color: COLORS.white,
+  fontSize: "10px",
+  fontWeight: 900,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  lineHeight: 1,
+};
+
+// ─── Ride Request Overlay ───────────────────────────────────────────────────
+
+const rideRequestOverlayStyle = {
+  position: "absolute",
+  bottom: "24px",
+  left: "16px",
+  right: "16px",
+  zIndex: 200,
+};
+
+const activeRideOverlayStyle = {
+  position: "absolute",
+  bottom: "24px",
+  left: "16px",
+  right: "16px",
+  zIndex: 200,
+};
+
+const rideCardStyle = {
+  backgroundColor: "rgba(11, 18, 32, 0.95)",
+  borderRadius: "20px",
+  padding: "0 18px 18px",
+  border: `1px solid ${COLORS.goldAccent}`,
+  backdropFilter: "blur(12px)",
+  boxShadow: "0 16px 48px rgba(0, 0, 0, 0.4)",
+  overflow: "hidden",
+};
+
+const activeRideCardStyle = {
+  backgroundColor: "rgba(11, 18, 32, 0.95)",
+  borderRadius: "20px",
+  padding: "18px",
+  border: `1px solid ${COLORS.primaryGreen}`,
+  backdropFilter: "blur(12px)",
+  boxShadow: "0 16px 48px rgba(0, 0, 0, 0.4)",
+};
+
+const countdownBarContainerStyle = {
+  width: "100%",
+  height: "4px",
+  backgroundColor: "rgba(255, 255, 255, 0.1)",
+  borderRadius: "2px",
+  marginBottom: "14px",
+  overflow: "hidden",
+};
+
+const countdownBarStyle = {
+  height: "100%",
+  borderRadius: "2px",
+  transition: "width 1s linear, background-color 0.3s ease",
+};
+
+const rideCardHeaderStyle = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  marginBottom: "8px",
+};
+
+const rideCardLabelStyle = {
+  color: COLORS.goldAccent,
+  fontSize: "12px",
+  fontWeight: 900,
+  textTransform: "uppercase",
+};
+
+const rideCardFareRowStyle = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  marginBottom: "12px",
+};
+
+const rideCardFareStyle = {
+  color: COLORS.white,
+  fontSize: "22px",
+  fontWeight: 900,
+};
+
+const rideCardBodyStyle = {
+  marginBottom: "14px",
+};
+
+const rideCardRouteStyle = {
+  margin: "4px 0",
+  color: "rgba(255, 255, 255, 0.85)",
+  fontSize: "13px",
+  fontWeight: 700,
+  display: "flex",
+  alignItems: "center",
+  gap: "6px",
+};
+
+const routeIconStyle = {
+  fontSize: "14px",
+  flexShrink: 0,
+};
+
+const rideCardDistanceStyle = {
+  color: "rgba(255, 255, 255, 0.6)",
+  fontSize: "12px",
+  fontWeight: 700,
+};
+
+const countdownTimerStyle = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  width: "36px",
+  height: "36px",
+  borderRadius: "50%",
+  backgroundColor: "rgba(255, 255, 255, 0.08)",
+  border: `2px solid ${COLORS.primaryGreen}`,
+};
+
+const countdownNumberStyle = {
+  color: COLORS.white,
+  fontSize: "12px",
+  fontWeight: 900,
+};
+
+const rideCardActionsStyle = {
+  display: "flex",
+  gap: "10px",
+};
+
+const declineButtonStyle = {
+  flex: 1,
+  padding: "12px",
+  borderRadius: "12px",
+  border: "1px solid rgba(255, 255, 255, 0.2)",
+  backgroundColor: "transparent",
+  color: COLORS.white,
+  fontWeight: 800,
+  fontSize: "14px",
+  cursor: "pointer",
+};
+
+const acceptButtonStyle = {
+  flex: 1,
+  padding: "12px",
+  borderRadius: "12px",
+  border: "none",
+  backgroundColor: COLORS.primaryGreen,
+  color: COLORS.white,
+  fontWeight: 800,
+  fontSize: "14px",
+  cursor: "pointer",
+};
+
+// ─── Connection Banner ──────────────────────────────────────────────────────
+
+const connectionBannerStyle = {
+  position: "absolute",
+  top: "80px",
+  left: "16px",
+  right: "16px",
+  zIndex: 150,
+  padding: "10px 14px",
+  borderRadius: "12px",
+  backgroundColor: "rgba(239, 68, 68, 0.9)",
+  color: COLORS.white,
+  fontSize: "12px",
+  fontWeight: 700,
+  textAlign: "center",
+  backdropFilter: "blur(8px)",
+};
+
+// ─── GPS Error State ────────────────────────────────────────────────────────
+
+const gpsErrorContainerStyle = {
+  position: "relative",
+  width: "100%",
+  height: "100vh",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  backgroundColor: COLORS.darkNavy,
+  padding: "24px",
+};
+
+const gpsErrorCardStyle = {
+  maxWidth: "360px",
+  width: "100%",
+  padding: "32px 24px",
+  borderRadius: "24px",
+  backgroundColor: "rgba(255, 255, 255, 0.06)",
+  border: "1px solid rgba(255, 255, 255, 0.1)",
+  textAlign: "center",
+  backdropFilter: "blur(12px)",
+};
+
+const gpsErrorIconStyle = {
+  fontSize: "48px",
+  marginBottom: "16px",
+};
+
+const gpsErrorTitleStyle = {
+  color: COLORS.white,
+  fontSize: "22px",
+  fontWeight: 900,
+  margin: "0 0 12px",
+};
+
+const gpsErrorTextStyle = {
+  color: "rgba(255, 255, 255, 0.7)",
+  fontSize: "14px",
+  lineHeight: 1.5,
+  margin: "0 0 24px",
+};
+
+const gpsErrorButtonStyle = {
+  padding: "14px 32px",
+  borderRadius: "12px",
+  border: "none",
+  backgroundColor: COLORS.primaryGreen,
+  color: COLORS.white,
+  fontWeight: 800,
+  fontSize: "15px",
+  cursor: "pointer",
+  transition: "transform 0.2s ease, opacity 0.2s ease",
+};
+
+const gpsErrorHintStyle = {
+  color: "rgba(255, 255, 255, 0.4)",
+  fontSize: "11px",
+  marginTop: "12px",
+  fontStyle: "italic",
+};

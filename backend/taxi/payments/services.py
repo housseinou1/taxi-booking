@@ -6,9 +6,27 @@ from taxi.market import calculate_app_fee
 from .models import Payment, RiderPaymentMethod
 
 
-def calculate_payment_amounts(amount, tip_percentage=0):
+def calculate_payment_amounts(amount, tip_percentage=0, discount_amount=0):
+    """
+    Calculate payment breakdown amounts.
+
+    Args:
+        amount: The original fare amount (before discount).
+        tip_percentage: Tip percentage to apply.
+        discount_amount: Promo code discount amount to subtract from rider charge.
+
+    Returns:
+        Tuple of (charge_amount, app_fee, tip_percent, tip_amount, driver_earning, discount).
+        - charge_amount: What the rider actually pays (original_fare - discount + tip).
+        - app_fee: Platform fee calculated from the ORIGINAL fare.
+        - driver_earning: Calculated from the ORIGINAL fare (not discounted).
+        - discount: The discount amount applied.
+    """
     ride_amount = Decimal(str(amount or 0))
     tip_percent = Decimal(str(tip_percentage or 0))
+    discount = Decimal(str(discount_amount or 0))
+
+    # App fee and driver earning are always based on the ORIGINAL fare
     app_fee = calculate_app_fee(ride_amount)
     tip_amount = (ride_amount * tip_percent / Decimal("100")).quantize(
         Decimal("0.01"),
@@ -16,7 +34,10 @@ def calculate_payment_amounts(amount, tip_percentage=0):
     )
     driver_earning = ride_amount - app_fee + tip_amount
 
-    return ride_amount, app_fee, tip_percent, tip_amount, driver_earning
+    # The charge amount is the final fare (after discount) that the rider pays
+    charge_amount = max(ride_amount - discount, Decimal("0.00"))
+
+    return charge_amount, app_fee, tip_percent, tip_amount, driver_earning, discount
 
 
 def get_default_payment_method(rider):
@@ -26,7 +47,19 @@ def get_default_payment_method(rider):
     ).first()
 
 
-def authorize_ride_payment(ride):
+def authorize_ride_payment(ride, discount_amount=0):
+    """
+    Authorize payment for a ride.
+
+    Args:
+        ride: The Ride instance to authorize payment for.
+        discount_amount: Promo code discount amount (default 0). When provided,
+            the rider is charged final_fare (fare - discount) but driver_earning
+            is calculated from the original fare.
+
+    Returns:
+        The Payment instance (existing or newly created).
+    """
     existing_payment = Payment.objects.filter(
         ride_id=ride.id,
         status__in=["authorized", "paid", "pending_verification"],
@@ -37,15 +70,16 @@ def authorize_ride_payment(ride):
 
     default_method = get_default_payment_method(ride.rider)
     payment_method = default_method.payment_type if default_method else "test"
-    amount, app_fee, tip_percent, tip_amount, driver_earning = calculate_payment_amounts(
-        ride.fare,
-        0,
+
+    charge_amount, app_fee, tip_percent, tip_amount, driver_earning, discount = (
+        calculate_payment_amounts(ride.fare, 0, discount_amount)
     )
 
     payment = Payment.objects.create(
         rider=ride.rider,
         ride_id=ride.id,
-        amount=amount,
+        amount=charge_amount,
+        discount_amount=discount,
         app_fee=app_fee,
         tip_percentage=tip_percent,
         tip_amount=tip_amount,

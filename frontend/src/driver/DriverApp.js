@@ -10,6 +10,7 @@ import RideStatusButtons from "../RideStatusButtons";
 import AnalyticsDashboard from "../admin/AnalyticsDashboard";
 import RideChat from "../components/RideChat";
 import { subscribeRideUpdates } from "../socket";
+import { EmergencySupportButton } from "./DriverSupport";
 
 const logoSrc = "/yala-driver-logo.png";
 const DRIVER_GREEN = "#0F8F4D";
@@ -1853,6 +1854,9 @@ export default function DriverApp() {
           </button>
         </div>
       )}
+
+      {/* Persistent Emergency Support Button - visible on all screens */}
+      <EmergencySupportButton />
     </div>
   );
 }

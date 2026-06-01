@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import include, path
 
 from .views import (
     request_ride,
@@ -16,6 +16,12 @@ from .views import (
     rate_ride,
     rate_rider,
     driver_earnings_summary,
+)
+from .views_stops import (
+    RideStopListCreateView,
+    RideStopDeleteView,
+    RideStopArrivedView,
+    RideStopDepartedView,
 )
 from .analytics import driver_analytics, rider_analytics, admin_analytics
 
@@ -38,8 +44,17 @@ urlpatterns = [
 
     path("driver/earnings/", driver_earnings_summary),
 
+    # Multi-stop ride endpoints
+    path("<int:ride_id>/stops/", RideStopListCreateView.as_view(), name="ride-stops-create"),
+    path("<int:ride_id>/stops/<int:stop_id>/", RideStopDeleteView.as_view(), name="ride-stops-delete"),
+    path("<int:ride_id>/stops/<int:stop_id>/arrived/", RideStopArrivedView.as_view(), name="ride-stops-arrived"),
+    path("<int:ride_id>/stops/<int:stop_id>/departed/", RideStopDepartedView.as_view(), name="ride-stops-departed"),
+
     # Analytics endpoints
     path("analytics/driver/", driver_analytics),
     path("analytics/rider/", rider_analytics),
     path("analytics/admin/", admin_analytics),
+
+    # Share Ride endpoints
+    path("share/", include("taxi.rides.share_urls")),
 ]

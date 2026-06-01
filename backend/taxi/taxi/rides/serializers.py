@@ -104,7 +104,7 @@ class RideSerializer(serializers.ModelSerializer):
         if request:
             return request.build_absolute_uri(profile.driver_photo.url)
 
-        return f"http://127.0.0.1:8000{profile.driver_photo.url}"
+        return profile.driver_photo.url
 
     def get_driver_rating(self, obj):
         if not obj.driver:
@@ -169,7 +169,7 @@ class RideSerializer(serializers.ModelSerializer):
         if request:
             return request.build_absolute_uri(obj.rider.profile_picture.url)
 
-        return f"http://127.0.0.1:8000{obj.rider.profile_picture.url}"
+        return obj.rider.profile_picture.url
 
     def get_rider_member_since_year(self, obj):
         if not obj.rider or not obj.rider.date_joined:

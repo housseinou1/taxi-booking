@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import axios from "axios";
 import { useTranslation } from "react-i18next";
 
@@ -7,9 +7,13 @@ import Register from "./auth/Register";
 
 import RiderApp from "./rider/RiderApp";
 import RiderDashboard from "./rider/RiderDashboard";
+import RiderReviews from "./rider/RiderReviews";
+import SavedPlaces from "./rider/SavedPlaces";
 
 import DriverApp from "./driver/DriverApp";
 import DriverSignup from "./driver/DriverSignup";
+import DriverProfile from "./driver/DriverProfile";
+import { DriverProvider } from "./driver/context/DriverContext";
 
 import AdminDashboard from "./admin/AdminDashboard";
 import InstallAppButton from "./InstallAppButton";
@@ -22,10 +26,19 @@ import RiderPayments from "./payments/PaymentPage";
 import { DriverProfilePage, RiderProfilePage } from "./profile/ProfilePages";
 import SupportCenter from "./support/SupportCenter";
 import LandingPage from "./landing/LandingPage";
+import RideHistory from "./history/RideHistory";
+import { ShareBookingFlow, ShareRideScreen, ShareRideComplete, ShareAdminDashboard } from './components/share';
 import { API_URL } from "./apiConfig";
 import { MARKET } from "./marketConfig";
 
 const LOGO_SRC = "/yala-logo.png";
+
+// Lazy-loaded driver screens (excluded from initial dashboard bundle)
+const LazyDriverEarnings = React.lazy(() => import("./driver/DriverEarnings"));
+const LazyDriverFeedback = React.lazy(() => import("./driver/DriverFeedback"));
+const LazyDriverSupport = React.lazy(() => import("./driver/DriverSupport"));
+const LazyDriverAchievements = React.lazy(() => import("./driver/DriverAchievements"));
+const LazyDriverRideHistory = React.lazy(() => import("./driver/DriverRideHistory"));
 
 function App() {
   const currentPath = window.location.pathname;
@@ -42,13 +55,26 @@ function App() {
     if (currentPath === "/payment-setup") setPage("payment-setup");
     else if (currentPath === "/driver-vehicle-setup") setPage("driver-vehicle-setup");
     else if (currentPath === "/rider-dashboard") setPage("rider-dashboard");
+    else if (currentPath === "/rider-history") setPage("rider-history");
+    else if (currentPath === "/rider-reviews") setPage("rider-reviews");
+    else if (currentPath === "/saved-places") setPage("saved-places");
     else if (currentPath === "/rider-profile") setPage("rider-profile");
     else if (currentPath === "/rider-payments") setPage("rider-payments");
+    else if (currentPath === "/ride/share") setPage("share-booking");
+    else if (currentPath.match(/^\/ride\/share\/\d+\/complete$/)) setPage("share-ride-complete");
+    else if (currentPath.match(/^\/ride\/share\/\d+$/)) setPage("share-ride");
     else if (currentPath === "/rider") setPage("rider");
     else if (currentPath === "/driver-profile") setPage("driver-profile");
+    else if (currentPath === "/driver/profile") setPage("driver-premium-profile");
+    else if (currentPath === "/driver/earnings") setPage("driver-earnings");
+    else if (currentPath === "/driver/feedback") setPage("driver-feedback");
+    else if (currentPath === "/driver/support") setPage("driver-support");
+    else if (currentPath === "/driver/achievements") setPage("driver-achievements");
+    else if (currentPath === "/driver/history") setPage("driver-history");
     else if (currentPath === "/driver") setPage("driver");
     else if (currentPath === "/register") setPage("register");
     else if (currentPath === "/login") setPage("login");
+    else if (currentPath === "/admin/share-analytics") setPage("admin-share-analytics");
     else if (currentPath === "/admin-dashboard") setPage("admin");
     else if (currentPath === "/admin") setPage("admin");
     else if (currentPath === "/settings") setPage("settings");
@@ -184,6 +210,18 @@ function App() {
     return withInstall(<RiderProfilePage />);
   }
 
+  if (page === "rider-history") {
+    return withInstall(<RideHistory />);
+  }
+
+  if (page === "rider-reviews") {
+    return withInstall(<RiderReviews />);
+  }
+
+  if (page === "saved-places") {
+    return withInstall(<SavedPlaces />);
+  }
+
   if (page === "rider-payments") {
     return withInstall(
       <div>
@@ -300,8 +338,89 @@ function App() {
     return withInstall(<DriverApp />);
   }
 
+  if (page === "driver-premium-profile") {
+    return withInstall(
+      <DriverProvider>
+        <DriverProfile />
+      </DriverProvider>
+    );
+  }
+
+  if (page === "driver-earnings") {
+    return withInstall(
+      <DriverProvider>
+        <Suspense fallback={<div style={{ minHeight: "100vh", backgroundColor: "#0B1220", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff" }}>Loading...</div>}>
+          <LazyDriverEarnings />
+        </Suspense>
+      </DriverProvider>
+    );
+  }
+
+  if (page === "driver-feedback") {
+    return withInstall(
+      <DriverProvider>
+        <Suspense fallback={<div style={{ minHeight: "100vh", backgroundColor: "#0B1220", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff" }}>Loading...</div>}>
+          <LazyDriverFeedback />
+        </Suspense>
+      </DriverProvider>
+    );
+  }
+
+  if (page === "driver-support") {
+    return withInstall(
+      <DriverProvider>
+        <Suspense fallback={<div style={{ minHeight: "100vh", backgroundColor: "#0B1220", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff" }}>Loading...</div>}>
+          <LazyDriverSupport />
+        </Suspense>
+      </DriverProvider>
+    );
+  }
+
+  if (page === "driver-achievements") {
+    return withInstall(
+      <DriverProvider>
+        <Suspense fallback={<div style={{ minHeight: "100vh", backgroundColor: "#0B1220", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff" }}>Loading...</div>}>
+          <LazyDriverAchievements />
+        </Suspense>
+      </DriverProvider>
+    );
+  }
+
+  if (page === "driver-history") {
+    return withInstall(
+      <DriverProvider>
+        <Suspense fallback={<div style={{ minHeight: "100vh", backgroundColor: "#0B1220", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff" }}>Loading...</div>}>
+          <LazyDriverRideHistory />
+        </Suspense>
+      </DriverProvider>
+    );
+  }
+
   if (page === "driver-profile") {
     return withInstall(<DriverProfilePage />);
+  }
+
+  if (page === "share-booking") {
+    return withInstall(<ShareBookingFlow />);
+  }
+
+  if (page === "share-ride") {
+    const shareRideId = currentPath.match(/^\/ride\/share\/(\d+)$/)?.[1];
+    return withInstall(<ShareRideScreen rideId={shareRideId} />);
+  }
+
+  if (page === "share-ride-complete") {
+    const shareCompleteId = currentPath.match(/^\/ride\/share\/(\d+)\/complete$/)?.[1];
+    return withInstall(<ShareRideComplete rideId={shareCompleteId} />);
+  }
+
+  if (page === "admin-share-analytics") {
+    return withInstall(
+      <div>
+        <TopBar title={`${MARKET.brandName} Share Analytics`} goHome={goHome} logout={logout} />
+        <ShareAdminDashboard />
+      </div>
+    );
   }
 
   if (page === "admin") {
@@ -341,14 +460,27 @@ function App() {
 function isProtectedPage(page) {
   return [
     "admin",
+    "admin-share-analytics",
     "driver",
     "driver-profile",
+    "driver-premium-profile",
+    "driver-earnings",
+    "driver-feedback",
+    "driver-support",
+    "driver-achievements",
+    "driver-history",
     "driver-vehicle-setup",
     "payment-setup",
     "rider",
     "rider-dashboard",
+    "rider-history",
+    "rider-reviews",
+    "saved-places",
     "rider-profile",
     "rider-payments",
+    "share-booking",
+    "share-ride",
+    "share-ride-complete",
     "settings",
   ].includes(page);
 }

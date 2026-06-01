@@ -1,24 +1,25 @@
 import React, { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { MARKET } from "../marketConfig";
 
 const defaultTrustedContacts = [
-  { name: "Family contact", phone: "+22222114373" },
-  { name: "Sakho support", phone: MARKET.privateCallNumber },
+  { nameKey: "familyContact", phone: "+22222114373" },
+  { nameKey: "sakhoSupport", phone: MARKET.privateCallNumber },
 ];
 
 const riderTips = [
-  "Check the driver photo, vehicle, and plate before entering.",
-  "Share your trip status with a trusted contact.",
-  "Sit where you feel comfortable and keep your phone charged.",
-  "Use SOS or emergency numbers if you feel unsafe.",
+  "riderCheckDriver",
+  "shareStatus",
+  "sitComfortable",
+  "useSos",
 ];
 
 const driverTips = [
-  "Confirm the rider name and pickup before starting.",
-  "Keep the route inside the app and avoid unsafe shortcuts.",
-  "Stop in a safe public place if the ride feels risky.",
-  "Use SOS or support if a rider threatens safety or refuses to follow rules.",
+  "driverConfirm",
+  "keepRoute",
+  "safeStop",
+  "driverUseSos",
 ];
 
 function SafetyEmergencyPanel({
@@ -28,6 +29,7 @@ function SafetyEmergencyPanel({
   compact = false,
   onClose,
 }) {
+  const { t } = useTranslation();
   const [contacts, setContacts] = useState(() => loadTrustedContacts());
   const [contactForm, setContactForm] = useState({ name: "", phone: "" });
   const [message, setMessage] = useState("");
@@ -35,18 +37,23 @@ function SafetyEmergencyPanel({
   const tips = isDriver ? driverTips : riderTips;
 
   const tripStatus = useMemo(() => {
-    if (!currentRide) return "No active trip";
+    if (!currentRide) return t("safetyPanel.noActiveTrip");
 
-    const pickup = currentRide.pickup || currentRide.pickup_address || "Pickup";
-    const destination = currentRide.destination || currentRide.destination_address || "Destination";
-    return `Trip #${currentRide.id || "active"} · ${pickup} to ${destination} · ${currentRide.status || "active"}`;
-  }, [currentRide]);
+    const pickup = currentRide.pickup || currentRide.pickup_address || t("safetyPanel.pickup");
+    const destination = currentRide.destination || currentRide.destination_address || t("safetyPanel.destination");
+    return t("safetyPanel.tripStatusLine", {
+      id: currentRide.id || t("safetyPanel.active"),
+      pickup,
+      destination,
+      status: currentRide.status || t("safetyPanel.active"),
+    });
+  }, [currentRide, t]);
 
   const addContact = (event) => {
     event.preventDefault();
 
     if (!contactForm.name.trim() || !contactForm.phone.trim()) {
-      setMessage("Add a contact name and phone number.");
+      setMessage(t("safetyPanel.messages.addContact"));
       return;
     }
 
@@ -58,7 +65,7 @@ function SafetyEmergencyPanel({
     setContacts(nextContacts);
     localStorage.setItem("sx_trusted_contacts", JSON.stringify(nextContacts));
     setContactForm({ name: "", phone: "" });
-    setMessage("Trusted contact saved.");
+    setMessage(t("safetyPanel.messages.contactSaved"));
   };
 
   const reportUnsafeRide = () => {
@@ -71,12 +78,12 @@ function SafetyEmergencyPanel({
     };
     const reports = JSON.parse(localStorage.getItem("sx_safety_reports") || "[]");
     localStorage.setItem("sx_safety_reports", JSON.stringify([report, ...reports]));
-    setMessage("Unsafe ride report saved. Open Support to add more details.");
+    setMessage(t("safetyPanel.messages.unsafeSaved"));
   };
 
   const triggerSos = () => {
     const police = MARKET.emergencyNumbers[0];
-    setMessage(`SOS ready. Call ${police.label} at ${police.number}, or choose another emergency contact below.`);
+    setMessage(t("safetyPanel.messages.sosReady", { label: police.label, number: police.number }));
   };
 
   return (
@@ -85,13 +92,13 @@ function SafetyEmergencyPanel({
 
       <div className="sx-safety-head">
         <div>
-          <span>Safety center</span>
-          <h2>{isDriver ? "Driver safety & emergency" : "Rider safety & emergency"}</h2>
-          <p>Use SOS, share trip status, trusted contacts, and support reports from one place.</p>
+          <span>{t("safetyPanel.eyebrow")}</span>
+          <h2>{isDriver ? t("safetyPanel.driverTitle") : t("safetyPanel.riderTitle")}</h2>
+          <p>{t("safetyPanel.subtitle")}</p>
         </div>
         {onClose && (
           <button type="button" className="sx-safety-close" onClick={onClose}>
-            Close
+            {t("safetyPanel.close")}
           </button>
         )}
       </div>
@@ -101,10 +108,10 @@ function SafetyEmergencyPanel({
           SOS
         </button>
         <button type="button" onClick={onShareTrip} disabled={!currentRide}>
-          Share trip
+          {t("safetyPanel.shareTrip")}
         </button>
         <button type="button" onClick={reportUnsafeRide}>
-          Report unsafe ride
+          {t("safetyPanel.reportUnsafe")}
         </button>
       </div>
 
@@ -112,17 +119,17 @@ function SafetyEmergencyPanel({
 
       <div className="sx-safety-grid">
         <article className="sx-safety-card">
-          <span>Trip status</span>
+          <span>{t("safetyPanel.tripStatus")}</span>
           <strong>{tripStatus}</strong>
           <p>
             {currentRide
-              ? "Send this status to a trusted contact before or during the ride."
-              : "Trip sharing becomes active when a ride is in progress."}
+              ? t("safetyPanel.tripSharingActive")
+              : t("safetyPanel.tripSharingInactive")}
           </p>
         </article>
 
         <article className="sx-safety-card sx-emergency-card">
-          <span>Emergency contacts</span>
+          <span>{t("safetyPanel.emergencyContacts")}</span>
           <div className="sx-emergency-list">
             {MARKET.emergencyNumbers.map((item) => (
               <a key={item.number} href={`tel:${item.number}`}>
@@ -134,11 +141,11 @@ function SafetyEmergencyPanel({
         </article>
 
         <article className="sx-safety-card">
-          <span>Trusted contacts</span>
+          <span>{t("safetyPanel.trustedContacts")}</span>
           <div className="sx-trusted-list">
             {contacts.map((contact) => (
               <a key={`${contact.name}-${contact.phone}`} href={`tel:${contact.phone}`}>
-                <strong>{contact.name}</strong>
+                <strong>{contact.nameKey ? t(`safetyPanel.defaults.${contact.nameKey}`) : contact.name}</strong>
                 <small>{contact.phone}</small>
               </a>
             ))}
@@ -147,22 +154,22 @@ function SafetyEmergencyPanel({
             <input
               value={contactForm.name}
               onChange={(event) => setContactForm((current) => ({ ...current, name: event.target.value }))}
-              placeholder="Name"
+              placeholder={t("safetyPanel.namePlaceholder")}
             />
             <input
               value={contactForm.phone}
               onChange={(event) => setContactForm((current) => ({ ...current, phone: event.target.value }))}
-              placeholder="+222 phone"
+              placeholder={t("safetyPanel.phonePlaceholder")}
             />
-            <button type="submit">Add</button>
+            <button type="submit">{t("safetyPanel.add")}</button>
           </form>
         </article>
 
         <article className="sx-safety-card">
-          <span>Safety tips</span>
+          <span>{t("safetyPanel.safetyTips")}</span>
           <ul>
             {tips.map((tip) => (
-              <li key={tip}>{tip}</li>
+              <li key={tip}>{t(`safetyPanel.tips.${tip}`)}</li>
             ))}
           </ul>
         </article>

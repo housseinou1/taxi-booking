@@ -148,6 +148,33 @@ function MapPolyline({ line }) {
   return null;
 }
 
+function MapCircle({ circle }) {
+  const map = React.useContext(GoogleMapContext);
+  const center = toLatLng(circle.center);
+
+  React.useEffect(() => {
+    if (!map || !window.google?.maps || !center) return undefined;
+
+    const googleCircle = new window.google.maps.Circle({
+      map,
+      center,
+      radius: circle.radius || 1000,
+      strokeColor: circle.color || "rgba(0, 166, 81, 0.4)",
+      strokeOpacity: 0.6,
+      strokeWeight: 1,
+      fillColor: circle.fillColor || "rgba(0, 166, 81, 0.15)",
+      fillOpacity: 0.4,
+      clickable: false,
+    });
+
+    return () => {
+      googleCircle.setMap(null);
+    };
+  }, [map, center, circle.radius, circle.color, circle.fillColor]);
+
+  return null;
+}
+
 function SmoothMarker({ marker }) {
   const map = React.useContext(GoogleMapContext);
   const markerRef = React.useRef(null);
@@ -284,6 +311,7 @@ export default function GoogleTripMap({
   zoom = 13,
   markers = [],
   polylines = [],
+  circles = [],
   fitPoints = [],
   style,
 }) {
@@ -339,6 +367,10 @@ export default function GoogleTripMap({
 
         {polylines.map((line) => (
           <MapPolyline key={line.id} line={line} />
+        ))}
+
+        {circles.map((circle) => (
+          <MapCircle key={circle.id} circle={circle} />
         ))}
 
         {markers.map((marker) => (

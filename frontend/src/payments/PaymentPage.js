@@ -1,45 +1,201 @@
 import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import { useTranslation } from "react-i18next";
 import { API_URL } from "../apiConfig";
 import { formatMoney } from "../marketConfig";
 
 const PAYMENT_METHODS = [
   {
     id: "cash",
-    title: "Cash",
-    subtitle: "Pay the driver after drop-off",
-    badge: "Confirm with driver",
+    titleKey: "cash",
+    subtitleKey: "cashSubtitle",
+    badgeKey: "confirmWithDriver",
   },
   {
     id: "card",
-    title: "Card",
-    subtitle: "Visa or Mastercard",
-    badge: "Instant",
+    titleKey: "card",
+    subtitleKey: "cardSubtitle",
+    badgeKey: "instant",
   },
   {
     id: "bankily",
-    title: "Bankily",
-    subtitle: "Mobile money payment",
-    badge: "Wallet",
+    titleKey: "bankily",
+    subtitleKey: "mobileMoney",
+    badgeKey: "wallet",
   },
   {
     id: "masrvi",
-    title: "Masravi",
-    subtitle: "Local wallet transfer",
-    badge: "Wallet",
+    titleKey: "masravi",
+    subtitleKey: "localWallet",
+    badgeKey: "wallet",
   },
   {
     id: "seddad",
-    title: "Seddad",
-    subtitle: "Mobile wallet payment",
-    badge: "Wallet",
+    titleKey: "seddad",
+    subtitleKey: "mobileWallet",
+    badgeKey: "wallet",
   },
 ];
 
 const TAX_RATE = 0.03;
 const DEFAULT_TIME_MINUTES = 12;
 
+function escapeReceiptText(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function buildReceiptPrintHtml({ payment, ride, rows, total }) {
+  const status = payment?.status || "paid";
+  const rideId = ride?.id ? `#${ride.id}` : "Current ride";
+  const transactionId = payment?.transaction_id || "Pending";
+  const date = formatDate(payment?.created_at);
+
+  return `<!doctype html>
+    <html>
+      <head>
+        <title>Yala receipt ${escapeReceiptText(rideId)}</title>
+        <style>
+          * { box-sizing: border-box; }
+          body {
+            margin: 0;
+            padding: 28px;
+            font-family: Arial, sans-serif;
+            color: #0f172a;
+            background: #fff;
+          }
+          .receipt {
+            width: 100%;
+            max-width: 420px;
+            margin: 0 auto;
+            border: 1px solid #d8dee8;
+            border-radius: 12px;
+            padding: 24px;
+          }
+          .brand {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            border-bottom: 2px solid #0f172a;
+            padding-bottom: 14px;
+            margin-bottom: 18px;
+          }
+          h1 {
+            margin: 0;
+            font-size: 26px;
+            letter-spacing: 0;
+          }
+          .meta {
+            color: #64748b;
+            font-size: 13px;
+            font-weight: 700;
+            text-align: right;
+          }
+          .row {
+            display: flex;
+            justify-content: space-between;
+            gap: 18px;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 10px 0;
+            font-size: 14px;
+          }
+          .row span {
+            color: #475569;
+          }
+          .row strong {
+            text-align: right;
+          }
+          .total {
+            display: flex;
+            justify-content: space-between;
+            gap: 18px;
+            margin-top: 18px;
+            padding: 16px;
+            border-radius: 10px;
+            background: #0f172a;
+            color: #fff;
+            font-size: 18px;
+            font-weight: 900;
+          }
+          .thanks {
+            margin-top: 18px;
+            text-align: center;
+            color: #64748b;
+            font-size: 13px;
+            font-weight: 700;
+          }
+          @media print {
+            body { padding: 0; }
+            .receipt { border: 0; border-radius: 0; max-width: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <main class="receipt">
+          <header class="brand">
+            <div>
+              <h1>Yala</h1>
+              <strong>Ride Anywhere</strong>
+            </div>
+            <div class="meta">
+              <div>${escapeReceiptText(status).toUpperCase()}</div>
+              <div>${escapeReceiptText(date)}</div>
+            </div>
+          </header>
+          <section>
+            <div class="row"><span>Ride</span><strong>${escapeReceiptText(rideId)}</strong></div>
+            <div class="row"><span>Transaction</span><strong>${escapeReceiptText(transactionId)}</strong></div>
+            ${rows
+              .map(
+                (row) =>
+                  `<div class="row"><span>${escapeReceiptText(row.label)}</span><strong>${escapeReceiptText(row.value)}</strong></div>`
+              )
+              .join("")}
+          </section>
+          <div class="total"><span>Total</span><strong>${escapeReceiptText(total)}</strong></div>
+          <p class="thanks">Thank you for riding with Yala.</p>
+        </main>
+      </body>
+    </html>`;
+}
+
+function printReceiptDocument(receiptData) {
+  const printFrame = document.createElement("iframe");
+  printFrame.title = "Yala receipt print";
+  printFrame.style.position = "fixed";
+  printFrame.style.right = "0";
+  printFrame.style.bottom = "0";
+  printFrame.style.width = "0";
+  printFrame.style.height = "0";
+  printFrame.style.border = "0";
+
+  document.body.appendChild(printFrame);
+
+  const printWindow = printFrame.contentWindow;
+  const printDocument = printWindow?.document;
+
+  if (!printWindow || !printDocument) {
+    window.print();
+    return;
+  }
+
+  printDocument.open();
+  printDocument.write(buildReceiptPrintHtml(receiptData));
+  printDocument.close();
+
+  window.setTimeout(() => {
+    printWindow.focus();
+    printWindow.print();
+    window.setTimeout(() => printFrame.remove(), 1000);
+  }, 250);
+}
+
 function PaymentPage({ ride }) {
+  const { t } = useTranslation();
   const [payment, setPayment] = useState(null);
   const [tipPercentage, setTipPercentage] = useState(10);
   const [selectedMethod, setSelectedMethod] = useState("cash");
@@ -118,19 +274,19 @@ function PaymentPage({ ride }) {
       );
 
       setPayment(response.data.payment);
-      setNotice(response.data.message || "Payment created");
+      setNotice(response.data.message || t("riderPayments.messages.paymentCreated"));
       fetchPaymentHistory();
     } catch (error) {
       const existingPayment = error.response?.data?.payment;
 
       if (existingPayment) {
         setPayment(existingPayment);
-        setNotice(error.response.data.error || "Payment already exists");
+        setNotice(error.response.data.error || t("riderPayments.messages.paymentExists"));
         return;
       }
 
       console.log("Payment error:", error.response?.data || error);
-      setNotice(error.response?.data?.error || "Could not create payment");
+      setNotice(error.response?.data?.error || t("riderPayments.messages.paymentFailed"));
     }
   };
 
@@ -139,18 +295,18 @@ function PaymentPage({ ride }) {
       const token = localStorage.getItem("access");
 
       if (!token) {
-        setNotice("Please log in again before submitting your rating.");
+        setNotice(t("riderPayments.messages.loginAgain"));
         window.location.href = `/login?next=${encodeURIComponent("/rider-payments")}`;
         return;
       }
 
       if (!ride?.id) {
-        setNotice("No ride is selected for rating.");
+        setNotice(t("riderPayments.messages.noRideRating"));
         return;
       }
 
       if (!rating) {
-        setNotice("Please select a rating.");
+        setNotice(t("riderPayments.messages.selectRating"));
         return;
       }
 
@@ -168,13 +324,13 @@ function PaymentPage({ ride }) {
       );
 
       setRatingSubmitted(true);
-      setNotice("Thank you. Your driver rating was submitted.");
+      setNotice(t("riderPayments.messages.ratingSubmitted"));
     } catch (error) {
       console.log("Rating error:", error.response?.data || error);
       const message =
         error.response?.data?.detail ||
         error.response?.data?.error ||
-        "Could not submit rating";
+        t("riderPayments.messages.ratingFailed");
       setNotice(message);
     }
   };
@@ -184,9 +340,9 @@ function PaymentPage({ ride }) {
       <main className="sx-payments-page">
         <PaymentStyles />
         <div className="sx-empty-payment">
-          <h2>No ride selected</h2>
+          <h2>{t("riderPayments.noRideSelected")}</h2>
           <button onClick={() => (window.location.href = "/rider-dashboard")}>
-            Back to rider dashboard
+            {t("riderPayments.backToDashboard")}
           </button>
         </div>
       </main>
@@ -199,12 +355,9 @@ function PaymentPage({ ride }) {
 
       <section className="sx-payment-hero">
         <div>
-          <span className="sx-payment-eyebrow">Yala Pay</span>
-          <h1>Choose how you want to pay.</h1>
-          <p>
-            Your fare is protected. Card payments complete instantly, while cash and wallet
-            payments wait for driver verification after drop-off.
-          </p>
+          <span className="sx-payment-eyebrow">{t("riderPayments.eyebrow")}</span>
+          <h1>{t("riderPayments.title")}</h1>
+          <p>{t("riderPayments.subtitle")}</p>
         </div>
 
         <WalletCard balance={walletBalance} historyCount={paymentHistory.length} />
@@ -217,31 +370,31 @@ function PaymentPage({ ride }) {
       >
         <strong>
           {isCancelled
-            ? "Payment cancelled"
+            ? t("riderPayments.alert.cancelledTitle")
             : isAutoPaid
-              ? "Payment completed"
+              ? t("riderPayments.alert.completedTitle")
               : isAuthorized
-                ? "Payment authorized"
-                : "Automatic payment protection"}
+                ? t("riderPayments.alert.authorizedTitle")
+                : t("riderPayments.alert.protectionTitle")}
         </strong>
         <span>
           {isCancelled
-            ? "This ride was cancelled, so no rider payment will go through."
+            ? t("riderPayments.alert.cancelledText")
             : isAutoPaid
-              ? "The ride is completed and the fare is captured."
-              : "If the rider or driver cancels before completion, the payment is not captured."}
+              ? t("riderPayments.alert.completedText")
+              : t("riderPayments.alert.protectionText")}
         </span>
       </section>
 
       {notice && <div className="sx-payment-notice">{notice}</div>}
 
       {isAutoPaid && (
-        <section className="sx-success-stage" aria-label="Payment success">
+        <section className="sx-success-stage" aria-label={t("riderPayments.successAria")}>
           <div className="sx-success-check">✓</div>
           <div>
-            <span className="sx-payment-eyebrow">Payment success</span>
-            <h2>{formatMoney(totalAmount)} paid successfully</h2>
-            <p>Your receipt is ready and driver earnings were updated.</p>
+            <span className="sx-payment-eyebrow">{t("riderPayments.successEyebrow")}</span>
+            <h2>{t("riderPayments.paidSuccessfully", { amount: formatMoney(totalAmount) })}</h2>
+            <p>{t("riderPayments.receiptReady")}</p>
           </div>
         </section>
       )}
@@ -250,33 +403,33 @@ function PaymentPage({ ride }) {
         <section className="sx-payment-panel">
           <div className="sx-payment-panel-head">
             <div>
-              <span>Ride #{ride?.id}</span>
-              <h2>Trip summary</h2>
+              <span>{t("riderPayments.rideNumber", { id: ride?.id })}</span>
+              <h2>{t("riderPayments.tripSummary")}</h2>
             </div>
-            <b>{rideStatus || "selected"}</b>
+            <b>{rideStatus || t("riderPayments.selected")}</b>
           </div>
 
           <div className="sx-trip-line">
             <span className="sx-trip-dot" />
             <div>
-              <small>Pickup</small>
-              <strong>{ride?.pickup || ride?.pickup_address || "Pickup location"}</strong>
+              <small>{t("riderPayments.pickup")}</small>
+              <strong>{ride?.pickup || ride?.pickup_address || t("riderPayments.pickupLocation")}</strong>
             </div>
           </div>
 
           <div className="sx-trip-line">
             <span className="sx-trip-dot sx-trip-dot-end" />
             <div>
-              <small>Destination</small>
-              <strong>{ride?.destination || ride?.destination_address || "Destination"}</strong>
+              <small>{t("riderPayments.destination")}</small>
+              <strong>{ride?.destination || ride?.destination_address || t("riderPayments.destination")}</strong>
             </div>
           </div>
 
           <div className="sx-tip-block">
             <div className="sx-payment-panel-head compact">
               <div>
-                <span>Tip</span>
-                <h2>Thank your driver</h2>
+                <span>{t("riderPayments.tip")}</span>
+                <h2>{t("riderPayments.thankDriver")}</h2>
               </div>
               <b>{formatMoney(tipAmount)}</b>
             </div>
@@ -296,31 +449,31 @@ function PaymentPage({ ride }) {
           </div>
 
           <div className="sx-total-card">
-            <SummaryRow label="Base fare" value={formatMoney(baseFare)} />
-            <SummaryRow label={`Distance (${distanceKm.toFixed(1)} km)`} value={formatMoney(distanceFare)} />
-            <SummaryRow label={`Time (${tripMinutes} min)`} value={formatMoney(timeFare)} />
-            <SummaryRow label="Taxes" value={formatMoney(taxes)} />
-            <SummaryRow label="Yala fee" value={formatMoney(platformFee)} />
-            <SummaryRow label={`Tip (${tipPercentage}%)`} value={formatMoney(tipAmount)} />
-            <SummaryRow label="Platform protection" value="Included" />
+            <SummaryRow label={t("riderPayments.baseFare")} value={formatMoney(baseFare)} />
+            <SummaryRow label={t("riderPayments.distanceLabel", { distance: distanceKm.toFixed(1) })} value={formatMoney(distanceFare)} />
+            <SummaryRow label={t("riderPayments.timeLabel", { minutes: tripMinutes })} value={formatMoney(timeFare)} />
+            <SummaryRow label={t("riderPayments.taxes")} value={formatMoney(taxes)} />
+            <SummaryRow label={t("riderPayments.yalaFee")} value={formatMoney(platformFee)} />
+            <SummaryRow label={t("riderPayments.tipPercent", { percent: tipPercentage })} value={formatMoney(tipAmount)} />
+            <SummaryRow label={t("riderPayments.platformProtection")} value={t("riderPayments.included")} />
             <div className="sx-grand-total">
-              <span>Total</span>
+              <span>{t("riderPayments.total")}</span>
               <strong>{formatMoney(totalAmount)}</strong>
             </div>
           </div>
 
           <div className="sx-driver-earnings-card">
-            <span>Driver earnings</span>
+            <span>{t("riderPayments.driverEarnings")}</span>
             <strong>{formatMoney(driverEarning)}</strong>
-            <small>Fare minus Yala fee plus rider tip</small>
+            <small>{t("riderPayments.driverEarningsHelp")}</small>
           </div>
         </section>
 
         <section className="sx-payment-panel">
           <div className="sx-payment-panel-head">
             <div>
-              <span>Method</span>
-              <h2>Payment cards</h2>
+              <span>{t("riderPayments.method")}</span>
+              <h2>{t("riderPayments.paymentCards")}</h2>
             </div>
             <b>MRU</b>
           </div>
@@ -332,12 +485,12 @@ function PaymentPage({ ride }) {
                 className={selectedMethod === method.id ? "selected" : ""}
                 onClick={() => setSelectedMethod(method.id)}
               >
-                <span className="sx-method-icon">{method.title.slice(0, 1)}</span>
+                <span className="sx-method-icon">{t(`riderPayments.methods.${method.titleKey}`).slice(0, 1)}</span>
                 <span className="sx-method-copy">
-                  <strong>{method.title}</strong>
-                  <small>{method.subtitle}</small>
+                  <strong>{t(`riderPayments.methods.${method.titleKey}`)}</strong>
+                  <small>{t(`riderPayments.methods.${method.subtitleKey}`)}</small>
                 </span>
-                <em>{method.badge}</em>
+                <em>{t(`riderPayments.methods.${method.badgeKey}`)}</em>
               </button>
             ))}
           </div>
@@ -348,12 +501,12 @@ function PaymentPage({ ride }) {
             onClick={() => makePayment(selectedMethod)}
           >
             {isCancelled
-              ? "Ride cancelled"
+              ? t("riderPayments.rideCancelled")
               : isAutoPaid
-                ? `Update tip to ${tipPercentage}%`
+                ? t("riderPayments.updateTip", { percent: tipPercentage })
                 : isAuthorized
-                  ? `Save ${tipPercentage}% tip`
-                  : `Pay ${formatMoney(totalAmount)}`}
+                  ? t("riderPayments.saveTip", { percent: tipPercentage })
+                  : t("riderPayments.payAmount", { amount: formatMoney(totalAmount) })}
           </button>
         </section>
       </div>
@@ -375,15 +528,16 @@ function PaymentPage({ ride }) {
             distanceKm,
             tripMinutes,
           }}
+          t={t}
         />
-        <PaymentHistory payments={paymentHistory} loading={historyLoading} />
+        <PaymentHistory payments={paymentHistory} loading={historyLoading} t={t} />
       </div>
 
       {ride?.status === "completed" && !ratingSubmitted && (
         <section className="sx-rating-panel">
           <div>
-            <span className="sx-payment-eyebrow">Driver rating</span>
-            <h2>How was your ride?</h2>
+            <span className="sx-payment-eyebrow">{t("riderPayments.driverRating")}</span>
+            <h2>{t("riderPayments.howWasRide")}</h2>
           </div>
 
           <StarRating value={rating} onChange={setRating} />
@@ -391,19 +545,19 @@ function PaymentPage({ ride }) {
           <textarea
             value={review}
             onChange={(event) => setReview(event.target.value)}
-            placeholder="Write a short review..."
+            placeholder={t("riderPayments.reviewPlaceholder")}
           />
 
           <button className="sx-pay-button" disabled={!rating} onClick={submitRating}>
-            Submit rating
+            {t("riderPayments.submitRating")}
           </button>
         </section>
       )}
 
       {ratingSubmitted && (
         <section className="sx-payment-alert is-success">
-          <strong>Rating submitted</strong>
-          <span>Thank you. Your feedback helps keep Yala professional.</span>
+          <strong>{t("riderPayments.ratingSubmittedTitle")}</strong>
+          <span>{t("riderPayments.ratingSubmittedText")}</span>
         </section>
       )}
     </main>
@@ -411,11 +565,12 @@ function PaymentPage({ ride }) {
 }
 
 function WalletCard({ balance, historyCount }) {
+  const { t } = useTranslation();
   return (
     <aside className="sx-wallet-card">
-      <span>Wallet balance</span>
+      <span>{t("riderPayments.walletBalance")}</span>
       <strong>{formatMoney(balance)}</strong>
-      <small>{historyCount} payment records</small>
+      <small>{t("riderPayments.paymentRecords", { count: historyCount })}</small>
     </aside>
   );
 }
@@ -429,77 +584,94 @@ function SummaryRow({ label, value }) {
   );
 }
 
-function ReceiptCard({ payment, ride, fare, tipAmount, total, breakdown }) {
+function ReceiptCard({ payment, ride, fare, tipAmount, total, breakdown, t }) {
   const activePayment = payment || {};
   const receiptTotal = payment
     ? Number(activePayment.amount || 0) + Number(activePayment.tip_amount || 0)
     : total;
+  const receiptRows = [
+    { label: t("riderPayments.baseFare"), value: formatMoney(breakdown.baseFare) },
+    {
+      label: t("riderPayments.distanceLabel", { distance: breakdown.distanceKm.toFixed(1) }),
+      value: formatMoney(breakdown.distanceFare),
+    },
+    {
+      label: t("riderPayments.timeLabel", { minutes: breakdown.tripMinutes }),
+      value: formatMoney(breakdown.timeFare),
+    },
+    { label: t("riderPayments.taxes"), value: formatMoney(breakdown.taxes) },
+    { label: t("riderPayments.yalaFee"), value: formatMoney(payment?.app_fee ?? breakdown.platformFee) },
+    { label: t("riderPayments.fare"), value: formatMoney(payment?.amount ?? fare) },
+    { label: t("riderPayments.tip"), value: formatMoney(payment?.tip_amount ?? tipAmount) },
+    {
+      label: t("riderPayments.driverEarning"),
+      value: formatMoney(payment?.driver_earning ?? breakdown.driverEarning),
+    },
+    { label: t("riderPayments.method"), value: formatMethod(payment?.method || "", t) || t("riderPayments.selectMethod") },
+  ];
+  const receiptTotalText = formatMoney(receiptTotal);
+
+  const handlePrintReceipt = () => {
+    if (!payment) return;
+
+    printReceiptDocument({
+      payment,
+      ride,
+      rows: receiptRows,
+      total: receiptTotalText,
+    });
+  };
 
   return (
     <section className="sx-receipt-card">
       <div className="sx-payment-panel-head">
         <div>
-          <span>Receipt</span>
-          <h2>{payment ? "Yala receipt" : "Receipt preview"}</h2>
+          <span>{t("riderPayments.receipt")}</span>
+          <h2>{payment ? t("riderPayments.yalaReceipt") : t("riderPayments.receiptPreview")}</h2>
         </div>
-        <b>{payment?.status || "ready"}</b>
+        <b>{payment?.status || t("riderPayments.ready")}</b>
       </div>
 
-      <SummaryRow label="Ride" value={`#${ride?.id}`} />
-      <SummaryRow label="Base fare" value={formatMoney(breakdown.baseFare)} />
-      <SummaryRow
-        label={`Distance (${breakdown.distanceKm.toFixed(1)} km)`}
-        value={formatMoney(breakdown.distanceFare)}
-      />
-      <SummaryRow
-        label={`Time (${breakdown.tripMinutes} min)`}
-        value={formatMoney(breakdown.timeFare)}
-      />
-      <SummaryRow label="Taxes" value={formatMoney(breakdown.taxes)} />
-      <SummaryRow label="Yala fee" value={formatMoney(payment?.app_fee ?? breakdown.platformFee)} />
-      <SummaryRow label="Fare" value={formatMoney(payment?.amount ?? fare)} />
-      <SummaryRow label="Tip" value={formatMoney(payment?.tip_amount ?? tipAmount)} />
-      <SummaryRow
-        label="Driver earning"
-        value={formatMoney(payment?.driver_earning ?? breakdown.driverEarning)}
-      />
-      <SummaryRow label="Method" value={formatMethod(payment?.method || "Select method")} />
-      <SummaryRow label="Transaction" value={payment?.transaction_id || "Created after payment"} />
+      <SummaryRow label={t("riderPayments.ride")} value={`#${ride?.id}`} />
+      {receiptRows.map((row) => (
+        <SummaryRow key={row.label} label={row.label} value={row.value} />
+      ))}
+      <SummaryRow label={t("riderPayments.transaction")} value={payment?.transaction_id || t("riderPayments.createdAfterPayment")} />
 
       <div className="sx-grand-total">
-        <span>Total receipt</span>
-        <strong>{formatMoney(receiptTotal)}</strong>
+        <span>{t("riderPayments.totalReceipt")}</span>
+        <strong>{receiptTotalText}</strong>
       </div>
 
-      <button className="sx-receipt-button" onClick={() => window.print()} disabled={!payment}>
-        Print receipt
+      <button className="sx-receipt-button" type="button" onClick={handlePrintReceipt} disabled={!payment}>
+        {t("riderPayments.printReceipt")}
       </button>
     </section>
   );
 }
 
-function PaymentHistory({ payments, loading }) {
+function PaymentHistory({ payments, loading, t }) {
   return (
     <section className="sx-history-panel">
       <div className="sx-payment-panel-head">
         <div>
-          <span>History</span>
-          <h2>Payment history</h2>
+          <span>{t("riderPayments.history")}</span>
+          <h2>{t("riderPayments.paymentHistory")}</h2>
         </div>
         <b>{payments.length}</b>
       </div>
 
       {loading ? (
-        <div className="sx-history-empty">Loading payments...</div>
+        <div className="sx-history-empty">{t("riderPayments.loadingPayments")}</div>
       ) : payments.length === 0 ? (
-        <div className="sx-history-empty">No payment history yet.</div>
+        <div className="sx-history-empty">{t("riderPayments.noPaymentHistory")}</div>
       ) : (
         <div className="sx-history-list">
           {payments.slice(0, 6).map((item) => (
             <div key={item.id} className="sx-history-item">
               <div>
-                <strong>Ride #{item.ride_id}</strong>
-                <span>{formatMethod(item.method)} - {formatDate(item.created_at)}</span>
+                <strong>{t("riderPayments.rideNumber", { id: item.ride_id })}</strong>
+                <span>{formatMethod(item.method, t)} - {formatDate(item.created_at, t)}</span>
               </div>
               <div>
                 <b>{formatMoney(Number(item.amount || 0) + Number(item.tip_amount || 0))}</b>
@@ -514,14 +686,15 @@ function PaymentHistory({ payments, loading }) {
 }
 
 function StarRating({ value, onChange }) {
+  const { t } = useTranslation();
   return (
-    <div className="sx-stars" aria-label="Choose rating">
+    <div className="sx-stars" aria-label={t("riderPayments.chooseRating")}>
       {[1, 2, 3, 4, 5].map((star) => (
         <button
           key={star}
           type="button"
           onClick={() => onChange(star)}
-          aria-label={`${star} star${star === 1 ? "" : "s"}`}
+          aria-label={t("riderPayments.starLabel", { count: star })}
           className={value >= star ? "active" : ""}
         >
           ★
@@ -531,15 +704,15 @@ function StarRating({ value, onChange }) {
   );
 }
 
-function formatMethod(method) {
+function formatMethod(method, t) {
   const match = PAYMENT_METHODS.find((item) => item.id === method);
-  if (match) return match.title;
-  if (method === "bank_account") return "Bank account";
-  return String(method || "").replace(/_/g, " ") || "Unknown";
+  if (match) return t ? t(`riderPayments.methods.${match.titleKey}`) : method;
+  if (method === "bank_account") return t ? t("riderPayments.methods.bankAccount") : "Bank account";
+  return String(method || "").replace(/_/g, " ") || (t ? t("riderPayments.unknown") : "Unknown");
 }
 
-function formatDate(value) {
-  if (!value) return "Today";
+function formatDate(value, t) {
+  if (!value) return t ? t("riderPayments.today") : "Today";
 
   try {
     return new Intl.DateTimeFormat(undefined, {
@@ -549,7 +722,7 @@ function formatDate(value) {
       minute: "2-digit",
     }).format(new Date(value));
   } catch (error) {
-    return "Recent";
+    return t ? t("riderPayments.recent") : "Recent";
   }
 }
 
