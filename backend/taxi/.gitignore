@@ -5,9 +5,8 @@
 __pycache__
 db.sqlite3
 media
-migrations
 
-/migrations
+# Note: migrations are NOT ignored — they must be committed for deployment
 # Backup files # 
 *.bak 
 
