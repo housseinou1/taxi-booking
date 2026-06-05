@@ -125,6 +125,8 @@
     "nationalId": "رقم الهوية الوطنية",
     "riderPhotoRequired": "صورة ملف الراكب مطلوبة.",
     "riderPhotoHelp": "ارفع صورة واضحة للسلامة وظهورها للسائق.",
+    "nationalIdDocumentRequired": "وثيقة الهوية الوطنية مطلوبة.",
+    "nationalIdDocumentHelp": "ارفع صورة أو ملف PDF للهوية الوطنية لمراجعة الإدارة.",
     "creatingAccount": "جاري إنشاء الحساب...",
     "alreadyHaveAccount": "لديك حساب بالفعل",
     "registrationFailed": "فشل التسجيل. تحقق من معلوماتك."

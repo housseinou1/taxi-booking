@@ -33,9 +33,18 @@ REQUIRED_DOCUMENT_TYPES = [
     "license",
     "national_id",
     "insurance",
-    "vehicle_registration",
+    "carte_grise",
+    "vignette",
     "profile_photo",
 ]
+
+EXPIRING_DOCUMENT_TYPES = {
+    "license",
+    "insurance",
+    "carte_grise",
+    "vignette",
+    "vehicle_registration",
+}
 
 # Expiration warning window in days
 EXPIRATION_WARNING_DAYS = 30
@@ -131,6 +140,7 @@ class DocumentService:
         driver: DriverProfile,
         document_type: str,
         file,
+        issued_at: Optional[date] = None,
         expires_at: Optional[date] = None,
     ) -> DriverDocument:
         """
@@ -144,7 +154,8 @@ class DocumentService:
             driver: The DriverProfile instance.
             document_type: One of the DOCUMENT_TYPES choices.
             file: The uploaded file object.
-            expires_at: Optional expiration date for the document.
+            issued_at: Issue date, required for the driver license.
+            expires_at: Expiration date for time-limited documents.
 
         Returns:
             The created or updated DriverDocument instance.
@@ -165,6 +176,20 @@ class DocumentService:
         if not validation.valid:
             raise ValueError(validation.error)
 
+        today = timezone.localdate()
+        if document_type == "license" and not issued_at:
+            raise ValueError("Driver License issue date is required.")
+        if issued_at and issued_at > today:
+            raise ValueError("Document issue date cannot be in the future.")
+        if document_type in EXPIRING_DOCUMENT_TYPES and not expires_at:
+            raise ValueError(
+                f"{dict(DriverDocument.DOCUMENT_TYPES)[document_type]} expiration date is required."
+            )
+        if expires_at and expires_at <= today:
+            raise ValueError("Document expiration date must be in the future.")
+        if issued_at and expires_at and expires_at <= issued_at:
+            raise ValueError("Expiration date must be after the issue date.")
+
         # Check if document of this type already exists for the driver
         existing = DriverDocument.objects.filter(
             driver=driver,
@@ -176,6 +201,7 @@ class DocumentService:
             existing.file = file
             existing.status = "pending_review"
             existing.rejection_reason = ""
+            existing.issued_at = issued_at
             existing.expires_at = expires_at
             existing.reviewed_at = None
             existing.reviewed_by = None
@@ -188,6 +214,7 @@ class DocumentService:
             document_type=document_type,
             file=file,
             status="pending_review",
+            issued_at=issued_at,
             expires_at=expires_at,
         )
 
@@ -315,11 +342,15 @@ class DocumentService:
         alerts = []
 
         for doc_type in REQUIRED_DOCUMENT_TYPES:
+            compatible_types = [doc_type]
+            if doc_type == "carte_grise":
+                compatible_types.append("vehicle_registration")
+
             # Get the most recent document of this type
             document = (
                 DriverDocument.objects.filter(
                     driver=driver,
-                    document_type=doc_type,
+                    document_type__in=compatible_types,
                 )
                 .order_by("-uploaded_at")
                 .first()

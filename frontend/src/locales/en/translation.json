@@ -125,6 +125,8 @@
     "nationalId": "National ID number",
     "riderPhotoRequired": "Rider profile photo is required.",
     "riderPhotoHelp": "Upload a clear rider photo for safety and driver visibility.",
+    "nationalIdDocumentRequired": "National ID document is required.",
+    "nationalIdDocumentHelp": "Upload a photo or PDF of the rider National ID for admin review.",
     "creatingAccount": "Creating account...",
     "alreadyHaveAccount": "Already have an account",
     "registrationFailed": "Registration failed. Please check your information."

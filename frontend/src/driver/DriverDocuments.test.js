@@ -86,7 +86,8 @@ describe("DriverDocuments", () => {
 
     expect(screen.getByText("National ID")).toBeInTheDocument();
     expect(screen.getByText("Insurance")).toBeInTheDocument();
-    expect(screen.getByText("Vehicle Registration")).toBeInTheDocument();
+    expect(screen.getByText("Carte Grise")).toBeInTheDocument();
+    expect(screen.getByText("Vignette")).toBeInTheDocument();
     expect(screen.getByText("Profile Photo")).toBeInTheDocument();
   });
 
@@ -113,9 +114,9 @@ describe("DriverDocuments", () => {
     });
 
     await waitFor(() => {
-      // Vehicle Registration and Profile Photo are not in mockDocuments
+      // Carte Grise, Vignette, and Profile Photo are not in mockDocuments
       const notUploadedBadges = screen.getAllByText("Not Uploaded");
-      expect(notUploadedBadges.length).toBe(2);
+      expect(notUploadedBadges.length).toBe(3);
     });
   });
 
@@ -176,7 +177,7 @@ describe("DriverDocuments", () => {
   });
 
   it("shows persistent alert for missing required documents", async () => {
-    // Only 1 document uploaded out of 5 required
+    // Only 1 document uploaded out of 6 required
     axios.get.mockResolvedValue({
       data: {
         documents: [mockDocuments[0]],
@@ -196,7 +197,8 @@ describe("DriverDocuments", () => {
     // Should list missing documents in the alert (use getAllByText since names also appear in cards)
     expect(screen.getAllByText(/National ID/).length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText(/Insurance/).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText(/Vehicle Registration/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Carte Grise/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Vignette/).length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText(/Profile Photo/).length).toBeGreaterThanOrEqual(1);
 
     // Verify the alert contains the missing reason
@@ -216,7 +218,8 @@ describe("DriverDocuments", () => {
       data: {
         documents: [expiredDoc, mockDocuments[1], mockDocuments[2],
           { id: 4, document_type: "vehicle_registration", status: "approved", uploaded_at: "2024-01-01T00:00:00Z", expires_at: null, rejection_reason: "" },
-          { id: 5, document_type: "profile_photo", status: "approved", uploaded_at: "2024-01-01T00:00:00Z", expires_at: null, rejection_reason: "" },
+          { id: 5, document_type: "vignette", status: "approved", uploaded_at: "2024-01-01T00:00:00Z", expires_at: null, rejection_reason: "" },
+          { id: 6, document_type: "profile_photo", status: "approved", uploaded_at: "2024-01-01T00:00:00Z", expires_at: null, rejection_reason: "" },
         ],
         expiring_documents: [],
         alerts: [],
@@ -242,10 +245,10 @@ describe("DriverDocuments", () => {
     });
 
     await waitFor(() => {
-      // 3 documents uploaded → "Replace", 2 not uploaded → "Upload"
+      // 3 documents uploaded -> "Replace", 3 not uploaded -> "Upload"
       const uploadButtons = screen.getAllByText("Upload");
       const replaceButtons = screen.getAllByText("Replace");
-      expect(uploadButtons.length).toBe(2);
+      expect(uploadButtons.length).toBe(3);
       expect(replaceButtons.length).toBe(3);
     });
   });
@@ -348,6 +351,7 @@ describe("getExpiredOrMissingDocuments", () => {
       { document_type: "national_id", expires_at: null },
       { document_type: "insurance", expires_at: null },
       { document_type: "vehicle_registration", expires_at: null },
+      { document_type: "vignette", expires_at: null },
       { document_type: "profile_photo", expires_at: null },
     ];
     expect(getExpiredOrMissingDocuments(docs)).toEqual([]);
@@ -358,10 +362,11 @@ describe("getExpiredOrMissingDocuments", () => {
       { document_type: "license", expires_at: null },
     ];
     const alerts = getExpiredOrMissingDocuments(docs);
-    expect(alerts.length).toBe(4);
+    expect(alerts.length).toBe(5);
     expect(alerts.map((a) => a.key)).toContain("national_id");
     expect(alerts.map((a) => a.key)).toContain("insurance");
-    expect(alerts.map((a) => a.key)).toContain("vehicle_registration");
+    expect(alerts.map((a) => a.key)).toContain("carte_grise");
+    expect(alerts.map((a) => a.key)).toContain("vignette");
     expect(alerts.map((a) => a.key)).toContain("profile_photo");
     alerts.forEach((alert) => {
       expect(alert.reason).toBe("missing");
@@ -376,6 +381,7 @@ describe("getExpiredOrMissingDocuments", () => {
       { document_type: "national_id", expires_at: null },
       { document_type: "insurance", expires_at: null },
       { document_type: "vehicle_registration", expires_at: null },
+      { document_type: "vignette", expires_at: null },
       { document_type: "profile_photo", expires_at: null },
     ];
     const alerts = getExpiredOrMissingDocuments(docs);
@@ -400,6 +406,7 @@ describe("getExpiredOrMissingDocuments", () => {
       { document_type: "national_id", expires_at: null },
       { document_type: "insurance", expires_at: null },
       { document_type: "vehicle_registration", expires_at: null },
+      { document_type: "vignette", expires_at: null },
       { document_type: "profile_photo", expires_at: null },
     ];
     const alerts = getExpiredOrMissingDocuments(docs);

@@ -17,6 +17,7 @@ from .email_views import (
     request_password_reset,
     confirm_password_reset,
 )
+from .phone_views import request_phone_verification, verify_phone
 
 urlpatterns = [
     path("register/", RegisterView.as_view()),
@@ -31,6 +32,8 @@ urlpatterns = [
     # Email verification
     path("email/send-verification/", send_verification_email),
     path("email/verify/", verify_email),
+    path("phone/request-code/", request_phone_verification),
+    path("phone/verify/", verify_phone),
     # Password reset
     path("password/reset/", request_password_reset),
     path("password/reset/confirm/", confirm_password_reset),

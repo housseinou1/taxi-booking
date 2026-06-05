@@ -19,7 +19,11 @@ function Register() {
   });
   const [loading, setLoading] = useState(false);
   const [profilePicture, setProfilePicture] = useState(null);
+  const [nationalIdDocument, setNationalIdDocument] = useState(null);
   const [errorMessage, setErrorMessage] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
+  const [verificationStep, setVerificationStep] = useState(false);
+  const [debugCode, setDebugCode] = useState("");
 
   const handleChange = (event) => {
     setFormData({
@@ -37,6 +41,11 @@ function Register() {
       return;
     }
 
+    if (formData.user_type === "rider" && !nationalIdDocument) {
+      setErrorMessage(t("auth.nationalIdDocumentRequired"));
+      return;
+    }
+
     try {
       setLoading(true);
 
@@ -47,6 +56,10 @@ function Register() {
 
       if (profilePicture) {
         payload.append("profile_picture", profilePicture);
+      }
+
+      if (nationalIdDocument) {
+        payload.append("national_id_document", nationalIdDocument);
       }
 
       await axios.post(`${API_URL}/auth/register/`, payload, {
@@ -64,6 +77,36 @@ function Register() {
       localStorage.setItem("refresh", loginResponse.data.refresh);
       localStorage.setItem("user", JSON.stringify(loginResponse.data));
 
+      const codeResponse = await axios.post(
+        `${API_URL}/auth/phone/request-code/`,
+        {},
+        { headers: { Authorization: `Bearer ${loginResponse.data.access}` } },
+      );
+      setDebugCode(codeResponse.data.debug_code || "");
+      setVerificationStep(true);
+      return;
+    } catch (error) {
+      const response = error.response?.data || {};
+      const message =
+        response.email?.[0] ||
+        response.gender?.[0] ||
+        response.national_id_number?.[0] ||
+        response.password?.[0] ||
+        response.user_type?.[0] ||
+        response.profile_picture ||
+        response.national_id_document ||
+        response.phone_number ||
+        response.detail ||
+        response.error ||
+        t("auth.registrationFailed");
+
+      setErrorMessage(Array.isArray(message) ? message[0] : message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const finishRegistration = () => {
       if (formData.user_type === "rider") {
         localStorage.setItem("needs_payment_setup", "true");
         localStorage.removeItem("needs_vehicle_setup");
@@ -79,21 +122,24 @@ function Register() {
       }
 
       window.location.replace("/");
+  };
+
+  const verifyPhone = async (event) => {
+    event.preventDefault();
+    setErrorMessage("");
+    try {
+      setLoading(true);
+      await axios.post(
+        `${API_URL}/auth/phone/verify/`,
+        { code: verificationCode },
+        { headers: { Authorization: `Bearer ${localStorage.getItem("access")}` } },
+      );
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      localStorage.setItem("user", JSON.stringify({ ...user, phone_verified: true }));
+      finishRegistration();
     } catch (error) {
       const response = error.response?.data || {};
-      const message =
-        response.email?.[0] ||
-        response.gender?.[0] ||
-        response.national_id_number?.[0] ||
-        response.password?.[0] ||
-        response.user_type?.[0] ||
-        response.profile_picture ||
-        response.phone_number ||
-        response.detail ||
-        response.error ||
-        t("auth.registrationFailed");
-
-      setErrorMessage(Array.isArray(message) ? message[0] : message);
+      setErrorMessage(response.error || response.detail || "Phone verification failed.");
     } finally {
       setLoading(false);
     }
@@ -109,13 +155,22 @@ function Register() {
         <p>{t("auth.registerSubtitle")}</p>
       </section>
 
-      <form className="auth-register-card" onSubmit={registerUser}>
+      <form
+        className="auth-register-card"
+        onSubmit={verificationStep ? verifyPhone : registerUser}
+      >
         <div className="auth-register-header">
-          <span>{formData.user_type === "rider" ? t("auth.riderAccount") : t("auth.driverAccount")}</span>
-          <h2>{t("auth.signUp")}</h2>
+          <span>
+            {verificationStep
+              ? "Phone verification"
+              : formData.user_type === "rider"
+                ? t("auth.riderAccount")
+                : t("auth.driverAccount")}
+          </span>
+          <h2>{verificationStep ? "Enter your SMS code" : t("auth.signUp")}</h2>
         </div>
 
-        <div className="auth-register-tabs">
+        {!verificationStep && <div className="auth-register-tabs">
           {["rider", "driver"].map((type) => (
             <button
               key={type}
@@ -123,16 +178,40 @@ function Register() {
               className={formData.user_type === type ? "active" : ""}
               onClick={() => {
                 setFormData({ ...formData, user_type: type });
-                if (type !== "rider") setProfilePicture(null);
+                if (type !== "rider") {
+                  setProfilePicture(null);
+                  setNationalIdDocument(null);
+                }
               }}
             >
               {type === "rider" ? t("common.rider") : t("common.driver")}
             </button>
           ))}
-        </div>
+        </div>}
 
         {errorMessage && <div className="auth-register-error">{errorMessage}</div>}
 
+        {verificationStep ? (
+          <>
+            <p className="auth-register-verification-copy">
+              We sent a six-digit code to {formData.phone_number}. Verify it before
+              Yala sends your application to admin review.
+            </p>
+            {debugCode && (
+              <div className="auth-register-debug-code">
+                Local test code: <strong>{debugCode}</strong>
+              </div>
+            )}
+            <input
+              value={verificationCode}
+              onChange={(event) => setVerificationCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              placeholder="6-digit code"
+              required
+            />
+          </>
+        ) : <>
         <div className="auth-register-grid">
           <input
             name="first_name"
@@ -184,16 +263,29 @@ function Register() {
         />
 
         {formData.user_type === "rider" && (
-          <label className="auth-register-file">
-            <strong>{t("auth.riderPhotoRequired")}</strong>
-            <span>{t("auth.riderPhotoHelp")}</span>
-            <input
-              type="file"
-              accept="image/*"
-              required
-              onChange={(event) => setProfilePicture(event.target.files?.[0] || null)}
-            />
-          </label>
+          <>
+            <label className="auth-register-file">
+              <strong>{t("auth.riderPhotoRequired")}</strong>
+              <span>{profilePicture?.name || t("auth.riderPhotoHelp")}</span>
+              <input
+                type="file"
+                accept="image/*"
+                required
+                onChange={(event) => setProfilePicture(event.target.files?.[0] || null)}
+              />
+            </label>
+
+            <label className="auth-register-file">
+              <strong>{t("auth.nationalIdDocumentRequired")}</strong>
+              <span>{nationalIdDocument?.name || t("auth.nationalIdDocumentHelp")}</span>
+              <input
+                type="file"
+                accept="image/*,application/pdf"
+                required
+                onChange={(event) => setNationalIdDocument(event.target.files?.[0] || null)}
+              />
+            </label>
+          </>
         )}
 
         <input
@@ -204,18 +296,23 @@ function Register() {
           onChange={handleChange}
           autoComplete="new-password"
         />
+        </>}
 
         <button className="auth-register-primary" type="submit" disabled={loading}>
-          {loading ? t("auth.creatingAccount") : t("auth.createAccount")}
+          {loading
+            ? t("auth.creatingAccount")
+            : verificationStep
+              ? "Verify phone"
+              : t("auth.createAccount")}
         </button>
 
-        <button
+        {!verificationStep && <button
           className="auth-register-secondary"
           type="button"
           onClick={() => (window.location.href = "/login")}
         >
           {t("auth.alreadyHaveAccount")}
-        </button>
+        </button>}
       </form>
     </main>
   );
@@ -340,6 +437,20 @@ function AuthRegisterStyles() {
         background: rgba(127, 29, 29, 0.28);
         color: #fecaca;
         font-weight: 800;
+      }
+
+      .auth-register-verification-copy {
+        margin: 0 0 16px;
+        color: rgba(255, 255, 255, 0.72);
+        line-height: 1.5;
+      }
+
+      .auth-register-debug-code {
+        margin-bottom: 14px;
+        padding: 12px;
+        border-radius: 14px;
+        background: rgba(34, 197, 94, 0.14);
+        color: #bbf7d0;
       }
 
       .auth-register-grid {

@@ -64,6 +64,7 @@ class DriverDocumentSerializer(serializers.ModelSerializer):
             "file",
             "status",
             "rejection_reason",
+            "issued_at",
             "expires_at",
             "uploaded_at",
             "reviewed_at",
@@ -96,7 +97,7 @@ class DriverDocumentUploadSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = DriverDocument
-        fields = ["id", "document_type", "file", "expires_at"]
+        fields = ["id", "document_type", "file", "issued_at", "expires_at"]
 
     def validate_file(self, value):
         # Validate file format

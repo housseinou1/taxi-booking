@@ -127,14 +127,16 @@ function AdminDashboard() {
 
   const fetchDrivers = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/drivers/list/`);
+      const response = await fetch(`${API_URL}/drivers/list/`, {
+        headers: authHeaders(),
+      });
       const data = await response.json();
       setDrivers(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error fetching drivers:", error);
       setDrivers([]);
     }
-  }, []);
+  }, [authHeaders]);
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -230,12 +232,17 @@ function AdminDashboard() {
   };
 
   const rejectDriver = async (id) => {
+    const reason = window.prompt("Why is this driver application being rejected?");
+    if (!reason || reason.trim().length < 5) return;
+
     try {
       const response = await fetch(`${API_URL}/drivers/reject/${id}/`, {
         method: "POST",
         headers: {
           ...authHeaders(),
+          "Content-Type": "application/json",
         },
+        body: JSON.stringify({ reason: reason.trim() }),
       });
 
       if (response.ok) {
@@ -304,10 +311,20 @@ function AdminDashboard() {
   };
 
   const updateRiderApproval = async (userId, action) => {
+    const reason =
+      action === "reject"
+        ? window.prompt("Why is this rider application being rejected?")
+        : "";
+    if (action === "reject" && (!reason || reason.trim().length < 5)) return;
+
     try {
       const response = await fetch(`${API_URL}/auth/users/${userId}/${action}-rider/`, {
         method: "POST",
-        headers: authHeaders(),
+        headers: {
+          ...authHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(action === "reject" ? { reason: reason.trim() } : {}),
       });
 
       const data = await response.json();
@@ -1066,6 +1083,9 @@ function AdminDashboard() {
                     </p>
                   )}
                   <p>
+                    <b>License issue date:</b> {driver.license_issued_at || "Missing"}
+                  </p>
+                  <p>
                     <b>License expiration:</b>{" "}
                     <span style={documentStatusStyle(driver.license_status)}>
                       {formatDocumentStatus(driver.license_status)}
@@ -1080,12 +1100,12 @@ function AdminDashboard() {
                         target="_blank"
                         rel="noreferrer"
                       >
-                        View Vehicle Registration
+                        View Carte Grise
                       </a>
                     </p>
                   )}
                   <p>
-                    <b>Registration expiration:</b>{" "}
+                    <b>Carte Grise expiration:</b>{" "}
                     <span style={documentStatusStyle(driver.vehicle_registration_status)}>
                       {formatDocumentStatus(driver.vehicle_registration_status)}
                     </span>
@@ -1111,6 +1131,24 @@ function AdminDashboard() {
                       {formatDocumentStatus(driver.insurance_status)}
                     </span>
                     {driver.insurance_expires_at ? ` · ${driver.insurance_expires_at}` : ""}
+                  </p>
+                  {driver.vignette_document && (
+                    <p>
+                      <a
+                        href={getFileUrl(driver.vignette_document)}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        View Vignette
+                      </a>
+                    </p>
+                  )}
+                  <p>
+                    <b>Vignette expiration:</b>{" "}
+                    <span style={documentStatusStyle(driver.vignette_status)}>
+                      {formatDocumentStatus(driver.vignette_status)}
+                    </span>
+                    {driver.vignette_expires_at ? ` · ${driver.vignette_expires_at}` : ""}
                   </p>
                 </div>
               ))
@@ -1412,7 +1450,7 @@ function DriverVerificationCard({
               rel="noreferrer"
               style={documentButton}
             >
-              View Vehicle Registration
+              View Carte Grise
             </a>
           )}
 
@@ -1424,6 +1462,26 @@ function DriverVerificationCard({
               style={documentButton}
             >
               View Insurance
+            </a>
+          )}
+          {driver.license_file && (
+            <a
+              href={getFileUrl(driver.license_file)}
+              target="_blank"
+              rel="noreferrer"
+              style={documentButton}
+            >
+              View Driver License
+            </a>
+          )}
+          {driver.vignette_document && (
+            <a
+              href={getFileUrl(driver.vignette_document)}
+              target="_blank"
+              rel="noreferrer"
+              style={documentButton}
+            >
+              View Vignette
             </a>
           )}
         </div>
@@ -1842,6 +1900,9 @@ function UserAccessCard({
           <span style={rolePillStyle}>
             {formatYearsUsingApp(user.years_using_app)}
           </span>
+          <span style={rolePillStyle}>
+            Phone {user.phone_verified ? "verified" : "not verified"}
+          </span>
           {user.is_driver && user.driver_status && (
             <span style={rolePillStyle}>{user.driver_status}</span>
           )}
@@ -1865,6 +1926,9 @@ function UserAccessCard({
             </>
           )}
         </p>
+        {user.rider_rejection_reason && (
+          <p style={accessMetaStyle}>Rejection reason: {user.rider_rejection_reason}</p>
+        )}
       </div>
 
       <div style={actionClusterStyle}>
@@ -1907,6 +1971,7 @@ function DriverInfoCard({
     driver.license_file,
     driver.vehicle_registration,
     driver.insurance_document,
+    driver.vignette_document,
   ].filter(Boolean).length;
   const verificationLabel =
     driver.status === "approved"
@@ -1947,6 +2012,10 @@ function DriverInfoCard({
           <div style={detailGridStyle}>
             <DetailItem label="Phone" value={driver.phone_number || "N/A"} />
             <DetailItem
+              label="Phone verification"
+              value={driver.phone_verified ? "Verified" : "Not verified"}
+            />
+            <DetailItem
               label="Member since"
               value={`${driver.member_since_year || "N/A"} · ${formatYearsUsingApp(driver.years_using_app)}`}
             />
@@ -1958,6 +2027,11 @@ function DriverInfoCard({
             <DetailItem label="Plate" value={driver.vehicle_plate || "N/A"} />
             <DetailItem label="Documents" value={`${uploadedDriverDocs}/4 uploaded`} />
           </div>
+          {driver.application_rejection_reason && (
+            <p style={accessMetaStyle}>
+              Rejection reason: {driver.application_rejection_reason}
+            </p>
+          )}
 
           <label style={driverCategoryControlStyle}>
             <span>Driver category</span>

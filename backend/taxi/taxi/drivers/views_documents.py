@@ -80,8 +80,9 @@ class DriverDocumentUploadView(APIView):
 
     Request body (multipart/form-data):
         - document_type: one of license, national_id, insurance,
-                         vehicle_registration, profile_photo
+                         carte_grise, vignette, profile_photo
         - file: the document file
+        - issued_at: issue date in YYYY-MM-DD format (required for license)
         - expires_at: (optional) expiration date in YYYY-MM-DD format
     """
 
@@ -98,23 +99,34 @@ class DriverDocumentUploadView(APIView):
 
         document_type = request.data.get("document_type")
         file = request.FILES.get("file")
+        issued_at_raw = request.data.get("issued_at") or None
         expires_at_raw = request.data.get("expires_at") or None
 
-        # Parse expires_at string to a date object if provided
-        expires_at = None
-        if expires_at_raw:
+        def parse_date(value, field_name):
+            if not value:
+                return None
             from datetime import date as date_type
-            if isinstance(expires_at_raw, date_type):
-                expires_at = expires_at_raw
-            else:
-                try:
-                    from datetime import datetime
-                    expires_at = datetime.strptime(str(expires_at_raw), "%Y-%m-%d").date()
-                except (ValueError, TypeError):
-                    return Response(
-                        {"error": "Invalid expires_at format. Use YYYY-MM-DD."},
-                        status=status.HTTP_400_BAD_REQUEST,
-                    )
+
+            if isinstance(value, date_type):
+                return value
+
+            from datetime import datetime
+
+            try:
+                return datetime.strptime(str(value), "%Y-%m-%d").date()
+            except (ValueError, TypeError) as exc:
+                raise ValueError(
+                    f"Invalid {field_name} format. Use YYYY-MM-DD."
+                ) from exc
+
+        try:
+            issued_at = parse_date(issued_at_raw, "issued_at")
+            expires_at = parse_date(expires_at_raw, "expires_at")
+        except ValueError as exc:
+            return Response(
+                {"error": str(exc)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         if not document_type:
             return Response(
@@ -144,6 +156,7 @@ class DriverDocumentUploadView(APIView):
                 driver=profile,
                 document_type=document_type,
                 file=file,
+                issued_at=issued_at,
                 expires_at=expires_at,
             )
         except ValueError as e:

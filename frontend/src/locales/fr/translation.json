@@ -125,6 +125,8 @@
     "nationalId": "Numero national d'identite",
     "riderPhotoRequired": "La photo de profil client est obligatoire.",
     "riderPhotoHelp": "Ajoutez une photo claire pour la securite et la visibilite chauffeur.",
+    "nationalIdDocumentRequired": "Le document d'identite nationale est obligatoire.",
+    "nationalIdDocumentHelp": "Ajoutez une photo ou un PDF de l'identite nationale pour la verification admin.",
     "creatingAccount": "Creation du compte...",
     "alreadyHaveAccount": "J'ai deja un compte",
     "registrationFailed": "Inscription echouee. Verifiez vos informations."

@@ -9,7 +9,7 @@ from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 
@@ -20,6 +20,7 @@ from payments.services import (
     capture_ride_payment,
 )
 from promotions.services import PromoCodeService
+from taxi.drivers.models import DriverProfile
 
 from .models import Ride, RideStop
 from .serializers import RideSerializer
@@ -51,6 +52,19 @@ def broadcast_ride_update(ride):
 
 OPEN_RIDE_STATUSES = ["requested", "scheduled", "driver_arriving", "driver_arrived", "in_progress"]
 DRIVER_ACTIVE_STATUSES = ["driver_arriving", "driver_arrived", "in_progress"]
+
+
+def approved_driver_error(user):
+    if getattr(user, "user_type", "") != "driver":
+        return "Only driver accounts can view or accept ride requests."
+
+    if not user.is_phone_verified:
+        return "Verify your phone number before viewing or accepting ride requests."
+
+    if not DriverProfile.objects.filter(user=user, status="approved").exists():
+        return "Your driver application must be approved before viewing or accepting rides."
+
+    return ""
 
 
 def calculate_money(ride):
@@ -109,6 +123,12 @@ def request_ride(request):
     if getattr(request.user, "rider_status", "approved") != "approved":
         return Response(
             {"detail": "Rider account must be approved by admin before requesting a ride."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if not request.user.is_phone_verified:
+        return Response(
+            {"detail": "Verify your phone number before requesting a ride."},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
@@ -203,6 +223,12 @@ def schedule_ride(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
+    if not request.user.is_phone_verified:
+        return Response(
+            {"detail": "Verify your phone number before scheduling a ride."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
     scheduled_at = request.data.get("scheduled_at")
     if not scheduled_at:
         return Response(
@@ -277,8 +303,12 @@ def cancel_scheduled_ride(request, ride_id):
 
 
 @api_view(["GET"])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def available_rides(request):
+    error = approved_driver_error(request.user)
+    if error:
+        return Response({"detail": error}, status=status.HTTP_403_FORBIDDEN)
+
     rides = Ride.objects.filter(
         status="requested",
         driver__isnull=True,
@@ -331,6 +361,10 @@ def driver_rides(request):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def accept_ride(request, ride_id):
+    error = approved_driver_error(request.user)
+    if error:
+        return Response({"detail": error}, status=status.HTTP_403_FORBIDDEN)
+
     ride = get_object_or_404(Ride, id=ride_id)
 
     if ride.status != "requested":

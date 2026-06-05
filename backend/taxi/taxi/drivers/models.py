@@ -43,6 +43,7 @@ class DriverProfile(models.Model):
         choices=STATUS_CHOICES,
         default="pending",
     )
+    application_rejection_reason = models.TextField(blank=True, default="")
 
     is_available = models.BooleanField(default=False)
 
@@ -132,6 +133,11 @@ class DriverProfile(models.Model):
         null=True,
     )
 
+    license_issued_at = models.DateField(
+        blank=True,
+        null=True,
+    )
+
     license_expires_at = models.DateField(
         blank=True,
         null=True,
@@ -155,6 +161,17 @@ class DriverProfile(models.Model):
     )
 
     insurance_expires_at = models.DateField(
+        blank=True,
+        null=True,
+    )
+
+    vignette_document = models.FileField(
+        upload_to="drivers/vignettes/",
+        blank=True,
+        null=True,
+    )
+
+    vignette_expires_at = models.DateField(
         blank=True,
         null=True,
     )
@@ -217,7 +234,9 @@ class DriverDocument(models.Model):
         ("license", "Driver License"),
         ("national_id", "National ID"),
         ("insurance", "Insurance"),
-        ("vehicle_registration", "Vehicle Registration"),
+        ("carte_grise", "Carte Grise"),
+        ("vignette", "Vignette"),
+        ("vehicle_registration", "Vehicle Registration (Legacy)"),
         ("profile_photo", "Profile Photo"),
     ]
 
@@ -238,6 +257,7 @@ class DriverDocument(models.Model):
         max_length=20, choices=STATUS_CHOICES, default="pending_review"
     )
     rejection_reason = models.TextField(blank=True, default="")
+    issued_at = models.DateField(null=True, blank=True)
     expires_at = models.DateField(null=True, blank=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
     reviewed_at = models.DateTimeField(null=True, blank=True)

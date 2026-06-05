@@ -1,13 +1,20 @@
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from datetime import date, datetime
 
 from .models import DriverProfile, DriverSettings
 from .api.serializers import DriverSettingsSerializer
+from authapp.validators import (
+    normalize_mauritania_phone,
+    normalize_national_id,
+    validate_plate_number,
+    validate_vehicle_value,
+)
 
 
 def get_or_create_driver_profile(user):
@@ -48,6 +55,57 @@ def document_status(expires_at):
     return "valid"
 
 
+def parse_document_date(value, label):
+    if not value:
+        return None
+    if isinstance(value, date):
+        return value
+    try:
+        return datetime.strptime(str(value), "%Y-%m-%d").date()
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{label} must use YYYY-MM-DD format.") from exc
+
+
+def validate_mauritania_document_dates(profile, require_all=False):
+    today = timezone.localdate()
+    required_dates = {
+        "Driver License issue date": profile.license_issued_at,
+        "Driver License expiration date": profile.license_expires_at,
+        "Carte Grise expiration date": profile.vehicle_registration_expires_at,
+        "Insurance expiration date": profile.insurance_expires_at,
+        "Vignette expiration date": profile.vignette_expires_at,
+    }
+
+    if require_all:
+        missing = [label for label, value in required_dates.items() if not value]
+        if missing:
+            raise ValueError(f"Please provide: {', '.join(missing)}.")
+
+    if profile.license_issued_at and profile.license_issued_at > today:
+        raise ValueError("Driver License issue date cannot be in the future.")
+
+    expiring_dates = {
+        "Driver License": profile.license_expires_at,
+        "Carte Grise": profile.vehicle_registration_expires_at,
+        "Insurance": profile.insurance_expires_at,
+        "Vignette": profile.vignette_expires_at,
+    }
+    expired = [
+        label for label, value in expiring_dates.items() if value and value <= today
+    ]
+    if expired:
+        raise ValueError(
+            f"Expiration dates must be in the future for: {', '.join(expired)}."
+        )
+
+    if (
+        profile.license_issued_at
+        and profile.license_expires_at
+        and profile.license_expires_at <= profile.license_issued_at
+    ):
+        raise ValueError("Driver License expiration date must be after its issue date.")
+
+
 def years_using_app(user):
     if not user.date_joined:
         return 0
@@ -69,10 +127,13 @@ def expired_document_labels(profile):
         expired.append("driver license")
 
     if document_status(profile.vehicle_registration_expires_at) == "expired":
-        expired.append("vehicle registration")
+        expired.append("Carte Grise")
 
     if document_status(profile.insurance_expires_at) == "expired":
         expired.append("insurance")
+
+    if document_status(profile.vignette_expires_at) == "expired":
+        expired.append("Vignette")
 
     return expired
 
@@ -139,6 +200,7 @@ def serialize_driver(profile, request):
         "current_lng": profile.current_lng,
         "driver_photo": file_url(request, profile.driver_photo),
         "license_file": file_url(request, profile.license_file),
+        "license_issued_at": profile.license_issued_at,
         "license_expires_at": profile.license_expires_at,
         "license_status": document_status(profile.license_expires_at),
         "vehicle_registration": file_url(request, profile.vehicle_registration),
@@ -147,6 +209,9 @@ def serialize_driver(profile, request):
         "insurance_document": file_url(request, profile.insurance_document),
         "insurance_expires_at": profile.insurance_expires_at,
         "insurance_status": document_status(profile.insurance_expires_at),
+        "vignette_document": file_url(request, profile.vignette_document),
+        "vignette_expires_at": profile.vignette_expires_at,
+        "vignette_status": document_status(profile.vignette_expires_at),
         "expired_documents": expired_documents,
         "document_rejection_reason": (
             f"Automatically rejected because these documents expired: {', '.join(expired_documents)}"
@@ -156,6 +221,34 @@ def serialize_driver(profile, request):
         "terms_accepted": profile.terms_accepted,
         "terms_accepted_at": profile.terms_accepted_at,
         "terms_version": profile.terms_version,
+    }
+
+
+def serialize_public_driver(profile, request):
+    enforce_document_expiration(profile)
+    driver_name = f"{profile.user.first_name} {profile.user.last_name}".strip()
+
+    return {
+        "id": profile.id,
+        "user_id": profile.user.id,
+        "driver_name": driver_name or "Yala Driver",
+        "first_name": profile.user.first_name,
+        "last_name": profile.user.last_name,
+        "is_available": profile.is_available,
+        "status": profile.status,
+        "application_rejection_reason": profile.application_rejection_reason,
+        "phone_verified": profile.user.is_phone_verified,
+        "car_type": profile.car_type,
+        "driver_category": profile.driver_category,
+        "driver_category_label": profile.get_driver_category_display(),
+        "vehicle_make": profile.vehicle_make,
+        "vehicle_model": profile.vehicle_model,
+        "vehicle_color": profile.vehicle_color,
+        "vehicle_plate": profile.vehicle_plate or profile.plate_number,
+        "plate_number": profile.plate_number or profile.vehicle_plate,
+        "driver_photo": file_url(request, profile.driver_photo),
+        "member_since_year": profile.user.date_joined.year if profile.user.date_joined else "",
+        "years_using_app": years_using_app(profile.user),
     }
 
 
@@ -176,14 +269,14 @@ def driver_me(request):
 
 
 @api_view(["GET"])
-@permission_classes([AllowAny])
+@permission_classes([IsAdminUser])
 def driver_list(request):
     drivers = DriverProfile.objects.all().order_by("-id")
     return Response([serialize_driver(driver, request) for driver in drivers])
 
 
 @api_view(["GET"])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def available_drivers(request):
     for profile in DriverProfile.objects.filter(status="approved"):
         enforce_document_expiration(profile)
@@ -196,18 +289,38 @@ def available_drivers(request):
     data = []
 
     for driver in drivers:
-        data.append(serialize_driver(driver, request))
+        data.append(serialize_public_driver(driver, request))
 
     return Response(data)
 
 
 @api_view(["GET"])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def driver_location(request, driver_id):
     profile = get_object_or_404(
         DriverProfile,
         user_id=driver_id,
     )
+
+    can_view_location = (
+        request.user.is_staff
+        or profile.user_id == request.user.id
+    )
+
+    if not can_view_location:
+        from taxi.rides.models import Ride
+
+        can_view_location = Ride.objects.filter(
+            driver=profile.user,
+            rider=request.user,
+            status__in=["driver_arriving", "driver_arrived", "in_progress"],
+        ).exists()
+
+    if not can_view_location:
+        return Response(
+            {"error": "You do not have permission to view this driver location."},
+            status=403,
+        )
 
     return Response({
         "driver_id": profile.user.id,
@@ -329,9 +442,8 @@ def register_driver(request):
             status=400,
         )
 
-    profile.phone_number = request.data.get(
-        "phone_number",
-        profile.phone_number,
+    profile.phone_number = normalize_mauritania_phone(
+        request.data.get("phone_number", profile.phone_number)
     )
 
     profile.car_type = request.data.get(
@@ -339,25 +451,53 @@ def register_driver(request):
         profile.car_type,
     )
 
-    profile.vehicle_make = request.data.get(
-        "vehicle_make",
-        profile.vehicle_make,
+    profile.vehicle_make = validate_vehicle_value(
+        request.data.get("vehicle_make", profile.vehicle_make),
+        "Vehicle make",
     )
+    profile.vehicle_model = validate_vehicle_value(
+        request.data.get("vehicle_model", profile.vehicle_model),
+        "Vehicle model",
+    )
+    profile.vehicle_color = validate_vehicle_value(
+        request.data.get("vehicle_color", profile.vehicle_color),
+        "Vehicle color",
+    )
+    profile.plate_number = validate_plate_number(
+        request.data.get("plate_number", profile.plate_number)
+    )
+    profile.vehicle_plate = profile.plate_number
 
-    profile.vehicle_model = request.data.get(
-        "vehicle_model",
-        profile.vehicle_model,
-    )
+    required_documents = {
+        "driver photo": request.FILES.get("driver_photo") or profile.driver_photo,
+        "driver license": request.FILES.get("license_file") or profile.license_file,
+        "Carte Grise": (
+            request.FILES.get("vehicle_registration") or profile.vehicle_registration
+        ),
+        "insurance document": (
+            request.FILES.get("insurance_document") or profile.insurance_document
+        ),
+        "Vignette": request.FILES.get("vignette_document") or profile.vignette_document,
+    }
+    missing_documents = [
+        label for label, document in required_documents.items() if not document
+    ]
 
-    profile.vehicle_color = request.data.get(
-        "vehicle_color",
-        profile.vehicle_color,
-    )
+    if missing_documents:
+        return Response(
+            {"error": f"Please upload: {', '.join(missing_documents)}."},
+            status=400,
+        )
 
-    profile.plate_number = request.data.get(
-        "plate_number",
-        profile.plate_number,
-    )
+    if not request.user.is_phone_verified:
+        return Response(
+            {
+                "error": "Verify your phone number before going online.",
+                "status": profile.status,
+                "is_available": False,
+            },
+            status=400,
+        )
 
     if request.FILES.get("driver_photo"):
         profile.driver_photo = request.FILES.get("driver_photo")
@@ -371,13 +511,27 @@ def register_driver(request):
     if request.FILES.get("insurance_document"):
         profile.insurance_document = request.FILES.get("insurance_document")
 
+    if request.FILES.get("vignette_document"):
+        profile.vignette_document = request.FILES.get("vignette_document")
+
     for field in [
+        "license_issued_at",
         "license_expires_at",
         "vehicle_registration_expires_at",
         "insurance_expires_at",
+        "vignette_expires_at",
     ]:
         if request.data.get(field):
-            setattr(profile, field, request.data.get(field))
+            setattr(
+                profile,
+                field,
+                parse_document_date(request.data.get(field), field.replace("_", " ")),
+            )
+
+    try:
+        validate_mauritania_document_dates(profile, require_all=True)
+    except ValueError as exc:
+        return Response({"error": str(exc)}, status=400)
 
     profile.terms_accepted = True
     profile.terms_version = request.data.get("terms_version", "driver-terms-2026-05")
@@ -400,15 +554,19 @@ def register_driver(request):
 def update_driver_profile(request):
     profile = get_or_create_driver_profile(request.user)
 
-    for field in [
-        "phone_number",
-        "car_type",
-        "vehicle_make",
-        "vehicle_model",
-        "vehicle_color",
+    if "phone_number" in request.data:
+        profile.phone_number = normalize_mauritania_phone(request.data.get("phone_number"))
+
+    if "car_type" in request.data:
+        profile.car_type = request.data.get("car_type")
+
+    for field, label in [
+        ("vehicle_make", "Vehicle make"),
+        ("vehicle_model", "Vehicle model"),
+        ("vehicle_color", "Vehicle color"),
     ]:
         if field in request.data:
-            setattr(profile, field, request.data.get(field))
+            setattr(profile, field, validate_vehicle_value(request.data.get(field), label))
 
     plate_number = request.data.get(
         "vehicle_plate",
@@ -416,6 +574,7 @@ def update_driver_profile(request):
     )
 
     if plate_number is not None:
+        plate_number = validate_plate_number(plate_number)
         profile.vehicle_plate = plate_number
         profile.plate_number = plate_number
 
@@ -424,17 +583,31 @@ def update_driver_profile(request):
         "license_file",
         "vehicle_registration",
         "insurance_document",
+        "vignette_document",
     ]:
         if request.FILES.get(field):
             setattr(profile, field, request.FILES.get(field))
 
     for field in [
+        "license_issued_at",
         "license_expires_at",
         "vehicle_registration_expires_at",
         "insurance_expires_at",
+        "vignette_expires_at",
     ]:
         if field in request.data:
-            setattr(profile, field, request.data.get(field) or None)
+            try:
+                value = parse_document_date(
+                    request.data.get(field), field.replace("_", " ")
+                )
+            except ValueError as exc:
+                return Response({"error": str(exc)}, status=400)
+            setattr(profile, field, value)
+
+    try:
+        validate_mauritania_document_dates(profile)
+    except ValueError as exc:
+        return Response({"error": str(exc)}, status=400)
 
     profile.save()
     expired_documents = enforce_document_expiration(profile)
@@ -450,11 +623,56 @@ def update_driver_profile(request):
 
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminUser])
 def approve_driver(request, driver_id):
     profile = get_object_or_404(DriverProfile, id=driver_id)
+
+    required_information = {
+        "National ID number": profile.user.national_id_number,
+        "National ID document": profile.user.national_id_document,
+        "driver photo": profile.driver_photo,
+        "phone number": profile.phone_number,
+        "Plate number": profile.vehicle_plate or profile.plate_number,
+        "driver license": profile.license_file,
+        "Carte Grise": profile.vehicle_registration,
+        "insurance document": profile.insurance_document,
+        "Vignette": profile.vignette_document,
+        "verified phone number": profile.user.is_phone_verified,
+    }
+    missing_information = [
+        label for label, value in required_information.items() if not value
+    ]
+
+    if missing_information:
+        return Response(
+            {"error": f"Driver cannot be approved until these are provided: {', '.join(missing_information)}."},
+            status=400,
+        )
+
+    expired_documents = expired_document_labels(profile)
+    if expired_documents:
+        return Response(
+            {"error": f"Driver cannot be approved with expired documents: {', '.join(expired_documents)}."},
+            status=400,
+        )
+
+    try:
+        validate_mauritania_document_dates(profile, require_all=True)
+    except ValueError as exc:
+        return Response({"error": str(exc)}, status=400)
+
+    normalize_national_id(profile.user.national_id_number)
+    normalize_mauritania_phone(profile.phone_number)
+    validate_vehicle_value(profile.vehicle_make, "Vehicle make")
+    validate_vehicle_value(profile.vehicle_model, "Vehicle model")
+    validate_vehicle_value(profile.vehicle_color, "Vehicle color")
+    validate_plate_number(profile.vehicle_plate or profile.plate_number)
+
     profile.status = "approved"
-    profile.save()
+    profile.application_rejection_reason = ""
+    profile.user.is_active = True
+    profile.user.save(update_fields=["is_active"])
+    profile.save(update_fields=["status", "application_rejection_reason"])
 
     return Response({
         "message": "Driver approved",
@@ -463,12 +681,17 @@ def approve_driver(request, driver_id):
 
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminUser])
 def reject_driver(request, driver_id):
     profile = get_object_or_404(DriverProfile, id=driver_id)
+    reason = str(request.data.get("reason", "")).strip()
+    if len(reason) < 5:
+        return Response({"error": "A clear rejection reason is required."}, status=400)
+
     profile.status = "rejected"
     profile.is_available = False
-    profile.save(update_fields=["status", "is_available"])
+    profile.application_rejection_reason = reason
+    profile.save(update_fields=["status", "is_available", "application_rejection_reason"])
 
     profile.user.is_active = False
     profile.user.save(update_fields=["is_active"])
@@ -480,7 +703,7 @@ def reject_driver(request, driver_id):
 
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminUser])
 def reintegrate_driver(request, driver_id):
     profile = get_object_or_404(DriverProfile, id=driver_id)
     expired_documents = expired_document_labels(profile)
@@ -513,14 +736,8 @@ def reintegrate_driver(request, driver_id):
 
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminUser])
 def update_driver_category(request, driver_id):
-    if not request.user.is_staff:
-        return Response(
-            {"error": "Only an admin can update driver categories."},
-            status=403,
-        )
-
     profile = get_object_or_404(DriverProfile, id=driver_id)
     category = request.data.get("driver_category", "")
     valid_categories = dict(DriverProfile.DRIVER_CATEGORY_CHOICES)

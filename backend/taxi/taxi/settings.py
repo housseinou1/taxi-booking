@@ -149,8 +149,12 @@ REST_FRAMEWORK = {
 
 # ── Simple JWT ────────────────────────────────────────────────────────────────
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(days=10),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=30),
+    "ACCESS_TOKEN_LIFETIME": timedelta(
+        minutes=int(os.getenv("JWT_ACCESS_TOKEN_MINUTES", "15"))
+    ),
+    "REFRESH_TOKEN_LIFETIME": timedelta(
+        days=int(os.getenv("JWT_REFRESH_TOKEN_DAYS", "7"))
+    ),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
     "UPDATE_LAST_LOGIN": True,
@@ -203,6 +207,12 @@ EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "Yala <noreply@yala.mr>")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
+# ── SMS phone verification ────────────────────────────────────────────────────
+YALA_SMS_PROVIDER = os.getenv("YALA_SMS_PROVIDER", "console" if DEBUG else "")
+YALA_SMS_API_URL = os.getenv("YALA_SMS_API_URL", "")
+YALA_SMS_API_KEY = os.getenv("YALA_SMS_API_KEY", "")
+YALA_SMS_SENDER = os.getenv("YALA_SMS_SENDER", "Yala")
+
 # ── Push Notifications (Web Push / VAPID) ─────────────────────────────────────
 PUSH_PRIVATE_KEY = os.getenv("PUSH_PRIVATE_KEY", "")
 PUSH_PUBLIC_KEY = os.getenv("PUSH_PUBLIC_KEY", "")
@@ -252,11 +262,15 @@ CACHES = {
 }
 
 # ── Production security (only when DEBUG=False) ───────────────────────────────
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = "DENY"
+SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
+
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-    SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT", False)
-    SESSION_COOKIE_SECURE = env_bool("SESSION_COOKIE_SECURE", False)
-    CSRF_COOKIE_SECURE = env_bool("CSRF_COOKIE_SECURE", False)
-    SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "0"))
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool("SECURE_HSTS_INCLUDE_SUBDOMAINS", False)
+    SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT", True)
+    SESSION_COOKIE_SECURE = env_bool("SESSION_COOKIE_SECURE", True)
+    CSRF_COOKIE_SECURE = env_bool("CSRF_COOKIE_SECURE", True)
+    SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "31536000"))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool("SECURE_HSTS_INCLUDE_SUBDOMAINS", True)
     SECURE_HSTS_PRELOAD = env_bool("SECURE_HSTS_PRELOAD", False)

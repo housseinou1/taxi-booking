@@ -22,10 +22,36 @@ const COLORS = {
 };
 
 const DOCUMENT_TYPES = [
-  { key: "license", label: "Driver License", icon: "🪪", required: true },
+  {
+    key: "license",
+    label: "Driver License",
+    icon: "🪪",
+    required: true,
+    requiresIssueDate: true,
+    requiresExpiration: true,
+  },
   { key: "national_id", label: "National ID", icon: "🆔", required: true },
-  { key: "insurance", label: "Insurance", icon: "🛡️", required: true },
-  { key: "vehicle_registration", label: "Vehicle Registration", icon: "📋", required: true },
+  {
+    key: "insurance",
+    label: "Insurance",
+    icon: "🛡️",
+    required: true,
+    requiresExpiration: true,
+  },
+  {
+    key: "carte_grise",
+    label: "Carte Grise",
+    icon: "📋",
+    required: true,
+    requiresExpiration: true,
+  },
+  {
+    key: "vignette",
+    label: "Vignette",
+    icon: "📄",
+    required: true,
+    requiresExpiration: true,
+  },
   { key: "profile_photo", label: "Profile Photo", icon: "📷", required: true },
 ];
 
@@ -100,6 +126,9 @@ export function getExpiredOrMissingDocuments(documents) {
       uploadedMap[doc.document_type] = doc;
     });
   }
+  if (!uploadedMap.carte_grise && uploadedMap.vehicle_registration) {
+    uploadedMap.carte_grise = uploadedMap.vehicle_registration;
+  }
 
   DOCUMENT_TYPES.forEach((docType) => {
     if (!docType.required) return;
@@ -139,6 +168,11 @@ export default function DriverDocuments() {
   const [uploadingType, setUploadingType] = useState(null);
   const [uploadError, setUploadError] = useState(null);
   const [uploadSuccess, setUploadSuccess] = useState(null);
+  const [pendingUpload, setPendingUpload] = useState(null);
+  const [uploadDates, setUploadDates] = useState({
+    issued_at: "",
+    expires_at: "",
+  });
 
   const fileInputRef = useRef(null);
   const selectedDocTypeRef = useRef(null);
@@ -221,7 +255,7 @@ export default function DriverDocuments() {
   }, []);
 
   const handleFileSelected = useCallback(
-    async (event) => {
+    (event) => {
       const file = event.target.files?.[0];
       if (!file) return;
 
@@ -235,14 +269,41 @@ export default function DriverDocuments() {
         return;
       }
 
-      setUploadingType(docTypeKey);
       setUploadError(null);
       setUploadSuccess(null);
+      setPendingUpload({ file, docTypeKey });
+      setUploadDates({ issued_at: "", expires_at: "" });
+    },
+    []
+  );
 
+  const submitPendingUpload = useCallback(
+    async () => {
+      if (!pendingUpload) return;
+      const { file, docTypeKey } = pendingUpload;
+      const docType = DOCUMENT_TYPES.find((item) => item.key === docTypeKey);
+
+      if (docType?.requiresIssueDate && !uploadDates.issued_at) {
+        setUploadError("Driver License issue date is required.");
+        return;
+      }
+      if (docType?.requiresExpiration && !uploadDates.expires_at) {
+        setUploadError(`${docType.label} expiration date is required.`);
+        return;
+      }
+
+      setUploadingType(docTypeKey);
+      setUploadError(null);
       try {
         const formData = new FormData();
         formData.append("file", file);
         formData.append("document_type", docTypeKey);
+        if (uploadDates.issued_at) {
+          formData.append("issued_at", uploadDates.issued_at);
+        }
+        if (uploadDates.expires_at) {
+          formData.append("expires_at", uploadDates.expires_at);
+        }
 
         await axios.post(
           `${API_URL}/drivers/me/documents/upload/`,
@@ -255,6 +316,7 @@ export default function DriverDocuments() {
           }
         );
 
+        setPendingUpload(null);
         setUploadSuccess(
           `${DOCUMENT_TYPES.find((d) => d.key === docTypeKey)?.label || "Document"} uploaded successfully.`
         );
@@ -271,7 +333,7 @@ export default function DriverDocuments() {
         setUploadingType(null);
       }
     },
-    [token, fetchDocuments]
+    [token, fetchDocuments, pendingUpload, uploadDates]
   );
 
   // ─── Computed Values ────────────────────────────────────────────────────
@@ -286,6 +348,9 @@ export default function DriverDocuments() {
     documents.forEach((doc) => {
       map[doc.document_type] = doc;
     });
+    if (!map.carte_grise && map.vehicle_registration) {
+      map.carte_grise = map.vehicle_registration;
+    }
     return map;
   }, [documents]);
 
@@ -372,6 +437,58 @@ export default function DriverDocuments() {
         </div>
       )}
 
+      {pendingUpload && (
+        <div style={uploadDetailsStyle}>
+          <strong style={uploadDetailsTitleStyle}>
+            Complete {DOCUMENT_TYPES.find((item) => item.key === pendingUpload.docTypeKey)?.label}
+          </strong>
+          <span style={uploadFileNameStyle}>{pendingUpload.file.name}</span>
+          {DOCUMENT_TYPES.find((item) => item.key === pendingUpload.docTypeKey)?.requiresIssueDate && (
+            <label style={uploadDateFieldStyle}>
+              <span>Issue date</span>
+              <input
+                type="date"
+                value={uploadDates.issued_at}
+                onChange={(event) =>
+                  setUploadDates((current) => ({ ...current, issued_at: event.target.value }))
+                }
+                style={uploadDateInputStyle}
+              />
+            </label>
+          )}
+          {DOCUMENT_TYPES.find((item) => item.key === pendingUpload.docTypeKey)?.requiresExpiration && (
+            <label style={uploadDateFieldStyle}>
+              <span>Expiration date</span>
+              <input
+                type="date"
+                value={uploadDates.expires_at}
+                onChange={(event) =>
+                  setUploadDates((current) => ({ ...current, expires_at: event.target.value }))
+                }
+                style={uploadDateInputStyle}
+              />
+            </label>
+          )}
+          <div style={uploadActionsStyle}>
+            <button
+              type="button"
+              onClick={() => setPendingUpload(null)}
+              style={cancelUploadButtonStyle}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={submitPendingUpload}
+              disabled={Boolean(uploadingType)}
+              style={confirmUploadButtonStyle}
+            >
+              {uploadingType ? "Uploading..." : "Upload document"}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Document List */}
       <div style={documentListStyle}>
         {DOCUMENT_TYPES.map((docType) => {
@@ -425,9 +542,17 @@ function DocumentCard({
           <div>
             <h3 style={documentNameStyle}>{docType.label}</h3>
             {doc && (
-              <span style={uploadedDateStyle}>
-                Uploaded: {new Date(doc.uploaded_at).toLocaleDateString()}
-              </span>
+              <>
+                <span style={uploadedDateStyle}>
+                  Uploaded: {new Date(doc.uploaded_at).toLocaleDateString()}
+                </span>
+                {doc.issued_at && (
+                  <span style={uploadedDateStyle}>Issued: {doc.issued_at}</span>
+                )}
+                {doc.expires_at && (
+                  <span style={uploadedDateStyle}>Expires: {doc.expires_at}</span>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -674,6 +799,67 @@ const uploadSuccessStyle = {
   fontSize: "13px",
   fontWeight: 600,
   marginBottom: "16px",
+};
+
+const uploadDetailsStyle = {
+  display: "grid",
+  gap: "12px",
+  padding: "16px",
+  marginBottom: "16px",
+  backgroundColor: COLORS.cardBg,
+  border: `1px solid ${COLORS.goldAccent}`,
+  borderRadius: "12px",
+};
+
+const uploadDetailsTitleStyle = {
+  color: COLORS.white,
+  fontSize: "15px",
+};
+
+const uploadFileNameStyle = {
+  color: COLORS.lightGray,
+  fontSize: "12px",
+};
+
+const uploadDateFieldStyle = {
+  display: "grid",
+  gap: "6px",
+  color: COLORS.white,
+  fontSize: "12px",
+  fontWeight: 700,
+};
+
+const uploadDateInputStyle = {
+  padding: "10px",
+  border: `1px solid ${COLORS.cardBorder}`,
+  borderRadius: "8px",
+  backgroundColor: COLORS.white,
+  color: COLORS.darkNavy,
+};
+
+const uploadActionsStyle = {
+  display: "flex",
+  justifyContent: "flex-end",
+  gap: "10px",
+};
+
+const cancelUploadButtonStyle = {
+  padding: "10px 14px",
+  border: `1px solid ${COLORS.cardBorder}`,
+  borderRadius: "8px",
+  backgroundColor: "transparent",
+  color: COLORS.white,
+  cursor: "pointer",
+};
+
+const confirmUploadButtonStyle = {
+  padding: "10px 14px",
+  border: "none",
+  borderRadius: "8px",
+  backgroundColor: COLORS.primaryGreen,
+  color: COLORS.white,
+  fontWeight: 800,
+  cursor: "pointer",
 };
 
 // ─── Document List ──────────────────────────────────────────────────────────

@@ -170,15 +170,18 @@ export default function DriverApp() {
     vehicle_color: "",
     vehicle_plate: "",
     car_type: "regular",
+    license_issued_at: "",
     license_expires_at: "",
     vehicle_registration_expires_at: "",
     insurance_expires_at: "",
+    vignette_expires_at: "",
   });
   const [documentFiles, setDocumentFiles] = useState({
     driver_photo: null,
     license_file: null,
     vehicle_registration: null,
     insurance_document: null,
+    vignette_document: null,
   });
   const [identityForm, setIdentityForm] = useState({
     national_id_number: "",
@@ -569,9 +572,11 @@ export default function DriverApp() {
       vehicle_color: driverProfile.vehicle_color || "",
       vehicle_plate: driverProfile.vehicle_plate || driverProfile.plate_number || "",
       car_type: driverProfile.car_type || "regular",
+      license_issued_at: driverProfile.license_issued_at || "",
       license_expires_at: driverProfile.license_expires_at || "",
       vehicle_registration_expires_at: driverProfile.vehicle_registration_expires_at || "",
       insurance_expires_at: driverProfile.insurance_expires_at || "",
+      vignette_expires_at: driverProfile.vignette_expires_at || "",
     });
   }, [driverProfile, isEditingVehicle]);
 
@@ -799,6 +804,7 @@ export default function DriverApp() {
         license_file: null,
         vehicle_registration: null,
         insurance_document: null,
+        vignette_document: null,
       });
       setIsEditingVehicle(false);
       setMenuMessage("Car information and documents updated successfully.");
@@ -1489,7 +1495,8 @@ export default function DriverApp() {
                         value={vehicleForm.vehicle_plate}
                         onChange={(event) => updateVehicleForm("vehicle_plate", event.target.value)}
                         style={vehicleInputStyle}
-                        placeholder="TEMP-PLATE"
+                        placeholder="1234 AB 01"
+                        required
                       />
                     </label>
                     <label style={vehicleFieldStyle}>
@@ -1521,23 +1528,34 @@ export default function DriverApp() {
                         onChange={updateDocumentFile}
                       />
                       <label style={vehicleFieldStyle}>
+                        <span>License issue date</span>
+                        <input
+                          type="date"
+                          value={vehicleForm.license_issued_at}
+                          onChange={(event) => updateVehicleForm("license_issued_at", event.target.value)}
+                          style={vehicleInputStyle}
+                          required
+                        />
+                      </label>
+                      <label style={vehicleFieldStyle}>
                         <span>License expiration</span>
                         <input
                           type="date"
                           value={vehicleForm.license_expires_at}
                           onChange={(event) => updateVehicleForm("license_expires_at", event.target.value)}
                           style={vehicleInputStyle}
+                          required
                         />
                       </label>
                       <DocumentUploadField
-                        label="Vehicle registration"
+                        label="Carte Grise"
                         field="vehicle_registration"
                         file={documentFiles.vehicle_registration}
                         currentUrl={driverProfile?.vehicle_registration}
                         onChange={updateDocumentFile}
                       />
                       <label style={vehicleFieldStyle}>
-                        <span>Registration expiration</span>
+                        <span>Carte Grise expiration</span>
                         <input
                           type="date"
                           value={vehicleForm.vehicle_registration_expires_at}
@@ -1545,6 +1563,7 @@ export default function DriverApp() {
                             updateVehicleForm("vehicle_registration_expires_at", event.target.value)
                           }
                           style={vehicleInputStyle}
+                          required
                         />
                       </label>
                       <DocumentUploadField
@@ -1561,6 +1580,24 @@ export default function DriverApp() {
                           value={vehicleForm.insurance_expires_at}
                           onChange={(event) => updateVehicleForm("insurance_expires_at", event.target.value)}
                           style={vehicleInputStyle}
+                          required
+                        />
+                      </label>
+                      <DocumentUploadField
+                        label="Vignette"
+                        field="vignette_document"
+                        file={documentFiles.vignette_document}
+                        currentUrl={driverProfile?.vignette_document}
+                        onChange={updateDocumentFile}
+                      />
+                      <label style={vehicleFieldStyle}>
+                        <span>Vignette expiration</span>
+                        <input
+                          type="date"
+                          value={vehicleForm.vignette_expires_at}
+                          onChange={(event) => updateVehicleForm("vignette_expires_at", event.target.value)}
+                          style={vehicleInputStyle}
+                          required
                         />
                       </label>
                     </div>
