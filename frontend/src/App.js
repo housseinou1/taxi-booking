@@ -18,6 +18,7 @@ import { DriverProvider } from "./driver/context/DriverContext";
 import AdminDashboard from "./admin/AdminDashboard";
 import InstallAppButton from "./InstallAppButton";
 import NotificationCenter from "./components/NotificationCenter";
+import YalaAIAssistant from "./components/YalaAIAssistant";
 import SettingsPageView from "./settings/SettingsPage";
 
 import AddPaymentMethod from "./payments/AddPaymentMethod";
@@ -203,6 +204,7 @@ function App() {
   const withInstall = (content, options = {}) => (
     <>
       {content}
+      <YalaAIAssistant />
       {options.showNotifications !== false && isAuthenticated && <NotificationCenter />}
       {shouldShowInstallButton() && <InstallAppButton />}
     </>

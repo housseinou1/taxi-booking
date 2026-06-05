@@ -208,6 +208,11 @@ PUSH_PRIVATE_KEY = os.getenv("PUSH_PRIVATE_KEY", "")
 PUSH_PUBLIC_KEY = os.getenv("PUSH_PUBLIC_KEY", "")
 PUSH_CLAIMS_EMAIL = os.getenv("PUSH_CLAIMS_EMAIL", "mailto:admin@yala.mr")
 
+# ── Yala AI Support ───────────────────────────────────────────────────────────
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5-mini")
+YALA_AI_ENABLED = env_bool("YALA_AI_ENABLED", True)
+
 # ── DRF Spectacular ───────────────────────────────────────────────────────────
 SPECTACULAR_SETTINGS = {
     "TITLE": "Yala API",
