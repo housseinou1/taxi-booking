@@ -29,6 +29,9 @@ import SupportCenter from "./support/SupportCenter";
 import LandingPage from "./landing/LandingPage";
 import RideHistory from "./history/RideHistory";
 import { ShareBookingFlow, ShareRideScreen, ShareRideComplete, ShareAdminDashboard } from './components/share';
+import DeliveryCustomerApp from "./delivery/DeliveryCustomerApp";
+import DeliveryDriverApp from "./delivery/DeliveryDriverApp";
+import DeliveryAdminView from "./delivery/DeliveryAdminView";
 import { API_URL } from "./apiConfig";
 import { MARKET } from "./marketConfig";
 import { getAppType, shouldShowInstallButton } from './native/platform';
@@ -36,8 +39,8 @@ import { getAppType, shouldShowInstallButton } from './native/platform';
 const LOGO_SRC = "/yala-logo.png";
 
 // Route filtering for native apps — only show relevant routes per app type
-const RIDER_ROUTES = ['/rider', '/rider-dashboard', '/rider-history', '/rider-reviews', '/saved-places', '/rider-profile', '/rider-payments', '/ride/share', '/login', '/register', '/settings', '/support', '/terms', '/privacy'];
-const DRIVER_ROUTES = ['/driver', '/driver/profile', '/driver/earnings', '/driver/feedback', '/driver/support', '/driver/achievements', '/driver/history', '/login', '/register', '/settings', '/support', '/terms', '/privacy'];
+const RIDER_ROUTES = ['/rider', '/rider-dashboard', '/rider-history', '/rider-reviews', '/saved-places', '/rider-profile', '/rider-payments', '/ride/share', '/delivery', '/login', '/register', '/settings', '/support', '/terms', '/privacy'];
+const DRIVER_ROUTES = ['/driver', '/driver/profile', '/driver/earnings', '/driver/feedback', '/driver/support', '/driver/achievements', '/driver/history', '/driver/deliveries', '/login', '/register', '/settings', '/support', '/terms', '/privacy'];
 
 function isRouteAllowed(path) {
   const appType = getAppType();
@@ -80,6 +83,7 @@ function App() {
     else if (currentPath === "/saved-places") setPage("saved-places");
     else if (currentPath === "/rider-profile") setPage("rider-profile");
     else if (currentPath === "/rider-payments") setPage("rider-payments");
+    else if (currentPath === "/delivery") setPage("delivery-customer");
     else if (currentPath === "/ride/share") setPage("share-booking");
     else if (currentPath.match(/^\/ride\/share\/\d+\/complete$/)) setPage("share-ride-complete");
     else if (currentPath.match(/^\/ride\/share\/\d+$/)) setPage("share-ride");
@@ -91,12 +95,14 @@ function App() {
     else if (currentPath === "/driver/support") setPage("driver-support");
     else if (currentPath === "/driver/achievements") setPage("driver-achievements");
     else if (currentPath === "/driver/history") setPage("driver-history");
+    else if (currentPath === "/driver/deliveries") setPage("delivery-driver");
     else if (currentPath === "/driver") setPage("driver");
     else if (currentPath === "/register") setPage("register");
     else if (currentPath === "/login") setPage("login");
     else if (currentPath === "/admin/share-analytics") setPage("admin-share-analytics");
     else if (currentPath === "/admin-dashboard") setPage("admin");
     else if (currentPath === "/admin") setPage("admin");
+    else if (currentPath === "/admin/deliveries") setPage("delivery-admin");
     else if (currentPath === "/settings") setPage("settings");
     else if (currentPath === "/terms") setPage("terms");
     else if (currentPath === "/privacy") setPage("privacy");
@@ -267,6 +273,18 @@ function App() {
         )}
       </div>
     );
+  }
+
+  if (page === "delivery-customer") {
+    return withInstall(<DeliveryCustomerApp />);
+  }
+
+  if (page === "delivery-driver") {
+    return withInstall(<DeliveryDriverApp />);
+  }
+
+  if (page === "delivery-admin") {
+    return withInstall(<DeliveryAdminView />);
   }
 
   if (page === "payment-setup") {
@@ -482,6 +500,7 @@ function isProtectedPage(page) {
   return [
     "admin",
     "admin-share-analytics",
+    "delivery-admin",
     "driver",
     "driver-profile",
     "driver-premium-profile",
@@ -490,6 +509,7 @@ function isProtectedPage(page) {
     "driver-support",
     "driver-achievements",
     "driver-history",
+    "delivery-driver",
     "driver-vehicle-setup",
     "payment-setup",
     "rider",
@@ -499,6 +519,7 @@ function isProtectedPage(page) {
     "saved-places",
     "rider-profile",
     "rider-payments",
+    "delivery-customer",
     "share-booking",
     "share-ride",
     "share-ride-complete",

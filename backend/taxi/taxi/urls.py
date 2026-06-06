@@ -32,6 +32,8 @@ urlpatterns = [
     path("chat/", include("chat.urls")),
 
     path("promotions/", include("promotions.urls")),
+
+    path("deliveries/", include("deliveries.urls")),
 ]
 
 

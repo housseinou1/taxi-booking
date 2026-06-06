@@ -53,10 +53,12 @@ const savedPlaces = [
 ];
 
 const riderQuickLinks = [
+  { key: "delivery", label: "Delivery", path: "/delivery" },
   { key: "trips", path: "/rider-history" },
   { key: "places", path: "/saved-places" },
   { key: "reviews", path: "/rider-reviews" },
   { key: "safety", action: "safety" },
+  { key: "logout", action: "logout" },
 ];
 
 const logoSrc = "/yala-rider-logo.png";
@@ -236,6 +238,21 @@ export default function RiderDashboard() {
     i18n.changeLanguage(normalizeLanguageCode(event.target.value));
   };
 
+  const logoutRider = () => {
+    [
+      "access",
+      "refresh",
+      "user",
+      "selectedRideId",
+      "needs_payment_setup",
+      "needs_vehicle_setup",
+      "sx_login_redirect",
+      "yala_next_place",
+    ].forEach((key) => localStorage.removeItem(key));
+
+    window.location.replace(`/login?logout=${Date.now()}`);
+  };
+
   const handleSavedPlace = (place) => {
     if (place.type === "pickup") {
       setPickup(MARKET.defaultPickup.label);
@@ -275,6 +292,11 @@ export default function RiderDashboard() {
   };
 
   const openQuickLink = (item) => {
+    if (item.action === "logout") {
+      logoutRider();
+      return;
+    }
+
     if (item.action === "safety") {
       setShowSafetyPanel(true);
       return;
@@ -503,7 +525,12 @@ export default function RiderDashboard() {
       if (!driverId) return;
 
       const response = await axios.get(
-        `${API_URL}/drivers/location/${driverId}/`
+        `${API_URL}/drivers/location/${driverId}/`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
       );
 
       const livePosition = [
@@ -515,7 +542,7 @@ export default function RiderDashboard() {
     } catch (error) {
       console.log("Driver location error:", error.response?.data || error);
     }
-  }, [currentRide]);
+  }, [currentRide, token]);
 
   useEffect(() => {
     fetchCurrentRide();
@@ -903,6 +930,13 @@ export default function RiderDashboard() {
           </label>
           <button
             type="button"
+            onClick={logoutRider}
+            style={topLogoutButtonStyle}
+          >
+            {t("riderDashboard.logout")}
+          </button>
+          <button
+            type="button"
             onClick={() => setShowSafetyPanel((current) => !current)}
             style={{
               ...roundButtonStyle,
@@ -979,8 +1013,16 @@ export default function RiderDashboard() {
 
         <nav style={quickLinksStyle} aria-label="Rider shortcuts">
           {riderQuickLinks.map((item) => (
-            <button key={item.key} type="button" onClick={() => openQuickLink(item)} style={quickLinkButtonStyle}>
-              {t(`riderDashboard.${item.key}`)}
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => openQuickLink(item)}
+              style={{
+                ...quickLinkButtonStyle,
+                ...(item.action === "logout" ? quickLogoutButtonStyle : {}),
+              }}
+            >
+              {item.label || t(`riderDashboard.${item.key}`)}
             </button>
           ))}
         </nav>
@@ -1051,13 +1093,7 @@ export default function RiderDashboard() {
             {identityMessage && <p style={noticeTextStyle}>{identityMessage}</p>}
             <button
               type="button"
-              onClick={() => {
-                localStorage.removeItem("access");
-                localStorage.removeItem("refresh");
-                localStorage.removeItem("user");
-                localStorage.removeItem("selectedRideId");
-                window.location.href = "/";
-              }}
+              onClick={logoutRider}
               style={{
                 width: "100%",
                 marginTop: 12,
@@ -1696,6 +1732,7 @@ const topOverlayStyle = {
   justifyContent: "space-between",
   alignItems: "center",
   gap: "12px",
+  flexWrap: "wrap",
   pointerEvents: "none",
 };
 
@@ -1781,6 +1818,19 @@ const languageSelectStyle = {
   padding: "0 10px",
   fontWeight: 900,
   cursor: "pointer",
+};
+
+const topLogoutButtonStyle = {
+  minHeight: "48px",
+  padding: "0 18px",
+  border: "1px solid rgba(254, 202, 202, 0.7)",
+  borderRadius: "999px",
+  background: "rgba(220, 38, 38, 0.94)",
+  color: "#ffffff",
+  fontWeight: 950,
+  cursor: "pointer",
+  pointerEvents: "auto",
+  boxShadow: "0 14px 30px rgba(220, 38, 38, 0.3)",
 };
 
 const floatingSummaryStyle = {
@@ -1887,7 +1937,7 @@ const bookingFarePillStyle = {
 
 const quickLinksStyle = {
   display: "grid",
-  gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+  gridTemplateColumns: "repeat(auto-fit, minmax(96px, 1fr))",
   gap: "8px",
   marginBottom: "14px",
 };
@@ -1900,6 +1950,12 @@ const quickLinkButtonStyle = {
   color: "#ffffff",
   fontWeight: 900,
   cursor: "pointer",
+};
+
+const quickLogoutButtonStyle = {
+  border: "1px solid rgba(254, 202, 202, 0.74)",
+  background: "rgba(220, 38, 38, 0.18)",
+  color: "#fecaca",
 };
 
 const sectionHeadStyle = {

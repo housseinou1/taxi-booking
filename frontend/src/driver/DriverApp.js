@@ -1385,6 +1385,12 @@ export default function DriverApp() {
             {openMenuSections.earn && (
               <>
                 <MenuRow
+                  icon="D"
+                  label="Yala Delivery"
+                  badge="Packages"
+                  onClick={() => (window.location.href = "/driver/deliveries")}
+                />
+                <MenuRow
                   icon="▣"
                   label="Scheduled Rides"
                   badge="Early access"

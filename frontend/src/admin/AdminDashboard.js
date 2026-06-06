@@ -485,6 +485,7 @@ function AdminDashboard() {
     { key: "riders", label: "Riders" },
     { key: "drivers", label: "Drivers" },
     { key: "rides", label: "Dispatch" },
+    { key: "deliveries", label: "Deliveries", path: "/admin/deliveries" },
     { key: "emergency", label: "Emergency" },
     { key: "vehicles", label: "Vehicles" },
     { key: "payments", label: "Payments" },
@@ -716,7 +717,13 @@ function AdminDashboard() {
               borderColor:
                 page === item.key ? ADMIN_BLUE_BORDER : "rgba(255, 255, 255, 0.08)",
             }}
-            onClick={() => setPage(item.key)}
+            onClick={() => {
+              if (item.path) {
+                window.location.href = item.path;
+                return;
+              }
+              setPage(item.key);
+            }}
           >
             <span>{item.label}</span>
             <span style={menuCountStyle}>{menuCounts[item.key] || 0}</span>
