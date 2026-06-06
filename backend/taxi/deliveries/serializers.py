@@ -1,8 +1,56 @@
+import re
+
 from rest_framework import serializers
 
-from authapp.validators import normalize_mauritania_phone, validate_person_name
-
 from .models import Delivery
+
+
+FAKE_VALUES = {
+    "fake",
+    "test",
+    "testing",
+    "unknown",
+    "none",
+    "null",
+    "n/a",
+    "na",
+    "asdf",
+    "qwerty",
+}
+
+
+def normalize_mauritania_phone(value):
+    digits = re.sub(r"\D", "", str(value or "").strip())
+
+    if digits.startswith("00222"):
+        digits = digits[5:]
+    elif digits.startswith("222") and len(digits) == 11:
+        digits = digits[3:]
+
+    if len(digits) != 8:
+        raise serializers.ValidationError(
+            "Enter a valid Mauritania phone number with 8 digits."
+        )
+
+    if len(set(digits)) == 1 or digits in {"12345678", "87654321", "00000000"}:
+        raise serializers.ValidationError("Enter a real phone number.")
+
+    return f"+222{digits}"
+
+
+def validate_person_name(value, label):
+    value = re.sub(r"\s+", " ", str(value or "").strip())
+    name_characters = value.replace(" ", "").replace("-", "").replace("'", "")
+
+    if len(value) < 2 or value.casefold() in FAKE_VALUES:
+        raise serializers.ValidationError(f"Enter a real {label.lower()}.")
+
+    if len(value) > 50 or not name_characters.isalpha():
+        raise serializers.ValidationError(
+            f"{label} may contain only letters, spaces, apostrophes, and hyphens."
+        )
+
+    return value
 
 
 class DeliverySerializer(serializers.ModelSerializer):
