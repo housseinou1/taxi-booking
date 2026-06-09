@@ -44,6 +44,8 @@ urlpatterns = [
     path("features/", include("features.urls")),
 
     path("intercity/", include("intercity.urls")),
+
+    path("shifts/", include("shifts.urls")),
 ]
 
 

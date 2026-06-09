@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     "cities",
     "features",
     "intercity",
+    "shifts",
 ]
 
 MIDDLEWARE = [
