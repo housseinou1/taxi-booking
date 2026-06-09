@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     "deliveries",
     "safety",
     "cities",
+    "features",
 ]
 
 MIDDLEWARE = [

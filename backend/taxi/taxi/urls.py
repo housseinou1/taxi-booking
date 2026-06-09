@@ -40,6 +40,8 @@ urlpatterns = [
     path("safety/", include("safety.urls")),
 
     path("cities/", include("cities.urls")),
+
+    path("features/", include("features.urls")),
 ]
 
 
