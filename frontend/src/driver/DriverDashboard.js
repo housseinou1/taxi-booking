@@ -8,6 +8,7 @@ import useDriverLocation from "./hooks/useDriverLocation";
 import useDriverWebSocket from "./hooks/useDriverWebSocket";
 import { useDriverContext } from "./context/DriverContext";
 import RideStatusButtons from "../RideStatusButtons";
+import SafetyEmergencyPanel from "../safety/SafetyEmergencyPanel";
 import RideRequestCard from "./components/RideRequestCard";
 import LevelBadge from "./components/LevelBadge";
 
@@ -57,6 +58,7 @@ export default function DriverDashboard() {
   const [rideRequest, setRideRequest] = useState(null);
   const [heatmapZones, setHeatmapZones] = useState([]);
   const [routeToPickup, setRouteToPickup] = useState([]);
+  const [showSafetyPanel, setShowSafetyPanel] = useState(false);
 
   const authHeaders = useMemo(
     () => ({ headers: { Authorization: `Bearer ${token}` } }),
@@ -391,6 +393,13 @@ export default function DriverDashboard() {
         </div>
 
         <div style={notificationAreaStyle}>
+          <button
+            style={driverHeaderSafetyButtonStyle}
+            onClick={() => setShowSafetyPanel(true)}
+            aria-label="Open driver safety center"
+          >
+            Safety
+          </button>
           <button style={notificationButtonStyle} aria-label="Notifications">
             <span style={bellIconStyle}>🔔</span>
             {unreadCount > 0 && (
@@ -439,6 +448,7 @@ export default function DriverDashboard() {
 
 function ActiveRideCard({ ride, onStatusChange }) {
   const statusLabel = ride.status ? ride.status.replace(/_/g, " ") : "Active";
+  const [showSafety, setShowSafety] = useState(false);
 
   return (
     <div style={activeRideCardStyle}>
@@ -454,12 +464,67 @@ function ActiveRideCard({ ride, onStatusChange }) {
           <span style={routeIconStyle}>🏁</span> {ride.destination || ride.destination_address || "Destination"}
         </p>
       </div>
+      <button type="button" style={driverSosButtonStyle} onClick={() => setShowSafety(true)}>
+        SOS Safety
+      </button>
       <RideStatusButtons ride={ride} onStatusChange={onStatusChange} />
+      {showSafety && (
+        <div style={driverSafetyOverlayStyle}>
+          <SafetyEmergencyPanel
+            role="driver"
+            currentRide={ride}
+            onClose={() => setShowSafety(false)}
+          />
+        </div>
+      )}
+
+      {showSafetyPanel && (
+        <div style={driverSafetyOverlayStyle}>
+          <SafetyEmergencyPanel
+            role="driver"
+            currentRide={state.activeRide}
+            onClose={() => setShowSafetyPanel(false)}
+          />
+        </div>
+      )}
     </div>
   );
 }
 
 // ─── Styles ─────────────────────────────────────────────────────────────────
+
+const driverSosButtonStyle = {
+  width: "100%",
+  minHeight: "46px",
+  marginBottom: "10px",
+  border: "2px solid #fecaca",
+  borderRadius: "6px",
+  background: "#dc2626",
+  color: "#fff",
+  fontWeight: 950,
+  cursor: "pointer",
+};
+
+const driverHeaderSafetyButtonStyle = {
+  minHeight: "42px",
+  border: "1px solid #fecaca",
+  borderRadius: "6px",
+  background: "#991b1b",
+  color: "#fff",
+  padding: "0 12px",
+  fontWeight: 900,
+  cursor: "pointer",
+};
+
+const driverSafetyOverlayStyle = {
+  position: "fixed",
+  inset: 0,
+  zIndex: 3000,
+  display: "grid",
+  placeItems: "center",
+  padding: "16px",
+  background: "rgba(2, 6, 23, 0.78)",
+};
 
 const dashboardContainerStyle = {
   position: "relative",

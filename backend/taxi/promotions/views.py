@@ -21,6 +21,7 @@ from promotions.serializers import (
     ReferralCodeSerializer,
 )
 from promotions.services import PromoCodeService
+from taxi.security.abuse import rate_limit
 
 
 # --- Admin views ---
@@ -182,6 +183,14 @@ class PromoCodeValidateView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        retry_after = rate_limit(request, "promo-validate", limit=20, window_seconds=600)
+        if retry_after:
+            return Response(
+                {"detail": "Too many promo code attempts. Please try again later."},
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+                headers={"Retry-After": str(retry_after)},
+            )
+
         serializer = PromoCodeValidateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -219,6 +228,14 @@ class PromoCodeApplyView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        retry_after = rate_limit(request, "promo-apply", limit=5, window_seconds=600)
+        if retry_after:
+            return Response(
+                {"detail": "Too many promo code attempts. Please try again later."},
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+                headers={"Retry-After": str(retry_after)},
+            )
+
         from taxi.rides.models import Ride
         from payments.services import authorize_ride_payment
 

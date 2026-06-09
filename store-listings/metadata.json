@@ -8,9 +8,9 @@
     "currency": "MRU",
     "languages": ["en", "fr", "ar"],
     "ageRating": "4+",
-    "privacyPolicyUrl": "https://yala.mr/privacy",
-    "supportUrl": "https://yala.mr/support",
-    "marketingUrl": "https://yala.mr"
+    "privacyPolicyUrl": "https://yalataxi.live/privacy-policy",
+    "supportUrl": "https://yalataxi.live",
+    "marketingUrl": "https://yalataxi.live"
   },
   "driver": {
     "appName": "Yala Driver - Earn Money",
@@ -21,8 +21,8 @@
     "currency": "MRU",
     "languages": ["en", "fr", "ar"],
     "ageRating": "4+",
-    "privacyPolicyUrl": "https://yala.mr/privacy",
-    "supportUrl": "https://yala.mr/support",
-    "marketingUrl": "https://yala.mr"
+    "privacyPolicyUrl": "https://yalataxi.live/privacy-policy",
+    "supportUrl": "https://yalataxi.live",
+    "marketingUrl": "https://yalataxi.live"
   }
 }

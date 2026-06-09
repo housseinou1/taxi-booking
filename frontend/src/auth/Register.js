@@ -1,9 +1,14 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useTranslation } from "react-i18next";
 import { API_URL } from "../apiConfig";
 
 const logoSrc = "/yala-logo.png";
+
+const getInitialUserType = () => {
+  const requestedRole = new URLSearchParams(window.location.search).get("role");
+  return requestedRole === "driver" ? "driver" : "rider";
+};
 
 function Register() {
   const { t } = useTranslation();
@@ -14,9 +19,12 @@ function Register() {
     gender: "Male",
     phone_number: "",
     national_id_number: "",
+    city: "",
     password: "",
-    user_type: "rider",
+    user_type: getInitialUserType(),
   });
+  const [cities, setCities] = useState([]);
+  const [citiesLoading, setCitiesLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [profilePicture, setProfilePicture] = useState(null);
   const [nationalIdDocument, setNationalIdDocument] = useState(null);
@@ -24,6 +32,32 @@ function Register() {
   const [verificationCode, setVerificationCode] = useState("");
   const [verificationStep, setVerificationStep] = useState(false);
   const [debugCode, setDebugCode] = useState("");
+
+  useEffect(() => {
+    let isActive = true;
+
+    axios
+      .get(`${API_URL}/locations/cities/`)
+      .then(({ data }) => {
+        if (isActive) {
+          setCities(Array.isArray(data) ? data : []);
+        }
+      })
+      .catch(() => {
+        if (isActive) {
+          setErrorMessage("Unable to load cities. Please refresh and try again.");
+        }
+      })
+      .finally(() => {
+        if (isActive) {
+          setCitiesLoading(false);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
 
   const handleChange = (event) => {
     setFormData({
@@ -35,6 +69,11 @@ function Register() {
   const registerUser = async (event) => {
     event.preventDefault();
     setErrorMessage("");
+
+    if (!formData.city) {
+      setErrorMessage("Please select your city.");
+      return;
+    }
 
     if (formData.user_type === "rider" && !profilePicture) {
       setErrorMessage(t("auth.riderPhotoRequired"));
@@ -91,6 +130,7 @@ function Register() {
         response.email?.[0] ||
         response.gender?.[0] ||
         response.national_id_number?.[0] ||
+        response.city?.[0] ||
         response.password?.[0] ||
         response.user_type?.[0] ||
         response.profile_picture ||
@@ -105,6 +145,15 @@ function Register() {
       setLoading(false);
     }
   };
+
+  const citiesByRegion = cities.reduce((groups, city) => {
+    const regionName = city.region_name || "Other";
+    if (!groups[regionName]) {
+      groups[regionName] = [];
+    }
+    groups[regionName].push(city);
+    return groups;
+  }, {});
 
   const finishRegistration = () => {
       if (formData.user_type === "rider") {
@@ -261,6 +310,31 @@ function Register() {
           value={formData.national_id_number}
           onChange={handleChange}
         />
+
+        <label className="auth-register-city">
+          <strong>City</strong>
+          <span>Select the city where you will use Yala.</span>
+          <select
+            name="city"
+            value={formData.city}
+            onChange={handleChange}
+            required
+            disabled={citiesLoading}
+          >
+            <option value="">
+              {citiesLoading ? "Loading cities..." : "Select your city"}
+            </option>
+            {Object.entries(citiesByRegion).map(([regionName, regionCities]) => (
+              <optgroup key={regionName} label={regionName}>
+                {regionCities.map((city) => (
+                  <option key={city.id} value={city.id}>
+                    {city.name}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+        </label>
 
         {formData.user_type === "rider" && (
           <>
@@ -475,6 +549,17 @@ function AuthRegisterStyles() {
 
       .auth-register-card option {
         color: #111827;
+      }
+
+      .auth-register-city {
+        display: grid;
+        gap: 7px;
+        margin-bottom: 2px;
+      }
+
+      .auth-register-city span {
+        color: rgba(255, 255, 255, 0.64);
+        font-size: 12px;
       }
 
       .auth-register-file {

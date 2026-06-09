@@ -13,6 +13,7 @@ from .views import (
     reject_driver,
     reintegrate_driver,
     update_driver_category,
+    delete_driver,
 )
 from .views_earnings import (
     DriverEarningsView,
@@ -51,6 +52,7 @@ from .views_heatmap import (
     DriverFavoriteAreaDeleteView,
 )
 from .views_rides import DriverRideHistoryView
+from .views_performance import AdminDriverPerformanceView
 
 urlpatterns = [
     path("available/", available_drivers),
@@ -65,6 +67,7 @@ urlpatterns = [
     path("reject/<int:driver_id>/", reject_driver),
     path("reintegrate/<int:driver_id>/", reintegrate_driver),
     path("category/<int:driver_id>/", update_driver_category),
+    path("delete/<int:driver_id>/", delete_driver),
 
     # Earnings Center endpoints
     path("me/earnings/", DriverEarningsView.as_view(), name="driver-earnings"),
@@ -99,6 +102,7 @@ urlpatterns = [
 
     # Heatmap endpoint
     path("heatmap/", HeatmapView.as_view(), name="driver-heatmap"),
+    path("performance/", AdminDriverPerformanceView.as_view(), name="driver-performance"),
 
     # Favorite Areas endpoints
     path("me/favorites/", DriverFavoriteAreaListView.as_view(), name="driver-favorites-list"),

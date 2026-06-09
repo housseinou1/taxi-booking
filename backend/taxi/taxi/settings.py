@@ -23,6 +23,7 @@ SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-sakho-express-local
 DEBUG = env_bool("DJANGO_DEBUG", True)
 
 ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "*" if DEBUG else "")
+PUBLIC_APP_URL = os.getenv("PUBLIC_APP_URL", "").rstrip("/")
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -35,6 +36,7 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
     "authapp",
+    "locations",
     "taxi.rides",
     "app_settings",
     "corsheaders",
@@ -47,6 +49,8 @@ INSTALLED_APPS = [
     "chat",
     "promotions",
     "deliveries",
+    "safety",
+    "cities",
 ]
 
 MIDDLEWARE = [
@@ -260,6 +264,16 @@ CACHES = {
             "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
         }
     ),
+}
+
+YALA_MAX_DRIVER_SPEED_KMH = int(os.getenv("YALA_MAX_DRIVER_SPEED_KMH", "180"))
+YALA_ON_TIME_ARRIVAL_MINUTES = int(os.getenv("YALA_ON_TIME_ARRIVAL_MINUTES", "15"))
+YALA_TRUST_X_FORWARDED_FOR = env_bool("YALA_TRUST_X_FORWARDED_FOR", False)
+YALA_SERVICE_AREA_BOUNDS = {
+    "min_lat": float(os.getenv("YALA_SERVICE_MIN_LAT", "17.75")),
+    "max_lat": float(os.getenv("YALA_SERVICE_MAX_LAT", "18.40")),
+    "min_lng": float(os.getenv("YALA_SERVICE_MIN_LNG", "-16.35")),
+    "max_lng": float(os.getenv("YALA_SERVICE_MAX_LNG", "-15.65")),
 }
 
 # ── Production security (only when DEBUG=False) ───────────────────────────────

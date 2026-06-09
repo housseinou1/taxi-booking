@@ -1,15 +1,17 @@
 import uuid
 from decimal import Decimal
 
+from django.db import transaction
 from django.db.models import Sum
 
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 
 from taxi.rides.models import Ride
 from taxi.market import get_app_fee_percent_display
+from notifications.push import notify_payment_completed, notify_payment_successful
 from .services import calculate_payment_amounts
 
 from .models import (
@@ -83,7 +85,6 @@ def my_payment_methods(request):
 def create_payment(request):
     try:
         ride_id = request.data.get("ride_id")
-        amount = Decimal(str(request.data.get("amount", 0)))
         tip_percentage = Decimal(str(request.data.get("tip_percentage", 0)))
 
         if tip_percentage < 0 or tip_percentage > 20:
@@ -115,7 +116,7 @@ def create_payment(request):
             "paid",
             "pending_verification",
         ]:
-            payment_amount = amount or existing_payment.amount or ride.fare
+            payment_amount = existing_payment.amount or ride.fare
             (
                 payment_amount,
                 app_fee,
@@ -167,19 +168,22 @@ def create_payment(request):
             if selected_method
             else default_method.payment_type if default_method else "cash"
         )
+        allowed_methods = {
+            choice[0] for choice in Payment.PAYMENT_METHOD_CHOICES if choice[0] != "test"
+        }
+        if payment_method not in allowed_methods:
+            return Response(
+                {"error": "Unsupported payment method"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         amount, app_fee, tip_percentage, tip_amount, driver_earning, _discount = calculate_payment_amounts(
-            amount,
+            ride.fare,
             tip_percentage,
         )
 
-        deferred_methods = ["bankily", "masrvi", "seddad", "cash"]
-
-        payment_status = (
-            "pending_verification"
-            if payment_method in deferred_methods
-            else "paid"
-        )
+        # Payment success must come from a trusted provider, driver, or admin flow.
+        payment_status = "pending_verification"
 
         payment = Payment.objects.create(
             rider=request.user,
@@ -197,6 +201,14 @@ def create_payment(request):
         ride.app_fee = app_fee
         ride.driver_earning = driver_earning
         ride.save(update_fields=["app_fee", "driver_earning"])
+
+        if payment_status == "paid":
+            try:
+                notify_payment_successful(request.user, payment)
+                if ride.driver:
+                    notify_payment_completed(ride.driver, ride)
+            except Exception:
+                pass
 
         serializer = PaymentSerializer(payment)
 
@@ -296,8 +308,20 @@ def driver_confirm_payment(request, ride_id):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        if payment.method not in {"cash", "bankily", "masrvi", "seddad"}:
+            return Response(
+                {"error": "This payment method must be confirmed by the payment provider or an admin."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         payment.status = "paid"
         payment.save()
+
+        try:
+            notify_payment_successful(ride.rider, payment)
+            notify_payment_completed(request.user, ride)
+        except Exception:
+            pass
 
         return Response(
             {
@@ -436,34 +460,41 @@ def request_withdrawal(request):
     if amount <= 0:
         return Response({"error": "Withdrawal amount must be greater than zero"}, status=status.HTTP_400_BAD_REQUEST)
 
-    available_balance = driver_withdrawal_balance(request.user)
+    with transaction.atomic():
+        type(request.user).objects.select_for_update().get(pk=request.user.pk)
+        available_balance = driver_withdrawal_balance(request.user)
 
-    if amount > available_balance:
-        return Response(
-            {
-                "error": f"Withdrawal amount is higher than available balance ({available_balance} MRU)",
-                "available_balance": str(available_balance),
-            },
-            status=status.HTTP_400_BAD_REQUEST,
+        if amount > available_balance:
+            return Response(
+                {
+                    "error": f"Withdrawal amount is higher than available balance ({available_balance} MRU)",
+                    "available_balance": str(available_balance),
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        payout_method = DriverPayoutMethod.objects.filter(
+            driver=request.user,
+            id=request.data.get("payout_method"),
+        ).first()
+
+        if not payout_method:
+            payout_method = DriverPayoutMethod.objects.filter(
+                driver=request.user, is_default=True
+            ).first()
+
+        if not payout_method:
+            return Response(
+                {"error": "Please add a payout method first"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        withdrawal = WithdrawalRequest.objects.create(
+            driver=request.user,
+            payout_method=payout_method,
+            amount=amount,
+            note=request.data.get("note", ""),
         )
-
-    payout_method = DriverPayoutMethod.objects.filter(
-        driver=request.user,
-        id=request.data.get("payout_method"),
-    ).first()
-
-    if not payout_method:
-        payout_method = DriverPayoutMethod.objects.filter(driver=request.user, is_default=True).first()
-
-    if not payout_method:
-        return Response({"error": "Please add a payout method first"}, status=status.HTTP_400_BAD_REQUEST)
-
-    withdrawal = WithdrawalRequest.objects.create(
-        driver=request.user,
-        payout_method=payout_method,
-        amount=amount,
-        note=request.data.get("note", ""),
-    )
 
     return Response(
         {
@@ -475,12 +506,18 @@ def request_withdrawal(request):
 
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminUser])
 def approve_withdrawal(request, withdrawal_id):
     try:
         withdrawal = WithdrawalRequest.objects.get(id=withdrawal_id)
     except WithdrawalRequest.DoesNotExist:
         return Response({"error": "Withdrawal not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    if withdrawal.status != "pending":
+        return Response(
+            {"error": "Only pending withdrawals can be approved."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     withdrawal.status = "approved"
     withdrawal.admin_note = request.data.get("admin_note", withdrawal.admin_note)
@@ -489,12 +526,18 @@ def approve_withdrawal(request, withdrawal_id):
 
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminUser])
 def reject_withdrawal(request, withdrawal_id):
     try:
         withdrawal = WithdrawalRequest.objects.get(id=withdrawal_id)
     except WithdrawalRequest.DoesNotExist:
         return Response({"error": "Withdrawal not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    if withdrawal.status != "pending":
+        return Response(
+            {"error": "Only pending withdrawals can be rejected."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     withdrawal.status = "rejected"
     withdrawal.admin_note = request.data.get("admin_note", withdrawal.admin_note)

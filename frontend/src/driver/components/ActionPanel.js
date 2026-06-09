@@ -73,6 +73,7 @@ export default function ActionPanel({ onRideAction, onError }) {
   const [isToggling, setIsToggling] = useState(false);
   const [isActioning, setIsActioning] = useState(false);
   const [error, setError] = useState(null);
+  const [pickupPin, setPickupPin] = useState("");
 
   const token = localStorage.getItem("access");
   const authHeaders = { headers: { Authorization: `Bearer ${token}` } };
@@ -124,10 +125,11 @@ export default function ActionPanel({ onRideAction, onError }) {
     try {
       const response = await axios.post(
         `${API_URL}/rides/${action.endpoint}/${activeRide.id || activeRide.ride_id}/`,
-        {},
+        action.endpoint === "start" ? { pickup_pin: pickupPin } : {},
         authHeaders
       );
 
+      if (action.endpoint === "start") setPickupPin("");
       if (onRideAction) onRideAction(response.data);
     } catch (err) {
       const errorMsg =
@@ -140,7 +142,7 @@ export default function ActionPanel({ onRideAction, onError }) {
     } finally {
       setIsActioning(false);
     }
-  }, [activeRide, addNotification, onRideAction, onError, authHeaders]);
+  }, [activeRide, addNotification, onRideAction, onError, authHeaders, pickupPin]);
 
   // ─── Determine contextual action ───────────────────────────────────────
   const rideAction = getActionForRideStatus(activeRide?.status);
@@ -152,6 +154,28 @@ export default function ActionPanel({ onRideAction, onError }) {
       {error && (
         <div style={errorBannerStyle} role="alert">
           {error}
+        </div>
+      )}
+
+      {activeRide?.status === "driver_arrived" && (
+        <div style={pickupPinCardStyle}>
+          <label htmlFor="driver-pickup-pin" style={pickupPinLabelStyle}>
+            Rider pickup PIN
+          </label>
+          <input
+            id="driver-pickup-pin"
+            type="text"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={4}
+            value={pickupPin}
+            onChange={(event) => setPickupPin(event.target.value.replace(/\D/g, "").slice(0, 4))}
+            placeholder="4-digit PIN"
+            style={pickupPinInputStyle}
+          />
+          <span style={pickupPinHelpStyle}>
+            Ask the rider for the PIN after checking that they are at the pickup point.
+          </span>
         </div>
       )}
 
@@ -183,12 +207,12 @@ export default function ActionPanel({ onRideAction, onError }) {
         {rideAction && (
           <button
             onClick={handleRideAction}
-            disabled={isActioning}
+            disabled={isActioning || (rideAction.endpoint === "start" && pickupPin.length !== 4)}
             style={{
               ...actionButtonStyle,
               backgroundColor: rideAction.color,
-              opacity: isActioning ? 0.7 : 1,
-              cursor: isActioning ? "wait" : "pointer",
+              opacity: isActioning || (rideAction.endpoint === "start" && pickupPin.length !== 4) ? 0.7 : 1,
+              cursor: isActioning || (rideAction.endpoint === "start" && pickupPin.length !== 4) ? "not-allowed" : "pointer",
             }}
             aria-label={rideAction.label}
           >
@@ -217,6 +241,44 @@ const panelContentStyle = {
   display: "flex",
   gap: "12px",
   alignItems: "center",
+};
+
+const pickupPinCardStyle = {
+  display: "grid",
+  gap: "7px",
+  marginBottom: "10px",
+  padding: "12px",
+  borderRadius: "14px",
+  background: "rgba(249, 115, 22, 0.16)",
+  border: "1px solid rgba(251, 146, 60, 0.55)",
+};
+
+const pickupPinLabelStyle = {
+  color: "#fed7aa",
+  fontSize: "12px",
+  fontWeight: 900,
+  textTransform: "uppercase",
+};
+
+const pickupPinInputStyle = {
+  width: "100%",
+  minHeight: "48px",
+  boxSizing: "border-box",
+  borderRadius: "12px",
+  border: "2px solid #fb923c",
+  background: "#ffffff",
+  color: "#111827",
+  textAlign: "center",
+  fontSize: "22px",
+  fontWeight: 950,
+  letterSpacing: 0,
+};
+
+const pickupPinHelpStyle = {
+  color: "#ffedd5",
+  fontSize: "12px",
+  fontWeight: 700,
+  lineHeight: 1.4,
 };
 
 const toggleButtonStyle = {

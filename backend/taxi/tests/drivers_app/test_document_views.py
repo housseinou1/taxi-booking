@@ -37,6 +37,8 @@ def _register_driver():
         "email": faker.email(),
         "password": f"Test@{faker.numerify('####')}Ab",
         "user_type": "driver",
+        "phone_number": f"+2222{faker.numerify('#######')}",
+        "national_id_number": f"9{faker.numerify('#########')}",
     }
     reg = client.post(REGISTER_URL, payload)
     assert reg.status_code == 201, f"Registration failed: {reg.data}"
@@ -156,8 +158,8 @@ class TestDriverDocumentListView:
         assert response.status_code == 200
 
         data = response.data
-        # All 5 required documents should be missing
-        assert len(data["alerts"]) == 5
+        # All 6 required documents should be missing
+        assert len(data["alerts"]) == 6
         assert all(alert["reason"] == "missing" for alert in data["alerts"])
 
     def test_returns_expiring_documents(self):
@@ -198,10 +200,14 @@ class TestDriverDocumentUploadView:
         payload, token = _register_driver()
         c = _get_authenticated_client(token)
 
+        issued = (date.today() - timedelta(days=365)).isoformat()
+        expires = (date.today() + timedelta(days=365)).isoformat()
         file = _make_valid_file("license.pdf")
         response = c.post(UPLOAD_URL, {
             "document_type": "license",
             "file": file,
+            "issued_at": issued,
+            "expires_at": expires,
         }, format="multipart")
 
         assert response.status_code == 201
@@ -239,11 +245,13 @@ class TestDriverDocumentUploadView:
         payload, token = _register_driver()
         c = _get_authenticated_client(token)
 
+        issued = (date.today() - timedelta(days=365)).isoformat()
         expires = (date.today() + timedelta(days=365)).isoformat()
         file = _make_valid_file("license.pdf")
         response = c.post(UPLOAD_URL, {
             "document_type": "license",
             "file": file,
+            "issued_at": issued,
             "expires_at": expires,
         }, format="multipart")
 
@@ -318,10 +326,14 @@ class TestDriverDocumentUploadView:
         c = _get_authenticated_client(token)
 
         # Upload first document
+        issued = (date.today() - timedelta(days=365)).isoformat()
+        expires = (date.today() + timedelta(days=365)).isoformat()
         file1 = _make_valid_file("license_v1.pdf")
         response1 = c.post(UPLOAD_URL, {
             "document_type": "license",
             "file": file1,
+            "issued_at": issued,
+            "expires_at": expires,
         }, format="multipart")
         assert response1.status_code == 201
 
@@ -330,6 +342,8 @@ class TestDriverDocumentUploadView:
         response2 = c.post(UPLOAD_URL, {
             "document_type": "license",
             "file": file2,
+            "issued_at": issued,
+            "expires_at": expires,
         }, format="multipart")
         assert response2.status_code == 201
 

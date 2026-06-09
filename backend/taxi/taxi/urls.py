@@ -21,6 +21,8 @@ urlpatterns = [
 
     path("auth/", include("authapp.urls")),
 
+    path("locations/", include("locations.urls")),
+
     path("rides/", include("taxi.rides.urls")),
 
     path("drivers/", include("taxi.drivers.urls")),
@@ -34,6 +36,10 @@ urlpatterns = [
     path("promotions/", include("promotions.urls")),
 
     path("deliveries/", include("deliveries.urls")),
+
+    path("safety/", include("safety.urls")),
+
+    path("cities/", include("cities.urls")),
 ]
 
 

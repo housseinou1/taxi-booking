@@ -190,7 +190,11 @@ class RideConsumer(AsyncWebsocketConsumer):
 
         # Update driver location in database
         if self.user and self.user.is_authenticated:
-            await self._update_driver_location(lat, lng)
+            try:
+                lat, lng = await self._update_driver_location(lat, lng)
+            except ValueError as exc:
+                await self.send(text_data=json.dumps({"error": str(exc)}))
+                return
 
         location_message = {
             "type": "location_update",
@@ -618,19 +622,23 @@ class RideConsumer(AsyncWebsocketConsumer):
     def _update_driver_location(self, lat, lng):
         """Update the driver's current location in the database."""
         from taxi.drivers.models import DriverProfile
+        from taxi.security.abuse import validate_driver_location
 
         try:
             profile = DriverProfile.objects.get(user=self.user)
-            profile.current_lat = lat
-            profile.current_lng = lng
-            profile.driver_lat = lat
-            profile.driver_lng = lng
+            profile.current_lat, profile.current_lng = validate_driver_location(
+                profile, lat, lng
+            )
+            profile.driver_lat = profile.current_lat
+            profile.driver_lng = profile.current_lng
             profile.save(update_fields=["current_lat", "current_lng", "driver_lat", "driver_lng"])
+            return profile.current_lat, profile.current_lng
         except DriverProfile.DoesNotExist:
             logger.warning(
                 "DriverProfile not found for user %s during location update",
                 self.user.id,
             )
+            raise ValueError("An approved driver profile is required.")
 
 
 # ─── Utility functions for sending messages from backend services ─────────

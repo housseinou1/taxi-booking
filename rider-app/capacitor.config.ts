@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.yala.rider',
+  appId: 'com.yala.rider.mr',
   appName: 'Yala Rider',
   webDir: 'www',
   plugins: {

@@ -3,10 +3,12 @@
  * No-ops gracefully when not running in a native Capacitor container.
  */
 
-import { isNative, getPlatform } from './platform';
+import { isNative, getAppType, getPlatform } from './platform';
 import { getToken } from './storage';
 
 let PushNotifications = null;
+let latestPushToken = null;
+let initialized = false;
 try {
   const mod = require('@capacitor/push-notifications');
   PushNotifications = mod.PushNotifications;
@@ -22,9 +24,21 @@ try {
  * @param {string} apiUrl - Backend API base URL for device registration
  */
 export async function initPushNotifications(onNotificationTap, apiUrl) {
-  if (!isNative() || !PushNotifications) return;
+  if (!isNative() || !PushNotifications || initialized) return;
+  initialized = true;
 
   try {
+    if (getPlatform() === 'android') {
+      await PushNotifications.createChannel({
+        id: 'yala_rides',
+        name: 'Yala ride updates',
+        description: 'Ride, message, safety, and payment updates',
+        importance: 5,
+        visibility: 1,
+        vibration: true,
+      });
+    }
+
     const permission = await PushNotifications.requestPermissions();
     if (permission.receive !== 'granted') return;
 
@@ -33,10 +47,11 @@ export async function initPushNotifications(onNotificationTap, apiUrl) {
     // Listen for device token registration
     PushNotifications.addListener('registration', async (token) => {
       try {
+        latestPushToken = token.value;
         const jwt = await getToken('access');
         if (!jwt || !apiUrl) return;
 
-        await fetch(`${apiUrl}/notifications/register-device/`, {
+        await fetch(`${apiUrl}/notifications/fcm/register/`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -44,12 +59,19 @@ export async function initPushNotifications(onNotificationTap, apiUrl) {
           },
           body: JSON.stringify({
             token: token.value,
-            platform: getPlatform(),
+            device_type: getPlatform(),
+            app_type: getAppType(),
           }),
         });
       } catch {
         // Registration failed — will retry on next app launch
       }
+    });
+
+    PushNotifications.addListener('pushNotificationReceived', (notification) => {
+      window.dispatchEvent(new CustomEvent('yala:push-received', {
+        detail: notification,
+      }));
     });
 
     // Listen for notification taps
@@ -64,6 +86,25 @@ export async function initPushNotifications(onNotificationTap, apiUrl) {
   }
 }
 
+export async function unregisterPushNotifications(apiUrl) {
+  if (!latestPushToken || !apiUrl) return;
+  try {
+    const jwt = await getToken('access');
+    if (!jwt) return;
+    await fetch(`${apiUrl}/notifications/fcm/unregister/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${jwt}`,
+      },
+      body: JSON.stringify({ token: latestPushToken }),
+    });
+    latestPushToken = null;
+  } catch {
+    // Logout must continue even if the device is temporarily offline.
+  }
+}
+
 /**
  * Computes the navigation route from a notification payload.
  *
@@ -72,14 +113,22 @@ export async function initPushNotifications(onNotificationTap, apiUrl) {
  * @returns {string|null} Internal route path or null
  */
 export function getRouteFromNotification(data, appType) {
-  if (!data || !data.type) return null;
+  if (!data) return null;
+  if (data.deep_link) return data.deep_link;
+  if (!data.type) return null;
 
   if (appType === 'rider') {
     switch (data.type) {
-      case 'ride_status':
+      case 'ride_accepted':
+      case 'driver_arriving':
+      case 'driver_arrived':
+      case 'ride_started':
         return '/rider-dashboard';
-      case 'ride_complete':
+      case 'ride_completed':
         return '/rider-history';
+      case 'payment_successful':
+        return '/rider-payments';
+      case 'chat_message':
       case 'ride_cancelled':
         return '/rider-dashboard';
       default:
@@ -89,11 +138,11 @@ export function getRouteFromNotification(data, appType) {
 
   if (appType === 'driver') {
     switch (data.type) {
-      case 'new_ride_request':
+      case 'ride_request':
+      case 'ride_cancelled':
+      case 'chat_message':
         return '/driver';
-      case 'ride_update':
-        return '/driver';
-      case 'earnings_update':
+      case 'payment_completed':
         return '/driver/earnings';
       default:
         return '/driver';

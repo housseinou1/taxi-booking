@@ -3,19 +3,23 @@ Analytics views for driver earnings, rider spending, and admin revenue.
 All endpoints return chart-ready data for the frontend dashboards.
 """
 
+from collections import Counter, defaultdict
 from datetime import timedelta
 from decimal import Decimal
+from math import ceil
 
 from django.contrib.auth import get_user_model
 from django.db.models import Avg, Count, Sum
-from django.utils.timezone import now
+from django.utils.timezone import localtime, now
 
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 
 from .models import Ride
+from taxi.drivers.models import DriverProfile
+from locations.models import City
 
 User = get_user_model()
 
@@ -98,6 +102,137 @@ def _build_ride_count_chart(qs, today, days=30):
         count = qs.filter(created_at__date=day).count()
         chart.append({"label": day.strftime("%b %d"), "date": day.isoformat(), "value": count})
     return chart
+
+
+def _heatmap_period_start(period):
+    current = now()
+    if period == "daily":
+        return current - timedelta(days=1)
+    if period == "weekly":
+        return current - timedelta(days=7)
+    return current - timedelta(days=30)
+
+
+def _grid_key(lat, lng, precision=2):
+    """Group nearby coordinates into roughly 1 km cells."""
+    return round(float(lat), precision), round(float(lng), precision)
+
+
+def _city_from_request(request):
+    city_id = request.query_params.get("city")
+    if not city_id:
+        return None
+    return City.objects.filter(id=city_id).first()
+
+
+def _admin_activity_heatmap(period, city=None):
+    start = _heatmap_period_start(period)
+    period_days = {"daily": 1, "weekly": 7, "monthly": 30}[period]
+    ride_queryset = Ride.objects.filter(created_at__gte=start)
+    if city:
+        ride_queryset = ride_queryset.filter(city=city)
+    rides = ride_queryset.values(
+        "pickup", "pickup_lat", "pickup_lng", "created_at", "status"
+    )
+    available_drivers = DriverProfile.objects.filter(
+        status="approved",
+        is_available=True,
+        current_lat__isnull=False,
+        current_lng__isnull=False,
+    )
+    if city:
+        available_drivers = available_drivers.filter(user__city=city)
+    available_drivers = available_drivers.values("current_lat", "current_lng")
+
+    cells = defaultdict(
+        lambda: {
+            "requests": 0,
+            "completed": 0,
+            "cancelled": 0,
+            "drivers": 0,
+            "labels": Counter(),
+        }
+    )
+    hourly_requests = Counter()
+
+    for ride in rides:
+        key = _grid_key(ride["pickup_lat"], ride["pickup_lng"])
+        cell = cells[key]
+        cell["requests"] += 1
+        if ride["status"] == "completed":
+            cell["completed"] += 1
+        elif ride["status"] == "cancelled":
+            cell["cancelled"] += 1
+        if ride["pickup"]:
+            cell["labels"][ride["pickup"]] += 1
+        hourly_requests[localtime(ride["created_at"]).hour] += 1
+
+    for driver in available_drivers:
+        key = _grid_key(driver["current_lat"], driver["current_lng"])
+        cells[key]["drivers"] += 1
+
+    max_requests = max((cell["requests"] for cell in cells.values()), default=1)
+    zones = []
+    for (lat, lng), cell in cells.items():
+        if cell["requests"] <= 0:
+            continue
+        demand_intensity = round(cell["requests"] / max_requests, 3)
+        avg_daily_requests = round(cell["requests"] / period_days, 2)
+        recommended_drivers = ceil(avg_daily_requests / 3)
+        coverage_gap = max(recommended_drivers - cell["drivers"], 0)
+        need_score = round(avg_daily_requests / max(cell["drivers"], 0.5), 2)
+        label = cell["labels"].most_common(1)[0][0] if cell["labels"] else f"{lat}, {lng}"
+        zones.append(
+            {
+                "label": label,
+                "lat": lat,
+                "lng": lng,
+                "requests": cell["requests"],
+                "avg_daily_requests": avg_daily_requests,
+                "completed": cell["completed"],
+                "cancelled": cell["cancelled"],
+                "available_drivers": cell["drivers"],
+                "recommended_drivers": recommended_drivers,
+                "coverage_gap": coverage_gap,
+                "need_score": need_score,
+                "demand_intensity": demand_intensity,
+                "needs_drivers": coverage_gap > 0,
+            }
+        )
+
+    zones.sort(key=lambda zone: (zone["need_score"], zone["requests"]), reverse=True)
+    peak_hours = [
+        {
+            "hour": hour,
+            "label": f"{hour:02d}:00",
+            "requests": hourly_requests.get(hour, 0),
+        }
+        for hour in range(24)
+    ]
+    busiest_hours = sorted(peak_hours, key=lambda item: item["requests"], reverse=True)[:3]
+    all_lats = [zone["lat"] for zone in zones]
+    all_lngs = [zone["lng"] for zone in zones]
+
+    return {
+        "period": period,
+        "period_start": start.isoformat(),
+        "generated_at": now().isoformat(),
+        "summary": {
+            "ride_requests": sum(zone["requests"] for zone in zones),
+            "available_drivers": available_drivers.count(),
+            "high_demand_areas": sum(zone["demand_intensity"] >= 0.6 for zone in zones),
+            "areas_needing_drivers": sum(zone["needs_drivers"] for zone in zones),
+        },
+        "bounds": {
+            "min_lat": min(all_lats, default=18.03),
+            "max_lat": max(all_lats, default=18.14),
+            "min_lng": min(all_lngs, default=-16.02),
+            "max_lng": max(all_lngs, default=-15.90),
+        },
+        "zones": zones,
+        "peak_hours": peak_hours,
+        "busiest_hours": busiest_hours,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -275,7 +410,12 @@ def admin_analytics(request):
         )
 
     today = now().date()
+    selected_city = _city_from_request(request)
     all_rides = Ride.objects.all()
+    users = User.objects.all()
+    if selected_city:
+        all_rides = all_rides.filter(city=selected_city)
+        users = users.filter(city=selected_city)
     completed = all_rides.filter(status="completed")
     cancelled = all_rides.filter(status="cancelled")
 
@@ -348,7 +488,7 @@ def admin_analytics(request):
             next_month = month.replace(year=month.year + 1, month=1, day=1)
         else:
             next_month = month.replace(month=month.month + 1, day=1)
-        count = User.objects.filter(
+        count = users.filter(
             date_joined__date__gte=month,
             date_joined__date__lt=next_month,
         ).count()
@@ -367,6 +507,8 @@ def admin_analytics(request):
                 "avg_fare": round(avg_fare, 2),
                 "completion_rate": completion_rate,
                 "cancellation_rate": cancellation_rate,
+                "city": selected_city.id if selected_city else None,
+                "city_name": selected_city.name if selected_city else "All cities",
             },
             "charts": {
                 "daily_revenue": daily_revenue,
@@ -381,5 +523,21 @@ def admin_analytics(request):
             "ride_type_breakdown": ride_type_breakdown,
             "top_drivers": top_drivers,
         },
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(["GET"])
+@permission_classes([IsAdminUser])
+def admin_activity_heatmap(request):
+    """Return demand, live driver coverage, and peak-hour analytics by area."""
+    period = request.query_params.get("period", "daily").lower()
+    if period not in {"daily", "weekly", "monthly"}:
+        return Response(
+            {"error": "period must be daily, weekly, or monthly"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    return Response(
+        _admin_activity_heatmap(period, city=_city_from_request(request)),
         status=status.HTTP_200_OK,
     )

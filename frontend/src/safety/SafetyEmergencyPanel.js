@@ -1,387 +1,251 @@
-import React, { useMemo, useState } from "react";
-import { useTranslation } from "react-i18next";
+import React, { useEffect, useMemo, useState } from "react";
 
+import { API_URL } from "../apiConfig";
 import { MARKET } from "../marketConfig";
 
-const defaultTrustedContacts = [
-  { nameKey: "familyContact", phone: "+22222114373" },
-  { nameKey: "sakhoSupport", phone: MARKET.privateCallNumber },
-];
-
-const riderTips = [
-  "riderCheckDriver",
-  "shareStatus",
-  "sitComfortable",
-  "useSos",
-];
-
-const driverTips = [
-  "driverConfirm",
-  "keepRoute",
-  "safeStop",
-  "driverUseSos",
-];
-
-function SafetyEmergencyPanel({
-  role = "rider",
-  currentRide,
-  onShareTrip,
-  compact = false,
-  onClose,
-}) {
-  const { t } = useTranslation();
-  const [contacts, setContacts] = useState(() => loadTrustedContacts());
-  const [contactForm, setContactForm] = useState({ name: "", phone: "" });
+export default function SafetyEmergencyPanel({ role = "rider", currentRide, onClose }) {
+  const [contacts, setContacts] = useState([]);
+  const [history, setHistory] = useState([]);
+  const [contact, setContact] = useState({ name: "", phone_number: "", relationship: "" });
+  const [description, setDescription] = useState("");
   const [message, setMessage] = useState("");
+  const [working, setWorking] = useState("");
   const isDriver = role === "driver";
-  const tips = isDriver ? driverTips : riderTips;
+  const currentRideId = currentRide?.id || currentRide?.ride_id;
+  const token = localStorage.getItem("access");
+  const headers = useMemo(
+    () => ({ Authorization: `Bearer ${token}`, "Content-Type": "application/json" }),
+    [token],
+  );
 
-  const tripStatus = useMemo(() => {
-    if (!currentRide) return t("safetyPanel.noActiveTrip");
-
-    const pickup = currentRide.pickup || currentRide.pickup_address || t("safetyPanel.pickup");
-    const destination = currentRide.destination || currentRide.destination_address || t("safetyPanel.destination");
-    return t("safetyPanel.tripStatusLine", {
-      id: currentRide.id || t("safetyPanel.active"),
-      pickup,
-      destination,
-      status: currentRide.status || t("safetyPanel.active"),
-    });
-  }, [currentRide, t]);
-
-  const addContact = (event) => {
-    event.preventDefault();
-
-    if (!contactForm.name.trim() || !contactForm.phone.trim()) {
-      setMessage(t("safetyPanel.messages.addContact"));
-      return;
+  const refresh = async () => {
+    if (!token) return;
+    try {
+      const [contactsResponse, historyResponse] = await Promise.all([
+        fetch(`${API_URL}/safety/contacts/`, { headers }),
+        fetch(`${API_URL}/safety/incidents/`, { headers }),
+      ]);
+      const contactsData = await contactsResponse.json();
+      const historyData = await historyResponse.json();
+      setContacts(Array.isArray(contactsData) ? contactsData : []);
+      setHistory(Array.isArray(historyData) ? historyData : []);
+    } catch (error) {
+      setMessage("Safety information could not be loaded.");
     }
-
-    const nextContacts = [
-      { name: contactForm.name.trim(), phone: contactForm.phone.trim() },
-      ...contacts,
-    ].slice(0, 5);
-
-    setContacts(nextContacts);
-    localStorage.setItem("sx_trusted_contacts", JSON.stringify(nextContacts));
-    setContactForm({ name: "", phone: "" });
-    setMessage(t("safetyPanel.messages.contactSaved"));
   };
 
-  const reportUnsafeRide = () => {
-    const report = {
-      id: `SAFE-${Date.now().toString().slice(-6)}`,
-      role,
-      tripStatus,
-      createdAt: new Date().toISOString(),
-      status: "new",
-    };
-    const reports = JSON.parse(localStorage.getItem("sx_safety_reports") || "[]");
-    localStorage.setItem("sx_safety_reports", JSON.stringify([report, ...reports]));
-    setMessage(t("safetyPanel.messages.unsafeSaved"));
+  useEffect(() => {
+    refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const getPosition = () =>
+    new Promise((resolve) => {
+      if (!navigator.geolocation) return resolve({});
+      navigator.geolocation.getCurrentPosition(
+        ({ coords }) =>
+          resolve({
+            latitude: coords.latitude,
+            longitude: coords.longitude,
+            accuracy: coords.accuracy,
+          }),
+        () => resolve({}),
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 15000 },
+      );
+    });
+
+  const addContact = async (event) => {
+    event.preventDefault();
+    setWorking("contact");
+    try {
+      const response = await fetch(`${API_URL}/safety/contacts/`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(contact),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || "Could not save contact.");
+      setContact({ name: "", phone_number: "", relationship: "" });
+      setMessage("Emergency contact saved.");
+      await refresh();
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      setWorking("");
+    }
   };
 
-  const triggerSos = () => {
-    const police = MARKET.emergencyNumbers[0];
-    setMessage(t("safetyPanel.messages.sosReady", { label: police.label, number: police.number }));
+  const triggerSos = async () => {
+    if (!currentRideId) return setMessage("SOS is available during an active ride.");
+    if (!window.confirm("Send an emergency SOS to Yala safety staff now?")) return;
+    setWorking("sos");
+    try {
+      const position = await getPosition();
+      const response = await fetch(`${API_URL}/safety/sos/`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ ride_id: currentRideId, description, ...position }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || "SOS could not be sent.");
+      setMessage(`SOS ${data.incident.reference} sent. Yala safety staff have been alerted.`);
+      await refresh();
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      setWorking("");
+    }
   };
+
+  const report = async (incidentType) => {
+    setWorking("report");
+    try {
+      const position = await getPosition();
+      const response = await fetch(`${API_URL}/safety/incidents/`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          ride_id: currentRideId,
+          incident_type: incidentType,
+          severity: "high",
+          description,
+          ...position,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || "Safety report could not be sent.");
+      setDescription("");
+      setMessage(`Safety report ${data.reference} sent to Yala.`);
+      await refresh();
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      setWorking("");
+    }
+  };
+
+  const shareTrip = async () => {
+    if (!currentRideId) return;
+    setWorking("share");
+    try {
+      const response = await fetch(`${API_URL}/safety/trip-share/`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ ride_id: currentRideId }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || "Could not create sharing link.");
+      if (navigator.share) {
+        await navigator.share({ title: "Yala live trip", url: data.share_url });
+      } else {
+        await navigator.clipboard.writeText(data.share_url);
+        setMessage("Secure live-trip link copied. It expires in 24 hours.");
+      }
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      setWorking("");
+    }
+  };
+
+  const tripLabel = currentRide
+    ? `Ride #${currentRideId}: ${currentRide.pickup || "Pickup"} to ${currentRide.destination || "Destination"}`
+    : "No active ride";
 
   return (
-    <section className={`sx-safety-panel ${compact ? "compact" : ""}`}>
-      <SafetyEmergencyStyles />
-
-      <div className="sx-safety-head">
+    <section className="yala-safety-panel">
+      <SafetyStyles />
+      <header>
         <div>
-          <span>{t("safetyPanel.eyebrow")}</span>
-          <h2>{isDriver ? t("safetyPanel.driverTitle") : t("safetyPanel.riderTitle")}</h2>
-          <p>{t("safetyPanel.subtitle")}</p>
+          <span>Yala Safety Center</span>
+          <h2>{isDriver ? "Driver safety" : "Rider safety"}</h2>
+          <p>{tripLabel}</p>
         </div>
-        {onClose && (
-          <button type="button" className="sx-safety-close" onClick={onClose}>
-            {t("safetyPanel.close")}
-          </button>
-        )}
+        {onClose && <button type="button" className="safety-close" onClick={onClose}>Close</button>}
+      </header>
+
+      <div className="safety-actions">
+        <button className="sos" type="button" onClick={triggerSos} disabled={!currentRide || Boolean(working)}>
+          {working === "sos" ? "Sending SOS..." : "SOS Emergency"}
+        </button>
+        <button type="button" onClick={shareTrip} disabled={!currentRide || Boolean(working)}>
+          {working === "share" ? "Creating link..." : "Share live trip"}
+        </button>
+        <button type="button" onClick={() => report("safety_incident")} disabled={Boolean(working)}>
+          Report safety incident
+        </button>
+        <button type="button" onClick={() => report(isDriver ? "report_rider" : "report_driver")} disabled={!currentRide || Boolean(working)}>
+          {isDriver ? "Report rider" : "Report driver"}
+        </button>
       </div>
 
-      <div className="sx-safety-actions">
-        <button type="button" className="sx-sos-button" onClick={triggerSos}>
-          SOS
-        </button>
-        <button type="button" onClick={onShareTrip} disabled={!currentRide}>
-          {t("safetyPanel.shareTrip")}
-        </button>
-        <button type="button" onClick={reportUnsafeRide}>
-          {t("safetyPanel.reportUnsafe")}
-        </button>
-      </div>
+      <textarea
+        value={description}
+        onChange={(event) => setDescription(event.target.value)}
+        placeholder="Describe what happened for the Yala safety team."
+      />
+      {message && <div className="safety-message">{message}</div>}
 
-      {message && <div className="sx-safety-message">{message}</div>}
-
-      <div className="sx-safety-grid">
-        <article className="sx-safety-card">
-          <span>{t("safetyPanel.tripStatus")}</span>
-          <strong>{tripStatus}</strong>
-          <p>
-            {currentRide
-              ? t("safetyPanel.tripSharingActive")
-              : t("safetyPanel.tripSharingInactive")}
-          </p>
+      <div className="safety-grid">
+        <article>
+          <span>Emergency services</span>
+          {MARKET.emergencyNumbers.map((item) => (
+            <a key={item.number} href={`tel:${item.number}`}>
+              <strong>{item.label}</strong><b>{item.number}</b>
+            </a>
+          ))}
         </article>
 
-        <article className="sx-safety-card sx-emergency-card">
-          <span>{t("safetyPanel.emergencyContacts")}</span>
-          <div className="sx-emergency-list">
-            {MARKET.emergencyNumbers.map((item) => (
-              <a key={item.number} href={`tel:${item.number}`}>
-                <strong>{item.label}</strong>
-                <b>{item.number}</b>
-              </a>
-            ))}
-          </div>
-        </article>
-
-        <article className="sx-safety-card">
-          <span>{t("safetyPanel.trustedContacts")}</span>
-          <div className="sx-trusted-list">
-            {contacts.map((contact) => (
-              <a key={`${contact.name}-${contact.phone}`} href={`tel:${contact.phone}`}>
-                <strong>{contact.nameKey ? t(`safetyPanel.defaults.${contact.nameKey}`) : contact.name}</strong>
-                <small>{contact.phone}</small>
-              </a>
-            ))}
-          </div>
-          <form onSubmit={addContact} className="sx-trusted-form">
-            <input
-              value={contactForm.name}
-              onChange={(event) => setContactForm((current) => ({ ...current, name: event.target.value }))}
-              placeholder={t("safetyPanel.namePlaceholder")}
-            />
-            <input
-              value={contactForm.phone}
-              onChange={(event) => setContactForm((current) => ({ ...current, phone: event.target.value }))}
-              placeholder={t("safetyPanel.phonePlaceholder")}
-            />
-            <button type="submit">{t("safetyPanel.add")}</button>
+        <article>
+          <span>Emergency contacts</span>
+          {contacts.map((item) => (
+            <a key={item.id} href={`tel:${item.phone_number}`}>
+              <strong>{item.name}</strong><b>{item.phone_number}</b>
+            </a>
+          ))}
+          <form onSubmit={addContact}>
+            <input required value={contact.name} onChange={(event) => setContact({ ...contact, name: event.target.value })} placeholder="Contact name" />
+            <input required value={contact.phone_number} onChange={(event) => setContact({ ...contact, phone_number: event.target.value })} placeholder="Phone number" />
+            <button type="submit" disabled={working === "contact"}>Add contact</button>
           </form>
         </article>
 
-        <article className="sx-safety-card">
-          <span>{t("safetyPanel.safetyTips")}</span>
-          <ul>
-            {tips.map((tip) => (
-              <li key={tip}>{t(`safetyPanel.tips.${tip}`)}</li>
-            ))}
-          </ul>
+        <article>
+          <span>Incident history</span>
+          {history.length === 0 && <p>No safety incidents reported.</p>}
+          {history.slice(0, 8).map((incident) => (
+            <div className="incident" key={incident.id}>
+              <strong>{incident.reference}</strong>
+              <small>{incident.incident_type.replaceAll("_", " ")} · {incident.status}</small>
+            </div>
+          ))}
         </article>
       </div>
     </section>
   );
 }
 
-function loadTrustedContacts() {
-  try {
-    const saved = JSON.parse(localStorage.getItem("sx_trusted_contacts") || "[]");
-    return saved.length ? saved : defaultTrustedContacts;
-  } catch (error) {
-    return defaultTrustedContacts;
-  }
+function SafetyStyles() {
+  return <style>{`
+    .yala-safety-panel { width:100%; max-height:90vh; overflow:auto; box-sizing:border-box; border:1px solid rgba(248,113,113,.32); border-radius:8px; background:#08111f; color:#f8fafc; padding:18px; box-shadow:0 24px 70px rgba(0,0,0,.42); }
+    .yala-safety-panel * { box-sizing:border-box; }
+    .yala-safety-panel header { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; }
+    .yala-safety-panel h2 { margin:5px 0; font-size:24px; letter-spacing:0; }
+    .yala-safety-panel header span,.yala-safety-panel article>span { color:#fca5a5; font-size:12px; font-weight:900; text-transform:uppercase; }
+    .yala-safety-panel p,.yala-safety-panel small { color:#cbd5e1; }
+    .safety-actions { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin:16px 0 10px; }
+    .safety-actions button,.safety-close,.yala-safety-panel form button { min-height:44px; border:1px solid rgba(255,255,255,.15); border-radius:6px; background:#172033; color:#fff; font-weight:850; cursor:pointer; }
+    .safety-actions .sos { background:#dc2626; border-color:#f87171; }
+    .safety-actions button:disabled { opacity:.5; cursor:not-allowed; }
+    .yala-safety-panel textarea,.yala-safety-panel input { width:100%; border:1px solid rgba(255,255,255,.14); border-radius:6px; background:#050a13; color:#fff; padding:11px; }
+    .yala-safety-panel textarea { min-height:72px; resize:vertical; }
+    .safety-message { margin:10px 0; border:1px solid rgba(250,204,21,.35); background:rgba(250,204,21,.12); color:#fde68a; padding:11px; border-radius:6px; font-weight:800; }
+    .safety-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-top:12px; }
+    .safety-grid article { min-width:0; border:1px solid rgba(255,255,255,.12); border-radius:7px; background:rgba(255,255,255,.05); padding:12px; }
+    .safety-grid a,.incident { display:flex; justify-content:space-between; gap:8px; color:#fff; text-decoration:none; background:rgba(255,255,255,.06); padding:9px; margin-top:8px; border-radius:5px; }
+    .incident { display:grid; }
+    .yala-safety-panel form { display:grid; gap:7px; margin-top:10px; }
+    @media(max-width:760px){ .safety-actions,.safety-grid{grid-template-columns:1fr 1fr;} }
+    @media(max-width:480px){ .safety-actions,.safety-grid{grid-template-columns:1fr;} }
+  `}</style>;
 }
-
-function SafetyEmergencyStyles() {
-  return (
-    <style>{`
-      .sx-safety-panel {
-        width: 100%;
-        border: 1px solid rgba(248, 113, 113, 0.24);
-        border-radius: 18px;
-        background:
-          radial-gradient(circle at 10% 0%, rgba(220, 38, 38, 0.22), transparent 34%),
-          linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(5, 7, 13, 0.96));
-        color: #f8fafc;
-        padding: 18px;
-        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
-      }
-
-      .sx-safety-panel * {
-        box-sizing: border-box;
-      }
-
-      .sx-safety-head {
-        display: flex;
-        justify-content: space-between;
-        gap: 14px;
-        align-items: flex-start;
-        margin-bottom: 14px;
-      }
-
-      .sx-safety-head span,
-      .sx-safety-card span {
-        color: #fca5a5;
-        font-size: 0.74rem;
-        font-weight: 950;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-      }
-
-      .sx-safety-head h2 {
-        margin: 6px 0 6px;
-        font-size: clamp(1.4rem, 4vw, 2rem);
-        letter-spacing: 0;
-      }
-
-      .sx-safety-head p,
-      .sx-safety-card p,
-      .sx-safety-card li {
-        color: #cbd5e1;
-        line-height: 1.5;
-        font-weight: 750;
-      }
-
-      .sx-safety-close,
-      .sx-safety-actions button,
-      .sx-trusted-form button {
-        border: none;
-        border-radius: 999px;
-        padding: 10px 13px;
-        font-weight: 950;
-        cursor: pointer;
-      }
-
-      .sx-safety-close,
-      .sx-safety-actions button {
-        background: rgba(255,255,255,0.1);
-        color: #f8fafc;
-        border: 1px solid rgba(255,255,255,0.12);
-      }
-
-      .sx-safety-actions {
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        margin-bottom: 12px;
-      }
-
-      .sx-safety-actions .sx-sos-button {
-        background: #dc2626;
-        color: white;
-        min-width: 92px;
-        box-shadow: 0 16px 30px rgba(220, 38, 38, 0.34);
-      }
-
-      .sx-safety-actions button:disabled {
-        opacity: 0.45;
-        cursor: not-allowed;
-      }
-
-      .sx-safety-message {
-        border: 1px solid rgba(250, 204, 21, 0.28);
-        border-radius: 12px;
-        background: rgba(250, 204, 21, 0.12);
-        color: #fde68a;
-        padding: 11px 12px;
-        font-weight: 900;
-        margin-bottom: 12px;
-      }
-
-      .sx-safety-grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 12px;
-      }
-
-      .sx-safety-card {
-        min-width: 0;
-        border: 1px solid rgba(255,255,255,0.1);
-        border-radius: 14px;
-        background: rgba(255,255,255,0.07);
-        padding: 14px;
-      }
-
-      .sx-safety-card strong {
-        display: block;
-        margin-top: 7px;
-        overflow-wrap: anywhere;
-      }
-
-      .sx-emergency-list,
-      .sx-trusted-list {
-        display: grid;
-        gap: 8px;
-        margin-top: 10px;
-      }
-
-      .sx-emergency-list a,
-      .sx-trusted-list a {
-        display: flex;
-        justify-content: space-between;
-        gap: 12px;
-        align-items: center;
-        border-radius: 12px;
-        background: rgba(220, 38, 38, 0.14);
-        color: #fee2e2;
-        text-decoration: none;
-        padding: 11px;
-      }
-
-      .sx-trusted-list a {
-        background: rgba(34, 197, 94, 0.12);
-        color: #bbf7d0;
-      }
-
-      .sx-trusted-list small {
-        color: #d1fae5;
-        font-weight: 850;
-      }
-
-      .sx-trusted-form {
-        display: grid;
-        grid-template-columns: 1fr 1fr auto;
-        gap: 8px;
-        margin-top: 10px;
-      }
-
-      .sx-trusted-form input {
-        width: 100%;
-        border: 1px solid rgba(255,255,255,0.12);
-        border-radius: 10px;
-        background: rgba(5, 7, 13, 0.5);
-        color: #f8fafc;
-        padding: 10px;
-        outline: none;
-      }
-
-      .sx-trusted-form button {
-        background: #facc15;
-        color: #111827;
-      }
-
-      .sx-safety-card ul {
-        margin: 10px 0 0;
-        padding-inline-start: 20px;
-      }
-
-      @media (max-width: 760px) {
-        .sx-safety-panel {
-          padding: 14px;
-          border-radius: 16px;
-        }
-
-        .sx-safety-head,
-        .sx-safety-grid,
-        .sx-trusted-form {
-          grid-template-columns: 1fr;
-        }
-
-        .sx-safety-head {
-          display: grid;
-        }
-
-        .sx-safety-grid {
-          display: grid;
-        }
-      }
-    `}</style>
-  );
-}
-
-export default SafetyEmergencyPanel;

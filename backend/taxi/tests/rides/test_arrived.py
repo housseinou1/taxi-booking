@@ -110,7 +110,12 @@ def test_start_after_arrived():
     )
     token = _login(driver.email)
     client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
-    response = client.post(f"/rides/start/{ride.id}/")
+    response = client.post(
+        f"/rides/start/{ride.id}/",
+        {"pickup_pin": ride.pickup_pin},
+        format="json",
+    )
     assert response.status_code == 200
     assert response.data["status"] == "in_progress"
+    assert response.data["pickup_pin_verified"] is True
     client.credentials()

@@ -35,11 +35,21 @@ const T = {
 };
 
 // ─── API ─────────────────────────────────────────────────────────────────────
-async function fetchAnalytics(mode, token) {
+async function fetchAnalytics(mode, token, cityId = "") {
   const path = mode === "admin" ? "/rides/analytics/admin/"
     : mode === "driver" ? "/rides/analytics/driver/"
     : "/rides/analytics/rider/";
-  const res = await fetch(`${API_URL}${path}`, {
+  const query = mode === "admin" && cityId ? `?city=${cityId}` : "";
+  const res = await fetch(`${API_URL}${path}${query}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+async function fetchActivityHeatmap(period, token, cityId = "") {
+  const cityQuery = cityId ? `&city=${cityId}` : "";
+  const res = await fetch(`${API_URL}/rides/analytics/admin/activity-heatmap/?period=${period}${cityQuery}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -241,6 +251,170 @@ function Progress({ label, value, max, color = T.green, display }) {
   );
 }
 
+// ─── Admin Activity Heat Map ────────────────────────────────────────────────
+function DemandHeatSurface({ zones, bounds }) {
+  if (!zones || zones.length === 0) {
+    return (
+      <div style={{ height: 320, display: "flex", alignItems: "center", justifyContent: "center", color: T.dim }}>
+        No ride requests in this period
+      </div>
+    );
+  }
+
+  const latRange = Math.max(bounds.max_lat - bounds.min_lat, 0.01);
+  const lngRange = Math.max(bounds.max_lng - bounds.min_lng, 0.01);
+  const positioned = zones.map(zone => ({
+    ...zone,
+    x: 6 + ((zone.lng - bounds.min_lng) / lngRange) * 88,
+    y: 94 - ((zone.lat - bounds.min_lat) / latRange) * 88,
+  }));
+
+  return (
+    <div style={{
+      position: "relative", height: 360, overflow: "hidden", borderRadius: 8,
+      background: "#101820",
+      border: `1px solid ${T.border}`,
+    }}>
+      <div style={{
+        position: "absolute", inset: 0, opacity: 0.25,
+        backgroundImage: "linear-gradient(#51606d 1px, transparent 1px), linear-gradient(90deg, #51606d 1px, transparent 1px)",
+        backgroundSize: "10% 10%",
+      }} />
+      <div style={{ position: "absolute", left: 14, top: 12, color: "#b8c6d1", fontSize: 11, fontWeight: 700 }}>
+        DEMAND GRID
+      </div>
+      {positioned.map((zone, index) => {
+        const size = 26 + zone.demand_intensity * 48;
+        const color = zone.needs_drivers ? T.red : zone.demand_intensity >= 0.6 ? T.amber : T.green;
+        return (
+          <div key={`${zone.lat}-${zone.lng}-${index}`} title={`${zone.label}: ${zone.requests} requests, ${zone.available_drivers} available drivers`} style={{
+            position: "absolute",
+            left: `${zone.x}%`,
+            top: `${zone.y}%`,
+            width: size,
+            height: size,
+            transform: "translate(-50%, -50%)",
+            borderRadius: "50%",
+            background: color,
+            opacity: 0.3 + zone.demand_intensity * 0.55,
+            border: `2px solid ${color}`,
+            boxShadow: `0 0 ${12 + size / 2}px ${color}`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "#fff",
+            fontSize: 11,
+            fontWeight: 800,
+            cursor: "help",
+          }}>
+            {zone.requests}
+          </div>
+        );
+      })}
+      <div style={{
+        position: "absolute", right: 12, bottom: 12, display: "flex", gap: 12,
+        background: "rgba(0,0,0,0.68)", borderRadius: 6, padding: "7px 9px", color: "#fff", fontSize: 10,
+      }}>
+        <span><b style={{ color: T.red }}>●</b> Drivers needed</span>
+        <span><b style={{ color: T.amber }}>●</b> High demand</span>
+        <span><b style={{ color: T.green }}>●</b> Covered</span>
+      </div>
+    </div>
+  );
+}
+
+function PeakHoursChart({ data }) {
+  const max = Math.max(...(data || []).map(item => item.requests), 1);
+  return (
+    <div style={{ height: 160, display: "flex", alignItems: "flex-end", gap: 3 }}>
+      {(data || []).map(item => (
+        <div key={item.hour} title={`${item.label}: ${item.requests} requests`} style={{
+          flex: 1, height: "100%", display: "flex", flexDirection: "column", justifyContent: "flex-end", gap: 5,
+        }}>
+          <div style={{
+            height: `${Math.max(3, (item.requests / max) * 100)}%`,
+            background: item.requests === max && item.requests > 0 ? T.red : T.blue,
+            borderRadius: "3px 3px 1px 1px",
+            opacity: item.requests > 0 ? 1 : 0.25,
+          }} />
+          {item.hour % 3 === 0 && <span style={{ color: T.dim, fontSize: 9 }}>{String(item.hour).padStart(2, "0")}</span>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function AdminActivityHeatMap({ token, cityId = "" }) {
+  const [period, setPeriod] = useState("daily");
+  const [heatmap, setHeatmap] = useState(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    setError("");
+    fetchActivityHeatmap(period, token, cityId)
+      .then(data => { if (active) setHeatmap(data); })
+      .catch(err => { if (active) setError(err.message); });
+    return () => { active = false; };
+  }, [period, token, cityId]);
+
+  if (error) {
+    return <ChartPanel title="Driver activity heat map"><div style={{ color: T.red }}>Unable to load heat map: {error}</div></ChartPanel>;
+  }
+  if (!heatmap) {
+    return <ChartPanel title="Driver activity heat map"><div style={{ color: T.dim, padding: 24 }}>Loading demand and coverage…</div></ChartPanel>;
+  }
+
+  const { summary, zones, bounds, peak_hours, busiest_hours } = heatmap;
+  const driverNeeds = zones.filter(zone => zone.needs_drivers).slice(0, 6);
+  const highestDemand = [...zones].sort((a, b) => b.requests - a.requests).slice(0, 3);
+
+  return (
+    <section style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        <div>
+          <div style={{ color: T.text, fontSize: 18, fontWeight: 700 }}>Driver Activity Heat Map</div>
+          <div style={{ color: T.dim, fontSize: 13 }}>Ride demand compared with live available-driver coverage</div>
+        </div>
+        <PeriodSelector value={period} onChange={setPeriod} />
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))", gap: 12 }}>
+        <MetricCard label="Ride requests" value={summary.ride_requests} accent={T.blue} accentBg={T.blueBg} />
+        <MetricCard label="Available drivers" value={summary.available_drivers} accent={T.green} accentBg={T.greenBg} />
+        <MetricCard label="High-demand areas" value={summary.high_demand_areas} accent={T.amber} accentBg={T.amberBg} />
+        <MetricCard label="Areas needing drivers" value={summary.areas_needing_drivers} accent={T.red} accentBg={T.redBg} />
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 340px), 1fr))", gap: 12 }}>
+        <ChartPanel title="Ride requests by location" subtitle="Larger circles indicate more requests; red areas need more drivers">
+          <DemandHeatSurface zones={zones} bounds={bounds} />
+        </ChartPanel>
+        <ChartPanel title="Demand and coverage priorities" subtitle="Highest demand and lowest driver coverage">
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <div style={{ color: T.sub, fontSize: 11, fontWeight: 800, textTransform: "uppercase", marginBottom: 2 }}>Highest ride demand</div>
+            {highestDemand.map((zone, i) => (
+              <ListRow key={`demand-${zone.lat}-${zone.lng}`} rank={i + 1} title={zone.label}
+                subtitle={`${zone.completed} completed · ${zone.cancelled} cancelled`}
+                value={`${zone.requests} requests`} accent={T.amber} />
+            ))}
+            <div style={{ color: T.sub, fontSize: 11, fontWeight: 800, textTransform: "uppercase", margin: "14px 0 2px" }}>Lowest driver coverage</div>
+            {driverNeeds.length > 0 ? driverNeeds.map((zone, i) => (
+              <ListRow key={`coverage-${zone.lat}-${zone.lng}`} rank={i + 1} title={zone.label}
+                subtitle={`${zone.avg_daily_requests}/day · ${zone.available_drivers} live · recommend ${zone.recommended_drivers}`}
+                value={`${zone.need_score}×`} accent={T.red} />
+            )) : <div style={{ color: T.dim, padding: 20 }}>Current driver coverage meets recorded demand.</div>}
+          </div>
+        </ChartPanel>
+      </div>
+
+      <ChartPanel title="Peak request hours" subtitle={`Busiest: ${busiest_hours.map(hour => `${hour.label} (${hour.requests})`).join(", ") || "No requests"}`}>
+        <PeakHoursChart data={peak_hours} />
+      </ChartPanel>
+    </section>
+  );
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // DRIVER VIEW
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -341,7 +515,7 @@ function RiderView({ data }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // ADMIN VIEW
 // ═══════════════════════════════════════════════════════════════════════════════
-function AdminView({ data }) {
+function AdminView({ data, token, cityId }) {
   const [revPeriod, setRevPeriod] = useState("monthly");
   const { summary, charts, ride_type_breakdown, top_drivers } = data;
   const revChart = revPeriod === "daily" ? charts.daily_revenue
@@ -366,6 +540,8 @@ function AdminView({ data }) {
         action={<PeriodSelector value={revPeriod} onChange={setRevPeriod} />}>
         <UberBarChart data={revChart} color={T.green} height={200} />
       </ChartPanel>
+
+      <AdminActivityHeatMap token={token} cityId={cityId} />
 
       {/* Commission + rides trend */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -422,17 +598,33 @@ function AdminView({ data }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 export default function AnalyticsDashboard({ mode = "admin", token }) {
   const [data, setData] = useState(null);
+  const [cities, setCities] = useState([]);
+  const [selectedCity, setSelectedCity] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const load = useCallback(async () => {
     if (!token) { setError("Authentication required"); setLoading(false); return; }
-    try { setLoading(true); setError(null); setData(await fetchAnalytics(mode, token)); }
+    try { setLoading(true); setError(null); setData(await fetchAnalytics(mode, token, selectedCity)); }
     catch (err) { setError(err.message); }
     finally { setLoading(false); }
+  }, [mode, token, selectedCity]);
+
+  const loadCities = useCallback(async () => {
+    if (!token || mode !== "admin") return;
+    try {
+      const response = await fetch(`${API_URL}/locations/cities/`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const result = await response.json();
+      setCities(Array.isArray(result) ? result : []);
+    } catch (err) {
+      setCities([]);
+    }
   }, [mode, token]);
 
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { loadCities(); }, [loadCities]);
 
   const shell = {
     fontFamily: T.font, background: T.bg, color: T.text,
@@ -473,10 +665,33 @@ export default function AnalyticsDashboard({ mode = "admin", token }) {
         <p style={{ margin: "4px 0 0", color: T.dim, fontSize: 14 }}>
           {mode === "admin" ? "Revenue, rides, and growth metrics" : mode === "driver" ? "Track your income and performance" : "Your ride expenses and history"}
         </p>
+        {mode === "admin" && (
+          <select
+            value={selectedCity}
+            onChange={(event) => setSelectedCity(event.target.value)}
+            style={{
+              marginTop: 14,
+              minHeight: 40,
+              borderRadius: 8,
+              border: `1px solid ${T.border}`,
+              background: T.card,
+              color: T.text,
+              padding: "0 12px",
+              fontWeight: 700,
+            }}
+          >
+            <option value="">All cities</option>
+            {cities.map((city) => (
+              <option key={city.id} value={city.id}>
+                {city.name} · {city.region_name}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
       {mode === "driver" && <DriverView data={data} />}
       {mode === "rider" && <RiderView data={data} />}
-      {mode === "admin" && <AdminView data={data} />}
+      {mode === "admin" && <AdminView data={data} token={token} cityId={selectedCity} />}
     </div>
   );
 }

@@ -432,7 +432,7 @@ function DriverFoundCard({ ride }) {
           {ride.vehicle || "Vehicle"} · Plate {ride.plate_number || "pending"}
         </p>
         <div className="rider-driver-meta">
-          <strong>{Number(ride.driver_rating || 0).toFixed(1)} rating</strong>
+          <strong>{Number(ride.driver_avg_rating || ride.driver_rating || 0).toFixed(1)} rating</strong>
           <strong>{ride.completed_trips || 0} trips</strong>
         </div>
         {(ride.private_call_number || ride.driver_phone) && (

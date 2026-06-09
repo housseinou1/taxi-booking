@@ -29,22 +29,23 @@ function LiveRideTracking({ ride }) {
 
   const fetchDriverLocation = async () => {
     try {
-      const response = await fetch(`${API_URL}/drivers/list/`);
+      const token = localStorage.getItem("access");
+      const driverId = ride?.driver || ride?.driver_id || ride?.driver_user_id;
 
-      const data = await response.json();
+      if (!token || !driverId) return;
 
-      if (!Array.isArray(data)) return;
+      const response = await fetch(`${API_URL}/drivers/location/${driverId}/`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-      const currentDriver = data.find(
-        (driver) => Number(driver.id) === Number(ride?.driver)
-      );
+      const currentDriver = await response.json();
 
-      if (!currentDriver) return;
-
-      if (currentDriver.lat && currentDriver.lng) {
+      if (currentDriver.current_lat && currentDriver.current_lng) {
         setDriverPosition([
-          parseFloat(currentDriver.lat),
-          parseFloat(currentDriver.lng),
+          parseFloat(currentDriver.current_lat),
+          parseFloat(currentDriver.current_lng),
         ]);
       }
     } catch (error) {

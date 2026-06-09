@@ -43,3 +43,6 @@ Faker
 PyJWT
 python-dateutil
 PyYAML
+
+# ── Push Notifications ────────────────────────────────────────────────────────
+firebase-admin>=6.0.0

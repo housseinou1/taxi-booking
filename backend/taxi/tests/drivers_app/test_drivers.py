@@ -8,10 +8,15 @@ Driver tests — aligned with the actual API endpoints:
   GET  /drivers/available/      → list available drivers (public)
 """
 import tempfile
+from datetime import date, timedelta
+
 import pytest
+from django.utils import timezone
 from PIL import Image
 from rest_framework.test import APIClient
 from faker import Faker
+
+from taxi.drivers.models import DriverProfile
 
 client = APIClient()
 faker = Faker()
@@ -41,6 +46,8 @@ def _register_driver():
         "email": faker.email(),
         "password": f"Test@{faker.numerify('####')}Ab",
         "user_type": "driver",
+        "phone_number": f"+2222{faker.numerify('#######')}",
+        "national_id_number": f"9{faker.numerify('#########')}",
     }
     reg = client.post(REGISTER_URL, payload)
     assert reg.status_code == 201, f"Registration failed: {reg.data}"
@@ -70,9 +77,9 @@ def test_retrieve_driver_profile():
 
 @pytest.mark.django_db
 def test_retrieve_driver_profile_fail():
-    """Unauthenticated request to a non-existent driver location returns 404."""
+    """Driver location is protected from unauthenticated access."""
     response = client.get("/drivers/location/999999/")
-    assert response.status_code == 404
+    assert response.status_code == 401
 
 
 @pytest.mark.django_db
@@ -109,18 +116,35 @@ def test_driver_register_without_terms_fails():
 
 @pytest.mark.django_db
 def test_driver_register_with_terms():
-    """Submitting driver registration with terms accepted returns 200."""
+    """A phone-verified driver with complete documents can submit registration."""
     _, token = _register_driver()
+    profile = DriverProfile.objects.get()
+    profile.user.phone_verified_at = timezone.now()
+    profile.user.save(update_fields=["phone_verified_at"])
+
+    issued = (date.today() - timedelta(days=365)).isoformat()
+    expires = (date.today() + timedelta(days=365)).isoformat()
     client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
 
     response = client.post(DRIVER_REGISTER_URL, {
         "terms_accepted": "true",
+        "phone_number": profile.user.phone_number,
         "vehicle_make": "Toyota",
         "vehicle_model": "Hilux",
         "vehicle_color": "Black",
         "car_type": "regular",
         "plate_number": "NKT-1234",
-    })
+        "driver_photo": temporary_image(),
+        "license_file": temporary_image(),
+        "vehicle_registration": temporary_image(),
+        "insurance_document": temporary_image(),
+        "vignette_document": temporary_image(),
+        "license_issued_at": issued,
+        "license_expires_at": expires,
+        "vehicle_registration_expires_at": expires,
+        "insurance_expires_at": expires,
+        "vignette_expires_at": expires,
+    }, format="multipart")
     client.credentials()
     assert response.status_code == 200
     assert "driver" in response.data
@@ -128,7 +152,6 @@ def test_driver_register_with_terms():
 
 @pytest.mark.django_db
 def test_available_drivers_public():
-    """Available drivers endpoint is public and returns a list."""
+    """Available drivers are protected from unauthenticated access."""
     response = client.get(AVAILABLE_DRIVERS_URL)
-    assert response.status_code == 200
-    assert isinstance(response.data, list)
+    assert response.status_code == 401

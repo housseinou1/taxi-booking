@@ -23,7 +23,12 @@ from .views_stops import (
     RideStopArrivedView,
     RideStopDepartedView,
 )
-from .analytics import driver_analytics, rider_analytics, admin_analytics
+from .analytics import (
+    admin_activity_heatmap,
+    admin_analytics,
+    driver_analytics,
+    rider_analytics,
+)
 
 urlpatterns = [
     path("request/", request_ride),
@@ -54,6 +59,7 @@ urlpatterns = [
     path("analytics/driver/", driver_analytics),
     path("analytics/rider/", rider_analytics),
     path("analytics/admin/", admin_analytics),
+    path("analytics/admin/activity-heatmap/", admin_activity_heatmap),
 
     # Share Ride endpoints
     path("share/", include("taxi.rides.share_urls")),

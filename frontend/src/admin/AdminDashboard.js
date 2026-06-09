@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { API_URL } from "../apiConfig";
 import { MARKET, formatMoney } from "../marketConfig";
 import AnalyticsDashboard from "./AnalyticsDashboard";
+import SafetyAdminPanel from "./SafetyAdminPanel";
 
 const MARKET_OWNER_PERCENT = MARKET.ownerCommissionPercent;
 const logoSrc = "/yala-admin-logo.png";
@@ -101,6 +102,21 @@ function AdminDashboard() {
   const [users, setUsers] = useState([]);
   const [rides, setRides] = useState([]);
   const [withdrawals, setWithdrawals] = useState([]);
+  const [cities, setCities] = useState([]);
+  const [regions, setRegions] = useState([]);
+  const [cityAnalytics, setCityAnalytics] = useState({ summary: {}, cities: [] });
+  const [cityForm, setCityForm] = useState({
+    name: "",
+    region: "",
+    is_active: true,
+  });
+  const [driverPerformance, setDriverPerformance] = useState({
+    average_score: 0,
+    excellent_count: 0,
+    watch_count: 0,
+    driver_count: 0,
+    drivers: [],
+  });
   const [ownerPayoutSummary, setOwnerPayoutSummary] = useState({
     owner_commission_percent: MARKET_OWNER_PERCENT,
     owner_commission_balance: 0,
@@ -177,6 +193,67 @@ function AdminDashboard() {
     }
   }, [authHeaders]);
 
+  const fetchLocations = useCallback(async () => {
+    try {
+      const [citiesResponse, regionsResponse, analyticsResponse] = await Promise.all([
+        fetch(`${API_URL}/locations/cities/`, { headers: authHeaders() }),
+        fetch(`${API_URL}/locations/regions/`, { headers: authHeaders() }),
+        fetch(`${API_URL}/locations/analytics/`, { headers: authHeaders() }),
+      ]);
+      const citiesData = await citiesResponse.json();
+      const regionsData = await regionsResponse.json();
+      const analyticsData = await analyticsResponse.json();
+
+      setCities(Array.isArray(citiesData) ? citiesData : []);
+      setRegions(Array.isArray(regionsData) ? regionsData : []);
+      setCityAnalytics(
+        analyticsData && analyticsResponse.ok ? analyticsData : { summary: {}, cities: [] }
+      );
+    } catch (error) {
+      console.error("Locations fetch error:", error);
+      setCities([]);
+      setRegions([]);
+      setCityAnalytics({ summary: {}, cities: [] });
+    }
+  }, [authHeaders]);
+
+  const fetchDriverPerformance = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_URL}/drivers/performance/`, {
+        headers: authHeaders(),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        setDriverPerformance({
+          average_score: 0,
+          excellent_count: 0,
+          watch_count: 0,
+          driver_count: 0,
+          drivers: [],
+        });
+        return;
+      }
+
+      setDriverPerformance({
+        average_score: data.average_score || 0,
+        excellent_count: data.excellent_count || 0,
+        watch_count: data.watch_count || 0,
+        driver_count: data.driver_count || 0,
+        drivers: Array.isArray(data.drivers) ? data.drivers : [],
+      });
+    } catch (error) {
+      console.error("Driver performance fetch error:", error);
+      setDriverPerformance({
+        average_score: 0,
+        excellent_count: 0,
+        watch_count: 0,
+        driver_count: 0,
+        drivers: [],
+      });
+    }
+  }, [authHeaders]);
+
   const fetchOwnerPayout = useCallback(async () => {
     try {
       const response = await fetch(`${API_URL}/payments/owner-payout/`, {
@@ -204,11 +281,21 @@ function AdminDashboard() {
 
   useEffect(() => {
     fetchDrivers();
+    fetchDriverPerformance();
+    fetchLocations();
     fetchUsers();
     fetchRides();
     fetchWithdrawals();
     fetchOwnerPayout();
-  }, [fetchDrivers, fetchOwnerPayout, fetchRides, fetchUsers, fetchWithdrawals]);
+  }, [
+    fetchDriverPerformance,
+    fetchDrivers,
+    fetchLocations,
+    fetchOwnerPayout,
+    fetchRides,
+    fetchUsers,
+    fetchWithdrawals,
+  ]);
 
   const approveDriver = async (id) => {
     try {
@@ -254,6 +341,32 @@ function AdminDashboard() {
     } catch (error) {
       console.error(error);
       alert("Server error rejecting driver");
+    }
+  };
+
+  const deleteDriver = async (id) => {
+    const confirmed = window.confirm(
+      "⚠️ Are you sure you want to PERMANENTLY DELETE this driver?\n\nThis action cannot be undone. The driver's account, profile, documents, and all associated data will be removed."
+    );
+    if (!confirmed) return;
+
+    try {
+      const response = await fetch(`${API_URL}/drivers/delete/${id}/`, {
+        method: "DELETE",
+        headers: authHeaders(),
+      });
+
+      if (response.ok) {
+        alert("Driver permanently deleted ✅");
+        fetchDrivers();
+        fetchUsers();
+      } else {
+        const data = await response.json();
+        alert(data.error || "Could not delete driver");
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Server error deleting driver");
     }
   };
 
@@ -473,6 +586,34 @@ function AdminDashboard() {
     }
   };
 
+  const createCity = async (event) => {
+    event.preventDefault();
+    if (!cityForm.name || !cityForm.region) return;
+
+    try {
+      const response = await fetch(`${API_URL}/locations/cities/`, {
+        method: "POST",
+        headers: {
+          ...authHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(cityForm),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(data.detail || data.name || "Could not create city");
+        return;
+      }
+
+      setCityForm({ name: "", region: "", is_active: true });
+      fetchLocations();
+    } catch (error) {
+      console.error("City create error:", error);
+      alert("Server error creating city");
+    }
+  };
+
   const getFileUrl = (path) => {
     if (!path) return null;
     if (path.startsWith("http")) return path;
@@ -488,6 +629,8 @@ function AdminDashboard() {
     { key: "deliveries", label: "Deliveries", path: "/admin/deliveries" },
     { key: "emergency", label: "Emergency" },
     { key: "vehicles", label: "Vehicles" },
+    { key: "cities", label: "Cities" },
+    { key: "performance", label: "Performance" },
     { key: "payments", label: "Payments" },
     { key: "withdrawals", label: "Withdrawals" },
     { key: "analytics", label: "Analytics" },
@@ -604,6 +747,8 @@ function AdminDashboard() {
     rides: rides.length,
     emergency: emergencyWatchList.length,
     vehicles: drivers.length,
+    cities: cities.length,
+    performance: driverPerformance.watch_count,
     payments: paidRides.length,
     withdrawals: pendingWithdrawals.length,
     analytics: completedRides.length,
@@ -960,6 +1105,7 @@ function AdminDashboard() {
                   rejectDriver={rejectDriver}
                   updateDriverCategory={updateDriverCategory}
                   reintegrateDriver={reintegrateDriver}
+                  deleteDriver={deleteDriver}
                   driverCategories={DRIVER_CATEGORIES}
                 />
               ))
@@ -1031,16 +1177,7 @@ function AdminDashboard() {
 
         {page === "emergency" && (
           <div style={card}>
-            <SectionTitle
-              title="Emergency monitoring"
-              subtitle="Monitor urgent ride conditions, active support risk, and emergency numbers."
-            />
-
-            <EmergencyMonitor
-              items={emergencyWatchList}
-              activeRides={activeRides.length}
-              blockedUsers={blockedUsers.length}
-            />
+            <SafetyAdminPanel />
           </div>
         )}
 
@@ -1372,6 +1509,21 @@ function AdminDashboard() {
           </div>
         )}
 
+        {page === "cities" && (
+          <CityManagementPanel
+            cities={cities}
+            regions={regions}
+            analytics={cityAnalytics}
+            cityForm={cityForm}
+            setCityForm={setCityForm}
+            createCity={createCity}
+          />
+        )}
+
+        {page === "performance" && (
+          <DriverPerformancePanel performance={driverPerformance} />
+        )}
+
         {page === "analytics" && (
           <AnalyticsDashboard mode="admin" token={getToken()} />
         )}
@@ -1502,6 +1654,166 @@ function DriverVerificationCard({
           canReject={driver.status !== "rejected"}
         />
       </div>
+    </div>
+  );
+}
+
+function CityManagementPanel({
+  cities,
+  regions,
+  analytics,
+  cityForm,
+  setCityForm,
+  createCity,
+}) {
+  const rows = Array.isArray(analytics.cities) ? analytics.cities : [];
+  const cityStats = new Map(rows.map((row) => [row.city_id, row]));
+
+  return (
+    <div style={performanceLayoutStyle}>
+      <div style={reportsHeroStyle}>
+        <div>
+          <span style={opsKickerStyle}>Mauritania expansion</span>
+          <h2 style={reportsHeroTitleStyle}>City Management</h2>
+          <p style={opsSubtitleStyle}>
+            Manage regions, cities, pricing coverage, and operating analytics for every
+            Yala market without changing application code.
+          </p>
+        </div>
+        <StatusBadge label={`${cities.length} cities`} />
+      </div>
+
+      <div style={premiumMetricGridStyle}>
+        <PremiumMetric title="Total cities" value={cities.length} tone="blue" />
+        <PremiumMetric title="Regions" value={regions.length} tone="gold" />
+        <PremiumMetric title="City rides" value={analytics.summary?.rides || 0} tone="green" />
+        <PremiumMetric title="City revenue" value={formatMoney(analytics.summary?.revenue || 0)} tone="amber" />
+      </div>
+
+      <div style={cityManagementGridStyle}>
+        <form style={ownerPayoutFormStyle} onSubmit={createCity}>
+          <h3 style={reportTitleStyle}>Add city</h3>
+          <label style={ownerPayoutFieldStyle}>
+            Region
+            <select
+              style={ownerPayoutInputStyle}
+              value={cityForm.region}
+              onChange={(event) =>
+                setCityForm((current) => ({ ...current, region: event.target.value }))
+              }
+            >
+              <option value="">Select region</option>
+              {regions.map((region) => (
+                <option key={region.id} value={region.id}>
+                  {region.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label style={ownerPayoutFieldStyle}>
+            City name
+            <input
+              style={ownerPayoutInputStyle}
+              value={cityForm.name}
+              onChange={(event) =>
+                setCityForm((current) => ({ ...current, name: event.target.value }))
+              }
+              placeholder="Example: Nbeika"
+            />
+          </label>
+          <button type="submit" style={ownerPayoutButtonStyle}>
+            Add city
+          </button>
+        </form>
+
+        <div style={performanceTableStyle}>
+          {cities.map((city) => {
+            const stats = cityStats.get(city.id) || {};
+            return (
+              <article key={city.id} style={cityRowStyle}>
+                <div>
+                  <h3 style={emergencyItemTitleStyle}>{city.name}</h3>
+                  <p style={accessMetaStyle}>{city.region_name}</p>
+                </div>
+                <div style={performanceMetricsStyle}>
+                  <DetailItem label="Rides" value={stats.rides || 0} />
+                  <DetailItem label="Revenue" value={formatMoney(stats.revenue || 0)} />
+                  <DetailItem label="Drivers" value={stats.active_drivers || 0} />
+                  <DetailItem label="Riders" value={stats.active_riders || 0} />
+                  <DetailItem label="Pricing" value={`${city.pricing?.length || 0} types`} />
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DriverPerformancePanel({ performance }) {
+  const drivers = Array.isArray(performance.drivers) ? performance.drivers : [];
+  const bandColor = (band) => {
+    if (band === "excellent") return "#22c55e";
+    if (band === "strong") return "#38bdf8";
+    if (band === "watch") return "#f59e0b";
+    return "#ef4444";
+  };
+
+  return (
+    <div style={performanceLayoutStyle}>
+      <div style={reportsHeroStyle}>
+        <div>
+          <span style={opsKickerStyle}>Driver performance</span>
+          <h2 style={reportsHeroTitleStyle}>Performance Score Center</h2>
+          <p style={opsSubtitleStyle}>
+            Track acceptance, cancellations, ratings, completed rides, and on-time
+            arrivals so dispatch decisions are based on real operating quality.
+          </p>
+        </div>
+        <StatusBadge label={`${performance.average_score || 0} avg score`} />
+      </div>
+
+      <div style={premiumMetricGridStyle}>
+        <PremiumMetric title="Average score" value={performance.average_score || 0} tone="blue" />
+        <PremiumMetric title="Excellent drivers" value={performance.excellent_count || 0} tone="green" />
+        <PremiumMetric title="Watch list" value={performance.watch_count || 0} tone="red" />
+        <PremiumMetric title="Drivers scored" value={performance.driver_count || 0} tone="gold" />
+      </div>
+
+      {drivers.length === 0 ? (
+        <div style={emptyStateStyle}>
+          <strong>No driver performance data yet.</strong>
+          <span>Completed rides, ratings, and arrivals will appear after drivers start operating.</span>
+        </div>
+      ) : (
+        <div style={performanceTableStyle}>
+          {drivers.map((driver) => (
+            <article key={driver.driver_id} style={performanceRowStyle}>
+              <div style={performanceScoreStyle}>
+                <strong>{driver.score}</strong>
+                <span style={{ ...performanceBandStyle, background: bandColor(driver.score_band) }}>
+                  {driver.score_band}
+                </span>
+              </div>
+
+              <div style={performanceDriverStyle}>
+                <h3 style={emergencyItemTitleStyle}>{driver.driver_name}</h3>
+                <p style={accessMetaStyle}>{driver.driver_email}</p>
+                <p style={reviewHintStyle}>{driver.recommendation}</p>
+              </div>
+
+              <div style={performanceMetricsStyle}>
+                <DetailItem label="Acceptance" value={`${driver.acceptance_rate}%`} />
+                <DetailItem label="Cancellation" value={`${driver.cancellation_rate}%`} />
+                <DetailItem label="Rating" value={`${driver.rating_average}/5`} />
+                <DetailItem label="Completed" value={driver.completed_rides} />
+                <DetailItem label="On time" value={`${driver.on_time_rate}%`} />
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -1812,6 +2124,44 @@ function ReportsSection({
           Open support process
         </button>
       </div>
+
+      {/* Cancellation Details */}
+      {cancelledRides.length > 0 && (
+        <div style={{ marginTop: "28px" }}>
+          <h3 style={reportTitleStyle}>Recent Cancellations</h3>
+          <div style={{ display: "grid", gap: "10px", marginTop: "14px" }}>
+            {cancelledRides.slice(0, 10).map((ride) => (
+              <div key={ride.id} style={{ ...reportCardStyle, padding: "14px 18px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+                  <div>
+                    <strong style={{ color: "#fff", fontSize: "14px" }}>Ride #{ride.id}</strong>
+                    <span style={{ color: "#9ca3af", fontSize: "12px", marginLeft: "10px" }}>
+                      {ride.pickup} → {ride.destination}
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                    {ride.cancelled_by && (
+                      <span style={{ background: ride.cancelled_by === "rider" ? "#fef3c7" : ride.cancelled_by === "driver" ? "#fee2e2" : "#e0e7ff", color: ride.cancelled_by === "rider" ? "#92400e" : ride.cancelled_by === "driver" ? "#991b1b" : "#3730a3", padding: "4px 10px", borderRadius: "999px", fontSize: "11px", fontWeight: 700 }}>
+                        {ride.cancelled_by}
+                      </span>
+                    )}
+                    {Number(ride.cancellation_fee) > 0 && (
+                      <span style={{ background: "#fee2e2", color: "#991b1b", padding: "4px 10px", borderRadius: "999px", fontSize: "11px", fontWeight: 700 }}>
+                        {ride.cancellation_fee} MRU fee
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {ride.cancellation_reason && (
+                  <p style={{ margin: "8px 0 0", color: "#d1d5db", fontSize: "13px" }}>
+                    Reason: {ride.cancellation_reason}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1969,6 +2319,7 @@ function DriverInfoCard({
   rejectDriver,
   updateDriverCategory,
   reintegrateDriver,
+  deleteDriver,
   driverCategories,
 }) {
   const canApproveDriver = driver.status !== "approved";
@@ -2093,6 +2444,13 @@ function DriverInfoCard({
           >
             Reintegrate Driver
           </button>
+
+          <button
+            style={{ ...dangerOutlineButtonStyle, background: "#7f1d1d", borderColor: "#991b1b", color: "#fecaca" }}
+            onClick={() => deleteDriver(driver.id)}
+          >
+            🗑️ Delete Driver
+          </button>
         </div>
 
         {driver.is_active && driver.status === "approved" && (
@@ -2106,8 +2464,8 @@ function DriverInfoCard({
 function StatCard({ title, value }) {
   return (
     <div style={statCard}>
-      <h2>{value}</h2>
-      <p>{title}</p>
+      <h2 style={{ margin: "0 0 6px", fontSize: "1.8rem", fontWeight: 800, color: "#fff", letterSpacing: "-0.02em" }}>{value}</h2>
+      <p style={{ margin: 0, color: "#94a3b8", fontSize: "0.82rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>{title}</p>
     </div>
   );
 }
@@ -2218,6 +2576,11 @@ const premiumMetricToneStyles = {
     background: "linear-gradient(135deg, rgba(56, 189, 248, 0.24), rgba(29, 78, 216, 0.07))",
     borderColor: "rgba(56, 189, 248, 0.38)",
     color: "#e0f2fe",
+  },
+  green: {
+    background: "linear-gradient(135deg, rgba(34, 197, 94, 0.22), rgba(34, 197, 94, 0.06))",
+    borderColor: "rgba(74, 222, 128, 0.34)",
+    color: "#dcfce7",
   },
   red: {
     background: "linear-gradient(135deg, rgba(239, 68, 68, 0.22), rgba(239, 68, 68, 0.06))",
@@ -2485,6 +2848,71 @@ const reportActionBarStyle = {
   flexWrap: "wrap",
 };
 
+const performanceLayoutStyle = {
+  display: "grid",
+  gap: "16px",
+};
+
+const performanceTableStyle = {
+  display: "grid",
+  gap: "12px",
+};
+
+const performanceRowStyle = {
+  display: "grid",
+  gridTemplateColumns: "96px minmax(220px, 0.75fr) minmax(360px, 1.25fr)",
+  gap: "14px",
+  alignItems: "center",
+  background: ADMIN_BLUE_PANEL_DARK,
+  border: `1px solid ${ADMIN_BLUE_BORDER}`,
+  borderRadius: "8px",
+  padding: "14px",
+};
+
+const performanceScoreStyle = {
+  display: "grid",
+  justifyItems: "center",
+  gap: "8px",
+  color: "white",
+};
+
+const performanceBandStyle = {
+  borderRadius: "999px",
+  color: "white",
+  padding: "5px 9px",
+  fontSize: "0.68rem",
+  fontWeight: 950,
+  textTransform: "uppercase",
+};
+
+const performanceDriverStyle = {
+  minWidth: 0,
+};
+
+const performanceMetricsStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(5, minmax(92px, 1fr))",
+  gap: "8px",
+};
+
+const cityManagementGridStyle = {
+  display: "grid",
+  gridTemplateColumns: "minmax(260px, 360px) minmax(0, 1fr)",
+  gap: "16px",
+  alignItems: "start",
+};
+
+const cityRowStyle = {
+  display: "grid",
+  gridTemplateColumns: "minmax(170px, 0.45fr) minmax(360px, 1fr)",
+  gap: "14px",
+  alignItems: "center",
+  background: ADMIN_BLUE_PANEL_DARK,
+  border: `1px solid ${ADMIN_BLUE_BORDER}`,
+  borderRadius: "8px",
+  padding: "14px",
+};
+
 const pageStyle = {
   display: "grid",
   gridTemplateColumns: "300px minmax(0, 1fr)",
@@ -2501,12 +2929,13 @@ const sidebar = {
   position: "sticky",
   top: 0,
   height: "100vh",
-  background: `linear-gradient(180deg, ${ADMIN_BLUE_DARK} 0%, ${ADMIN_BLUE_PANEL_DARK} 100%)`,
+  background: `linear-gradient(180deg, #020d1f 0%, ${ADMIN_BLUE_DARK} 100%)`,
   color: "white",
-  padding: "24px",
-  borderRight: `1px solid ${ADMIN_BLUE_BORDER}`,
+  padding: "24px 20px",
+  borderRight: `1px solid rgba(96, 165, 250, 0.15)`,
   boxSizing: "border-box",
   overflowY: "auto",
+  minWidth: "260px",
 };
 
 const sidebarBrandStyle = {
@@ -2538,18 +2967,19 @@ const sidebarSubtitleStyle = {
 
 const menuButton = {
   width: "100%",
-  padding: "13px 14px",
-  marginBottom: "9px",
-  border: "1px solid",
-  borderRadius: "8px",
+  padding: "12px 14px",
+  marginBottom: "6px",
+  border: "1px solid transparent",
+  borderRadius: "10px",
   cursor: "pointer",
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
   gap: "10px",
   textAlign: "left",
-  fontWeight: 900,
-  transition: "background 160ms ease, border-color 160ms ease, color 160ms ease",
+  fontWeight: 700,
+  fontSize: "0.88rem",
+  transition: "all 180ms ease",
 };
 
 const menuCountStyle = {
@@ -2670,10 +3100,11 @@ const opsStatsGridStyle = {
 
 const card = {
   background: ADMIN_BLUE_PANEL,
-  padding: "24px",
-  borderRadius: "10px",
+  padding: "28px",
+  borderRadius: "16px",
   border: `1px solid ${ADMIN_BLUE_BORDER}`,
-  boxShadow: "0 18px 36px rgba(0, 0, 0, 0.2)",
+  boxShadow: "0 20px 40px rgba(0, 0, 0, 0.25)",
+  backdropFilter: "blur(12px)",
 };
 
 const listCard = {
@@ -2704,12 +3135,13 @@ const statsGrid = {
 };
 
 const statCard = {
-  background: ADMIN_BLUE_PANEL_DARK,
-  padding: "16px",
-  borderRadius: "8px",
+  background: "linear-gradient(135deg, rgba(11, 42, 102, 0.95), rgba(7, 31, 78, 0.9))",
+  padding: "20px",
+  borderRadius: "14px",
   border: `1px solid ${ADMIN_BLUE_BORDER}`,
-  minHeight: "86px",
-  boxShadow: "none",
+  minHeight: "96px",
+  boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
+  transition: "transform 0.2s, box-shadow 0.2s",
 };
 
 const sectionTitleWrapStyle = {
@@ -2728,7 +3160,9 @@ const sectionKickerStyle = {
 const sectionTitleStyle = {
   margin: 0,
   color: "white",
-  fontSize: "1.65rem",
+  fontSize: "1.75rem",
+  fontWeight: 800,
+  letterSpacing: "-0.02em",
 };
 
 const sectionSubtitleStyle = {

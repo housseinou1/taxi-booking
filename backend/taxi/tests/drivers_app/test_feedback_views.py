@@ -38,6 +38,8 @@ def _register_driver():
         "email": faker.email(),
         "password": f"Test@{faker.numerify('####')}Ab",
         "user_type": "driver",
+        "phone_number": f"+2222{faker.numerify('#######')}",
+        "national_id_number": f"9{faker.numerify('#########')}",
     }
     reg = client.post(REGISTER_URL, payload)
     assert reg.status_code == 201, f"Registration failed: {reg.data}"

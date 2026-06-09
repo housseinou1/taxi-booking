@@ -1,4 +1,6 @@
 from datetime import timedelta
+from decimal import Decimal
+import secrets
 
 from django.shortcuts import get_object_or_404
 from django.db.models import Sum
@@ -21,12 +23,24 @@ from payments.services import (
 )
 from promotions.services import PromoCodeService
 from taxi.drivers.models import DriverProfile
+from taxi.security.abuse import rate_limit, validate_coordinates
+from locations.services import calculate_city_fare, resolve_city
 
 from .models import Ride, RideStop
 from .serializers import RideSerializer
 from .timeout import (
     cancel_ride_request_timeout,
     start_ride_request_timeout,
+)
+
+from notifications.push import (
+    notify_ride_accepted,
+    notify_driver_arrived,
+    notify_ride_started,
+    notify_ride_completed,
+    notify_payment_completed,
+    notify_ride_cancelled,
+    notify_new_ride_request_to_drivers,
 )
 
 
@@ -120,6 +134,14 @@ def create_initial_stops(ride, stops):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def request_ride(request):
+    retry_after = rate_limit(request, "ride-request", limit=5, window_seconds=600)
+    if retry_after:
+        return Response(
+            {"detail": "Too many ride requests. Please wait before trying again."},
+            status=status.HTTP_429_TOO_MANY_REQUESTS,
+            headers={"Retry-After": str(retry_after)},
+        )
+
     if getattr(request.user, "rider_status", "approved") != "approved":
         return Response(
             {"detail": "Rider account must be approved by admin before requesting a ride."},
@@ -162,9 +184,28 @@ def request_ride(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    distance_km = request.data.get("distance_km", request.data.get("distance", 0))
+    try:
+        distance_km = Decimal(str(request.data.get("distance_km", request.data.get("distance", 0))))
+        if distance_km < Decimal("0.1") or distance_km > Decimal("200"):
+            raise ValueError("Ride distance must be between 0.1 and 200 km.")
+        pickup_lat, pickup_lng = validate_coordinates(
+            request.data.get("pickup_lat", MARKET["default_pickup_lat"]),
+            request.data.get("pickup_lng", MARKET["default_pickup_lng"]),
+        )
+        destination_lat, destination_lng = validate_coordinates(
+            request.data.get("destination_lat", MARKET["default_destination_lat"]),
+            request.data.get("destination_lng", MARKET["default_destination_lng"]),
+        )
+    except (ValueError, TypeError) as exc:
+        return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
     ride_type = request.data.get("ride_type", "regular")
-    fare = request.data.get("fare") or calculate_fare(ride_type, distance_km)
+    city = resolve_city(
+        city_id=request.data.get("city"),
+        city_slug=request.data.get("city_slug"),
+        fallback_user=request.user,
+    )
+    fare = calculate_city_fare(city, ride_type, distance_km)
 
     referral_code = request.data.get("referral_code") or None
 
@@ -174,16 +215,11 @@ def request_ride(request):
                 rider=request.user,
                 pickup=request.data.get("pickup", MARKET["default_pickup"]),
                 destination=request.data.get("destination", MARKET["default_destination"]),
-                pickup_lat=request.data.get("pickup_lat", MARKET["default_pickup_lat"]),
-                pickup_lng=request.data.get("pickup_lng", MARKET["default_pickup_lng"]),
-                destination_lat=request.data.get(
-                    "destination_lat",
-                    MARKET["default_destination_lat"],
-                ),
-                destination_lng=request.data.get(
-                    "destination_lng",
-                    MARKET["default_destination_lng"],
-                ),
+                pickup_lat=pickup_lat,
+                pickup_lng=pickup_lng,
+                destination_lat=destination_lat,
+                destination_lng=destination_lng,
+                city=city,
                 distance_km=distance_km,
                 ride_type=ride_type,
                 fare=fare,
@@ -199,7 +235,7 @@ def request_ride(request):
     promo_code = request.data.get("promo_code")
     if promo_code:
         service = PromoCodeService()
-        validation = service.validate_code(promo_code, request.user, fare)
+        validation = service.validate_code(promo_code, request.user, fare, city=city)
         if validation.valid:
             discount_amount = validation.discount_amount
 
@@ -208,6 +244,12 @@ def request_ride(request):
 
     # Start the 30-second timeout countdown for ride acceptance
     start_ride_request_timeout(ride.id, driver_user_id=None)
+
+    # Push notification to all available drivers
+    try:
+        notify_new_ride_request_to_drivers(ride)
+    except Exception:
+        pass
 
     serializer = RideSerializer(ride, context={"request": request})
     return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -250,9 +292,14 @@ def schedule_ride(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    distance_km = request.data.get("distance_km", request.data.get("distance", 0))
+    distance_km = Decimal(str(request.data.get("distance_km", request.data.get("distance", 0))))
     ride_type = request.data.get("ride_type", "regular")
-    fare = request.data.get("fare") or calculate_fare(ride_type, distance_km)
+    city = resolve_city(
+        city_id=request.data.get("city"),
+        city_slug=request.data.get("city_slug"),
+        fallback_user=request.user,
+    )
+    fare = calculate_city_fare(city, ride_type, distance_km)
 
     try:
         with transaction.atomic():
@@ -264,6 +311,7 @@ def schedule_ride(request):
                 pickup_lng=request.data.get("pickup_lng", MARKET["default_pickup_lng"]),
                 destination_lat=request.data.get("destination_lat", MARKET["default_destination_lat"]),
                 destination_lng=request.data.get("destination_lng", MARKET["default_destination_lng"]),
+                city=city,
                 distance_km=distance_km,
                 ride_type=ride_type,
                 fare=fare,
@@ -309,10 +357,18 @@ def available_rides(request):
     if error:
         return Response({"detail": error}, status=status.HTTP_403_FORBIDDEN)
 
+    # Only show rides to online/available drivers
+    profile = DriverProfile.objects.filter(user=request.user).first()
+    if profile and not profile.is_available:
+        return Response([])
+
     rides = Ride.objects.filter(
         status="requested",
         driver__isnull=True,
-    ).order_by("-id")
+    )
+    if request.user.city_id:
+        rides = rides.filter(city_id=request.user.city_id)
+    rides = rides.order_by("-id")
 
     serializer = RideSerializer(
         rides,
@@ -328,6 +384,9 @@ def available_rides(request):
 def ride_history(request):
     if request.user.is_staff:
         rides = Ride.objects.all().order_by("-id")
+        city_id = request.query_params.get("city")
+        if city_id:
+            rides = rides.filter(city_id=city_id)
     else:
         rides = Ride.objects.filter(
             rider=request.user,
@@ -365,7 +424,21 @@ def accept_ride(request, ride_id):
     if error:
         return Response({"detail": error}, status=status.HTTP_403_FORBIDDEN)
 
+    # Driver must be online/available to accept rides
+    profile = DriverProfile.objects.filter(user=request.user).first()
+    if profile and not profile.is_available:
+        return Response(
+            {"detail": "You must be online to accept ride requests."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
     ride = get_object_or_404(Ride, id=ride_id)
+
+    if request.user.city_id and ride.city_id and request.user.city_id != ride.city_id:
+        return Response(
+            {"detail": "This ride belongs to a different city."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
 
     if ride.status != "requested":
         return Response(
@@ -406,6 +479,12 @@ def accept_ride(request, ride_id):
 
     broadcast_ride_update(ride)
 
+    # Push notification to rider
+    try:
+        notify_ride_accepted(ride.rider, ride)
+    except Exception:
+        pass
+
     serializer = RideSerializer(ride, context={"request": request})
     return Response(serializer.data)
 
@@ -426,8 +505,15 @@ def arrived_ride(request, ride_id):
         )
 
     ride.status = "driver_arrived"
-    ride.save()
+    ride.driver_arrived_at = now()
+    ride.save(update_fields=["status", "driver_arrived_at"])
     broadcast_ride_update(ride)
+
+    # Push notification to rider
+    try:
+        notify_driver_arrived(ride.rider, ride)
+    except Exception:
+        pass
 
     serializer = RideSerializer(ride, context={"request": request})
     return Response(serializer.data)
@@ -442,15 +528,58 @@ def start_ride(request, ride_id):
         driver=request.user,
     )
 
-    if ride.status not in ("driver_arriving", "driver_arrived"):
+    if ride.status != "driver_arrived":
         return Response(
             {"detail": "Ride can only be started after driver arrives."},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
+    submitted_pin = str(request.data.get("pickup_pin", "")).strip()
+    if not submitted_pin:
+        return Response(
+            {"detail": "Enter the rider's 4-digit pickup PIN before starting the ride."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if not secrets.compare_digest(submitted_pin, ride.pickup_pin):
+        return Response(
+            {"detail": "Incorrect pickup PIN. Ask the rider to confirm the PIN."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
     ride.status = "in_progress"
-    ride.save()
+    ride.pickup_pin_verified_at = now()
+
+    # Calculate waiting fee: free for 3 min, then charge per minute (max 5 min charged)
+    waiting_fee = Decimal("0")
+    if ride.driver_arrived_at:
+        waited_seconds = (now() - ride.driver_arrived_at).total_seconds()
+        free_wait_seconds = 3 * 60  # 3 minutes free
+        max_charged_seconds = 5 * 60  # max 5 minutes charged
+        per_minute_fee = Decimal("50")  # 50 MRU per minute
+
+        if waited_seconds > free_wait_seconds:
+            chargeable_seconds = min(
+                waited_seconds - free_wait_seconds,
+                max_charged_seconds
+            )
+            chargeable_minutes = Decimal(str(chargeable_seconds)) / Decimal("60")
+            waiting_fee = (chargeable_minutes * per_minute_fee).quantize(Decimal("0.01"))
+
+    ride.waiting_fee = waiting_fee
+    if waiting_fee > 0:
+        ride.fare = ride.fare + waiting_fee
+        ride.app_fee = calculate_app_fee(ride.fare)
+        ride.driver_earning = ride.fare - ride.app_fee
+
+    ride.save(update_fields=["status", "pickup_pin_verified_at", "waiting_fee", "fare", "app_fee", "driver_earning"])
     broadcast_ride_update(ride)
+
+    # Push notification to rider
+    try:
+        notify_ride_started(ride.rider, ride)
+    except Exception:
+        pass
 
     serializer = RideSerializer(ride, context={"request": request})
     return Response(serializer.data)
@@ -526,6 +655,14 @@ def complete_ride(request, ride_id):
 
     broadcast_ride_update(ride)
 
+    # Push notifications for ride completion
+    try:
+        notify_ride_completed(ride.rider, ride)
+        if ride.driver:
+            notify_payment_completed(ride.driver, ride)
+    except Exception:
+        pass
+
     serializer = RideSerializer(ride, context={"request": request})
     return Response(serializer.data)
 
@@ -553,8 +690,36 @@ def cancel_ride(request, ride_id):
 
     cancellation_reason = request.data.get("reason", "")
 
+    # Determine who is cancelling
+    if request.user.is_staff:
+        cancelled_by = "admin"
+    elif ride.rider_id == request.user.id:
+        cancelled_by = "rider"
+    else:
+        cancelled_by = "driver"
+
+    # Calculate cancellation fee
+    # Rider cancellation: fee applies if driver was already assigned and arriving/arrived
+    # Driver cancellation: fee applies if rider was already waiting
+    cancellation_fee = Decimal("0")
+
+    if cancelled_by == "rider" and ride.driver is not None:
+        # Rider cancels after driver accepted — charge rider
+        if ride.status in ["driver_arriving", "driver_arrived"]:
+            cancellation_fee = Decimal("100")  # 100 MRU cancellation fee
+    elif cancelled_by == "driver" and ride.status in ["driver_arriving", "driver_arrived"]:
+        # Driver cancels after accepting — charge driver
+        cancellation_fee = Decimal("150")  # 150 MRU penalty for driver
+
     ride.status = "cancelled"
-    ride.save()
+    ride.cancelled_at = now()
+    ride.cancelled_by = cancelled_by
+    ride.cancellation_reason = cancellation_reason
+    ride.cancellation_fee = cancellation_fee
+    ride.save(update_fields=[
+        "status", "cancelled_at", "cancelled_by",
+        "cancellation_reason", "cancellation_fee",
+    ])
 
     # Cancel any active timeout timer for this ride
     cancel_ride_request_timeout(ride.id)
@@ -562,11 +727,18 @@ def cancel_ride(request, ride_id):
     cancel_ride_payment(ride)
     broadcast_ride_update(ride)
 
+    # Push notification to the other party
+    try:
+        notify_ride_cancelled(request.user, ride, cancelled_by)
+    except Exception:
+        pass
+
     serializer = RideSerializer(ride, context={"request": request})
     data = serializer.data
     data["cancellation_reason"] = cancellation_reason
-    data["cancellation_fee"] = "0.00"
-    data["refund_status"] = "Authorization released or no charge captured"
+    data["cancelled_by"] = cancelled_by
+    data["cancellation_fee"] = str(cancellation_fee)
+    data["refund_status"] = "Authorization released" if cancellation_fee == 0 else f"Cancellation fee: {cancellation_fee} MRU"
     return Response(data)
 
 

@@ -14,7 +14,7 @@ export { isNative, getPlatform, getAppType, shouldShowInstallButton } from './pl
 export { setToken, getToken, removeToken } from './storage';
 
 // Push notifications
-export { initPushNotifications, getRouteFromNotification } from './push';
+export { initPushNotifications, unregisterPushNotifications, getRouteFromNotification } from './push';
 
 // Location and GPS
 export {

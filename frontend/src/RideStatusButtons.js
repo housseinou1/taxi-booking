@@ -3,6 +3,7 @@ import { API_URL } from "./apiConfig";
 
 function RideStatusButtons({ ride, onStatusChange }) {
   const [workingAction, setWorkingAction] = useState("");
+  const [pickupPin, setPickupPin] = useState("");
   const [navigationStarted, setNavigationStarted] = useState(() =>
     localStorage.getItem(`ride_${ride.id}_navigation_started`) === "true"
   );
@@ -49,6 +50,7 @@ function RideStatusButtons({ ride, onStatusChange }) {
           "Content-Type": "application/json",
           Authorization: `Bearer ${localStorage.getItem("access")}`,
         },
+        body: JSON.stringify(endpoint === "start" ? { pickup_pin: pickupPin } : {}),
       });
 
       const data = await response.json();
@@ -58,6 +60,7 @@ function RideStatusButtons({ ride, onStatusChange }) {
         return;
       }
 
+      if (endpoint === "start") setPickupPin("");
       if (onStatusChange) onStatusChange(data);
     } catch (error) {
       console.error(error);
@@ -133,14 +136,37 @@ function RideStatusButtons({ ride, onStatusChange }) {
       )}
 
       {ride.status === "driver_arrived" && (
-        <SlideRideAction
-          label="Slide to start ride"
-          completeLabel="Starting ride..."
-          color="#f97316"
-          disabled={Boolean(workingAction)}
-          isWorking={workingAction === "start"}
-          onComplete={() => updateRideStatus("start")}
-        />
+        <>
+          <div style={pickupPinCardStyle}>
+            <label htmlFor={`pickup-pin-${ride.id}`} style={pickupPinLabelStyle}>
+              Rider pickup PIN
+            </label>
+            <input
+              id={`pickup-pin-${ride.id}`}
+              value={pickupPin}
+              onChange={(event) =>
+                setPickupPin(event.target.value.replace(/\D/g, "").slice(0, 4))
+              }
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={4}
+              placeholder="4-digit PIN"
+              style={pickupPinInputStyle}
+            />
+            <span style={pickupPinHelpStyle}>
+              Ask the rider for the PIN after confirming their identity.
+            </span>
+          </div>
+          <SlideRideAction
+            label="Slide to verify PIN and start"
+            completeLabel="Verifying PIN..."
+            color="#f97316"
+            disabled={Boolean(workingAction) || pickupPin.length !== 4}
+            isWorking={workingAction === "start"}
+            onComplete={() => updateRideStatus("start")}
+            onDisabledAttempt={() => alert("Enter the rider's 4-digit pickup PIN first.")}
+          />
+        </>
       )}
 
       {ride.status === "in_progress" && sortedStops.length > 0 && (
@@ -411,6 +437,43 @@ const actionRowStyle = {
   display: "grid",
   gridTemplateColumns: "1fr",
   gap: "10px",
+};
+
+const pickupPinCardStyle = {
+  display: "grid",
+  gap: "8px",
+  padding: "14px",
+  borderRadius: "14px",
+  background: "#fff7ed",
+  border: "1px solid #fed7aa",
+};
+
+const pickupPinLabelStyle = {
+  color: "#9a3412",
+  fontWeight: 950,
+  fontSize: "0.82rem",
+  textTransform: "uppercase",
+};
+
+const pickupPinInputStyle = {
+  width: "100%",
+  boxSizing: "border-box",
+  minHeight: "52px",
+  borderRadius: "12px",
+  border: "2px solid #fb923c",
+  background: "#fff",
+  color: "#111827",
+  textAlign: "center",
+  fontSize: "1.5rem",
+  fontWeight: 950,
+  letterSpacing: 0,
+};
+
+const pickupPinHelpStyle = {
+  color: "#7c2d12",
+  fontSize: "0.8rem",
+  fontWeight: 750,
+  lineHeight: 1.4,
 };
 
 const baseButtonStyle = {

@@ -1,0 +1,14 @@
+{
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "rewrites": [
+    {
+      "source": "/privacy-policy",
+      "destination": "/privacy-policy/"
+    },
+    {
+      "source": "/account-deletion",
+      "destination": "/account-deletion/"
+    }
+  ]
+}

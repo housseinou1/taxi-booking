@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from taxi.rides.models import Ride
+from notifications.push import notify_new_message
 from .models import ChatMessage
 
 
@@ -84,6 +85,14 @@ def send_message(request, ride_id):
         )
     except Exception:
         pass
+
+    recipient = ride.driver if request.user == ride.rider else ride.rider
+    if recipient:
+        try:
+            sender_name = request.user.get_full_name() or request.user.email
+            notify_new_message(recipient, sender_name, ride)
+        except Exception:
+            pass
 
     return Response(
         {

@@ -23,8 +23,8 @@
     "@capacitor/preferences": "^6.0.0",
     "@capacitor/push-notifications": "^6.0.0",
     "@capacitor/splash-screen": "^6.0.0",
-    "@capacitor-community/background-geolocation": "^3.0.0",
+    "@capacitor-community/background-geolocation": "^1.2.0",
     "capacitor-native-biometric": "^4.0.0",
-    "capacitor-secure-storage-plugin": "^0.9.0"
+    "capacitor-secure-storage-plugin": "^0.10.0"
   }
 }

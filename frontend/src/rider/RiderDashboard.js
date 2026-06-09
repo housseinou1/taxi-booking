@@ -963,7 +963,7 @@ export default function RiderDashboard() {
         <div style={floatingSummaryStyle}>
           <div style={summaryItemStyle}>
             <span style={summaryLabelStyle}>{t("riderDashboard.estimatedFare")}</span>
-            <strong>{formatMoney(fare)}</strong>
+            <strong>{destination && destination !== pickup && distance > 0 ? formatMoney(fare) : "---"}</strong>
           </div>
           <div style={summaryItemStyle}>
             <span style={summaryLabelStyle}>
@@ -1007,9 +1007,20 @@ export default function RiderDashboard() {
           </div>
           <div style={bookingFarePillStyle}>
             <span>{t("riderDashboard.estimate")}</span>
-            <strong>{formatMoney(fare)}</strong>
+            <strong>{destination && destination !== pickup && distance > 0 ? formatMoney(fare) : "---"}</strong>
           </div>
         </section>
+
+        {currentRide?.pickup_pin &&
+          ["requested", "scheduled", "driver_arriving", "driver_arrived"].includes(currentRide.status) && (
+            <section style={pickupPinCardStyle} aria-label="Pickup verification PIN">
+              <span style={pickupPinEyebrowStyle}>Pickup verification PIN</span>
+              <strong style={pickupPinValueStyle}>{currentRide.pickup_pin}</strong>
+              <span style={pickupPinRiderHelpStyle}>
+                Give this PIN only to your assigned driver after checking the car and plate number.
+              </span>
+            </section>
+          )}
 
         <nav style={quickLinksStyle} aria-label="Rider shortcuts">
           {riderQuickLinks.map((item) => (
@@ -1199,7 +1210,7 @@ export default function RiderDashboard() {
               </span>
               <span>
                 {t("riderDashboard.driverRating", {
-                  rating: Number(currentRide.driver_rating || 5).toFixed(1),
+                  rating: Number(currentRide.driver_avg_rating || currentRide.driver_rating || 5).toFixed(1),
                   trips: currentRide.completed_trips || 0,
                 })}
               </span>
@@ -1229,6 +1240,15 @@ export default function RiderDashboard() {
           <RideChat rideId={currentRide.id} onClose={() => setShowChat(false)} />
         )}
 
+        {currentRide && activeRideStatuses.has(currentRide.status) && (
+          <button
+            type="button"
+            onClick={() => setShowSafetyPanel(true)}
+            style={activeRideSosButtonStyle}
+          >
+            SOS
+          </button>
+        )}
 
         {showSafetyPanel && (
           <div style={safetyPanelWrapStyle}>
@@ -1359,9 +1379,16 @@ export default function RiderDashboard() {
             <span style={tinyLabelStyle}>{t("riderDashboard.chooseRide")}</span>
             <strong>{t("riderDashboard.fareBeforeBooking")}</strong>
           </div>
+          {!destination || destination === pickup ? (
+            <div style={fareHintStyle}>
+              <span style={fareHintIcon}>📍</span>
+              <p style={fareHintText}>{t("riderDashboard.selectDestinationForFare") || "Select your destination to see fare estimates."}</p>
+            </div>
+          ) : null}
           {Object.keys(MARKET.fare).map((type) => {
             const selected = type === rideType;
             const optionFare = calculateFare(type, distance);
+            const showFare = destination && destination !== pickup && distance > 0;
             return (
               <button
                 key={type}
@@ -1378,7 +1405,11 @@ export default function RiderDashboard() {
                   <strong>{rideName(type)}</strong>
                   <span>{rideDescription(type)} · {rideSeatsLabel(type)} · {rideEtaLabel(type)}</span>
                 </div>
-                <strong>{formatMoney(optionFare)}</strong>
+                {showFare ? (
+                  <strong style={farePriceStyle}>{formatMoney(optionFare)}</strong>
+                ) : (
+                  <span style={fareHiddenStyle}>---</span>
+                )}
               </button>
             );
           })}
@@ -2109,6 +2140,23 @@ const driverPanelStyle = {
   color: "#ffffff",
 };
 
+const activeRideSosButtonStyle = {
+  position: "fixed",
+  right: "18px",
+  bottom: "86px",
+  zIndex: 1200,
+  width: "64px",
+  height: "64px",
+  border: "3px solid #fff",
+  borderRadius: "50%",
+  background: "#dc2626",
+  color: "#fff",
+  fontWeight: 950,
+  fontSize: "18px",
+  boxShadow: "0 12px 32px rgba(220, 38, 38, 0.45)",
+  cursor: "pointer",
+};
+
 const safetyPanelWrapStyle = {
   marginBottom: "12px",
 };
@@ -2367,6 +2415,38 @@ const rideTextStyle = {
   gap: "3px",
 };
 
+const farePriceStyle = {
+  color: "#00A651",
+  fontSize: "1rem",
+};
+
+const fareHiddenStyle = {
+  color: "rgba(255,255,255,0.3)",
+  fontSize: "0.9rem",
+};
+
+const fareHintStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: "12px",
+  padding: "14px 16px",
+  borderRadius: "12px",
+  background: "rgba(255,255,255,0.04)",
+  border: "1px solid rgba(255,255,255,0.08)",
+  marginBottom: "12px",
+};
+
+const fareHintIcon = {
+  fontSize: "24px",
+};
+
+const fareHintText = {
+  margin: 0,
+  color: "rgba(255,255,255,0.6)",
+  fontSize: "0.88rem",
+  fontWeight: 600,
+};
+
 const primaryActionStyle = {
   width: "100%",
   minHeight: "54px",
@@ -2389,6 +2469,40 @@ const rideRequestNoticeStyle = {
   color: "#d1fae5",
   fontWeight: 850,
   lineHeight: 1.4,
+};
+
+const pickupPinCardStyle = {
+  display: "grid",
+  justifyItems: "center",
+  gap: "7px",
+  margin: "0 0 14px",
+  padding: "16px",
+  border: `1px solid ${RIDER_PURPLE_BORDER}`,
+  borderRadius: "18px",
+  background: "rgba(0, 166, 81, 0.14)",
+  color: "#ffffff",
+  textAlign: "center",
+};
+
+const pickupPinEyebrowStyle = {
+  color: "#fde68a",
+  fontSize: "0.78rem",
+  fontWeight: 950,
+  textTransform: "uppercase",
+};
+
+const pickupPinValueStyle = {
+  color: "#ffffff",
+  fontSize: "2rem",
+  fontWeight: 950,
+  letterSpacing: 0,
+};
+
+const pickupPinRiderHelpStyle = {
+  color: "rgba(255,255,255,0.72)",
+  fontSize: "0.82rem",
+  fontWeight: 750,
+  lineHeight: 1.45,
 };
 
 const modalBackdropStyle = {

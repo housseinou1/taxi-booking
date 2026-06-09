@@ -1,7 +1,12 @@
 from decimal import Decimal
+import secrets
 
 from django.conf import settings
 from django.db import models
+
+
+def generate_pickup_pin():
+    return f"{secrets.randbelow(10000):04d}"
 
 
 SHARE_PASSENGER_STATUS_CHOICES = [
@@ -46,6 +51,14 @@ class Ride(models.Model):
         related_name="driver_rides",
     )
 
+    city = models.ForeignKey(
+        "cities.City",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="rides",
+    )
+
     pickup = models.CharField(max_length=255)
     destination = models.CharField(max_length=255)
 
@@ -54,6 +67,14 @@ class Ride(models.Model):
 
     destination_lat = models.FloatField(default=18.0896)
     destination_lng = models.FloatField(default=-15.9754)
+
+    city = models.ForeignKey(
+        "locations.City",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="rides",
+    )
 
     ride_type = models.CharField(
         max_length=20,
@@ -89,6 +110,19 @@ class Ride(models.Model):
         max_length=30,
         choices=STATUS_CHOICES,
         default="requested",
+    )
+
+    pickup_pin = models.CharField(
+        max_length=4,
+        default=generate_pickup_pin,
+        editable=False,
+        help_text="Secret PIN the rider gives the assigned driver at pickup.",
+    )
+
+    pickup_pin_verified_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        editable=False,
     )
 
     rating = models.IntegerField(
@@ -151,12 +185,38 @@ class Ride(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     completed_at = models.DateTimeField(null=True, blank=True)
     scheduled_at = models.DateTimeField(null=True, blank=True)
+    driver_arrived_at = models.DateTimeField(null=True, blank=True)
+    waiting_fee = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text="Fee charged for rider keeping driver waiting beyond free waiting period.",
+    )
+    cancelled_at = models.DateTimeField(null=True, blank=True)
+    cancelled_by = models.CharField(
+        max_length=20,
+        blank=True,
+        default="",
+        help_text="Who cancelled: rider, driver, admin, or system.",
+    )
+    cancellation_reason = models.TextField(
+        blank=True,
+        default="",
+        help_text="Reason provided for the cancellation.",
+    )
+    cancellation_fee = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text="Fee charged to the cancelling party.",
+    )
 
     class Meta:
         indexes = [
             models.Index(fields=["status"], name="ride_status_idx"),
             models.Index(fields=["rider", "status"], name="ride_rider_status_idx"),
             models.Index(fields=["driver", "status"], name="ride_driver_status_idx"),
+            models.Index(fields=["city", "status"], name="ride_city_status_idx"),
             models.Index(fields=["-completed_at"], name="ride_completed_idx"),
             models.Index(fields=["-created_at"], name="ride_created_idx"),
         ]

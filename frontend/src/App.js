@@ -20,6 +20,7 @@ import InstallAppButton from "./InstallAppButton";
 import NotificationCenter from "./components/NotificationCenter";
 import YalaAIAssistant from "./components/YalaAIAssistant";
 import SettingsPageView from "./settings/SettingsPage";
+import SharedTripPage from "./safety/SharedTripPage";
 
 import AddPaymentMethod from "./payments/AddPaymentMethod";
 import SavedPaymentMethods from "./payments/SavedPaymentMethods";
@@ -35,6 +36,11 @@ import DeliveryAdminView from "./delivery/DeliveryAdminView";
 import { API_URL } from "./apiConfig";
 import { MARKET } from "./marketConfig";
 import { getAppType, shouldShowInstallButton } from './native/platform';
+import {
+  getRouteFromNotification,
+  initPushNotifications,
+  unregisterPushNotifications,
+} from './native/push';
 
 const LOGO_SRC = "/yala-logo.png";
 
@@ -66,6 +72,14 @@ function App() {
   const [selectedRide, setSelectedRide] = useState(null);
   const [sessionChecked, setSessionChecked] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(hasValidAccessToken());
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    initPushNotifications((data) => {
+      const route = getRouteFromNotification(data, getAppType());
+      if (route) window.location.href = route;
+    }, API_URL);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     // Route filtering for native apps — redirect to default if route not allowed
@@ -107,6 +121,7 @@ function App() {
     else if (currentPath === "/terms") setPage("terms");
     else if (currentPath === "/privacy") setPage("privacy");
     else if (currentPath === "/support") setPage("support");
+    else if (currentPath.match(/^\/trip-share\/[^/]+$/)) setPage("shared-trip");
     else setPage("home");
   }, [currentPath]);
 
@@ -202,7 +217,8 @@ function App() {
     window.location.href = "/";
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await unregisterPushNotifications(API_URL);
     clearAuthSession();
     window.location.href = "/";
   };
@@ -218,6 +234,9 @@ function App() {
 
   if (page === "login") return withInstall(<Login />, { showNotifications: false });
   if (page === "register") return withInstall(<Register />, { showNotifications: false });
+  if (page === "shared-trip") {
+    return <SharedTripPage token={currentPath.split("/").filter(Boolean).pop()} />;
+  }
 
   if (isProtectedPage(page)) {
     if (!sessionChecked) {

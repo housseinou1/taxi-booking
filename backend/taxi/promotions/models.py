@@ -90,6 +90,15 @@ class PromoCode(models.Model):
     max_per_rider_uses = models.PositiveIntegerField(null=True, blank=True)  # null = unlimited
     min_fare = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
+    city = models.ForeignKey(
+        "locations.City",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="promo_codes",
+        help_text="Optional city restriction. Blank means available in every city.",
+    )
+
     first_ride_only = models.BooleanField(default=False)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="active")
 
@@ -126,9 +135,12 @@ class PromoCodeUsage(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        # A rider can use the same code multiple times if allowed,
-        # so no unique_together constraint is applied.
-        pass
+        constraints = [
+            models.UniqueConstraint(
+                fields=["promo_code", "ride"],
+                name="unique_promo_code_per_ride",
+            ),
+        ]
 
     def __str__(self):
         return f"{self.rider} used {self.promo_code} on ride {self.ride_id}"

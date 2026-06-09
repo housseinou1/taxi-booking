@@ -209,15 +209,20 @@ class TestUploadDocument:
         file.name = "license.pdf"
         file.size = 1024
         file.content_type = "application/pdf"
+        issued = date.today() - timedelta(days=365)
+        expires = date.today() + timedelta(days=365)
 
-        result = self.service.upload_document(driver, "license", file)
+        result = self.service.upload_document(
+            driver, "license", file, issued_at=issued, expires_at=expires
+        )
 
         mock_objects.create.assert_called_once_with(
             driver=driver,
             document_type="license",
             file=file,
             status="pending_review",
-            expires_at=None,
+            issued_at=issued,
+            expires_at=expires,
         )
         assert result == mock_doc
 
@@ -232,14 +237,20 @@ class TestUploadDocument:
         file.name = "new_license.jpg"
         file.size = 2048
         file.content_type = "image/jpeg"
+        issued = date.today() - timedelta(days=365)
+        expires = date.today() + timedelta(days=365)
 
-        result = self.service.upload_document(driver, "license", file)
+        result = self.service.upload_document(
+            driver, "license", file, issued_at=issued, expires_at=expires
+        )
 
         assert existing_doc.file == file
         assert existing_doc.status == "pending_review"
         assert existing_doc.rejection_reason == ""
         assert existing_doc.reviewed_at is None
         assert existing_doc.reviewed_by is None
+        assert existing_doc.issued_at == issued
+        assert existing_doc.expires_at == expires
         existing_doc.save.assert_called_once()
         assert result == existing_doc
 
@@ -277,10 +288,11 @@ class TestUploadDocument:
         file.name = "license.pdf"
         file.size = 1024
         file.content_type = "application/pdf"
+        issued = date.today() - timedelta(days=365)
         expires = date.today() + timedelta(days=365)
 
         result = self.service.upload_document(
-            driver, "license", file, expires_at=expires
+            driver, "license", file, issued_at=issued, expires_at=expires
         )
 
         mock_objects.create.assert_called_once_with(
@@ -288,6 +300,7 @@ class TestUploadDocument:
             document_type="license",
             file=file,
             status="pending_review",
+            issued_at=issued,
             expires_at=expires,
         )
 
@@ -448,8 +461,8 @@ class TestGetExpiredOrMissing:
         driver = MagicMock()
         result = self.service.get_expired_or_missing(driver)
 
-        # All 5 required documents should be missing
-        assert len(result) == 5
+        # All 6 required documents should be missing
+        assert len(result) == 6
         assert all(alert.reason == "missing" for alert in result)
 
     @patch("taxi.drivers.services.document_service.DriverDocument.objects")
@@ -466,7 +479,7 @@ class TestGetExpiredOrMissing:
         driver = MagicMock()
         result = self.service.get_expired_or_missing(driver)
 
-        assert len(result) == 5
+        assert len(result) == 6
         assert all(alert.reason == "missing" for alert in result)
 
     @patch("taxi.drivers.services.document_service.DriverDocument.objects")
@@ -483,7 +496,7 @@ class TestGetExpiredOrMissing:
         driver = MagicMock()
         result = self.service.get_expired_or_missing(driver)
 
-        assert len(result) == 5
+        assert len(result) == 6
         assert all(alert.reason == "expired" for alert in result)
         assert all(alert.expires_at == expired_doc.expires_at for alert in result)
 
@@ -539,13 +552,14 @@ class TestGetExpiredOrMissing:
 class TestRequiredDocumentTypes:
     """Tests for REQUIRED_DOCUMENT_TYPES constant."""
 
-    def test_all_five_types_present(self):
-        """All 5 required document types are defined."""
-        assert len(REQUIRED_DOCUMENT_TYPES) == 5
+    def test_all_six_types_present(self):
+        """All 6 required document types are defined."""
+        assert len(REQUIRED_DOCUMENT_TYPES) == 6
         assert "license" in REQUIRED_DOCUMENT_TYPES
         assert "national_id" in REQUIRED_DOCUMENT_TYPES
         assert "insurance" in REQUIRED_DOCUMENT_TYPES
-        assert "vehicle_registration" in REQUIRED_DOCUMENT_TYPES
+        assert "carte_grise" in REQUIRED_DOCUMENT_TYPES
+        assert "vignette" in REQUIRED_DOCUMENT_TYPES
         assert "profile_photo" in REQUIRED_DOCUMENT_TYPES
 
 

@@ -3,6 +3,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 
 from taxi.drivers.models import DriverProfile
+from locations.models import City
 from .validators import (
     normalize_mauritania_phone,
     normalize_national_id,
@@ -52,6 +53,10 @@ class RegisterSerializer(serializers.ModelSerializer):
         choices=["rider", "driver"],
         write_only=True
     )
+    city = serializers.PrimaryKeyRelatedField(
+        queryset=City.objects.filter(is_active=True),
+        write_only=True,
+    )
 
     class Meta:
         model = User
@@ -66,6 +71,7 @@ class RegisterSerializer(serializers.ModelSerializer):
             "national_id_document",
             "password",
             "user_type",
+            "city",
             "profile_picture",
         ]
 
@@ -139,6 +145,7 @@ class RegisterSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         user_type = validated_data.pop("user_type")
         password = validated_data.pop("password")
+        city = validated_data.pop("city")
         profile_picture = validated_data.pop("profile_picture", None)
         national_id_document = validated_data.pop("national_id_document", None)
 
@@ -150,6 +157,7 @@ class RegisterSerializer(serializers.ModelSerializer):
             phone_number=validated_data.get("phone_number", ""),
             national_id_number=validated_data.get("national_id_number", ""),
             national_id_document=national_id_document,
+            city=city,
             user_type=user_type,
             rider_status="pending" if user_type == "rider" else "approved",
             profile_picture=profile_picture,

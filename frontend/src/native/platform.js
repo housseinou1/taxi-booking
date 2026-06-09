@@ -3,11 +3,8 @@
  * Gracefully degrades when running in a browser without Capacitor installed.
  */
 
-let CapacitorModule = null;
-try {
-  CapacitorModule = require('@capacitor/core');
-} catch {
-  // Not in native environment — Capacitor not installed
+function getCapacitor() {
+  return typeof window !== "undefined" ? window.Capacitor : null;
 }
 
 /**
@@ -15,15 +12,16 @@ try {
  * Returns false in browser/PWA mode.
  */
 export function isNative() {
-  return CapacitorModule?.Capacitor?.isNativePlatform?.() || false;
+  return getCapacitor()?.isNativePlatform?.() || false;
 }
 
 /**
  * Returns the current platform: 'ios', 'android', or 'web'.
  */
 export function getPlatform() {
-  if (CapacitorModule?.Capacitor?.getPlatform) {
-    return CapacitorModule.Capacitor.getPlatform();
+  const capacitor = getCapacitor();
+  if (capacitor?.getPlatform) {
+    return capacitor.getPlatform();
   }
   return 'web';
 }

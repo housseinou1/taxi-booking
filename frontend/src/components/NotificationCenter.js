@@ -27,15 +27,23 @@ function NotificationCenter() {
       const nextNotifications = await buildNotifications();
       if (!cancelled) {
         setNotifications(nextNotifications);
+        const backendReadIds = nextNotifications
+          .filter((item) => item.backendId && item.isRead)
+          .map((item) => item.id);
+        if (backendReadIds.length) {
+          setReadIds((current) => Array.from(new Set([...current, ...backendReadIds])));
+        }
       }
     };
 
     loadNotifications();
     const intervalId = window.setInterval(loadNotifications, POLL_INTERVAL_MS);
+    window.addEventListener("yala:push-received", loadNotifications);
 
     return () => {
       cancelled = true;
       window.clearInterval(intervalId);
+      window.removeEventListener("yala:push-received", loadNotifications);
     };
   }, []);
 
@@ -57,16 +65,22 @@ function NotificationCenter() {
     const nextReadIds = Array.from(new Set(notifications.map((item) => item.id)));
     setReadIds(nextReadIds);
     localStorage.setItem(READ_KEY, JSON.stringify(nextReadIds));
+    markBackendNotificationsRead(
+      notifications.map((item) => item.backendId).filter(Boolean)
+    );
   };
 
-  const markOneRead = (notificationId) => {
+  const markOneRead = (notificationId, backendId) => {
     const nextReadIds = Array.from(new Set([...readIds, notificationId]));
     setReadIds(nextReadIds);
     localStorage.setItem(READ_KEY, JSON.stringify(nextReadIds));
+    if (backendId) {
+      markBackendNotificationsRead([backendId]);
+    }
   };
 
   const openNotification = (item) => {
-    markOneRead(item.id);
+    markOneRead(item.id, item.backendId);
 
     if (item.url) {
       window.location.href = item.url;
@@ -163,6 +177,19 @@ async function buildNotifications() {
     };
 
     try {
+      const historyResponse = await axios.get(`${API_URL}/notifications/history/`, {
+        headers,
+      });
+      const history = Array.isArray(historyResponse.data) ? historyResponse.data : [];
+
+      if (history.length) {
+        return history.slice(0, 20).map(notificationFromHistory);
+      }
+    } catch (error) {
+      console.log("Notification history load error:", error.response?.data || error);
+    }
+
+    try {
       const [ridesResponse, paymentsResponse] = await Promise.allSettled([
         axios.get(`${API_URL}/rides/history/`, { headers }),
         axios.get(`${API_URL}/payments/my-payments/`, { headers }),
@@ -218,6 +245,42 @@ async function buildNotifications() {
   return [...items, ...baseline]
     .sort((first, second) => Number(second.rank || 0) - Number(first.rank || 0))
     .slice(0, 12);
+}
+
+function notificationFromHistory(item) {
+  return {
+    id: `history-${item.id}`,
+    backendId: item.id,
+    type: notificationIconType(item.type),
+    title: item.title,
+    message: item.body,
+    time: formatNotificationDate(item.created_at),
+    url: item.deep_link || item.data?.deep_link || "/",
+    isRead: Boolean(item.is_read),
+    rank: new Date(item.created_at || 0).getTime(),
+  };
+}
+
+function notificationIconType(type = "") {
+  if (type.includes("payment") || type.includes("completed")) return "payment";
+  if (type.includes("arriv") || type.includes("accepted")) return "arrival";
+  if (type.includes("chat") || type.includes("message")) return "push";
+  return "ride";
+}
+
+async function markBackendNotificationsRead(ids) {
+  const token = localStorage.getItem("access");
+  if (!token || !ids.length) return;
+
+  try {
+    await axios.post(
+      `${API_URL}/notifications/read/`,
+      { ids },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+  } catch (error) {
+    console.log("Notification read sync error:", error.response?.data || error);
+  }
 }
 
 function notificationFromRide(ride) {

@@ -22,6 +22,8 @@ def _driver_payload(**overrides):
         "email": faker.email(),
         "password": f"{faker.email()}Ab2!",
         "user_type": "driver",
+        "phone_number": f"+2222{faker.numerify('#######')}",
+        "national_id_number": f"9{faker.numerify('#########')}",
     }
     base.update(overrides)
     return base

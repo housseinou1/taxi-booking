@@ -2,6 +2,8 @@
 .env
 .env.local
 .env.production
+firebase-service-account.json
+**/firebase-service-account.json
 
 # Virtual environments
 venv/

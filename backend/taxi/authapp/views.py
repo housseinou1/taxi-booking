@@ -23,6 +23,8 @@ from .validators import (
     validate_person_name,
 )
 from taxi.drivers.models import DriverProfile
+from taxi.security.abuse import rate_limit
+from locations.services import resolve_city
 
 User = get_user_model()
 
@@ -66,6 +68,9 @@ def build_user_response(user):
         "first_name": user.first_name,
         "last_name": user.last_name,
         "phone_number": user.phone_number or "",
+        "city": user.city_id,
+        "city_name": user.city.name if user.city else "",
+        "region_name": user.city.region.name if user.city else "",
         "is_driver": is_driver,
         "is_rider": not is_driver,
         "is_staff": user.is_staff,
@@ -107,6 +112,9 @@ def serialize_user(user):
         "last_name": user.last_name,
         "full_name": f"{user.first_name} {user.last_name}".strip() or user.email,
         "phone_number": user.phone_number or "",
+        "city": user.city_id,
+        "city_name": user.city.name if user.city else "",
+        "region_name": user.city.region.name if user.city else "",
         "user_type": "driver" if is_driver else user.user_type,
         "is_driver": is_driver,
         "is_rider": not is_driver,
@@ -144,10 +152,28 @@ class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
     permission_classes = [AllowAny]
 
+    def create(self, request, *args, **kwargs):
+        retry_after = rate_limit(request, "register", limit=5, window_seconds=3600)
+        if retry_after:
+            return Response(
+                {"error": "Too many account creation attempts. Please try again later."},
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+                headers={"Retry-After": str(retry_after)},
+            )
+        return super().create(request, *args, **kwargs)
+
 
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def login_view(request):
+    retry_after = rate_limit(request, "login", limit=10, window_seconds=900)
+    if retry_after:
+        return Response(
+            {"error": "Too many login attempts. Please try again later."},
+            status=status.HTTP_429_TOO_MANY_REQUESTS,
+            headers={"Retry-After": str(retry_after)},
+        )
+
     email = request.data.get("email", "").strip().lower()
     password = request.data.get("password", "")
 
@@ -204,6 +230,7 @@ def me(request):
 def update_identity(request):
     national_id_number = request.data.get("national_id_number", None)
     phone_number = request.data.get("phone_number", None)
+    city_id = request.data.get("city", None)
 
     if phone_number is not None:
         phone_number = normalize_mauritania_phone(phone_number)
@@ -220,6 +247,9 @@ def update_identity(request):
         if phone_number != request.user.phone_number:
             request.user.phone_verified_at = None
         request.user.phone_number = phone_number
+
+    if city_id is not None:
+        request.user.city = resolve_city(city_id=city_id)
 
     if national_id_number is not None:
         national_id_number = normalize_national_id(national_id_number)
@@ -258,6 +288,7 @@ def update_identity(request):
         "national_id_document",
         "profile_picture",
         "phone_verified_at",
+        "city",
     ])
 
     return Response({

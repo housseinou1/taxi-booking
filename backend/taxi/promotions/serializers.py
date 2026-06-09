@@ -23,6 +23,7 @@ class PromoCodeAdminSerializer(serializers.ModelSerializer):
             "max_total_uses",
             "max_per_rider_uses",
             "min_fare",
+            "city",
             "first_ride_only",
             "status",
             "created_at",
@@ -114,6 +115,7 @@ class PromoCodeListSerializer(serializers.ModelSerializer):
             "start_date",
             "end_date",
             "first_ride_only",
+            "city",
             "total_uses",
             "max_total_uses",
         ]

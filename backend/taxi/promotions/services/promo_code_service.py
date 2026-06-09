@@ -115,7 +115,7 @@ class PromoCodeService:
         final_fare = original_fare - discount_amount
         return max(final_fare, Decimal("0.00"))
 
-    def check_eligibility(self, promo: PromoCode, rider, fare: Decimal) -> EligibilityResult:
+    def check_eligibility(self, promo: PromoCode, rider, fare: Decimal, city=None) -> EligibilityResult:
         """
         Check whether a rider is eligible to use a promo code for a given fare.
 
@@ -144,6 +144,19 @@ class PromoCodeService:
                 eligible=False,
                 error_code="code_inactive",
                 message="This promo code is no longer valid.",
+            )
+
+        if promo.city_id and city and promo.city_id != city.id:
+            return EligibilityResult(
+                eligible=False,
+                error_code="city_not_eligible",
+                message="This promo code is not available in this city.",
+            )
+        if promo.city_id and not city and getattr(rider, "city_id", None) != promo.city_id:
+            return EligibilityResult(
+                eligible=False,
+                error_code="city_not_eligible",
+                message="This promo code is not available in this city.",
             )
 
         # 2. Temporal validity check
@@ -334,7 +347,7 @@ class PromoCodeService:
             referrer_credit=referrer_credit,
         )
 
-    def validate_code(self, code: str, rider, estimated_fare: Decimal) -> ValidationResult:
+    def validate_code(self, code: str, rider, estimated_fare: Decimal, city=None) -> ValidationResult:
         """
         Validate a promo code and return a discount preview for the rider.
 
@@ -365,7 +378,7 @@ class PromoCodeService:
             )
 
         # Run eligibility checks
-        eligibility = self.check_eligibility(promo, rider, estimated_fare)
+        eligibility = self.check_eligibility(promo, rider, estimated_fare, city=city)
         if not eligibility.eligible:
             return ValidationResult(
                 valid=False,
@@ -394,8 +407,8 @@ class PromoCodeService:
         race condition safety, calculates the final discount based on actual fare,
         and creates a PromoCodeUsage record.
 
-        Per Requirement 6.3, ride completion proceeds even if usage record
-        creation fails.
+        The discount fails closed if its usage record cannot be created, which
+        prevents unrecorded reuse.
 
         Args:
             code: The promo code string.
@@ -422,8 +435,18 @@ class PromoCodeService:
                     message="Promo code not found.",
                 )
 
+            if PromoCodeUsage.objects.filter(promo_code=promo, ride=ride).exists():
+                return ApplicationResult(
+                    success=False,
+                    original_fare=actual_fare,
+                    discount_amount=Decimal("0"),
+                    final_fare=actual_fare,
+                    error_code="already_applied",
+                    message="This promo code has already been applied to this ride.",
+                )
+
             # Re-validate eligibility at apply time
-            eligibility = self.check_eligibility(promo, rider, actual_fare)
+            eligibility = self.check_eligibility(promo, rider, actual_fare, city=ride.city)
             if not eligibility.eligible:
                 return ApplicationResult(
                     success=False,
@@ -438,8 +461,7 @@ class PromoCodeService:
             discount_amount = self.calculate_discount(promo, actual_fare)
             final_fare = self.compute_final_fare(actual_fare, discount_amount)
 
-            # Create PromoCodeUsage record
-            # Ride completion proceeds even if usage record creation fails (Requirement 6.3)
+            # Create the usage record before returning a valid discount.
             try:
                 PromoCodeUsage.objects.create(
                     promo_code=promo,
@@ -453,10 +475,18 @@ class PromoCodeService:
             except Exception:
                 logger.exception(
                     "Failed to create PromoCodeUsage record for code=%s, rider=%s, ride=%s. "
-                    "Ride completion proceeds normally.",
+                    "Discount was rejected to prevent unrecorded reuse.",
                     code,
                     rider,
                     ride,
+                )
+                return ApplicationResult(
+                    success=False,
+                    original_fare=actual_fare,
+                    discount_amount=Decimal("0"),
+                    final_fare=actual_fare,
+                    error_code="usage_record_failed",
+                    message="The promo code could not be applied. Please try again.",
                 )
 
         return ApplicationResult(

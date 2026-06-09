@@ -179,6 +179,7 @@ function SmoothMarker({ marker }) {
   const map = React.useContext(GoogleMapContext);
   const markerRef = React.useRef(null);
   const animationRef = React.useRef(null);
+  const prevPositionRef = React.useRef(null);
   const position = toLatLng(marker.position);
   const positionKey = position ? `${position.lat},${position.lng}` : "";
   const latestPositionRef = React.useRef(position);
@@ -270,6 +271,22 @@ function SmoothMarker({ marker }) {
       };
 
       markerRef.current?.setPosition(next);
+
+      // Rotate driver marker based on travel direction
+      if (markerType === "driver" && markerRef.current) {
+        const prevPos = prevPositionRef.current;
+        if (prevPos && (prevPos.lat !== next.lat || prevPos.lng !== next.lng)) {
+          const bearing = Math.atan2(
+            next.lng - prevPos.lng,
+            next.lat - prevPos.lat
+          ) * (180 / Math.PI);
+          const icon = markerRef.current.getIcon();
+          if (icon && typeof icon === "object") {
+            markerRef.current.setIcon({ ...icon, rotation: bearing });
+          }
+        }
+        prevPositionRef.current = next;
+      }
 
       if (progress < 1) {
         animationRef.current = window.requestAnimationFrame(step);

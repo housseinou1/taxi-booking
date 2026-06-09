@@ -15,6 +15,7 @@ from authapp.validators import (
     validate_plate_number,
     validate_vehicle_value,
 )
+from taxi.security.abuse import rate_limit, validate_driver_location
 
 
 def get_or_create_driver_profile(user):
@@ -29,6 +30,15 @@ def get_or_create_driver_profile(user):
         },
     )
     return profile
+
+
+def duplicate_driver_identity(profile, phone_number, plate_number):
+    profiles = DriverProfile.objects.exclude(pk=profile.pk)
+    if phone_number and profiles.filter(phone_number=phone_number).exists():
+        return "This phone number is already linked to another driver profile."
+    if plate_number and profiles.filter(plate_number__iexact=plate_number).exists():
+        return "This vehicle plate is already linked to another driver profile."
+    return ""
 
 
 def file_url(request, field):
@@ -191,6 +201,9 @@ def serialize_driver(profile, request):
         "vehicle_plate": profile.vehicle_plate or profile.plate_number,
         "plate_number": profile.plate_number or profile.vehicle_plate,
         "phone_number": profile.phone_number,
+        "city": profile.user.city_id,
+        "city_name": profile.user.city.name if profile.user.city else "",
+        "region_name": profile.user.city.region.name if profile.user.city else "",
         "national_id_number": profile.user.national_id_number or "",
         "national_id_document": file_url(request, profile.user.national_id_document),
         "has_national_id_document": bool(profile.user.national_id_document),
@@ -403,17 +416,33 @@ def toggle_availability(request):
 def update_location(request):
     profile = get_or_create_driver_profile(request.user)
 
-    profile.current_lat = request.data.get(
+    retry_after = rate_limit(request, "driver-location", limit=30, window_seconds=60)
+    if retry_after:
+        return Response(
+            {"error": "Too many location updates."},
+            status=status.HTTP_429_TOO_MANY_REQUESTS,
+            headers={"Retry-After": str(retry_after)},
+        )
+
+    latitude = request.data.get(
         "current_lat",
         request.data.get("latitude", profile.current_lat),
     )
-
-    profile.current_lng = request.data.get(
+    longitude = request.data.get(
         "current_lng",
         request.data.get("longitude", profile.current_lng),
     )
 
-    profile.save()
+    try:
+        profile.current_lat, profile.current_lng = validate_driver_location(
+            profile, latitude, longitude
+        )
+    except ValueError as exc:
+        return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+    profile.driver_lat = profile.current_lat
+    profile.driver_lng = profile.current_lng
+    profile.save(update_fields=["current_lat", "current_lng", "driver_lat", "driver_lng"])
 
     return Response({
         "message": "Driver location updated",
@@ -467,6 +496,11 @@ def register_driver(request):
         request.data.get("plate_number", profile.plate_number)
     )
     profile.vehicle_plate = profile.plate_number
+    duplicate_error = duplicate_driver_identity(
+        profile, profile.phone_number, profile.plate_number
+    )
+    if duplicate_error:
+        return Response({"error": duplicate_error}, status=400)
 
     required_documents = {
         "driver photo": request.FILES.get("driver_photo") or profile.driver_photo,
@@ -577,6 +611,12 @@ def update_driver_profile(request):
         plate_number = validate_plate_number(plate_number)
         profile.vehicle_plate = plate_number
         profile.plate_number = plate_number
+
+    duplicate_error = duplicate_driver_identity(
+        profile, profile.phone_number, profile.plate_number
+    )
+    if duplicate_error:
+        return Response({"error": duplicate_error}, status=400)
 
     for field in [
         "driver_photo",
@@ -757,4 +797,24 @@ def update_driver_category(request, driver_id):
     return Response({
         "message": "Driver category updated",
         "driver": serialize_driver(profile, request),
+    })
+
+
+@api_view(["DELETE"])
+@permission_classes([IsAdminUser])
+def delete_driver(request, driver_id):
+    """Permanently remove a driver and their user account from the system."""
+    profile = get_object_or_404(DriverProfile, id=driver_id)
+    user = profile.user
+    driver_name = f"{user.first_name} {user.last_name}".strip() or user.email
+
+    # Delete the driver profile (cascades documents, settings, etc.)
+    profile.delete()
+
+    # Delete the user account
+    user.delete()
+
+    return Response({
+        "message": f"Driver '{driver_name}' has been permanently removed from the system.",
+        "deleted_driver_id": driver_id,
     })

@@ -70,6 +70,14 @@ class User(AbstractUser):
         default="",
     )
 
+    city = models.ForeignKey(
+        "locations.City",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="users",
+    )
+
     user_type = models.CharField(
         max_length=20,
         choices=USER_TYPES,
@@ -103,6 +111,14 @@ class User(AbstractUser):
         upload_to="users/profile_pictures/",
         null=True,
         blank=True,
+    )
+
+    city = models.ForeignKey(
+        "cities.City",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="users",
     )
 
     USERNAME_FIELD = "email"

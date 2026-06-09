@@ -32,7 +32,7 @@ class RideSerializer(serializers.ModelSerializer):
     vehicle = serializers.SerializerMethodField()
     plate_number = serializers.SerializerMethodField()
     driver_picture = serializers.SerializerMethodField()
-    driver_rating = serializers.SerializerMethodField()
+    driver_avg_rating = serializers.SerializerMethodField()
     completed_trips = serializers.SerializerMethodField()
     driver_category = serializers.SerializerMethodField()
     driver_category_label = serializers.SerializerMethodField()
@@ -51,9 +51,13 @@ class RideSerializer(serializers.ModelSerializer):
     payment_tip_amount = serializers.SerializerMethodField()
     private_call_number = serializers.SerializerMethodField()
     call_privacy_note = serializers.SerializerMethodField()
+    city_name = serializers.SerializerMethodField()
+    region_name = serializers.SerializerMethodField()
     stops = serializers.SerializerMethodField()
     has_stops = serializers.SerializerMethodField()
     stop_count = serializers.SerializerMethodField()
+    pickup_pin = serializers.SerializerMethodField()
+    pickup_pin_verified = serializers.SerializerMethodField()
 
     class Meta:
         model = Ride
@@ -63,6 +67,19 @@ class RideSerializer(serializers.ModelSerializer):
         if obj.driver and hasattr(obj.driver, "driver_profile"):
             return obj.driver.driver_profile
         return None
+
+    def get_pickup_pin(self, obj):
+        request = self.context.get("request")
+        if (
+            request
+            and request.user == obj.rider
+            and obj.status not in ("completed", "cancelled")
+        ):
+            return obj.pickup_pin
+        return ""
+
+    def get_pickup_pin_verified(self, obj):
+        return bool(obj.pickup_pin_verified_at)
 
     def get_driver_name(self, obj):
         if obj.driver:
@@ -106,7 +123,7 @@ class RideSerializer(serializers.ModelSerializer):
 
         return profile.driver_photo.url
 
-    def get_driver_rating(self, obj):
+    def get_driver_avg_rating(self, obj):
         if not obj.driver:
             return 0
 
@@ -204,6 +221,12 @@ class RideSerializer(serializers.ModelSerializer):
         if obj.rider and obj.driver:
             return MARKET["private_call_number"]
         return ""
+
+    def get_city_name(self, obj):
+        return obj.city.name if obj.city else ""
+
+    def get_region_name(self, obj):
+        return obj.city.region.name if obj.city else ""
 
     def get_call_privacy_note(self, obj):
         return "Calls use the Sakho Express private number. Real rider and driver numbers are hidden."
