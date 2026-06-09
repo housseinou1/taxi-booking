@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     "safety",
     "cities",
     "features",
+    "intercity",
 ]
 
 MIDDLEWARE = [

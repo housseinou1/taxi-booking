@@ -42,6 +42,8 @@ urlpatterns = [
     path("cities/", include("cities.urls")),
 
     path("features/", include("features.urls")),
+
+    path("intercity/", include("intercity.urls")),
 ]
 
 
