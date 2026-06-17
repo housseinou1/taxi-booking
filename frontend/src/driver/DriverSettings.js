@@ -473,6 +473,7 @@ const containerStyle = {
   backgroundColor: COLORS.darkNavy,
   padding: "24px 16px 80px",
   overflowY: "auto",
+  fontFamily: "'Plus Jakarta Sans', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
 };
 
 const mauritaniaAccentBarStyle = {
@@ -494,13 +495,14 @@ const headerStyle = {
 const titleStyle = {
   color: COLORS.white,
   fontSize: "24px",
-  fontWeight: 900,
+  fontWeight: 800,
   margin: "0 0 4px",
 };
 
 const subtitleStyle = {
   color: COLORS.lightGray,
   fontSize: "14px",
+  fontWeight: 500,
   margin: 0,
 };
 
@@ -541,7 +543,7 @@ const errorTextStyle = {
 
 const retryButtonStyle = {
   padding: "10px 24px",
-  borderRadius: "12px",
+  borderRadius: "999px",
   border: "none",
   backgroundColor: COLORS.primaryGreen,
   color: COLORS.white,
@@ -596,7 +598,7 @@ const languageButtonStyle = {
   justifyContent: "center",
   gap: "4px",
   padding: "14px 8px",
-  borderRadius: "12px",
+  borderRadius: "14px",
   borderWidth: "1px",
   borderStyle: "solid",
   borderColor: COLORS.cardBorder,
@@ -639,7 +641,7 @@ const gpsButtonStyle = {
   justifyContent: "center",
   gap: "6px",
   padding: "16px 12px",
-  borderRadius: "12px",
+  borderRadius: "14px",
   borderWidth: "1px",
   borderStyle: "solid",
   borderColor: COLORS.cardBorder,
@@ -741,7 +743,7 @@ const securityDescStyle = {
 
 const securityButtonStyle = {
   padding: "8px 16px",
-  borderRadius: "8px",
+  borderRadius: "999px",
   border: `1px solid ${COLORS.goldAccent}`,
   backgroundColor: "transparent",
   color: COLORS.goldAccent,
@@ -818,7 +820,7 @@ const modalActionsStyle = {
 
 const modalCancelButtonStyle = {
   padding: "10px 18px",
-  borderRadius: "10px",
+  borderRadius: "999px",
   border: `1px solid ${COLORS.cardBorder}`,
   backgroundColor: "transparent",
   color: COLORS.lightGray,
@@ -829,7 +831,7 @@ const modalCancelButtonStyle = {
 
 const modalSaveButtonStyle = {
   padding: "10px 18px",
-  borderRadius: "10px",
+  borderRadius: "999px",
   border: "none",
   backgroundColor: COLORS.primaryGreen,
   color: COLORS.white,
@@ -840,7 +842,7 @@ const modalSaveButtonStyle = {
 
 const modalRemoveButtonStyle = {
   padding: "10px 18px",
-  borderRadius: "10px",
+  borderRadius: "999px",
   border: "none",
   backgroundColor: COLORS.errorRed,
   color: COLORS.white,
@@ -858,7 +860,7 @@ const toastStyle = {
   left: "50%",
   transform: "translateX(-50%)",
   padding: "12px 24px",
-  borderRadius: "12px",
+  borderRadius: "14px",
   color: COLORS.white,
   fontWeight: 700,
   fontSize: "13px",
