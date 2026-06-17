@@ -337,6 +337,7 @@ const containerStyle = {
   backgroundColor: COLORS.darkNavy,
   padding: "24px 16px 80px",
   overflowY: "auto",
+  fontFamily: "'Plus Jakarta Sans', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
 };
 
 const mauritaniaAccentBarStyle = {
@@ -385,7 +386,7 @@ const errorTextStyle = {
 
 const retryButtonStyle = {
   padding: "10px 24px",
-  borderRadius: "12px",
+  borderRadius: "999px",
   border: "none",
   backgroundColor: COLORS.primaryGreen,
   color: COLORS.white,
@@ -403,14 +404,15 @@ const headerStyle = {
 
 const pageTitleStyle = {
   color: COLORS.white,
-  fontSize: "24px",
-  fontWeight: 900,
+  fontSize: "26px",
+  fontWeight: 800,
   margin: "0 0 6px",
 };
 
 const pageSubtitleStyle = {
   color: COLORS.lightGray,
-  fontSize: "13px",
+  fontSize: "14px",
+  fontWeight: 500,
   margin: 0,
   lineHeight: 1.4,
 };
@@ -435,9 +437,8 @@ const currentLevelHeaderStyle = {
 
 const currentLevelLabelStyle = {
   color: COLORS.lightGray,
-  fontSize: "12px",
+  fontSize: "13px",
   fontWeight: 700,
-  textTransform: "uppercase",
 };
 
 const progressSectionStyle = {
@@ -495,7 +496,7 @@ const sectionStyle = {
 
 const sectionTitleStyle = {
   color: COLORS.white,
-  fontSize: "18px",
+  fontSize: "19px",
   fontWeight: 800,
   marginBottom: "14px",
 };
@@ -525,11 +526,10 @@ const levelCardTitleRowStyle = {
 const currentTagStyle = {
   padding: "2px 8px",
   borderRadius: "999px",
-  fontSize: "10px",
+  fontSize: "11px",
   fontWeight: 800,
   backgroundColor: COLORS.primaryGreen,
   color: COLORS.white,
-  textTransform: "uppercase",
 };
 
 const lockedTagStyle = {
@@ -546,9 +546,8 @@ const requirementsSectionStyle = {
 
 const requirementsLabelStyle = {
   color: COLORS.lightGray,
-  fontSize: "11px",
+  fontSize: "12px",
   fontWeight: 700,
-  textTransform: "uppercase",
   display: "block",
   marginBottom: "8px",
 };
@@ -577,9 +576,8 @@ const requirementValueStyle = {
 
 const requirementItemLabelStyle = {
   color: COLORS.lightGray,
-  fontSize: "9px",
+  fontSize: "10px",
   fontWeight: 600,
-  textTransform: "uppercase",
 };
 
 // ─── Benefits ───────────────────────────────────────────────────────────────
@@ -588,9 +586,8 @@ const benefitsSectionStyle = {};
 
 const benefitsLabelStyle = {
   color: COLORS.lightGray,
-  fontSize: "11px",
+  fontSize: "12px",
   fontWeight: 700,
-  textTransform: "uppercase",
   display: "block",
   marginBottom: "8px",
 };
