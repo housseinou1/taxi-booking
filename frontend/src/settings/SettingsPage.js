@@ -67,7 +67,13 @@ function SettingsPage({ onLogout }) {
       title: t("settings.privacy"),
       description: t("settings.privacyDescription"),
       value: t("settings.viewPolicy"),
-      action: () => (window.location.href = "/privacy"),
+      action: () => window.open("https://yalataxi.live/privacy-policy", "_blank", "noopener,noreferrer"),
+    },
+    {
+      title: "Delete account",
+      description: "Request deletion of your Yala account and associated personal data.",
+      value: "Deletion request",
+      action: () => window.open("https://yalataxi.live/account-deletion", "_blank", "noopener,noreferrer"),
     },
     {
       title: t("settings.helpSupport"),

@@ -269,6 +269,16 @@ export default function DriverDocuments() {
         return;
       }
 
+      // Image-only restriction for plate number photo
+      const docType = DOCUMENT_TYPES.find((item) => item.key === docTypeKey);
+      if (docType?.imageOnly) {
+        const ext = "." + file.name.split(".").pop().toLowerCase();
+        if (ext === ".pdf" || file.type === "application/pdf") {
+          setUploadError("Plate Number requires an image file (JPEG or PNG). PDF is not accepted.");
+          return;
+        }
+      }
+
       setUploadError(null);
       setUploadSuccess(null);
       setPendingUpload({ file, docTypeKey });

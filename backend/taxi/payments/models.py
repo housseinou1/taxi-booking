@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.core.validators import MinValueValidator
 from django.db import models
 
 
@@ -121,6 +122,7 @@ class Payment(models.Model):
         ("bankily", "Bankily"),
         ("masrvi", "Masravi"),
         ("seddad", "Seddad"),
+        ("wallet", "Yala Wallet"),
         ("test", "Test"),
     ]
 
@@ -264,3 +266,37 @@ class WithdrawalRequest(models.Model):
 
     def __str__(self):
         return f"Withdrawal #{self.id} - {self.driver.email} - {self.amount} {self.currency}"
+
+
+class WalletAccount(models.Model):
+    owner = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="wallet_account"
+    )
+    balance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    currency = models.CharField(max_length=10, default="MRU")
+    is_active = models.BooleanField(default=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+class WalletTransaction(models.Model):
+    TYPE_CHOICES = [
+        ("top_up", "Top Up"),
+        ("ride_payment", "Ride Payment"),
+        ("refund", "Refund"),
+        ("referral", "Referral Reward"),
+        ("bonus", "Bonus"),
+        ("adjustment", "Admin Adjustment"),
+    ]
+    wallet = models.ForeignKey(WalletAccount, on_delete=models.CASCADE, related_name="transactions")
+    transaction_type = models.CharField(max_length=20, choices=TYPE_CHOICES)
+    amount = models.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(0.01)])
+    is_credit = models.BooleanField()
+    balance_after = models.DecimalField(max_digits=12, decimal_places=2)
+    reference = models.CharField(max_length=120, blank=True, default="")
+    note = models.CharField(max_length=255, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["wallet", "-created_at"], name="wallet_tx_history_idx")]

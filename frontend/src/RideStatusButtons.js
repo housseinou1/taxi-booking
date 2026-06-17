@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { API_URL } from "./apiConfig";
 
-function RideStatusButtons({ ride, onStatusChange }) {
+function RideStatusButtons({ ride, onStatusChange, distanceToNextKm }) {
   const [workingAction, setWorkingAction] = useState("");
   const [pickupPin, setPickupPin] = useState("");
   const [navigationStarted, setNavigationStarted] = useState(() =>
@@ -16,6 +16,11 @@ function RideStatusButtons({ ride, onStatusChange }) {
   const pickupNavigationUrls = getNavigationUrls(ride, "pickup");
   const stopNavigationUrls = nextStop ? getStopNavigationUrls(nextStop) : null;
   const finalNavigationUrls = getNavigationUrls(ride, "destination");
+  const isApproachingPickup = ["accepted", "driver_arriving"].includes(ride.status);
+  const hasReliablePickupDistance =
+    isApproachingPickup && Number.isFinite(Number(distanceToNextKm));
+  const isNearPickup =
+    !hasReliablePickupDistance || Number(distanceToNextKm) <= 0.35;
 
   const markNavigationStarted = useCallback(() => {
     localStorage.setItem(`ride_${ride.id}_navigation_started`, "true");
@@ -23,24 +28,12 @@ function RideStatusButtons({ ride, onStatusChange }) {
   }, [ride.id]);
 
   useEffect(() => {
-    if (
-      !["accepted", "driver_arriving"].includes(ride.status) ||
-      navigationStarted ||
-      !pickupNavigationUrls
-    ) {
-      return;
+    if (["accepted", "driver_arriving"].includes(ride.status) && !navigationStarted) {
+      markNavigationStarted();
     }
-
-    markNavigationStarted();
-    window.open(pickupNavigationUrls.google, "_blank", "noopener,noreferrer");
-  }, [markNavigationStarted, navigationStarted, pickupNavigationUrls, ride.status]);
+  }, [markNavigationStarted, navigationStarted, ride.status]);
 
   const updateRideStatus = async (endpoint) => {
-    if (endpoint === "start" && !navigationStarted) {
-      alert("Choose Google Maps or Waze before starting the ride.");
-      return;
-    }
-
     try {
       setWorkingAction(endpoint);
 
@@ -124,13 +117,19 @@ function RideStatusButtons({ ride, onStatusChange }) {
             onChoose={markNavigationStarted}
           />
           <SlideRideAction
-            label={navigationStarted ? "Slide: I've arrived" : "Opening map..."}
+            label={
+              isNearPickup
+                ? "Slide Right to Arrive"
+                : `Pickup is ${Number(distanceToNextKm).toFixed(1)} km away`
+            }
             completeLabel="Marking arrived..."
             color="#0F8F4D"
-            disabled={Boolean(workingAction) || !navigationStarted}
+            disabled={Boolean(workingAction) || !isNearPickup}
             isWorking={workingAction === "arrived"}
             onComplete={() => updateRideStatus("arrived")}
-            onDisabledAttempt={() => alert("Choose Google Maps or Waze before marking arrived.")}
+            onDisabledAttempt={() =>
+              alert("Move closer to the rider pickup before marking arrived.")
+            }
           />
         </>
       )}
@@ -158,9 +157,9 @@ function RideStatusButtons({ ride, onStatusChange }) {
             </span>
           </div>
           <SlideRideAction
-            label="Slide to verify PIN and start"
+            label="Slide Right to Start Ride"
             completeLabel="Verifying PIN..."
-            color="#f97316"
+            color="#2563EB"
             disabled={Boolean(workingAction) || pickupPin.length !== 4}
             isWorking={workingAction === "start"}
             onComplete={() => updateRideStatus("start")}
@@ -214,9 +213,9 @@ function RideStatusButtons({ ride, onStatusChange }) {
             />
           )}
           <SlideRideAction
-            label="Slide to finish ride"
+            label="Slide Right to Finish Ride"
             completeLabel="Finishing ride..."
-            color="#2563eb"
+            color="#D4AF37"
             disabled={Boolean(workingAction)}
             isWorking={workingAction === "complete"}
             onComplete={() => updateRideStatus("complete")}
@@ -368,7 +367,7 @@ function SlideRideAction({
 
     setDragging(false);
 
-    if (progress >= 0.82 && !disabled) {
+    if (progress >= 0.95 && !disabled) {
       setProgress(1);
       onComplete();
       return;

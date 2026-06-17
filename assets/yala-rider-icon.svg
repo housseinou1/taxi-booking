@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Yala Rider App Icon
+       Green background with white Yala "Y" logo and map pin
+       Use: Launcher icon, Play Store, App Store, notification icon -->
+
+  <!-- Green background -->
+  <rect width="1024" height="1024" rx="180" fill="#00A651"/>
+
+  <!-- Subtle lighter green circle accent -->
+  <circle cx="512" cy="480" r="320" fill="#00B85C" opacity="0.3"/>
+
+  <!-- White "Y" — Yala brand mark (large, bold) -->
+  <path d="M340 220 L512 480 L684 220 L760 220 L550 530 L550 680 L474 680 L474 530 L264 220 Z" fill="#FFFFFF"/>
+
+  <!-- Map pin icon (rider identity) — positioned below the Y -->
+  <path d="M512 700 C512 700 440 775 440 810 C440 849.76 472.24 882 512 882 C551.76 882 584 849.76 584 810 C584 775 512 700 512 700 Z" fill="#FFFFFF"/>
+  <!-- Pin center dot -->
+  <circle cx="512" cy="810" r="20" fill="#00A651"/>
+</svg>

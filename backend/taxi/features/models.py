@@ -35,6 +35,10 @@ class AirportLocation(models.Model):
 
 class AirportPickup(models.Model):
     """Scheduled airport pickup linked to a ride."""
+    SERVICE_TYPE_CHOICES = [
+        ("pickup", "Airport Pickup"),
+        ("dropoff", "Airport Drop-off"),
+    ]
     STATUS_CHOICES = [
         ("scheduled", "Scheduled"),
         ("driver_assigned", "Driver Assigned"),
@@ -49,6 +53,7 @@ class AirportPickup(models.Model):
     driver = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="airport_pickup_jobs")
     ride = models.OneToOneField("rides.Ride", on_delete=models.SET_NULL, null=True, blank=True, related_name="airport_pickup")
     airport = models.ForeignKey(AirportLocation, on_delete=models.CASCADE, related_name="pickups")
+    service_type = models.CharField(max_length=10, choices=SERVICE_TYPE_CHOICES, default="pickup")
     flight_number = models.CharField(max_length=20, blank=True, default="")
     arrival_time = models.DateTimeField()
     destination = models.CharField(max_length=255)

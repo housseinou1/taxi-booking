@@ -1,0 +1,721 @@
+import React, { useEffect, useCallback, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
+import { useRide } from '../context/RideContext';
+import MapView from './MapView';
+import BottomSheet from './BottomSheet';
+import ServiceHub from './ServiceHub';
+import LocationInput from './LocationInput';
+import RideTypeSelector from './RideTypeSelector';
+import BookingConfirmation from './BookingConfirmation';
+import RideTracker from './RideTracker';
+import RideChat from '../../components/RideChat';
+import SafetyEmergencyPanel from '../../safety/SafetyEmergencyPanel';
+import wsService from '../services/wsService';
+import routeService from '../services/routeService';
+import apiService from '../services/apiService';
+import { calculateFare } from '../utils/fareCalculator';
+import { buildRideRequest } from '../utils/buildRideRequest';
+import { MARKET } from '../../marketConfig';
+import './RiderHome.css';
+
+const RIDE_TYPE_LABELS = {
+  regular: 'Regular',
+  comfort: 'Comfort',
+  xl: 'XL',
+  share: 'Share',
+};
+
+function getDriverPositionFromRide(ride) {
+  const lat = Number(ride?.driver_current_lat);
+  const lng = Number(ride?.driver_current_lng);
+  return Number.isFinite(lat) && Number.isFinite(lng) ? [lat, lng] : null;
+}
+
+/**
+ * RiderHome — composes MapView + BottomSheet + ServiceHub into the main rider experience.
+ *
+ * Manages booking step transitions via RideContext:
+ *   idle → ServiceHub (collapsed)
+ *   location → LocationInput (full)
+ *   rideType → RideTypeSelector (half)
+ *   confirm → BookingConfirmation (half)
+ *   tracking → RideTracker (half)
+ */
+function RiderHome() {
+  const { t } = useTranslation();
+  const { state, dispatch } = useRide();
+  const [profile, setProfile] = useState(null);
+  const [promoError, setPromoError] = useState(null);
+  const [promoLoading, setPromoLoading] = useState(false);
+  const [mapSelectionTarget, setMapSelectionTarget] = useState(null);
+  const [locationMessage, setLocationMessage] = useState('');
+  const [showChat, setShowChat] = useState(false);
+  const [showSafety, setShowSafety] = useState(false);
+  const savedIntentHandledRef = useRef(false);
+
+  const {
+    city,
+    pickup,
+    destination,
+    stops,
+    rideType,
+    fare,
+    discountedFare,
+    promoCode,
+    routePath,
+    routeInfo,
+    currentRide,
+    driverPosition,
+    bookingStep,
+    loading,
+    error,
+  } = state;
+
+  // ─── Default map center ────────────────────────────────────────────
+  const defaultCenter = useMemo(() => {
+    const defaultLocation = MARKET.defaultPickup;
+    return defaultLocation?.position || [18.0735, -15.9582];
+  }, []);
+
+  const mapCenter = useMemo(() => {
+    if (pickup) return pickup.position;
+    return defaultCenter;
+  }, [pickup, defaultCenter]);
+
+  // ─── Map markers ───────────────────────────────────────────────────
+  const markers = useMemo(() => {
+    const result = [];
+
+    if (pickup) {
+      result.push({
+        id: 'pickup',
+        position: pickup.position,
+        type: 'pickup',
+        label: pickup.label,
+      });
+    }
+
+    if (destination) {
+      result.push({
+        id: 'destination',
+        position: destination.position,
+        type: 'destination',
+        label: destination.label,
+      });
+    }
+
+    stops.forEach((stop, index) => {
+      if (stop) {
+        result.push({
+          id: `stop-${index}`,
+          position: stop.position,
+          type: 'stop',
+          label: stop.label,
+        });
+      }
+    });
+
+    if (driverPosition) {
+      result.push({
+        id: 'driver',
+        position: driverPosition,
+        type: 'driver',
+        label: t('riderHome.driver', 'Driver'),
+        animate: true,
+      });
+    }
+
+    return result;
+  }, [pickup, destination, stops, driverPosition, t]);
+
+  const fitBounds = markers.length >= 2;
+
+  // ─── Fetch rider profile on mount ──────────────────────────────────
+  useEffect(() => {
+    async function fetchProfile() {
+      try {
+        const data = await apiService.getRiderProfile();
+        setProfile(data);
+      } catch (err) {
+        // Non-critical: profile check will fail gracefully
+      }
+    }
+    fetchProfile();
+  }, []);
+
+  // ─── WebSocket subscriptions for ride updates ──────────────────────
+  useEffect(() => {
+    const unsubRide = wsService.subscribeRideUpdates(async (data) => {
+      if (data.status === 'completed') {
+        dispatch({ type: 'RIDE_COMPLETED', payload: data });
+      } else if (data.status === 'cancelled') {
+        dispatch({ type: 'RIDE_CANCELLED' });
+      } else if (data.status && data.ride_id) {
+        dispatch({
+          type: 'RIDE_UPDATE',
+          payload: { status: data.status, eta_minutes: data.eta_minutes },
+        });
+
+        // Status broadcasts are intentionally lightweight. Refresh the full
+        // rider-authorized ride so driver, vehicle, verification, and PIN data
+        // appear immediately after acceptance.
+        try {
+          const activeRide = await apiService.getActiveRide();
+          if (activeRide && String(activeRide.id) === String(data.ride_id)) {
+            dispatch({
+              type: 'RIDE_ACCEPTED',
+              payload: {
+                ...activeRide,
+                status: data.status,
+                eta_minutes: data.eta_minutes ?? activeRide.eta_minutes,
+              },
+            });
+            const initialDriverPosition = getDriverPositionFromRide(activeRide);
+            if (initialDriverPosition) {
+              dispatch({ type: 'DRIVER_POSITION', payload: initialDriverPosition });
+            }
+          }
+        } catch (err) {
+          // Keep the status update visible even if the detail refresh fails.
+        }
+      }
+    });
+
+    return unsubRide;
+  }, [dispatch]);
+
+  // Subscribe to driver position when ride is active
+  useEffect(() => {
+    if (!currentRide?.id) return;
+
+    const unsubPos = wsService.subscribeDriverPosition(
+      currentRide.id,
+      (pos) => {
+        dispatch({ type: 'DRIVER_POSITION', payload: pos });
+      }
+    );
+
+    return unsubPos;
+  }, [currentRide?.id, dispatch]);
+
+  // ─── Check for active ride on mount ────────────────────────────────
+  useEffect(() => {
+    async function checkActiveRide() {
+      try {
+        const active = await apiService.getActiveRide();
+        if (active) {
+          dispatch({ type: 'RIDE_ACCEPTED', payload: active });
+          const initialDriverPosition = getDriverPositionFromRide(active);
+          if (initialDriverPosition) {
+            dispatch({ type: 'DRIVER_POSITION', payload: initialDriverPosition });
+          }
+        }
+      } catch (err) {
+        // Non-critical
+      }
+    }
+    checkActiveRide();
+  }, [dispatch]);
+
+  // ─── Fetch route when pickup and destination are set ───────────────
+  useEffect(() => {
+    if (!pickup || !destination) return;
+
+    async function fetchRoute() {
+      const waypoints = [
+        pickup.position,
+        ...stops.filter(Boolean).map((s) => s.position),
+        destination.position,
+      ];
+
+      const route = await routeService.getRoute(waypoints);
+      if (route) {
+        dispatch({ type: 'SET_ROUTE', payload: route });
+        // Calculate fare based on route distance
+        const calculatedFare = calculateFare(rideType, route.distanceKm);
+        dispatch({
+          type: 'SET_FARE',
+          payload: { fare: calculatedFare, discountedFare: undefined },
+        });
+      }
+    }
+
+    fetchRoute();
+  }, [pickup, destination, stops, rideType, dispatch]);
+
+  // ─── Bottom sheet state management ─────────────────────────────────
+  const handleSheetStateChange = useCallback(
+    (newState) => {
+      // Map sheet state to booking step transitions
+      if (newState === 'collapsed' && bookingStep === 'location') {
+        dispatch({ type: 'SET_BOOKING_STEP', payload: 'idle' });
+      }
+    },
+    [bookingStep, dispatch]
+  );
+
+  // Derive bottom sheet state from booking step
+  const derivedSheetState = useMemo(() => {
+    switch (bookingStep) {
+      case 'idle':
+        return 'collapsed';
+      case 'location':
+        return 'full';
+      case 'rideType':
+        return 'half';
+      case 'confirm':
+        return 'half';
+      case 'searching':
+        return 'half';
+      case 'tracking':
+        return 'half';
+      default:
+        return 'collapsed';
+    }
+  }, [bookingStep]);
+
+  // ─── Navigation handler for ServiceHub ─────────────────────────────
+  const handleNavigate = useCallback((path) => {
+    window.location.href = path;
+  }, []);
+
+  // ─── Booking flow handlers ─────────────────────────────────────────
+  const handleDestinationFocus = useCallback(() => {
+    dispatch({ type: 'SET_BOOKING_STEP', payload: 'location' });
+  }, [dispatch]);
+
+  const riderInitial = (profile?.first_name || 'R').slice(0, 1).toUpperCase();
+
+  const savedPlaces = useMemo(
+    () => [
+      { key: 'home', label: 'Home', position: [18.0735, -15.9582] },
+      { key: 'work', label: 'Work', position: [18.1002, -15.9631] },
+      { key: 'favorite', label: 'Favorite', position: [18.1194, -16.0019] },
+      { key: 'recent', label: 'Recent', position: [18.0896, -15.9754] },
+    ],
+    []
+  );
+
+  // Apply saved place intent from SavedPlaces page once per mount.
+  useEffect(() => {
+    if (savedIntentHandledRef.current) return;
+    savedIntentHandledRef.current = true;
+
+    const rawIntent = localStorage.getItem('yala_next_place');
+    if (!rawIntent) return;
+
+    try {
+      const place = JSON.parse(rawIntent);
+      const target = place?.target === 'pickup' ? 'pickup' : 'destination';
+      const fallbackLabel = target === 'pickup' ? 'Saved pickup' : 'Saved destination';
+      const resolvedPosition = Array.isArray(place?.position)
+        ? place.position
+        : null;
+
+      if (!resolvedPosition || resolvedPosition.length < 2) {
+        localStorage.removeItem('yala_next_place');
+        return;
+      }
+
+      const selectedLocation = {
+        label: place?.location || place?.label || fallbackLabel,
+        position: resolvedPosition,
+        city: place?.city || city,
+      };
+
+      if (target === 'pickup') {
+        dispatch({ type: 'SET_PICKUP', payload: selectedLocation });
+        dispatch({ type: 'SET_BOOKING_STEP', payload: destination ? 'rideType' : 'location' });
+      } else {
+        dispatch({ type: 'SET_DESTINATION', payload: selectedLocation });
+        dispatch({ type: 'SET_BOOKING_STEP', payload: pickup ? 'rideType' : 'location' });
+      }
+    } catch (error) {
+      // Ignore malformed saved place payloads.
+    } finally {
+      localStorage.removeItem('yala_next_place');
+    }
+  }, [city, destination, dispatch, pickup]);
+
+  const useCurrentLocation = useCallback(() => {
+    setLocationMessage('Finding your current location...');
+    if (!navigator.geolocation) {
+      setLocationMessage('Current location is not supported on this device.');
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        dispatch({
+          type: 'SET_PICKUP',
+          payload: {
+            label: 'Current location',
+            position: [coords.latitude, coords.longitude],
+            city,
+          },
+        });
+        setLocationMessage('Current location selected.');
+      },
+      () => setLocationMessage('Location permission is needed to use your current position.'),
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }, [city, dispatch]);
+
+  const startMapSelection = useCallback(
+    (target) => {
+      setMapSelectionTarget(target);
+      setLocationMessage(`Tap the map to select your ${target}.`);
+      dispatch({ type: 'SET_BOOKING_STEP', payload: 'location' });
+    },
+    [dispatch]
+  );
+
+  const handlePickupSelect = useCallback(
+    (location) => {
+      dispatch({ type: 'SET_PICKUP', payload: location });
+    },
+    [dispatch]
+  );
+
+  const handleDestinationSelect = useCallback(
+    (location) => {
+      dispatch({ type: 'SET_DESTINATION', payload: location });
+      // Always transition to rideType after destination is selected
+      // The route useEffect will fetch the route when both pickup & destination exist
+      dispatch({ type: 'SET_BOOKING_STEP', payload: 'rideType' });
+    },
+    [dispatch]
+  );
+
+  const handleSavedDestination = useCallback(
+    (location) => {
+      dispatch({ type: 'SET_DESTINATION', payload: location });
+      dispatch({ type: 'SET_BOOKING_STEP', payload: pickup ? 'rideType' : 'location' });
+    },
+    [dispatch, pickup]
+  );
+
+  const handleMapClick = useCallback(
+    (position) => {
+      if (!mapSelectionTarget) return;
+
+      const location = {
+        label: `${mapSelectionTarget === 'pickup' ? 'Pickup' : 'Destination'} selected on map`,
+        position,
+        city,
+      };
+
+      if (mapSelectionTarget === 'pickup') {
+        handlePickupSelect(location);
+      } else {
+        handleDestinationSelect(location);
+      }
+      setMapSelectionTarget(null);
+      setLocationMessage('');
+    },
+    [city, handleDestinationSelect, handlePickupSelect, mapSelectionTarget]
+  );
+
+  const handleRideTypeSelect = useCallback(
+    (type) => {
+      dispatch({ type: 'SET_RIDE_TYPE', payload: type });
+      dispatch({ type: 'SET_BOOKING_STEP', payload: 'confirm' });
+    },
+    [dispatch]
+  );
+
+  const handleConfirmBooking = useCallback(async () => {
+    if (!pickup || !destination) return;
+
+    dispatch({ type: 'REQUEST_RIDE' });
+
+    try {
+      const payload = buildRideRequest({
+        pickup,
+        destination,
+        stops,
+        rideType,
+        routeInfo,
+        fare: discountedFare || fare,
+        promoCode,
+      });
+
+      const response = await apiService.requestRide(payload);
+      dispatch({ type: 'RIDE_ACCEPTED', payload: response });
+      const initialDriverPosition = getDriverPositionFromRide(response);
+      if (initialDriverPosition) {
+        dispatch({ type: 'DRIVER_POSITION', payload: initialDriverPosition });
+      }
+    } catch (err) {
+      dispatch({ type: 'SET_ERROR', payload: err.message || t('riderHome.requestFailed', 'Ride request failed. Please try again.') });
+    }
+  }, [pickup, destination, stops, rideType, routeInfo, fare, discountedFare, promoCode, dispatch, t]);
+
+  const handlePromoApply = useCallback(
+    async (code) => {
+      setPromoLoading(true);
+      setPromoError(null);
+
+      try {
+        const result = await apiService.validatePromo(code, fare);
+        if (result.valid) {
+          dispatch({ type: 'SET_PROMO', payload: code });
+          const discount = result.discount_percent
+            ? fare * (1 - result.discount_percent / 100)
+            : fare - (result.discount_amount || 0);
+          dispatch({
+            type: 'SET_FARE',
+            payload: { fare, discountedFare: Math.max(0, discount) },
+          });
+        } else {
+          setPromoError(result.message || t('riderHome.invalidPromo', 'Invalid promo code'));
+        }
+      } catch (err) {
+        setPromoError(err.message || t('riderHome.promoFailed', 'Could not validate promo code'));
+      } finally {
+        setPromoLoading(false);
+      }
+    },
+    [fare, dispatch, t]
+  );
+
+  const handleCancelSuccess = useCallback(() => {
+    dispatch({ type: 'RIDE_CANCELLED' });
+  }, [dispatch]);
+
+  const handleChat = useCallback(() => {
+    setShowChat(true);
+  }, []);
+
+  const handleShareTrip = useCallback(() => {
+    setShowSafety(true);
+  }, []);
+
+  const handleSOS = useCallback(() => {
+    setShowSafety(true);
+  }, []);
+
+  const handlePayRate = useCallback(() => {
+    if (!currentRide?.id) return;
+    localStorage.setItem('selectedRideId', String(currentRide.id));
+    window.location.href = '/rider-payments';
+  }, [currentRide?.id]);
+
+  useEffect(() => {
+    if (currentRide?.status !== 'completed' || !currentRide.id) return;
+
+    localStorage.setItem('selectedRideId', String(currentRide.id));
+    const redirectTimer = window.setTimeout(() => {
+      window.location.href = '/rider-payments';
+    }, 250);
+
+    return () => window.clearTimeout(redirectTimer);
+  }, [currentRide?.id, currentRide?.status]);
+
+  // ─── Render bottom sheet content based on booking step ─────────────
+  const renderBottomSheetContent = () => {
+    switch (bookingStep) {
+      case 'idle':
+        return (
+          <div className="rider-home__idle">
+            <h1 className="rider-home__idle-greeting">Hi, {profile?.first_name || 'there'} 👋</h1>
+            <p className="rider-home__idle-subtitle">Ready to ride?</p>
+            <button className="rider-home__main-search" type="button" onClick={handleDestinationFocus}>
+              <span aria-hidden="true">⌕</span>
+              <strong>Where to?</strong>
+            </button>
+            <ServiceHub onNavigate={handleNavigate} />
+            <div className="rider-home__saved">
+              <div>
+                <span>Your places</span>
+                <button type="button" onClick={() => handleNavigate('/saved-places')}>Edit</button>
+              </div>
+              <div className="rider-home__saved-grid">
+                {savedPlaces.slice(0, 2).map((place) => (
+                  <button key={place.key} type="button" onClick={() => handleSavedDestination(place)}>
+                    <span aria-hidden="true">{place.key === 'home' ? '⌂' : '▣'}</span>
+                    {place.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'location':
+        return (
+          <div className="rider-home__location-content">
+            <div className="rider-home__booking-heading">
+              <button className="yala-btn-secondary" type="button" onClick={() => dispatch({ type: 'SET_BOOKING_STEP', payload: 'idle' })}>
+                Back
+              </button>
+              <div>
+                <span>Set your route</span>
+                <h2>Pickup and drop-off</h2>
+              </div>
+            </div>
+            <div className="location-stack">
+              <LocationInput
+                label={t('riderHome.pickup', 'Pickup')}
+                value={pickup?.label || ''}
+                city={city}
+                onSelect={handlePickupSelect}
+                variant="pickup"
+              />
+              <LocationInput
+                label={t('riderHome.destination', 'Destination')}
+                value={destination?.label || ''}
+                city={city}
+                savedPlaces={savedPlaces}
+                onSelect={handleDestinationSelect}
+                onFocus={handleDestinationFocus}
+                variant="destination"
+              />
+            </div>
+            <div className="rider-home__location-actions">
+              <button type="button" onClick={useCurrentLocation}>Use current GPS</button>
+              <button type="button" onClick={() => startMapSelection('pickup')}>Pickup on map</button>
+              <button type="button" onClick={() => startMapSelection('destination')}>Drop-off on map</button>
+            </div>
+            {/* Confirm locations and proceed to ride type selection */}
+            {pickup && destination && (
+              <button
+                type="button"
+                className="yala-btn-primary"
+                onClick={() => dispatch({ type: 'SET_BOOKING_STEP', payload: 'rideType' })}
+              >
+                {t('riderHome.findRides', 'Find Rides →')}
+              </button>
+            )}
+            {locationMessage && <p className="rider-home__location-message">{locationMessage}</p>}
+          </div>
+        );
+
+      case 'rideType':
+        return (
+          <div className="rider-home__ride-type-content">
+            <h2 className="rider-home__section-title">
+              {t('riderHome.chooseRide', 'Choose a ride')}
+            </h2>
+            <RideTypeSelector
+              distance={routeInfo?.distanceKm || 1}
+              etaMinutes={routeInfo?.etaMinutes}
+              selectedType={rideType}
+              onSelect={handleRideTypeSelect}
+            />
+            {/* Confirm Ride button directly on ride type screen */}
+            <button
+              type="button"
+              className="yala-btn-primary"
+              onClick={() => dispatch({ type: 'SET_BOOKING_STEP', payload: 'confirm' })}
+            >
+              {t('riderHome.confirmRide', `Confirm ${RIDE_TYPE_LABELS[rideType] || 'Regular'} — ${Math.round(fare || 0)} MRU`)}
+            </button>
+          </div>
+        );
+
+      case 'confirm':
+      case 'searching':
+        return (
+          <BookingConfirmation
+            pickup={pickup}
+            destination={destination}
+            stops={stops}
+            rideType={rideType}
+            fare={fare}
+            discountedFare={discountedFare}
+            promoCode={promoCode}
+            onConfirm={handleConfirmBooking}
+            onPromoApply={handlePromoApply}
+            loading={loading}
+            error={error}
+            profile={profile}
+            routeInfo={routeInfo}
+            promoError={promoError}
+            promoLoading={promoLoading}
+          />
+        );
+
+      case 'tracking':
+        return currentRide ? (
+          <RideTracker
+            ride={currentRide}
+            driverPosition={driverPosition}
+            onChat={handleChat}
+            onShare={handleShareTrip}
+            onSOS={handleSOS}
+            onPayRate={handlePayRate}
+            onCancelSuccess={handleCancelSuccess}
+          />
+        ) : null;
+
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="rider-home">
+      {/* Map background — always visible */}
+      <div className="rider-home__map">
+        <MapView
+          center={mapCenter}
+          zoom={13}
+          markers={markers}
+          routePath={routePath}
+          fitBounds={fitBounds}
+          onMapClick={handleMapClick}
+        />
+      </div>
+
+      {bookingStep === 'idle' && (
+        <>
+          <header className="rider-home__top-bar">
+            <button className="rider-home__menu-btn" type="button" onClick={() => handleNavigate('/services')} aria-label="Open services menu">
+              ☰
+            </button>
+            <button className="rider-home__avatar-btn" type="button" onClick={() => handleNavigate('/rider-profile')} aria-label="Open rider profile">
+              {riderInitial}
+            </button>
+          </header>
+          <button className="rider-home__floating-search" type="button" onClick={handleDestinationFocus}>
+            <span aria-hidden="true">⌕</span>
+            <strong>Where are you going?</strong>
+          </button>
+          <div className="rider-home__map-caption">
+            <strong>You are here</strong>
+            <span>{pickup?.label || city}</span>
+          </div>
+        </>
+      )}
+
+      <div className="rider-home__panel">
+        <BottomSheet
+          state={derivedSheetState}
+          onStateChange={handleSheetStateChange}
+          contentClassName={bookingStep === 'idle' ? 'bottom-sheet__content--idle' : ''}
+        >
+          {renderBottomSheetContent()}
+        </BottomSheet>
+      </div>
+
+      {showChat && currentRide?.id && (
+        <RideChat rideId={currentRide.id} onClose={() => setShowChat(false)} />
+      )}
+
+      {showSafety && createPortal(
+        <div className="rider-home__safety-overlay">
+          <SafetyEmergencyPanel
+            role="rider"
+            currentRide={currentRide}
+            onClose={() => setShowSafety(false)}
+          />
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+}
+
+export default RiderHome;

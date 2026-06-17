@@ -1,6 +1,7 @@
 from pathlib import Path
 from datetime import timedelta
 import os
+import sys
 from importlib.util import find_spec
 
 from dotenv import load_dotenv
@@ -55,6 +56,8 @@ INSTALLED_APPS = [
     "intercity",
     "shifts",
     "incentives",
+    "referrals",
+    "operations",
 ]
 
 MIDDLEWARE = [
@@ -197,7 +200,25 @@ SIMPLE_JWT = {
 # ── CORS ──────────────────────────────────────────────────────────────────────
 CORS_ALLOW_ALL_ORIGINS = env_bool("CORS_ALLOW_ALL_ORIGINS", DEBUG)
 CORS_ALLOWED_ORIGINS = env_list("CORS_ALLOWED_ORIGINS")
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "authorization",
+    "content-type",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+    "x-app-type",
+]
 CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS")
+
+if not DEBUG:
+    SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT", True)
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "31536000"))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 # ── Stripe ────────────────────────────────────────────────────────────────────
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
@@ -268,6 +289,43 @@ CACHES = {
             "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
         }
     ),
+}
+
+# ── Celery ─────────────────────────────────────────────────────────────────────
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
+CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/0")
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_TASK_ALWAYS_EAGER = os.getenv("CELERY_TASK_ALWAYS_EAGER", "False").lower() in ("true", "1", "yes")
+
+if "test" in sys.argv:
+    CELERY_TASK_ALWAYS_EAGER = True
+    CELERY_TASK_EAGER_PROPAGATES = True
+    CELERY_RESULT_BACKEND = "cache+memory://"
+
+CELERY_BEAT_SCHEDULE = {
+    "expire-credits-hourly": {
+        "task": "referrals.tasks.periodic.expire_credits_task",
+        "schedule": 3600,  # Every hour (in seconds)
+    },
+    "send-expiration-reminders-daily": {
+        "task": "referrals.tasks.periodic.send_expiration_reminders_task",
+        "schedule": 86400,  # Every 24 hours (in seconds)
+    },
+    "fraud-scan-ghost-accounts-every-6h": {
+        "task": "referrals.tasks.periodic.fraud_scan_ghost_accounts_task",
+        "schedule": 21600,  # Every 6 hours (in seconds)
+    },
+    "expire-stale-referrals-daily": {
+        "task": "referrals.tasks.periodic.expire_stale_referrals_task",
+        "schedule": 86400,  # Every 24 hours (in seconds)
+    },
+    "escalate-stale-flags-daily": {
+        "task": "referrals.tasks.periodic.escalate_stale_flags_task",
+        "schedule": 86400,  # Every 24 hours (in seconds)
+    },
 }
 
 YALA_MAX_DRIVER_SPEED_KMH = int(os.getenv("YALA_MAX_DRIVER_SPEED_KMH", "180"))

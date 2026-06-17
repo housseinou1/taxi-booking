@@ -1,0 +1,8 @@
+Welcome to the first official Yala Driver release.
+
+- Receive and accept nearby ride requests
+- Navigate to riders and complete trips securely
+- Track earnings, bonuses, referrals, and performance
+- Manage vehicle maintenance reminders and documents
+- Use emergency support and background trip tracking
+- Improved app icons, splash screen, and notification support

@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1920" width="1080" height="1920">
+  <!-- Yala Rider Screenshot 3: Safety Features -->
+
+  <rect width="1080" height="1920" fill="#FFFFFF"/>
+  <rect width="1080" height="44" fill="#00A651"/>
+
+  <!-- Header -->
+  <rect y="44" width="1080" height="80" fill="#00A651"/>
+  <text x="540" y="95" font-family="Arial, sans-serif" font-size="24" fill="#FFFFFF" text-anchor="middle" font-weight="bold">Safety Center</text>
+
+  <!-- SOS Button -->
+  <circle cx="540" cy="320" r="100" fill="#D32F2F"/>
+  <circle cx="540" cy="320" r="80" fill="#E53935"/>
+  <text x="540" y="315" font-family="Arial, Helvetica, sans-serif" font-size="36" fill="#FFFFFF" text-anchor="middle" font-weight="bold">SOS</text>
+  <text x="540" y="350" font-family="Arial, sans-serif" font-size="14" fill="#FFFFFF" text-anchor="middle">Tap for emergency</text>
+
+  <!-- Safety features list -->
+  <text x="540" y="490" font-family="Arial, sans-serif" font-size="20" fill="#333" text-anchor="middle" font-weight="bold">Your safety comes first</text>
+
+  <!-- Feature 1: PIN -->
+  <rect x="40" y="530" width="1000" height="100" rx="12" fill="#F5F5F5"/>
+  <text x="100" y="575" font-family="Arial, sans-serif" font-size="32">🔐</text>
+  <text x="150" y="570" font-family="Arial, sans-serif" font-size="18" fill="#333" font-weight="bold">Ride PIN Verification</text>
+  <text x="150" y="600" font-family="Arial, sans-serif" font-size="14" fill="#888">Driver must enter your PIN before starting the trip</text>
+
+  <!-- Feature 2: Share trip -->
+  <rect x="40" y="650" width="1000" height="100" rx="12" fill="#F5F5F5"/>
+  <text x="100" y="695" font-family="Arial, sans-serif" font-size="32">📍</text>
+  <text x="150" y="690" font-family="Arial, sans-serif" font-size="18" fill="#333" font-weight="bold">Share Your Trip</text>
+  <text x="150" y="720" font-family="Arial, sans-serif" font-size="14" fill="#888">Let family and friends follow your ride live</text>
+
+  <!-- Feature 3: Emergency contacts -->
+  <rect x="40" y="770" width="1000" height="100" rx="12" fill="#F5F5F5"/>
+  <text x="100" y="815" font-family="Arial, sans-serif" font-size="32">👨‍👩‍👧</text>
+  <text x="150" y="810" font-family="Arial, sans-serif" font-size="18" fill="#333" font-weight="bold">Emergency Contacts</text>
+  <text x="150" y="840" font-family="Arial, sans-serif" font-size="14" fill="#888">One tap to alert your trusted contacts</text>
+
+  <!-- Feature 4: Verified drivers -->
+  <rect x="40" y="890" width="1000" height="100" rx="12" fill="#F5F5F5"/>
+  <text x="100" y="935" font-family="Arial, sans-serif" font-size="32">✅</text>
+  <text x="150" y="930" font-family="Arial, sans-serif" font-size="18" fill="#333" font-weight="bold">Verified Drivers Only</text>
+  <text x="150" y="960" font-family="Arial, sans-serif" font-size="14" fill="#888">ID, license, insurance — all checked by admin</text>
+
+  <!-- Feature 5: Incident reporting -->
+  <rect x="40" y="1010" width="1000" height="100" rx="12" fill="#F5F5F5"/>
+  <text x="100" y="1055" font-family="Arial, sans-serif" font-size="32">📋</text>
+  <text x="150" y="1050" font-family="Arial, sans-serif" font-size="18" fill="#333" font-weight="bold">Incident Reporting</text>
+  <text x="150" y="1080" font-family="Arial, sans-serif" font-size="14" fill="#888">Report safety issues — we respond fast</text>
+
+  <!-- Marketing overlay -->
+  <rect y="1600" width="1080" height="320" fill="#00A651" opacity="0.95"/>
+  <text x="540" y="1690" font-family="Arial, Helvetica, sans-serif" font-size="36" fill="#FFFFFF" text-anchor="middle" font-weight="bold">Your safety, our priority</text>
+  <text x="540" y="1740" font-family="Arial, sans-serif" font-size="22" fill="#FFFFFF" text-anchor="middle" opacity="0.9">SOS • PIN • Trip sharing • Verified drivers</text>
+</svg>

@@ -1,0 +1,236 @@
+.hamburger-menu {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  pointer-events: none;
+  font-family: "Plus Jakarta Sans", Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.hamburger-menu--open {
+  pointer-events: auto;
+}
+
+.hamburger-menu__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.42);
+  opacity: 0;
+  transition: opacity 260ms ease;
+}
+
+.hamburger-menu--open .hamburger-menu__backdrop {
+  opacity: 1;
+}
+
+.hamburger-menu--closed .hamburger-menu__backdrop {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.hamburger-menu__drawer {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: min(390px, 88vw);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  background: var(--surface-sheet, #ffffff);
+  color: var(--text-friendly, #1f101b);
+  box-shadow: 18px 0 45px rgba(15, 23, 42, 0.18);
+  transform: translateX(-100%);
+  transition: transform 260ms ease;
+}
+
+.hamburger-menu--open .hamburger-menu__drawer {
+  transform: translateX(0);
+}
+
+.hamburger-menu--closed .hamburger-menu__drawer {
+  transform: translateX(-100%);
+}
+
+.hamburger-menu__header {
+  position: relative;
+  padding: 28px 24px 20px;
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) 38px;
+  gap: 14px;
+  align-items: center;
+  border-bottom: 8px solid #f4f8f5;
+}
+
+.hamburger-menu__avatar,
+.hamburger-menu__avatar-placeholder {
+  width: 72px;
+  height: 72px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  border: 3px solid var(--driver-green-border, rgba(0, 166, 81, 0.35));
+  border-radius: 50%;
+  background: #ecf8f0;
+  color: var(--driver-green, #00a651);
+  object-fit: cover;
+  font-size: 22px;
+  font-weight: 950;
+}
+
+.hamburger-menu__profile-info {
+  min-width: 0;
+}
+
+.hamburger-menu__eyebrow {
+  display: block;
+  margin-bottom: 5px;
+  color: #087a45;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.hamburger-menu__name {
+  margin: 0;
+  overflow: hidden;
+  color: #1f101b;
+  font-size: 24px;
+  font-weight: 950;
+  letter-spacing: -0.3px;
+  line-height: 1.05;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hamburger-menu__profile-info p {
+  margin: 6px 0 0;
+  overflow: hidden;
+  color: #706972;
+  font-size: 14px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hamburger-menu__close {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: #f2f2f0;
+  color: #1f101b;
+  cursor: pointer;
+  font-size: 28px;
+  font-weight: 300;
+  line-height: 1;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.hamburger-menu__close:hover {
+  background: #e8e8e5;
+}
+
+.hamburger-menu__level {
+  padding: 16px 24px;
+  border-bottom: 1px solid #ebe8eb;
+}
+
+.hamburger-menu__items {
+  flex: 1;
+  margin: 0;
+  padding: 8px 0 18px;
+  list-style: none;
+}
+
+.hamburger-menu__item {
+  min-height: 56px;
+  margin: 0 14px;
+  padding: 0 12px;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border-radius: 16px;
+  color: #1f101b;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 800;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.hamburger-menu__item:hover,
+.hamburger-menu__item:active {
+  background: #f4f8f5;
+  color: #087a45;
+}
+
+.hamburger-menu__item:active {
+  transform: scale(0.99);
+}
+
+.hamburger-menu__item-icon {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: #eef6f1;
+  color: #087a45;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+}
+
+.hamburger-menu__item-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hamburger-menu__item-alert {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #d41443;
+}
+
+.hamburger-menu__item--danger {
+  margin-top: 8px;
+  color: #9f1239;
+}
+
+.hamburger-menu__item--danger .hamburger-menu__item-icon {
+  background: #fff0f3;
+  color: #9f1239;
+}
+
+@media (max-width: 420px) {
+  .hamburger-menu__drawer {
+    width: 92vw;
+  }
+
+  .hamburger-menu__header {
+    padding: 24px 18px 18px;
+    grid-template-columns: 64px minmax(0, 1fr) 36px;
+  }
+
+  .hamburger-menu__avatar,
+  .hamburger-menu__avatar-placeholder {
+    width: 64px;
+    height: 64px;
+  }
+
+  .hamburger-menu__name {
+    font-size: 20px;
+  }
+
+  .hamburger-menu__level {
+    padding: 16px 18px;
+  }
+
+  .hamburger-menu__item {
+    margin: 0 10px;
+  }
+}

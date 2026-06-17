@@ -88,6 +88,7 @@ RIDERS = [
     {"first_name": "Oumar", "last_name": "Sy", "email": "oumar@yala.mr", "phone": "+22245003333", "color": (52, 152, 219)},
     {"first_name": "Mariam", "last_name": "Kane", "email": "mariam@yala.mr", "phone": "+22245004444", "color": (155, 89, 182)},
     {"first_name": "Ibrahim", "last_name": "Diop", "email": "ibrahim@yala.mr", "phone": "+22245005555", "color": (22, 160, 133)},
+    {"first_name": "Aissata", "last_name": "Camara", "email": "aissata@yala.mr", "phone": "+22245006666", "color": (230, 126, 34)},
 ]
 
 print("Creating 3 drivers with vehicles and photos...")
@@ -147,7 +148,7 @@ for d in DRIVERS:
     print(f"  {status_icon} {d['first_name']} {d['last_name']} | {d['vehicle_make']} {d['vehicle_model']} {d['vehicle_color']} | {d['plate']} | {d['category']}")
 
 print()
-print("Creating 5 riders with photos...")
+print("Creating 6 riders with photos...")
 for r in RIDERS:
     user, created = User.objects.get_or_create(
         email=r["email"],

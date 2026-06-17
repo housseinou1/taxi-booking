@@ -37,6 +37,7 @@ def book_airport_pickup(request):
     pickup = AirportPickup.objects.create(
         rider=request.user,
         airport=airport,
+        service_type=request.data.get("service_type", "pickup"),
         flight_number=request.data.get("flight_number", ""),
         arrival_time=request.data.get("arrival_time"),
         destination=request.data.get("destination", ""),
@@ -47,7 +48,12 @@ def book_airport_pickup(request):
         notes=request.data.get("notes", ""),
         fare_estimate=Decimal(str(request.data.get("fare_estimate", 0))),
     )
-    return Response({"id": pickup.id, "status": pickup.status, "airport": airport.name}, status=status.HTTP_201_CREATED)
+    return Response({
+        "id": pickup.id,
+        "status": pickup.status,
+        "service_type": pickup.service_type,
+        "airport": airport.name,
+    }, status=status.HTTP_201_CREATED)
 
 
 @api_view(["GET"])
@@ -55,7 +61,7 @@ def book_airport_pickup(request):
 def my_airport_pickups(request):
     pickups = AirportPickup.objects.filter(rider=request.user).select_related("airport")
     return Response([{
-        "id": p.id, "airport": p.airport.name, "flight_number": p.flight_number,
+        "id": p.id, "airport": p.airport.name, "service_type": p.service_type, "flight_number": p.flight_number,
         "arrival_time": p.arrival_time, "destination": p.destination,
         "status": p.status, "fare_estimate": float(p.fare_estimate),
     } for p in pickups])

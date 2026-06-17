@@ -21,7 +21,8 @@ def resolve_city(city_id=None, city_slug=None, fallback_user=None):
     if not city and city_slug:
         city = City.objects.filter(slug=city_slug, is_active=True).first()
     if not city and fallback_user is not None:
-        city = getattr(fallback_user, "city", None)
+        user_city = getattr(fallback_user, "city", None)
+        city = user_city if isinstance(user_city, City) else None
     return city or default_city()
 
 

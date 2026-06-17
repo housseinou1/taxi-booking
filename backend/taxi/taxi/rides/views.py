@@ -1,9 +1,10 @@
 from datetime import timedelta
 from decimal import Decimal
+import logging
 import secrets
 
 from django.shortcuts import get_object_or_404
-from django.db.models import Sum
+from django.db.models import Q, Sum
 from django.db import transaction
 from django.utils.timezone import now
 
@@ -43,6 +44,8 @@ from notifications.push import (
     notify_new_ride_request_to_drivers,
 )
 
+logger = logging.getLogger(__name__)
+
 
 def broadcast_ride_update(ride):
     """Send a ride status update to all connected WebSocket clients."""
@@ -62,6 +65,64 @@ def broadcast_ride_update(ride):
         )
     except Exception:
         pass  # Don't break the request if channel layer is unavailable
+
+
+def broadcast_ride_request_to_available_drivers(ride):
+    """Send a targeted real-time request to each eligible online driver."""
+    try:
+        channel_layer = get_channel_layer()
+        if channel_layer is None:
+            return 0
+
+        active_driver_ids = Ride.objects.filter(
+            status__in=DRIVER_ACTIVE_STATUSES,
+            driver__isnull=False,
+        ).values_list("driver_id", flat=True)
+
+        profiles = DriverProfile.objects.filter(
+            status="approved",
+            is_available=True,
+            user__is_active=True,
+        ).exclude(user_id__in=active_driver_ids)
+
+        if ride.city_id:
+            profiles = profiles.filter(
+                Q(user__city_id=ride.city_id) | Q(user__city__isnull=True)
+            )
+
+        ride_data = {
+            "ride_id": ride.id,
+            "pickup": ride.pickup,
+            "destination": ride.destination,
+            "pickup_lat": ride.pickup_lat,
+            "pickup_lng": ride.pickup_lng,
+            "destination_lat": ride.destination_lat,
+            "destination_lng": ride.destination_lng,
+            "fare": str(ride.fare),
+            "distance_km": str(ride.distance_km),
+            "countdown": 30,
+            "rider_id": ride.rider_id,
+        }
+
+        driver_ids = list(profiles.values_list("user_id", flat=True))
+        for driver_user_id in driver_ids:
+            async_to_sync(channel_layer.group_send)(
+                f"driver_{driver_user_id}",
+                {
+                    "type": "ride_request",
+                    "message": {
+                        "type": "ride_request",
+                        **ride_data,
+                    },
+                },
+            )
+        return len(driver_ids)
+    except Exception:
+        logger.exception(
+            "Failed to broadcast ride request %s to available drivers",
+            ride.id,
+        )
+        return 0
 
 
 OPEN_RIDE_STATUSES = ["requested", "scheduled", "driver_arriving", "driver_arrived", "in_progress"]
@@ -241,6 +302,7 @@ def request_ride(request):
 
     authorize_ride_payment(ride, discount_amount=discount_amount)
     broadcast_ride_update(ride)
+    broadcast_ride_request_to_available_drivers(ride)
 
     # Start the 30-second timeout countdown for ride acceptance
     start_ride_request_timeout(ride.id, driver_user_id=None)
@@ -682,13 +744,24 @@ def cancel_ride(request, ride_id):
             status=status.HTTP_403_FORBIDDEN,
         )
 
+    if ride.status == "cancelled":
+        return Response(
+            {"detail": "This ride has already been cancelled."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
     if ride.status in ["in_progress", "completed"]:
         return Response(
             {"detail": "Ride can only be cancelled before the trip starts."},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    cancellation_reason = request.data.get("reason", "")
+    cancellation_reason = str(request.data.get("reason", "")).strip()
+    if not cancellation_reason:
+        return Response(
+            {"detail": "Cancellation reason is required."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     # Determine who is cancelling
     if request.user.is_staff:
@@ -720,6 +793,9 @@ def cancel_ride(request, ride_id):
         "status", "cancelled_at", "cancelled_by",
         "cancellation_reason", "cancellation_fee",
     ])
+
+    if cancelled_by == "driver":
+        DriverProfile.objects.filter(user=request.user).update(is_available=True)
 
     # Cancel any active timeout timer for this ride
     cancel_ride_request_timeout(ride.id)

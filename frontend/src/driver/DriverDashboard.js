@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 
 import { API_URL } from "../apiConfig";
@@ -11,6 +11,8 @@ import RideStatusButtons from "../RideStatusButtons";
 import SafetyEmergencyPanel from "../safety/SafetyEmergencyPanel";
 import RideRequestCard from "./components/RideRequestCard";
 import LevelBadge from "./components/LevelBadge";
+import HamburgerMenu from "./components/HamburgerMenu";
+import { playRideAlertChime, vibrateNative, preloadNotificationSound } from "../native/sound";
 
 // ─── Yala Branding Colors ───────────────────────────────────────────────────
 const COLORS = {
@@ -52,13 +54,24 @@ const toPoint = (lat, lng) => {
 export default function DriverDashboard() {
   const token = localStorage.getItem("access");
   const driverContext = useDriverContext();
-  const { state, setOnline, setActiveRide, setDriverProfile, setNotifications, setConnectionStatus, addNotification, setDriverLevel } = driverContext;
+  const {
+    state,
+    setOnline,
+    setActiveRide,
+    setDriverProfile,
+    setNotifications,
+    setConnectionStatus,
+    addNotification,
+    setDriverLevel,
+    logout,
+  } = driverContext;
 
   const [todayEarnings, setTodayEarnings] = useState(0);
   const [rideRequest, setRideRequest] = useState(null);
   const [heatmapZones, setHeatmapZones] = useState([]);
   const [routeToPickup, setRouteToPickup] = useState([]);
   const [showSafetyPanel, setShowSafetyPanel] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const authHeaders = useMemo(
     () => ({ headers: { Authorization: `Bearer ${token}` } }),
@@ -96,12 +109,32 @@ export default function DriverDashboard() {
     (data) => {
       switch (data.type) {
         case "ride_request":
+          // Only show ride request if status is "requested" (not already accepted/cancelled)
+          if (data.status && data.status !== "requested") {
+            // Stale request — another driver already accepted or rider cancelled
+            break;
+          }
           setRideRequest(data);
+          // Play notification sound and vibrate for new ride request
+          playRideAlertChime().catch(() => {});
+          vibrateNative(true).catch(() => {});
+          // Play again after 800ms for emphasis
+          setTimeout(() => playRideAlertChime().catch(() => {}), 800);
           break;
         case "ride_status_update":
           if (data.status === "cancelled" || data.status === "completed") {
             setActiveRide(null);
             setRideRequest(null);
+          }
+          // Dismiss ride request card if another driver accepted the ride
+          if (data.status === "accepted" || data.status === "driver_arriving") {
+            setRideRequest((current) => {
+              // Clear if the status update is for the same ride we're showing
+              if (current && (current.ride_id === data.ride_id || current.id === data.ride_id)) {
+                return null;
+              }
+              return current;
+            });
           }
           break;
         case "chat_message":
@@ -200,6 +233,11 @@ export default function DriverDashboard() {
     const interval = setInterval(fetchHeatmap, HEATMAP_REFRESH_INTERVAL);
     return () => clearInterval(interval);
   }, [state.isOnline, fetchHeatmap]);
+
+  // ─── Preload notification sound on mount ───────────────────────────────
+  useEffect(() => {
+    preloadNotificationSound();
+  }, []);
 
   // ─── Fetch Notifications ────────────────────────────────────────────────
   const fetchNotifications = useCallback(async () => {
@@ -365,9 +403,17 @@ export default function DriverDashboard() {
         ☪
       </div>
 
-      {/* Top Bar Overlay: Profile + Notifications */}
+      {/* Top Bar Overlay: Hamburger + Profile + Notifications */}
       <div style={topBarStyle}>
         <div style={profileAreaStyle}>
+          <button
+            type="button"
+            onClick={() => setMenuOpen(true)}
+            style={hamburgerButtonStyle}
+            aria-label="Open menu"
+          >
+            ☰
+          </button>
           {profile?.profile_picture || profile?.driver_photo ? (
             <img
               src={profile.profile_picture || profile.driver_photo}
@@ -416,10 +462,25 @@ export default function DriverDashboard() {
         <div style={rideRequestOverlayStyle}>
           <RideRequestCard
             ride={rideRequest}
-            onAccept={() => {
-              setActiveRide(rideRequest);
-              setRideRequest(null);
-              sendMessage({ type: "ride_accept", ride_id: rideRequest.ride_id });
+            onAccept={async () => {
+              try {
+                const response = await axios.post(
+                  `${API_URL}/rides/accept/${rideRequest.ride_id || rideRequest.id}/`,
+                  {},
+                  authHeaders
+                );
+                const acceptedRide = response.data?.ride || response.data;
+                setActiveRide(acceptedRide);
+                setRideRequest(null);
+                // Also send WebSocket notification for real-time broadcast
+                sendMessage({ type: "ride_accept", ride_id: rideRequest.ride_id || rideRequest.id });
+              } catch (error) {
+                const errorMsg = error.response?.data?.detail || error.response?.data?.error || "Could not accept ride";
+                setRideRequest(null);
+                // Show error briefly
+                console.log("Ride accept error:", errorMsg);
+                alert(errorMsg);
+              }
             }}
             onDecline={() => setRideRequest(null)}
             onExpired={() => setRideRequest(null)}
@@ -430,7 +491,17 @@ export default function DriverDashboard() {
       {/* Active Ride Card Overlay */}
       {state.activeRide && (
         <div style={activeRideOverlayStyle}>
-          <ActiveRideCard ride={state.activeRide} onStatusChange={fetchDriverData} />
+          <ActiveRideCard ride={state.activeRide} onStatusChange={(updatedRide) => {
+            // Update active ride with new status data from the API response
+            if (updatedRide && updatedRide.status) {
+              if (updatedRide.status === "completed" || updatedRide.status === "cancelled") {
+                setActiveRide(null);
+              } else {
+                setActiveRide(updatedRide.ride || updatedRide);
+              }
+            }
+            fetchDriverData();
+          }} />
         </div>
       )}
 
@@ -440,6 +511,22 @@ export default function DriverDashboard() {
           {connectionError}
         </div>
       )}
+
+      {/* Hamburger Navigation Menu */}
+      <HamburgerMenu
+        isOpen={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        driverProfile={{
+          first_name: profile?.first_name || "",
+          last_name: profile?.last_name || "",
+          profile_picture: profile?.profile_picture || profile?.driver_photo || "",
+          level: profile?.driver_level || profile?.driver_category || "bronze",
+          points: profile?.points || 0,
+          nextLevelPoints: profile?.next_level_points || 2000,
+        }}
+        onNavigate={(path) => { window.location.href = path; }}
+        onLogout={logout}
+      />
     </div>
   );
 }
@@ -456,6 +543,24 @@ function ActiveRideCard({ ride, onStatusChange }) {
         <span style={rideCardLabelStyle}>{statusLabel}</span>
         <strong style={rideCardFareStyle}>{formatMoney(ride.fare)}</strong>
       </div>
+
+      {/* Rider Information */}
+      {(ride.rider_name || ride.rider_first_name) && (
+        <div style={riderInfoRowStyle}>
+          {ride.rider_picture ? (
+            <img src={ride.rider_picture} alt="Rider" style={riderPhotoStyle} />
+          ) : (
+            <div style={riderFallbackStyle}>
+              {(ride.rider_name || ride.rider_first_name || "R").slice(0, 1).toUpperCase()}
+            </div>
+          )}
+          <div>
+            <strong style={riderNameStyle}>{ride.rider_name || `${ride.rider_first_name || ""} ${ride.rider_last_name || ""}`.trim() || "Rider"}</strong>
+            {ride.rider_phone && <span style={riderPhoneStyle}>{ride.rider_phone}</span>}
+          </div>
+        </div>
+      )}
+
       <div style={rideCardBodyStyle}>
         <p style={rideCardRouteStyle}>
           <span style={routeIconStyle}>📍</span> {ride.pickup || ride.pickup_address || "Pickup"}
@@ -474,16 +579,6 @@ function ActiveRideCard({ ride, onStatusChange }) {
             role="driver"
             currentRide={ride}
             onClose={() => setShowSafety(false)}
-          />
-        </div>
-      )}
-
-      {showSafetyPanel && (
-        <div style={driverSafetyOverlayStyle}>
-          <SafetyEmergencyPanel
-            role="driver"
-            currentRide={state.activeRide}
-            onClose={() => setShowSafetyPanel(false)}
           />
         </div>
       )}
@@ -595,6 +690,21 @@ const profileAreaStyle = {
   pointerEvents: "auto",
 };
 
+const hamburgerButtonStyle = {
+  width: "44px",
+  height: "44px",
+  border: "none",
+  borderRadius: "12px",
+  background: "rgba(255,255,255,0.1)",
+  color: COLORS.white,
+  fontSize: "22px",
+  fontWeight: 900,
+  cursor: "pointer",
+  display: "grid",
+  placeItems: "center",
+  flexShrink: 0,
+};
+
 const profilePhotoStyle = {
   width: "44px",
   height: "44px",
@@ -646,6 +756,9 @@ const earningsTextStyle = {
 // ─── Notification ───────────────────────────────────────────────────────────
 
 const notificationAreaStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: "10px",
   pointerEvents: "auto",
 };
 
@@ -664,7 +777,16 @@ const notificationButtonStyle = {
 };
 
 const bellIconStyle = {
-  fontSize: "20px",
+  width: "22px",
+  height: "22px",
+  display: "grid",
+  placeItems: "center",
+  borderRadius: "50%",
+  background: "rgba(255,255,255,0.14)",
+  color: COLORS.white,
+  fontSize: "14px",
+  fontWeight: 700,
+  lineHeight: 1,
 };
 
 const notificationBadgeStyle = {
@@ -720,6 +842,51 @@ const activeRideCardStyle = {
   border: `1px solid ${COLORS.primaryGreen}`,
   backdropFilter: "blur(12px)",
   boxShadow: "0 16px 48px rgba(0, 0, 0, 0.4)",
+};
+
+const riderInfoRowStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: "12px",
+  marginBottom: "14px",
+  padding: "10px 12px",
+  borderRadius: "12px",
+  background: "rgba(255,255,255,0.06)",
+  border: "1px solid rgba(255,255,255,0.1)",
+};
+
+const riderPhotoStyle = {
+  width: "48px",
+  height: "48px",
+  borderRadius: "50%",
+  objectFit: "cover",
+};
+
+const riderFallbackStyle = {
+  width: "48px",
+  height: "48px",
+  borderRadius: "50%",
+  display: "grid",
+  placeItems: "center",
+  background: COLORS.primaryGreen,
+  color: "#fff",
+  fontWeight: 950,
+  fontSize: "18px",
+};
+
+const riderNameStyle = {
+  display: "block",
+  color: "#fff",
+  fontWeight: 800,
+  fontSize: "1rem",
+};
+
+const riderPhoneStyle = {
+  display: "block",
+  color: "rgba(255,255,255,0.6)",
+  fontSize: "0.82rem",
+  fontWeight: 600,
+  marginTop: "2px",
 };
 
 const countdownBarContainerStyle = {

@@ -19,6 +19,8 @@ class IncentiveProgram(models.Model):
         ("weekly_target", "Weekly Earnings Target"),
         ("first_ride_bonus", "First Ride of the Day"),
         ("intercity", "Complete Intercity Trip"),
+        ("seasonal", "Seasonal Bonus"),
+        ("holiday", "Holiday Bonus"),
     ]
     STATUS_CHOICES = [
         ("active", "Active"),

@@ -3,7 +3,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 
 from taxi.drivers.models import DriverProfile
-from locations.models import City
+from cities.models import City
 from .validators import (
     normalize_mauritania_phone,
     normalize_national_id,
@@ -124,6 +124,22 @@ class RegisterSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         errors = {}
 
+        # --- App-type / user-type enforcement ---
+        app_type = self.context.get("app_type")
+
+        if not app_type:
+            raise serializers.ValidationError(
+                {"app_type": "X-App-Type header is required. Registration must identify the requesting app."}
+            )
+
+        user_type = attrs.get("user_type")
+
+        if app_type in ("driver", "rider") and user_type != app_type:
+            raise serializers.ValidationError(
+                {"user_type": f"Registration from the {app_type} app must use user_type '{app_type}'."}
+            )
+
+        # --- Existing field-level validation ---
         if attrs.get("user_type") == "rider":
             if not attrs.get("profile_picture"):
                 errors["profile_picture"] = "Rider profile photo is required."

@@ -166,7 +166,7 @@ const containerStyle = {
   minHeight: "100vh",
   backgroundColor: COLORS.darkNavy,
   padding: "20px 16px 100px",
-  fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+  fontFamily: "'Plus Jakarta Sans', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
 };
 
 const headerStyle = {
@@ -175,7 +175,7 @@ const headerStyle = {
 
 const titleStyle = {
   color: COLORS.white,
-  fontSize: "22px",
+  fontSize: "24px",
   fontWeight: "800",
   margin: 0,
 };
@@ -190,7 +190,7 @@ const filtersStyle = {
 const selectStyle = {
   flex: "1 1 120px",
   padding: "10px 12px",
-  borderRadius: "10px",
+  borderRadius: "12px",
   border: "1px solid rgba(255,255,255,0.12)",
   background: "#111827",
   color: COLORS.white,
@@ -200,7 +200,7 @@ const selectStyle = {
 const dateInputStyle = {
   flex: "1 1 120px",
   padding: "10px 12px",
-  borderRadius: "10px",
+  borderRadius: "12px",
   border: "1px solid rgba(255,255,255,0.12)",
   background: "#111827",
   color: COLORS.white,
@@ -246,7 +246,7 @@ const listStyle = {
 
 const rideCardStyle = {
   background: COLORS.cardBg,
-  borderRadius: "14px",
+  borderRadius: "16px",
   padding: "14px 16px",
   border: "1px solid rgba(255,255,255,0.08)",
 };
@@ -265,7 +265,7 @@ const rideDateStyle = {
 
 const rideStatusStyle = {
   fontSize: "12px",
-  fontWeight: "700",
+  fontWeight: "800",
   textTransform: "capitalize",
 };
 
@@ -308,7 +308,7 @@ const locationTextStyle = {
 
 const rideFareStyle = {
   color: COLORS.primaryGreen,
-  fontSize: "15px",
+  fontSize: "16px",
   fontWeight: "800",
   textAlign: "right",
 };
@@ -323,12 +323,12 @@ const paginationStyle = {
 
 const pageButtonStyle = {
   padding: "10px 18px",
-  borderRadius: "10px",
+  borderRadius: "999px",
   border: "1px solid rgba(255,255,255,0.12)",
   background: "#111827",
   color: COLORS.white,
   fontSize: "13px",
-  fontWeight: "600",
+  fontWeight: "700",
   cursor: "pointer",
 };
 

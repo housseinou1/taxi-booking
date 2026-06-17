@@ -20,6 +20,8 @@ from .models import (
     Payment,
     RiderPaymentMethod,
     WithdrawalRequest,
+    WalletAccount,
+    WalletTransaction,
 )
 from .serializers import (
     DriverPayoutMethodSerializer,
@@ -27,7 +29,108 @@ from .serializers import (
     PaymentSerializer,
     RiderPaymentMethodSerializer,
     WithdrawalRequestSerializer,
+    WalletAccountSerializer,
+    WalletTransactionSerializer,
 )
+
+
+def apply_wallet_transaction(wallet, amount, is_credit, transaction_type, reference="", note=""):
+    amount = Decimal(str(amount))
+    if amount <= 0:
+        raise ValueError("Amount must be positive.")
+    with transaction.atomic():
+        wallet = WalletAccount.objects.select_for_update().get(pk=wallet.pk)
+        new_balance = wallet.balance + amount if is_credit else wallet.balance - amount
+        if new_balance < 0:
+            raise ValueError("Insufficient wallet balance.")
+        wallet.balance = new_balance
+        wallet.save(update_fields=["balance", "updated_at"])
+        return WalletTransaction.objects.create(
+            wallet=wallet,
+            transaction_type=transaction_type,
+            amount=amount,
+            is_credit=is_credit,
+            balance_after=new_balance,
+            reference=reference,
+            note=note,
+        )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def my_wallet(request):
+    wallet, _ = WalletAccount.objects.get_or_create(owner=request.user)
+    data = WalletAccountSerializer(wallet).data
+    data["recent_transactions"] = WalletTransactionSerializer(wallet.transactions.all()[:25], many=True).data
+    return Response(data)
+
+
+@api_view(["POST"])
+@permission_classes([IsAdminUser])
+def admin_wallet_adjustment(request):
+    from django.contrib.auth import get_user_model
+
+    user = get_user_model().objects.get(id=request.data.get("user_id"))
+    wallet, _ = WalletAccount.objects.get_or_create(owner=user)
+    try:
+        wallet_tx = apply_wallet_transaction(
+            wallet=wallet,
+            amount=request.data.get("amount"),
+            is_credit=bool(request.data.get("is_credit", True)),
+            transaction_type="adjustment",
+            reference=request.data.get("reference", ""),
+            note=request.data.get("note", ""),
+        )
+    except ValueError as exc:
+        return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+    return Response(WalletTransactionSerializer(wallet_tx).data, status=status.HTTP_201_CREATED)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@transaction.atomic
+def wallet_pay_ride(request, ride_id):
+    try:
+        ride = Ride.objects.select_for_update().get(id=ride_id, rider=request.user)
+    except Ride.DoesNotExist:
+        return Response({"error": "Ride not found."}, status=status.HTTP_404_NOT_FOUND)
+
+    if ride.status == "cancelled":
+        return Response({"error": "A cancelled ride cannot be paid."}, status=status.HTTP_400_BAD_REQUEST)
+    if Payment.objects.filter(ride_id=ride.id, status="paid").exists():
+        return Response({"error": "Ride is already paid."}, status=status.HTTP_400_BAD_REQUEST)
+
+    amount, app_fee, tip_percentage, tip_amount, driver_earning, discount = calculate_payment_amounts(
+        ride.fare, Decimal(str(request.data.get("tip_percentage", 0)))
+    )
+    wallet, _ = WalletAccount.objects.get_or_create(owner=request.user)
+    try:
+        wallet_tx = apply_wallet_transaction(
+            wallet, amount, False, "ride_payment", reference=f"ride:{ride.id}"
+        )
+    except ValueError as exc:
+        return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+    payment = Payment.objects.create(
+        rider=request.user,
+        ride_id=ride.id,
+        amount=amount,
+        discount_amount=discount,
+        app_fee=app_fee,
+        tip_percentage=tip_percentage,
+        tip_amount=tip_amount,
+        driver_earning=driver_earning,
+        method="wallet",
+        status="paid",
+        transaction_id=str(uuid.uuid4()),
+    )
+    ride.app_fee = app_fee
+    ride.driver_earning = driver_earning
+    ride.save(update_fields=["app_fee", "driver_earning"])
+    return Response(
+        {"payment": PaymentSerializer(payment).data, "wallet_transaction": WalletTransactionSerializer(wallet_tx).data},
+        status=status.HTTP_201_CREATED,
+    )
 
 
 def driver_withdrawal_balance(driver):

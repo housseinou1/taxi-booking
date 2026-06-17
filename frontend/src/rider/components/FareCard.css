@@ -1,0 +1,106 @@
+.fare-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 132px;
+  padding: var(--space-md) var(--space-sm);
+  background: var(--yala-white);
+  border: 2px solid transparent;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast), background var(--transition-fast);
+  scroll-snap-align: start;
+  box-shadow: var(--shadow-sm);
+}
+
+.fare-card--regular { background: var(--ride-regular-bg); }
+.fare-card--comfort { background: var(--ride-comfort-bg); }
+.fare-card--xl { background: var(--ride-xl-bg); }
+.fare-card--share { background: var(--ride-share-bg); }
+
+.fare-card:active {
+  transform: scale(0.97);
+}
+
+.fare-card--regular.fare-card--selected {
+  border-color: var(--ride-regular-accent);
+  box-shadow: 0 8px 24px rgba(0, 166, 81, 0.22);
+  transform: scale(1.02);
+}
+
+.fare-card--comfort.fare-card--selected {
+  border-color: var(--ride-comfort-accent);
+  box-shadow: 0 8px 24px rgba(212, 175, 55, 0.25);
+  transform: scale(1.02);
+}
+
+.fare-card--xl.fare-card--selected {
+  border-color: var(--ride-xl-accent);
+  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.22);
+  transform: scale(1.02);
+}
+
+.fare-card--share.fare-card--selected {
+  border-color: var(--ride-share-accent);
+  box-shadow: 0 8px 24px rgba(139, 92, 246, 0.22);
+  transform: scale(1.02);
+}
+
+.fare-card__icon {
+  font-size: var(--font-size-2xl);
+  line-height: 1;
+  margin-bottom: var(--space-sm);
+}
+
+.fare-card__label {
+  font-family: var(--font-family);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-friendly);
+  margin-bottom: var(--space-xs);
+  text-align: center;
+}
+
+.fare-card__fare {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-xs);
+}
+
+.fare-card__fare-original {
+  font-family: var(--font-family);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-regular);
+  color: var(--yala-gray-500);
+  text-decoration: line-through;
+}
+
+.fare-card__fare-amount {
+  font-family: var(--font-family);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-friendly);
+}
+
+.fare-card--regular .fare-card__fare-amount { color: var(--ride-regular-accent); }
+.fare-card--comfort .fare-card__fare-amount { color: var(--ride-comfort-accent); }
+.fare-card--xl .fare-card__fare-amount { color: var(--ride-xl-accent); }
+.fare-card--share .fare-card__fare-amount { color: var(--ride-share-accent); }
+
+.fare-card__eta {
+  font-family: var(--font-family);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-muted);
+  margin-bottom: var(--space-xs);
+}
+
+.fare-card__capacity {
+  font-family: var(--font-family);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-regular);
+  color: var(--yala-gray-500);
+}

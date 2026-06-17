@@ -47,6 +47,14 @@ class DriverProfile(models.Model):
 
     is_available = models.BooleanField(default=False)
 
+    # --- Driver identification ---
+    driver_code = models.CharField(
+        max_length=6,
+        unique=True,
+        null=True,
+        blank=True,
+    )
+
     phone_number = models.CharField(
         max_length=30,
         blank=True,
@@ -127,6 +135,12 @@ class DriverProfile(models.Model):
         null=True,
     )
 
+    vehicle_photo = models.ImageField(
+        upload_to="drivers/vehicles/",
+        blank=True,
+        null=True,
+    )
+
     license_file = models.FileField(
         upload_to="drivers/licenses/",
         blank=True,
@@ -176,6 +190,39 @@ class DriverProfile(models.Model):
         null=True,
     )
 
+    # --- Document verification status ---
+    DOCUMENT_STATUS_CHOICES = [
+        ("pending", "Pending Review"),
+        ("approved", "Approved"),
+        ("rejected", "Rejected"),
+        ("expired", "Expired"),
+    ]
+
+    license_status = models.CharField(
+        max_length=20, choices=DOCUMENT_STATUS_CHOICES, default="pending"
+    )
+    license_rejection_note = models.TextField(blank=True, default="")
+
+    insurance_status = models.CharField(
+        max_length=20, choices=DOCUMENT_STATUS_CHOICES, default="pending"
+    )
+    insurance_rejection_note = models.TextField(blank=True, default="")
+
+    vignette_status = models.CharField(
+        max_length=20, choices=DOCUMENT_STATUS_CHOICES, default="pending"
+    )
+    vignette_rejection_note = models.TextField(blank=True, default="")
+
+    registration_status = models.CharField(
+        max_length=20, choices=DOCUMENT_STATUS_CHOICES, default="pending"
+    )
+    registration_rejection_note = models.TextField(blank=True, default="")
+
+    photo_status = models.CharField(
+        max_length=20, choices=DOCUMENT_STATUS_CHOICES, default="pending"
+    )
+    photo_rejection_note = models.TextField(blank=True, default="")
+
     terms_accepted = models.BooleanField(default=False)
 
     terms_accepted_at = models.DateTimeField(
@@ -213,6 +260,26 @@ class DriverProfile(models.Model):
         default=-15.9582,
     )
 
+    # --- QR Code Verification fields ---
+    qr_code_uuid = models.CharField(
+        max_length=36,
+        unique=True,
+        null=True,
+        blank=True,
+        db_index=True,
+    )
+
+    qr_code_image = models.FileField(
+        upload_to="drivers/qr_codes/",
+        null=True,
+        blank=True,
+    )
+
+    qr_code_generated_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
     def save(self, *args, **kwargs):
         if self.vehicle_plate and not self.plate_number:
             self.plate_number = self.vehicle_plate
@@ -237,6 +304,7 @@ class DriverDocument(models.Model):
         ("carte_grise", "Carte Grise"),
         ("vignette", "Vignette"),
         ("vehicle_registration", "Vehicle Registration (Legacy)"),
+        ("plate_number_photo", "Plate Number Photo"),
         ("profile_photo", "Profile Photo"),
     ]
 
@@ -297,6 +365,60 @@ class DriverAchievement(models.Model):
 
     def __str__(self):
         return f"{self.driver} - {self.achievement.name}"
+
+
+class HallOfFameRecognition(models.Model):
+    CATEGORY_CHOICES = [
+        ("driver_of_month", "Driver of the Month"),
+        ("top_city", "Top Driver by City"),
+        ("top_national", "Top Driver in Mauritania"),
+        ("lifetime_milestone", "Lifetime Milestone"),
+    ]
+    BADGE_CHOICES = [
+        ("gold", "Gold Hall of Fame"),
+        ("silver", "Silver Hall of Fame"),
+        ("bronze", "Bronze Hall of Fame"),
+    ]
+
+    driver = models.ForeignKey(
+        DriverProfile,
+        on_delete=models.CASCADE,
+        related_name="hall_of_fame_recognitions",
+    )
+    category = models.CharField(max_length=30, choices=CATEGORY_CHOICES)
+    badge = models.CharField(max_length=20, choices=BADGE_CHOICES)
+    title = models.CharField(max_length=160)
+    city = models.ForeignKey(
+        "locations.City",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="hall_of_fame_recognitions",
+    )
+    year = models.PositiveIntegerField()
+    month = models.PositiveSmallIntegerField(null=True, blank=True)
+    rank = models.PositiveSmallIntegerField(default=1)
+    lifetime_completed_rides = models.PositiveIntegerField(default=0)
+    years_with_yala = models.PositiveIntegerField(default=0)
+    performance_score = models.PositiveSmallIntegerField(default=0)
+    metadata = models.JSONField(default=dict, blank=True)
+    awarded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-year", "-month", "rank", "driver__user__first_name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["driver", "category", "title", "year", "month"],
+                name="unique_driver_hall_recognition",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["category", "-year", "-month"], name="hof_category_period_idx"),
+            models.Index(fields=["city", "-year"], name="hof_city_year_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.driver.user.email} - {self.title}"
 
 
 class DriverFavoriteArea(models.Model):
@@ -432,3 +554,74 @@ class HeatmapZone(models.Model):
 
     def __str__(self):
         return f"HeatmapZone ({self.center_lat}, {self.center_lng}) - intensity: {self.intensity}"
+
+
+class VerificationRecord(models.Model):
+    SCAN_RESULT_CHOICES = [
+        ("verified", "Verified"),
+        ("inactive_driver", "Inactive Driver"),
+        ("invalid_code", "Invalid Code"),
+        ("forged_code", "Forged Code"),
+    ]
+
+    rider = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="verification_scans",
+    )
+    driver = models.ForeignKey(
+        DriverProfile,
+        on_delete=models.CASCADE,
+        related_name="verification_records",
+    )
+    scanned_at = models.DateTimeField(auto_now_add=True)
+    scan_result = models.CharField(
+        max_length=20,
+        choices=SCAN_RESULT_CHOICES,
+    )
+
+    class Meta:
+        ordering = ["-scanned_at"]
+        indexes = [
+            models.Index(fields=["-scanned_at"]),
+            models.Index(fields=["rider", "-scanned_at"]),
+            models.Index(fields=["driver", "-scanned_at"]),
+        ]
+
+    def __str__(self):
+        return f"Verification: {self.rider} scanned {self.driver} - {self.scan_result}"
+
+
+class QRCodeAuditLog(models.Model):
+    ACTION_CHOICES = [
+        ("generated", "Generated"),
+        ("regenerated", "Regenerated"),
+    ]
+
+    admin = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="qr_audit_actions",
+    )
+    driver = models.ForeignKey(
+        DriverProfile,
+        on_delete=models.CASCADE,
+        related_name="qr_audit_logs",
+    )
+    action = models.CharField(
+        max_length=20,
+        choices=ACTION_CHOICES,
+    )
+    old_qr_uuid = models.CharField(
+        max_length=36,
+        null=True,
+        blank=True,
+    )
+    new_qr_uuid = models.CharField(
+        max_length=36,
+    )
+    performed_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"QR Audit: {self.action} for {self.driver} by {self.admin}"

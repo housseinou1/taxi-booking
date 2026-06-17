@@ -1,12 +1,18 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import axios from "axios";
 import { useTranslation } from "react-i18next";
 
 import { API_URL } from "../apiConfig";
 import GoogleTripMap from "../maps/GoogleTripMap";
 import SafetyEmergencyPanel from "../safety/SafetyEmergencyPanel";
 import RideChat from "../components/RideChat";
-import { subscribeRideUpdates, sendRideUpdate } from "../socket";
+import LocationInput from "./components/LocationInput";
+import {
+  joinRideUpdates,
+  leaveRideUpdates,
+  subscribeRideUpdates,
+  sendRideUpdate,
+} from "../socket";
+import riderApi from "./services/authenticatedApi";
 import {
   languageOptions,
   normalizeLanguageCode,
@@ -152,6 +158,8 @@ export default function RiderDashboard() {
   const [requesting, setRequesting] = useState(false);
   const [routePath, setRoutePath] = useState([]);
   const [routeInfo, setRouteInfo] = useState(null);
+  const [liveDriverRoute, setLiveDriverRoute] = useState([]);
+  const [liveDriverRouteInfo, setLiveDriverRouteInfo] = useState(null);
   const [currentRide, setCurrentRide] = useState(null);
   const [driverPosition, setDriverPosition] = useState(null);
   const [animatedDriverPosition, setAnimatedDriverPosition] = useState(null);
@@ -180,6 +188,16 @@ export default function RiderDashboard() {
   const [lastCancellation, setLastCancellation] = useState(null);
 
   const [rideHistory, setRideHistory] = useState([]);
+
+  // GPS Auto-fill state (Task 1)
+  const [gpsPosition, setGpsPosition] = useState(null);
+  const [gpsLoading, setGpsLoading] = useState(true);
+  const [gpsError, setGpsError] = useState(false);
+
+  // Payment method state (Task 5)
+  const [paymentMethods, setPaymentMethods] = useState([]);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState({ payment_type: "cash", display_name: "Cash" });
+  const [showPaymentPicker, setShowPaymentPicker] = useState(false);
 
 
   const token = localStorage.getItem("access");
@@ -211,17 +229,34 @@ export default function RiderDashboard() {
   const activeStatus = getStatusLabel(currentRide?.status, t);
   const shouldTrackDriver = liveDriverStatuses.has(currentRide?.status);
   const statusStepIndex = getStatusStepIndex(currentRide?.status);
-  const trackingTarget =
-    currentRide?.status === "in_progress" ? destinationPosition : pickupPosition;
+  const trackingTarget = useMemo(
+    () =>
+      currentRide?.status === "in_progress"
+        ? [
+            Number(currentRide?.destination_lat || destinationPosition[0]),
+            Number(currentRide?.destination_lng || destinationPosition[1]),
+          ]
+        : [
+            Number(currentRide?.pickup_lat || pickupPosition[0]),
+            Number(currentRide?.pickup_lng || pickupPosition[1]),
+          ],
+    [
+      currentRide?.destination_lat,
+      currentRide?.destination_lng,
+      currentRide?.pickup_lat,
+      currentRide?.pickup_lng,
+      currentRide?.status,
+      destinationPosition,
+      pickupPosition,
+    ]
+  );
   const displayedDriverPosition = driverPosition || animatedDriverPosition;
   const liveTrackingDistance = shouldTrackDriver
-    ? calculateDistanceKm(
-        displayedDriverPosition,
-        trackingTarget
-      )
+    ? liveDriverRouteInfo?.distanceKm || calculateDistanceKm(displayedDriverPosition, trackingTarget)
     : null;
-  const liveTrackingEta = liveTrackingDistance
-    ? Math.max(1, Math.round((liveTrackingDistance / 32) * 60))
+  const liveTrackingEta = shouldTrackDriver
+    ? liveDriverRouteInfo?.etaMinutes ||
+      (liveTrackingDistance ? Math.max(1, Math.round((liveTrackingDistance / 32) * 60)) : null)
     : null;
   const hasRequiredRiderProfile =
     riderIdentity.has_profile_picture && Boolean(riderIdentity.phone_number?.trim());
@@ -453,7 +488,7 @@ export default function RiderDashboard() {
     try {
       if (!token) return;
 
-      const response = await axios.get(`${API_URL}/auth/me/`, {
+      const response = await riderApi.get(`${API_URL}/auth/me/`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -478,7 +513,7 @@ export default function RiderDashboard() {
     try {
       if (!token) return;
 
-      const response = await axios.get(`${API_URL}/rides/history/`, {
+      const response = await riderApi.get(`${API_URL}/rides/history/`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -486,10 +521,17 @@ export default function RiderDashboard() {
 
       if (Array.isArray(response.data) && response.data.length > 0) {
         setRideHistory(response.data);
+        // Find active ride, or most recent completed ride (for rating)
         const activeRide = response.data.find((ride) =>
           activeRideStatuses.has(ride.status)
         );
-        setCurrentRide(activeRide || null);
+        const recentCompleted = !activeRide
+          ? response.data.find((ride) => ride.status === "completed")
+          : null;
+        setCurrentRide(activeRide || recentCompleted || null);
+        if ((activeRide || recentCompleted) && (activeRide || recentCompleted).status !== "requested") {
+          setRequestMessage("");
+        }
       } else {
         setRideHistory([]);
         setCurrentRide(null);
@@ -524,7 +566,7 @@ export default function RiderDashboard() {
 
       if (!driverId) return;
 
-      const response = await axios.get(
+      const response = await riderApi.get(
         `${API_URL}/drivers/location/${driverId}/`,
         {
           headers: {
@@ -555,12 +597,71 @@ export default function RiderDashboard() {
     // Real-time: refresh immediately on WebSocket ride updates
     const unsub = subscribeRideUpdates((msg) => {
       if (msg && (msg.type === "ride_update" || msg.status || msg.ride_id)) {
+        setRequestMessage("");
         fetchCurrentRide();
       }
     });
 
     return () => { clearInterval(interval); unsub(); };
   }, [fetchCurrentRide, fetchRiderIdentity]);
+
+  // GPS Auto-fill for Pickup Location (Task 1)
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      setGpsLoading(false);
+      setGpsError(true);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const gps = [position.coords.latitude, position.coords.longitude];
+        setGpsPosition(gps);
+        setGpsLoading(false);
+
+        // Find nearest known location within 500m
+        const allLocations = getLocationsByCity(city);
+        let nearest = null;
+        let nearestDist = Infinity;
+        for (const loc of allLocations) {
+          const dist = calculateDistanceKm(gps, loc.position);
+          if (dist < nearestDist) {
+            nearestDist = dist;
+            nearest = loc;
+          }
+        }
+
+        if (nearest && nearestDist < 0.5) {
+          setPickup(nearest.label);
+        } else {
+          setPickup("Current Location");
+        }
+      },
+      () => {
+        setGpsLoading(false);
+        setGpsError(true);
+      },
+      { timeout: 10000, enableHighAccuracy: false }
+    );
+  }, []);  // Only run once on mount
+
+  // Fetch payment methods (Task 5)
+  useEffect(() => {
+    const fetchPaymentMethods = async () => {
+      try {
+        const response = await riderApi.get(`${API_URL}/payments/methods/`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const methods = Array.isArray(response.data) ? response.data : [];
+        setPaymentMethods(methods);
+        const defaultMethod = methods.find((m) => m.is_default) || methods[0];
+        if (defaultMethod) setSelectedPaymentMethod(defaultMethod);
+      } catch (err) {
+        // Fallback to cash silently
+      }
+    };
+    if (token) fetchPaymentMethods();
+  }, [token]);
 
   useEffect(() => {
     if (!shouldTrackDriver) {
@@ -577,6 +678,49 @@ export default function RiderDashboard() {
 
     return () => clearInterval(interval);
   }, [fetchDriverLocation, shouldTrackDriver]);
+
+  useEffect(() => {
+    if (!currentRide?.id || !shouldTrackDriver) return undefined;
+
+    joinRideUpdates(currentRide.id);
+    const unsub = subscribeRideUpdates((message) => {
+      if (message?.type !== "location_update" || message.lat == null || message.lng == null) return;
+      const position = [Number(message.lat), Number(message.lng)];
+      if (isPointInServiceArea(position)) setDriverPosition(position);
+    });
+
+    return () => {
+      unsub();
+      leaveRideUpdates(currentRide.id);
+    };
+  }, [currentRide?.id, shouldTrackDriver]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!shouldTrackDriver || !displayedDriverPosition || !trackingTarget) {
+      setLiveDriverRoute([]);
+      setLiveDriverRouteInfo(null);
+      return undefined;
+    }
+
+    const loadApproachRoute = async () => {
+      try {
+        const route = await fetchDrivingRoute([displayedDriverPosition, trackingTarget]);
+        if (cancelled) return;
+        setLiveDriverRoute(route?.points || [displayedDriverPosition, trackingTarget]);
+        setLiveDriverRouteInfo(route);
+      } catch (error) {
+        if (cancelled) return;
+        setLiveDriverRoute([displayedDriverPosition, trackingTarget]);
+        setLiveDriverRouteInfo(null);
+      }
+    };
+
+    loadApproachRoute();
+    return () => {
+      cancelled = true;
+    };
+  }, [displayedDriverPosition, shouldTrackDriver, trackingTarget]);
 
   useEffect(() => {
     if (!shouldTrackDriver) return undefined;
@@ -647,7 +791,7 @@ export default function RiderDashboard() {
           stop_order: index + 1,
         }));
 
-      const response = await axios.post(
+      const response = await riderApi.post(
         `${API_URL}/rides/request/`,
         {
           pickup,
@@ -710,7 +854,7 @@ export default function RiderDashboard() {
     try {
       setCancelSaving(true);
 
-      const response = await axios.post(
+      const response = await riderApi.post(
         `${API_URL}/rides/cancel/${currentRide.id}/`,
         {
           reason: cancelReason.trim(),
@@ -806,7 +950,7 @@ export default function RiderDashboard() {
         payload.append("profile_picture", profilePictureFile);
       }
 
-      const response = await axios.post(`${API_URL}/auth/identity/update/`, payload, {
+      const response = await riderApi.post(`${API_URL}/auth/identity/update/`, payload, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",
@@ -865,10 +1009,9 @@ export default function RiderDashboard() {
             shouldTrackDriver &&
               displayedDriverPosition && {
                 id: "live-driver-route",
-                path: [
-                  displayedDriverPosition,
-                  trackingTarget,
-                ],
+                path: liveDriverRoute.length
+                  ? liveDriverRoute
+                  : [displayedDriverPosition, trackingTarget],
                 color: "#2563eb",
                 weight: 5,
                 opacity: 0.72,
@@ -1011,16 +1154,7 @@ export default function RiderDashboard() {
           </div>
         </section>
 
-        {currentRide?.pickup_pin &&
-          ["requested", "scheduled", "driver_arriving", "driver_arrived"].includes(currentRide.status) && (
-            <section style={pickupPinCardStyle} aria-label="Pickup verification PIN">
-              <span style={pickupPinEyebrowStyle}>Pickup verification PIN</span>
-              <strong style={pickupPinValueStyle}>{currentRide.pickup_pin}</strong>
-              <span style={pickupPinRiderHelpStyle}>
-                Give this PIN only to your assigned driver after checking the car and plate number.
-              </span>
-            </section>
-          )}
+        {/* PIN section moved inside Active Ride Container (Task 4) - only shows for driver_arriving/driver_arrived */}
 
         <nav style={quickLinksStyle} aria-label="Rider shortcuts">
           {riderQuickLinks.map((item) => (
@@ -1123,14 +1257,204 @@ export default function RiderDashboard() {
           </form>
         )}
 
-        {currentRide && (
-          <section className="sx-live-trip-card" style={liveTripStyle}>
-            <div>
-              <span style={tinyLabelStyle}>{t("riderDashboard.currentRide")}</span>
-              <h2 style={panelTitleStyle}>{activeStatus}</h2>
+        {/* Profile Navigation Menu (Task 4) */}
+        {showAccountPanel && (
+          <nav style={profileMenuNavStyle}>
+            <button type="button" style={profileMenuItemStyle} onClick={() => { window.location.href = "/rider-profile"; }}>
+              <span style={profileMenuIconStyle}>👤</span>
+              <span style={profileMenuLabelStyle}>Personal Information</span>
+              <span style={profileMenuArrowStyle}>→</span>
+            </button>
+            <button type="button" style={profileMenuItemStyle} onClick={() => { window.location.href = "/payment-setup"; }}>
+              <span style={profileMenuIconStyle}>💳</span>
+              <span style={profileMenuLabelStyle}>Payment Methods</span>
+              <span style={profileMenuArrowStyle}>→</span>
+            </button>
+            <button type="button" style={profileMenuItemStyle} onClick={() => { window.location.href = "/rider-profile"; }}>
+              <span style={profileMenuIconStyle}>📋</span>
+              <span style={profileMenuLabelStyle}>Trip History</span>
+              <span style={profileMenuArrowStyle}>→</span>
+            </button>
+            <button type="button" style={profileMenuItemStyle} onClick={() => { window.location.href = "/saved-places"; }}>
+              <span style={profileMenuIconStyle}>📍</span>
+              <span style={profileMenuLabelStyle}>Saved Places</span>
+              <span style={profileMenuArrowStyle}>→</span>
+            </button>
+            <button type="button" style={profileMenuItemStyle} onClick={() => { window.location.href = "/notifications"; }}>
+              <span style={profileMenuIconStyle}>🔔</span>
+              <span style={profileMenuLabelStyle}>Notifications</span>
+              <span style={profileMenuArrowStyle}>→</span>
+            </button>
+            <button type="button" style={profileMenuItemStyle} onClick={() => { window.location.href = "/support"; }}>
+              <span style={profileMenuIconStyle}>❓</span>
+              <span style={profileMenuLabelStyle}>Support</span>
+              <span style={profileMenuArrowStyle}>→</span>
+            </button>
+            <button type="button" style={{ ...profileMenuItemStyle, borderBottom: "none", color: "#ef4444" }} onClick={() => { localStorage.removeItem("access"); localStorage.removeItem("refresh"); window.location.href = "/login"; }}>
+              <span style={profileMenuIconStyle}>🚪</span>
+              <span style={profileMenuLabelStyle}>Logout</span>
+              <span style={profileMenuArrowStyle}>→</span>
+            </button>
+          </nav>
+        )}
+
+        {/* Active Ride Scrollable Container */}
+        {currentRide && activeRideStatuses.has(currentRide.status) && (
+          <div className="sx-active-ride-container" style={activeRideContainerStyle}>
+            {/* Status Hero */}
+            <section className="sx-live-trip-card" style={liveTripStyle}>
+              <div style={{ flex: 1 }}>
+                <span style={tinyLabelStyle}>{t("riderDashboard.currentRide")}</span>
+                <h2 style={panelTitleStyle}>
+                  {getStatusLabel(currentRide.status, t)}
+                  {liveTrackingEta && liveTrackingEta > 0 ? ` — ${liveTrackingEta} min away` : ""}
+                </h2>
+                <div style={statusHeroMetaStyle}>
+                  <span style={statusHeroPillStyle}>
+                    {getStatusLabel(currentRide.status, t)}
+                  </span>
+                  <span style={rideTypeBadgeStyle}>
+                    {currentRide.ride_type
+                      ? currentRide.ride_type.charAt(0).toUpperCase() + currentRide.ride_type.slice(1)
+                      : "Regular"}
+                  </span>
+                  {liveTrackingEta && liveTrackingEta > 0 && (
+                    <span style={etaContextStyle}>{liveTrackingEta} min</span>
+                  )}
+                </div>
+              </div>
+            </section>
+
+            {/* Trip Route Section - Task 3 */}
+            <section className="sx-trip-route-section" style={tripRouteSectionStyle}>
+              <div style={tripRouteDotStyle}>
+                <span style={pickupDotActiveStyle}>●</span>
+                <span style={tripRouteLineStyle}></span>
+                <span style={dropoffDotActiveStyle}>◉</span>
+              </div>
+              <div style={tripRouteTextContainerStyle}>
+                <span style={tripRouteTextStyle}>
+                  {currentRide.pickup || currentRide.pickup_address || "Pickup"}
+                </span>
+                <span style={tripRouteTextStyle}>
+                  {currentRide.destination || currentRide.destination_address || "Destination"}
+                </span>
+              </div>
+            </section>
+
+            {/* Pickup PIN Section - Task 4 */}
+            {(currentRide.status === 'driver_arriving' || currentRide.status === 'driver_arrived') && currentRide.pickup_pin && (
+              <section className="sx-pickup-pin-section" style={pinSectionStyle}>
+                <span style={pinLabelStyle}>Your Pickup PIN</span>
+                <div style={pinDigitRowStyle}>
+                  {String(currentRide.pickup_pin).split('').map((digit, index) => (
+                    <div key={index} style={pinDigitBoxStyle}>
+                      {digit}
+                    </div>
+                  ))}
+                </div>
+                <span style={pinInstructionStyle}>Share this PIN with your driver at pickup</span>
+              </section>
+            )}
+
+            {/* ETA & Fare Section */}
+            <div style={etaFareRowStyle}>
+              <div style={etaCardStyle}>
+                <span style={etaValueStyle}>
+                  {liveTrackingEta || routeInfo?.etaMinutes || "--"}{" "}
+                  <span style={etaSubtextStyle}>min</span>
+                </span>
+                <span style={etaSubtextStyle}>
+                  {liveTrackingDistance
+                    ? Number(liveTrackingDistance).toFixed(1)
+                    : distance || "--"}{" "}
+                  km
+                </span>
+              </div>
+              <div style={fareCardStyle}>
+                <span style={fareValueStyle}>
+                  {currentRide.status !== "completed"
+                    ? formatMoney(fare || currentRide.fare || 0)
+                    : formatMoney(currentRide.fare || 0)}
+                </span>
+                <span style={fareLabelStyle}>
+                  {currentRide.status !== "completed" ? "Estimate" : "Total"}
+                </span>
+              </div>
             </div>
-            <div style={rideStatusActionStyle}>
-              <span style={statusPillStyle}>{currentRide.status}</span>
+
+            {/* Driver Info Card */}
+            {currentRide?.driver_name && (
+              <section className="sx-driver-info-card" style={driverCardStyle}>
+                {/* Top row: Photo + Info stack */}
+                <div style={driverCardTopRowStyle}>
+                  {getDriverPhoto(currentRide) ? (
+                    <img src={getDriverPhoto(currentRide)} alt="Driver" style={driverPhotoStyle} />
+                  ) : (
+                    <div style={driverFallbackStyle}>
+                      {(currentRide.driver_name || "D").slice(0, 1).toUpperCase()}
+                    </div>
+                  )}
+
+                  <div style={driverCardInfoStackStyle}>
+                    <strong style={driverCardNameStyle}>{currentRide.driver_name}</strong>
+                    <span style={driverCardRatingStyle}>
+                      ★ {Number(currentRide.driver_avg_rating || currentRide.driver_rating || 5).toFixed(1)} · {currentRide.completed_trips || 0} {t("riderDashboard.trips", { defaultValue: "trips" })}
+                    </span>
+                    {(currentRide.driver_category_label || currentRide.driver_member_since_year) && (
+                      <span style={driverCardMetaStyle}>
+                        {currentRide.driver_category_label && <span>{currentRide.driver_category_label}</span>}
+                        {currentRide.driver_category_label && currentRide.driver_member_since_year && <span> · </span>}
+                        {currentRide.driver_member_since_year && <span>Since {currentRide.driver_member_since_year}</span>}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Private call hint */}
+                <span style={privateCallHintStyle}>
+                  {t("riderDashboard.privateCallNumber", { number: currentRide.private_call_number || MARKET.privateCallNumber })}
+                </span>
+
+                {/* Actions row: Call, Chat */}
+                <div style={driverCardActionsRowStyle}>
+                  {currentRide.driver_phone && (
+                    <a href={`tel:${currentRide.driver_phone}`} style={callButtonStyle}>
+                      {t("riderDashboard.privateCall")}
+                    </a>
+                  )}
+                  <button type="button" onClick={() => setShowChat(true)} style={{ ...shareButtonStyle, background: RIDER_PURPLE, color: "#fff" }}>
+                    {t("riderDashboard.chat")}
+                  </button>
+                </div>
+              </section>
+            )}
+
+            {/* Vehicle Card Section - Task 7 */}
+            {currentRide?.driver_name && (
+              <section style={vehicleCardStyle}>
+                <div style={vehicleCardTopRowStyle}>
+                  <span style={vehicleCardIconStyle}>🚗</span>
+                  <span style={vehicleCardDescStyle}>{getVehicleLabel(currentRide)}</span>
+                </div>
+                <div style={vehicleCardMetaStyle}>
+                  <strong>Plate: {getPlateNumber(currentRide)}</strong>
+                  {currentRide.ride_type && <span> · {currentRide.ride_type.charAt(0).toUpperCase() + currentRide.ride_type.slice(1)}</span>}
+                </div>
+              </section>
+            )}
+
+            {/* Actions Row - SOS, Cancel, Share */}
+            <div className="sx-actions-row" style={actionsRowStyle}>
+              {activeRideStatuses.has(currentRide.status) && (
+                <button
+                  type="button"
+                  onClick={() => setShowSafetyPanel(true)}
+                  style={actionsRowSosStyle}
+                >
+                  🆘 SOS
+                </button>
+              )}
               {canCancelCurrentRide && (
                 <button
                   type="button"
@@ -1138,16 +1462,92 @@ export default function RiderDashboard() {
                     setLastCancellation(null);
                     setCancelModalOpen(true);
                   }}
-                  style={cancelRideButtonStyle}
+                  style={actionsRowCancelStyle}
                 >
                   {t("riderDashboard.cancelRide")}
                 </button>
               )}
+              <button
+                type="button"
+                onClick={shareTrip}
+                style={actionsRowShareStyle}
+              >
+                {t("riderDashboard.share")}
+              </button>
+            </div>
+
+            {/* Cancellation refund notice */}
+            {lastCancellation && (
+              <section
+                style={{
+                  ...refundStatusStyle,
+                  borderColor:
+                    lastCancellation.tone === "error"
+                      ? "rgba(248, 113, 113, 0.35)"
+                      : lastCancellation.tone === "warning"
+                        ? RIDER_PURPLE_BORDER
+                        : RIDER_PURPLE_BORDER,
+                }}
+              >
+                <div>
+                  <span style={tinyLabelStyle}>{t("riderDashboard.refundStatus")}</span>
+                  <strong>{lastCancellation.title}</strong>
+                  <p>{lastCancellation.text}</p>
+                  {lastCancellation.reason && <small>{t("riderDashboard.reason", { reason: lastCancellation.reason })}</small>}
+                </div>
+                {lastCancellation.fee && (
+                  <span style={refundFeePillStyle}>{t("riderDashboard.fee", { fee: formatMoney(lastCancellation.fee) })}</span>
+                )}
+              </section>
+            )}
+
+            {/* Status Timeline */}
+            <section className="sx-status-timeline" aria-label="Live ride status">
+              {rideStatusSteps.map((step, index) => {
+                const isDone = index < statusStepIndex;
+                const isActive = index === statusStepIndex;
+
+                return (
+                  <article
+                    key={step.key}
+                    className={`${isDone ? "done" : ""} ${isActive ? "active" : ""}`}
+                  >
+                    <span>{isDone ? "✓" : index + 1}</span>
+                    <div>
+                      <strong>{t(`riderDashboard.timeline.${step.titleKey}`)}</strong>
+                      <small>{t(`riderDashboard.timeline.${step.textKey}`)}</small>
+                    </div>
+                  </article>
+                );
+              })}
+            </section>
+          </div>
+        )}
+
+        {/* Active ride sections that render outside scrollable container (for non-active statuses like completed) */}
+        {currentRide && !activeRideStatuses.has(currentRide.status) && (
+          <section className="sx-live-trip-card" style={liveTripStyle}>
+            <div style={{ flex: 1 }}>
+              <span style={tinyLabelStyle}>{t("riderDashboard.currentRide")}</span>
+              <h2 style={panelTitleStyle}>{getStatusLabel(currentRide.status, t)}</h2>
+              <div style={statusHeroMetaStyle}>
+                <span style={statusHeroPillStyle}>
+                  {getStatusLabel(currentRide.status, t)}
+                </span>
+                <span style={rideTypeBadgeStyle}>
+                  {currentRide.ride_type
+                    ? currentRide.ride_type.charAt(0).toUpperCase() + currentRide.ride_type.slice(1)
+                    : "Regular"}
+                </span>
+              </div>
+            </div>
+            <div style={rideStatusActionStyle}>
             </div>
           </section>
         )}
 
-        {lastCancellation && (
+        {/* Cancellation notice - shown outside container when no active ride status */}
+        {lastCancellation && !(currentRide && activeRideStatuses.has(currentRide.status)) && (
           <section
             style={{
               ...refundStatusStyle,
@@ -1171,83 +1571,9 @@ export default function RiderDashboard() {
           </section>
         )}
 
-        {currentRide && (
-          <section className="sx-status-timeline" aria-label="Live ride status">
-            {rideStatusSteps.map((step, index) => {
-              const isDone = index < statusStepIndex;
-              const isActive = index === statusStepIndex;
-
-              return (
-                <article
-                  key={step.key}
-                  className={`${isDone ? "done" : ""} ${isActive ? "active" : ""}`}
-                >
-                  <span>{isDone ? "✓" : index + 1}</span>
-                  <div>
-                    <strong>{t(`riderDashboard.timeline.${step.titleKey}`)}</strong>
-                    <small>{t(`riderDashboard.timeline.${step.textKey}`)}</small>
-                  </div>
-                </article>
-              );
-            })}
-          </section>
-        )}
-
-        {currentRide?.driver_name && (
-          <section className="sx-driver-info-card" style={driverPanelStyle}>
-            {getDriverPhoto(currentRide) ? (
-              <img src={getDriverPhoto(currentRide)} alt="Driver" style={driverPhotoStyle} />
-            ) : (
-              <div style={driverFallbackStyle}>
-                {(currentRide.driver_name || "D").slice(0, 1).toUpperCase()}
-              </div>
-            )}
-
-            <div style={driverInfoStyle}>
-              <strong>{currentRide.driver_name}</strong>
-              <span>
-                {getVehicleLabel(currentRide)} · Plate {getPlateNumber(currentRide)}
-              </span>
-              <span>
-                {t("riderDashboard.driverRating", {
-                  rating: Number(currentRide.driver_avg_rating || currentRide.driver_rating || 5).toFixed(1),
-                  trips: currentRide.completed_trips || 0,
-                })}
-              </span>
-              <span style={privateCallHintStyle}>
-                {t("riderDashboard.privateCallNumber", { number: currentRide.private_call_number || MARKET.privateCallNumber })}
-              </span>
-            </div>
-
-            <div style={driverActionStyle}>
-              {currentRide.driver_phone && (
-                <a href={`tel:${currentRide.driver_phone}`} style={callButtonStyle}>
-                  {t("riderDashboard.privateCall")}
-                </a>
-              )}
-              <button type="button" onClick={() => setShowChat(true)} style={{ ...shareButtonStyle, background: RIDER_PURPLE, color: "#fff" }}>
-                {t("riderDashboard.chat")}
-              </button>
-              <button type="button" onClick={shareTrip} style={shareButtonStyle}>
-                {t("riderDashboard.share")}
-              </button>
-            </div>
-          </section>
-        )}
-
         {/* Chat overlay */}
         {showChat && currentRide?.id && (
           <RideChat rideId={currentRide.id} onClose={() => setShowChat(false)} />
-        )}
-
-        {currentRide && activeRideStatuses.has(currentRide.status) && (
-          <button
-            type="button"
-            onClick={() => setShowSafetyPanel(true)}
-            style={activeRideSosButtonStyle}
-          >
-            SOS
-          </button>
         )}
 
         {showSafetyPanel && (
@@ -1306,11 +1632,17 @@ export default function RiderDashboard() {
               <span style={dropoffDotStyle} />
             </div>
             <div style={addressInputsStyle}>
+              {!gpsLoading && !gpsError && gpsPosition && (
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, fontSize: 11, color: "#22c55e" }}>
+                  <span>📍</span>
+                  <span>GPS location detected</span>
+                </div>
+              )}
               <input
                 list="mauritania-locations"
                 value={pickup}
                 onChange={(event) => setPickup(event.target.value)}
-                placeholder={t("riderDashboard.enterPickup")}
+                placeholder={gpsLoading ? "📍 Finding your location..." : t("riderDashboard.enterPickup")}
                 style={addressInputStyle}
               />
               {stops.map((stop, index) => (
@@ -1332,12 +1664,12 @@ export default function RiderDashboard() {
                   </button>
                 </div>
               ))}
-              <input
-                list="mauritania-locations"
+              <LocationInput
+                label="Drop-off"
                 value={destination}
-                onChange={(event) => setDestination(event.target.value)}
-                placeholder={t("riderDashboard.whereToPlaceholder")}
-                style={addressInputStyle}
+                city={city}
+                savedPlaces={savedPlaces}
+                onSelect={(loc) => setDestination(loc.label)}
               />
             </div>
           </div>
@@ -1375,45 +1707,92 @@ export default function RiderDashboard() {
         </section>
 
         <section style={rideOptionsStyle}>
-          <div style={sectionHeadStyle}>
-            <span style={tinyLabelStyle}>{t("riderDashboard.chooseRide")}</span>
-            <strong>{t("riderDashboard.fareBeforeBooking")}</strong>
-          </div>
-          {!destination || destination === pickup ? (
+          {(!destination || destination === pickup || distance <= 0) ? (
             <div style={fareHintStyle}>
               <span style={fareHintIcon}>📍</span>
               <p style={fareHintText}>{t("riderDashboard.selectDestinationForFare") || "Select your destination to see fare estimates."}</p>
             </div>
-          ) : null}
-          {Object.keys(MARKET.fare).map((type) => {
-            const selected = type === rideType;
-            const optionFare = calculateFare(type, distance);
-            const showFare = destination && destination !== pickup && distance > 0;
-            return (
+          ) : (
+            <>
+              <div style={sectionHeadStyle}>
+                <span style={tinyLabelStyle}>{t("riderDashboard.chooseRide")}</span>
+                <strong>{t("riderDashboard.fareBeforeBooking")}</strong>
+              </div>
+              {Object.keys(MARKET.fare).map((type) => {
+                const selected = type === rideType;
+                const optionFare = calculateFare(type, distance);
+                const showFare = destination && destination !== pickup && distance > 0;
+                return (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setRideType(type)}
+                    style={{
+                      ...rideOptionStyle,
+                      borderColor: selected ? RIDER_PURPLE : "rgba(255,255,255,0.1)",
+                      background: selected ? RIDER_PURPLE_SOFT : "rgba(255,255,255,0.04)",
+                    }}
+                  >
+                    <div style={rideMarkStyle}>{rideIcons[type] || "Y"}</div>
+                    <div style={rideTextStyle}>
+                      <strong>{rideName(type)}</strong>
+                      <span>{rideDescription(type)} · {rideSeatsLabel(type)} · {rideEtaLabel(type)}</span>
+                    </div>
+                    {showFare ? (
+                      <strong style={farePriceStyle}>{formatMoney(optionFare)}</strong>
+                    ) : (
+                      <span style={fareHiddenStyle}>---</span>
+                    )}
+                  </button>
+                );
+              })}
+            </>
+          )}
+        </section>
+
+        {/* Payment Method Selector (Task 5) */}
+        {!currentRide && (
+          <div style={paymentSelectorStyle}>
+            <span style={paymentSelectorIconStyle}>
+              {selectedPaymentMethod?.payment_type === "card" ? "💳" : selectedPaymentMethod?.payment_type === "wallet" ? "👛" : "💵"}
+            </span>
+            <span style={paymentSelectorLabelStyle}>
+              {selectedPaymentMethod?.display_name || "Cash"}
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowPaymentPicker(!showPaymentPicker)}
+              style={paymentSelectorChangeStyle}
+            >
+              Change
+            </button>
+          </div>
+        )}
+        {showPaymentPicker && !currentRide && (
+          <div style={paymentPickerStyle}>
+            {[
+              { payment_type: "cash", display_name: "Cash" },
+              { payment_type: "card", display_name: "Card" },
+              { payment_type: "wallet", display_name: "Wallet" },
+            ].map((method) => (
               <button
-                key={type}
+                key={method.payment_type}
                 type="button"
-                onClick={() => setRideType(type)}
                 style={{
-                  ...rideOptionStyle,
-                  borderColor: selected ? RIDER_PURPLE : "rgba(255,255,255,0.1)",
-                  background: selected ? RIDER_PURPLE_SOFT : "rgba(255,255,255,0.04)",
+                  ...paymentPickerItemStyle,
+                  background: selectedPaymentMethod?.payment_type === method.payment_type ? "rgba(139,92,246,0.2)" : "transparent",
+                }}
+                onClick={() => {
+                  setSelectedPaymentMethod(method);
+                  setShowPaymentPicker(false);
                 }}
               >
-                <div style={rideMarkStyle}>{rideIcons[type] || "Y"}</div>
-                <div style={rideTextStyle}>
-                  <strong>{rideName(type)}</strong>
-                  <span>{rideDescription(type)} · {rideSeatsLabel(type)} · {rideEtaLabel(type)}</span>
-                </div>
-                {showFare ? (
-                  <strong style={farePriceStyle}>{formatMoney(optionFare)}</strong>
-                ) : (
-                  <span style={fareHiddenStyle}>---</span>
-                )}
+                <span>{method.payment_type === "card" ? "💳" : method.payment_type === "wallet" ? "👛" : "💵"}</span>
+                <span>{method.display_name}</span>
               </button>
-            );
-          })}
-        </section>
+            ))}
+          </div>
+        )}
 
         {currentRide?.status === "completed" ? (
           <button type="button" onClick={goToPayRate} style={primaryActionStyle}>
@@ -1681,7 +2060,7 @@ function ScheduleRideButton({
     if (!dateTime) { setMessage(t("riderDashboard.pickDateTime")); return; }
     try {
       setScheduling(true); setMessage("");
-      await axios.post(`${API_URL}/rides/schedule/`, {
+      await riderApi.post(`${API_URL}/rides/schedule/`, {
         pickup, destination,
         pickup_lat: pickupPosition[0], pickup_lng: pickupPosition[1],
         destination_lat: destinationPosition[0], destination_lng: destinationPosition[1],
@@ -2096,6 +2475,40 @@ const statusPillStyle = {
   textTransform: "capitalize",
 };
 
+const statusHeroMetaStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: "8px",
+  marginTop: "6px",
+  flexWrap: "wrap",
+};
+
+const statusHeroPillStyle = {
+  borderRadius: "999px",
+  background: RIDER_PURPLE_SOFT,
+  color: RIDER_PURPLE,
+  padding: "5px 12px",
+  fontSize: "14px",
+  fontWeight: 700,
+  textTransform: "capitalize",
+};
+
+const rideTypeBadgeStyle = {
+  borderRadius: "999px",
+  background: "rgba(243, 189, 52, 0.15)",
+  color: YALA_GOLD,
+  padding: "4px 10px",
+  fontSize: "12px",
+  fontWeight: 700,
+  textTransform: "capitalize",
+};
+
+const etaContextStyle = {
+  fontSize: "12px",
+  fontWeight: 600,
+  color: "#a3e635",
+};
+
 const cancelRideButtonStyle = {
   minHeight: "38px",
   border: "1px solid rgba(248, 113, 113, 0.34)",
@@ -2128,16 +2541,52 @@ const refundFeePillStyle = {
   whiteSpace: "nowrap",
 };
 
-const driverPanelStyle = {
+const driverCardStyle = {
   display: "flex",
-  alignItems: "center",
+  flexDirection: "column",
   gap: "12px",
-  padding: "12px",
+  padding: "14px",
   background: "rgba(255,255,255,0.06)",
   border: "1px solid rgba(255,255,255,0.12)",
   borderRadius: "18px",
   marginBottom: "12px",
   color: "#ffffff",
+};
+
+const driverCardTopRowStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: "12px",
+};
+
+const driverCardInfoStackStyle = {
+  flex: 1,
+  minWidth: 0,
+  display: "grid",
+  gap: "2px",
+};
+
+const driverCardNameStyle = {
+  fontSize: "1.08rem",
+  fontWeight: 900,
+};
+
+const driverCardRatingStyle = {
+  fontSize: "0.9rem",
+  color: YALA_GOLD,
+  fontWeight: 700,
+};
+
+const driverCardMetaStyle = {
+  fontSize: "0.82rem",
+  color: "rgba(255,255,255,0.62)",
+  fontWeight: 600,
+};
+
+const driverCardActionsRowStyle = {
+  display: "flex",
+  gap: "8px",
+  flexWrap: "wrap",
 };
 
 const activeRideSosButtonStyle = {
@@ -2155,6 +2604,62 @@ const activeRideSosButtonStyle = {
   fontSize: "18px",
   boxShadow: "0 12px 32px rgba(220, 38, 38, 0.45)",
   cursor: "pointer",
+};
+
+const actionsRowStyle = {
+  display: "flex",
+  gap: "10px",
+  justifyContent: "center",
+  alignItems: "center",
+  padding: "12px 0",
+  flexWrap: "wrap",
+};
+
+const actionsRowSosStyle = {
+  minWidth: "90px",
+  minHeight: "42px",
+  border: "2px solid #dc2626",
+  borderRadius: "999px",
+  background: "rgba(220, 38, 38, 0.18)",
+  color: "#fca5a5",
+  fontWeight: 950,
+  fontSize: "0.95rem",
+  cursor: "pointer",
+  padding: "0 16px",
+};
+
+const actionsRowCancelStyle = {
+  minWidth: "110px",
+  minHeight: "42px",
+  border: "1px solid rgba(248, 113, 113, 0.34)",
+  borderRadius: "999px",
+  background: "rgba(127, 29, 29, 0.32)",
+  color: "#fecaca",
+  fontWeight: 900,
+  fontSize: "0.9rem",
+  cursor: "pointer",
+  padding: "0 16px",
+};
+
+const actionsRowShareStyle = {
+  minWidth: "100px",
+  minHeight: "42px",
+  border: "1px solid rgba(255,255,255,0.18)",
+  borderRadius: "999px",
+  background: "rgba(255,255,255,0.08)",
+  color: "#ffffff",
+  fontWeight: 900,
+  fontSize: "0.9rem",
+  cursor: "pointer",
+  padding: "0 16px",
+};
+
+const activeRideContainerStyle = {
+  overflowY: "auto",
+  maxHeight: "calc(100vh - 120px)",
+  padding: "4px 0 12px",
+  display: "grid",
+  gap: "12px",
 };
 
 const safetyPanelWrapStyle = {
@@ -2179,12 +2684,6 @@ const driverFallbackStyle = {
   fontWeight: 950,
 };
 
-const driverInfoStyle = {
-  flex: 1,
-  minWidth: "160px",
-  display: "grid",
-  gap: "3px",
-};
 
 const privateCallHintStyle = {
   color: "rgba(255,255,255,0.58)",
@@ -2192,10 +2691,6 @@ const privateCallHintStyle = {
   fontWeight: 800,
 };
 
-const driverActionStyle = {
-  display: "grid",
-  gap: "7px",
-};
 
 const callButtonStyle = {
   display: "inline-flex",
@@ -2578,5 +3073,270 @@ const modalDangerButtonStyle = {
   background: "#dc2626",
   color: "#ffffff",
   fontWeight: 950,
+  cursor: "pointer",
+};
+
+const tripRouteSectionStyle = {
+  display: "grid",
+  gridTemplateColumns: "28px 1fr",
+  gap: "10px",
+  alignItems: "stretch",
+  padding: "14px",
+  background: "rgba(255,255,255,0.06)",
+  border: "1px solid rgba(255,255,255,0.12)",
+  borderRadius: "18px",
+};
+
+const tripRouteDotStyle = {
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: "0px",
+};
+
+const pickupDotActiveStyle = {
+  color: "#22c55e",
+  fontSize: "16px",
+  lineHeight: "1",
+};
+
+const dropoffDotActiveStyle = {
+  color: "#ef4444",
+  fontSize: "16px",
+  lineHeight: "1",
+};
+
+const tripRouteLineStyle = {
+  width: "2px",
+  minHeight: "24px",
+  background: "rgba(255,255,255,0.25)",
+};
+
+const tripRouteTextContainerStyle = {
+  display: "flex",
+  flexDirection: "column",
+  justifyContent: "space-between",
+  gap: "12px",
+};
+
+const tripRouteTextStyle = {
+  color: "#ffffff",
+  fontSize: "14px",
+  fontWeight: 700,
+  lineHeight: "1.3",
+};
+
+const pinSectionStyle = {
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  gap: "10px",
+  padding: "18px 16px",
+  background: "linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)",
+  border: "1px solid rgba(243, 189, 52, 0.35)",
+  borderRadius: "18px",
+};
+
+const pinLabelStyle = {
+  color: "#F3BD34",
+  fontSize: "13px",
+  fontWeight: 700,
+  textTransform: "uppercase",
+  letterSpacing: "1px",
+};
+
+const pinDigitRowStyle = {
+  display: "flex",
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: "10px",
+};
+
+const pinDigitBoxStyle = {
+  width: "40px",
+  height: "40px",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  background: "rgba(243, 189, 52, 0.15)",
+  border: "2px solid #F3BD34",
+  borderRadius: "10px",
+  color: "#ffffff",
+  fontSize: "22px",
+  fontWeight: 900,
+};
+
+const pinInstructionStyle = {
+  color: "rgba(255, 255, 255, 0.7)",
+  fontSize: "12px",
+  fontWeight: 500,
+  textAlign: "center",
+};
+
+
+const etaFareRowStyle = {
+  display: "flex",
+  flexDirection: "row",
+  gap: "12px",
+  width: "100%",
+};
+
+const etaCardStyle = {
+  flex: 1,
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: "4px",
+  padding: "14px 12px",
+  background: "rgba(0, 166, 81, 0.08)",
+  border: "1px solid rgba(0, 166, 81, 0.25)",
+  borderRadius: "14px",
+};
+
+const fareCardStyle = {
+  flex: 1,
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: "4px",
+  padding: "14px 12px",
+  background: "rgba(243, 189, 52, 0.08)",
+  border: "1px solid rgba(243, 189, 52, 0.25)",
+  borderRadius: "14px",
+};
+
+const etaValueStyle = {
+  fontSize: "20px",
+  fontWeight: 800,
+  color: "#ffffff",
+};
+
+const etaSubtextStyle = {
+  fontSize: "13px",
+  fontWeight: 500,
+  color: "rgba(255, 255, 255, 0.65)",
+};
+
+const fareValueStyle = {
+  fontSize: "20px",
+  fontWeight: 800,
+  color: "#ffffff",
+};
+
+const fareLabelStyle = {
+  fontSize: "13px",
+  fontWeight: 500,
+  color: "rgba(255, 255, 255, 0.65)",
+};
+
+const vehicleCardStyle = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "8px",
+  padding: "14px",
+  background: "rgba(255,255,255,0.06)",
+  border: "1px solid rgba(255,255,255,0.12)",
+  borderRadius: "18px",
+  marginBottom: "12px",
+  color: "#ffffff",
+};
+
+const vehicleCardTopRowStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: "10px",
+};
+
+const vehicleCardIconStyle = {
+  fontSize: "1.5rem",
+  lineHeight: 1,
+};
+
+const vehicleCardDescStyle = {
+  fontSize: "1.05rem",
+  fontWeight: 800,
+  color: "#ffffff",
+};
+
+const vehicleCardMetaStyle = {
+  fontSize: "0.88rem",
+  color: "rgba(255,255,255,0.68)",
+  fontWeight: 600,
+  paddingLeft: "34px",
+};
+
+
+// Profile Menu styles (Task 4)
+const profileMenuNavStyle = {
+  display: "flex",
+  flexDirection: "column",
+  background: "rgba(255,255,255,0.04)",
+  borderRadius: 12,
+  overflow: "hidden",
+  marginTop: 16,
+};
+const profileMenuItemStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: 12,
+  padding: "14px 16px",
+  border: "none",
+  borderBottom: "1px solid rgba(255,255,255,0.08)",
+  background: "transparent",
+  color: "#f1f5f9",
+  fontSize: 14,
+  fontWeight: 600,
+  cursor: "pointer",
+  textAlign: "left",
+  width: "100%",
+};
+const profileMenuIconStyle = { fontSize: 18, width: 24, textAlign: "center" };
+const profileMenuLabelStyle = { flex: 1 };
+const profileMenuArrowStyle = { color: "#64748b", fontSize: 14 };
+
+// Payment Selector styles (Task 5)
+const paymentSelectorStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: 10,
+  padding: "10px 14px",
+  background: "rgba(255,255,255,0.06)",
+  borderRadius: 10,
+  marginBottom: 10,
+};
+const paymentSelectorIconStyle = { fontSize: 20 };
+const paymentSelectorLabelStyle = { flex: 1, fontWeight: 700, color: "#f1f5f9", fontSize: 14 };
+const paymentSelectorChangeStyle = {
+  border: "1px solid rgba(139,92,246,0.4)",
+  borderRadius: 8,
+  padding: "4px 12px",
+  background: "transparent",
+  color: "#a78bfa",
+  fontSize: 12,
+  fontWeight: 700,
+  cursor: "pointer",
+};
+const paymentPickerStyle = {
+  display: "flex",
+  gap: 8,
+  padding: "8px 0",
+  marginBottom: 10,
+};
+const paymentPickerItemStyle = {
+  flex: 1,
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  gap: 4,
+  padding: "10px 8px",
+  borderRadius: 10,
+  border: "1px solid rgba(255,255,255,0.1)",
+  color: "#f1f5f9",
+  fontSize: 12,
+  fontWeight: 700,
   cursor: "pointer",
 };

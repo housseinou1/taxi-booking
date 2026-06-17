@@ -35,6 +35,7 @@ REQUIRED_DOCUMENT_TYPES = [
     "insurance",
     "carte_grise",
     "vignette",
+    "plate_number_photo",
     "profile_photo",
 ]
 

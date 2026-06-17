@@ -16,6 +16,9 @@ from .views import (
     reject_withdrawal,
     save_payout_method,
     save_owner_payout_method,
+    my_wallet,
+    admin_wallet_adjustment,
+    wallet_pay_ride,
 )
 
 urlpatterns = [
@@ -37,4 +40,7 @@ urlpatterns = [
     path("withdrawals/request/", request_withdrawal),
     path("withdrawals/<int:withdrawal_id>/approve/", approve_withdrawal),
     path("withdrawals/<int:withdrawal_id>/reject/", reject_withdrawal),
+    path("wallet/", my_wallet),
+    path("wallet/admin-adjustment/", admin_wallet_adjustment),
+    path("wallet/pay-ride/<int:ride_id>/", wallet_pay_ride),
 ]

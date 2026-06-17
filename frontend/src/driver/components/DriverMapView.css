@@ -1,0 +1,20 @@
+/* DriverMapView - Full-screen map styles */
+.driver-map-container {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.driver-map-container .leaflet-container {
+  width: 100%;
+  height: 100%;
+}
+
+/* Remove default Leaflet UI clutter for driver view */
+.driver-map-container .leaflet-control-zoom {
+  display: none;
+}
+
+.driver-map-container .leaflet-control-attribution {
+  display: none;
+}

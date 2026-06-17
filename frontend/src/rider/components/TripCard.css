@@ -1,0 +1,196 @@
+.trip-card {
+  background: var(--yala-white);
+  border: 1px solid var(--yala-gray-100);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  transition: box-shadow var(--transition-fast), border-color var(--transition-fast);
+}
+
+.trip-card:hover {
+  border-color: var(--yala-gray-300);
+  box-shadow: var(--shadow-sm);
+}
+
+.trip-card--expanded {
+  border-color: var(--yala-green-border);
+  box-shadow: var(--shadow-md);
+}
+
+/* Summary button — full-width clickable area */
+.trip-card__summary {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: var(--space-md);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  min-height: var(--tap-target-min);
+}
+
+.trip-card__summary:focus-visible {
+  outline: 2px solid var(--yala-green);
+  outline-offset: -2px;
+}
+
+/* Header row: date + status */
+.trip-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-sm);
+}
+
+.trip-card__date {
+  font-family: var(--font-family);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--yala-gray-500);
+}
+
+.trip-card__status {
+  font-family: var(--font-family);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  padding: 2px var(--space-sm);
+  border-radius: var(--radius-full);
+  background: var(--yala-gray-100);
+  color: var(--yala-gray-700);
+}
+
+.trip-card__status--completed {
+  background: var(--yala-green-soft);
+  color: var(--yala-green);
+}
+
+.trip-card__status--cancelled {
+  background: rgba(220, 38, 38, 0.1);
+  color: #dc2626;
+}
+
+.trip-card__status--active {
+  background: var(--yala-gold-soft);
+  color: var(--yala-gold);
+}
+
+/* Route addresses */
+.trip-card__route {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-sm);
+  padding-left: var(--space-xs);
+}
+
+.trip-card__location {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.trip-card__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+.trip-card__dot--pickup {
+  background: var(--yala-green);
+}
+
+.trip-card__dot--destination {
+  background: #dc2626;
+}
+
+.trip-card__address {
+  font-family: var(--font-family);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-regular);
+  color: var(--yala-navy);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Footer row: ride type + fare */
+.trip-card__footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.trip-card__ride-type {
+  font-family: var(--font-family);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-regular);
+  color: var(--yala-gray-500);
+  text-transform: capitalize;
+}
+
+.trip-card__fare {
+  font-family: var(--font-family);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--yala-green);
+}
+
+/* Expanded details section */
+.trip-card__details {
+  padding: 0 var(--space-md) var(--space-md);
+  border-top: 1px solid var(--yala-gray-100);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding-top: var(--space-md);
+}
+
+.trip-card__map-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  height: 120px;
+  background: var(--yala-gray-50);
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--yala-gray-300);
+}
+
+.trip-card__map-icon {
+  font-size: var(--font-size-xl);
+}
+
+.trip-card__map-text {
+  font-family: var(--font-family);
+  font-size: var(--font-size-sm);
+  color: var(--yala-gray-500);
+}
+
+.trip-card__driver,
+.trip-card__rating {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.trip-card__driver-label,
+.trip-card__rating-label {
+  font-family: var(--font-family);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--yala-gray-500);
+}
+
+.trip-card__driver-name {
+  font-family: var(--font-family);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--yala-navy);
+}
+
+.trip-card__rating-stars {
+  font-size: var(--font-size-md);
+  color: var(--yala-gold);
+}

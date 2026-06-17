@@ -1,0 +1,65 @@
+/* ChatButton — Chat action button with notification badge */
+
+.chat-button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  min-width: var(--tap-target-min);
+  min-height: var(--tap-target-min);
+  padding: var(--space-sm) var(--space-md);
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--yala-green-soft);
+  color: var(--yala-green);
+  font-family: var(--font-family);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+
+.chat-button:hover {
+  background: var(--yala-green-border);
+}
+
+.chat-button:active {
+  transform: scale(0.96);
+}
+
+.chat-button:focus-visible {
+  outline: 2px solid var(--yala-green);
+  outline-offset: 2px;
+}
+
+.chat-button__icon {
+  font-size: var(--font-size-md);
+  line-height: 1;
+}
+
+.chat-button__label {
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Notification badge */
+.chat-button__badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 var(--space-xs);
+  border-radius: var(--radius-full);
+  background: #DC2626;
+  color: var(--yala-white);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+  pointer-events: none;
+}

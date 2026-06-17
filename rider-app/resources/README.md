@@ -1,39 +1,39 @@
-# Yala Rider - App Resources
+# Yala Rider App Resources
 
-Place your source assets in this directory for icon and splash screen generation.
+## Branding
 
-## Required Files
+- **App Name:** Yala Rider
+- **App ID:** com.yala.rider.mr
+- **Primary Color:** Green #00A651
+- **Background:** White
+- **Icon Design:** White "Y" (Yala logo) + map pin on green background
+- **Splash Screen:** Green background with white Yala logo + "YALA RIDER" text
 
-### icon.png
-- **Size:** 1024x1024 pixels
-- **Format:** PNG with no transparency (App Store requirement)
-- **Design:** Green (#00A651) background with white Yala logo centered
-- **Corner radius:** None (iOS applies rounding automatically)
+## Icon Source
 
-### splash.png
-- **Size:** 2732x2732 pixels (largest iPad Pro resolution)
-- **Format:** PNG
-- **Design:** Navy (#0B1220) background with white Yala logo centered
-- **Safe area:** Keep logo within center 800x800 to avoid cropping on smaller devices
+Source SVG: `assets/yala-rider-icon.svg`
 
-## Generation
+## Generating Icons
 
-After placing your source files, run:
-
+From project root:
 ```bash
-node scripts/generate-icons.js --source rider-app/resources/icon.png --app rider
+npm install sharp
+node scripts/generate-icons.js
 ```
 
-Or use Capacitor's built-in asset generation:
+This generates all required PNG sizes:
+- `resources/icon.png` (1024×1024) — master icon
+- `resources/splash.png` (2732×2732) — splash screen
+- Android mipmap icons (48px to 192px)
+- Android splash screens (all densities)
+- Play Store icon (512×512)
+- App Store icon (1024×1024)
+- Notification icon (96×96)
+- Web favicon and PWA icons
+
+## After Generation
 
 ```bash
-cd rider-app
-npx @capacitor/assets generate --iconBackgroundColor '#00A651' --splashBackgroundColor '#0B1220'
+npx cap sync
+npx cap open android
 ```
-
-## Output Locations
-
-- **iOS icons:** `ios/App/App/Assets.xcassets/AppIcon.appiconset/`
-- **Android icons:** `android/app/src/main/res/mipmap-*/`
-- **iOS splash:** `ios/App/App/Assets.xcassets/Splash.imageset/`
-- **Android splash:** `android/app/src/main/res/drawable*/`

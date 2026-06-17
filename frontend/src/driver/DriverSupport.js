@@ -733,6 +733,7 @@ const containerStyle = {
   backgroundColor: COLORS.darkNavy,
   padding: "24px 16px 80px",
   overflowY: "auto",
+  fontFamily: "'Plus Jakarta Sans', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
 };
 
 const mauritaniaAccentBarStyle = {
@@ -751,14 +752,14 @@ const headerStyle = {
 
 const pageTitleStyle = {
   color: COLORS.white,
-  fontSize: "22px",
-  fontWeight: 900,
+  fontSize: "24px",
+  fontWeight: 800,
   margin: "0 0 4px 0",
 };
 
 const pageSubtitleStyle = {
   color: COLORS.lightGray,
-  fontSize: "13px",
+  fontSize: "14px",
   margin: 0,
 };
 
@@ -789,7 +790,7 @@ const emergencyStatusStyle = {
   right: "16px",
   left: "16px",
   padding: "12px 16px",
-  borderRadius: "12px",
+  borderRadius: "14px",
   border: "1px solid",
   zIndex: 9998,
   backdropFilter: "blur(8px)",
@@ -819,12 +820,12 @@ const tabButtonStyle = {
   alignItems: "center",
   gap: "4px",
   padding: "10px 8px",
-  borderRadius: "12px",
+  borderRadius: "14px",
   border: `1px solid ${COLORS.cardBorder}`,
   backgroundColor: COLORS.cardBg,
   color: COLORS.lightGray,
   fontSize: "11px",
-  fontWeight: 600,
+  fontWeight: 700,
   cursor: "pointer",
   transition: "all 0.2s ease",
   minWidth: "70px",
@@ -893,12 +894,12 @@ const backButtonStyle = {
   alignItems: "center",
   gap: "4px",
   padding: "8px 12px",
-  borderRadius: "8px",
+  borderRadius: "999px",
   border: "none",
   backgroundColor: "rgba(255, 255, 255, 0.08)",
   color: COLORS.primaryGreen,
   fontSize: "13px",
-  fontWeight: 600,
+  fontWeight: 700,
   cursor: "pointer",
   marginBottom: "12px",
 };
@@ -959,7 +960,7 @@ const formLabelStyle = {
 
 const formInputStyle = {
   padding: "12px 14px",
-  borderRadius: "10px",
+  borderRadius: "12px",
   border: `1px solid ${COLORS.cardBorder}`,
   backgroundColor: COLORS.cardBg,
   color: COLORS.white,
@@ -970,7 +971,7 @@ const formInputStyle = {
 
 const formTextareaStyle = {
   padding: "12px 14px",
-  borderRadius: "10px",
+  borderRadius: "12px",
   border: `1px solid ${COLORS.cardBorder}`,
   backgroundColor: COLORS.cardBg,
   color: COLORS.white,
@@ -984,7 +985,7 @@ const formTextareaStyle = {
 
 const submitButtonStyle = {
   padding: "14px 24px",
-  borderRadius: "12px",
+  borderRadius: "999px",
   border: "none",
   backgroundColor: COLORS.primaryGreen,
   color: COLORS.white,
@@ -1032,7 +1033,7 @@ const chatInitiateStyle = {
 
 const chatStartButtonStyle = {
   padding: "14px 24px",
-  borderRadius: "12px",
+  borderRadius: "999px",
   border: "none",
   backgroundColor: COLORS.chatBlue,
   color: COLORS.white,
@@ -1085,7 +1086,7 @@ const searchContainerStyle = {
 const searchInputStyle = {
   width: "100%",
   padding: "12px 40px 12px 14px",
-  borderRadius: "10px",
+  borderRadius: "12px",
   border: `1px solid ${COLORS.cardBorder}`,
   backgroundColor: COLORS.cardBg,
   color: COLORS.white,

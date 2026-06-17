@@ -159,15 +159,16 @@ function PrivacyPolicy() {
               at:
             </p>
             <ul style={listStyle}>
-              <li>Email: privacy@yala.mr</li>
-              <li>Support: {MARKET.supportUrl || "https://yala.mr/support"}</li>
+              <li>Email: support@yalataxi.live</li>
+              <li>Support: https://yalataxi.live</li>
+              <li>Account deletion: https://yalataxi.live/account-deletion</li>
               <li>Phone: {MARKET.phonePrefix}45000001</li>
             </ul>
           </article>
         </div>
 
         <p style={footerStyle}>
-          Last updated: January 2025. This policy applies to Yala Rider and
+          Last updated: June 2026. This policy applies to Yala Rider and
           Yala Driver apps available on iOS and Android.
         </p>
       </section>

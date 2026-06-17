@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Yala Driver App Icon
+       Dark Navy background with gold accent ring, white Yala "Y" logo and steering wheel
+       Use: Launcher icon, Play Store, App Store, notification icon -->
+
+  <!-- Dark navy background -->
+  <rect width="1024" height="1024" rx="180" fill="#0B1220"/>
+
+  <!-- Gold accent ring (outer) -->
+  <circle cx="512" cy="512" r="440" fill="none" stroke="#D4AF37" stroke-width="12"/>
+
+  <!-- Subtle inner glow -->
+  <circle cx="512" cy="460" r="280" fill="#1A2540" opacity="0.5"/>
+
+  <!-- White "Y" — Yala brand mark (large, bold) -->
+  <path d="M360 200 L512 430 L664 200 L736 200 L548 490 L548 590 L476 590 L476 490 L288 200 Z" fill="#FFFFFF"/>
+
+  <!-- Steering wheel (driver identity) — positioned below the Y -->
+  <!-- Outer wheel ring -->
+  <circle cx="512" cy="730" r="100" fill="none" stroke="#D4AF37" stroke-width="18"/>
+  <!-- Center hub -->
+  <circle cx="512" cy="730" r="22" fill="#D4AF37"/>
+  <!-- Three spokes -->
+  <line x1="512" y1="708" x2="512" y2="630" stroke="#D4AF37" stroke-width="14" stroke-linecap="round"/>
+  <line x1="492" y1="745" x2="430" y2="785" stroke="#D4AF37" stroke-width="14" stroke-linecap="round"/>
+  <line x1="532" y1="745" x2="594" y2="785" stroke="#D4AF37" stroke-width="14" stroke-linecap="round"/>
+</svg>
