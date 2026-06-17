@@ -13,7 +13,7 @@
     radial-gradient(circle at top left, rgba(8, 122, 69, 0.16), transparent 32rem),
     linear-gradient(180deg, #f7faf8 0%, #edf4ef 100%);
   color: var(--ink);
-  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: "Plus Jakarta Sans", Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 .driver-profile-shell *,
@@ -38,7 +38,7 @@
   width: 42px;
   height: 42px;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: var(--radius-md, 12px);
   background: #fff;
   color: var(--ink);
   cursor: pointer;
@@ -55,7 +55,7 @@
   justify-content: space-between;
   align-items: center;
   border: 1px solid rgba(8, 122, 69, 0.18);
-  border-radius: 18px;
+  border-radius: var(--radius-lg, 20px);
   background: rgba(255, 255, 255, 0.82);
   box-shadow: 0 12px 30px rgba(21, 33, 27, 0.08);
 }
@@ -75,9 +75,8 @@
 .driver-profile-brandbar strong {
   color: var(--yala-green-dark);
   font-size: 13px;
-  font-weight: 950;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-weight: 900;
+  letter-spacing: 0.02em;
 }
 
 .driver-profile-header {
@@ -130,13 +129,12 @@
   align-items: center;
   gap: 7px;
   border: 1px solid rgba(8, 122, 69, 0.18);
-  border-radius: 10px;
+  border-radius: var(--radius-pill, 999px);
   background: #f8fbf9;
   color: var(--yala-green-dark);
   cursor: pointer;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 900;
-  text-transform: uppercase;
 }
 
 .driver-level-pill span {
@@ -189,9 +187,8 @@
   align-items: center;
   gap: 8px;
   color: var(--muted);
-  font-size: 12px;
-  font-weight: 850;
-  text-transform: uppercase;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .driver-status-line span {
@@ -235,9 +232,8 @@
 
 .driver-summary-card span {
   color: var(--muted);
-  font-size: 12px;
-  font-weight: 800;
-  text-transform: uppercase;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .driver-accordion-list {
@@ -269,8 +265,8 @@
 }
 
 .driver-accordion-trigger span {
-  font-size: 19px;
-  font-weight: 950;
+  font-size: 20px;
+  font-weight: 900;
 }
 
 .driver-accordion-trigger i {
@@ -400,8 +396,7 @@
   margin: 10px 0;
   color: var(--ink);
   font-size: 15px;
-  font-weight: 950;
-  text-transform: uppercase;
+  font-weight: 900;
 }
 
 .driver-document-row {
@@ -423,9 +418,8 @@
   border-radius: 999px;
   background: #e8eeea;
   color: #52615a;
-  font-size: 10px;
-  font-weight: 950;
-  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 800;
 }
 
 .driver-document-status.approved {

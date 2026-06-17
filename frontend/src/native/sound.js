@@ -7,8 +7,31 @@
  */
 
 import { isNative } from "./platform";
-import { NativeAudio } from "@capacitor-community/native-audio";
-import { Haptics } from "@capacitor/haptics";
+
+let cachedNativeAudio = null;
+let cachedHaptics = null;
+
+function getNativeAudioPlugin() {
+  if (cachedNativeAudio) return cachedNativeAudio;
+  try {
+    const mod = require("@capacitor-community/native-audio");
+    cachedNativeAudio = mod?.NativeAudio || mod?.default || null;
+  } catch (error) {
+    cachedNativeAudio = null;
+  }
+  return cachedNativeAudio;
+}
+
+function getHapticsPlugin() {
+  if (cachedHaptics) return cachedHaptics;
+  try {
+    const mod = require("@capacitor/haptics");
+    cachedHaptics = mod?.Haptics || mod?.default || null;
+  } catch (error) {
+    cachedHaptics = null;
+  }
+  return cachedHaptics;
+}
 
 let soundPreloaded = false;
 let preloadAttempted = false;
@@ -19,6 +42,8 @@ let preloadAttempted = false;
  */
 export async function preloadNotificationSound() {
   if (!isNative() || preloadAttempted) return;
+  const NativeAudio = getNativeAudioPlugin();
+  if (!NativeAudio?.preload) return;
   preloadAttempted = true;
 
   try {
@@ -57,6 +82,8 @@ export async function playNativeSound() {
     console.log("NativeAudio: cannot play, native=" + isNative() + " preloaded=" + soundPreloaded);
     return false;
   }
+  const NativeAudio = getNativeAudioPlugin();
+  if (!NativeAudio?.play) return false;
 
   try {
     await NativeAudio.play({ assetId: "notification" });
@@ -73,16 +100,19 @@ export async function playNativeSound() {
  * Uses Capacitor Haptics plugin on native, falls back to navigator.vibrate on web.
  */
 export async function vibrateNative(pattern) {
+  const Haptics = getHapticsPlugin();
   if (isNative()) {
-    try {
+    if (Haptics?.vibrate) {
+      try {
       await Haptics.vibrate({ duration: 300 });
       if (pattern) {
         setTimeout(() => Haptics.vibrate({ duration: 300 }).catch(() => {}), 450);
         setTimeout(() => Haptics.vibrate({ duration: 300 }).catch(() => {}), 900);
       }
       return true;
-    } catch (error) {
-      console.log("Haptics vibrate error:", error.message || error);
+      } catch (error) {
+        console.log("Haptics vibrate error:", error.message || error);
+      }
     }
   }
 

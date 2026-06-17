@@ -15,7 +15,7 @@ export default function NotificationIcon({ unreadCount = 0, onTap }) {
       style={styles.button}
       aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`}
     >
-      <span style={styles.icon} aria-hidden="true">N</span>
+      <span style={styles.icon} aria-hidden="true">🔔</span>
       {unreadCount > 0 && (
         <span style={styles.badge}>
           {unreadCount > 9 ? "9+" : unreadCount}

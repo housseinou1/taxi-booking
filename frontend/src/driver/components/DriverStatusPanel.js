@@ -72,8 +72,11 @@ export default function DriverStatusPanel({
             </div>
           )}
           {onCancelRide && (
-            <button type="button" onClick={onCancelRide} className="driver-status-panel__cancel-btn"
-              style={{ marginTop: 10, width: "100%", padding: "10px", borderRadius: 10, border: "1px solid #EF4444", background: "transparent", color: "#EF4444", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
+            <button
+              type="button"
+              onClick={onCancelRide}
+              className="driver-status-panel__cancel-btn"
+            >
               Cancel Ride
             </button>
           )}

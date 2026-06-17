@@ -15,6 +15,7 @@ import DriverStatusPanel from "./components/DriverStatusPanel";
 import RideRequestCard from "./components/RideRequestCard";
 import DriverProfilePage from "./DriverProfilePage";
 import RideStatusButtons from "../RideStatusButtons";
+import "./driver-tokens.css";
 
 // ─── Styles ─────────────────────────────────────────────────────────────────
 
@@ -95,6 +96,32 @@ export default function DriverDashboardNew() {
       ) || null,
     [driverRides]
   );
+
+  // Build a simple route preview path for DriverMapView.
+  useEffect(() => {
+    if (!activeRide) {
+      setRoutePath([]);
+      return;
+    }
+
+    const pickupPoint =
+      Number.isFinite(Number(activeRide.pickup_lat)) && Number.isFinite(Number(activeRide.pickup_lng))
+        ? [Number(activeRide.pickup_lat), Number(activeRide.pickup_lng)]
+        : null;
+
+    const destinationPoint =
+      Number.isFinite(Number(activeRide.destination_lat)) &&
+      Number.isFinite(Number(activeRide.destination_lng))
+        ? [Number(activeRide.destination_lat), Number(activeRide.destination_lng)]
+        : null;
+
+    const points = [];
+    if (driverPosition) points.push(driverPosition);
+    if (pickupPoint) points.push(pickupPoint);
+    if (destinationPoint) points.push(destinationPoint);
+
+    setRoutePath(points.length >= 2 ? points : []);
+  }, [activeRide, driverPosition]);
 
   // ─── Auth Error Handling ────────────────────────────────────────────────────
 

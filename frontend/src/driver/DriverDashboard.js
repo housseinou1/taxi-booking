@@ -54,7 +54,17 @@ const toPoint = (lat, lng) => {
 export default function DriverDashboard() {
   const token = localStorage.getItem("access");
   const driverContext = useDriverContext();
-  const { state, setOnline, setActiveRide, setDriverProfile, setNotifications, setConnectionStatus, addNotification, setDriverLevel } = driverContext;
+  const {
+    state,
+    setOnline,
+    setActiveRide,
+    setDriverProfile,
+    setNotifications,
+    setConnectionStatus,
+    addNotification,
+    setDriverLevel,
+    logout,
+  } = driverContext;
 
   const [todayEarnings, setTodayEarnings] = useState(0);
   const [rideRequest, setRideRequest] = useState(null);
@@ -437,7 +447,7 @@ export default function DriverDashboard() {
             Safety
           </button>
           <button style={notificationButtonStyle} aria-label="Notifications">
-            <span style={bellIconStyle}>N</span>
+            <span style={bellIconStyle}>🔔</span>
             {unreadCount > 0 && (
               <span style={notificationBadgeStyle}>
                 {formatNotificationCount(unreadCount)}
@@ -569,16 +579,6 @@ function ActiveRideCard({ ride, onStatusChange }) {
             role="driver"
             currentRide={ride}
             onClose={() => setShowSafety(false)}
-          />
-        </div>
-      )}
-
-      {showSafetyPanel && (
-        <div style={driverSafetyOverlayStyle}>
-          <SafetyEmergencyPanel
-            role="driver"
-            currentRide={state.activeRide}
-            onClose={() => setShowSafetyPanel(false)}
           />
         </div>
       )}
@@ -756,6 +756,9 @@ const earningsTextStyle = {
 // ─── Notification ───────────────────────────────────────────────────────────
 
 const notificationAreaStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: "10px",
   pointerEvents: "auto",
 };
 
@@ -781,8 +784,8 @@ const bellIconStyle = {
   borderRadius: "50%",
   background: "rgba(255,255,255,0.14)",
   color: COLORS.white,
-  fontSize: "12px",
-  fontWeight: 950,
+  fontSize: "14px",
+  fontWeight: 700,
   lineHeight: 1,
 };
 

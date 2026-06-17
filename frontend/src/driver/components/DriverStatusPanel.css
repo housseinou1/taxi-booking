@@ -40,13 +40,14 @@
 .driver-status-panel__title {
   color: #fff;
   font-weight: 700;
-  font-size: 20px;
+  font-size: 22px;
   margin: 0 0 4px;
   text-align: center;
 }
 
 .driver-status-panel__subtitle {
-  font-size: 14px;
+  font-size: 15px;
+  font-weight: 600;
   margin: 0 0 16px;
   text-align: center;
 }
@@ -99,9 +100,8 @@
 
 .driver-status-panel__rider-label {
   color: rgba(255, 255, 255, 0.58);
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .driver-status-panel__rider-name {
@@ -140,13 +140,32 @@
 
 .driver-status-panel__ride-type {
   background: rgba(255, 255, 255, 0.08);
-  padding: 2px 8px;
-  border-radius: 4px;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill, 999px);
   font-size: 12px;
   color: rgba(255, 255, 255, 0.8);
+  font-weight: 600;
   text-transform: capitalize;
 }
 
 .driver-status-panel__ride-actions {
   margin-top: 14px;
+}
+
+.driver-status-panel__cancel-btn {
+  margin-top: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--driver-red, #EF4444);
+  background: transparent;
+  color: var(--driver-red, #EF4444);
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.driver-status-panel__cancel-btn:hover {
+  background: var(--driver-red-soft, rgba(239, 68, 68, 0.14));
 }
