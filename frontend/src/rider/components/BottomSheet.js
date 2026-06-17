@@ -41,8 +41,9 @@ const SWIPE_THRESHOLD = 30; // minimum px distance to register a swipe
  * - state: 'collapsed' | 'half' | 'full'
  * - onStateChange: (newState) => void
  * - children: React.ReactNode
+ * - contentClassName?: optional class applied to content container
  */
-function BottomSheet({ state, onStateChange, children }) {
+function BottomSheet({ state, onStateChange, children, contentClassName = '' }) {
   const sheetRef = useRef(null);
   const dragState = useRef({
     isDragging: false,
@@ -143,7 +144,7 @@ function BottomSheet({ state, onStateChange, children }) {
       <div className="bottom-sheet__handle" aria-hidden="true">
         <div className="bottom-sheet__handle-bar" />
       </div>
-      <div className="bottom-sheet__content">{children}</div>
+      <div className={`bottom-sheet__content ${contentClassName}`.trim()}>{children}</div>
     </div>
   );
 }

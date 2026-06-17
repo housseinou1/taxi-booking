@@ -47,7 +47,7 @@ function FareCard({ rideType, label, fare, discountedFare, eta, capacity, select
   const icon = getRideTypeIcon(rideType);
   const hasDiscount = discountedFare != null && discountedFare < fare;
 
-  const className = `fare-card${selected ? ' fare-card--selected' : ''}`;
+  const className = `fare-card fare-card--${rideType}${selected ? ' fare-card--selected' : ''}`;
 
   return (
     <div

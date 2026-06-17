@@ -277,6 +277,9 @@ function RideTracker({ ride, driverPosition, onChat, onShare, onSOS, onPayRate, 
       <div className="ride-tracker__info">
         <div className="ride-tracker__eta">
           <span className="ride-tracker__eta-label">ETA</span>
+          <span className="ride-tracker__eta-pill">
+            {eta != null ? `Arriving in ${eta} min` : 'Searching for ETA'}
+          </span>
           <span className="ride-tracker__eta-value">
             {eta != null ? `${eta} min` : '—'}
           </span>

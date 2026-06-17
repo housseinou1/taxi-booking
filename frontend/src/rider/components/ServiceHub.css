@@ -1,11 +1,13 @@
 .service-hub {
   display: flex;
-  justify-content: space-evenly;
+  justify-content: flex-start;
   align-items: center;
   gap: var(--space-sm);
   width: 100%;
-  max-width: 360px;
-  padding: var(--space-sm) 0;
+  max-width: 100%;
+  padding: var(--space-xs) 0;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
 
 .service-hub__tile {
@@ -13,25 +15,34 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-width: var(--tap-target-min);
-  min-height: var(--tap-target-min);
-  padding: var(--space-sm);
+  min-width: 88px;
+  min-height: 76px;
+  padding: var(--space-sm) var(--space-md);
   border: none;
   border-radius: var(--radius-md);
-  background: var(--yala-green-soft);
-  color: var(--yala-green);
   cursor: pointer;
   transition: background var(--transition-fast), transform var(--transition-fast);
   -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
 }
 
-.service-hub__tile:hover {
-  background: var(--yala-green-border);
+.service-hub__tile:nth-child(1) {
+  background: var(--tile-delivery-bg);
+  color: var(--tile-delivery-accent);
+}
+
+.service-hub__tile:nth-child(2) {
+  background: var(--tile-intercity-bg);
+  color: var(--tile-intercity-accent);
+}
+
+.service-hub__tile:nth-child(3) {
+  background: var(--tile-schedule-bg);
+  color: var(--tile-schedule-accent);
 }
 
 .service-hub__tile:active {
   transform: scale(0.95);
-  background: var(--yala-green-border);
 }
 
 .service-hub__tile:focus-visible {
@@ -48,8 +59,8 @@
 .service-hub__label {
   margin-top: var(--space-xs);
   font-family: var(--font-family);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-medium);
-  color: var(--yala-navy);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-friendly);
   white-space: nowrap;
 }

@@ -15,6 +15,30 @@
   --yala-gray-500: #64748B;
   --yala-gray-700: #334155;
 
+  /* Lyft-like surfaces and text */
+  --surface-warm: #FAFBFA;
+  --surface-sheet: #FFFFFF;
+  --text-friendly: #1A2332;
+  --text-muted: #6B7280;
+
+  /* Per-ride-type tints */
+  --ride-regular-bg: #E8F8EF;
+  --ride-regular-accent: #00A651;
+  --ride-comfort-bg: #FFF8E6;
+  --ride-comfort-accent: #D4AF37;
+  --ride-xl-bg: #EAF2FF;
+  --ride-xl-accent: #3B82F6;
+  --ride-share-bg: #F3EEFF;
+  --ride-share-accent: #8B5CF6;
+
+  /* Service hub tile tints */
+  --tile-delivery-bg: #E8F8EF;
+  --tile-delivery-accent: #00A651;
+  --tile-intercity-bg: #EAF2FF;
+  --tile-intercity-accent: #3B82F6;
+  --tile-schedule-bg: #FFF8E6;
+  --tile-schedule-accent: #D4AF37;
+
   /* Spacing */
   --space-xs: 4px;
   --space-sm: 8px;
@@ -24,29 +48,33 @@
   --space-2xl: 48px;
 
   /* Typography */
-  --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-size-xs: 11px;
-  --font-size-sm: 13px;
-  --font-size-md: 15px;
-  --font-size-lg: 18px;
-  --font-size-xl: 22px;
-  --font-size-2xl: 28px;
+  --font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-family-display: "Plus Jakarta Sans", var(--font-family);
+  --font-size-xs: 12px;
+  --font-size-sm: 14px;
+  --font-size-md: 16px;
+  --font-size-lg: 20px;
+  --font-size-xl: 24px;
+  --font-size-2xl: 32px;
   --font-weight-regular: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
 
   /* Radii */
-  --radius-sm: 6px;
-  --radius-md: 12px;
-  --radius-lg: 20px;
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
   --radius-full: 9999px;
+  --radius-pill: 9999px;
 
   /* Shadows */
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.12);
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.16);
-  --shadow-sheet: 0 -4px 20px rgba(0, 0, 0, 0.1);
+  --shadow-sheet: 0 -8px 32px rgba(15, 23, 42, 0.12);
+  --shadow-cta: 0 10px 28px rgba(0, 166, 81, 0.28);
 
   /* Transitions */
   --transition-fast: 150ms ease-out;
@@ -54,7 +82,7 @@
   --transition-slow: 500ms ease-out;
 
   /* Layout */
-  --bottom-sheet-peek: 80px;
+  --bottom-sheet-peek: 220px;
   --bottom-sheet-half: 50vh;
   --bottom-sheet-full: 90vh;
   --tap-target-min: 44px;

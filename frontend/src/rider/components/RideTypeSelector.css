@@ -1,15 +1,15 @@
 .ride-type-selector {
   width: 100%;
-  padding: var(--space-md) 0;
+  padding: var(--space-sm) 0 var(--space-md);
 }
 
 .ride-type-selector__scroll {
   display: flex;
-  gap: var(--space-sm);
+  gap: var(--space-md);
   overflow-x: auto;
   scroll-snap-type: x mandatory;
   scroll-behavior: smooth;
-  padding: var(--space-xs) var(--space-md);
+  padding: var(--space-xs) var(--space-md) var(--space-sm);
   -webkit-overflow-scrolling: touch;
 
   /* Hide scrollbar but keep functionality */
@@ -19,6 +19,13 @@
 
 .ride-type-selector__scroll::-webkit-scrollbar {
   display: none;
+}
+
+.ride-type-selector__hint {
+  margin: 0 var(--space-md);
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  font-weight: var(--font-weight-medium);
 }
 
 /* Each FareCard already has scroll-snap-align: start from FareCard.css */

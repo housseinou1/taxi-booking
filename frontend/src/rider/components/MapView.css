@@ -33,7 +33,7 @@
 }
 
 .mapview-marker--destination {
-  background-color: #E53E3E;
+  background-color: #FF6B6B;
   width: 28px;
   height: 28px;
 }
@@ -79,7 +79,7 @@
   right: -4px;
   bottom: -4px;
   border-radius: var(--radius-full);
-  border: 2px solid var(--yala-navy);
+  border: 2px solid var(--yala-green);
   opacity: 0;
   animation: mapview-pulse 2s ease-out infinite;
 }
@@ -103,11 +103,11 @@
   transform: translateX(-50%);
   margin-bottom: var(--space-xs);
   padding: 2px var(--space-sm);
-  background-color: var(--yala-navy);
+  background-color: rgba(26, 35, 50, 0.92);
   color: var(--yala-white);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-medium);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-pill);
   white-space: nowrap;
   pointer-events: none;
 }

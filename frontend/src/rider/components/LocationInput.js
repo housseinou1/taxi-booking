@@ -13,7 +13,7 @@ import './LocationInput.css';
  *   onSelect     — callback with { label, position, city }
  *   onFocus      — optional callback when input gains focus (expand bottom sheet)
  */
-function LocationInput({ label, value, city, savedPlaces, onSelect, onFocus }) {
+function LocationInput({ label, value, city, savedPlaces, onSelect, onFocus, variant = '' }) {
   const [query, setQuery] = useState(value || '');
   const [results, setResults] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -166,7 +166,7 @@ function LocationInput({ label, value, city, savedPlaces, onSelect, onFocus }) {
   };
 
   return (
-    <div className="location-input">
+    <div className={`location-input ${variant ? `location-input--${variant}` : ''}`.trim()}>
       <label className="location-input__label" htmlFor={`location-input-${label}`}>
         {label}
       </label>

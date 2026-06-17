@@ -4,8 +4,8 @@
   height: 100dvh;
   min-height: 620px;
   overflow: hidden;
-  background: #eef3ef;
-  color: #101828;
+  background: var(--surface-warm);
+  color: var(--text-friendly);
   font-family: var(--font-family);
 }
 
@@ -15,210 +15,69 @@
   z-index: 0;
 }
 
-.rider-home__welcome-panel {
+.rider-home__top-bar {
   position: absolute;
-  z-index: 20;
-  top: 18px;
-  left: 18px;
-  width: min(420px, calc(100% - 36px));
-  padding: 20px;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.97);
-  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.16);
-}
-
-.rider-home__welcome-row,
-.rider-home__saved > div:first-child,
-.rider-home__booking-heading {
+  z-index: 25;
+  top: max(12px, env(safe-area-inset-top));
+  left: 12px;
+  right: 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
+  pointer-events: none;
 }
 
-.rider-home__welcome-row span,
-.rider-home__booking-heading span,
-.rider-home__saved > div:first-child > span {
-  color: #667085;
-  font-size: 12px;
-  font-weight: 800;
-  text-transform: uppercase;
+.rider-home__top-bar > * {
+  pointer-events: auto;
 }
 
-.rider-home__welcome-row h1 {
-  margin: 4px 0 0;
-  color: #08111f;
-  font-size: 25px;
-  line-height: 1.15;
-}
-
-.rider-home__welcome-row > button {
-  width: 44px;
-  height: 44px;
-  flex: 0 0 44px;
-  border: 0;
-  border-radius: 50%;
-  background: #08111f;
-  color: #fff;
-  font-size: 17px;
-  font-weight: 900;
-  cursor: pointer;
-}
-
-.rider-home__main-search {
+.rider-home__floating-search {
+  position: absolute;
+  z-index: 24;
+  top: max(70px, calc(env(safe-area-inset-top) + 58px));
+  left: 12px;
+  right: 12px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  width: 100%;
-  min-height: 58px;
-  margin-top: 18px;
-  padding: 0 16px;
-  border: 2px solid #00a651;
-  border-radius: 8px;
-  background: #fff;
-  color: #101828;
+  gap: 10px;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid rgba(11, 18, 32, 0.08);
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: var(--shadow-sm);
+  color: var(--text-friendly);
   cursor: pointer;
   text-align: left;
 }
 
-.rider-home__main-search span {
-  color: #00a651;
-  font-size: 27px;
-}
-
-.rider-home__main-search strong {
-  font-size: 16px;
-}
-
-.rider-home__quick-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.rider-home__quick-actions button,
-.rider-home__saved-grid button,
-.rider-home__location-actions button {
-  border: 1px solid #d9e0dc;
-  border-radius: 8px;
-  background: #f7faf8;
-  color: #344054;
-  cursor: pointer;
-  font: inherit;
-}
-
-.rider-home__quick-actions button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-height: 42px;
-  padding: 8px;
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.rider-home__quick-actions span {
-  color: #00a651;
+.rider-home__floating-search span {
+  color: var(--yala-green);
   font-size: 18px;
 }
 
-.rider-home__saved {
-  margin-top: 18px;
+.rider-home__floating-search strong {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
 }
 
-.rider-home__saved > div:first-child button {
+.rider-home__menu-btn,
+.rider-home__avatar-btn {
+  width: 44px;
+  height: 44px;
   border: 0;
-  background: transparent;
-  color: #00a651;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--text-friendly);
+  box-shadow: var(--shadow-md);
   cursor: pointer;
-  font-size: 12px;
-  font-weight: 800;
+  font-size: 18px;
+  font-weight: var(--font-weight-bold);
 }
 
-.rider-home__saved-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
-  margin-top: 9px;
-}
-
-.rider-home__saved-grid button {
-  min-width: 0;
-  min-height: 62px;
-  padding: 8px 4px;
-  font-size: 11px;
-  font-weight: 800;
-}
-
-.rider-home__saved-grid button span {
-  display: block;
-  margin-bottom: 5px;
-  color: #00a651;
-  font-size: 20px;
-}
-
-.rider-home__map-caption {
-  position: absolute;
-  z-index: 15;
-  left: 18px;
-  bottom: 92px;
-  display: grid;
-  gap: 2px;
-  min-width: 190px;
-  padding: 11px 14px;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.14);
-}
-
-.rider-home__map-caption strong {
-  font-size: 13px;
-}
-
-.rider-home__map-caption span {
-  color: #667085;
-  font-size: 12px;
-}
-
-.rider-home__bottom-nav {
-  position: absolute;
-  z-index: 30;
-  left: 50%;
-  bottom: max(12px, env(safe-area-inset-bottom));
-  display: grid;
-  grid-template-columns: repeat(4, minmax(62px, 1fr));
-  width: min(520px, calc(100% - 24px));
-  min-height: 64px;
-  padding: 6px;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.98);
-  box-shadow: 0 16px 38px rgba(15, 23, 42, 0.18);
-  transform: translateX(-50%);
-}
-
-.rider-home__bottom-nav button {
-  display: grid;
-  place-items: center;
-  gap: 2px;
-  border: 0;
-  background: transparent;
-  color: #667085;
-  cursor: pointer;
-  font-size: 10px;
-  font-weight: 800;
-}
-
-.rider-home__bottom-nav button span {
-  font-size: 19px;
-}
-
-.rider-home__bottom-nav button.active {
-  color: #00a651;
+.rider-home__avatar-btn {
+  background: var(--yala-green);
+  color: var(--yala-white);
 }
 
 .rider-home__panel {
@@ -230,6 +89,231 @@
 
 .rider-home__panel > * {
   pointer-events: auto;
+}
+
+.rider-home__idle {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding: 4px 0 8px;
+}
+
+.rider-home__idle-greeting {
+  margin: 0;
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-friendly);
+  line-height: 1.2;
+}
+
+.rider-home__idle-subtitle {
+  margin: -8px 0 0;
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  font-weight: var(--font-weight-medium);
+}
+
+.rider-home__main-search {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  margin-top: 4px;
+  padding: 0 16px;
+  border: 2px solid var(--yala-green);
+  border-radius: var(--radius-pill);
+  background: var(--yala-white);
+  color: var(--text-friendly);
+  cursor: pointer;
+  text-align: left;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--transition-fast), transform var(--transition-fast);
+}
+
+.rider-home__main-search:active {
+  transform: scale(0.99);
+}
+
+.rider-home__main-search span {
+  color: var(--yala-green);
+  font-size: 22px;
+}
+
+.rider-home__main-search strong {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+}
+
+.rider-home__saved {
+  margin-top: 4px;
+}
+
+.rider-home__saved > div:first-child,
+.rider-home__booking-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.rider-home__saved > div:first-child > span,
+.rider-home__booking-heading span {
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.rider-home__saved > div:first-child button {
+  border: 0;
+  background: transparent;
+  color: var(--yala-green);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.rider-home__saved-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 9px;
+}
+
+.rider-home__saved-grid button,
+.rider-home__location-actions button {
+  border: 1px solid #d9e0dc;
+  border-radius: var(--radius-md);
+  background: #f7faf8;
+  color: #344054;
+  cursor: pointer;
+  font: inherit;
+}
+
+.rider-home__saved-grid button {
+  min-width: 0;
+  min-height: 56px;
+  padding: 8px 4px;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.rider-home__saved-grid button span {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--yala-green);
+  font-size: 18px;
+}
+
+.rider-home__map-caption {
+  position: absolute;
+  z-index: 15;
+  left: 18px;
+  bottom: calc(var(--bottom-sheet-peek) + 12px);
+  display: grid;
+  gap: 2px;
+  min-width: 190px;
+  padding: 11px 14px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.14);
+}
+
+.rider-home__map-caption strong {
+  font-size: 13px;
+}
+
+.rider-home__map-caption span {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.rider-home__location-content,
+.rider-home__ride-type-content {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 4px 0 20px;
+}
+
+.rider-home__booking-heading {
+  justify-content: flex-start;
+  margin-bottom: 2px;
+}
+
+.rider-home__booking-heading h2,
+.rider-home__section-title {
+  margin: 2px 0 0;
+  color: var(--text-friendly);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+}
+
+.rider-home__location-actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px;
+}
+
+.rider-home__location-actions button {
+  min-height: 48px;
+  padding: 7px;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.rider-home__location-message {
+  margin: 0;
+  padding: 10px 12px;
+  border-left: 4px solid var(--yala-green);
+  border-radius: var(--radius-sm);
+  background: #effaf3;
+  color: #23613c;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.yala-btn-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 52px;
+  margin-top: var(--space-md);
+  padding: 0 var(--space-lg);
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--yala-green);
+  color: var(--yala-white);
+  font-family: var(--font-family);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.01em;
+  box-shadow: var(--shadow-cta);
+  cursor: pointer;
+  transition: transform var(--transition-fast), background var(--transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.yala-btn-primary:hover {
+  background: #009248;
+}
+
+.yala-btn-primary:active {
+  transform: scale(0.98);
+}
+
+.yala-btn-secondary {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--yala-gray-300);
+  border-radius: var(--radius-pill);
+  background: var(--yala-white);
+  color: var(--text-friendly);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
 }
 
 .rider-home__safety-overlay {
@@ -249,60 +333,6 @@
   margin: auto 0;
 }
 
-.rider-home__location-content,
-.rider-home__ride-type-content {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding: 4px 0 20px;
-}
-
-.rider-home__booking-heading {
-  justify-content: flex-start;
-  margin-bottom: 2px;
-}
-
-.rider-home__booking-heading button {
-  min-height: 40px;
-  padding: 0 13px;
-  border: 1px solid #d9e0dc;
-  border-radius: 8px;
-  background: #fff;
-  color: #344054;
-  cursor: pointer;
-  font-weight: 800;
-}
-
-.rider-home__booking-heading h2,
-.rider-home__section-title {
-  margin: 2px 0 0;
-  color: #08111f;
-  font-size: 19px;
-}
-
-.rider-home__location-actions {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 7px;
-}
-
-.rider-home__location-actions button {
-  min-height: 48px;
-  padding: 7px;
-  font-size: 11px;
-  font-weight: 800;
-}
-
-.rider-home__location-message {
-  margin: 0;
-  padding: 10px 12px;
-  border-left: 3px solid #00a651;
-  background: #effaf3;
-  color: #23613c;
-  font-size: 12px;
-  font-weight: 700;
-}
-
 @media (min-width: 768px) {
   .rider-home__panel {
     top: 18px;
@@ -315,7 +345,7 @@
   .rider-home__panel > * {
     position: relative;
     height: 100%;
-    border-radius: 8px;
+    border-radius: var(--radius-lg);
     transform: none !important;
     box-shadow: 0 18px 48px rgba(15, 23, 42, 0.18);
     overflow-y: auto;
@@ -327,29 +357,14 @@
     min-height: 560px;
   }
 
-  .rider-home__welcome-panel {
-    top: 10px;
-    left: 10px;
-    width: calc(100% - 20px);
-    padding: 15px;
-  }
-
-  .rider-home__welcome-row h1 {
-    font-size: 21px;
-  }
-
-  .rider-home__main-search {
-    min-height: 52px;
-    margin-top: 13px;
-  }
-
-  .rider-home__saved {
-    margin-top: 13px;
-  }
-
   .rider-home__map-caption {
     left: 10px;
-    bottom: 88px;
+    bottom: calc(var(--bottom-sheet-peek) + 8px);
+  }
+
+  .rider-home__floating-search {
+    left: 10px;
+    right: 10px;
   }
 
   .rider-home__location-actions {

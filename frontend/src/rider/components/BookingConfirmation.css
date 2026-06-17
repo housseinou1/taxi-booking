@@ -12,7 +12,7 @@
 .booking-confirmation__title {
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-bold);
-  color: var(--yala-navy);
+  color: var(--text-friendly);
   margin: 0 0 var(--space-sm) 0;
 }
 
@@ -54,9 +54,9 @@
 .booking-confirmation__detail-label {
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-medium);
-  color: var(--yala-gray-500);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  text-transform: none;
+  letter-spacing: 0;
 }
 
 .booking-confirmation__detail-value {
@@ -239,18 +239,19 @@
   justify-content: center;
   gap: var(--space-sm);
   width: 100%;
-  min-height: var(--tap-target-min);
+  min-height: 52px;
   padding: var(--space-md) var(--space-lg);
   border: none;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-pill);
   background: var(--yala-green);
   color: var(--yala-white);
   font-family: var(--font-family);
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-md);
   font-weight: var(--font-weight-bold);
   cursor: pointer;
   transition: background var(--transition-fast), transform var(--transition-fast), opacity var(--transition-fast);
   -webkit-tap-highlight-color: transparent;
+  box-shadow: var(--shadow-cta);
 }
 
 .booking-confirmation__confirm-btn:hover:not(:disabled) {

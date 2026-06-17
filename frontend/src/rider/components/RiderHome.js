@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useRide } from '../context/RideContext';
 import MapView from './MapView';
 import BottomSheet from './BottomSheet';
+import ServiceHub from './ServiceHub';
 import LocationInput from './LocationInput';
 import RideTypeSelector from './RideTypeSelector';
 import BookingConfirmation from './BookingConfirmation';
@@ -283,6 +284,8 @@ function RiderHome() {
     dispatch({ type: 'SET_BOOKING_STEP', payload: 'location' });
   }, [dispatch]);
 
+  const riderInitial = (profile?.first_name || 'R').slice(0, 1).toUpperCase();
+
   const savedPlaces = useMemo(
     () => [
       { key: 'home', label: 'Home', position: [18.0735, -15.9582] },
@@ -472,34 +475,62 @@ function RiderHome() {
   const renderBottomSheetContent = () => {
     switch (bookingStep) {
       case 'idle':
-        return null;
+        return (
+          <div className="rider-home__idle">
+            <h1 className="rider-home__idle-greeting">Hi, {profile?.first_name || 'there'} 👋</h1>
+            <p className="rider-home__idle-subtitle">Ready to ride?</p>
+            <button className="rider-home__main-search" type="button" onClick={handleDestinationFocus}>
+              <span aria-hidden="true">⌕</span>
+              <strong>Where to?</strong>
+            </button>
+            <ServiceHub onNavigate={handleNavigate} />
+            <div className="rider-home__saved">
+              <div>
+                <span>Your places</span>
+                <button type="button" onClick={() => handleNavigate('/saved-places')}>Edit</button>
+              </div>
+              <div className="rider-home__saved-grid">
+                {savedPlaces.slice(0, 2).map((place) => (
+                  <button key={place.key} type="button" onClick={() => handleSavedDestination(place)}>
+                    <span aria-hidden="true">{place.key === 'home' ? '⌂' : '▣'}</span>
+                    {place.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
 
       case 'location':
         return (
           <div className="rider-home__location-content">
             <div className="rider-home__booking-heading">
-              <button type="button" onClick={() => dispatch({ type: 'SET_BOOKING_STEP', payload: 'idle' })}>
+              <button className="yala-btn-secondary" type="button" onClick={() => dispatch({ type: 'SET_BOOKING_STEP', payload: 'idle' })}>
                 Back
               </button>
               <div>
-                <span>Plan your ride</span>
+                <span>Set your route</span>
                 <h2>Pickup and drop-off</h2>
               </div>
             </div>
-            <LocationInput
-              label={t('riderHome.pickup', 'Pickup')}
-              value={pickup?.label || ''}
-              city={city}
-              onSelect={handlePickupSelect}
-            />
-            <LocationInput
-              label={t('riderHome.destination', 'Destination')}
-              value={destination?.label || ''}
-              city={city}
-              savedPlaces={savedPlaces}
-              onSelect={handleDestinationSelect}
-              onFocus={handleDestinationFocus}
-            />
+            <div className="location-stack">
+              <LocationInput
+                label={t('riderHome.pickup', 'Pickup')}
+                value={pickup?.label || ''}
+                city={city}
+                onSelect={handlePickupSelect}
+                variant="pickup"
+              />
+              <LocationInput
+                label={t('riderHome.destination', 'Destination')}
+                value={destination?.label || ''}
+                city={city}
+                savedPlaces={savedPlaces}
+                onSelect={handleDestinationSelect}
+                onFocus={handleDestinationFocus}
+                variant="destination"
+              />
+            </div>
             <div className="rider-home__location-actions">
               <button type="button" onClick={useCurrentLocation}>Use current GPS</button>
               <button type="button" onClick={() => startMapSelection('pickup')}>Pickup on map</button>
@@ -509,9 +540,8 @@ function RiderHome() {
             {pickup && destination && (
               <button
                 type="button"
-                className="rider-home__confirm-locations-btn"
+                className="yala-btn-primary"
                 onClick={() => dispatch({ type: 'SET_BOOKING_STEP', payload: 'rideType' })}
-                style={{ width: '100%', marginTop: 16, padding: '14px 0', borderRadius: 999, border: 'none', background: '#00A651', color: '#fff', fontWeight: 900, fontSize: 16, cursor: 'pointer' }}
               >
                 {t('riderHome.findRides', 'Find Rides →')}
               </button>
@@ -535,9 +565,8 @@ function RiderHome() {
             {/* Confirm Ride button directly on ride type screen */}
             <button
               type="button"
-              className="rider-home__confirm-ride-btn"
+              className="yala-btn-primary"
               onClick={() => dispatch({ type: 'SET_BOOKING_STEP', payload: 'confirm' })}
-              style={{ width: '100%', marginTop: 16, padding: '16px 0', borderRadius: 999, border: 'none', background: '#00A651', color: '#fff', fontWeight: 900, fontSize: 16, cursor: 'pointer', boxShadow: '0 8px 24px rgba(0,166,81,0.3)' }}
             >
               {t('riderHome.confirmRide', `Confirm ${RIDE_TYPE_LABELS[rideType] || 'Regular'} — ${Math.round(fare || 0)} MRU`)}
             </button>
@@ -600,80 +629,34 @@ function RiderHome() {
 
       {bookingStep === 'idle' && (
         <>
-          <section className="rider-home__welcome-panel">
-            <div className="rider-home__welcome-row">
-              <div>
-                <span>Yala Rider</span>
-                <h1>Welcome, {profile?.first_name || 'Rider'}</h1>
-              </div>
-              <button type="button" onClick={() => handleNavigate('/rider-profile')} aria-label="Open rider profile">
-                {(profile?.first_name || 'R').slice(0, 1).toUpperCase()}
-              </button>
-            </div>
-
-            <button className="rider-home__main-search" type="button" onClick={handleDestinationFocus}>
-              <span aria-hidden="true">⌕</span>
-              <strong>Where are you going?</strong>
+          <header className="rider-home__top-bar">
+            <button className="rider-home__menu-btn" type="button" onClick={() => handleNavigate('/services')} aria-label="Open services menu">
+              ☰
             </button>
-
-            <div className="rider-home__quick-actions">
-              <button type="button" onClick={useCurrentLocation}>
-                <span aria-hidden="true">◎</span>
-                Current location
-              </button>
-              <button type="button" onClick={() => handleNavigate('/services')}>
-                <span aria-hidden="true">◷</span>
-                Schedule ahead
-              </button>
-            </div>
-
-            <div className="rider-home__saved">
-              <div>
-                <span>Saved places</span>
-                <button type="button" onClick={() => handleNavigate('/saved-places')}>Manage</button>
-              </div>
-              <div className="rider-home__saved-grid">
-                {savedPlaces.map((place) => (
-                  <button key={place.key} type="button" onClick={() => handleSavedDestination(place)}>
-                    <span aria-hidden="true">
-                      {place.key === 'home' ? '⌂' : place.key === 'work' ? '▣' : place.key === 'favorite' ? '★' : '◷'}
-                    </span>
-                    {place.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </section>
-
+            <button className="rider-home__avatar-btn" type="button" onClick={() => handleNavigate('/rider-profile')} aria-label="Open rider profile">
+              {riderInitial}
+            </button>
+          </header>
+          <button className="rider-home__floating-search" type="button" onClick={handleDestinationFocus}>
+            <span aria-hidden="true">⌕</span>
+            <strong>Where are you going?</strong>
+          </button>
           <div className="rider-home__map-caption">
             <strong>You are here</strong>
             <span>{pickup?.label || city}</span>
           </div>
-
-          <nav className="rider-home__bottom-nav" aria-label="Rider navigation">
-            <button className="active" type="button" onClick={() => handleNavigate('/rider')}>
-              <span aria-hidden="true">●</span>Rides
-            </button>
-            <button type="button" onClick={() => handleNavigate('/delivery')}>
-              <span aria-hidden="true">□</span>Delivery
-            </button>
-            <button type="button" onClick={() => handleNavigate('/services')}>
-              <span aria-hidden="true">◷</span>Scheduled
-            </button>
-            <button type="button" onClick={() => handleNavigate('/rider-profile')}>
-              <span aria-hidden="true">○</span>Profile
-            </button>
-          </nav>
         </>
       )}
 
-      {bookingStep !== 'idle' && (
-        <div className="rider-home__panel">
-          <BottomSheet state={derivedSheetState} onStateChange={handleSheetStateChange}>
-            {renderBottomSheetContent()}
-          </BottomSheet>
-        </div>
-      )}
+      <div className="rider-home__panel">
+        <BottomSheet
+          state={derivedSheetState}
+          onStateChange={handleSheetStateChange}
+          contentClassName={bookingStep === 'idle' ? 'bottom-sheet__content--idle' : ''}
+        >
+          {renderBottomSheetContent()}
+        </BottomSheet>
+      </div>
 
       {showChat && currentRide?.id && (
         <RideChat rideId={currentRide.id} onClose={() => setShowChat(false)} />
