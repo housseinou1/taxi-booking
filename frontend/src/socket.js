@@ -13,6 +13,8 @@ let ws = null;
 let listeners = new Set();
 let reconnectTimer = null;
 let reconnectDelay = 1000;
+let pendingMessages = [];
+let joinedRideIds = new Set();
 
 function connect() {
   if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
@@ -20,7 +22,10 @@ function connect() {
   }
 
   try {
-    ws = new WebSocket(WS_URL);
+    const token = localStorage.getItem("access");
+    const separator = WS_URL.includes("?") ? "&" : "?";
+    const wsUrl = token ? `${WS_URL}${separator}token=${encodeURIComponent(token)}` : WS_URL;
+    ws = new WebSocket(wsUrl);
   } catch (err) {
     scheduleReconnect();
     return;
@@ -28,6 +33,10 @@ function connect() {
 
   ws.onopen = () => {
     reconnectDelay = 1000; // reset backoff on success
+    joinedRideIds.forEach((rideId) =>
+      ws.send(JSON.stringify({ type: "join_ride", ride_id: rideId }))
+    );
+    pendingMessages.splice(0).forEach((message) => ws.send(JSON.stringify(message)));
   };
 
   ws.onmessage = (event) => {
@@ -73,10 +82,60 @@ export function subscribeRideUpdates(callback) {
 export function sendRideUpdate(data) {
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify(data));
+    return true;
   }
+  pendingMessages.push(data);
+  connect();
+  return false;
 }
+
+export const joinRideUpdates = (rideId) => {
+  if (!rideId) return false;
+  joinedRideIds.add(rideId);
+  connect();
+  if (ws?.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: "join_ride", ride_id: rideId }));
+    return true;
+  }
+  return false;
+};
+
+export const leaveRideUpdates = (rideId) => {
+  if (!rideId) return false;
+  joinedRideIds.delete(rideId);
+  if (ws?.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: "leave_ride", ride_id: rideId }));
+    return true;
+  }
+  return false;
+};
+
+export const sendDriverLocation = (rideId, latitude, longitude) => {
+  if (!rideId || !Number.isFinite(Number(latitude)) || !Number.isFinite(Number(longitude))) {
+    return false;
+  }
+
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    pendingMessages = pendingMessages.filter(
+      (message) => !(message.type === "location_update" && message.ride_id === rideId)
+    );
+  }
+
+  return sendRideUpdate({
+    type: "location_update",
+    ride_id: rideId,
+    lat: Number(latitude),
+    lng: Number(longitude),
+  });
+};
 
 // Start connection immediately
 connect();
 
-export default { subscribeRideUpdates, sendRideUpdate };
+export default {
+  subscribeRideUpdates,
+  sendRideUpdate,
+  joinRideUpdates,
+  leaveRideUpdates,
+  sendDriverLocation,
+};

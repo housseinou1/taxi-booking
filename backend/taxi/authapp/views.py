@@ -24,7 +24,6 @@ from .validators import (
 )
 from taxi.drivers.models import DriverProfile
 from taxi.security.abuse import rate_limit
-from locations.services import resolve_city
 
 User = get_user_model()
 
@@ -61,6 +60,7 @@ def file_url(request, field):
 def build_user_response(user):
     profile = DriverProfile.objects.filter(user=user).first()
     is_driver = profile is not None
+    role = "admin" if user.is_staff or user.is_superuser else "driver" if is_driver else "rider"
 
     return {
         "id": user.id,
@@ -71,9 +71,13 @@ def build_user_response(user):
         "city": user.city_id,
         "city_name": user.city.name if user.city else "",
         "region_name": user.city.region.name if user.city else "",
+        "user_type": user.user_type,
+        "role": role,
         "is_driver": is_driver,
-        "is_rider": not is_driver,
+        "is_rider": role == "rider",
         "is_staff": user.is_staff,
+        "is_superuser": user.is_superuser,
+        "permissions": sorted(user.get_all_permissions()) if user.is_staff else [],
         "is_active": user.is_active,
         "rider_status": user.rider_status,
         "rider_status_label": user.get_rider_status_display(),
@@ -105,6 +109,8 @@ def serialize_user(user):
         driver_rating__isnull=False,
     ).aggregate(avg=Avg("driver_rating"))["avg"]
 
+    role = "admin" if user.is_staff or user.is_superuser else "driver" if is_driver else "rider"
+
     return {
         "id": user.id,
         "email": user.email,
@@ -115,10 +121,12 @@ def serialize_user(user):
         "city": user.city_id,
         "city_name": user.city.name if user.city else "",
         "region_name": user.city.region.name if user.city else "",
-        "user_type": "driver" if is_driver else user.user_type,
+        "user_type": user.user_type,
+        "role": role,
         "is_driver": is_driver,
-        "is_rider": not is_driver,
+        "is_rider": role == "rider",
         "is_staff": user.is_staff,
+        "is_superuser": user.is_superuser,
         "is_active": user.is_active,
         "rider_status": user.rider_status,
         "rider_status_label": user.get_rider_status_display(),
@@ -151,6 +159,12 @@ def serialize_user(user):
 class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
     permission_classes = [AllowAny]
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        app_type = self.request.META.get("HTTP_X_APP_TYPE", "").strip().lower()
+        context["app_type"] = app_type if app_type else None
+        return context
 
     def create(self, request, *args, **kwargs):
         retry_after = rate_limit(request, "register", limit=5, window_seconds=3600)
@@ -228,9 +242,33 @@ def me(request):
 @api_view(["POST", "PATCH"])
 @permission_classes([IsAuthenticated])
 def update_identity(request):
+    first_name = request.data.get("first_name", None)
+    last_name = request.data.get("last_name", None)
+    email = request.data.get("email", None)
     national_id_number = request.data.get("national_id_number", None)
     phone_number = request.data.get("phone_number", None)
     city_id = request.data.get("city", None)
+
+    if first_name is not None:
+        request.user.first_name = str(first_name).strip()
+
+    if last_name is not None:
+        request.user.last_name = str(last_name).strip()
+
+    if email is not None:
+        email = str(email).strip().lower()
+        if not email:
+            return Response(
+                {"error": "Email address is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        duplicate = User.objects.filter(email__iexact=email).exclude(id=request.user.id).exists()
+        if duplicate:
+            return Response(
+                {"error": "This email address is already used by another account."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        request.user.email = email
 
     if phone_number is not None:
         phone_number = normalize_mauritania_phone(phone_number)
@@ -249,7 +287,14 @@ def update_identity(request):
         request.user.phone_number = phone_number
 
     if city_id is not None:
-        request.user.city = resolve_city(city_id=city_id)
+        city_model = request.user._meta.get_field("city").remote_field.model
+        city = city_model.objects.filter(pk=city_id).first()
+        if city is None:
+            return Response(
+                {"error": "Selected city was not found."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        request.user.city = city
 
     if national_id_number is not None:
         national_id_number = normalize_national_id(national_id_number)
@@ -283,6 +328,9 @@ def update_identity(request):
         )
 
     request.user.save(update_fields=[
+        "first_name",
+        "last_name",
+        "email",
         "phone_number",
         "national_id_number",
         "national_id_document",
@@ -292,7 +340,7 @@ def update_identity(request):
     ])
 
     return Response({
-        "message": "National ID information updated",
+        "message": "Profile information updated",
         "user": {
             **build_user_response(request.user),
             "national_id_document": file_url(request, request.user.national_id_document),

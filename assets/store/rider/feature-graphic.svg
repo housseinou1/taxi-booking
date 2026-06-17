@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 500" width="1024" height="500">
+  <!-- Yala Rider Feature Graphic — Google Play Store (1024x500) -->
+
+  <!-- Green gradient background -->
+  <defs>
+    <linearGradient id="riderGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00A651"/>
+      <stop offset="100%" style="stop-color:#008040"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="500" fill="url(#riderGrad)"/>
+
+  <!-- Decorative circles -->
+  <circle cx="850" cy="100" r="200" fill="#00B85C" opacity="0.2"/>
+  <circle cx="150" cy="400" r="150" fill="#00B85C" opacity="0.15"/>
+
+  <!-- Yala "Y" logo (left side) -->
+  <path d="M100 140 L170 260 L240 140 L268 140 L182 285 L182 360 L158 360 L158 285 L72 140 Z" fill="#FFFFFF" opacity="0.9"/>
+
+  <!-- App name -->
+  <text x="310" y="220" font-family="Arial, Helvetica, sans-serif" font-size="72" font-weight="bold" fill="#FFFFFF">Yala Rider</text>
+
+  <!-- Tagline -->
+  <text x="310" y="280" font-family="Arial, Helvetica, sans-serif" font-size="28" fill="#FFFFFF" opacity="0.9">Ride Anywhere in Mauritania</text>
+
+  <!-- Feature bullets -->
+  <text x="310" y="340" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#FFFFFF" opacity="0.8">🚗 Book rides instantly</text>
+  <text x="310" y="375" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#FFFFFF" opacity="0.8">📍 Real-time tracking</text>
+  <text x="310" y="410" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#FFFFFF" opacity="0.8">🛡️ Safe &amp; verified drivers</text>
+  <text x="310" y="445" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#FFFFFF" opacity="0.8">🇲🇷 All Mauritania cities</text>
+
+  <!-- Phone mockup (right side) -->
+  <rect x="720" y="60" width="220" height="380" rx="24" fill="#FFFFFF" opacity="0.95"/>
+  <rect x="732" y="80" width="196" height="340" rx="8" fill="#0B1220"/>
+  <!-- Map area inside phone -->
+  <rect x="732" y="80" width="196" height="200" fill="#1a3a2a"/>
+  <!-- Map pin -->
+  <circle cx="830" cy="160" r="8" fill="#00A651"/>
+  <path d="M830 168 L830 180" stroke="#00A651" stroke-width="2"/>
+  <!-- Bottom panel inside phone -->
+  <rect x="740" y="290" width="180" height="50" rx="8" fill="#00A651"/>
+  <text x="830" y="320" font-family="Arial, sans-serif" font-size="14" fill="#FFFFFF" text-anchor="middle" font-weight="bold">Book a Ride</text>
+  <!-- Fare card -->
+  <rect x="740" y="350" width="180" height="40" rx="6" fill="#1A2B3C"/>
+  <text x="750" y="374" font-family="Arial, sans-serif" font-size="11" fill="#AAA">Estimated fare</text>
+  <text x="890" y="374" font-family="Arial, sans-serif" font-size="13" fill="#00A651" text-anchor="end" font-weight="bold">350 MRU</text>
+</svg>

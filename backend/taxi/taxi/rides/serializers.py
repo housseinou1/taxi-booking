@@ -32,10 +32,26 @@ class RideSerializer(serializers.ModelSerializer):
     vehicle = serializers.SerializerMethodField()
     plate_number = serializers.SerializerMethodField()
     driver_picture = serializers.SerializerMethodField()
+    driver_photo_url = serializers.SerializerMethodField()
     driver_avg_rating = serializers.SerializerMethodField()
     completed_trips = serializers.SerializerMethodField()
     driver_category = serializers.SerializerMethodField()
     driver_category_label = serializers.SerializerMethodField()
+    driver_level = serializers.SerializerMethodField()
+    driver_level_label = serializers.SerializerMethodField()
+    driver_code = serializers.SerializerMethodField()
+    driver_verified = serializers.SerializerMethodField()
+    driver_verification_status = serializers.SerializerMethodField()
+    driver_current_lat = serializers.SerializerMethodField()
+    driver_current_lng = serializers.SerializerMethodField()
+    vehicle_make = serializers.SerializerMethodField()
+    vehicle_model = serializers.SerializerMethodField()
+    vehicle_color = serializers.SerializerMethodField()
+    vehicle_category = serializers.SerializerMethodField()
+    vehicle_category_label = serializers.SerializerMethodField()
+    vehicle_photo_url = serializers.SerializerMethodField()
+    vehicle_verified = serializers.SerializerMethodField()
+    vehicle_verification_status = serializers.SerializerMethodField()
     driver_member_since_year = serializers.SerializerMethodField()
     driver_years_using_app = serializers.SerializerMethodField()
     rider_name = serializers.SerializerMethodField()
@@ -57,6 +73,7 @@ class RideSerializer(serializers.ModelSerializer):
     has_stops = serializers.SerializerMethodField()
     stop_count = serializers.SerializerMethodField()
     pickup_pin = serializers.SerializerMethodField()
+    pin_code = serializers.SerializerMethodField()
     pickup_pin_verified = serializers.SerializerMethodField()
 
     class Meta:
@@ -80,6 +97,9 @@ class RideSerializer(serializers.ModelSerializer):
 
     def get_pickup_pin_verified(self, obj):
         return bool(obj.pickup_pin_verified_at)
+
+    def get_pin_code(self, obj):
+        return self.get_pickup_pin(obj)
 
     def get_driver_name(self, obj):
         if obj.driver:
@@ -117,11 +137,20 @@ class RideSerializer(serializers.ModelSerializer):
         if not profile or not profile.driver_photo:
             return None
 
+        return self.get_file_url(profile.driver_photo)
+
+    def get_driver_photo_url(self, obj):
+        return self.get_driver_picture(obj)
+
+    def get_file_url(self, file_field):
+        if not file_field:
+            return None
+
         request = self.context.get("request")
         if request:
-            return request.build_absolute_uri(profile.driver_photo.url)
+            return request.build_absolute_uri(file_field.url)
 
-        return profile.driver_photo.url
+        return file_field.url
 
     def get_driver_avg_rating(self, obj):
         if not obj.driver:
@@ -151,6 +180,74 @@ class RideSerializer(serializers.ModelSerializer):
     def get_driver_category_label(self, obj):
         profile = self.get_driver_profile(obj)
         return profile.get_driver_category_display() if profile else ""
+
+    def get_driver_level(self, obj):
+        profile = self.get_driver_profile(obj)
+        return profile.driver_level if profile else ""
+
+    def get_driver_level_label(self, obj):
+        profile = self.get_driver_profile(obj)
+        return profile.get_driver_level_display() if profile else ""
+
+    def get_driver_code(self, obj):
+        profile = self.get_driver_profile(obj)
+        return profile.driver_code if profile else ""
+
+    def get_driver_verified(self, obj):
+        profile = self.get_driver_profile(obj)
+        return bool(profile and profile.status == "approved")
+
+    def get_driver_verification_status(self, obj):
+        profile = self.get_driver_profile(obj)
+        return profile.status if profile else ""
+
+    def get_driver_current_lat(self, obj):
+        profile = self.get_driver_profile(obj)
+        if not profile:
+            return None
+        return profile.current_lat if profile.current_lat is not None else profile.driver_lat
+
+    def get_driver_current_lng(self, obj):
+        profile = self.get_driver_profile(obj)
+        if not profile:
+            return None
+        return profile.current_lng if profile.current_lng is not None else profile.driver_lng
+
+    def get_vehicle_make(self, obj):
+        profile = self.get_driver_profile(obj)
+        return profile.vehicle_make if profile else ""
+
+    def get_vehicle_model(self, obj):
+        profile = self.get_driver_profile(obj)
+        return profile.vehicle_model if profile else ""
+
+    def get_vehicle_color(self, obj):
+        profile = self.get_driver_profile(obj)
+        return profile.vehicle_color if profile else ""
+
+    def get_vehicle_category(self, obj):
+        profile = self.get_driver_profile(obj)
+        return profile.car_type if profile else ""
+
+    def get_vehicle_category_label(self, obj):
+        profile = self.get_driver_profile(obj)
+        return profile.get_car_type_display() if profile else ""
+
+    def get_vehicle_photo_url(self, obj):
+        profile = self.get_driver_profile(obj)
+        return self.get_file_url(profile.vehicle_photo) if profile else None
+
+    def get_vehicle_verified(self, obj):
+        profile = self.get_driver_profile(obj)
+        return bool(
+            profile
+            and profile.status == "approved"
+            and profile.registration_status == "approved"
+        )
+
+    def get_vehicle_verification_status(self, obj):
+        profile = self.get_driver_profile(obj)
+        return profile.registration_status if profile else ""
 
     def get_driver_member_since_year(self, obj):
         if not obj.driver or not obj.driver.date_joined:

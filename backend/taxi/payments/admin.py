@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Payment
+from .models import Payment, WalletAccount, WalletTransaction
 
 
 @admin.register(Payment)
@@ -27,3 +27,6 @@ class PaymentAdmin(admin.ModelAdmin):
         "transaction_id",
         "ride_id",
     )
+
+
+admin.site.register([WalletAccount, WalletTransaction])

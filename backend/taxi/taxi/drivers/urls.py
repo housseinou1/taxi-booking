@@ -53,6 +53,14 @@ from .views_heatmap import (
 )
 from .views_rides import DriverRideHistoryView
 from .views_performance import AdminDriverPerformanceView
+from .views_hall_of_fame import AdminHallOfFameView, DriverHallOfFameView
+from .views_verification import (
+    AdminDriverVerificationHistoryView,
+    AdminRegenerateQRCodeView,
+    AdminRiderVerificationHistoryView,
+    DriverQRCodeView,
+    VerifyDriverView,
+)
 
 urlpatterns = [
     path("available/", available_drivers),
@@ -103,6 +111,8 @@ urlpatterns = [
     # Heatmap endpoint
     path("heatmap/", HeatmapView.as_view(), name="driver-heatmap"),
     path("performance/", AdminDriverPerformanceView.as_view(), name="driver-performance"),
+    path("hall-of-fame/", DriverHallOfFameView.as_view(), name="driver-hall-of-fame"),
+    path("hall-of-fame/admin/", AdminHallOfFameView.as_view(), name="admin-hall-of-fame"),
 
     # Favorite Areas endpoints
     path("me/favorites/", DriverFavoriteAreaListView.as_view(), name="driver-favorites-list"),
@@ -110,10 +120,33 @@ urlpatterns = [
 
     # Ride History endpoint
     path("me/rides/", DriverRideHistoryView.as_view(), name="driver-ride-history"),
+
+    # QR Code Verification endpoints
+    path("me/qr-code/", DriverQRCodeView.as_view(), name="driver-qr-code"),
+    path("verify-driver/", VerifyDriverView.as_view(), name="verify-driver"),
 ]
 
 # Admin document review endpoints (included in main urls.py at /admin/documents/)
 admin_document_urlpatterns = [
     path("<int:document_id>/approve/", AdminDocumentApproveView.as_view(), name="admin-document-approve"),
     path("<int:document_id>/reject/", AdminDocumentRejectView.as_view(), name="admin-document-reject"),
+]
+
+# Admin QR verification endpoints (included in main urls.py at /api/v1/admin/)
+admin_qr_urlpatterns = [
+    path(
+        "drivers/<int:driver_id>/regenerate-qr/",
+        AdminRegenerateQRCodeView.as_view(),
+        name="admin-regenerate-qr",
+    ),
+    path(
+        "drivers/<int:driver_id>/verification-history/",
+        AdminDriverVerificationHistoryView.as_view(),
+        name="admin-driver-verification-history",
+    ),
+    path(
+        "riders/<int:rider_id>/verification-history/",
+        AdminRiderVerificationHistoryView.as_view(),
+        name="admin-rider-verification-history",
+    ),
 ]

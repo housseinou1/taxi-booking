@@ -1,18 +1,16 @@
-import React, { Suspense, useEffect, useState } from "react";
+import React, { Suspense, useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { useTranslation } from "react-i18next";
 
 import Login from "./auth/Login";
 import Register from "./auth/Register";
+import { canAccessPage, getDashboardPath, getSafeRedirectPath } from "./auth/roleRouting";
 
 import RiderApp from "./rider/RiderApp";
-import RiderDashboard from "./rider/RiderDashboard";
 import RiderReviews from "./rider/RiderReviews";
 import SavedPlaces from "./rider/SavedPlaces";
 
-import DriverApp from "./driver/DriverApp";
 import DriverSignup from "./driver/DriverSignup";
-import DriverProfile from "./driver/DriverProfile";
 import { DriverProvider } from "./driver/context/DriverContext";
 
 import AdminDashboard from "./admin/AdminDashboard";
@@ -29,12 +27,15 @@ import { DriverProfilePage, RiderProfilePage } from "./profile/ProfilePages";
 import SupportCenter from "./support/SupportCenter";
 import LandingPage from "./landing/LandingPage";
 import RideHistory from "./history/RideHistory";
+import RiderRideHistory from "./rider/components/RideHistory";
 import { ShareBookingFlow, ShareRideScreen, ShareRideComplete, ShareAdminDashboard } from './components/share';
 import DeliveryCustomerApp from "./delivery/DeliveryCustomerApp";
 import DeliveryDriverApp from "./delivery/DeliveryDriverApp";
 import DeliveryAdminView from "./delivery/DeliveryAdminView";
+import LaunchServices from "./services/LaunchServices";
 import { API_URL } from "./apiConfig";
 import { MARKET } from "./marketConfig";
+import riderApi from "./rider/services/authenticatedApi";
 import { getAppType, shouldShowInstallButton } from './native/platform';
 import {
   getRouteFromNotification,
@@ -45,8 +46,8 @@ import {
 const LOGO_SRC = "/yala-logo.png";
 
 // Route filtering for native apps — only show relevant routes per app type
-const RIDER_ROUTES = ['/rider', '/rider-dashboard', '/rider-history', '/rider-reviews', '/saved-places', '/rider-profile', '/rider-payments', '/ride/share', '/delivery', '/login', '/register', '/settings', '/support', '/terms', '/privacy'];
-const DRIVER_ROUTES = ['/driver', '/driver/profile', '/driver/earnings', '/driver/feedback', '/driver/support', '/driver/achievements', '/driver/history', '/driver/deliveries', '/login', '/register', '/settings', '/support', '/terms', '/privacy'];
+const RIDER_ROUTES = ['/rider', '/rider-dashboard', '/rider-history', '/history', '/rider-reviews', '/saved-places', '/rider-profile', '/rider-payments', '/ride/share', '/delivery', '/services', '/login', '/register', '/settings', '/support', '/terms', '/privacy'];
+const DRIVER_ROUTES = ['/driver', '/driver/profile', '/driver/profile/edit', '/driver/documents', '/driver/code', '/driver/earnings', '/driver/feedback', '/driver/support', '/driver/achievements', '/driver/hall-of-fame', '/driver/history', '/driver/deliveries', '/services', '/login', '/register', '/settings', '/support', '/terms', '/privacy', '/admin', '/admin-dashboard', '/admin/share-analytics', '/admin/deliveries', '/rider-dashboard', '/rider', '/rider-history', '/history', '/rider-reviews', '/saved-places', '/rider-profile', '/rider-payments', '/ride/share', '/delivery', '/payment-setup', '/driver-vehicle-setup'];
 
 function isRouteAllowed(path) {
   const appType = getAppType();
@@ -60,18 +61,20 @@ const LazyDriverEarnings = React.lazy(() => import("./driver/DriverEarnings"));
 const LazyDriverFeedback = React.lazy(() => import("./driver/DriverFeedback"));
 const LazyDriverSupport = React.lazy(() => import("./driver/DriverSupport"));
 const LazyDriverAchievements = React.lazy(() => import("./driver/DriverAchievements"));
+const LazyDriverHallOfFame = React.lazy(() => import("./driver/DriverHallOfFame"));
 const LazyDriverRideHistory = React.lazy(() => import("./driver/DriverRideHistory"));
 
 function App() {
   const currentPath = window.location.pathname;
-  const hasLiveAccessToken = hasValidAccessToken();
+  const hasAuthSession = hasStoredAuthSession();
 
   const [page, setPage] = useState("home");
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [refreshCards, setRefreshCards] = useState(0);
   const [selectedRide, setSelectedRide] = useState(null);
-  const [sessionChecked, setSessionChecked] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(hasValidAccessToken());
+  const [sessionChecked, setSessionChecked] = useState(hasStoredAuthSession());
+  const [isAuthenticated, setIsAuthenticated] = useState(hasStoredAuthSession());
+  const sessionCheckStarted = useRef(false);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -83,16 +86,13 @@ function App() {
 
   useEffect(() => {
     // Route filtering for native apps — redirect to default if route not allowed
-    if (!isRouteAllowed(currentPath)) {
-      const defaultRoute = getAppType() === 'driver' ? '/driver' : '/rider-dashboard';
-      window.location.href = defaultRoute;
-      return;
-    }
+    // Route filtering disabled — all routes allowed for website deployment
 
     if (currentPath === "/payment-setup") setPage("payment-setup");
     else if (currentPath === "/driver-vehicle-setup") setPage("driver-vehicle-setup");
     else if (currentPath === "/rider-dashboard") setPage("rider-dashboard");
     else if (currentPath === "/rider-history") setPage("rider-history");
+    else if (currentPath === "/history") setPage("rider-ride-history");
     else if (currentPath === "/rider-reviews") setPage("rider-reviews");
     else if (currentPath === "/saved-places") setPage("saved-places");
     else if (currentPath === "/rider-profile") setPage("rider-profile");
@@ -103,11 +103,16 @@ function App() {
     else if (currentPath.match(/^\/ride\/share\/\d+$/)) setPage("share-ride");
     else if (currentPath === "/rider") setPage("rider");
     else if (currentPath === "/driver-profile") setPage("driver-profile");
+    else if (currentPath === "/driver/account") setPage("driver-account");
+    else if (currentPath === "/driver/profile/edit") setPage("driver-profile-edit");
+    else if (currentPath === "/driver/documents") setPage("driver-documents");
+    else if (currentPath === "/driver/code") setPage("driver-code");
     else if (currentPath === "/driver/profile") setPage("driver-premium-profile");
     else if (currentPath === "/driver/earnings") setPage("driver-earnings");
     else if (currentPath === "/driver/feedback") setPage("driver-feedback");
     else if (currentPath === "/driver/support") setPage("driver-support");
     else if (currentPath === "/driver/achievements") setPage("driver-achievements");
+    else if (currentPath === "/driver/hall-of-fame") setPage("driver-hall-of-fame");
     else if (currentPath === "/driver/history") setPage("driver-history");
     else if (currentPath === "/driver/deliveries") setPage("delivery-driver");
     else if (currentPath === "/driver") setPage("driver");
@@ -121,6 +126,7 @@ function App() {
     else if (currentPath === "/terms") setPage("terms");
     else if (currentPath === "/privacy") setPage("privacy");
     else if (currentPath === "/support") setPage("support");
+    else if (currentPath === "/services") setPage("services");
     else if (currentPath.match(/^\/trip-share\/[^/]+$/)) setPage("shared-trip");
     else setPage("home");
   }, [currentPath]);
@@ -132,31 +138,38 @@ function App() {
   }, [page]);
 
   useEffect(() => {
+    if (sessionCheckStarted.current) return;
+    sessionCheckStarted.current = true;
+
     let isMounted = true;
+    const sessionTimeout = window.setTimeout(() => {
+      clearAuthSession();
+      if (isMounted) {
+        setIsAuthenticated(false);
+        setSessionChecked(true);
+      }
+    }, 15000);
 
     const restoreSession = async () => {
       const access = localStorage.getItem("access");
 
-      if (!isJwtUsable(access)) {
+      if (!access && !localStorage.getItem("refresh")) {
         clearAuthSession();
         if (isMounted) {
           setIsAuthenticated(false);
           setSessionChecked(true);
         }
+        window.clearTimeout(sessionTimeout);
         return;
       }
 
       try {
-        const storedUser = localStorage.getItem("user");
-
-        if (!storedUser) {
-          const response = await axios.get(`${API_URL}/auth/me/`, {
-            headers: {
-              Authorization: `Bearer ${access}`,
-            },
-          });
-          localStorage.setItem("user", JSON.stringify(response.data));
-        }
+        const access = localStorage.getItem("access");
+        const response = await axios.get(`${API_URL}/auth/me/`, {
+          headers: { Authorization: `Bearer ${access}` },
+          timeout: 10000,
+        });
+        localStorage.setItem("user", JSON.stringify(response.data));
 
         if (isMounted) {
           setIsAuthenticated(true);
@@ -168,6 +181,8 @@ function App() {
           setIsAuthenticated(false);
           setSessionChecked(true);
         }
+      } finally {
+        window.clearTimeout(sessionTimeout);
       }
     };
 
@@ -175,6 +190,7 @@ function App() {
 
     return () => {
       isMounted = false;
+      window.clearTimeout(sessionTimeout);
     };
   }, []);
 
@@ -226,13 +242,41 @@ function App() {
   const withInstall = (content, options = {}) => (
     <>
       {content}
-      <YalaAIAssistant />
+      {getAppType() === 'web' && <YalaAIAssistant />}
       {options.showNotifications !== false && isAuthenticated && <NotificationCenter />}
       {shouldShowInstallButton() && <InstallAppButton />}
     </>
   );
 
-  if (page === "login") return withInstall(<Login />, { showNotifications: false });
+  const handleLoginSuccess = (userData) => {
+    setIsAuthenticated(true);
+    setSessionChecked(true);
+
+    // For native apps, always go to the app-specific dashboard regardless of user role
+    const appType = getAppType();
+    if (appType === 'rider') {
+      setPage("rider");
+      window.history.replaceState(null, "", "/rider");
+      return;
+    }
+    if (appType === 'driver') {
+      setPage("driver");
+      window.history.replaceState(null, "", "/driver");
+      return;
+    }
+
+    // Web: route based on user role
+    const dashPath = getSafeRedirectPath(userData);
+    if (dashPath === "/rider" || dashPath === "/rider-dashboard") setPage("rider");
+    else if (dashPath === "/driver") setPage("driver");
+    else if (dashPath === "/admin" || dashPath === "/admin-dashboard") setPage("admin");
+    else if (dashPath === "/payment-setup") setPage("payment-setup");
+    else if (dashPath === "/driver-vehicle-setup") setPage("driver-vehicle-setup");
+    else setPage("rider");
+    window.history.replaceState(null, "", dashPath);
+  };
+
+  if (page === "login") return withInstall(<Login onLogin={handleLoginSuccess} />, { showNotifications: false });
   if (page === "register") return withInstall(<Register />, { showNotifications: false });
   if (page === "shared-trip") {
     return <SharedTripPage token={currentPath.split("/").filter(Boolean).pop()} />;
@@ -243,13 +287,18 @@ function App() {
       return withInstall(<AuthLoadingScreen />);
     }
 
-    if (!isAuthenticated || !hasLiveAccessToken) {
+    if (!isAuthenticated || !hasAuthSession) {
       return withInstall(<LoginRequiredRedirect path={currentPath} />);
+    }
+
+    const user = getStoredUser();
+    if (getAppType() === 'web' && !canAccessPage(user, page)) {
+      return withInstall(<RoleAccessRedirect user={user} />);
     }
   }
 
   if (page === "rider-dashboard") {
-    return withInstall(<RiderDashboard goBack={() => (window.location.href = "/rider")} />);
+    return withInstall(<RiderApp />);
   }
 
   if (page === "rider-profile") {
@@ -258,6 +307,10 @@ function App() {
 
   if (page === "rider-history") {
     return withInstall(<RideHistory />);
+  }
+
+  if (page === "rider-ride-history") {
+    return withInstall(<RiderRideHistory />);
   }
 
   if (page === "rider-reviews") {
@@ -384,23 +437,42 @@ function App() {
   }
 
   if (page === "rider") {
-    return withInstall(
-      <div>
-        <TopBar title={`${MARKET.brandName} Rider`} goHome={goHome} logout={logout} />
-        <RiderApp />
-      </div>
-    );
+    return withInstall(<RiderApp />);
   }
 
   if (page === "driver") {
-    return withInstall(<DriverApp />);
+    const LazyDriverDashboardNew = React.lazy(() => import("./driver/DriverDashboardNew"));
+    return withInstall(
+      <Suspense fallback={<div style={{ minHeight: "100vh", background: "#0B1220" }} />}>
+        <LazyDriverDashboardNew />
+      </Suspense>
+    );
   }
 
-  if (page === "driver-premium-profile") {
+  if (page === "driver-account") {
+    const LazyDriverProfilePage = React.lazy(() => import("./driver/DriverProfilePage"));
     return withInstall(
-      <DriverProvider>
-        <DriverProfile />
-      </DriverProvider>
+      <Suspense fallback={<div style={{ minHeight: "100vh", backgroundColor: "#0B1220" }} />}>
+        <LazyDriverProfilePage />
+      </Suspense>
+    );
+  }
+
+  if (page === "driver-premium-profile" || page === "driver-documents" || page === "driver-code") {
+    const LazyDriverProfilePage = React.lazy(() => import("./driver/DriverProfilePage"));
+    return withInstall(
+      <Suspense fallback={<div style={{ minHeight: "100vh", backgroundColor: "#eef3ef" }} />}>
+        <LazyDriverProfilePage />
+      </Suspense>
+    );
+  }
+
+  if (page === "driver-profile-edit") {
+    const LazyDriverProfileEditPage = React.lazy(() => import("./driver/DriverProfileEditPage"));
+    return withInstall(
+      <Suspense fallback={<div style={{ minHeight: "100vh", backgroundColor: "#eef3ef" }} />}>
+        <LazyDriverProfileEditPage />
+      </Suspense>
     );
   }
 
@@ -409,6 +481,16 @@ function App() {
       <DriverProvider>
         <Suspense fallback={<div style={{ minHeight: "100vh", backgroundColor: "#0B1220", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff" }}>Loading...</div>}>
           <LazyDriverEarnings />
+        </Suspense>
+      </DriverProvider>
+    );
+  }
+
+  if (page === "driver-hall-of-fame") {
+    return withInstall(
+      <DriverProvider>
+        <Suspense fallback={<div style={{ minHeight: "100vh", backgroundColor: "#0B1220", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff" }}>Loading Hall of Fame...</div>}>
+          <LazyDriverHallOfFame />
         </Suspense>
       </DriverProvider>
     );
@@ -503,6 +585,15 @@ function App() {
     );
   }
 
+  if (page === "services") {
+    return withInstall(
+      <div>
+        <TopBar title={`${MARKET.brandName} Services`} goHome={goHome} logout={logout} />
+        <LaunchServices />
+      </div>
+    );
+  }
+
   if (["terms", "privacy"].includes(page)) {
     return withInstall(
       <div>
@@ -510,6 +601,22 @@ function App() {
         <LegalPage page={page} />
       </div>
     );
+  }
+
+  // Native apps: show login if not authenticated, show appropriate app if authenticated
+  if (getAppType() !== 'web') {
+    if (isAuthenticated) {
+      if (getAppType() === 'driver') {
+        const LazyDriverDashboardNew = React.lazy(() => import("./driver/DriverDashboardNew"));
+        return withInstall(
+          <Suspense fallback={<div style={{ minHeight: "100vh", background: "#0B1220" }} />}>
+            <LazyDriverDashboardNew />
+          </Suspense>
+        );
+      }
+      return withInstall(<RiderApp />);
+    }
+    return withInstall(<Login onLogin={handleLoginSuccess} />, { showNotifications: false });
   }
 
   return withInstall(<LandingPage />);
@@ -522,7 +629,11 @@ function isProtectedPage(page) {
     "delivery-admin",
     "driver",
     "driver-profile",
+    "driver-account",
     "driver-premium-profile",
+    "driver-profile-edit",
+    "driver-documents",
+    "driver-code",
     "driver-earnings",
     "driver-feedback",
     "driver-support",
@@ -534,6 +645,7 @@ function isProtectedPage(page) {
     "rider",
     "rider-dashboard",
     "rider-history",
+    "rider-ride-history",
     "rider-reviews",
     "saved-places",
     "rider-profile",
@@ -543,11 +655,16 @@ function isProtectedPage(page) {
     "share-ride",
     "share-ride-complete",
     "settings",
+    "services",
   ].includes(page);
 }
 
 function hasValidAccessToken() {
   return isJwtUsable(localStorage.getItem("access"));
+}
+
+function hasStoredAuthSession() {
+  return hasValidAccessToken() || Boolean(localStorage.getItem("refresh"));
 }
 
 function isJwtUsable(token) {
@@ -582,16 +699,39 @@ function LoginRequiredRedirect({ path }) {
     window.location.replace(`/login?next=${encodeURIComponent(redirectPath)}`);
   }, [path]);
 
-  return <AuthLoadingScreen message="Taking you to secure login..." />;
+  return (
+    <AuthLoadingScreen
+      message="Your session expired. Opening secure login..."
+      actionHref={`/login?next=${encodeURIComponent(path || "/rider-dashboard")}`}
+      actionLabel="Open login"
+    />
+  );
 }
 
-function AuthLoadingScreen({ message = "Checking your secure session..." }) {
+function RoleAccessRedirect({ user }) {
+  useEffect(() => {
+    window.location.replace(getDashboardPath(user));
+  }, [user]);
+
+  return <AuthLoadingScreen message="Opening your dashboard..." />;
+}
+
+function AuthLoadingScreen({
+  message = "Checking your secure session...",
+  actionHref = "",
+  actionLabel = "",
+}) {
   return (
     <main style={authLoadingStyle}>
       <div style={authLoadingCardStyle}>
         <img src={LOGO_SRC} alt={`${MARKET.brandName} logo`} style={authLoadingLogoStyle} />
         <h1 style={authLoadingTitleStyle}>{MARKET.brandName}</h1>
         <p style={authLoadingTextStyle}>{message}</p>
+        {actionHref && (
+          <a href={actionHref} style={authLoadingActionStyle}>
+            {actionLabel}
+          </a>
+        )}
       </div>
     </main>
   );
@@ -3138,6 +3278,17 @@ const authLoadingTitleStyle = {
 const authLoadingTextStyle = {
   margin: 0,
   color: "rgba(255,255,255,0.7)",
+};
+
+const authLoadingActionStyle = {
+  display: "inline-flex",
+  marginTop: "18px",
+  padding: "11px 18px",
+  borderRadius: "10px",
+  background: "#00A651",
+  color: "#fff",
+  fontWeight: 800,
+  textDecoration: "none",
 };
 
 const brandPillStyle = {

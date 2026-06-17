@@ -1,0 +1,45 @@
+/* SOSButton — Emergency action button with visually distinct red styling */
+
+.sos-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  min-width: var(--tap-target-min);
+  min-height: var(--tap-target-min);
+  padding: var(--space-sm) var(--space-md);
+  border: none;
+  border-radius: var(--radius-md);
+  background: #DC2626;
+  color: var(--yala-white);
+  font-family: var(--font-family);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+
+.sos-button:hover {
+  background: #B91C1C;
+}
+
+.sos-button:active {
+  transform: scale(0.96);
+}
+
+.sos-button:focus-visible {
+  outline: 2px solid #DC2626;
+  outline-offset: 2px;
+}
+
+.sos-button__icon {
+  font-size: var(--font-size-md);
+  line-height: 1;
+}
+
+.sos-button__label {
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}

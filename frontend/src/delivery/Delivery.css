@@ -330,3 +330,451 @@
     flex-direction: column;
   }
 }
+
+
+/* ─── Service Categories ──────────────────────────────────────────────────── */
+
+.delivery-categories {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  margin: 14px 0;
+}
+
+.delivery-category-btn {
+  display: grid;
+  place-items: center;
+  gap: 4px;
+  padding: 12px 8px;
+  border: 2px solid #d9e4de;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  color: #365348;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.delivery-category-btn:hover {
+  border-color: #087a4b;
+  background: #f0faf5;
+}
+
+.delivery-category-btn.active {
+  border-color: #087a4b;
+  background: #e3f5eb;
+  color: #064d30;
+}
+
+.delivery-category-icon {
+  font-size: 22px;
+}
+
+.delivery-category-tag {
+  display: inline-block;
+  margin: 4px 4px 4px 0;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: #eef7f2;
+  color: #087a4b;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+/* ─── Options & Checkboxes ────────────────────────────────────────────────── */
+
+.delivery-options-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin: 4px 0;
+}
+
+.delivery-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #365348;
+  cursor: pointer;
+}
+
+.delivery-checkbox-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+}
+
+/* ─── Multi-stop ──────────────────────────────────────────────────────────── */
+
+.delivery-stops-section {
+  border: 1px solid #d9e4de;
+  border-radius: 8px;
+  padding: 14px;
+  background: #f8fbf9;
+}
+
+.delivery-stops-section h3 {
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+
+.delivery-stop-form {
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e1eae5;
+}
+
+.delivery-stop-form:last-child {
+  border-bottom: 0;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.delivery-stops-progress {
+  margin: 12px 0;
+  padding: 12px;
+  background: #f8fbf9;
+  border: 1px solid #d9e4de;
+  border-radius: 8px;
+}
+
+.delivery-stops-progress h4 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: #365348;
+}
+
+.delivery-stop-item {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #e8f0ec;
+}
+
+.delivery-stop-item:last-child {
+  border-bottom: 0;
+}
+
+.delivery-stop-item.delivered {
+  opacity: 0.6;
+}
+
+.delivery-stop-order {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #087a4b;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.delivery-stop-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+/* ─── Tracking ────────────────────────────────────────────────────────────── */
+
+.delivery-tracking-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.delivery-tracking-header h1 {
+  flex: 1;
+}
+
+.delivery-tracking-route {
+  margin: 18px 0;
+  padding: 16px;
+  background: #f8fbf9;
+  border-radius: 8px;
+  border: 1px solid #d9e4de;
+}
+
+.delivery-route-point {
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  gap: 10px;
+  padding: 8px 0;
+  position: relative;
+}
+
+.delivery-route-point:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 9px;
+  top: 28px;
+  bottom: -4px;
+  width: 2px;
+  background: #bfd7c8;
+}
+
+.delivery-route-point.done {
+  opacity: 0.5;
+}
+
+.route-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  margin-top: 3px;
+  border: 3px solid #087a4b;
+  background: #fff;
+  position: relative;
+  z-index: 2;
+}
+
+.route-dot.delivered {
+  background: #087a4b;
+}
+
+.route-dot.destination {
+  border-color: #d7ab2f;
+}
+
+.route-dot.pending {
+  border-color: #b9cbc2;
+}
+
+/* ─── Fare breakdown ──────────────────────────────────────────────────────── */
+
+.delivery-fare-breakdown {
+  margin: 16px 0;
+  padding: 14px;
+  border: 1px solid #d9e4de;
+  border-radius: 8px;
+  background: #fbfdfc;
+}
+
+.delivery-fare-breakdown h3 {
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.delivery-fare-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 5px 0;
+  font-size: 13px;
+  color: #365348;
+}
+
+.delivery-fare-row.discount span:last-child {
+  color: #087a4b;
+  font-weight: 700;
+}
+
+.delivery-fare-row.total {
+  border-top: 1px solid #d9e4de;
+  margin-top: 6px;
+  padding-top: 8px;
+  font-weight: 800;
+  font-size: 15px;
+  color: #10231a;
+}
+
+/* ─── Proof of delivery ───────────────────────────────────────────────────── */
+
+.delivery-proof {
+  margin: 16px 0;
+}
+
+.delivery-proof img {
+  max-width: 100%;
+  border-radius: 8px;
+  border: 1px solid #d9e4de;
+}
+
+/* ─── Driver info (tracking) ──────────────────────────────────────────────── */
+
+.delivery-driver-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  background: #08291d;
+  color: #fff;
+  border-radius: 8px;
+  margin: 12px 0;
+}
+
+.delivery-driver-info strong {
+  font-size: 15px;
+}
+
+.delivery-driver-info span {
+  color: #b9d1c5;
+  font-size: 12px;
+}
+
+.delivery-plate {
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.15);
+  font-weight: 700;
+  font-size: 13px;
+  color: #fff;
+}
+
+/* ─── Dispute form ────────────────────────────────────────────────────────── */
+
+.delivery-dispute-form {
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid #e1c25e;
+  border-radius: 8px;
+  background: #fffbf0;
+}
+
+.delivery-dispute-form h3 {
+  margin-bottom: 12px;
+}
+
+.delivery-dispute-form label {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #365348;
+}
+
+/* ─── Admin tabs ──────────────────────────────────────────────────────────── */
+
+.delivery-admin-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  border-bottom: 2px solid #e1eae5;
+  padding-bottom: 4px;
+}
+
+.delivery-tab {
+  border: 0;
+  background: transparent;
+  padding: 8px 14px;
+  font: inherit;
+  font-weight: 700;
+  color: #64776c;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.delivery-tab:hover {
+  color: #087a4b;
+}
+
+.delivery-tab.active {
+  color: #087a4b;
+  border-bottom-color: #087a4b;
+}
+
+.delivery-admin-filters {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.delivery-admin-filters input,
+.delivery-admin-filters select {
+  padding: 8px 12px;
+  border: 1px solid #b9cbc2;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 13px;
+}
+
+.delivery-revenue-breakdown {
+  margin: 16px 0;
+  padding: 14px;
+  background: #f8fbf9;
+  border-radius: 8px;
+  border: 1px solid #d9e4de;
+}
+
+.delivery-dispute-stats {
+  margin-top: 16px;
+  padding: 14px;
+  background: #fff9df;
+  border-radius: 8px;
+  border: 1px solid #e1c25e;
+}
+
+/* ─── Driver mode toggle ──────────────────────────────────────────────────── */
+
+.delivery-mode-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+/* ─── Small button variant ────────────────────────────────────────────────── */
+
+.delivery-button-sm {
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+/* ─── Badges for delivery states ──────────────────────────────────────────── */
+
+.delivery-badge.fragile {
+  background: #fff0f0;
+  color: #a51d28;
+}
+
+.delivery-badge.scheduled {
+  background: #eef2ff;
+  color: #3b4fbf;
+}
+
+.delivery-badge.offline {
+  background: #fff0f0;
+  color: #a51d28;
+}
+
+.delivery-badge.active {
+  background: #dcece3;
+  color: #125a39;
+}
+
+.delivery-badge.inactive {
+  background: #f0f0f0;
+  color: #666;
+}
+
+.delivery-card-meta {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 8px 0;
+}
+
+@media (max-width: 480px) {
+  .delivery-categories {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .delivery-admin-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .delivery-admin-tabs {
+    overflow-x: auto;
+  }
+}

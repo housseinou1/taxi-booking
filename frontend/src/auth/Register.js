@@ -2,12 +2,40 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useTranslation } from "react-i18next";
 import { API_URL } from "../apiConfig";
+import { getAppType } from "../native/platform";
 
 const logoSrc = "/yala-logo.png";
+const riderLogoSrc = "/yala-rider-logo.png";
+const driverLogoSrc = "/yala-driver-logo.png";
 
+function getLogoForApp() {
+  const appType = getAppType();
+  if (appType === "rider") return riderLogoSrc;
+  if (appType === "driver") return driverLogoSrc;
+  return logoSrc;
+}
+
+/**
+ * Determines the initial user type for the registration form.
+ * Priority: getAppType() (if "driver" or "rider") > URL ?role= param > default "rider"
+ * When getAppType() returns a known app type, it is final and non-overridable.
+ */
 const getInitialUserType = () => {
+  const appType = getAppType();
+  if (appType === "driver" || appType === "rider") {
+    return appType;
+  }
   const requestedRole = new URLSearchParams(window.location.search).get("role");
   return requestedRole === "driver" ? "driver" : "rider";
+};
+
+/**
+ * Returns true when the app type is known (driver or rider),
+ * meaning the user type toggle should be hidden and user_type is locked.
+ */
+const isAppTypeLocked = () => {
+  const appType = getAppType();
+  return appType === "driver" || appType === "rider";
 };
 
 function Register() {
@@ -37,10 +65,18 @@ function Register() {
     let isActive = true;
 
     axios
-      .get(`${API_URL}/locations/cities/`)
+      .get(`${API_URL}/cities/`)
       .then(({ data }) => {
         if (isActive) {
-          setCities(Array.isArray(data) ? data : []);
+          const cityGroups = Array.isArray(data) ? data : [];
+          setCities(
+            cityGroups.flatMap((region) =>
+              (region.cities || []).map((city) => ({
+                ...city,
+                region_name: region.name,
+              })),
+            ),
+          );
         }
       })
       .catch(() => {
@@ -60,6 +96,10 @@ function Register() {
   }, []);
 
   const handleChange = (event) => {
+    // Prevent overriding user_type when app type is locked
+    if (event.target.name === "user_type" && isAppTypeLocked()) {
+      return;
+    }
     setFormData({
       ...formData,
       [event.target.name]: event.target.value,
@@ -85,6 +125,20 @@ function Register() {
       return;
     }
 
+    // Validate file types before submission
+    const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+    const ALLOWED_DOC_TYPES = [...ALLOWED_IMAGE_TYPES, "application/pdf"];
+
+    if (profilePicture && !ALLOWED_IMAGE_TYPES.includes(profilePicture.type)) {
+      setErrorMessage("Profile photo must be a JPG, PNG, or WebP image.");
+      return;
+    }
+
+    if (nationalIdDocument && !ALLOWED_DOC_TYPES.includes(nationalIdDocument.type)) {
+      setErrorMessage("National ID must be uploaded as a PDF, JPG, PNG, or WebP file. Other formats like AVIF or AVI are not supported.");
+      return;
+    }
+
     try {
       setLoading(true);
 
@@ -103,7 +157,7 @@ function Register() {
 
       await axios.post(`${API_URL}/auth/register/`, payload, {
         headers: {
-          "Content-Type": "multipart/form-data",
+          "X-App-Type": getAppType(),
         },
       });
 
@@ -128,17 +182,20 @@ function Register() {
       const response = error.response?.data || {};
       const message =
         response.email?.[0] ||
+        response.first_name?.[0] ||
+        response.last_name?.[0] ||
         response.gender?.[0] ||
         response.national_id_number?.[0] ||
         response.city?.[0] ||
         response.password?.[0] ||
         response.user_type?.[0] ||
+        response.phone_number?.[0] ||
         response.profile_picture ||
         response.national_id_document ||
-        response.phone_number ||
+        response.app_type?.[0] ||
         response.detail ||
         response.error ||
-        t("auth.registrationFailed");
+        (error.response ? JSON.stringify(response) : `Network error: ${error.message}`);
 
       setErrorMessage(Array.isArray(message) ? message[0] : message);
     } finally {
@@ -198,7 +255,7 @@ function Register() {
     <main className="auth-register-page">
       <AuthRegisterStyles />
       <section className="auth-register-hero">
-        <img src={logoSrc} alt="Yala" />
+        <img src={getLogoForApp()} alt="Yala" />
         <span>{t("auth.join")}</span>
         <h1>{t("auth.registerTitle")}</h1>
         <p>{t("auth.registerSubtitle")}</p>
@@ -219,7 +276,7 @@ function Register() {
           <h2>{verificationStep ? "Enter your SMS code" : t("auth.signUp")}</h2>
         </div>
 
-        {!verificationStep && <div className="auth-register-tabs">
+        {!verificationStep && !isAppTypeLocked() && <div className="auth-register-tabs">
           {["rider", "driver"].map((type) => (
             <button
               key={type}
@@ -341,9 +398,13 @@ function Register() {
             <label className="auth-register-file">
               <strong>{t("auth.riderPhotoRequired")}</strong>
               <span>{profilePicture?.name || t("auth.riderPhotoHelp")}</span>
+              <span style={{fontSize: "11px", color: "rgba(255,255,255,0.5)"}}>Accepted: JPG, PNG, WebP (max 5MB)</span>
+              {profilePicture && !["image/jpeg", "image/png", "image/webp"].includes(profilePicture.type) && (
+                <span style={{fontSize: "12px", color: "#f87171", fontWeight: 700}}>⚠ Invalid file type. Please choose a JPG, PNG, or WebP image.</span>
+              )}
               <input
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp"
                 required
                 onChange={(event) => setProfilePicture(event.target.files?.[0] || null)}
               />
@@ -352,9 +413,13 @@ function Register() {
             <label className="auth-register-file">
               <strong>{t("auth.nationalIdDocumentRequired")}</strong>
               <span>{nationalIdDocument?.name || t("auth.nationalIdDocumentHelp")}</span>
+              <span style={{fontSize: "11px", color: "rgba(255,255,255,0.5)"}}>Accepted: PDF, JPG, PNG, WebP (max 8MB)</span>
+              {nationalIdDocument && !["image/jpeg", "image/png", "image/webp", "application/pdf"].includes(nationalIdDocument.type) && (
+                <span style={{fontSize: "12px", color: "#f87171", fontWeight: 700}}>⚠ Invalid file type: {nationalIdDocument.type || "unknown"}. Please choose a PDF, JPG, PNG, or WebP file.</span>
+              )}
               <input
                 type="file"
-                accept="image/*,application/pdf"
+                accept="image/jpeg,image/png,image/webp,application/pdf"
                 required
                 onChange={(event) => setNationalIdDocument(event.target.files?.[0] || null)}
               />
@@ -396,18 +461,22 @@ function AuthRegisterStyles() {
   return (
     <style>{`
       .auth-register-page {
+        width: 100%;
         min-height: 100vh;
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(340px, 520px);
-        gap: 28px;
+        min-height: 100dvh;
+        height: auto;
+        display: flex;
+        flex-direction: column;
         align-items: center;
-        padding: 28px;
-        background:
-          radial-gradient(circle at 16% 14%, rgba(250, 204, 21, 0.2), transparent 28%),
-          radial-gradient(circle at 84% 18%, rgba(22, 163, 74, 0.16), transparent 30%),
-          #05070c;
+        padding: 24px 16px;
+        padding-bottom: 40px;
+        background: linear-gradient(180deg, #0B1220 0%, #0f1d2e 100%);
         color: #fff;
-        font-family: Inter, "SF Pro Display", "Segoe UI", Arial, sans-serif;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Inter, sans-serif;
+        overflow-x: hidden;
+        overflow-y: visible;
+        -webkit-overflow-scrolling: touch;
+        touch-action: pan-y;
       }
 
       .auth-register-page * {
@@ -415,56 +484,61 @@ function AuthRegisterStyles() {
       }
 
       .auth-register-hero {
-        max-width: 680px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        margin-bottom: 24px;
+        flex-shrink: 0;
       }
 
       .auth-register-hero img {
-        width: min(430px, 100%);
-        aspect-ratio: 1.55 / 1;
+        width: 72px;
+        height: 72px;
         object-fit: cover;
-        border-radius: 28px;
-        margin-bottom: 28px;
-        box-shadow: 0 34px 80px rgba(0, 0, 0, 0.42);
+        border-radius: 18px;
+        margin-bottom: 12px;
+        box-shadow: 0 8px 32px rgba(0, 166, 81, 0.2);
       }
 
       .auth-register-hero span,
       .auth-register-header span {
         display: inline-flex;
         width: max-content;
-        margin-bottom: 12px;
-        padding: 8px 12px;
+        margin-bottom: 8px;
+        padding: 6px 10px;
         border-radius: 999px;
-        background: rgba(250, 204, 21, 0.12);
-        color: #facc15;
-        font-size: 12px;
-        font-weight: 900;
+        background: rgba(0, 166, 81, 0.12);
+        color: #00A651;
+        font-size: 11px;
+        font-weight: 800;
         text-transform: uppercase;
       }
 
       .auth-register-hero h1 {
         margin: 0;
-        max-width: 620px;
-        font-size: clamp(42px, 6vw, 76px);
-        line-height: 0.95;
-        letter-spacing: 0;
+        font-size: 24px;
+        font-weight: 800;
+        line-height: 1.2;
+        letter-spacing: -0.5px;
       }
 
       .auth-register-hero p {
-        max-width: 560px;
-        margin: 20px 0 0;
-        color: rgba(255, 255, 255, 0.72);
-        font-size: 18px;
-        line-height: 1.55;
+        margin: 8px 0 0;
+        color: rgba(255, 255, 255, 0.6);
+        font-size: 14px;
+        line-height: 1.4;
+        max-width: 320px;
       }
 
       .auth-register-card {
         width: 100%;
-        padding: 26px;
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        border-radius: 28px;
-        background: rgba(255, 255, 255, 0.09);
-        box-shadow: 0 30px 80px rgba(0, 0, 0, 0.32);
-        backdrop-filter: blur(18px);
+        max-width: 420px;
+        padding: 24px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.06);
+        backdrop-filter: blur(12px);
       }
 
       .auth-register-header h2 {
@@ -499,8 +573,8 @@ function AuthRegisterStyles() {
       }
 
       .auth-register-tabs button.active {
-        background: #fff;
-        color: #111827;
+        background: #00A651;
+        color: #fff;
       }
 
       .auth-register-error {
@@ -536,15 +610,22 @@ function AuthRegisterStyles() {
       .auth-register-card input,
       .auth-register-card select {
         width: 100%;
-        min-height: 52px;
+        min-height: 48px;
         margin-bottom: 12px;
-        padding: 0 15px;
-        border: 1px solid rgba(255, 255, 255, 0.14);
-        border-radius: 16px;
-        background: rgba(255, 255, 255, 0.1);
+        padding: 0 14px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.08);
         color: #fff;
         font-size: 16px;
         outline: none;
+        transition: border-color 150ms ease;
+      }
+
+      .auth-register-card input:focus,
+      .auth-register-card select:focus {
+        border-color: #00A651;
+        box-shadow: 0 0 0 3px rgba(0, 166, 81, 0.15);
       }
 
       .auth-register-card option {
@@ -567,9 +648,9 @@ function AuthRegisterStyles() {
         gap: 7px;
         margin-bottom: 12px;
         padding: 14px;
-        border: 1px dashed rgba(250, 204, 21, 0.5);
-        border-radius: 16px;
-        background: rgba(250, 204, 21, 0.08);
+        border: 1px dashed rgba(0, 166, 81, 0.5);
+        border-radius: 12px;
+        background: rgba(0, 166, 81, 0.06);
       }
 
       .auth-register-file span {
@@ -589,43 +670,59 @@ function AuthRegisterStyles() {
       .auth-register-primary,
       .auth-register-secondary {
         width: 100%;
-        min-height: 54px;
-        border-radius: 999px;
-        font-weight: 950;
+        min-height: 50px;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 16px;
+        -webkit-tap-highlight-color: transparent;
+        transition: background 150ms ease, transform 100ms ease;
       }
 
       .auth-register-primary {
         margin-top: 8px;
-        background: linear-gradient(135deg, #facc15, #f59e0b);
-        color: #111827;
+        background: #00A651;
+        color: #fff;
+      }
+
+      .auth-register-primary:active {
+        transform: scale(0.97);
+        background: #008f45;
       }
 
       .auth-register-secondary {
         margin-top: 12px;
-        border: 1px solid rgba(255, 255, 255, 0.16);
-        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        background: transparent;
         color: #fff;
+      }
+
+      .auth-register-secondary:active {
+        transform: scale(0.97);
+        background: rgba(255, 255, 255, 0.08);
       }
 
       @media (max-width: 900px) {
         .auth-register-page {
-          grid-template-columns: 1fr;
-          padding: 18px;
+          padding: 16px;
+          padding-bottom: 40px;
         }
 
         .auth-register-hero {
-          padding-top: 18px;
+          margin-bottom: 20px;
         }
       }
 
       @media (max-width: 560px) {
         .auth-register-page {
           padding: 12px;
+          padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+          align-items: stretch;
         }
 
         .auth-register-card {
+          max-width: none;
           padding: 20px;
-          border-radius: 22px;
+          border-radius: 16px;
         }
 
         .auth-register-grid {
@@ -634,7 +731,7 @@ function AuthRegisterStyles() {
         }
 
         .auth-register-hero h1 {
-          font-size: 44px;
+          font-size: 22px;
         }
       }
     `}</style>

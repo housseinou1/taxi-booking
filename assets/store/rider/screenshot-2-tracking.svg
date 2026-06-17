@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1920" width="1080" height="1920">
+  <!-- Yala Rider Screenshot 2: Live Tracking -->
+
+  <rect width="1080" height="1920" fill="#E8F5E9"/>
+
+  <!-- Status bar -->
+  <rect width="1080" height="44" fill="#00A651"/>
+
+  <!-- Full map background -->
+  <rect y="44" width="1080" height="1200" fill="#E8F5E9"/>
+  <line x1="100" y1="300" x2="980" y2="300" stroke="#C8E6C9" stroke-width="3"/>
+  <line x1="540" y1="60" x2="540" y2="1200" stroke="#C8E6C9" stroke-width="3"/>
+  <line x1="200" y1="600" x2="900" y2="400" stroke="#C8E6C9" stroke-width="2"/>
+
+  <!-- Route -->
+  <path d="M300 500 C500 300, 700 500, 800 700" stroke="#00A651" stroke-width="6" fill="none"/>
+
+  <!-- Driver car marker -->
+  <rect x="470" y="380" width="60" height="30" rx="8" fill="#0B1220"/>
+  <text x="500" y="400" font-family="Arial, sans-serif" font-size="14" fill="#FFFFFF" text-anchor="middle">🚗</text>
+
+  <!-- Destination pin -->
+  <circle cx="800" cy="700" r="16" fill="#D32F2F"/>
+  <circle cx="800" cy="700" r="6" fill="#FFFFFF"/>
+
+  <!-- Driver info card (floating) -->
+  <rect x="40" y="1000" width="1000" height="160" rx="16" fill="#FFFFFF" filter="drop-shadow(0 4px 12px rgba(0,0,0,0.1))"/>
+  <!-- Driver avatar -->
+  <circle cx="110" cy="1080" r="40" fill="#E8F5E9"/>
+  <text x="110" y="1090" font-family="Arial, sans-serif" font-size="28" text-anchor="middle">👤</text>
+  <!-- Driver info -->
+  <text x="170" y="1055" font-family="Arial, sans-serif" font-size="18" fill="#333" font-weight="bold">Mohamed A.</text>
+  <text x="170" y="1080" font-family="Arial, sans-serif" font-size="14" fill="#888">White Toyota Corolla • AA 1234</text>
+  <text x="170" y="1105" font-family="Arial, sans-serif" font-size="14" fill="#D4AF37">⭐ 4.8 • 342 rides</text>
+  <!-- ETA -->
+  <rect x="800" y="1040" width="200" height="70" rx="12" fill="#00A651"/>
+  <text x="900" y="1072" font-family="Arial, sans-serif" font-size="12" fill="#FFFFFF" text-anchor="middle">Arriving in</text>
+  <text x="900" y="1098" font-family="Arial, sans-serif" font-size="24" fill="#FFFFFF" text-anchor="middle" font-weight="bold">3 min</text>
+
+  <!-- Action buttons -->
+  <rect x="40" y="1190" width="490" height="60" rx="12" fill="#FFFFFF" stroke="#00A651" stroke-width="2"/>
+  <text x="285" y="1228" font-family="Arial, sans-serif" font-size="16" fill="#00A651" text-anchor="middle" font-weight="bold">📞 Call Driver</text>
+  <rect x="550" y="1190" width="490" height="60" rx="12" fill="#FFFFFF" stroke="#00A651" stroke-width="2"/>
+  <text x="795" y="1228" font-family="Arial, sans-serif" font-size="16" fill="#00A651" text-anchor="middle" font-weight="bold">💬 Message</text>
+
+  <!-- PIN display -->
+  <rect x="40" y="1280" width="1000" height="80" rx="12" fill="#FFF9C4"/>
+  <text x="540" y="1315" font-family="Arial, sans-serif" font-size="14" fill="#888" text-anchor="middle">Your ride PIN (share with driver)</text>
+  <text x="540" y="1345" font-family="Arial, sans-serif" font-size="32" fill="#333" text-anchor="middle" font-weight="bold" letter-spacing="8">4 7 2 1</text>
+
+  <!-- Share trip button -->
+  <rect x="40" y="1390" width="1000" height="60" rx="12" fill="#E8F5E9"/>
+  <text x="540" y="1428" font-family="Arial, sans-serif" font-size="16" fill="#00A651" text-anchor="middle" font-weight="bold">🔗 Share trip with family</text>
+
+  <!-- Marketing overlay -->
+  <rect y="1600" width="1080" height="320" fill="#00A651" opacity="0.95"/>
+  <text x="540" y="1690" font-family="Arial, Helvetica, sans-serif" font-size="36" fill="#FFFFFF" text-anchor="middle" font-weight="bold">Track your ride live</text>
+  <text x="540" y="1740" font-family="Arial, sans-serif" font-size="22" fill="#FFFFFF" text-anchor="middle" opacity="0.9">PIN verification • Share trip • Call driver</text>
+</svg>

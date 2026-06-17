@@ -3,6 +3,7 @@ import { API_URL } from "../apiConfig";
 import { MARKET, formatMoney } from "../marketConfig";
 import AnalyticsDashboard from "./AnalyticsDashboard";
 import SafetyAdminPanel from "./SafetyAdminPanel";
+import HallOfFameAdminPanel from "./HallOfFameAdminPanel";
 
 const MARKET_OWNER_PERCENT = MARKET.ownerCommissionPercent;
 const logoSrc = "/yala-admin-logo.png";
@@ -631,6 +632,7 @@ function AdminDashboard() {
     { key: "vehicles", label: "Vehicles" },
     { key: "cities", label: "Cities" },
     { key: "performance", label: "Performance" },
+    { key: "hall-of-fame", label: "Hall of Fame" },
     { key: "payments", label: "Payments" },
     { key: "withdrawals", label: "Withdrawals" },
     { key: "analytics", label: "Analytics" },
@@ -1522,6 +1524,12 @@ function AdminDashboard() {
 
         {page === "performance" && (
           <DriverPerformancePanel performance={driverPerformance} />
+        )}
+
+        {page === "hall-of-fame" && (
+          <div style={card}>
+            <HallOfFameAdminPanel cities={cities} />
+          </div>
         )}
 
         {page === "analytics" && (

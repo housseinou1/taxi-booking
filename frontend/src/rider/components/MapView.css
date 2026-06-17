@@ -1,0 +1,125 @@
+/* MapView Component Styles */
+/* Uses design tokens from tokens.css */
+
+.mapview-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+
+.mapview-container .leaflet-container {
+  width: 100%;
+  height: 100%;
+  font-family: var(--font-family);
+}
+
+/* Marker icon base styles */
+.mapview-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-md);
+  border: 2px solid var(--yala-white);
+}
+
+.mapview-marker--pickup {
+  background-color: var(--yala-green);
+  width: 28px;
+  height: 28px;
+}
+
+.mapview-marker--destination {
+  background-color: #E53E3E;
+  width: 28px;
+  height: 28px;
+}
+
+.mapview-marker--stop {
+  background-color: #3B82F6;
+  width: 22px;
+  height: 22px;
+}
+
+.mapview-marker--driver {
+  background-color: var(--yala-navy);
+  width: 32px;
+  height: 32px;
+  transition: transform var(--transition-normal);
+}
+
+/* Driver marker animation */
+.mapview-marker--driver.mapview-marker--animate {
+  transition: transform var(--transition-slow), left var(--transition-slow), top var(--transition-slow);
+}
+
+/* Inner dot/icon for markers */
+.mapview-marker__inner {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-full);
+  background-color: var(--yala-white);
+}
+
+.mapview-marker--driver .mapview-marker__inner {
+  width: 12px;
+  height: 12px;
+  background-color: var(--yala-green);
+}
+
+/* Driver marker pulse animation */
+.mapview-marker--driver::after {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  right: -4px;
+  bottom: -4px;
+  border-radius: var(--radius-full);
+  border: 2px solid var(--yala-navy);
+  opacity: 0;
+  animation: mapview-pulse 2s ease-out infinite;
+}
+
+@keyframes mapview-pulse {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+/* Marker label tooltip */
+.mapview-marker-label {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: var(--space-xs);
+  padding: 2px var(--space-sm);
+  background-color: var(--yala-navy);
+  color: var(--yala-white);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* Route polyline - handled by Leaflet options, but override tile attribution styling */
+.mapview-container .leaflet-control-attribution {
+  font-size: var(--font-size-xs);
+  background: rgba(255, 255, 255, 0.8);
+  padding: 2px var(--space-sm);
+}
+
+/* Smooth driver marker position transitions via Leaflet marker element */
+.leaflet-marker-icon.mapview-driver-animated {
+  transition: transform var(--transition-slow) !important;
+}

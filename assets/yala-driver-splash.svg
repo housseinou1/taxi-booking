@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1920" width="1080" height="1920">
+  <!-- Yala Driver Splash Screen
+       Dark Navy background with gold accent, white Yala logo and "Yala Driver" text -->
+
+  <!-- Dark navy background -->
+  <rect width="1080" height="1920" fill="#0B1220"/>
+
+  <!-- Gold accent line at top -->
+  <rect x="0" y="0" width="1080" height="4" fill="#D4AF37"/>
+
+  <!-- Subtle circle glow -->
+  <circle cx="540" cy="860" r="400" fill="#142035" opacity="0.8"/>
+
+  <!-- Gold ring -->
+  <circle cx="540" cy="860" r="300" fill="none" stroke="#D4AF37" stroke-width="3" opacity="0.4"/>
+
+  <!-- White "Y" — Yala brand mark (centered) -->
+  <path d="M410 680 L540 870 L670 680 L720 680 L565 920 L565 1020 L515 1020 L515 920 L360 680 Z" fill="#FFFFFF"/>
+
+  <!-- "Yala Driver" text below -->
+  <text x="540" y="1140" font-family="Arial, Helvetica, sans-serif" font-size="52" font-weight="bold" fill="#D4AF37" text-anchor="middle" letter-spacing="4">YALA DRIVER</text>
+
+  <!-- Tagline -->
+  <text x="540" y="1200" font-family="Arial, Helvetica, sans-serif" font-size="26" fill="#FFFFFF" text-anchor="middle" opacity="0.7">Earn Money. Drive with Yala.</text>
+
+  <!-- Gold accent line at bottom -->
+  <rect x="0" y="1916" width="1080" height="4" fill="#D4AF37"/>
+</svg>

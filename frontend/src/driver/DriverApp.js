@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 
+import "./driver-tokens.css";
 import DriverMap from "./DriverMap";
 import RideDashboard from "./RideDashboard";
 import { API_URL } from "../apiConfig";
@@ -9,8 +10,16 @@ import { MARKET, formatMoney, isPointInServiceArea } from "../marketConfig";
 import RideStatusButtons from "../RideStatusButtons";
 import AnalyticsDashboard from "../admin/AnalyticsDashboard";
 import RideChat from "../components/RideChat";
-import { subscribeRideUpdates } from "../socket";
+import RideCancellationModal from "../components/RideCancellationModal";
+import {
+  joinRideUpdates,
+  leaveRideUpdates,
+  sendDriverLocation,
+  subscribeRideUpdates,
+} from "../socket";
 import { EmergencySupportButton } from "./DriverSupport";
+import { isNative } from "../native/platform";
+import { preloadNotificationSound, playNativeSound, vibrateNative, playRideAlertChime } from "../native/sound";
 
 const logoSrc = "/yala-driver-logo.png";
 const DRIVER_GREEN = "#0F8F4D";
@@ -159,6 +168,10 @@ export default function DriverApp() {
   const [showDriverMenu, setShowDriverMenu] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const [driverNotice, setDriverNotice] = useState("");
+  const [showCancellation, setShowCancellation] = useState(false);
+  const [cancellationSaving, setCancellationSaving] = useState(false);
+  const [cancellationError, setCancellationError] = useState("");
+  const [activeRouteSummary, setActiveRouteSummary] = useState(null);
   const [showTripDetails, setShowTripDetails] = useState(false);
   const [menuMessage, setMenuMessage] = useState("");
   const [isEditingVehicle, setIsEditingVehicle] = useState(false);
@@ -251,7 +264,7 @@ export default function DriverApp() {
   const activeRides = useMemo(
     () =>
       driverRides.filter((ride) =>
-        ["driver_arriving", "accepted", "in_progress"].includes(ride.status)
+        ["driver_arriving", "accepted", "driver_arrived", "in_progress"].includes(ride.status)
       ),
     [driverRides]
   );
@@ -263,6 +276,12 @@ export default function DriverApp() {
     notificationAudioRef.current = new Audio("/notification.wav");
     notificationAudioRef.current.preload = "auto";
     notificationAudioRef.current.volume = 0.8;
+    // Preload native sound for Capacitor Android (with small delay for plugin init)
+    setTimeout(() => {
+      preloadNotificationSound().then(() => {
+        console.log("Sound preload complete, isNative:", isNative());
+      });
+    }, 1000);
   }, []);
 
   const unlockNotificationSound = useCallback(async () => {
@@ -270,13 +289,15 @@ export default function DriverApp() {
 
     if (soundEnabled) return;
 
+    // This runs on user tap (Go Online) — perfect time to unlock audio
     try {
       if (audio) {
-        audio.muted = true;
+        // Play for real (not muted) at low volume to unlock audio context
+        audio.volume = 0.01;
         await audio.play();
         audio.pause();
         audio.currentTime = 0;
-        audio.muted = false;
+        audio.volume = 0.8;
       }
 
       const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -289,15 +310,18 @@ export default function DriverApp() {
       }
 
       if ("Notification" in window && Notification.permission === "default") {
-        await Notification.requestPermission();
+        await Notification.requestPermission().catch(() => {});
       }
-
-      setSoundEnabled(true);
-      setDriverNotice("Sound alerts are enabled.");
     } catch (error) {
-      console.log("Notification sound needs a driver click first:", error);
-      setDriverNotice("Phone blocked sound. Keep driver app open and tap Go Online again.");
+      console.log("Audio unlock error:", error);
     }
+
+    // Also try native preload
+    await preloadNotificationSound();
+
+    // Always enable sound
+    setSoundEnabled(true);
+    setDriverNotice("Sound alerts are enabled.");
   }, [soundEnabled]);
 
   const playBeep = useCallback(async () => {
@@ -333,22 +357,26 @@ export default function DriverApp() {
 
     if (!soundEnabled) return;
 
-    try {
-      if (navigator.vibrate) {
-        navigator.vibrate([250, 120, 250]);
-      }
+    // Use Lyft-style chime
+    const played = await playRideAlertChime();
+    if (played) return;
 
+    // Fallback to native audio
+    if (isNative()) {
+      const nativePlayed = await playNativeSound();
+      if (nativePlayed) return;
+    }
+
+    // Final fallback to HTML5 audio
+    try {
       if (audio) {
         audio.currentTime = 0;
         await audio.play();
-      } else {
-        await playBeep();
       }
     } catch (error) {
       console.log("Notification sound blocked:", error);
-      await playBeep();
     }
-  }, [playBeep, soundEnabled]);
+  }, [soundEnabled]);
 
   const ringForNewRequest = useCallback(async () => {
     if ("Notification" in window && Notification.permission === "granted") {
@@ -382,6 +410,9 @@ export default function DriverApp() {
         });
       }
     }
+
+    // Vibrate the device for ride request alert (native or web)
+    await vibrateNative(true);
 
     await playNotificationSound();
     setTimeout(playNotificationSound, 850);
@@ -461,7 +492,11 @@ export default function DriverApp() {
 
   const fetchAvailableRides = useCallback(async () => {
     try {
-      const response = await axios.get(`${API_URL}/rides/available/`);
+      const response = await axios.get(`${API_URL}/rides/available/`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("access")}`,
+        },
+      });
       const rides = Array.isArray(response.data) ? response.data : [];
 
       setAvailableRides(rides);
@@ -549,6 +584,22 @@ export default function DriverApp() {
   );
 
   useEffect(() => {
+    if (!activeRide?.id) return undefined;
+
+    joinRideUpdates(activeRide.id);
+    return () => leaveRideUpdates(activeRide.id);
+  }, [activeRide?.id]);
+
+  useEffect(() => {
+    if (!activeRide?.id) return;
+    sendDriverLocation(
+      activeRide.id,
+      driverLocation.current_lat,
+      driverLocation.current_lng
+    );
+  }, [activeRide?.id, driverLocation.current_lat, driverLocation.current_lng]);
+
+  useEffect(() => {
     fetchAllDriverData();
     const interval = setInterval(fetchAllDriverData, 3000);
 
@@ -592,36 +643,6 @@ export default function DriverApp() {
   useEffect(() => {
     if (!isOnline) return;
 
-    let testMovementInterval = null;
-
-    const moveTestDriver = () => {
-      setDriverLocation((prev) => {
-        const previousLocation = [
-          Number(prev.current_lat),
-          Number(prev.current_lng),
-        ];
-        const baseLocation = isPointInServiceArea(previousLocation)
-          ? previousLocation
-          : MARKET.defaultPickup.position;
-        const newLocation = {
-          current_lat: baseLocation[0] + 0.0003,
-          current_lng: baseLocation[1] + 0.0003,
-        };
-
-        updateDriverLocation(newLocation);
-        return newLocation;
-      });
-    };
-
-    const startTestMovement = (message) => {
-      setDriverNotice(message);
-
-      if (testMovementInterval) return;
-
-      moveTestDriver();
-      testMovementInterval = setInterval(moveTestDriver, 3000);
-    };
-
     if (navigator.geolocation) {
       const watchId = navigator.geolocation.watchPosition(
         (position) => {
@@ -631,24 +652,26 @@ export default function DriverApp() {
           };
 
           if (!isPointInServiceArea([liveLocation.current_lat, liveLocation.current_lng])) {
-            startTestMovement(
-              "Your phone GPS is outside Mauritania, so Yala is keeping the driver map inside the service area."
+            setDriverNotice(
+              "Your GPS location is outside Yala's service area. Navigation will resume when you return."
             );
             return;
           }
 
-          if (testMovementInterval) {
-            clearInterval(testMovementInterval);
-            testMovementInterval = null;
-          }
-
           setDriverLocation(liveLocation);
           updateDriverLocation(liveLocation);
+          if (activeRide?.id) {
+            sendDriverLocation(
+              activeRide.id,
+              liveLocation.current_lat,
+              liveLocation.current_lng
+            );
+          }
         },
         (error) => {
           console.log("Phone GPS error:", error);
-          startTestMovement(
-            "GPS permission is needed for exact driver location. Using test movement until location is allowed."
+          setDriverNotice(
+            "Location permission is required for navigation. Enable precise location in your phone settings, then return to Yala."
           );
         },
         {
@@ -660,22 +683,13 @@ export default function DriverApp() {
 
       return () => {
         navigator.geolocation.clearWatch(watchId);
-        if (testMovementInterval) {
-          clearInterval(testMovementInterval);
-        }
       };
     }
 
-    startTestMovement(
-      "GPS is not available in this browser. Using test movement until phone GPS is available."
+    setDriverNotice(
+      "GPS is not available on this device. Yala will keep your last known location until GPS is enabled."
     );
-
-    return () => {
-      if (testMovementInterval) {
-        clearInterval(testMovementInterval);
-      }
-    };
-  }, [isOnline, updateDriverLocation]);
+  }, [activeRide?.id, isOnline, updateDriverLocation]);
 
   const toggleAvailability = async () => {
     const nextAvailability = !isOnline;
@@ -712,6 +726,34 @@ export default function DriverApp() {
           error.response?.data?.detail ||
           "Could not change driver status. Please check approval and login."
       );
+    }
+  };
+
+  const cancelActiveRide = async (reason) => {
+    if (!activeRide || activeRide.status === "in_progress") return;
+
+    try {
+      setCancellationSaving(true);
+      setCancellationError("");
+      const response = await axios.post(
+        `${API_URL}/rides/cancel/${activeRide.id}/`,
+        { reason },
+        authHeaders
+      );
+      setShowCancellation(false);
+      setIsOnline(true);
+      setDriverNotice(
+        `Ride cancelled. ${response.data.cancellation_fee || 0} MRU cancellation fee recorded. You are back online.`
+      );
+      await fetchAllDriverData();
+    } catch (error) {
+      setCancellationError(
+        error.response?.data?.detail ||
+          error.response?.data?.error ||
+          "Could not cancel this ride."
+      );
+    } finally {
+      setCancellationSaving(false);
     }
   };
 
@@ -1083,6 +1125,7 @@ export default function DriverApp() {
             driverLocation={driverLocation}
             activeRide={activeRide}
             availableRides={availableRides}
+            onRouteUpdate={setActiveRouteSummary}
           />
         </div>
 
@@ -1271,7 +1314,23 @@ export default function DriverApp() {
           </div>
           {activeRide && (
             <div style={activeRideActionStyle}>
-              <RideStatusButtons ride={activeRide} onStatusChange={fetchAllDriverData} />
+              <RideStatusButtons
+                ride={activeRide}
+                onStatusChange={fetchAllDriverData}
+                distanceToNextKm={activeRouteSummary?.distanceKm}
+              />
+              {activeRide.status !== "in_progress" && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCancellationError("");
+                    setShowCancellation(true);
+                  }}
+                  style={driverCancelRideButtonStyle}
+                >
+                  Cancel Ride
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -1294,6 +1353,17 @@ export default function DriverApp() {
       {/* Chat overlay */}
       {showChat && activeRide?.id && (
         <RideChat rideId={activeRide.id} onClose={() => setShowChat(false)} />
+      )}
+
+      {showCancellation && activeRide && (
+        <RideCancellationModal
+          role="driver"
+          ride={activeRide}
+          saving={cancellationSaving}
+          error={cancellationError}
+          onCancel={cancelActiveRide}
+          onClose={() => setShowCancellation(false)}
+        />
       )}
 
       {showDriverMenu && (
@@ -2513,6 +2583,18 @@ const routeTextStyle = {
 
 const activeRideActionStyle = {
   marginTop: "16px",
+};
+
+const driverCancelRideButtonStyle = {
+  width: "100%",
+  minHeight: "44px",
+  marginTop: "10px",
+  border: "1px solid #dc2626",
+  borderRadius: "6px",
+  background: "#fff",
+  color: "#b91c1c",
+  fontWeight: 850,
+  cursor: "pointer",
 };
 
 const tripDetailsStyle = {

@@ -32,6 +32,7 @@ class DriverProfileSerializer(serializers.ModelSerializer):
             "vehicle_plate",
             "plate_number",
             "driver_photo",
+            "vehicle_photo",
             "license_file",
             "license_issued_at",
             "license_expires_at",
@@ -61,6 +62,9 @@ class DriverProfileSerializer(serializers.ModelSerializer):
             "last_name",
             "average_rating",
             "completed_trips",
+            "qr_code_uuid",
+            "qr_code_image",
+            "qr_code_generated_at",
         ]
 
     def get_average_rating(self, obj):

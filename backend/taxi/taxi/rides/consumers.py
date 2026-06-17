@@ -63,6 +63,7 @@ class RideConsumer(AsyncWebsocketConsumer):
         self.rider_group = None
         self.ride_groups = set()
         self.session_groups = set()
+        self.delivery_groups = set()
         # Timestamp of last location broadcast to session groups (throttle)
         self._last_session_location_broadcast = 0.0
 
@@ -127,8 +128,15 @@ class RideConsumer(AsyncWebsocketConsumer):
                 session_group, self.channel_name
             )
 
+        # Leave all delivery-specific groups
+        for delivery_group in list(self.delivery_groups):
+            await self.channel_layer.group_discard(
+                delivery_group, self.channel_name
+            )
+
         self.ride_groups.clear()
         self.session_groups.clear()
+        self.delivery_groups.clear()
         logger.debug(
             "WebSocket disconnected: %s (code=%s)", self.channel_name, close_code
         )
@@ -157,6 +165,10 @@ class RideConsumer(AsyncWebsocketConsumer):
             await self._handle_join_session(data)
         elif msg_type == "leave_session":
             await self._handle_leave_session(data)
+        elif msg_type == "join_delivery":
+            await self._handle_join_delivery(data)
+        elif msg_type == "leave_delivery":
+            await self._handle_leave_delivery(data)
         else:
             # Backward compatibility: broadcast to shared rides group
             await self.channel_layer.group_send(
@@ -375,6 +387,60 @@ class RideConsumer(AsyncWebsocketConsumer):
         await self.send(
             text_data=json.dumps(
                 {"type": "left_session", "session_id": session_id}
+            )
+        )
+
+    async def _handle_join_delivery(self, data):
+        """Join a delivery-specific group for real-time delivery tracking."""
+        delivery_id = data.get("delivery_id")
+        if not delivery_id:
+            await self.send(
+                text_data=json.dumps(
+                    {"error": "join_delivery requires 'delivery_id'"}
+                )
+            )
+            return
+
+        delivery_group = f"delivery_{delivery_id}"
+        await self.channel_layer.group_add(delivery_group, self.channel_name)
+        self.delivery_groups.add(delivery_group)
+
+        logger.debug(
+            "User %s joined delivery group: %s",
+            self.user.id if self.user else "anonymous",
+            delivery_group,
+        )
+
+        await self.send(
+            text_data=json.dumps(
+                {"type": "joined_delivery", "delivery_id": delivery_id}
+            )
+        )
+
+    async def _handle_leave_delivery(self, data):
+        """Leave a delivery-specific group."""
+        delivery_id = data.get("delivery_id")
+        if not delivery_id:
+            await self.send(
+                text_data=json.dumps(
+                    {"error": "leave_delivery requires 'delivery_id'"}
+                )
+            )
+            return
+
+        delivery_group = f"delivery_{delivery_id}"
+        await self.channel_layer.group_discard(delivery_group, self.channel_name)
+        self.delivery_groups.discard(delivery_group)
+
+        logger.debug(
+            "User %s left delivery group: %s",
+            self.user.id if self.user else "anonymous",
+            delivery_group,
+        )
+
+        await self.send(
+            text_data=json.dumps(
+                {"type": "left_delivery", "delivery_id": delivery_id}
             )
         )
 
@@ -615,6 +681,20 @@ class RideConsumer(AsyncWebsocketConsumer):
             await self.send(text_data=json.dumps(event["message"]))
         except Exception as exc:
             logger.error("WebSocket send error (share_passenger_notification): %s", exc)
+
+    # ─── Delivery event handler ───────────────────────────────────────────
+
+    async def delivery_event(self, event):
+        """
+        Generic handler for all delivery-related WebSocket events.
+        Dispatched from deliveries.websocket utility functions.
+        Supports: delivery_status_update, delivery_location_update,
+        delivery_assigned, delivery_new_request, delivery_stop_completed.
+        """
+        try:
+            await self.send(text_data=json.dumps(event["message"]))
+        except Exception as exc:
+            logger.error("WebSocket send error (delivery_event): %s", exc)
 
     # ─── Database helpers ─────────────────────────────────────────────────
 

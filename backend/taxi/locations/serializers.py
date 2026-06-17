@@ -81,8 +81,8 @@ class CityPricingSerializer(serializers.ModelSerializer):
 
 class CitySerializer(serializers.ModelSerializer):
     region_name = serializers.CharField(source="region.name", read_only=True)
-    commune_name = serializers.CharField(source="commune.name", read_only=True)
-    department_name = serializers.CharField(source="commune.department.name", read_only=True)
+    commune_name = serializers.SerializerMethodField()
+    department_name = serializers.SerializerMethodField()
     pricing = CityPricingSerializer(many=True, read_only=True)
 
     class Meta:
@@ -102,3 +102,11 @@ class CitySerializer(serializers.ModelSerializer):
             "longitude",
             "pricing",
         ]
+
+    def get_commune_name(self, obj):
+        return obj.commune.name if obj.commune else None
+
+    def get_department_name(self, obj):
+        if obj.commune and obj.commune.department:
+            return obj.commune.department.name
+        return None

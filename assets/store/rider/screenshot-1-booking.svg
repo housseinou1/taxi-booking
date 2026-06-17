@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1920" width="1080" height="1920">
+  <!-- Yala Rider Screenshot 1: Ride Booking -->
+
+  <!-- Background -->
+  <rect width="1080" height="1920" fill="#F3F6F4"/>
+
+  <!-- Status bar -->
+  <rect width="1080" height="44" fill="#00A651"/>
+  <text x="40" y="32" font-family="Arial, sans-serif" font-size="14" fill="#FFFFFF">9:41</text>
+  <text x="1000" y="32" font-family="Arial, sans-serif" font-size="14" fill="#FFFFFF" text-anchor="end">📶🔋</text>
+
+  <!-- Header -->
+  <rect y="44" width="1080" height="80" fill="#00A651"/>
+  <text x="540" y="95" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#FFFFFF" text-anchor="middle" font-weight="bold">Yala Rider</text>
+
+  <!-- Map area -->
+  <rect y="124" width="1080" height="700" fill="#E8F5E9"/>
+  <!-- Simulated map roads -->
+  <line x1="200" y1="300" x2="900" y2="300" stroke="#C8E6C9" stroke-width="4"/>
+  <line x1="500" y1="150" x2="500" y2="800" stroke="#C8E6C9" stroke-width="4"/>
+  <line x1="300" y1="500" x2="800" y2="200" stroke="#C8E6C9" stroke-width="3"/>
+  <!-- Route line -->
+  <path d="M350 350 C450 250, 600 350, 700 450" stroke="#00A651" stroke-width="5" fill="none" stroke-dasharray="10,5"/>
+  <!-- Pickup pin -->
+  <circle cx="350" cy="350" r="14" fill="#00A651"/>
+  <circle cx="350" cy="350" r="6" fill="#FFFFFF"/>
+  <!-- Destination pin -->
+  <circle cx="700" cy="450" r="14" fill="#D32F2F"/>
+  <circle cx="700" cy="450" r="6" fill="#FFFFFF"/>
+
+  <!-- Bottom booking panel -->
+  <rect y="824" width="1080" height="1096" rx="24" fill="#FFFFFF"/>
+
+  <!-- Where to? -->
+  <rect x="40" y="860" width="1000" height="60" rx="12" fill="#F5F5F5"/>
+  <text x="80" y="898" font-family="Arial, sans-serif" font-size="18" fill="#888">Where to?</text>
+
+  <!-- Pickup location -->
+  <rect x="40" y="950" width="1000" height="70" rx="8" fill="#FFFFFF" stroke="#E0E0E0" stroke-width="1"/>
+  <circle cx="80" cy="985" r="8" fill="#00A651"/>
+  <text x="110" y="980" font-family="Arial, sans-serif" font-size="14" fill="#888">Pickup</text>
+  <text x="110" y="1002" font-family="Arial, sans-serif" font-size="16" fill="#333" font-weight="bold">Tevragh Zeina, Nouakchott</text>
+
+  <!-- Destination -->
+  <rect x="40" y="1035" width="1000" height="70" rx="8" fill="#FFFFFF" stroke="#E0E0E0" stroke-width="1"/>
+  <circle cx="80" cy="1070" r="8" fill="#D32F2F"/>
+  <text x="110" y="1065" font-family="Arial, sans-serif" font-size="14" fill="#888">Destination</text>
+  <text x="110" y="1087" font-family="Arial, sans-serif" font-size="16" fill="#333" font-weight="bold">Ksar, Nouakchott</text>
+
+  <!-- Ride type selector -->
+  <text x="40" y="1160" font-family="Arial, sans-serif" font-size="16" fill="#333" font-weight="bold">Choose ride type</text>
+
+  <!-- Regular card -->
+  <rect x="40" y="1180" width="320" height="120" rx="12" fill="#FFFFFF" stroke="#00A651" stroke-width="2"/>
+  <text x="60" y="1215" font-family="Arial, sans-serif" font-size="14" fill="#333" font-weight="bold">Regular</text>
+  <text x="60" y="1240" font-family="Arial, sans-serif" font-size="28" fill="#00A651" font-weight="bold">350 MRU</text>
+  <text x="60" y="1270" font-family="Arial, sans-serif" font-size="12" fill="#888">4.2 km • 12 min</text>
+
+  <!-- XL card -->
+  <rect x="380" y="1180" width="320" height="120" rx="12" fill="#FFFFFF" stroke="#E0E0E0" stroke-width="1"/>
+  <text x="400" y="1215" font-family="Arial, sans-serif" font-size="14" fill="#333" font-weight="bold">XL</text>
+  <text x="400" y="1240" font-family="Arial, sans-serif" font-size="28" fill="#333" font-weight="bold">520 MRU</text>
+  <text x="400" y="1270" font-family="Arial, sans-serif" font-size="12" fill="#888">4.2 km • 12 min</text>
+
+  <!-- Comfort card -->
+  <rect x="720" y="1180" width="320" height="120" rx="12" fill="#FFFFFF" stroke="#E0E0E0" stroke-width="1"/>
+  <text x="740" y="1215" font-family="Arial, sans-serif" font-size="14" fill="#333" font-weight="bold">Comfort</text>
+  <text x="740" y="1240" font-family="Arial, sans-serif" font-size="28" fill="#333" font-weight="bold">680 MRU</text>
+  <text x="740" y="1270" font-family="Arial, sans-serif" font-size="12" fill="#888">4.2 km • 12 min</text>
+
+  <!-- Book button -->
+  <rect x="40" y="1400" width="1000" height="70" rx="35" fill="#00A651"/>
+  <text x="540" y="1445" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="#FFFFFF" text-anchor="middle" font-weight="bold">Confirm Ride — 350 MRU</text>
+
+  <!-- Safety badge -->
+  <rect x="40" y="1500" width="1000" height="50" rx="8" fill="#E8F5E9"/>
+  <text x="540" y="1532" font-family="Arial, sans-serif" font-size="14" fill="#00A651" text-anchor="middle">🛡️ All drivers are verified • PIN verification • Share your trip</text>
+
+  <!-- Bottom nav -->
+  <rect y="1820" width="1080" height="100" fill="#FFFFFF" stroke="#E0E0E0" stroke-width="1"/>
+  <text x="180" y="1880" font-family="Arial, sans-serif" font-size="12" fill="#00A651" text-anchor="middle" font-weight="bold">🏠 Home</text>
+  <text x="420" y="1880" font-family="Arial, sans-serif" font-size="12" fill="#888" text-anchor="middle">📦 Delivery</text>
+  <text x="660" y="1880" font-family="Arial, sans-serif" font-size="12" fill="#888" text-anchor="middle">🕐 Trips</text>
+  <text x="900" y="1880" font-family="Arial, sans-serif" font-size="12" fill="#888" text-anchor="middle">👤 Profile</text>
+
+  <!-- Marketing overlay text -->
+  <rect y="1600" width="1080" height="200" fill="#00A651" opacity="0.95" rx="0"/>
+  <text x="540" y="1680" font-family="Arial, Helvetica, sans-serif" font-size="36" fill="#FFFFFF" text-anchor="middle" font-weight="bold">Book a ride in seconds</text>
+  <text x="540" y="1730" font-family="Arial, sans-serif" font-size="22" fill="#FFFFFF" text-anchor="middle" opacity="0.9">Choose your ride type and confirm</text>
+</svg>

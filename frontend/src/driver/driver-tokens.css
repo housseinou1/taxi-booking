@@ -1,0 +1,49 @@
+/* Yala Driver App Design Tokens */
+/* Imports shared rider tokens and adds driver-specific values */
+@import '../rider/tokens.css';
+
+/* ─── Driver-Specific Design Tokens ───────────────────────────────────── */
+:root {
+  /* Primary driver colors */
+  --driver-green: #00A651;
+  --driver-green-soft: rgba(0, 166, 81, 0.14);
+  --driver-green-border: rgba(0, 166, 81, 0.35);
+  --driver-red: #EF4444;
+  --driver-red-soft: rgba(239, 68, 68, 0.14);
+  --driver-navy: #0B1220;
+  --driver-navy-soft: rgba(11, 18, 32, 0.85);
+  --driver-white: #FFFFFF;
+  --driver-gray-50: #F8FAFC;
+  --driver-gray-100: #F1F5F9;
+  --driver-gray-300: #CBD5E1;
+  --driver-gray-500: #64748B;
+  --driver-gray-700: #334155;
+
+  /* Driver Level Colors */
+  --level-bronze: #CD7F32;
+  --level-bronze-soft: rgba(205, 127, 50, 0.14);
+  --level-silver: #C0C0C0;
+  --level-silver-soft: rgba(192, 192, 192, 0.14);
+  --level-gold: #FFD700;
+  --level-gold-soft: rgba(255, 215, 0, 0.14);
+  --level-platinum: #E5E4E2;
+  --level-platinum-soft: rgba(229, 228, 226, 0.14);
+
+  /* Panel & Overlay Styles */
+  --panel-bg: rgba(11, 18, 32, 0.92);
+  --panel-blur: 16px;
+  --panel-backdrop: blur(var(--panel-blur));
+  --overlay-backdrop: rgba(0, 0, 0, 0.5);
+  --floating-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+
+  /* Driver Layout */
+  --header-height: 56px;
+  --panel-radius: 20px;
+  --button-radius: 14px;
+  --menu-width: 300px;
+  --go-button-height: 56px;
+
+  /* Driver Transitions */
+  --panel-slide-duration: 300ms;
+  --panel-slide-easing: ease-out;
+}

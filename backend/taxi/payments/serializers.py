@@ -6,6 +6,8 @@ from .models import (
     Payment,
     RiderPaymentMethod,
     WithdrawalRequest,
+    WalletAccount,
+    WalletTransaction,
 )
 
 
@@ -198,3 +200,16 @@ class OwnerPayoutMethodSerializer(serializers.ModelSerializer):
 
     def get_display_name(self, obj):
         return str(obj)
+
+
+class WalletTransactionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WalletTransaction
+        fields = "__all__"
+        read_only_fields = ["wallet", "balance_after", "created_at"]
+
+
+class WalletAccountSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WalletAccount
+        fields = ["id", "balance", "currency", "is_active", "updated_at"]

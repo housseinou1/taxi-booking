@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useState } from "react";
 import axios from "axios";
 
 import { API_URL } from "../apiConfig";
-import { useDriverContext } from "./context/DriverContext";
 
 // ─── Yala Branding Colors ───────────────────────────────────────────────────
 const COLORS = {
@@ -17,7 +16,6 @@ const COLORS = {
 // ─── Main Component ─────────────────────────────────────────────────────────
 export default function DriverAchievements() {
   const token = localStorage.getItem("access");
-  const { state } = useDriverContext();
   const [achievements, setAchievements] = useState([]);
   const [rewardPoints, setRewardPoints] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -32,7 +30,11 @@ export default function DriverAchievements() {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ]);
-      setAchievements(Array.isArray(achievementsRes.data) ? achievementsRes.data : []);
+      setAchievements(
+        Array.isArray(achievementsRes.data?.achievements)
+          ? achievementsRes.data.achievements
+          : [],
+      );
       setRewardPoints(rewardsRes.data?.points_balance || 0);
     } catch (error) {
       console.log("Achievements fetch error:", error.response?.data || error);
@@ -49,9 +51,14 @@ export default function DriverAchievements() {
     <div style={containerStyle}>
       <header style={headerStyle}>
         <h1 style={titleStyle}>Achievements & Rewards</h1>
-        <div style={pointsBadgeStyle}>
-          <span style={pointsLabelStyle}>Reward Points</span>
-          <span style={pointsValueStyle}>{rewardPoints}</span>
+        <div style={headerActionsStyle}>
+          <button style={hallButtonStyle} onClick={() => (window.location.href = "/driver/hall-of-fame")}>
+            Hall of Fame
+          </button>
+          <div style={pointsBadgeStyle}>
+            <span style={pointsLabelStyle}>Reward Points</span>
+            <span style={pointsValueStyle}>{rewardPoints}</span>
+          </div>
         </div>
       </header>
 
@@ -114,6 +121,23 @@ const pointsBadgeStyle = {
   borderRadius: "12px",
   background: `linear-gradient(135deg, ${COLORS.goldAccent}22, ${COLORS.goldAccent}44)`,
   border: `1px solid ${COLORS.goldAccent}66`,
+};
+
+const headerActionsStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: "8px",
+};
+
+const hallButtonStyle = {
+  minHeight: "44px",
+  border: `1px solid ${COLORS.goldAccent}`,
+  borderRadius: "6px",
+  background: COLORS.goldAccent,
+  color: "#111827",
+  padding: "0 14px",
+  fontWeight: "900",
+  cursor: "pointer",
 };
 
 const pointsLabelStyle = {

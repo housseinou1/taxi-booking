@@ -1,4 +1,5 @@
-from django.contrib import admin
+from django.contrib import admin, messages
+from django.utils.html import format_html
 
 from .models import (
     Achievement,
@@ -9,8 +10,24 @@ from .models import (
     DriverProfile,
     DriverSettings,
     HeatmapZone,
+    HallOfFameRecognition,
+    QRCodeAuditLog,
     SupportTicket,
+    VerificationRecord,
 )
+from .services.qr_service import QRCodeService, QRGenerationError
+
+
+class VerificationRecordInline(admin.TabularInline):
+    model = VerificationRecord
+    extra = 0
+    readonly_fields = ("rider", "scanned_at", "scan_result")
+    fields = ("rider", "scanned_at", "scan_result")
+    ordering = ("-scanned_at",)
+    can_delete = False
+
+    def has_add_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(DriverProfile)
@@ -55,6 +72,103 @@ class DriverProfileAdmin(admin.ModelAdmin):
         "vehicle_plate",
     )
 
+    readonly_fields = (
+        "qr_code_display",
+        "qr_code_generated_at",
+        "qr_code_uuid",
+    )
+
+    inlines = [VerificationRecordInline]
+
+    actions = ["regenerate_qr_code"]
+
+    def get_fieldsets(self, request, obj=None):
+        """Add QR Code section to the default fieldsets."""
+        fieldsets = super().get_fieldsets(request, obj)
+        # If default fieldsets is just (None, {fields: ...}), append QR section
+        qr_fieldset = (
+            "QR Code Verification",
+            {
+                "fields": ("qr_code_display", "qr_code_uuid", "qr_code_generated_at"),
+                "description": self._get_qr_section_description(obj),
+            },
+        )
+        # Check if we already appended the QR fieldset
+        fieldset_names = [fs[0] for fs in fieldsets]
+        if "QR Code Verification" not in fieldset_names:
+            fieldsets = list(fieldsets) + [qr_fieldset]
+        return fieldsets
+
+    def _get_qr_section_description(self, obj):
+        """Return a description message for the QR fieldset."""
+        if obj and not obj.qr_code_uuid:
+            return "No QR code has been generated for this driver."
+        return ""
+
+    def qr_code_display(self, obj):
+        """Display the QR code image or a message if not assigned."""
+        if not obj or not obj.qr_code_uuid:
+            return format_html(
+                '<span style="color: #999;">No QR code has been generated for this driver.</span>'
+            )
+        if obj.qr_code_image:
+            return format_html(
+                '<img src="{}" alt="QR Code for {}" style="max-width: 200px; max-height: 200px;" />',
+                obj.qr_code_image.url,
+                obj.user.get_full_name() or obj.user.email,
+            )
+        return format_html(
+            '<span style="color: #999;">QR code image file not available.</span>'
+        )
+
+    qr_code_display.short_description = "QR Code Image"
+
+    def get_actions(self, request):
+        """Hide regeneration action if viewing drivers without QR codes."""
+        actions = super().get_actions(request)
+        return actions
+
+    @admin.action(description="Regenerate QR Code for selected drivers")
+    def regenerate_qr_code(self, request, queryset):
+        """
+        Admin action to regenerate QR codes for selected drivers.
+        Only processes drivers that already have a QR code assigned.
+        """
+        service = QRCodeService()
+        success_count = 0
+        skip_count = 0
+        error_count = 0
+
+        for driver_profile in queryset:
+            if not driver_profile.qr_code_uuid:
+                skip_count += 1
+                continue
+
+            try:
+                service.regenerate_qr_code(driver_profile, request.user)
+                success_count += 1
+            except QRGenerationError:
+                error_count += 1
+
+        if success_count:
+            self.message_user(
+                request,
+                f"Successfully regenerated QR code for {success_count} driver(s).",
+                messages.SUCCESS,
+            )
+        if skip_count:
+            self.message_user(
+                request,
+                f"Skipped {skip_count} driver(s) with no existing QR code.",
+                messages.WARNING,
+            )
+        if error_count:
+            self.message_user(
+                request,
+                f"Failed to regenerate QR code for {error_count} driver(s). Existing QR codes unchanged.",
+                messages.ERROR,
+            )
+
 
 @admin.register(DriverDocument)
 class DriverDocumentAdmin(admin.ModelAdmin):
@@ -86,6 +200,14 @@ class DriverAchievementAdmin(admin.ModelAdmin):
     list_filter = ("achievement",)
     search_fields = ("driver__user__email", "achievement__name")
     raw_id_fields = ("driver", "achievement")
+
+
+@admin.register(HallOfFameRecognition)
+class HallOfFameRecognitionAdmin(admin.ModelAdmin):
+    list_display = ("driver", "title", "badge", "category", "city", "year", "month", "rank")
+    list_filter = ("badge", "category", "city", "year", "month")
+    search_fields = ("driver__user__email", "driver__user__first_name", "driver__user__last_name", "title")
+    raw_id_fields = ("driver",)
 
 
 @admin.register(DriverFavoriteArea)
@@ -141,3 +263,21 @@ class SupportTicketAdmin(admin.ModelAdmin):
 class HeatmapZoneAdmin(admin.ModelAdmin):
     list_display = ("id", "center_lat", "center_lng", "radius_km", "intensity", "active", "updated_at")
     list_filter = ("active",)
+
+
+@admin.register(VerificationRecord)
+class VerificationRecordAdmin(admin.ModelAdmin):
+    list_display = ("id", "rider", "driver", "scanned_at", "scan_result")
+    list_filter = ("scan_result",)
+    search_fields = ("rider__email", "driver__user__email")
+    raw_id_fields = ("rider", "driver")
+    readonly_fields = ("scanned_at",)
+
+
+@admin.register(QRCodeAuditLog)
+class QRCodeAuditLogAdmin(admin.ModelAdmin):
+    list_display = ("id", "admin", "driver", "action", "old_qr_uuid", "new_qr_uuid", "performed_at")
+    list_filter = ("action",)
+    search_fields = ("admin__email", "driver__user__email")
+    raw_id_fields = ("admin", "driver")
+    readonly_fields = ("performed_at",)

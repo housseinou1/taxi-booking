@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1920" width="1080" height="1920">
+  <!-- Yala Rider Splash Screen
+       Green background with centered white Yala logo and "Yala Rider" text -->
+
+  <!-- Green background -->
+  <rect width="1080" height="1920" fill="#00A651"/>
+
+  <!-- Subtle radial gradient overlay -->
+  <circle cx="540" cy="860" r="600" fill="#00B85C" opacity="0.2"/>
+
+  <!-- White "Y" — Yala brand mark (centered) -->
+  <path d="M410 680 L540 870 L670 680 L720 680 L565 920 L565 1020 L515 1020 L515 920 L360 680 Z" fill="#FFFFFF"/>
+
+  <!-- "Yala Rider" text below -->
+  <text x="540" y="1140" font-family="Arial, Helvetica, sans-serif" font-size="52" font-weight="bold" fill="#FFFFFF" text-anchor="middle" letter-spacing="4">YALA RIDER</text>
+
+  <!-- Tagline -->
+  <text x="540" y="1200" font-family="Arial, Helvetica, sans-serif" font-size="26" fill="#FFFFFF" text-anchor="middle" opacity="0.8">Ride Anywhere in Mauritania</text>
+</svg>

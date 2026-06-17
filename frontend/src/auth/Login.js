@@ -2,10 +2,28 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useTranslation } from "react-i18next";
 import { API_URL } from "../apiConfig";
+import { getSafeRedirectPath } from "./roleRouting";
+import { getAppType } from "../native/platform";
 
 const logoSrc = "/yala-logo.png";
+const riderLogoSrc = "/yala-rider-logo.png";
+const driverLogoSrc = "/yala-driver-logo.png";
 
-export default function Login() {
+function getLogoForApp() {
+  const appType = getAppType();
+  if (appType === "rider") return riderLogoSrc;
+  if (appType === "driver") return driverLogoSrc;
+  return logoSrc;
+}
+
+function getAppLabel() {
+  const appType = getAppType();
+  if (appType === "rider") return "Yala Rider";
+  if (appType === "driver") return "Yala Driver";
+  return "Yala";
+}
+
+export default function Login({ onLogin }) {
   const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -13,10 +31,8 @@ export default function Login() {
   const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
-    const access = localStorage.getItem("access");
-    if (isJwtUsable(access)) {
-      window.location.replace(getRedirectPath(getStoredUser()));
-    }
+    // Don't redirect here — let App.js handle routing for authenticated users
+    // This prevents redirect loops in Capacitor WebView
   }, []);
 
   const handleLogin = async (event) => {
@@ -40,7 +56,11 @@ export default function Login() {
       localStorage.setItem("refresh", response.data.refresh);
       localStorage.setItem("user", JSON.stringify(response.data));
 
-      window.location.replace(getRedirectPath(response.data));
+      if (onLogin) {
+        onLogin(response.data);
+      } else {
+        window.location.href = getRedirectPath(response.data);
+      }
     } catch (error) {
       setErrorMessage(error.response?.data?.error || t("auth.loginFailed"));
     } finally {
@@ -48,61 +68,65 @@ export default function Login() {
     }
   };
 
+  const navigateToRegister = () => {
+    window.location.href = "/register";
+  };
+
   return (
-    <main className="auth-login-page" style={pageStyle}>
-      <AuthLoginStyles />
-      <section style={heroStyle}>
-        <div style={brandBlockStyle}>
-          <img src={logoSrc} alt="Yala" style={brandLogoStyle} />
-          <div>
-            <span style={eyebrowStyle}>{t("auth.secureAccess")}</span>
-            <h1 style={heroTitleStyle}>{t("auth.welcome")}</h1>
-            <p style={heroTextStyle}>{t("auth.loginSubtitle")}</p>
-          </div>
-        </div>
-      </section>
+    <main className="yala-login">
+      <LoginStyles />
 
-      <form onSubmit={handleLogin} style={cardStyle}>
-        <div style={cardHeaderStyle}>
-          <span style={pillStyle}>{t("auth.jwt")}</span>
-          <h2 style={titleStyle}>{t("auth.loginTitle")}</h2>
-          <p style={subtitleStyle}>{t("auth.sessionHint")}</p>
-        </div>
+      <div className="yala-login__logo-area">
+        <img
+          src={getLogoForApp()}
+          alt={getAppLabel()}
+          className="yala-login__logo"
+        />
+        <h1 className="yala-login__brand">{getAppLabel()}</h1>
+        <p className="yala-login__tagline">{t("auth.loginSubtitle")}</p>
+      </div>
 
-        {errorMessage && <div style={errorStyle}>{errorMessage}</div>}
+      <form onSubmit={handleLogin} className="yala-login__form">
+        {errorMessage && (
+          <div className="yala-login__error">{errorMessage}</div>
+        )}
 
-        <label style={labelStyle}>
+        <label className="yala-login__label">
           {t("auth.email")}
           <input
             type="email"
             placeholder="you@example.com"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            style={inputStyle}
+            className="yala-login__input"
             autoComplete="email"
           />
         </label>
 
-        <label style={labelStyle}>
+        <label className="yala-login__label">
           {t("auth.password")}
           <input
             type="password"
-            placeholder="Enter password"
+            placeholder="••••••••"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            style={inputStyle}
+            className="yala-login__input"
             autoComplete="current-password"
           />
         </label>
 
-        <button type="submit" disabled={loading} style={buttonStyle}>
+        <button
+          type="submit"
+          disabled={loading}
+          className="yala-login__btn-primary"
+        >
           {loading ? t("auth.signingIn") : t("auth.loginTitle")}
         </button>
 
         <button
           type="button"
-          onClick={() => (window.location.href = "/register")}
-          style={secondaryButtonStyle}
+          onClick={navigateToRegister}
+          className="yala-login__btn-secondary"
         >
           {t("auth.createAccount")}
         </button>
@@ -111,37 +135,179 @@ export default function Login() {
   );
 }
 
-function AuthLoginStyles() {
+function LoginStyles() {
   return (
     <style>{`
-      .auth-login-page * {
+      .yala-login {
+        min-height: 100vh;
+        min-height: 100dvh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 24px 16px;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        background: linear-gradient(180deg, #0B1220 0%, #0f1d2e 100%);
+        color: #fff;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Inter, sans-serif;
+      }
+
+      .yala-login * {
         box-sizing: border-box;
       }
 
-      .auth-login-page input::placeholder {
-        color: rgba(255, 255, 255, 0.48);
+      .yala-login__logo-area {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        margin-bottom: 32px;
+        flex-shrink: 0;
       }
 
-      @media (max-width: 900px) {
-        .auth-login-page {
-          grid-template-columns: 1fr !important;
-          padding: 18px !important;
+      .yala-login__logo {
+        width: 88px;
+        height: 88px;
+        border-radius: 22px;
+        object-fit: cover;
+        margin-bottom: 16px;
+        box-shadow: 0 8px 32px rgba(0, 166, 81, 0.2);
+      }
+
+      .yala-login__brand {
+        margin: 0;
+        font-size: 28px;
+        font-weight: 800;
+        color: #fff;
+        letter-spacing: -0.5px;
+      }
+
+      .yala-login__tagline {
+        margin: 8px 0 0;
+        color: rgba(255, 255, 255, 0.6);
+        font-size: 14px;
+        line-height: 1.4;
+        max-width: 280px;
+      }
+
+      .yala-login__form {
+        width: 100%;
+        max-width: 380px;
+        padding: 24px;
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(12px);
+      }
+
+      .yala-login__error {
+        margin-bottom: 16px;
+        padding: 12px 14px;
+        border-radius: 12px;
+        background: rgba(239, 68, 68, 0.15);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        color: #fca5a5;
+        font-size: 13px;
+        font-weight: 600;
+        line-height: 1.4;
+      }
+
+      .yala-login__label {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-bottom: 16px;
+        color: rgba(255, 255, 255, 0.8);
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .yala-login__input {
+        width: 100%;
+        min-height: 48px;
+        padding: 0 14px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.08);
+        color: #fff;
+        font-size: 16px;
+        outline: none;
+        transition: border-color 150ms ease;
+        margin: 0;
+      }
+
+      .yala-login__input:focus {
+        border-color: #00A651;
+        box-shadow: 0 0 0 3px rgba(0, 166, 81, 0.15);
+      }
+
+      .yala-login__input::placeholder {
+        color: rgba(255, 255, 255, 0.35);
+      }
+
+      .yala-login__btn-primary {
+        width: 100%;
+        min-height: 50px;
+        margin-top: 8px;
+        border: none;
+        border-radius: 12px;
+        background: #00A651;
+        color: #fff;
+        font-size: 16px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: background 150ms ease, transform 100ms ease;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .yala-login__btn-primary:active {
+        transform: scale(0.97);
+        background: #008f45;
+      }
+
+      .yala-login__btn-primary:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .yala-login__btn-secondary {
+        width: 100%;
+        min-height: 50px;
+        margin-top: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 12px;
+        background: transparent;
+        color: #fff;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 150ms ease, transform 100ms ease;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .yala-login__btn-secondary:active {
+        transform: scale(0.97);
+        background: rgba(255, 255, 255, 0.08);
+      }
+
+      @media (max-width: 480px) {
+        .yala-login {
+          justify-content: flex-start;
+          padding-top: 60px;
         }
 
-        .auth-login-page section {
-          min-height: auto !important;
-          padding-top: 18px;
+        .yala-login__form {
+          padding: 20px;
+          border-radius: 16px;
         }
       }
 
-      @media (max-width: 560px) {
-        .auth-login-page {
-          padding: 12px !important;
-        }
-
-        .auth-login-page form {
-          padding: 20px !important;
-          border-radius: 22px !important;
+      @media (min-height: 700px) and (max-width: 480px) {
+        .yala-login {
+          justify-content: center;
+          padding-top: 24px;
         }
       }
     `}</style>
@@ -155,13 +321,7 @@ function getRedirectPath(user) {
 
   localStorage.removeItem("sx_login_redirect");
 
-  if (redirect && redirect.startsWith("/") && redirect !== "/login" && redirect !== "/register") {
-    return redirect;
-  }
-
-  if (user?.is_staff) return "/admin";
-  if (user?.is_driver) return "/driver";
-  return "/rider-dashboard";
+  return getSafeRedirectPath(user, redirect);
 }
 
 function getStoredUser() {
@@ -187,154 +347,3 @@ function isJwtUsable(token) {
     return Boolean(token);
   }
 }
-
-const pageStyle = {
-  minHeight: "100vh",
-  display: "grid",
-  gridTemplateColumns: "minmax(0, 1fr) minmax(340px, 440px)",
-  gap: "28px",
-  alignItems: "center",
-  padding: "28px",
-  background:
-    "radial-gradient(circle at 14% 16%, rgba(250,204,21,0.18), transparent 28%), radial-gradient(circle at 86% 18%, rgba(22,163,74,0.14), transparent 30%), #05070c",
-  color: "white",
-  fontFamily: 'Inter, "SF Pro Display", "Segoe UI", Arial, sans-serif',
-};
-
-const heroStyle = {
-  minHeight: "calc(100vh - 56px)",
-  display: "flex",
-  alignItems: "center",
-};
-
-const brandBlockStyle = {
-  maxWidth: "680px",
-};
-
-const brandLogoStyle = {
-  width: "min(430px, 100%)",
-  aspectRatio: "1.55 / 1",
-  objectFit: "cover",
-  borderRadius: "28px",
-  marginBottom: "28px",
-  boxShadow: "0 34px 80px rgba(0,0,0,0.42)",
-};
-
-const eyebrowStyle = {
-  display: "inline-flex",
-  marginBottom: "14px",
-  padding: "8px 12px",
-  borderRadius: "999px",
-  background: "rgba(250,204,21,0.12)",
-  color: "#facc15",
-  fontSize: "12px",
-  fontWeight: 900,
-  textTransform: "uppercase",
-};
-
-const heroTitleStyle = {
-  margin: 0,
-  maxWidth: "620px",
-  fontSize: "clamp(42px, 6vw, 76px)",
-  lineHeight: 0.95,
-  letterSpacing: 0,
-};
-
-const heroTextStyle = {
-  maxWidth: "560px",
-  margin: "20px 0 0",
-  color: "rgba(255,255,255,0.72)",
-  fontSize: "18px",
-  lineHeight: 1.55,
-};
-
-const cardStyle = {
-  width: "100%",
-  padding: "26px",
-  border: "1px solid rgba(255,255,255,0.12)",
-  borderRadius: "28px",
-  background: "rgba(255,255,255,0.09)",
-  boxShadow: "0 30px 80px rgba(0,0,0,0.32)",
-  backdropFilter: "blur(18px)",
-};
-
-const cardHeaderStyle = {
-  marginBottom: "20px",
-};
-
-const pillStyle = {
-  display: "inline-flex",
-  marginBottom: "12px",
-  padding: "7px 10px",
-  borderRadius: "999px",
-  background: "rgba(255,255,255,0.1)",
-  color: "#f8fafc",
-  fontSize: "12px",
-  fontWeight: 850,
-};
-
-const titleStyle = {
-  margin: 0,
-  color: "#fff",
-  fontSize: "34px",
-};
-
-const subtitleStyle = {
-  margin: "8px 0 0",
-  color: "rgba(255,255,255,0.66)",
-  lineHeight: 1.5,
-};
-
-const errorStyle = {
-  marginBottom: "14px",
-  padding: "12px",
-  border: "1px solid rgba(248,113,113,0.4)",
-  borderRadius: "14px",
-  background: "rgba(127,29,29,0.28)",
-  color: "#fecaca",
-  fontWeight: 800,
-};
-
-const labelStyle = {
-  display: "grid",
-  gap: "8px",
-  marginBottom: "14px",
-  color: "rgba(255,255,255,0.82)",
-  fontWeight: 800,
-};
-
-const inputStyle = {
-  width: "100%",
-  minHeight: "52px",
-  padding: "0 15px",
-  border: "1px solid rgba(255,255,255,0.14)",
-  borderRadius: "16px",
-  background: "rgba(255,255,255,0.1)",
-  color: "white",
-  fontSize: "16px",
-  outline: "none",
-};
-
-const buttonStyle = {
-  width: "100%",
-  minHeight: "54px",
-  marginTop: "8px",
-  border: "none",
-  borderRadius: "999px",
-  background: "linear-gradient(135deg, #facc15, #f59e0b)",
-  color: "#111827",
-  fontWeight: 950,
-  cursor: "pointer",
-};
-
-const secondaryButtonStyle = {
-  width: "100%",
-  minHeight: "52px",
-  marginTop: "12px",
-  border: "1px solid rgba(255,255,255,0.16)",
-  borderRadius: "999px",
-  background: "rgba(255,255,255,0.08)",
-  color: "white",
-  fontWeight: 900,
-  cursor: "pointer",
-};

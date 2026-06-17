@@ -1,39 +1,39 @@
-# Yala Driver - App Resources
+# Yala Driver App Resources
 
-Place your source assets in this directory for icon and splash screen generation.
+## Branding
 
-## Required Files
+- **App Name:** Yala Driver
+- **App ID:** com.yala.driver.mr
+- **Primary Color:** Gold #D4AF37
+- **Background:** Dark Navy #0B1220
+- **Icon Design:** White "Y" (Yala logo) + gold steering wheel on dark navy background
+- **Splash Screen:** Dark navy background with gold accents + white Yala logo + "YALA DRIVER" text
 
-### icon.png
-- **Size:** 1024x1024 pixels
-- **Format:** PNG with no transparency (App Store requirement)
-- **Design:** Gold (#D4AF37) background with white Yala logo centered
-- **Corner radius:** None (iOS applies rounding automatically)
+## Icon Source
 
-### splash.png
-- **Size:** 2732x2732 pixels (largest iPad Pro resolution)
-- **Format:** PNG
-- **Design:** Navy (#0B1220) background with white Yala logo centered
-- **Safe area:** Keep logo within center 800x800 to avoid cropping on smaller devices
+Source SVG: `assets/yala-driver-icon.svg`
 
-## Generation
+## Generating Icons
 
-After placing your source files, run:
-
+From project root:
 ```bash
-node scripts/generate-icons.js --source driver-app/resources/icon.png --app driver
+npm install sharp
+node scripts/generate-icons.js
 ```
 
-Or use Capacitor's built-in asset generation:
+This generates all required PNG sizes:
+- `resources/icon.png` (1024×1024) — master icon
+- `resources/splash.png` (2732×2732) — splash screen
+- Android mipmap icons (48px to 192px)
+- Android splash screens (all densities)
+- Play Store icon (512×512)
+- App Store icon (1024×1024)
+- Notification icon (96×96)
+- Web favicon and PWA icons
+
+## After Generation
 
 ```bash
-cd driver-app
-npx @capacitor/assets generate --iconBackgroundColor '#D4AF37' --splashBackgroundColor '#0B1220'
+npx cap sync
+npx cap open android
 ```
-
-## Output Locations
-
-- **iOS icons:** `ios/App/App/Assets.xcassets/AppIcon.appiconset/`
-- **Android icons:** `android/app/src/main/res/mipmap-*/`
-- **iOS splash:** `ios/App/App/Assets.xcassets/Splash.imageset/`
-- **Android splash:** `android/app/src/main/res/drawable*/`

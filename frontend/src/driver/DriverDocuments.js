@@ -52,6 +52,20 @@ const DOCUMENT_TYPES = [
     required: true,
     requiresExpiration: true,
   },
+  {
+    key: "vehicle_registration",
+    label: "Vehicle Registration",
+    icon: "📝",
+    required: false,
+    requiresExpiration: true,
+  },
+  {
+    key: "plate_number_photo",
+    label: "Plate Number",
+    icon: "🔢",
+    required: true,
+    imageOnly: true,
+  },
   { key: "profile_photo", label: "Profile Photo", icon: "📷", required: true },
 ];
 
@@ -267,6 +281,16 @@ export default function DriverDocuments() {
       if (!validation.valid) {
         setUploadError(validation.error);
         return;
+      }
+
+      // Image-only restriction for plate number photo
+      const docType = DOCUMENT_TYPES.find((item) => item.key === docTypeKey);
+      if (docType?.imageOnly) {
+        const ext = "." + file.name.split(".").pop().toLowerCase();
+        if (ext === ".pdf" || file.type === "application/pdf") {
+          setUploadError("Plate Number requires an image file (JPEG or PNG). PDF is not accepted.");
+          return;
+        }
       }
 
       setUploadError(null);

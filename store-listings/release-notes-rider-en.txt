@@ -1,0 +1,8 @@
+Welcome to the first official Yala Rider release.
+
+- Request rides and follow your driver in real time
+- Verify your driver using the secure pickup PIN
+- Schedule airport pickup and drop-off
+- Access Yala Wallet, referrals, Lost & Found, and safety tools
+- Manage privacy and account-deletion requests
+- Improved app icons, splash screen, and notification support
