@@ -3,6 +3,7 @@ import './ServiceHub.css';
 
 /**
  * ServiceHub component displaying quick-access tiles for Delivery, Intercity, and Schedule services.
+ * Intercity and Schedule route into the shared /services workspace tabs.
  *
  * Props:
  * - onNavigate: (path: string) => void — called when a service tile is tapped
@@ -34,7 +35,7 @@ function ServiceHub({ onNavigate }) {
     {
       key: 'intercity',
       label: 'Intercity',
-      path: '/intercity',
+      path: '/services?tab=intercity',
       icon: (
         <svg
           className="service-hub__icon"
@@ -55,7 +56,7 @@ function ServiceHub({ onNavigate }) {
     {
       key: 'schedule',
       label: 'Schedule',
-      path: '/schedule',
+      path: '/services?tab=scheduled',
       icon: (
         <svg
           className="service-hub__icon"

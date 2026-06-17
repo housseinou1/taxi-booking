@@ -25,20 +25,20 @@ describe('ServiceHub component', () => {
     expect(onNavigate).toHaveBeenCalledWith('/delivery');
   });
 
-  it('navigates to /intercity when Intercity tile is tapped', () => {
+  it('navigates to services intercity tab when Intercity tile is tapped', () => {
     const onNavigate = jest.fn();
     render(<ServiceHub onNavigate={onNavigate} />);
 
     fireEvent.click(screen.getByRole('button', { name: /intercity/i }));
-    expect(onNavigate).toHaveBeenCalledWith('/intercity');
+    expect(onNavigate).toHaveBeenCalledWith('/services?tab=intercity');
   });
 
-  it('navigates to /schedule when Schedule tile is tapped', () => {
+  it('navigates to services scheduled tab when Schedule tile is tapped', () => {
     const onNavigate = jest.fn();
     render(<ServiceHub onNavigate={onNavigate} />);
 
     fireEvent.click(screen.getByRole('button', { name: /schedule/i }));
-    expect(onNavigate).toHaveBeenCalledWith('/schedule');
+    expect(onNavigate).toHaveBeenCalledWith('/services?tab=scheduled');
   });
 
   it('renders labels for each service tile', () => {

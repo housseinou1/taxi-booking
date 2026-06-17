@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useMemo, useState } from 'react';
+import React, { useEffect, useCallback, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useRide } from '../context/RideContext';
@@ -52,6 +52,7 @@ function RiderHome() {
   const [locationMessage, setLocationMessage] = useState('');
   const [showChat, setShowChat] = useState(false);
   const [showSafety, setShowSafety] = useState(false);
+  const savedIntentHandledRef = useRef(false);
 
   const {
     city,
@@ -295,6 +296,47 @@ function RiderHome() {
     ],
     []
   );
+
+  // Apply saved place intent from SavedPlaces page once per mount.
+  useEffect(() => {
+    if (savedIntentHandledRef.current) return;
+    savedIntentHandledRef.current = true;
+
+    const rawIntent = localStorage.getItem('yala_next_place');
+    if (!rawIntent) return;
+
+    try {
+      const place = JSON.parse(rawIntent);
+      const target = place?.target === 'pickup' ? 'pickup' : 'destination';
+      const fallbackLabel = target === 'pickup' ? 'Saved pickup' : 'Saved destination';
+      const resolvedPosition = Array.isArray(place?.position)
+        ? place.position
+        : null;
+
+      if (!resolvedPosition || resolvedPosition.length < 2) {
+        localStorage.removeItem('yala_next_place');
+        return;
+      }
+
+      const selectedLocation = {
+        label: place?.location || place?.label || fallbackLabel,
+        position: resolvedPosition,
+        city: place?.city || city,
+      };
+
+      if (target === 'pickup') {
+        dispatch({ type: 'SET_PICKUP', payload: selectedLocation });
+        dispatch({ type: 'SET_BOOKING_STEP', payload: destination ? 'rideType' : 'location' });
+      } else {
+        dispatch({ type: 'SET_DESTINATION', payload: selectedLocation });
+        dispatch({ type: 'SET_BOOKING_STEP', payload: pickup ? 'rideType' : 'location' });
+      }
+    } catch (error) {
+      // Ignore malformed saved place payloads.
+    } finally {
+      localStorage.removeItem('yala_next_place');
+    }
+  }, [city, destination, dispatch, pickup]);
 
   const useCurrentLocation = useCallback(() => {
     setLocationMessage('Finding your current location...');

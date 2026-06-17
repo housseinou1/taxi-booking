@@ -34,7 +34,24 @@ function LaunchServices() {
     : role === "admin"
       ? ["airport", "lost", "wallet", "corporate", "bonuses", "referral", "maintenance"]
       : ["airport", "lost", "wallet", "referral", "corporate"];
-  const [active, setActive] = useState(sections[0]);
+  const initialSection = useMemo(() => {
+    const tab = new URLSearchParams(window.location.search).get("tab");
+    const tabAlias = {
+      intercity: "airport",
+      scheduled: "airport",
+      schedule: "airport",
+      wallet: "wallet",
+      referral: "referral",
+      corporate: "corporate",
+      maintenance: "maintenance",
+      lost: "lost",
+      airport: "airport",
+      bonuses: "bonuses",
+    };
+    const resolved = tabAlias[tab];
+    return resolved && sections.includes(resolved) ? resolved : sections[0];
+  }, [sections]);
+  const [active, setActive] = useState(initialSection);
 
   return (
     <main className="yala-services">
