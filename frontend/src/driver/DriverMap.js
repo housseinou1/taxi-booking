@@ -10,6 +10,44 @@ const toPoint = (lat, lng) => {
 const getAddress = (ride, key) =>
   ride?.[key] || ride?.[`${key}_address`] || (key === "pickup" ? "Pickup" : "Drop-off");
 
+const getStopStatus = (stop) => {
+  if (stop?.arrived_at && stop?.departed_at) return "departed";
+  if (stop?.arrived_at) return "arrived";
+  return "pending";
+};
+
+const normalizeRideStops = (ride) => {
+  const rawStops = Array.isArray(ride?.stops)
+    ? ride.stops
+    : Array.isArray(ride?.intermediate_stops)
+      ? ride.intermediate_stops
+      : [];
+
+  return rawStops
+    .map((stop, index) => {
+      const latitude = Number(stop?.latitude ?? stop?.lat ?? stop?.position?.[0]);
+      const longitude = Number(stop?.longitude ?? stop?.lng ?? stop?.position?.[1]);
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+
+      return {
+        ...stop,
+        stop_order: Number(stop?.stop_order ?? index + 1),
+        location_name:
+          stop?.location_name ||
+          stop?.label ||
+          stop?.address ||
+          `Stop ${index + 1}`,
+        latitude,
+        longitude,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.stop_order - b.stop_order);
+};
+
+const getNextPendingStop = (stops = []) =>
+  stops.find((stop) => getStopStatus(stop) === "pending") || null;
+
 function DriverMap({ driverLocation, activeRide, availableRides = [], onRouteUpdate }) {
   const [routeToPickup, setRouteToPickup] = React.useState([]);
   const [tripRoute, setTripRoute] = React.useState([]);
@@ -29,13 +67,27 @@ function DriverMap({ driverLocation, activeRide, availableRides = [], onRouteUpd
     () => toPoint(dropoffLat, dropoffLng),
     [dropoffLat, dropoffLng]
   );
+  const orderedStops = React.useMemo(() => normalizeRideStops(mapRide), [mapRide]);
+  const nextPendingStop = React.useMemo(
+    () => getNextPendingStop(orderedStops),
+    [orderedStops]
+  );
+  const nextStopPoint = React.useMemo(
+    () =>
+      nextPendingStop
+        ? [nextPendingStop.latitude, nextPendingStop.longitude]
+        : null,
+    [nextPendingStop]
+  );
   const nextStop =
     activeRide?.status === "in_progress"
-      ? dropoffPoint
+      ? nextStopPoint || dropoffPoint
       : pickupPoint;
   const etaTitle = mapRide
     ? activeRide?.status === "in_progress"
-      ? "Drop-off ETA"
+      ? nextPendingStop
+        ? "Next Stop ETA"
+        : "Drop-off ETA"
       : "Pickup ETA"
     : "Ready for requests";
   const etaValue = routeSummary ? `${routeSummary.etaMinutes} min` : "--";
@@ -73,24 +125,26 @@ function DriverMap({ driverLocation, activeRide, availableRides = [], onRouteUpd
 
     const loadRoutes = async () => {
       const fallbackToPickup = pickupPoint ? [driverPoint, pickupPoint] : [];
-      const fallbackTrip = pickupPoint && dropoffPoint ? [pickupPoint, dropoffPoint] : [];
+      const fallbackTrip = nextStop ? [driverPoint, nextStop] : [];
 
       try {
-        const [pickupRoute, destinationRoute] = await Promise.all([
+        const [pickupRoute, inProgressRoute] = await Promise.all([
           fetchRoute(driverPoint, pickupPoint),
-          fetchRoute(pickupPoint, dropoffPoint),
+          fetchRoute(driverPoint, nextStop),
         ]);
 
         if (cancelled) return;
 
         setRouteToPickup(pickupRoute?.points || fallbackToPickup);
-        setTripRoute(destinationRoute?.points || fallbackTrip);
-        const activeRoute = activeRide?.status === "in_progress" ? destinationRoute : pickupRoute;
+        setTripRoute(inProgressRoute?.points || fallbackTrip);
+        const activeRoute = activeRide?.status === "in_progress" ? inProgressRoute : pickupRoute;
         setRouteSummary(activeRoute || null);
         setNextInstruction(
           activeRoute?.instruction ||
             (activeRide?.status === "in_progress"
-              ? "Continue toward the drop-off"
+              ? nextPendingStop
+                ? `Continue toward stop ${nextPendingStop.stop_order}`
+                : "Continue toward the drop-off"
               : "Continue toward the rider pickup")
         );
       } catch (error) {
@@ -108,7 +162,7 @@ function DriverMap({ driverLocation, activeRide, availableRides = [], onRouteUpd
     return () => {
       cancelled = true;
     };
-  }, [activeRide?.status, driverPoint, dropoffPoint, mapRide?.id, pickupPoint]);
+  }, [activeRide?.status, driverPoint, mapRide?.id, nextPendingStop, nextStop, pickupPoint]);
 
   React.useEffect(() => {
     if (onRouteUpdate) onRouteUpdate(routeSummary);
@@ -120,7 +174,9 @@ function DriverMap({ driverLocation, activeRide, availableRides = [], onRouteUpd
         <span style={mapStatusStyle}>
           {mapRide
             ? activeRide?.status === "in_progress"
-              ? "Tracking drop-off"
+              ? nextPendingStop
+                ? `Tracking stop ${nextPendingStop.stop_order}`
+                : "Tracking drop-off"
               : "Rider pickup located"
             : "Waiting for rider pickup"}
         </span>
@@ -142,7 +198,11 @@ function DriverMap({ driverLocation, activeRide, availableRides = [], onRouteUpd
       {activeRide && ["accepted", "driver_arriving", "in_progress"].includes(activeRide.status) && (
         <div style={navigationInstructionStyle}>
           <span style={navigationInstructionEyebrowStyle}>
-            {activeRide.status === "in_progress" ? "Navigate to drop-off" : "Navigate to pickup"}
+            {activeRide.status === "in_progress"
+              ? nextPendingStop
+                ? `Navigate to stop ${nextPendingStop.stop_order}`
+                : "Navigate to drop-off"
+              : "Navigate to pickup"}
           </span>
           <strong style={navigationInstructionTextStyle}>{nextInstruction}</strong>
           <span style={navigationInstructionMetaStyle}>
@@ -157,7 +217,12 @@ function DriverMap({ driverLocation, activeRide, availableRides = [], onRouteUpd
         center={driverPoint}
         zoom={14}
         style={mapStyle}
-        fitPoints={[driverPoint, pickupPoint, dropoffPoint].filter(Boolean)}
+        fitPoints={[
+          driverPoint,
+          pickupPoint,
+          ...orderedStops.map((stop) => [stop.latitude, stop.longitude]),
+          dropoffPoint,
+        ].filter(Boolean)}
         markers={[
           {
             id: "driver",
@@ -178,6 +243,13 @@ function DriverMap({ driverLocation, activeRide, availableRides = [], onRouteUpd
             title: `Drop-off: ${getAddress(mapRide, "destination")}`,
             label: "G",
           },
+          ...orderedStops.map((stop) => ({
+            id: `stop-${stop.stop_order}`,
+            position: [stop.latitude, stop.longitude],
+            title: `Stop ${stop.stop_order}: ${stop.location_name}`,
+            label: String(stop.stop_order),
+            type: getStopStatus(stop) === "pending" ? "stop" : "completed-stop",
+          })),
         ].filter(Boolean)}
         polylines={[
           {

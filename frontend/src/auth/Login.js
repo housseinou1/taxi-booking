@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useTranslation } from "react-i18next";
 import { API_URL } from "../apiConfig";
-import { getSafeRedirectPath } from "./roleRouting";
+import { getSafeRedirectPath, getUserRole } from "./roleRouting";
 import { getAppType } from "../native/platform";
 
 const logoSrc = "/yala-logo.png";
@@ -21,6 +21,13 @@ function getAppLabel() {
   if (appType === "rider") return "Yala Rider";
   if (appType === "driver") return "Yala Driver";
   return "Yala";
+}
+
+function getAppHint() {
+  const appType = getAppType();
+  if (appType === "rider") return "This is Rider app";
+  if (appType === "driver") return "This is Driver app";
+  return "This is Yala app";
 }
 
 export default function Login({ onLogin }) {
@@ -51,6 +58,19 @@ export default function Login({ onLogin }) {
         email: email.trim().toLowerCase(),
         password,
       });
+
+      const appType = getAppType();
+      const userRole = getUserRole(response.data);
+      const riderAppMismatch = appType === "rider" && userRole !== "rider";
+      const driverAppMismatch = appType === "driver" && userRole !== "driver";
+
+      if (riderAppMismatch || driverAppMismatch) {
+        const expected = appType === "driver" ? "Driver" : "Rider";
+        setErrorMessage(
+          `This account is not a ${expected} account. Please create a ${expected} account to use this app.`
+        );
+        return;
+      }
 
       localStorage.setItem("access", response.data.access);
       localStorage.setItem("refresh", response.data.refresh);
@@ -83,6 +103,7 @@ export default function Login({ onLogin }) {
           className="yala-login__logo"
         />
         <h1 className="yala-login__brand">{getAppLabel()}</h1>
+        <span className="yala-login__app-hint">{getAppHint()}</span>
         <p className="yala-login__tagline">{t("auth.loginSubtitle")}</p>
       </div>
 
@@ -189,6 +210,20 @@ function LoginStyles() {
         font-size: 14px;
         line-height: 1.4;
         max-width: 280px;
+      }
+
+      .yala-login__app-hint {
+        display: inline-flex;
+        margin-top: 10px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(0, 166, 81, 0.35);
+        background: rgba(0, 166, 81, 0.14);
+        color: #86efac;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
       }
 
       .yala-login__form {

@@ -5,6 +5,12 @@ import { useTranslation } from "react-i18next";
 import { API_URL } from "../apiConfig";
 import { languageOptions, normalizeLanguageCode } from "../i18n";
 import { useDriverContext } from "./context/DriverContext";
+import {
+  getRideAlertSoundStyle,
+  setRideAlertSoundStyle,
+  RIDE_ALERT_SOUND_STYLE_STANDARD,
+  RIDE_ALERT_SOUND_STYLE_LYFT,
+} from "../native/sound";
 
 // ─── Yala Branding Colors ───────────────────────────────────────────────────
 const COLORS = {
@@ -23,6 +29,19 @@ const GPS_OPTIONS = [
   { value: "battery_saver", label: "Battery Saver", icon: "🔋" },
 ];
 
+const NOTIFICATION_SOUND_OPTIONS = [
+  {
+    value: RIDE_ALERT_SOUND_STYLE_STANDARD,
+    label: "Standard",
+    description: "Classic notification chime",
+  },
+  {
+    value: RIDE_ALERT_SOUND_STYLE_LYFT,
+    label: "Lyft",
+    description: "Clean premium alert sound",
+  },
+];
+
 // ─── Main Component ─────────────────────────────────────────────────────────
 export default function DriverSettings() {
   const token = localStorage.getItem("access");
@@ -34,6 +53,9 @@ export default function DriverSettings() {
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState(null);
+  const [notificationSoundStyle, setNotificationSoundStyleState] = useState(
+    RIDE_ALERT_SOUND_STYLE_LYFT
+  );
 
   // PIN lock state
   const [showPinModal, setShowPinModal] = useState(false);
@@ -65,6 +87,10 @@ export default function DriverSettings() {
   useEffect(() => {
     fetchSettings();
   }, [fetchSettings]);
+
+  useEffect(() => {
+    setNotificationSoundStyleState(getRideAlertSoundStyle());
+  }, []);
 
   // ─── Show Toast ─────────────────────────────────────────────────────────
   const showToast = useCallback((message, type = "success") => {
@@ -128,6 +154,15 @@ export default function DriverSettings() {
       saveSetting("gps_accuracy", value);
     },
     [saveSetting]
+  );
+
+  const handleNotificationSoundStyleChange = useCallback(
+    (style) => {
+      const normalized = setRideAlertSoundStyle(style);
+      setNotificationSoundStyleState(normalized);
+      showToast(`Notification sound: ${normalized === "lyft" ? "Lyft" : "Standard"}`);
+    },
+    [showToast]
   );
 
   // ─── PIN Lock ──────────────────────────────────────────────────────────
@@ -245,6 +280,31 @@ export default function DriverSettings() {
           checked={settings?.notifications_system ?? true}
           onChange={() => handleToggle("notifications_system")}
         />
+      </SettingsSection>
+
+      <SettingsSection
+        title="🎵 Notification Sound"
+        description="Choose ride request alert style for this device"
+      >
+        <div style={soundStyleGridStyle}>
+          {NOTIFICATION_SOUND_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              style={{
+                ...soundStyleButtonStyle,
+                ...(notificationSoundStyle === option.value
+                  ? soundStyleButtonActiveStyle
+                  : {}),
+              }}
+              onClick={() => handleNotificationSoundStyleChange(option.value)}
+              aria-pressed={notificationSoundStyle === option.value}
+              aria-label={`Use ${option.label} notification sound`}
+            >
+              <span style={soundStyleLabelStyle}>{option.label}</span>
+              <span style={soundStyleDescStyle}>{option.description}</span>
+            </button>
+          ))}
+        </div>
       </SettingsSection>
 
       {/* GPS Accuracy Section */}
@@ -665,6 +725,49 @@ const gpsIconStyle = {
 const gpsLabelStyle = {
   fontSize: "13px",
   fontWeight: 700,
+};
+
+const soundStyleGridStyle = {
+  display: "grid",
+  gridTemplateColumns: "1fr 1fr",
+  gap: "10px",
+};
+
+const soundStyleButtonStyle = {
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "flex-start",
+  justifyContent: "center",
+  gap: "4px",
+  padding: "14px 12px",
+  borderRadius: "14px",
+  borderWidth: "1px",
+  borderStyle: "solid",
+  borderColor: COLORS.cardBorder,
+  backgroundColor: "rgba(255, 255, 255, 0.04)",
+  color: COLORS.white,
+  cursor: "pointer",
+  transition: "all 200ms ease",
+  fontFamily: "inherit",
+  textAlign: "left",
+};
+
+const soundStyleButtonActiveStyle = {
+  borderColor: COLORS.primaryGreen,
+  backgroundColor: "rgba(0, 166, 81, 0.12)",
+  boxShadow: "0 4px 16px rgba(0, 166, 81, 0.2)",
+};
+
+const soundStyleLabelStyle = {
+  fontSize: "14px",
+  fontWeight: 800,
+  color: COLORS.white,
+};
+
+const soundStyleDescStyle = {
+  fontSize: "11px",
+  color: COLORS.lightGray,
+  fontWeight: 600,
 };
 
 // ─── Toggle Row ─────────────────────────────────────────────────────────────

@@ -47,6 +47,14 @@ function rideReducer(state, action) {
         stops: state.stops.filter((_, index) => index !== action.payload),
       };
 
+    case 'UPDATE_STOP':
+      return {
+        ...state,
+        stops: state.stops.map((stop, index) =>
+          index === action.payload.index ? action.payload.stop : stop
+        ),
+      };
+
     case 'SET_RIDE_TYPE':
       return { ...state, rideType: action.payload };
 

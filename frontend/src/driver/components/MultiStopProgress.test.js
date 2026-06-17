@@ -6,6 +6,10 @@ import MultiStopProgress, {
   getNavigationDestination,
 } from "./MultiStopProgress";
 
+function renderMultiStop(props) {
+  return render(React.createElement(MultiStopProgress, props));
+}
+
 // ─── Unit Tests for getStopStatus ───────────────────────────────────────────
 
 describe("getStopStatus", () => {
@@ -120,16 +124,12 @@ describe("MultiStopProgress", () => {
   ];
 
   it("renders nothing when stops array is empty", () => {
-    const { container } = render(
-      <MultiStopProgress stops={[]} rideStatus="in_progress" />
-    );
+    const { container } = renderMultiStop({ stops: [], rideStatus: "in_progress" });
     expect(container.firstChild).toBeNull();
   });
 
   it("renders all stops in order with correct labels", () => {
-    render(
-      <MultiStopProgress stops={mockStops} rideStatus="in_progress" />
-    );
+    renderMultiStop({ stops: mockStops, rideStatus: "in_progress" });
 
     expect(screen.getByText("Airport Terminal")).toBeInTheDocument();
     expect(screen.getByText("Hotel Marché")).toBeInTheDocument();
@@ -139,9 +139,7 @@ describe("MultiStopProgress", () => {
   });
 
   it("displays correct status badges for each stop", () => {
-    render(
-      <MultiStopProgress stops={mockStops} rideStatus="in_progress" />
-    );
+    renderMultiStop({ stops: mockStops, rideStatus: "in_progress" });
 
     // Stop 1 is departed, Stop 2 is arrived, Stop 3 is pending
     const badges = screen.getAllByText(/Departed|Arrived|Pending/);
@@ -151,9 +149,7 @@ describe("MultiStopProgress", () => {
   });
 
   it("shows Next Stop navigation prompt during in_progress with pending stops", () => {
-    render(
-      <MultiStopProgress stops={mockStops} rideStatus="in_progress" />
-    );
+    renderMultiStop({ stops: mockStops, rideStatus: "in_progress" });
 
     expect(screen.getByText("Next Stop:")).toBeInTheDocument();
     // "City Center" appears in both the navigation prompt and the stop list
@@ -167,18 +163,14 @@ describe("MultiStopProgress", () => {
       { stop_order: 2, location_name: "Stop B", latitude: 18.2, longitude: -15.8, arrived_at: "2024-01-01T10:10:00Z", departed_at: "2024-01-01T10:15:00Z" },
     ];
 
-    render(
-      <MultiStopProgress stops={allDepartedStops} rideStatus="in_progress" />
-    );
+    renderMultiStop({ stops: allDepartedStops, rideStatus: "in_progress" });
 
     expect(screen.getByText("Heading to:")).toBeInTheDocument();
     expect(screen.getByText("Final Destination")).toBeInTheDocument();
   });
 
   it("does not show navigation prompt when ride is not in_progress", () => {
-    render(
-      <MultiStopProgress stops={mockStops} rideStatus="driver_arriving" />
-    );
+    renderMultiStop({ stops: mockStops, rideStatus: "driver_arriving" });
 
     expect(screen.queryByText("Next Stop:")).not.toBeInTheDocument();
     expect(screen.queryByText("Heading to:")).not.toBeInTheDocument();
@@ -187,13 +179,11 @@ describe("MultiStopProgress", () => {
   it("calls onNavigateToStop with the next pending stop when Navigate button is clicked", () => {
     const onNavigate = jest.fn();
 
-    render(
-      <MultiStopProgress
-        stops={mockStops}
-        rideStatus="in_progress"
-        onNavigateToStop={onNavigate}
-      />
-    );
+    renderMultiStop({
+      stops: mockStops,
+      rideStatus: "in_progress",
+      onNavigateToStop: onNavigate,
+    });
 
     const navigateButton = screen.getByLabelText("Navigate to City Center");
     fireEvent.click(navigateButton);
@@ -208,17 +198,13 @@ describe("MultiStopProgress", () => {
   });
 
   it("does not render Navigate button when onNavigateToStop is not provided", () => {
-    render(
-      <MultiStopProgress stops={mockStops} rideStatus="in_progress" />
-    );
+    renderMultiStop({ stops: mockStops, rideStatus: "in_progress" });
 
     expect(screen.queryByText("Navigate →")).not.toBeInTheDocument();
   });
 
   it("renders stop numbers correctly", () => {
-    render(
-      <MultiStopProgress stops={mockStops} rideStatus="in_progress" />
-    );
+    renderMultiStop({ stops: mockStops, rideStatus: "in_progress" });
 
     expect(screen.getByText("Stop 1")).toBeInTheDocument();
     expect(screen.getByText("Stop 2")).toBeInTheDocument();
@@ -226,9 +212,7 @@ describe("MultiStopProgress", () => {
   });
 
   it("has proper accessibility attributes", () => {
-    render(
-      <MultiStopProgress stops={mockStops} rideStatus="in_progress" />
-    );
+    renderMultiStop({ stops: mockStops, rideStatus: "in_progress" });
 
     expect(screen.getByRole("list", { name: "Multi-stop ride progress" })).toBeInTheDocument();
     const listItems = screen.getAllByRole("listitem");

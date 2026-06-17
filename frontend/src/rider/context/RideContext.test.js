@@ -5,16 +5,20 @@ import { RideProvider, useRide, rideReducer, initialState } from './RideContext'
 // Test helper component to exercise the hook
 function TestConsumer({ action }) {
   const { state, dispatch } = useRide();
-  return (
-    <div>
-      <span data-testid="city">{state.city}</span>
-      <span data-testid="stops">{state.stops.length}</span>
-      <span data-testid="bookingStep">{state.bookingStep}</span>
-      <span data-testid="loading">{String(state.loading)}</span>
-      <span data-testid="rideType">{state.rideType}</span>
-      <span data-testid="fare">{state.fare}</span>
-      <button onClick={() => dispatch(action)}>dispatch</button>
-    </div>
+  return React.createElement(
+    "div",
+    null,
+    React.createElement("span", { "data-testid": "city" }, state.city),
+    React.createElement("span", { "data-testid": "stops" }, state.stops.length),
+    React.createElement("span", { "data-testid": "bookingStep" }, state.bookingStep),
+    React.createElement("span", { "data-testid": "loading" }, String(state.loading)),
+    React.createElement("span", { "data-testid": "rideType" }, state.rideType),
+    React.createElement("span", { "data-testid": "fare" }, state.fare),
+    React.createElement(
+      "button",
+      { onClick: () => dispatch(action) },
+      "dispatch"
+    )
   );
 }
 
@@ -105,6 +109,23 @@ describe('RideContext', () => {
       state = rideReducer(state, { type: 'REMOVE_STOP', payload: 0 });
       expect(state.stops).toHaveLength(1);
       expect(state.stops[0]).toEqual(stop2);
+    });
+
+    it('handles UPDATE_STOP', () => {
+      const stop1 = { label: 'Stop 1', position: [18.0, -15.9], city: 'Nouakchott' };
+      const stop2 = { label: 'Stop 2', position: [18.1, -15.8], city: 'Nouakchott' };
+      const updatedStop = { label: 'Updated Stop', position: [18.2, -15.7], city: 'Nouakchott' };
+
+      let state = rideReducer(initialState, { type: 'ADD_STOP', payload: stop1 });
+      state = rideReducer(state, { type: 'ADD_STOP', payload: stop2 });
+      state = rideReducer(state, {
+        type: 'UPDATE_STOP',
+        payload: { index: 0, stop: updatedStop },
+      });
+
+      expect(state.stops).toHaveLength(2);
+      expect(state.stops[0]).toEqual(updatedStop);
+      expect(state.stops[1]).toEqual(stop2);
     });
 
     it('handles SET_RIDE_TYPE', () => {
@@ -243,9 +264,13 @@ describe('RideContext', () => {
   describe('RideProvider and useRide hook', () => {
     it('provides initial state via the hook', () => {
       render(
-        <RideProvider>
-          <TestConsumer action={{ type: 'SET_PICKUP', payload: null }} />
-        </RideProvider>
+        React.createElement(
+          RideProvider,
+          null,
+          React.createElement(TestConsumer, {
+            action: { type: 'SET_PICKUP', payload: null },
+          })
+        )
       );
       expect(screen.getByTestId('city').textContent).toBe('Nouakchott');
       expect(screen.getByTestId('stops').textContent).toBe('0');
@@ -259,7 +284,11 @@ describe('RideContext', () => {
       // Suppress console.error for this test
       const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
       expect(() => {
-        render(<TestConsumer action={{ type: 'SET_PICKUP', payload: null }} />);
+        render(
+          React.createElement(TestConsumer, {
+            action: { type: 'SET_PICKUP', payload: null },
+          })
+        );
       }).toThrow('useRide must be used within a RideProvider');
       spy.mockRestore();
     });

@@ -25,11 +25,20 @@ const RIDE_TYPE_LABELS = {
   xl: 'XL',
   share: 'Share',
 };
+const MAX_STOPS = 3;
 
 function getDriverPositionFromRide(ride) {
   const lat = Number(ride?.driver_current_lat);
   const lng = Number(ride?.driver_current_lng);
   return Number.isFinite(lat) && Number.isFinite(lng) ? [lat, lng] : null;
+}
+
+function getCoordinatePair(lat, lng) {
+  const parsedLat = Number(lat);
+  const parsedLng = Number(lng);
+  return Number.isFinite(parsedLat) && Number.isFinite(parsedLng)
+    ? [parsedLat, parsedLng]
+    : null;
 }
 
 /**
@@ -130,6 +139,19 @@ function RiderHome() {
   }, [pickup, destination, stops, driverPosition, t]);
 
   const fitBounds = markers.length >= 2;
+  const trackingRoutePath = useMemo(() => {
+    if (bookingStep !== 'tracking' || !currentRide || !driverPosition) {
+      return [];
+    }
+
+    const target =
+      currentRide.status === 'in_progress'
+        ? getCoordinatePair(currentRide.destination_lat, currentRide.destination_lng) || currentRide.destination?.position
+        : getCoordinatePair(currentRide.pickup_lat, currentRide.pickup_lng) || currentRide.pickup?.position;
+
+    return Array.isArray(target) ? [driverPosition, target] : [];
+  }, [bookingStep, currentRide, driverPosition]);
+  const displayRoutePath = trackingRoutePath.length >= 2 ? trackingRoutePath : routePath;
 
   // ─── Fetch rider profile on mount ──────────────────────────────────
   useEffect(() => {
@@ -365,7 +387,15 @@ function RiderHome() {
   const startMapSelection = useCallback(
     (target) => {
       setMapSelectionTarget(target);
-      setLocationMessage(`Tap the map to select your ${target}.`);
+      const targetLabel =
+        target?.type === 'pickup'
+          ? 'pickup'
+          : target?.type === 'destination'
+          ? 'destination'
+          : target?.type === 'new-stop'
+          ? 'new stop'
+          : 'stop';
+      setLocationMessage(`Tap the map to select your ${targetLabel}.`);
       dispatch({ type: 'SET_BOOKING_STEP', payload: 'location' });
     },
     [dispatch]
@@ -388,6 +418,31 @@ function RiderHome() {
     [dispatch]
   );
 
+  const handleAddStop = useCallback(
+    (location) => {
+      if (!location || stops.length >= MAX_STOPS) return;
+      dispatch({ type: 'ADD_STOP', payload: location });
+    },
+    [dispatch, stops.length]
+  );
+
+  const handleUpdateStop = useCallback(
+    (index, location) => {
+      dispatch({
+        type: 'UPDATE_STOP',
+        payload: { index, stop: location },
+      });
+    },
+    [dispatch]
+  );
+
+  const handleRemoveStop = useCallback(
+    (index) => {
+      dispatch({ type: 'REMOVE_STOP', payload: index });
+    },
+    [dispatch]
+  );
+
   const handleSavedDestination = useCallback(
     (location) => {
       dispatch({ type: 'SET_DESTINATION', payload: location });
@@ -401,20 +456,29 @@ function RiderHome() {
       if (!mapSelectionTarget) return;
 
       const location = {
-        label: `${mapSelectionTarget === 'pickup' ? 'Pickup' : 'Destination'} selected on map`,
+        label:
+          mapSelectionTarget?.type === 'pickup'
+            ? 'Pickup selected on map'
+            : mapSelectionTarget?.type === 'destination'
+            ? 'Destination selected on map'
+            : 'Stop selected on map',
         position,
         city,
       };
 
-      if (mapSelectionTarget === 'pickup') {
+      if (mapSelectionTarget?.type === 'pickup') {
         handlePickupSelect(location);
-      } else {
+      } else if (mapSelectionTarget?.type === 'destination') {
         handleDestinationSelect(location);
+      } else if (mapSelectionTarget?.type === 'new-stop') {
+        handleAddStop(location);
+      } else if (mapSelectionTarget?.type === 'stop' && Number.isInteger(mapSelectionTarget.index)) {
+        handleUpdateStop(mapSelectionTarget.index, location);
       }
       setMapSelectionTarget(null);
       setLocationMessage('');
     },
-    [city, handleDestinationSelect, handlePickupSelect, mapSelectionTarget]
+    [city, handleAddStop, handleDestinationSelect, handlePickupSelect, handleUpdateStop, mapSelectionTarget]
   );
 
   const handleRideTypeSelect = useCallback(
@@ -572,11 +636,44 @@ function RiderHome() {
                 onFocus={handleDestinationFocus}
                 variant="destination"
               />
+              {stops.map((stop, index) => (
+                <div key={`stop-input-${index}`} className="rider-home__stop-row">
+                  <LocationInput
+                    label={`Stop ${index + 1}`}
+                    value={stop?.label || ''}
+                    city={city}
+                    onSelect={(location) => handleUpdateStop(index, location)}
+                    variant="stop"
+                  />
+                  <button
+                    type="button"
+                    className="rider-home__stop-remove"
+                    onClick={() => handleRemoveStop(index)}
+                    aria-label={`Remove stop ${index + 1}`}
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+              {stops.length < MAX_STOPS && (
+                <LocationInput
+                  label={`Add stop ${stops.length + 1}`}
+                  value=""
+                  city={city}
+                  onSelect={handleAddStop}
+                  variant="stop"
+                />
+              )}
             </div>
             <div className="rider-home__location-actions">
               <button type="button" onClick={useCurrentLocation}>Use current GPS</button>
-              <button type="button" onClick={() => startMapSelection('pickup')}>Pickup on map</button>
-              <button type="button" onClick={() => startMapSelection('destination')}>Drop-off on map</button>
+              <button type="button" onClick={() => startMapSelection({ type: 'pickup' })}>Pickup on map</button>
+              <button type="button" onClick={() => startMapSelection({ type: 'destination' })}>Drop-off on map</button>
+              {stops.length < MAX_STOPS && (
+                <button type="button" onClick={() => startMapSelection({ type: 'new-stop' })}>
+                  Stop on map
+                </button>
+              )}
             </div>
             {/* Confirm locations and proceed to ride type selection */}
             {pickup && destination && (
@@ -663,7 +760,7 @@ function RiderHome() {
           center={mapCenter}
           zoom={13}
           markers={markers}
-          routePath={routePath}
+          routePath={displayRoutePath}
           fitBounds={fitBounds}
           onMapClick={handleMapClick}
         />
