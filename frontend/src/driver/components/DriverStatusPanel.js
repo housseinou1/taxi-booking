@@ -23,6 +23,54 @@ export default function DriverStatusPanel({
   rideActions,
 }) {
   const hasActiveRide = activeRide && activeRide.status;
+  const riderName =
+    activeRide?.rider_name ||
+    activeRide?.rider?.full_name ||
+    [activeRide?.rider_first_name, activeRide?.rider_last_name].filter(Boolean).join(" ").trim() ||
+    "Rider";
+  const riderPicture =
+    activeRide?.rider_picture ||
+    activeRide?.rider_photo ||
+    activeRide?.rider?.profile_picture ||
+    activeRide?.rider?.photo_url ||
+    "";
+  const riderPhone =
+    activeRide?.rider_phone ||
+    activeRide?.rider?.phone_number ||
+    activeRide?.rider?.phone ||
+    "";
+  const riderCoords =
+    Number.isFinite(Number(activeRide?.rider_lat)) && Number.isFinite(Number(activeRide?.rider_lng))
+      ? `${Number(activeRide.rider_lat).toFixed(5)}, ${Number(activeRide.rider_lng).toFixed(5)}`
+      : "";
+  const riderLocation =
+    activeRide?.rider_location ||
+    activeRide?.pickup_address ||
+    activeRide?.pickup ||
+    riderCoords ||
+    "Location unavailable";
+  const rideStops = Array.isArray(activeRide?.stops)
+    ? activeRide.stops
+    : Array.isArray(activeRide?.intermediate_stops)
+      ? activeRide.intermediate_stops
+      : [];
+  const stopLabels = rideStops
+    .map((stop, index) => stop?.location_name || stop?.label || stop?.address || `Stop ${index + 1}`)
+    .filter(Boolean);
+  const nextPendingStopLabel =
+    activeRide?.status === "in_progress"
+      ? rideStops
+          .find((stop) => !(stop?.arrived_at && stop?.departed_at))
+          ?.location_name ||
+        rideStops
+          .find((stop) => !(stop?.arrived_at && stop?.departed_at))
+          ?.label ||
+        rideStops
+          .find((stop) => !(stop?.arrived_at && stop?.departed_at))
+          ?.address ||
+        stopLabels[0] ||
+        ""
+      : "";
 
   return (
     <div className="driver-status-panel driver-status-panel--animate">
@@ -33,29 +81,46 @@ export default function DriverStatusPanel({
         /* Active ride content */
         <div className="driver-status-panel__ride">
           <div className="driver-status-panel__rider">
-            {activeRide.rider_picture ? (
+            {riderPicture ? (
               <img
                 className="driver-status-panel__rider-photo"
-                src={activeRide.rider_picture}
-                alt={activeRide.rider_name || "Rider"}
+                src={riderPicture}
+                alt={riderName}
               />
             ) : (
               <span className="driver-status-panel__rider-photo driver-status-panel__rider-photo--fallback">
-                {(activeRide.rider_name || "R").slice(0, 1).toUpperCase()}
+                {(riderName || "R").slice(0, 1).toUpperCase()}
               </span>
             )}
             <div>
               <span className="driver-status-panel__rider-label">Rider</span>
               <strong className="driver-status-panel__rider-name">
-                {activeRide.rider_name || "Rider"}
+                {riderName}
               </strong>
             </div>
+          </div>
+          <div className="driver-status-panel__rider-meta">
+            <span className="driver-status-panel__rider-phone">
+              📞 {riderPhone || "Phone unavailable"}
+            </span>
+            <span className="driver-status-panel__rider-location">
+              📍 {riderLocation}
+            </span>
           </div>
           <div className="driver-status-panel__ride-route">
             <span>{activeRide.pickup || "Pickup"}</span>
             <span className="driver-status-panel__ride-route-arrow">→</span>
-            <span>{activeRide.destination || "Destination"}</span>
+            <span>
+              {stopLabels.length
+                ? [...stopLabels, activeRide.destination || "Destination"].join(" → ")
+                : activeRide.destination || "Destination"}
+            </span>
           </div>
+          {nextPendingStopLabel && (
+            <div className="driver-status-panel__rider-location">
+              🛑 Next stop: {nextPendingStopLabel}
+            </div>
+          )}
           <div className="driver-status-panel__ride-info">
             <span className="driver-status-panel__ride-fare">
               {activeRide.fare != null ? `${activeRide.fare} MRU` : "--"}

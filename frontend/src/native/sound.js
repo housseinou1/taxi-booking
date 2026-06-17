@@ -35,6 +35,47 @@ function getHapticsPlugin() {
 
 let soundPreloaded = false;
 let preloadAttempted = false;
+let sharedAudioContext = null;
+let lastRideAlertAt = 0;
+const RIDE_ALERT_MIN_GAP_MS = 420;
+const RIDE_ALERT_SOUND_STYLE_KEY = "driver_notification_sound_style";
+export const RIDE_ALERT_SOUND_STYLE_STANDARD = "standard";
+export const RIDE_ALERT_SOUND_STYLE_LYFT = "lyft";
+let rideAlertSoundStyleCache = null;
+
+function normalizeRideAlertSoundStyle(style) {
+  return style === RIDE_ALERT_SOUND_STYLE_STANDARD
+    ? RIDE_ALERT_SOUND_STYLE_STANDARD
+    : RIDE_ALERT_SOUND_STYLE_LYFT;
+}
+
+export function getRideAlertSoundStyle() {
+  if (rideAlertSoundStyleCache) {
+    return rideAlertSoundStyleCache;
+  }
+
+  try {
+    const stored = window.localStorage.getItem(RIDE_ALERT_SOUND_STYLE_KEY);
+    rideAlertSoundStyleCache = normalizeRideAlertSoundStyle(stored);
+  } catch (error) {
+    rideAlertSoundStyleCache = RIDE_ALERT_SOUND_STYLE_LYFT;
+  }
+
+  return rideAlertSoundStyleCache;
+}
+
+export function setRideAlertSoundStyle(style) {
+  const normalized = normalizeRideAlertSoundStyle(style);
+  rideAlertSoundStyleCache = normalized;
+
+  try {
+    window.localStorage.setItem(RIDE_ALERT_SOUND_STYLE_KEY, normalized);
+  } catch (error) {
+    // Ignore storage write issues in restricted environments.
+  }
+
+  return normalized;
+}
 
 /**
  * Preload the notification sound for instant playback.
@@ -118,7 +159,7 @@ export async function vibrateNative(pattern) {
 
   // Web fallback
   if (navigator.vibrate) {
-    navigator.vibrate(pattern ? [300, 150, 300, 150, 300] : [300]);
+    navigator.vibrate(pattern ? [220, 120, 220] : [220]);
     return true;
   }
 
@@ -126,8 +167,7 @@ export async function vibrateNative(pattern) {
 }
 
 /**
- * Play a Lyft-style ride request alert sound.
- * Quick ascending three-note chime: bright, clean, attention-grabbing.
+ * Play a ride request alert sound using the selected style.
  * Uses Web Audio API oscillator — works even if notification.wav fails.
  */
 export async function playRideAlertChime() {
@@ -135,28 +175,52 @@ export async function playRideAlertChime() {
   if (!AudioContextClass) return false;
 
   try {
-    const ctx = new AudioContextClass();
+    const nowMs = Date.now();
+    if (nowMs - lastRideAlertAt < RIDE_ALERT_MIN_GAP_MS) {
+      return false;
+    }
+    lastRideAlertAt = nowMs;
+
+    if (!sharedAudioContext) {
+      sharedAudioContext = new AudioContextClass();
+    }
+    const ctx = sharedAudioContext;
     if (ctx.state === "suspended") await ctx.resume();
 
-    const playNote = (freq, startTime, duration) => {
+    const soundStyle = getRideAlertSoundStyle();
+    const masterGain = ctx.createGain();
+    masterGain.gain.setValueAtTime(
+      soundStyle === RIDE_ALERT_SOUND_STYLE_STANDARD ? 0.2 : 0.22,
+      ctx.currentTime
+    );
+    masterGain.connect(ctx.destination);
+
+    const playNote = (freq, startTime, duration, gainLevel = 0.28) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
-      osc.type = "sine";
+      osc.type = "triangle";
       osc.frequency.setValueAtTime(freq, startTime);
       gain.gain.setValueAtTime(0, startTime);
-      gain.gain.linearRampToValueAtTime(0.4, startTime + 0.02);
+      gain.gain.linearRampToValueAtTime(gainLevel, startTime + 0.015);
       gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
       osc.connect(gain);
-      gain.connect(ctx.destination);
+      gain.connect(masterGain);
       osc.start(startTime);
       osc.stop(startTime + duration);
     };
 
     const now = ctx.currentTime;
-    // Lyft-style ascending three notes: C6 → E6 → G6
-    playNote(1047, now, 0.15);        // C6
-    playNote(1319, now + 0.12, 0.15); // E6
-    playNote(1568, now + 0.24, 0.25); // G6 (longer, rings out)
+    if (soundStyle === RIDE_ALERT_SOUND_STYLE_STANDARD) {
+      // Standard profile: classic three-note sine chime (C6 -> E6 -> G6).
+      playNote(1047, now, 0.13, 0.2);
+      playNote(1319, now + 0.12, 0.14, 0.23);
+      playNote(1568, now + 0.24, 0.2, 0.25);
+    } else {
+      // Lyft profile: cleaner triad cue (A5 -> C#6 -> E6).
+      playNote(880, now, 0.11, 0.23);
+      playNote(1109, now + 0.09, 0.13, 0.26);
+      playNote(1319, now + 0.2, 0.22, 0.3);
+    }
 
     return true;
   } catch (e) {

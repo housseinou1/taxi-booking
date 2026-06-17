@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import Login from "./auth/Login";
 import Register from "./auth/Register";
-import { canAccessPage, getDashboardPath, getSafeRedirectPath } from "./auth/roleRouting";
+import { canAccessPage, getDashboardPath, getSafeRedirectPath, getUserRole } from "./auth/roleRouting";
 
 import RiderApp from "./rider/RiderApp";
 import RiderReviews from "./rider/RiderReviews";
@@ -48,6 +48,13 @@ const LOGO_SRC = "/yala-logo.png";
 // Route filtering for native apps — only show relevant routes per app type
 const RIDER_ROUTES = ['/rider', '/rider-dashboard', '/rider-history', '/history', '/rider-reviews', '/saved-places', '/rider-profile', '/rider-payments', '/ride/share', '/delivery', '/services', '/login', '/register', '/settings', '/support', '/terms', '/privacy'];
 const DRIVER_ROUTES = ['/driver', '/driver/profile', '/driver/profile/edit', '/driver/documents', '/driver/code', '/driver/earnings', '/driver/feedback', '/driver/support', '/driver/achievements', '/driver/hall-of-fame', '/driver/history', '/driver/deliveries', '/services', '/login', '/register', '/settings', '/support', '/terms', '/privacy', '/admin', '/admin-dashboard', '/admin/share-analytics', '/admin/deliveries', '/rider-dashboard', '/rider', '/rider-history', '/history', '/rider-reviews', '/saved-places', '/rider-profile', '/rider-payments', '/ride/share', '/delivery', '/payment-setup', '/driver-vehicle-setup'];
+
+function isRoleAllowedForAppType(role, appType) {
+  if (appType === "web") return true;
+  if (appType === "rider") return role === "rider";
+  if (appType === "driver") return role === "driver";
+  return true;
+}
 
 function isRouteAllowed(path) {
   const appType = getAppType();
@@ -138,6 +145,18 @@ function App() {
   }, [page]);
 
   useEffect(() => {
+    const appType = getAppType();
+    if (appType === "web" || !isAuthenticated) return;
+
+    const role = getUserRole(getStoredUser());
+    if (!isRoleAllowedForAppType(role, appType)) {
+      clearAuthSession();
+      setIsAuthenticated(false);
+      setSessionChecked(true);
+    }
+  }, [isAuthenticated]);
+
+  useEffect(() => {
     if (sessionCheckStarted.current) return;
     sessionCheckStarted.current = true;
 
@@ -216,11 +235,14 @@ function App() {
       let ride = null;
 
       if (selectedRideId) {
-        ride = rides.find((item) => Number(item.id) === Number(selectedRideId));
+        const selected = rides.find((item) => Number(item.id) === Number(selectedRideId));
+        ride = selected?.status === "completed" ? selected : null;
       }
 
       if (!ride && rides.length > 0) {
-        ride = rides[0];
+        ride =
+          rides.find((item) => item.status === "completed") ||
+          rides[0];
       }
 
       setSelectedRide(ride || null);
@@ -252,8 +274,18 @@ function App() {
     setIsAuthenticated(true);
     setSessionChecked(true);
 
-    // For native apps, always go to the app-specific dashboard regardless of user role
+    // Native apps are role-locked.
     const appType = getAppType();
+    const role = getUserRole(userData);
+    if (!isRoleAllowedForAppType(role, appType)) {
+      clearAuthSession();
+      setIsAuthenticated(false);
+      setSessionChecked(true);
+      setPage("login");
+      window.history.replaceState(null, "", "/login");
+      return;
+    }
+
     if (appType === 'rider') {
       setPage("rider");
       window.history.replaceState(null, "", "/rider");
@@ -328,6 +360,7 @@ function App() {
           title={`${MARKET.brandName} Payments`}
           goHome={goHome}
           logout={logout}
+          minimalActions={selectedRide?.status === "completed"}
         />
 
         {selectedRide ? (
@@ -3139,7 +3172,7 @@ function LegalPage({ page }) {
   );
 }
 
-function TopBar({ title, goHome, logout }) {
+function TopBar({ title, goHome, logout, minimalActions = false }) {
   const { t } = useTranslation();
   const [showSafety, setShowSafety] = useState(false);
 
@@ -3156,6 +3189,12 @@ function TopBar({ title, goHome, logout }) {
       </div>
 
       <div style={topButtonGroupStyle}>
+        {minimalActions ? (
+          <button onClick={logout} style={logoutButtonStyle}>
+            {t("common.logout")}
+          </button>
+        ) : (
+          <>
         <div style={safetyMenuWrapStyle}>
           <button
             onClick={() => setShowSafety((current) => !current)}
@@ -3221,6 +3260,8 @@ function TopBar({ title, goHome, logout }) {
         <button onClick={logout} style={logoutButtonStyle}>
           {t("common.logout")}
         </button>
+          </>
+        )}
       </div>
     </div>
   );

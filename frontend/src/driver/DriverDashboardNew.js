@@ -289,11 +289,27 @@ export default function DriverDashboardNew() {
   const acceptRide = useCallback(
     async (rideId) => {
       try {
-        await axios.post(
+        const response = await axios.post(
           `${API_URL}/rides/accept/${rideId}/`,
           {},
           authHeaders
         );
+        const acceptedRide = response.data?.ride || response.data || {};
+        const requestRide = availableRides.find((ride) => ride.id === rideId) || {};
+        const hydratedRide = {
+          ...requestRide,
+          ...acceptedRide,
+          status: acceptedRide.status || requestRide.status || "accepted",
+        };
+        setDriverRides((prev) => {
+          const nonActive = prev.filter(
+            (ride) =>
+              ride.id !== rideId &&
+              !["driver_arriving", "accepted", "driver_arrived", "in_progress"].includes(ride.status)
+          );
+          return [hydratedRide, ...nonActive];
+        });
+        setAvailableRides((prev) => prev.filter((ride) => ride.id !== rideId));
         // Refetch after accept
         fetchAvailableRides();
         fetchDriverRides();
@@ -310,7 +326,7 @@ export default function DriverDashboardNew() {
         );
       }
     },
-    [authHeaders, fetchAvailableRides, fetchDriverRides, isAuthError, sendToLogin]
+    [authHeaders, availableRides, fetchAvailableRides, fetchDriverRides, isAuthError, sendToLogin]
   );
 
   const declineRide = useCallback((rideId) => {

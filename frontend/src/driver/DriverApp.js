@@ -231,6 +231,7 @@ export default function DriverApp() {
   const alertedRideIdsRef = useRef(new Set());
   const notificationAudioRef = useRef(null);
   const audioContextRef = useRef(null);
+  const requestSoundTimeoutsRef = useRef([]);
 
   const [driverLocation, setDriverLocation] = useState({
     current_lat: MARKET.defaultPickup.position[0],
@@ -282,6 +283,11 @@ export default function DriverApp() {
         console.log("Sound preload complete, isNative:", isNative());
       });
     }, 1000);
+
+    return () => {
+      requestSoundTimeoutsRef.current.forEach((timeoutId) => clearTimeout(timeoutId));
+      requestSoundTimeoutsRef.current = [];
+    };
   }, []);
 
   const unlockNotificationSound = useCallback(async () => {
@@ -379,13 +385,16 @@ export default function DriverApp() {
   }, [soundEnabled]);
 
   const ringForNewRequest = useCallback(async () => {
+    requestSoundTimeoutsRef.current.forEach((timeoutId) => clearTimeout(timeoutId));
+    requestSoundTimeoutsRef.current = [];
+
     if ("Notification" in window && Notification.permission === "granted") {
       const notificationOptions = {
         body: "Open Yala Driver to accept the trip.",
         icon: "/logo192.png",
         badge: "/logo192.png",
         tag: "sakho-new-ride-request",
-        vibrate: [250, 120, 250],
+        vibrate: [220, 120, 220],
         data: {
           url: "/driver",
         },
@@ -411,12 +420,13 @@ export default function DriverApp() {
       }
     }
 
-    // Vibrate the device for ride request alert (native or web)
+    // Subtle double pulse + two-chime cadence for a cleaner Lyft-like alert.
     await vibrateNative(true);
-
     await playNotificationSound();
-    setTimeout(playNotificationSound, 850);
-    setTimeout(playNotificationSound, 1700);
+    const followUpId = setTimeout(() => {
+      playNotificationSound();
+    }, 760);
+    requestSoundTimeoutsRef.current.push(followUpId);
   }, [playNotificationSound]);
 
   useEffect(() => {

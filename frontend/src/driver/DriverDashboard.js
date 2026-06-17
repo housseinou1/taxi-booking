@@ -72,6 +72,7 @@ export default function DriverDashboard() {
   const [routeToPickup, setRouteToPickup] = useState([]);
   const [showSafetyPanel, setShowSafetyPanel] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const alertSoundTimeoutsRef = useRef([]);
 
   const authHeaders = useMemo(
     () => ({ headers: { Authorization: `Bearer ${token}` } }),
@@ -115,11 +116,14 @@ export default function DriverDashboard() {
             break;
           }
           setRideRequest(data);
+          alertSoundTimeoutsRef.current.forEach((timeoutId) => clearTimeout(timeoutId));
+          alertSoundTimeoutsRef.current = [];
           // Play notification sound and vibrate for new ride request
           playRideAlertChime().catch(() => {});
           vibrateNative(true).catch(() => {});
-          // Play again after 800ms for emphasis
-          setTimeout(() => playRideAlertChime().catch(() => {}), 800);
+          // One clean follow-up chime keeps it noticeable without sounding noisy.
+          const followUpId = setTimeout(() => playRideAlertChime().catch(() => {}), 760);
+          alertSoundTimeoutsRef.current.push(followUpId);
           break;
         case "ride_status_update":
           if (data.status === "cancelled" || data.status === "completed") {
@@ -237,6 +241,10 @@ export default function DriverDashboard() {
   // ─── Preload notification sound on mount ───────────────────────────────
   useEffect(() => {
     preloadNotificationSound();
+    return () => {
+      alertSoundTimeoutsRef.current.forEach((timeoutId) => clearTimeout(timeoutId));
+      alertSoundTimeoutsRef.current = [];
+    };
   }, []);
 
   // ─── Fetch Notifications ────────────────────────────────────────────────
