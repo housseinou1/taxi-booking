@@ -28,6 +28,26 @@ from taxi.security.abuse import rate_limit
 User = get_user_model()
 
 
+def ensure_driver_profile(user):
+    if not user or getattr(user, "user_type", "") != "driver":
+        return None
+
+    profile, _ = DriverProfile.objects.get_or_create(
+        user=user,
+        defaults={
+            "plate_number": "TEMP-PLATE",
+            "vehicle_plate": "TEMP-PLATE",
+            "vehicle_make": "TEMP",
+            "vehicle_model": "TEMP",
+            "vehicle_color": "TEMP",
+            "phone_number": "",
+            "car_type": "regular",
+            "status": "pending",
+        },
+    )
+    return profile
+
+
 def mask_national_id(value):
     value = str(value or "")
     if len(value) <= 4:
@@ -59,7 +79,9 @@ def file_url(request, field):
 
 def build_user_response(user):
     profile = DriverProfile.objects.filter(user=user).first()
-    is_driver = profile is not None
+    if profile is None:
+        profile = ensure_driver_profile(user)
+    is_driver = profile is not None or user.user_type == "driver"
     role = "admin" if user.is_staff or user.is_superuser else "driver" if is_driver else "rider"
 
     return {
@@ -100,8 +122,10 @@ def build_user_response(user):
 
 
 def serialize_user(user):
-    is_driver = DriverProfile.objects.filter(user=user).exists()
     profile = DriverProfile.objects.filter(user=user).first()
+    if profile is None:
+        profile = ensure_driver_profile(user)
+    is_driver = profile is not None or user.user_type == "driver"
     driver_avg = user.driver_rides.filter(
         rating__isnull=False,
     ).aggregate(avg=Avg("rating"))["avg"]
@@ -471,3 +495,28 @@ def reject_rider(request, user_id):
         "message": "Rider rejected",
         "user": serialize_user(user),
     })
+
+
+@api_view(["DELETE"])
+@permission_classes([IsAdminUser])
+def delete_rider(request, user_id):
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return Response({"error": "Rider not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    if user.is_staff:
+        return Response(
+            {"error": "Admin accounts cannot be deleted from this screen."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if DriverProfile.objects.filter(user=user).exists():
+        return Response(
+            {"error": "This account has a driver profile. Use driver delete action instead."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    user_email = user.email
+    user.delete()
+    return Response({"message": f"Rider {user_email} deleted."})

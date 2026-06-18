@@ -56,7 +56,7 @@
   height: 18px;
   padding: 0 var(--space-xs);
   border-radius: var(--radius-full);
-  background: #DC2626;
+  background: var(--yala-red);
   color: var(--yala-white);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-bold);

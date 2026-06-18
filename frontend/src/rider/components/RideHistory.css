@@ -60,7 +60,7 @@
 
 .ride-history__error-message {
   font-size: var(--font-size-md);
-  color: #dc2626;
+  color: var(--yala-red);
   margin: 0;
 }
 
@@ -79,7 +79,7 @@
 }
 
 .ride-history__retry-btn:hover {
-  background: #009148;
+  background: var(--yala-green-strong);
 }
 
 .ride-history__retry-btn:active {

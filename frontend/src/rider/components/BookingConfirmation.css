@@ -163,7 +163,7 @@
 }
 
 .promo-code-input__apply-btn:hover:not(:disabled) {
-  background: #009248;
+  background: var(--yala-green-strong);
 }
 
 .promo-code-input__apply-btn:disabled {
@@ -179,7 +179,7 @@
 
 .promo-code-input__error {
   font-size: var(--font-size-sm);
-  color: #dc2626;
+  color: var(--yala-red);
   font-weight: var(--font-weight-medium);
 }
 
@@ -224,12 +224,12 @@
 /* Error notification */
 .booking-confirmation__error {
   padding: var(--space-sm) var(--space-md);
-  background: #fef2f2;
-  border: 1px solid #fca5a5;
+  background: var(--yala-red-soft);
+  border: 1px solid var(--yala-red-border);
   border-radius: var(--radius-sm);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
-  color: #dc2626;
+  color: var(--yala-red);
 }
 
 /* Confirm button */
@@ -255,7 +255,7 @@
 }
 
 .booking-confirmation__confirm-btn:hover:not(:disabled) {
-  background: #009248;
+  background: var(--yala-green-strong);
 }
 
 .booking-confirmation__confirm-btn:active:not(:disabled) {

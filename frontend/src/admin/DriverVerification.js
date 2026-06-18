@@ -5,9 +5,31 @@ function DriverVerification({ onBack }) {
   const [drivers, setDrivers] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const authHeaders = () => {
+    const token = localStorage.getItem("token");
+    return token
+      ? {
+          Authorization: `Bearer ${token}`,
+        }
+      : {};
+  };
+
+  const readJsonSafe = async (response) => {
+    try {
+      return await response.json();
+    } catch (error) {
+      return {};
+    }
+  };
+
+  const getApiMessage = (data, fallback) =>
+    data?.error || data?.detail || data?.message || fallback;
+
   const fetchDrivers = async () => {
     try {
-      const res = await fetch(`${API_URL}/drivers/`);
+      const res = await fetch(`${API_URL}/drivers/`, {
+        headers: authHeaders(),
+      });
       const data = await res.json();
       setDrivers(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -23,17 +45,23 @@ function DriverVerification({ onBack }) {
   }, []);
 
   const approveDriver = async (id) => {
-    await fetch(`${API_URL}/drivers/${id}/approve/`, {
+    const response = await fetch(`${API_URL}/drivers/approve/${id}/`, {
       method: "POST",
+      headers: authHeaders(),
     });
+    const data = await readJsonSafe(response);
+    alert(getApiMessage(data, response.ok ? "Driver approved ✅" : "Could not approve driver"));
 
     fetchDrivers();
   };
 
   const rejectDriver = async (id) => {
-    await fetch(`${API_URL}/drivers/${id}/reject/`, {
+    const response = await fetch(`${API_URL}/drivers/reject/${id}/`, {
       method: "POST",
+      headers: authHeaders(),
     });
+    const data = await readJsonSafe(response);
+    alert(getApiMessage(data, response.ok ? "Driver rejected ❌" : "Could not reject driver"));
 
     fetchDrivers();
   };

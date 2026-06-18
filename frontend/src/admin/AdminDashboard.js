@@ -7,12 +7,23 @@ import HallOfFameAdminPanel from "./HallOfFameAdminPanel";
 
 const MARKET_OWNER_PERCENT = MARKET.ownerCommissionPercent;
 const logoSrc = "/yala-admin-logo.png";
-const ADMIN_BLUE = "#1D4ED8";
-const ADMIN_BLUE_DARK = "#061A46";
-const ADMIN_BLUE_PANEL = "rgba(11, 42, 102, 0.9)";
-const ADMIN_BLUE_PANEL_DARK = "rgba(7, 31, 78, 0.88)";
-const ADMIN_BLUE_SOFT = "rgba(29, 78, 216, 0.16)";
-const ADMIN_BLUE_BORDER = "rgba(96, 165, 250, 0.38)";
+const ADMIN_BLUE = "#00A651";
+const ADMIN_BLUE_DARK = "#0f2a1b";
+const ADMIN_BLUE_PANEL = "rgba(15, 33, 25, 0.82)";
+const ADMIN_BLUE_PANEL_DARK = "rgba(12, 25, 20, 0.9)";
+const ADMIN_BLUE_SOFT = "rgba(110, 231, 183, 0.14)";
+const ADMIN_BLUE_BORDER = "rgba(110, 231, 183, 0.26)";
+const ADMIN_TEXT_PRIMARY = "#f8fafc";
+const ADMIN_TEXT_SECONDARY = "#cbd5e1";
+const ADMIN_SUCCESS_BG = "#ecfdf3";
+const ADMIN_SUCCESS_TEXT = "#166534";
+const ADMIN_SUCCESS_BORDER = "#bbf7d0";
+const ADMIN_DANGER_BG = "#fee2e2";
+const ADMIN_DANGER_TEXT = "#b91c1c";
+const ADMIN_DANGER_BORDER = "#fecaca";
+const ADMIN_WARNING_BG = "#fff7ed";
+const ADMIN_WARNING_TEXT = "#9a3412";
+const ADMIN_WARNING_BORDER = "#fed7aa";
 
 const normalizeText = (value) => String(value || "").toLowerCase();
 
@@ -34,10 +45,10 @@ const formatDocumentStatus = (status) => {
 const documentStatusStyle = (status) => ({
   color:
     status === "valid"
-      ? "#166534"
+      ? ADMIN_SUCCESS_TEXT
       : status === "expiring_soon"
         ? "#92400e"
-        : "#991b1b",
+        : ADMIN_DANGER_TEXT,
   fontWeight: 900,
 });
 
@@ -51,24 +62,24 @@ const getStatusBadgeStyle = (status) => {
 
   if (normalized === "approved" || normalized === "active" || normalized === "valid") {
     return {
-      background: "#ecfdf3",
-      color: "#166534",
-      borderColor: "#bbf7d0",
+      background: ADMIN_SUCCESS_BG,
+      color: ADMIN_SUCCESS_TEXT,
+      borderColor: ADMIN_SUCCESS_BORDER,
     };
   }
 
   if (normalized === "rejected" || normalized === "blocked" || normalized === "expired") {
     return {
-      background: "#fee2e2",
-      color: "#b91c1c",
-      borderColor: "#fecaca",
+      background: ADMIN_DANGER_BG,
+      color: ADMIN_DANGER_TEXT,
+      borderColor: ADMIN_DANGER_BORDER,
     };
   }
 
   return {
-    background: "#fff7ed",
-    color: "#9a3412",
-    borderColor: "#fed7aa",
+    background: ADMIN_WARNING_BG,
+    color: ADMIN_WARNING_TEXT,
+    borderColor: ADMIN_WARNING_BORDER,
   };
 };
 
@@ -89,6 +100,164 @@ const sortAlphabetically = (items) =>
     })
   );
 
+const readJsonSafe = async (response) => {
+  const contentType = response?.headers?.get?.("content-type") || "";
+
+  try {
+    if (contentType.includes("application/json")) {
+      return await response.json();
+    }
+  } catch (error) {
+    // Fall through to text parsing.
+  }
+
+  try {
+    const rawText = await response.text();
+    if (!rawText) return {};
+
+    try {
+      return JSON.parse(rawText);
+    } catch (error) {
+      return { detail: rawText.slice(0, 300) };
+    }
+  } catch (error) {
+    return {};
+  }
+};
+
+const flattenApiMessage = (value) => {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => flattenApiMessage(item))
+      .filter(Boolean)
+      .join(", ");
+  }
+  if (typeof value === "object") {
+    return Object.values(value)
+      .map((item) => flattenApiMessage(item))
+      .filter(Boolean)
+      .join(", ");
+  }
+  return String(value);
+};
+
+const getApiMessage = (data, fallback) =>
+  flattenApiMessage(data?.error) ||
+  flattenApiMessage(data?.detail) ||
+  flattenApiMessage(data?.message) ||
+  fallback;
+
+const getApiCandidates = (path) => {
+  const candidates = [`${API_URL}${path}`];
+  if (typeof window !== "undefined") {
+    const localFallback = `${window.location.protocol}//${window.location.hostname}:8000${path}`;
+    if (!candidates.includes(localFallback)) {
+      candidates.push(localFallback);
+    }
+  }
+  return candidates;
+};
+
+const FAKE_VALUE_SET = new Set([
+  "fake",
+  "test",
+  "testing",
+  "unknown",
+  "none",
+  "null",
+  "n/a",
+  "na",
+  "asdf",
+  "qwerty",
+]);
+
+const compactText = (value) => String(value || "").trim().replace(/\s+/g, " ");
+
+const toDigits = (value) => compactText(value).replace(/\D/g, "");
+
+const isValidNationalId = (value) => {
+  const digits = toDigits(value);
+  if (digits.length !== 10) return false;
+  if (new Set(digits).size === 1) return false;
+  if (digits === "1234567890" || digits === "0987654321") return false;
+  return true;
+};
+
+const isValidMauritaniaPhone = (value) => {
+  let digits = toDigits(value);
+  if (digits.startsWith("00222")) digits = digits.slice(5);
+  else if (digits.startsWith("222") && digits.length === 11) digits = digits.slice(3);
+  if (digits.length !== 8) return false;
+  if (new Set(digits).size === 1) return false;
+  if (digits === "12345678" || digits === "87654321" || digits === "00000000") return false;
+  return true;
+};
+
+const isValidVehicleValue = (value) => {
+  const normalized = compactText(value);
+  if (normalized.length < 2) return false;
+  if (normalized.toUpperCase().startsWith("TEMP")) return false;
+  if (FAKE_VALUE_SET.has(normalized.toLowerCase())) return false;
+  return true;
+};
+
+const isValidPlateNumber = (value) => {
+  const normalized = compactText(value).toUpperCase();
+  if (normalized.length < 4 || normalized.length > 20) return false;
+  if (normalized.startsWith("TEMP")) return false;
+  if (FAKE_VALUE_SET.has(normalized.toLowerCase())) return false;
+  if (!/[A-Z]/.test(normalized) || !/\d/.test(normalized)) return false;
+  return true;
+};
+
+const getDriverApprovalMissingItems = (driver, relatedUser = null) => {
+  const checks = [
+    { label: "National ID number", ok: isValidNationalId(driver?.national_id_number) },
+    {
+      label: "National ID document",
+      ok: Boolean(driver?.has_national_id_document || driver?.national_id_document),
+    },
+    { label: "Driver photo", ok: Boolean(driver?.driver_photo) },
+    { label: "Phone number", ok: isValidMauritaniaPhone(driver?.phone_number) },
+    {
+      label: "Plate number",
+      ok: isValidPlateNumber(driver?.vehicle_plate || driver?.plate_number),
+    },
+    { label: "Driver license", ok: Boolean(driver?.license_file) },
+    { label: "Carte Grise", ok: Boolean(driver?.vehicle_registration) },
+    { label: "Insurance document", ok: Boolean(driver?.insurance_document) },
+    { label: "Vignette", ok: Boolean(driver?.vignette_document) },
+  ];
+
+  return checks.filter((item) => !item.ok).map((item) => item.label);
+};
+
+const ADMIN_SECTION_KEYS = new Set([
+  "overview",
+  "verification",
+  "riders",
+  "drivers",
+  "rides",
+  "deliveries",
+  "emergency",
+  "vehicles",
+  "cities",
+  "performance",
+  "hall-of-fame",
+  "payments",
+  "withdrawals",
+  "analytics",
+  "reports",
+]);
+
+const getInitialAdminSection = () => {
+  if (typeof window === "undefined") return "overview";
+  const section = new URLSearchParams(window.location.search).get("section");
+  return ADMIN_SECTION_KEYS.has(section) ? section : "overview";
+};
+
 function AdminDashboard() {
   const DRIVER_CATEGORIES = [
     { value: "gold", label: "Gold" },
@@ -97,7 +266,7 @@ function AdminDashboard() {
     { value: "elite", label: "Elite" },
   ];
 
-  const [page, setPage] = useState("overview");
+  const [page, setPage] = useState(getInitialAdminSection);
   const [searchQuery, setSearchQuery] = useState("");
   const [drivers, setDrivers] = useState([]);
   const [users, setUsers] = useState([]);
@@ -125,6 +294,9 @@ function AdminDashboard() {
   });
   const [ownerPayoutSaving, setOwnerPayoutSaving] = useState(false);
   const [ownerPayoutMessage, setOwnerPayoutMessage] = useState("");
+  const [isCompactLayout, setIsCompactLayout] = useState(
+    typeof window !== "undefined" ? window.innerWidth <= 1120 : false
+  );
   const [ownerPayoutForm, setOwnerPayoutForm] = useState({
     payout_type: "bank_account",
     account_holder_name: "",
@@ -133,6 +305,25 @@ function AdminDashboard() {
     phone_number: "",
     wallet_id: "",
   });
+
+  const navigateAdminSection = useCallback((sectionKey) => {
+    if (!ADMIN_SECTION_KEYS.has(sectionKey)) return;
+    setPage(sectionKey);
+
+    if (typeof window === "undefined") return;
+    const next = `/admin?section=${encodeURIComponent(sectionKey)}`;
+    if (`${window.location.pathname}${window.location.search}` !== next) {
+      window.history.replaceState(null, "", next);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    const updateLayout = () => setIsCompactLayout(window.innerWidth <= 1120);
+    updateLayout();
+    window.addEventListener("resize", updateLayout);
+    return () => window.removeEventListener("resize", updateLayout);
+  }, []);
 
   const getToken = () => {
     return localStorage.getItem("access");
@@ -299,22 +490,51 @@ function AdminDashboard() {
   ]);
 
   const approveDriver = async (id) => {
-    try {
-      const response = await fetch(`${API_URL}/drivers/approve/${id}/`, {
-        method: "POST",
-        headers: {
-          ...authHeaders(),
-        },
-      });
+    if (!id) {
+      alert("Could not approve driver: missing driver id");
+      return;
+    }
 
-      if (response.ok) {
-        alert("Driver approved ✅");
-        fetchDrivers();
-      } else {
-        alert("Could not approve driver");
+    const endpointPath = `/drivers/approve/${id}/`;
+    const endpointCandidates = getApiCandidates(endpointPath);
+    let lastNetworkError = null;
+
+    try {
+      for (const endpoint of endpointCandidates) {
+        let response;
+        try {
+          response = await fetch(endpoint, {
+            method: "POST",
+            headers: {
+              ...authHeaders(),
+            },
+          });
+        } catch (networkError) {
+          lastNetworkError = networkError;
+          continue;
+        }
+
+        const data = await readJsonSafe(response);
+        if (response.ok) {
+          alert(getApiMessage(data, "Driver approved ✅"));
+          fetchDrivers();
+          fetchUsers();
+          return;
+        }
+
+        alert(getApiMessage(data, `Could not approve driver (HTTP ${response.status})`));
+        return;
       }
     } catch (error) {
-      console.error(error);
+      lastNetworkError = error;
+    }
+
+    if (lastNetworkError) {
+      console.error("Approve driver network error:", lastNetworkError);
+      alert(
+        `Server error approving driver: ${lastNetworkError.message || "Network request failed"}`
+      );
+    } else {
       alert("Server error approving driver");
     }
   };
@@ -332,12 +552,14 @@ function AdminDashboard() {
         },
         body: JSON.stringify({ reason: reason.trim() }),
       });
+      const data = await readJsonSafe(response);
 
       if (response.ok) {
-        alert("Driver rejected ❌");
+        alert(getApiMessage(data, "Driver rejected ❌"));
         fetchDrivers();
+        fetchUsers();
       } else {
-        alert("Could not reject driver");
+        alert(getApiMessage(data, "Could not reject driver"));
       }
     } catch (error) {
       console.error(error);
@@ -453,6 +675,72 @@ function AdminDashboard() {
     } catch (error) {
       console.error(error);
       alert("Server error updating rider application");
+    }
+  };
+
+  const deleteRider = async (user) => {
+    const riderName = user?.full_name || user?.email || "this rider";
+    const confirmed = window.confirm(
+      `Delete rider account for ${riderName}?\n\nThis action cannot be undone and will permanently remove the rider account.`
+    );
+    if (!confirmed) return;
+
+    try {
+      const response = await fetch(`${API_URL}/auth/users/${user.id}/delete-rider/`, {
+        method: "DELETE",
+        headers: authHeaders(),
+      });
+      const data = await readJsonSafe(response);
+
+      if (!response.ok) {
+        alert(getApiMessage(data, "Could not delete rider"));
+        return;
+      }
+
+      alert(getApiMessage(data, "Rider deleted"));
+      fetchUsers();
+      fetchRides();
+      fetchWithdrawals();
+    } catch (error) {
+      console.error(error);
+      alert("Server error deleting rider");
+    }
+  };
+
+  const deleteDriverAccount = async (user) => {
+    const driverName = user?.full_name || user?.email || "this driver";
+    const driverProfileId = Number(user?.driver_profile_id || 0);
+
+    if (!driverProfileId) {
+      alert("Driver profile not found for this account.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Delete driver account for ${driverName}?\n\nThis action cannot be undone and will permanently remove the driver account, profile, and related driver data.`
+    );
+    if (!confirmed) return;
+
+    try {
+      const response = await fetch(`${API_URL}/drivers/delete/${driverProfileId}/`, {
+        method: "DELETE",
+        headers: authHeaders(),
+      });
+      const data = await readJsonSafe(response);
+
+      if (!response.ok) {
+        alert(getApiMessage(data, "Could not delete driver"));
+        return;
+      }
+
+      alert(getApiMessage(data, "Driver deleted"));
+      fetchDrivers();
+      fetchUsers();
+      fetchRides();
+      fetchWithdrawals();
+    } catch (error) {
+      console.error(error);
+      alert("Server error deleting driver");
     }
   };
 
@@ -638,6 +926,12 @@ function AdminDashboard() {
     { key: "analytics", label: "Analytics" },
     { key: "reports", label: "Reports" },
   ];
+  const adminQuickShortcuts = [
+    { key: "overview", label: "Overview" },
+    { key: "riders", label: "Riders" },
+    { key: "drivers", label: "Drivers" },
+    { key: "payments", label: "Payments" },
+  ];
 
   const alphabetDrivers = sortAlphabetically(drivers);
   const pendingDrivers = alphabetDrivers.filter((driver) => driver.status === "pending");
@@ -649,13 +943,17 @@ function AdminDashboard() {
   );
   const onlineDrivers = drivers.filter((driver) => driver.is_available);
   const riders = sortAlphabetically(
-    users.filter((user) => user.is_rider && !user.is_staff)
+    users.filter(
+      (user) => (user.is_rider || user.user_type === "rider") && !user.is_staff
+    )
   );
   const pendingRiders = riders.filter((user) => user.rider_status === "pending");
   const approvedRiders = riders.filter((user) => user.rider_status === "approved");
   const rejectedRiders = riders.filter((user) => user.rider_status === "rejected");
   const platformDrivers = sortAlphabetically(
-    users.filter((user) => user.is_driver && !user.is_staff)
+    users.filter(
+      (user) => (user.is_driver || user.user_type === "driver") && !user.is_staff
+    )
   );
   const blockedUsers = users.filter((user) => !user.is_active && !user.is_staff);
 
@@ -788,6 +1086,7 @@ function AdminDashboard() {
       "status",
     ])
   );
+  const usersById = new Map(users.map((user) => [Number(user.id), user]));
   const filteredPendingDrivers = pendingDrivers.filter((driver) =>
     matchesSearch(driver, searchQuery, [
       "driver_name",
@@ -828,9 +1127,47 @@ function AdminDashboard() {
     fetchOwnerPayout();
   };
 
+  const [sidebarOpen, setSidebarOpen] = useState(!isCompactLayout);
+
   return (
-    <div style={pageStyle}>
-      <div style={sidebar}>
+    <div style={{ ...pageStyle, ...(isCompactLayout ? pageStyleCompact : {}) }}>
+      {/* Mobile hamburger button */}
+      {isCompactLayout && (
+        <button
+          type="button"
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          style={{
+            position: "fixed",
+            top: 12,
+            left: 12,
+            zIndex: 1100,
+            width: 44,
+            height: 44,
+            border: "1px solid rgba(255,255,255,0.2)",
+            borderRadius: 10,
+            background: "rgba(15,23,42,0.95)",
+            color: "#fff",
+            fontSize: 22,
+            fontWeight: 900,
+            cursor: "pointer",
+            display: "grid",
+            placeItems: "center",
+          }}
+          aria-label="Toggle menu"
+        >
+          ☰
+        </button>
+      )}
+
+      {/* Mobile backdrop */}
+      {isCompactLayout && sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          style={{ position: "fixed", inset: 0, zIndex: 999, background: "rgba(0,0,0,0.5)" }}
+        />
+      )}
+
+      <div style={{ ...sidebar, ...(isCompactLayout ? sidebarCompact : {}), ...(isCompactLayout && !sidebarOpen ? { transform: "translateX(-100%)", pointerEvents: "none" } : {}) }}>
         <div style={sidebarBrandStyle}>
           <img src={logoSrc} alt={`${MARKET.brandName} logo`} style={brandLogoStyle} />
           <div>
@@ -840,15 +1177,15 @@ function AdminDashboard() {
         </div>
 
         {/* Admin user info */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 0", marginBottom: 12, borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-          <div style={{ width: 40, height: 40, borderRadius: "50%", background: ADMIN_BLUE, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 900, fontSize: 14, flexShrink: 0 }}>
+        <div style={adminUserCardStyle}>
+          <div style={adminUserAvatarStyle}>
             {(() => { try { const u = JSON.parse(localStorage.getItem("user") || "{}"); return (u.first_name || "A")[0].toUpperCase(); } catch(e) { return "A"; } })()}
           </div>
           <div style={{ minWidth: 0 }}>
-            <div style={{ color: "#fff", fontWeight: 700, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <div style={adminUserNameStyle}>
               {(() => { try { const u = JSON.parse(localStorage.getItem("user") || "{}"); return `${u.first_name || ""} ${u.last_name || ""}`.trim() || "Admin"; } catch(e) { return "Admin"; } })()}
             </div>
-            <div style={{ color: "#9ca3af", fontSize: 11 }}>
+            <div style={adminUserEmailStyle}>
               {(() => { try { return JSON.parse(localStorage.getItem("user") || "{}").email || ""; } catch(e) { return ""; } })()}
             </div>
           </div>
@@ -859,17 +1196,20 @@ function AdminDashboard() {
             key={item.key}
             style={{
               ...menuButton,
-              background: page === item.key ? ADMIN_BLUE : "transparent",
-              color: page === item.key ? "#ffffff" : "#d1d5db",
+              background:
+                page === item.key ? "linear-gradient(135deg, rgba(148, 163, 184, 0.26), rgba(148, 163, 184, 0.12))" : "transparent",
+              color: page === item.key ? "#ffffff" : "#cbd5e1",
               borderColor:
-                page === item.key ? ADMIN_BLUE_BORDER : "rgba(255, 255, 255, 0.08)",
+                page === item.key ? "rgba(148, 163, 184, 0.42)" : "rgba(148, 163, 184, 0.16)",
+              boxShadow: page === item.key ? "inset 2px 0 0 #34d399" : "none",
             }}
             onClick={() => {
               if (item.path) {
                 window.location.href = item.path;
                 return;
               }
-              setPage(item.key);
+              navigateAdminSection(item.key);
+              if (isCompactLayout) setSidebarOpen(false);
             }}
           >
             <span>{item.label}</span>
@@ -878,18 +1218,18 @@ function AdminDashboard() {
         ))}
       </div>
 
-      <div style={content}>
-        <header style={topBarStyle}>
+      <div style={{ ...content, ...(isCompactLayout ? contentCompact : {}) }}>
+        <header style={{ ...topBarStyle, ...(isCompactLayout ? topBarCompactStyle : {}) }}>
           <div>
             <span style={topBarKickerStyle}>Admin app</span>
             <h1 style={topBarTitleStyle}>{currentViewTitle}</h1>
           </div>
-          <div style={topBarActionsStyle}>
+          <div style={{ ...topBarActionsStyle, ...(isCompactLayout ? topBarActionsCompactStyle : {}) }}>
             <input
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder="Search users, rides, vehicles"
-              style={searchInputStyle}
+              style={{ ...searchInputStyle, ...(isCompactLayout ? searchInputCompactStyle : {}) }}
             />
             <button type="button" onClick={refreshAdminData} style={refreshButtonStyle}>
               Refresh
@@ -897,7 +1237,28 @@ function AdminDashboard() {
           </div>
         </header>
 
-        <section style={opsHeroStyle}>
+        <div style={adminShortcutRowStyle} role="tablist" aria-label="Admin quick shortcuts">
+          {adminQuickShortcuts.map((item) => {
+            const active = page === item.key;
+            return (
+              <button
+                key={item.key}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => navigateAdminSection(item.key)}
+                style={{
+                  ...adminShortcutButtonStyle,
+                  ...(active ? adminShortcutButtonActiveStyle : {}),
+                }}
+              >
+                {item.label}
+              </button>
+            );
+          })}
+        </div>
+
+        <section style={{ ...opsHeroStyle, ...(isCompactLayout ? opsHeroCompactStyle : {}) }}>
           <div>
             <span style={opsKickerStyle}>Three app platform</span>
             <h1 style={opsTitleStyle}>Admin operations center</h1>
@@ -921,6 +1282,44 @@ function AdminDashboard() {
               <SectionTitle
                 title="Marketplace command center"
                 subtitle="A live executive view of approvals, active trips, revenue, and platform safety."
+              />
+
+              <AdminInfoLines
+                lines={[
+                  {
+                    title: "Operations",
+                    items: [
+                      ["Active rides", activeRides.length],
+                      ["Waiting requests", pendingRideRequests.length],
+                      ["Driver arriving", driverArrivingRides.length],
+                      ["In progress", inProgressRides.length],
+                      ["Completed", completedRides.length],
+                      ["Cancelled", cancelledRides.length],
+                    ],
+                  },
+                  {
+                    title: "Accounts",
+                    items: [
+                      ["Total riders", riders.length],
+                      ["Total drivers", platformDrivers.length],
+                      ["Online drivers", onlineDrivers.length],
+                      ["Pending drivers", pendingDrivers.length],
+                      ["Pending riders", pendingRiders.length],
+                      ["Blocked users", blockedUsers.length],
+                    ],
+                  },
+                  {
+                    title: "Financials",
+                    items: [
+                      ["Revenue", formatMoney(totalRevenue)],
+                      ["Owner commission", formatMoney(platformCommission)],
+                      ["Driver payouts", formatMoney(driverPayouts)],
+                      ["Withdraw pending", pendingWithdrawals.length],
+                      ["Withdraw approved", approvedWithdrawals.length],
+                      ["Avg fare", formatMoney(averageFare)],
+                    ],
+                  },
+                ]}
               />
 
               <div style={premiumMetricGridStyle}>
@@ -1012,6 +1411,7 @@ function AdminDashboard() {
                   user={user}
                   setUserBlocked={setUserBlocked}
                   updateRiderApproval={updateRiderApproval}
+                  deleteRider={deleteRider}
                   showApprovalActions
                 />
               ))
@@ -1051,6 +1451,7 @@ function AdminDashboard() {
                   user={user}
                   setUserBlocked={setUserBlocked}
                   updateRiderApproval={updateRiderApproval}
+                  deleteRider={deleteRider}
                   showApprovalActions
                 />
               ))
@@ -1080,20 +1481,7 @@ function AdminDashboard() {
               />
             </div>
 
-            <h2 style={subHeadingStyle}>Driver accounts</h2>
-            {filteredPlatformDrivers.length === 0 ? (
-              <p>No drivers found.</p>
-            ) : (
-              filteredPlatformDrivers.map((user) => (
-                <UserAccessCard
-                  key={user.id}
-                  user={user}
-                  setUserBlocked={setUserBlocked}
-                />
-              ))
-            )}
-
-            <h2 style={subHeadingStyle}>Vehicle and document profiles</h2>
+            <h2 style={subHeadingStyle}>All drivers</h2>
             {filteredDriverProfiles.length === 0 ? (
               <p>No driver profiles found.</p>
             ) : (
@@ -1101,6 +1489,7 @@ function AdminDashboard() {
                 <DriverInfoCard
                   key={driver.id}
                   driver={driver}
+                  relatedUser={usersById.get(Number(driver.user_id))}
                   getFileUrl={getFileUrl}
                   setUserBlocked={setUserBlocked}
                   approveDriver={approveDriver}
@@ -1296,6 +1685,14 @@ function AdminDashboard() {
                     </span>
                     {driver.vignette_expires_at ? ` · ${driver.vignette_expires_at}` : ""}
                   </p>
+                  <ReviewActions
+                    approveLabel="Approve Driver"
+                    rejectLabel="Reject Driver"
+                    onApprove={() => approveDriver(driver.id)}
+                    onReject={() => rejectDriver(driver.id)}
+                    canApprove={driver.status !== "approved"}
+                    canReject={driver.status !== "rejected"}
+                  />
                 </div>
               ))
             )}
@@ -1574,6 +1971,9 @@ function DriverVerificationCard({
   approveDriver,
   rejectDriver,
 }) {
+  const missingDriverRequirements = getDriverApprovalMissingItems(driver);
+  const canApproveDriver = driver.status !== "approved";
+
   return (
     <div style={verificationCard}>
       <div style={profilePhotoColumnStyle}>
@@ -1653,12 +2053,17 @@ function DriverVerificationCard({
           )}
         </div>
 
+        <RequirementChecklist
+          title="Missing requirements"
+          missingItems={missingDriverRequirements}
+        />
+
         <ReviewActions
           approveLabel="Approve Driver"
           rejectLabel="Reject Driver"
           onApprove={() => approveDriver(driver.id)}
           onReject={() => rejectDriver(driver.id)}
-          canApprove={driver.status !== "approved"}
+          canApprove={canApproveDriver}
           canReject={driver.status !== "rejected"}
         />
       </div>
@@ -2142,26 +2547,43 @@ function ReportsSection({
               <div key={ride.id} style={{ ...reportCardStyle, padding: "14px 18px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
                   <div>
-                    <strong style={{ color: "#fff", fontSize: "14px" }}>Ride #{ride.id}</strong>
-                    <span style={{ color: "#9ca3af", fontSize: "12px", marginLeft: "10px" }}>
+                    <strong style={{ color: ADMIN_TEXT_PRIMARY, fontSize: "14px" }}>Ride #{ride.id}</strong>
+                    <span style={{ color: ADMIN_TEXT_SECONDARY, fontSize: "12px", marginLeft: "10px" }}>
                       {ride.pickup} → {ride.destination}
                     </span>
                   </div>
                   <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                     {ride.cancelled_by && (
-                      <span style={{ background: ride.cancelled_by === "rider" ? "#fef3c7" : ride.cancelled_by === "driver" ? "#fee2e2" : "#e0e7ff", color: ride.cancelled_by === "rider" ? "#92400e" : ride.cancelled_by === "driver" ? "#991b1b" : "#3730a3", padding: "4px 10px", borderRadius: "999px", fontSize: "11px", fontWeight: 700 }}>
+                      <span
+                        style={{
+                          ...cancellationActorPillStyle(ride.cancelled_by),
+                          padding: "4px 10px",
+                          borderRadius: "999px",
+                          fontSize: "11px",
+                          fontWeight: 700,
+                        }}
+                      >
                         {ride.cancelled_by}
                       </span>
                     )}
                     {Number(ride.cancellation_fee) > 0 && (
-                      <span style={{ background: "#fee2e2", color: "#991b1b", padding: "4px 10px", borderRadius: "999px", fontSize: "11px", fontWeight: 700 }}>
+                      <span
+                        style={{
+                          background: ADMIN_DANGER_BG,
+                          color: "#991b1b",
+                          padding: "4px 10px",
+                          borderRadius: "999px",
+                          fontSize: "11px",
+                          fontWeight: 700,
+                        }}
+                      >
                         {ride.cancellation_fee} MRU fee
                       </span>
                     )}
                   </div>
                 </div>
                 {ride.cancellation_reason && (
-                  <p style={{ margin: "8px 0 0", color: "#d1d5db", fontSize: "13px" }}>
+                  <p style={{ margin: "8px 0 0", color: "#cbd5e1", fontSize: "13px" }}>
                     Reason: {ride.cancellation_reason}
                   </p>
                 )}
@@ -2177,7 +2599,7 @@ function ReportsSection({
 function reportToneStyle(tone) {
   if (tone === "red") return { background: "#ef4444" };
   if (tone === "amber") return { background: "#f59e0b" };
-  if (tone === "gold") return { background: "#38bdf8" };
+  if (tone === "gold") return { background: "#fbbf24" };
   if (tone === "green") return { background: ADMIN_BLUE };
   return { background: ADMIN_BLUE };
 }
@@ -2185,18 +2607,49 @@ function reportToneStyle(tone) {
 function severityToneStyle(severity) {
   if (severity === "high") return { background: "#ef4444" };
   if (severity === "medium") return { background: "#f59e0b" };
-  if (severity === "low") return { background: "#38bdf8" };
+  if (severity === "low") return { background: ADMIN_BLUE };
   return { background: ADMIN_BLUE };
+}
+
+function cancellationActorPillStyle(cancelledBy) {
+  if (cancelledBy === "rider") {
+    return { background: "#fef3c7", color: "#92400e" };
+  }
+  if (cancelledBy === "driver") {
+    return { background: ADMIN_DANGER_BG, color: "#991b1b" };
+  }
+  return { background: "#e0e7ff", color: "#3730a3" };
+}
+
+function boolPillStyle(isPositive) {
+  return isPositive
+    ? { background: ADMIN_SUCCESS_BG, color: ADMIN_SUCCESS_TEXT }
+    : { background: ADMIN_WARNING_BG, color: ADMIN_WARNING_TEXT };
 }
 
 function UserAccessCard({
   user,
   setUserBlocked,
   updateRiderApproval,
+  deleteRider,
+  deleteDriverAccount,
   showApprovalActions = false,
 }) {
-  const isRider = user.is_rider && !user.is_driver;
-  const canApproveRider = isRider && user.rider_status !== "approved";
+  const isRider = (user.is_rider || user.user_type === "rider") && !(user.is_driver || user.user_type === "driver");
+  const isDriverAccount = Boolean(user.is_driver && user.driver_profile_id);
+  const riderRequirementChecks = [
+    { label: "Profile photo", ok: Boolean(user.has_profile_picture || user.profile_picture) },
+    { label: "National ID document", ok: Boolean(user.has_national_id_document || user.national_id_document) },
+    { label: "National ID number", ok: Boolean(user.national_id_number) },
+    { label: "Phone number", ok: Boolean(user.phone_number) },
+    { label: "Verified phone number", ok: Boolean(user.phone_verified) },
+  ];
+  const missingRiderRequirements = riderRequirementChecks
+    .filter((item) => !item.ok)
+    .map((item) => item.label);
+
+  const canApproveRider =
+    isRider && user.rider_status !== "approved";
   const canRejectRider = isRider && user.rider_status !== "rejected";
 
   return (
@@ -2212,16 +2665,16 @@ function UserAccessCard({
                 ...rolePillStyle,
                 background:
                   user.rider_status === "approved"
-                    ? "#ecfdf3"
+                    ? ADMIN_SUCCESS_BG
                     : user.rider_status === "rejected"
-                      ? "#fee2e2"
-                      : "#fff7ed",
+                      ? ADMIN_DANGER_BG
+                      : ADMIN_WARNING_BG,
                 color:
                   user.rider_status === "approved"
-                    ? "#166534"
+                    ? ADMIN_SUCCESS_TEXT
                     : user.rider_status === "rejected"
-                      ? "#b91c1c"
-                      : "#9a3412",
+                      ? ADMIN_DANGER_TEXT
+                      : ADMIN_WARNING_TEXT,
               }}
             >
               Rider {user.rider_status_label || user.rider_status || "Pending"}
@@ -2236,8 +2689,8 @@ function UserAccessCard({
           <span
             style={{
               ...rolePillStyle,
-              background: user.is_active ? "#ecfdf3" : "#fee2e2",
-              color: user.is_active ? "#166534" : "#b91c1c",
+              background: user.is_active ? ADMIN_SUCCESS_BG : ADMIN_DANGER_BG,
+              color: user.is_active ? ADMIN_SUCCESS_TEXT : ADMIN_DANGER_TEXT,
             }}
           >
             {user.is_active ? "Active" : "Blocked"}
@@ -2245,14 +2698,7 @@ function UserAccessCard({
           <span
             style={{
               ...rolePillStyle,
-              background:
-                user.national_id_number && user.has_national_id_document
-                  ? "#ecfdf3"
-                  : "#fff7ed",
-              color:
-                user.national_id_number && user.has_national_id_document
-                  ? "#166534"
-                  : "#9a3412",
+              ...boolPillStyle(Boolean(user.national_id_number && user.has_national_id_document)),
             }}
           >
             {user.national_id_number && user.has_national_id_document
@@ -2298,6 +2744,12 @@ function UserAccessCard({
 
       <div style={actionClusterStyle}>
         {showApprovalActions && isRider && (
+          <RequirementChecklist
+            title="Missing requirements"
+            missingItems={missingRiderRequirements}
+          />
+        )}
+        {showApprovalActions && isRider && (
           <ReviewActions
             approveLabel="Approve Rider"
             rejectLabel="Reject Rider"
@@ -2314,6 +2766,24 @@ function UserAccessCard({
         >
           {user.is_active ? "Block user" : "Unblock user"}
         </button>
+        {showApprovalActions && isRider && (
+          <button
+            type="button"
+            style={dangerSolidButtonStyle}
+            onClick={() => deleteRider(user)}
+          >
+            Delete Rider
+          </button>
+        )}
+        {isDriverAccount && (
+          <button
+            type="button"
+            style={dangerSolidButtonStyle}
+            onClick={() => deleteDriverAccount(user)}
+          >
+            Delete Driver
+          </button>
+        )}
       </div>
     </div>
   );
@@ -2321,6 +2791,7 @@ function UserAccessCard({
 
 function DriverInfoCard({
   driver,
+  relatedUser,
   getFileUrl,
   setUserBlocked,
   approveDriver,
@@ -2330,6 +2801,8 @@ function DriverInfoCard({
   deleteDriver,
   driverCategories,
 }) {
+  const missingDriverRequirements = getDriverApprovalMissingItems(driver, relatedUser);
+
   const canApproveDriver = driver.status !== "approved";
   const canRejectDriver = driver.status !== "rejected";
   const uploadedDriverDocs = [
@@ -2422,6 +2895,10 @@ function DriverInfoCard({
           <p style={reviewHintStyle}>
             Approve qualified drivers, reject incomplete applications, or reintegrate a driver after review.
           </p>
+          <RequirementChecklist
+            title="Missing requirements"
+            missingItems={missingDriverRequirements}
+          />
         </div>
 
         <ReviewActions
@@ -2454,7 +2931,7 @@ function DriverInfoCard({
           </button>
 
           <button
-            style={{ ...dangerOutlineButtonStyle, background: "#7f1d1d", borderColor: "#991b1b", color: "#fecaca" }}
+            style={dangerSolidButtonStyle}
             onClick={() => deleteDriver(driver.id)}
           >
             🗑️ Delete Driver
@@ -2472,8 +2949,8 @@ function DriverInfoCard({
 function StatCard({ title, value }) {
   return (
     <div style={statCard}>
-      <h2 style={{ margin: "0 0 6px", fontSize: "1.8rem", fontWeight: 800, color: "#fff", letterSpacing: "-0.02em" }}>{value}</h2>
-      <p style={{ margin: 0, color: "#94a3b8", fontSize: "0.82rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>{title}</p>
+      <h2 style={statCardValueStyle}>{value}</h2>
+      <p style={statCardLabelStyle}>{title}</p>
     </div>
   );
 }
@@ -2495,6 +2972,60 @@ function DetailItem({ label, value }) {
   );
 }
 
+function RequirementChecklist({ title, missingItems = [] }) {
+  const checklistStyles = {
+    panel: {
+      marginTop: "10px",
+      padding: "10px 12px",
+      borderRadius: "12px",
+      border: `1px solid ${ADMIN_BLUE_BORDER}`,
+      background: ADMIN_BLUE_PANEL,
+      maxWidth: "560px",
+      display: "grid",
+      gap: "6px",
+    },
+    title: {
+      color: "#e2e8f0",
+      fontSize: "0.78rem",
+      fontWeight: 900,
+      letterSpacing: "0.02em",
+      textTransform: "uppercase",
+    },
+    list: {
+      margin: 0,
+      padding: 0,
+      listStyle: "none",
+      display: "grid",
+      gap: "2px",
+    },
+    item: {
+      color: "#fca5a5",
+      fontSize: "0.82rem",
+      fontWeight: 800,
+    },
+    success: {
+      color: "#86efac",
+      fontSize: "0.82rem",
+      fontWeight: 800,
+    },
+  };
+
+  return (
+    <div style={checklistStyles.panel}>
+      <strong style={checklistStyles.title}>{title}</strong>
+      {missingItems.length > 0 ? (
+        <ul style={checklistStyles.list}>
+          {missingItems.map((item) => (
+            <li key={item} style={checklistStyles.item}>- {item}</li>
+          ))}
+        </ul>
+      ) : (
+        <span style={checklistStyles.success}>All required fields are complete.</span>
+      )}
+    </div>
+  );
+}
+
 function ReviewActions({
   approveLabel,
   rejectLabel,
@@ -2507,25 +3038,21 @@ function ReviewActions({
     <div style={reviewActionsStyle}>
       <button
         type="button"
-        style={{
-          ...reviewApproveButtonStyle,
-          opacity: canApprove ? 1 : 0.55,
-          cursor: canApprove ? "pointer" : "not-allowed",
+        style={reviewApproveButtonStyle}
+        onClick={() => {
+          if (!canApprove) return;
+          onApprove();
         }}
-        disabled={!canApprove}
-        onClick={onApprove}
       >
         {approveLabel}
       </button>
       <button
         type="button"
-        style={{
-          ...reviewRejectButtonStyle,
-          opacity: canReject ? 1 : 0.55,
-          cursor: canReject ? "pointer" : "not-allowed",
+        style={reviewRejectButtonStyle}
+        onClick={() => {
+          if (!canReject) return;
+          onReject();
         }}
-        disabled={!canReject}
-        onClick={onReject}
       >
         {rejectLabel}
       </button>
@@ -2543,9 +3070,79 @@ function SectionTitle({ title, subtitle }) {
   );
 }
 
+function AdminInfoLines({ lines = [] }) {
+  return (
+    <div style={adminInfoLinesWrapStyle}>
+      {lines.map((line) => (
+        <div key={line.title} style={adminInfoLineStyle}>
+          <span style={adminInfoLineTitleStyle}>{line.title}</span>
+          <div style={adminInfoLineItemsStyle}>
+            {line.items.map(([label, value]) => (
+              <div key={`${line.title}-${label}`} style={adminInfoChipStyle}>
+                <span style={adminInfoChipLabelStyle}>{label}</span>
+                <strong style={adminInfoChipValueStyle}>{value}</strong>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 const adminOverviewGridStyle = {
   display: "grid",
   gap: "18px",
+};
+
+const adminInfoLinesWrapStyle = {
+  display: "grid",
+  gap: "10px",
+  marginBottom: "16px",
+};
+
+const adminInfoLineStyle = {
+  display: "grid",
+  gap: "8px",
+  border: `1px solid ${ADMIN_BLUE_BORDER}`,
+  borderRadius: "14px",
+  padding: "12px",
+  background: ADMIN_BLUE_PANEL_DARK,
+};
+
+const adminInfoLineTitleStyle = {
+  color: "#e2e8f0",
+  fontSize: "0.78rem",
+  fontWeight: 900,
+  letterSpacing: "0.04em",
+  textTransform: "uppercase",
+};
+
+const adminInfoLineItemsStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
+  gap: "8px",
+};
+
+const adminInfoChipStyle = {
+  border: `1px solid ${ADMIN_BLUE_BORDER}`,
+  borderRadius: "10px",
+  background: ADMIN_BLUE_PANEL,
+  padding: "8px 10px",
+  display: "grid",
+  gap: "2px",
+};
+
+const adminInfoChipLabelStyle = {
+  color: "#94a3b8",
+  fontSize: "0.72rem",
+  fontWeight: 800,
+  textTransform: "uppercase",
+};
+
+const adminInfoChipValueStyle = {
+  color: "white",
+  fontSize: "0.9rem",
 };
 
 const premiumMetricGridStyle = {
@@ -2557,21 +3154,21 @@ const premiumMetricGridStyle = {
 const premiumMetricStyle = {
   minHeight: "104px",
   border: "1px solid",
-  borderRadius: "8px",
+  borderRadius: "16px",
   padding: "16px",
   display: "grid",
   alignContent: "space-between",
-  boxShadow: "0 16px 34px rgba(0, 0, 0, 0.18)",
+  boxShadow: "0 12px 24px rgba(0, 0, 0, 0.16)",
 };
 
 const premiumMetricToneStyles = {
   green: {
-    background: "linear-gradient(135deg, rgba(29, 78, 216, 0.24), rgba(29, 78, 216, 0.07))",
-    borderColor: ADMIN_BLUE_BORDER,
-    color: "#dbeafe",
+    background: "linear-gradient(135deg, rgba(34, 197, 94, 0.22), rgba(34, 197, 94, 0.06))",
+    borderColor: "rgba(74, 222, 128, 0.34)",
+    color: "#dcfce7",
   },
   amber: {
-    background: "linear-gradient(135deg, rgba(245, 158, 11, 0.22), rgba(245, 158, 11, 0.06))",
+    background: "linear-gradient(135deg, rgba(245, 158, 11, 0.24), rgba(245, 158, 11, 0.08))",
     borderColor: "rgba(245, 158, 11, 0.34)",
     color: "#fef3c7",
   },
@@ -2581,14 +3178,9 @@ const premiumMetricToneStyles = {
     color: "#dbeafe",
   },
   gold: {
-    background: "linear-gradient(135deg, rgba(56, 189, 248, 0.24), rgba(29, 78, 216, 0.07))",
-    borderColor: "rgba(56, 189, 248, 0.38)",
-    color: "#e0f2fe",
-  },
-  green: {
-    background: "linear-gradient(135deg, rgba(34, 197, 94, 0.22), rgba(34, 197, 94, 0.06))",
-    borderColor: "rgba(74, 222, 128, 0.34)",
-    color: "#dcfce7",
+    background: "linear-gradient(135deg, rgba(251, 191, 36, 0.24), rgba(245, 158, 11, 0.08))",
+    borderColor: "rgba(251, 191, 36, 0.34)",
+    color: "#fef3c7",
   },
   red: {
     background: "linear-gradient(135deg, rgba(239, 68, 68, 0.22), rgba(239, 68, 68, 0.06))",
@@ -2607,7 +3199,7 @@ const overviewPanelsStyle = {
 const analyticsPanelStyle = {
   background: ADMIN_BLUE_PANEL_DARK,
   border: `1px solid ${ADMIN_BLUE_BORDER}`,
-  borderRadius: "8px",
+  borderRadius: "14px",
   padding: "18px",
 };
 
@@ -2677,7 +3269,7 @@ const revenueBarItemStyle = {
 
 const revenueBarColumnStyle = {
   height: "142px",
-  borderRadius: "8px",
+  borderRadius: "12px",
   background: ADMIN_BLUE_PANEL,
   border: `1px solid ${ADMIN_BLUE_BORDER}`,
   display: "flex",
@@ -2709,7 +3301,7 @@ const liveRideGridStyle = {
 const liveRideCardStyle = {
   background: ADMIN_BLUE_PANEL_DARK,
   border: `1px solid ${ADMIN_BLUE_BORDER}`,
-  borderRadius: "8px",
+  borderRadius: "14px",
   padding: "16px",
 };
 
@@ -2731,7 +3323,7 @@ const emptyStateStyle = {
   display: "grid",
   gap: "5px",
   border: `1px dashed ${ADMIN_BLUE_BORDER}`,
-  borderRadius: "8px",
+  borderRadius: "14px",
   padding: "18px",
   background: ADMIN_BLUE_PANEL_DARK,
   color: "#d1d5db",
@@ -2754,7 +3346,7 @@ const emergencyContactCardStyle = {
   minHeight: "118px",
   alignContent: "center",
   padding: "16px",
-  borderRadius: "8px",
+  borderRadius: "14px",
   border: "1px solid rgba(248, 113, 113, 0.34)",
   background: "linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(239, 68, 68, 0.06))",
   color: "white",
@@ -2774,7 +3366,7 @@ const emergencyItemStyle = {
   alignItems: "center",
   background: ADMIN_BLUE_PANEL_DARK,
   border: `1px solid ${ADMIN_BLUE_BORDER}`,
-  borderRadius: "8px",
+  borderRadius: "14px",
   padding: "14px",
 };
 
@@ -2802,7 +3394,7 @@ const reportsHeroStyle = {
   gap: "16px",
   alignItems: "flex-start",
   border: `1px solid ${ADMIN_BLUE_BORDER}`,
-  borderRadius: "14px",
+  borderRadius: "18px",
   padding: "18px",
   background:
     `radial-gradient(circle at 90% 10%, rgba(96, 165, 250, 0.26), transparent 34%), ${ADMIN_BLUE_PANEL_DARK}`,
@@ -2825,10 +3417,10 @@ const reportCardStyle = {
   display: "grid",
   gap: "14px",
   border: `1px solid ${ADMIN_BLUE_BORDER}`,
-  borderRadius: "14px",
+  borderRadius: "16px",
   padding: "16px",
   background: ADMIN_BLUE_PANEL_DARK,
-  boxShadow: "0 16px 34px rgba(0, 0, 0, 0.16)",
+  boxShadow: "0 12px 24px rgba(0, 0, 0, 0.14)",
 };
 
 const reportHeaderStyle = {
@@ -2873,7 +3465,7 @@ const performanceRowStyle = {
   alignItems: "center",
   background: ADMIN_BLUE_PANEL_DARK,
   border: `1px solid ${ADMIN_BLUE_BORDER}`,
-  borderRadius: "8px",
+  borderRadius: "14px",
   padding: "14px",
 };
 
@@ -2917,7 +3509,7 @@ const cityRowStyle = {
   alignItems: "center",
   background: ADMIN_BLUE_PANEL_DARK,
   border: `1px solid ${ADMIN_BLUE_BORDER}`,
-  borderRadius: "8px",
+  borderRadius: "14px",
   padding: "14px",
 };
 
@@ -2925,25 +3517,27 @@ const pageStyle = {
   display: "grid",
   gridTemplateColumns: "300px minmax(0, 1fr)",
   minHeight: "100vh",
-  backgroundImage: `linear-gradient(135deg, rgba(6, 26, 70, 0.9) 0%, rgba(11, 42, 102, 0.78) 48%, rgba(16, 47, 122, 0.88) 100%), url("${logoSrc}")`,
-  backgroundSize: "cover, min(920px, 88vw)",
-  backgroundPosition: "center, center",
-  backgroundRepeat: "no-repeat, no-repeat",
-  backgroundAttachment: "fixed, fixed",
+  backgroundImage: "radial-gradient(circle at top right, rgba(0, 166, 81, 0.16), transparent 44%), linear-gradient(135deg, #08130f 0%, #0b1814 45%, #112019 100%)",
+  backgroundSize: "cover",
+  backgroundPosition: "center",
+  backgroundRepeat: "no-repeat",
+  backgroundAttachment: "fixed",
   color: "#f8fafc",
+  fontFamily: "\"Plus Jakarta Sans\", \"Inter\", \"Segoe UI\", sans-serif",
 };
 
 const sidebar = {
   position: "sticky",
   top: 0,
   height: "100vh",
-  background: `linear-gradient(180deg, #020d1f 0%, ${ADMIN_BLUE_DARK} 100%)`,
+  background: "linear-gradient(180deg, rgba(6, 16, 12, 0.98) 0%, rgba(11, 24, 18, 0.98) 100%)",
   color: "white",
   padding: "24px 20px",
-  borderRight: `1px solid rgba(96, 165, 250, 0.15)`,
+  borderRight: "1px solid rgba(148, 163, 184, 0.2)",
   boxSizing: "border-box",
   overflowY: "auto",
   minWidth: "260px",
+  boxShadow: "8px 0 24px rgba(0, 0, 0, 0.2)",
 };
 
 const sidebarBrandStyle = {
@@ -2958,7 +3552,7 @@ const brandLogoStyle = {
   height: "56px",
   borderRadius: "14px",
   objectFit: "cover",
-  boxShadow: "0 4px 16px rgba(29,78,216,0.28)",
+  boxShadow: "0 4px 16px rgba(16,185,129,0.28)",
 };
 
 const sidebarTitle = {
@@ -2968,9 +3562,46 @@ const sidebarTitle = {
 
 const sidebarSubtitleStyle = {
   margin: "3px 0 0",
-  color: "#9ca3af",
+  color: "#94a3b8",
   fontSize: "0.78rem",
   fontWeight: 800,
+};
+
+const adminUserCardStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: 10,
+  padding: "12px 0",
+  marginBottom: 12,
+  borderBottom: "1px solid rgba(148, 163, 184, 0.2)",
+};
+
+const adminUserAvatarStyle = {
+  width: 40,
+  height: 40,
+  borderRadius: "50%",
+  background: "linear-gradient(135deg, #34d399, #10b981)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  color: "#052e1d",
+  fontWeight: 900,
+  fontSize: 14,
+  flexShrink: 0,
+};
+
+const adminUserNameStyle = {
+  color: "#f8fafc",
+  fontWeight: 700,
+  fontSize: 13,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+};
+
+const adminUserEmailStyle = {
+  color: "#94a3b8",
+  fontSize: 11,
 };
 
 const menuButton = {
@@ -2978,14 +3609,14 @@ const menuButton = {
   padding: "12px 14px",
   marginBottom: "6px",
   border: "1px solid transparent",
-  borderRadius: "10px",
+  borderRadius: "12px",
   cursor: "pointer",
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
   gap: "10px",
   textAlign: "left",
-  fontWeight: 700,
+  fontWeight: 800,
   fontSize: "0.88rem",
   transition: "all 180ms ease",
 };
@@ -2997,32 +3628,78 @@ const menuCountStyle = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
-  background: "rgba(255, 255, 255, 0.14)",
+  background: "rgba(110, 231, 183, 0.22)",
   fontSize: "0.76rem",
   fontWeight: 950,
 };
 
 const content = {
-  padding: "22px",
+  padding: "28px",
   minWidth: 0,
-  background: "rgba(6, 26, 70, 0.2)",
+  background: "rgba(8, 22, 16, 0.28)",
+};
+
+const pageStyleCompact = {
+  gridTemplateColumns: "minmax(0, 1fr)",
+};
+
+const sidebarCompact = {
+  position: "relative",
+  top: "auto",
+  height: "auto",
+  minWidth: 0,
+  padding: "18px 16px 12px",
+  borderRight: "none",
+  borderBottom: "1px solid rgba(148, 163, 184, 0.24)",
+  boxShadow: "none",
+};
+
+const contentCompact = {
+  padding: "16px",
 };
 
 const topBarStyle = {
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
-  gap: "16px",
+  gap: "18px",
   background: ADMIN_BLUE_PANEL,
   border: `1px solid ${ADMIN_BLUE_BORDER}`,
-  borderRadius: "10px",
-  padding: "16px 18px",
+  borderRadius: "20px",
+  padding: "18px 20px",
+  marginBottom: "20px",
+  boxShadow: "0 16px 34px rgba(0, 0, 0, 0.2)",
+};
+
+const adminShortcutRowStyle = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: "10px",
   marginBottom: "16px",
-  boxShadow: "0 18px 36px rgba(0, 0, 0, 0.22)",
+};
+
+const adminShortcutButtonStyle = {
+  minHeight: "38px",
+  padding: "0 14px",
+  borderRadius: "999px",
+  border: `1px solid ${ADMIN_BLUE_BORDER}`,
+  background: "rgba(15, 33, 25, 0.56)",
+  color: "#cbd5e1",
+  fontSize: "0.82rem",
+  fontWeight: 800,
+  cursor: "pointer",
+  transition: "all 180ms ease",
+};
+
+const adminShortcutButtonActiveStyle = {
+  background: "linear-gradient(135deg, rgba(52, 211, 153, 0.28), rgba(16, 185, 129, 0.2))",
+  color: "#ffffff",
+  borderColor: "rgba(52, 211, 153, 0.55)",
+  boxShadow: "inset 0 0 0 1px rgba(52, 211, 153, 0.2)",
 };
 
 const topBarKickerStyle = {
-  color: "#64748b",
+  color: "#94a3b8",
   fontSize: "0.72rem",
   fontWeight: 950,
   textTransform: "uppercase",
@@ -3038,50 +3715,69 @@ const topBarTitleStyle = {
 const topBarActionsStyle = {
   display: "flex",
   alignItems: "center",
-  gap: "10px",
+  gap: "12px",
   flexWrap: "wrap",
   justifyContent: "flex-end",
+};
+
+const topBarCompactStyle = {
+  flexDirection: "column",
+  alignItems: "stretch",
+};
+
+const topBarActionsCompactStyle = {
+  width: "100%",
+  justifyContent: "stretch",
 };
 
 const searchInputStyle = {
   width: "min(360px, 48vw)",
   minHeight: "44px",
   border: `1px solid ${ADMIN_BLUE_BORDER}`,
-  borderRadius: "8px",
+  borderRadius: "14px",
   padding: "0 14px",
   color: "white",
-  fontWeight: 800,
+  fontWeight: 700,
   background: ADMIN_BLUE_PANEL_DARK,
   outline: "none",
+};
+
+const searchInputCompactStyle = {
+  width: "100%",
 };
 
 const refreshButtonStyle = {
   minHeight: "44px",
   border: "none",
-  borderRadius: "8px",
-  background: "#dbeafe",
-  color: ADMIN_BLUE_DARK,
+  borderRadius: "12px",
+  background: "linear-gradient(135deg, #34d399, #10b981)",
+  color: "#052e1d",
   padding: "0 16px",
   cursor: "pointer",
-  fontWeight: 950,
+  fontWeight: 900,
 };
 
 const opsHeroStyle = {
   background: `linear-gradient(135deg, ${ADMIN_BLUE_PANEL} 0%, ${ADMIN_BLUE_PANEL_DARK} 100%)`,
   color: "white",
-  borderRadius: "10px",
-  padding: "24px",
+  borderRadius: "22px",
+  padding: "28px",
   display: "grid",
   gridTemplateColumns: "minmax(260px, 0.8fr) minmax(300px, 1.2fr)",
-  gap: "18px",
+  gap: "20px",
   alignItems: "center",
-  marginBottom: "18px",
+  marginBottom: "22px",
   border: `1px solid ${ADMIN_BLUE_BORDER}`,
-  boxShadow: "0 18px 36px rgba(0, 0, 0, 0.22)",
+  boxShadow: "0 16px 32px rgba(0, 0, 0, 0.2)",
+};
+
+const opsHeroCompactStyle = {
+  gridTemplateColumns: "minmax(0, 1fr)",
+  padding: "20px",
 };
 
 const opsKickerStyle = {
-  color: "#bfdbfe",
+  color: "#cbd5e1",
   fontSize: "0.78rem",
   fontWeight: 900,
   textTransform: "uppercase",
@@ -3095,7 +3791,7 @@ const opsTitleStyle = {
 
 const opsSubtitleStyle = {
   margin: 0,
-  color: "#d1d5db",
+  color: "#cbd5e1",
   lineHeight: 1.5,
   maxWidth: "560px",
 };
@@ -3103,22 +3799,22 @@ const opsSubtitleStyle = {
 const opsStatsGridStyle = {
   display: "grid",
   gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
-  gap: "10px",
+  gap: "12px",
 };
 
 const card = {
   background: ADMIN_BLUE_PANEL,
-  padding: "28px",
-  borderRadius: "16px",
+  padding: "30px",
+  borderRadius: "22px",
   border: `1px solid ${ADMIN_BLUE_BORDER}`,
-  boxShadow: "0 20px 40px rgba(0, 0, 0, 0.25)",
+  boxShadow: "0 18px 36px rgba(0, 0, 0, 0.2)",
   backdropFilter: "blur(12px)",
 };
 
 const listCard = {
   background: ADMIN_BLUE_PANEL_DARK,
-  padding: "16px",
-  borderRadius: "8px",
+  padding: "18px",
+  borderRadius: "16px",
   marginBottom: "14px",
   border: `1px solid ${ADMIN_BLUE_BORDER}`,
   boxShadow: "none",
@@ -3126,10 +3822,10 @@ const listCard = {
 
 const verificationCard = {
   display: "flex",
-  gap: "18px",
+  gap: "20px",
   background: ADMIN_BLUE_PANEL_DARK,
-  padding: "18px",
-  borderRadius: "8px",
+  padding: "20px",
+  borderRadius: "14px",
   marginBottom: "16px",
   border: `1px solid ${ADMIN_BLUE_BORDER}`,
   boxShadow: "none",
@@ -3138,27 +3834,44 @@ const verificationCard = {
 const statsGrid = {
   display: "grid",
   gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
-  gap: "20px",
-  marginTop: "25px",
+  gap: "16px",
+  marginTop: "20px",
 };
 
 const statCard = {
-  background: "linear-gradient(135deg, rgba(11, 42, 102, 0.95), rgba(7, 31, 78, 0.9))",
+  background: "linear-gradient(135deg, rgba(5, 42, 24, 0.96), rgba(8, 31, 20, 0.92))",
   padding: "20px",
-  borderRadius: "14px",
+  borderRadius: "16px",
   border: `1px solid ${ADMIN_BLUE_BORDER}`,
   minHeight: "96px",
-  boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
+  boxShadow: "0 12px 24px rgba(0,0,0,0.18)",
   transition: "transform 0.2s, box-shadow 0.2s",
 };
 
+const statCardValueStyle = {
+  margin: "0 0 6px",
+  fontSize: "1.8rem",
+  fontWeight: 800,
+  color: ADMIN_TEXT_PRIMARY,
+  letterSpacing: "-0.02em",
+};
+
+const statCardLabelStyle = {
+  margin: 0,
+  color: ADMIN_TEXT_SECONDARY,
+  fontSize: "0.82rem",
+  fontWeight: 600,
+  textTransform: "uppercase",
+  letterSpacing: "0.04em",
+};
+
 const sectionTitleWrapStyle = {
-  marginBottom: "18px",
+  marginBottom: "20px",
 };
 
 const sectionKickerStyle = {
   display: "block",
-  color: "#64748b",
+  color: "#94a3b8",
   fontSize: "0.76rem",
   fontWeight: 900,
   textTransform: "uppercase",
@@ -3175,12 +3888,12 @@ const sectionTitleStyle = {
 
 const sectionSubtitleStyle = {
   margin: "6px 0 0",
-  color: "#9ca3af",
+  color: "#cbd5e1",
   lineHeight: 1.45,
 };
 
 const subHeadingStyle = {
-  marginTop: "26px",
+  marginTop: "24px",
   color: "white",
 };
 
@@ -3212,7 +3925,7 @@ const accessCardStyle = {
   gap: "16px",
   background: ADMIN_BLUE_PANEL_DARK,
   padding: "16px",
-  borderRadius: "8px",
+  borderRadius: "14px",
   marginBottom: "12px",
   border: `1px solid ${ADMIN_BLUE_BORDER}`,
   flexWrap: "wrap",
@@ -3226,7 +3939,7 @@ const accessTitleStyle = {
 
 const accessMetaStyle = {
   margin: "4px 0 10px",
-  color: "#64748b",
+  color: "#94a3b8",
   fontWeight: 700,
 };
 
@@ -3247,7 +3960,7 @@ const actionClusterStyle = {
 const driverProfileCardStyle = {
   background: ADMIN_BLUE_PANEL_DARK,
   border: `1px solid ${ADMIN_BLUE_BORDER}`,
-  borderRadius: "8px",
+  borderRadius: "14px",
   padding: "16px",
   marginBottom: "14px",
   display: "grid",
@@ -3290,7 +4003,7 @@ const driverVerificationMiniBadgeStyle = {
   border: `1px solid ${ADMIN_BLUE_BORDER}`,
   borderRadius: "999px",
   background: ADMIN_BLUE_SOFT,
-  color: "#dbeafe",
+  color: "#e2e8f0",
   padding: "7px 10px",
   fontSize: "0.72rem",
   fontWeight: 950,
@@ -3315,13 +4028,13 @@ const detailItemStyle = {
   gap: "4px",
   background: ADMIN_BLUE_PANEL,
   border: `1px solid ${ADMIN_BLUE_BORDER}`,
-  borderRadius: "8px",
+  borderRadius: "12px",
   padding: "10px 12px",
   minWidth: 0,
 };
 
 const detailItemLabelStyle = {
-  color: "#64748b",
+  color: "#94a3b8",
   fontSize: "0.72rem",
   fontWeight: 950,
   textTransform: "uppercase",
@@ -3345,7 +4058,7 @@ const reviewPanelStyle = {
 
 const reviewHintStyle = {
   margin: "4px 0 0",
-  color: "#64748b",
+  color: "#94a3b8",
   fontWeight: 700,
   maxWidth: "560px",
 };
@@ -3354,7 +4067,7 @@ const reviewActionsStyle = {
   display: "inline-flex",
   gap: "8px",
   padding: "5px",
-  borderRadius: "8px",
+  borderRadius: "12px",
   background: ADMIN_BLUE_PANEL,
   border: `1px solid ${ADMIN_BLUE_BORDER}`,
   flexWrap: "wrap",
@@ -3363,7 +4076,7 @@ const reviewActionsStyle = {
 const reviewApproveButtonStyle = {
   minHeight: "42px",
   border: "none",
-  borderRadius: "6px",
+  borderRadius: "10px",
   background: ADMIN_BLUE,
   color: "white",
   padding: "0 14px",
@@ -3392,7 +4105,7 @@ const statusBadgeStyle = {
 const neutralButtonStyle = {
   minHeight: "42px",
   border: `1px solid ${ADMIN_BLUE_BORDER}`,
-  borderRadius: "6px",
+  borderRadius: "10px",
   background: ADMIN_BLUE_PANEL,
   color: "white",
   padding: "0 14px",
@@ -3402,16 +4115,23 @@ const neutralButtonStyle = {
 
 const dangerOutlineButtonStyle = {
   ...neutralButtonStyle,
-  borderColor: "#fecaca",
-  color: "#b91c1c",
+  borderColor: ADMIN_DANGER_BORDER,
+  color: ADMIN_DANGER_TEXT,
   background: "#fff7f7",
 };
 
 const successOutlineButtonStyle = {
   ...neutralButtonStyle,
-  borderColor: "#bbf7d0",
-  color: "#166534",
+  borderColor: ADMIN_SUCCESS_BORDER,
+  color: ADMIN_SUCCESS_TEXT,
   background: "#f0fdf4",
+};
+
+const dangerSolidButtonStyle = {
+  ...neutralButtonStyle,
+  borderColor: "#991b1b",
+  background: "#7f1d1d",
+  color: "#fecaca",
 };
 
 const reviewDoneStyle = {
@@ -3458,7 +4178,7 @@ const ownerPayoutPanelStyle = {
   marginTop: "26px",
   background: ADMIN_BLUE_PANEL_DARK,
   border: `1px solid ${ADMIN_BLUE_BORDER}`,
-  borderRadius: "8px",
+  borderRadius: "14px",
   padding: "20px",
   display: "grid",
   gridTemplateColumns: "minmax(260px, 1fr) minmax(280px, 430px)",
@@ -3469,7 +4189,7 @@ const ownerPayoutPanelStyle = {
 const ownerPayoutSavedStyle = {
   background: ADMIN_BLUE_PANEL,
   border: `1px solid ${ADMIN_BLUE_BORDER}`,
-  borderRadius: "8px",
+  borderRadius: "12px",
   padding: "12px",
   marginBottom: "10px",
   display: "grid",
@@ -3486,7 +4206,7 @@ const ownerPayoutFormStyle = {
 const ownerPayoutFieldStyle = {
   display: "grid",
   gap: "7px",
-  color: "#d1d5db",
+  color: "#e2e8f0",
   fontWeight: 900,
 };
 
@@ -3494,7 +4214,7 @@ const ownerPayoutInputStyle = {
   width: "100%",
   minHeight: "44px",
   border: `1px solid ${ADMIN_BLUE_BORDER}`,
-  borderRadius: "6px",
+  borderRadius: "10px",
   background: ADMIN_BLUE_PANEL_DARK,
   color: "white",
   padding: "0 12px",
@@ -3505,9 +4225,9 @@ const ownerPayoutInputStyle = {
 const ownerPayoutButtonStyle = {
   minHeight: "46px",
   border: "none",
-  borderRadius: "6px",
-  background: "#dbeafe",
-  color: ADMIN_BLUE_DARK,
+  borderRadius: "10px",
+  background: "linear-gradient(135deg, #34d399, #10b981)",
+  color: "#052e1d",
   cursor: "pointer",
   fontWeight: 900,
 };
@@ -3524,7 +4244,7 @@ const ownerPayoutMessageStyle = {
 const blockButtonStyle = {
   padding: "11px 16px",
   border: "none",
-  borderRadius: "6px",
+  borderRadius: "10px",
   background: "#dc2626",
   color: "white",
   cursor: "pointer",
@@ -3534,7 +4254,7 @@ const blockButtonStyle = {
 const unblockButtonStyle = {
   padding: "11px 16px",
   border: "none",
-  borderRadius: "6px",
+  borderRadius: "10px",
   background: ADMIN_BLUE,
   color: "white",
   cursor: "pointer",
@@ -3544,7 +4264,7 @@ const unblockButtonStyle = {
 const driverPhoto = {
   width: "96px",
   height: "96px",
-  borderRadius: "8px",
+  borderRadius: "14px",
   objectFit: "cover",
   marginBottom: "10px",
 };
@@ -3552,7 +4272,7 @@ const driverPhoto = {
 const placeholderPhoto = {
   width: "96px",
   height: "96px",
-  borderRadius: "8px",
+  borderRadius: "14px",
   background: ADMIN_BLUE_PANEL,
   color: "#9ca3af",
   display: "flex",
@@ -3573,11 +4293,11 @@ const documentLinks = {
 const documentButton = {
   display: "inline-block",
   padding: "10px 14px",
-  background: "#dbeafe",
-  color: ADMIN_BLUE_DARK,
-  borderRadius: "6px",
+  background: "linear-gradient(135deg, #34d399, #10b981)",
+  color: "#052e1d",
+  borderRadius: "10px",
   textDecoration: "none",
-  fontWeight: "bold",
+  fontWeight: 800,
 };
 
 export default AdminDashboard;

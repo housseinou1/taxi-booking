@@ -2,9 +2,11 @@
 :root {
   /* Brand Colors */
   --yala-green: #00A651;
+  --yala-green-strong: #009248;
   --yala-green-soft: rgba(0, 166, 81, 0.14);
   --yala-green-border: rgba(0, 166, 81, 0.35);
   --yala-gold: #D4AF37;
+  --yala-gold-strong: #7C4A03;
   --yala-gold-soft: rgba(212, 175, 55, 0.14);
   --yala-navy: #0B1220;
   --yala-navy-soft: rgba(11, 18, 32, 0.7);
@@ -14,12 +16,19 @@
   --yala-gray-300: #CBD5E1;
   --yala-gray-500: #64748B;
   --yala-gray-700: #334155;
+  --yala-red: #DC2626;
+  --yala-red-strong: #B91C1C;
+  --yala-red-soft: #FEE2E2;
+  --yala-red-soft-strong: #FECACA;
+  --yala-red-border: #FCA5A5;
+  --map-destination: #FF6B6B;
+  --map-stop: #3B82F6;
 
   /* Lyft-like surfaces and text */
-  --surface-warm: #FAFBFA;
-  --surface-sheet: #FFFFFF;
-  --text-friendly: #1A2332;
-  --text-muted: #6B7280;
+  --surface-warm: #f7faf8;
+  --surface-sheet: #ffffff;
+  --text-friendly: #16231d;
+  --text-muted: #5f6f67;
 
   /* Per-ride-type tints */
   --ride-regular-bg: #E8F8EF;
@@ -63,18 +72,18 @@
 
   /* Radii */
   --radius-sm: 10px;
-  --radius-md: 16px;
-  --radius-lg: 24px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
   --radius-xl: 32px;
   --radius-full: 9999px;
   --radius-pill: 9999px;
 
   /* Shadows */
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.12);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.16);
-  --shadow-sheet: 0 -8px 32px rgba(15, 23, 42, 0.12);
-  --shadow-cta: 0 10px 28px rgba(0, 166, 81, 0.28);
+  --shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.08);
+  --shadow-md: 0 8px 22px rgba(15, 23, 42, 0.1);
+  --shadow-lg: 0 14px 34px rgba(15, 23, 42, 0.14);
+  --shadow-sheet: 0 -8px 32px rgba(15, 23, 42, 0.11);
+  --shadow-cta: 0 12px 30px rgba(0, 166, 81, 0.24);
 
   /* Transitions */
   --transition-fast: 150ms ease-out;

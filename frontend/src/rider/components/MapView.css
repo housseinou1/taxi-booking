@@ -33,13 +33,13 @@
 }
 
 .mapview-marker--destination {
-  background-color: #FF6B6B;
+  background-color: var(--map-destination);
   width: 28px;
   height: 28px;
 }
 
 .mapview-marker--stop {
-  background-color: #3B82F6;
+  background-color: var(--map-stop);
   width: 22px;
   height: 22px;
 }

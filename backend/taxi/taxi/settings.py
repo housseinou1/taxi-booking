@@ -326,6 +326,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "referrals.tasks.periodic.escalate_stale_flags_task",
         "schedule": 86400,  # Every 24 hours (in seconds)
     },
+    "notify-expiring-driver-documents-daily": {
+        "task": "taxi.drivers.tasks.notify_expiring_driver_documents_task",
+        "schedule": 86400,  # Every 24 hours (in seconds)
+    },
 }
 
 YALA_MAX_DRIVER_SPEED_KMH = int(os.getenv("YALA_MAX_DRIVER_SPEED_KMH", "180"))

@@ -3,6 +3,17 @@ from django.db import models
 from django.utils import timezone
 
 
+def _check_constraint(name, predicate):
+    """
+    Compatibility helper for Django versions that use either
+    CheckConstraint(condition=...) or CheckConstraint(check=...).
+    """
+    try:
+        return models.CheckConstraint(condition=predicate, name=name)
+    except TypeError:
+        return models.CheckConstraint(check=predicate, name=name)
+
+
 class DriverProfile(models.Model):
     STATUS_CHOICES = [
         ("pending", "Pending"),
@@ -435,9 +446,9 @@ class DriverFavoriteArea(models.Model):
 
     class Meta:
         constraints = [
-            models.CheckConstraint(
-                check=models.Q(radius_km__gt=0),
+            _check_constraint(
                 name="positive_radius",
+                predicate=models.Q(radius_km__gt=0),
             )
         ]
 

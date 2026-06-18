@@ -39,6 +39,13 @@ const PAYMENT_METHODS = [
 
 const TAX_RATE = 0.03;
 const DEFAULT_TIME_MINUTES = 12;
+const COMPLIMENT_OPTIONS = [
+  "Safe driving",
+  "Friendly driver",
+  "Clean car",
+  "On-time pickup",
+  "Great route",
+];
 
 function escapeReceiptText(value) {
   return String(value ?? "")
@@ -204,6 +211,7 @@ function PaymentPage({ ride }) {
   const [notice, setNotice] = useState("");
   const [rating, setRating] = useState(5);
   const [review, setReview] = useState("");
+  const [compliment, setCompliment] = useState("");
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
 
   const fare = Number(ride?.fare || 0);
@@ -222,6 +230,7 @@ function PaymentPage({ ride }) {
   const isCancelled = rideStatus === "cancelled" || paymentStatus === "cancelled";
   const isAutoPaid = paymentStatus === "paid";
   const isAuthorized = paymentStatus === "authorized";
+  const isCompletedRide = rideStatus === "completed";
 
   const walletBalance = useMemo(() => {
     return paymentHistory
@@ -314,7 +323,7 @@ function PaymentPage({ ride }) {
         `${API_URL}/rides/rate/${ride.id}/`,
         {
           rating,
-          review,
+          review: [compliment, review].filter(Boolean).join(". "),
         },
         {
           headers: {
@@ -350,17 +359,29 @@ function PaymentPage({ ride }) {
   }
 
   return (
-    <main className="sx-payments-page">
+    <main className={`sx-payments-page ${isCompletedRide ? "is-completed-flow" : ""}`}>
       <PaymentStyles />
 
-      <section className="sx-payment-hero">
+      <section className={`sx-payment-hero ${isCompletedRide ? "is-completed" : ""}`}>
         <div>
-          <span className="sx-payment-eyebrow">{t("riderPayments.eyebrow")}</span>
-          <h1>{t("riderPayments.title")}</h1>
-          <p>{t("riderPayments.subtitle")}</p>
+          <span className="sx-payment-eyebrow">
+            {isCompletedRide ? "RIDE COMPLETED" : t("riderPayments.eyebrow")}
+          </span>
+          <h1>
+            {isCompletedRide
+              ? "Confirm your payment and rate your driver."
+              : t("riderPayments.title")}
+          </h1>
+          <p>
+            {isCompletedRide
+              ? "Secure the final payment and share quick feedback to keep the community trusted."
+              : t("riderPayments.subtitle")}
+          </p>
         </div>
 
-        <WalletCard balance={walletBalance} historyCount={paymentHistory.length} />
+        {!isCompletedRide && (
+          <WalletCard balance={walletBalance} historyCount={paymentHistory.length} />
+        )}
       </section>
 
       <section
@@ -399,145 +420,231 @@ function PaymentPage({ ride }) {
         </section>
       )}
 
-      <div className="sx-payment-grid">
-        <section className="sx-payment-panel">
-          <div className="sx-payment-panel-head">
-            <div>
-              <span>{t("riderPayments.rideNumber", { id: ride?.id })}</span>
-              <h2>{t("riderPayments.tripSummary")}</h2>
-            </div>
-            <b>{rideStatus || t("riderPayments.selected")}</b>
-          </div>
-
-          <div className="sx-trip-line">
-            <span className="sx-trip-dot" />
-            <div>
-              <small>{t("riderPayments.pickup")}</small>
-              <strong>{ride?.pickup || ride?.pickup_address || t("riderPayments.pickupLocation")}</strong>
-            </div>
-          </div>
-
-          <div className="sx-trip-line">
-            <span className="sx-trip-dot sx-trip-dot-end" />
-            <div>
-              <small>{t("riderPayments.destination")}</small>
-              <strong>{ride?.destination || ride?.destination_address || t("riderPayments.destination")}</strong>
-            </div>
-          </div>
-
-          <div className="sx-tip-block">
-            <div className="sx-payment-panel-head compact">
+      {isCompletedRide ? (
+        <div className="sx-payment-grid sx-completed-grid">
+          <section className="sx-payment-panel sx-completed-panel">
+            <div className="sx-payment-panel-head">
               <div>
-                <span>{t("riderPayments.tip")}</span>
-                <h2>{t("riderPayments.thankDriver")}</h2>
+                <span>{t("riderPayments.rideNumber", { id: ride?.id })}</span>
+                <h2>{t("riderPayments.paymentCards")}</h2>
               </div>
-              <b>{formatMoney(tipAmount)}</b>
+              <b>{rideStatus || t("riderPayments.selected")}</b>
             </div>
 
-            <div className="sx-tip-grid">
-              {[0, 5, 10, 15, 20].map((percent) => (
+            <div className="sx-total-card">
+              <SummaryRow label={t("riderPayments.fare")} value={formatMoney(fare)} />
+              <SummaryRow label={t("riderPayments.tipPercent", { percent: tipPercentage })} value={formatMoney(tipAmount)} />
+              <SummaryRow label={t("riderPayments.total")} value={formatMoney(totalAmount)} />
+            </div>
+
+            <div className="sx-method-list">
+              {PAYMENT_METHODS.map((method) => (
                 <button
-                  key={percent}
-                  className={tipPercentage === percent ? "active" : ""}
-                  onClick={() => setTipPercentage(percent)}
+                  key={method.id}
+                  className={selectedMethod === method.id ? "selected" : ""}
+                  onClick={() => setSelectedMethod(method.id)}
                 >
-                  <strong>{percent}%</strong>
-                  <span>{formatMoney(Math.round((fare * percent) / 100))}</span>
+                  <span className="sx-method-icon">{t(`riderPayments.methods.${method.titleKey}`).slice(0, 1)}</span>
+                  <span className="sx-method-copy">
+                    <strong>{t(`riderPayments.methods.${method.titleKey}`)}</strong>
+                    <small>{t(`riderPayments.methods.${method.subtitleKey}`)}</small>
+                  </span>
+                  <em>{t(`riderPayments.methods.${method.badgeKey}`)}</em>
                 </button>
               ))}
             </div>
-          </div>
 
-          <div className="sx-total-card">
-            <SummaryRow label={t("riderPayments.baseFare")} value={formatMoney(baseFare)} />
-            <SummaryRow label={t("riderPayments.distanceLabel", { distance: distanceKm.toFixed(1) })} value={formatMoney(distanceFare)} />
-            <SummaryRow label={t("riderPayments.timeLabel", { minutes: tripMinutes })} value={formatMoney(timeFare)} />
-            <SummaryRow label={t("riderPayments.taxes")} value={formatMoney(taxes)} />
-            <SummaryRow label={t("riderPayments.yalaFee")} value={formatMoney(platformFee)} />
-            <SummaryRow label={t("riderPayments.tipPercent", { percent: tipPercentage })} value={formatMoney(tipAmount)} />
-            <SummaryRow label={t("riderPayments.platformProtection")} value={t("riderPayments.included")} />
-            <div className="sx-grand-total">
-              <span>{t("riderPayments.total")}</span>
-              <strong>{formatMoney(totalAmount)}</strong>
-            </div>
-          </div>
+            <button
+              className="sx-pay-button"
+              disabled={isCancelled}
+              onClick={() => makePayment(selectedMethod)}
+            >
+              {isCancelled
+                ? t("riderPayments.rideCancelled")
+                : isAutoPaid
+                  ? t("riderPayments.updateTip", { percent: tipPercentage })
+                  : isAuthorized
+                    ? t("riderPayments.saveTip", { percent: tipPercentage })
+                    : t("riderPayments.payAmount", { amount: formatMoney(totalAmount) })}
+            </button>
+          </section>
 
-          <div className="sx-driver-earnings-card">
-            <span>{t("riderPayments.driverEarnings")}</span>
-            <strong>{formatMoney(driverEarning)}</strong>
-            <small>{t("riderPayments.driverEarningsHelp")}</small>
-          </div>
-        </section>
+          <ReceiptCard
+            className="sx-completed-panel"
+            payment={payment}
+            ride={ride}
+            fare={fare}
+            tipAmount={tipAmount}
+            total={totalAmount}
+            breakdown={{
+              baseFare,
+              distanceFare,
+              timeFare,
+              taxes,
+              platformFee,
+              driverEarning,
+              distanceKm,
+              tripMinutes,
+            }}
+            t={t}
+          />
+        </div>
+      ) : (
+        <>
+          <div className="sx-payment-grid">
+            <section className="sx-payment-panel">
+              <div className="sx-payment-panel-head">
+                <div>
+                  <span>{t("riderPayments.rideNumber", { id: ride?.id })}</span>
+                  <h2>{t("riderPayments.tripSummary")}</h2>
+                </div>
+                <b>{rideStatus || t("riderPayments.selected")}</b>
+              </div>
 
-        <section className="sx-payment-panel">
-          <div className="sx-payment-panel-head">
-            <div>
-              <span>{t("riderPayments.method")}</span>
-              <h2>{t("riderPayments.paymentCards")}</h2>
-            </div>
-            <b>MRU</b>
-          </div>
+              <div className="sx-trip-line">
+                <span className="sx-trip-dot" />
+                <div>
+                  <small>{t("riderPayments.pickup")}</small>
+                  <strong>{ride?.pickup || ride?.pickup_address || t("riderPayments.pickupLocation")}</strong>
+                </div>
+              </div>
 
-          <div className="sx-method-list">
-            {PAYMENT_METHODS.map((method) => (
+              <div className="sx-trip-line">
+                <span className="sx-trip-dot sx-trip-dot-end" />
+                <div>
+                  <small>{t("riderPayments.destination")}</small>
+                  <strong>{ride?.destination || ride?.destination_address || t("riderPayments.destination")}</strong>
+                </div>
+              </div>
+
+              <div className="sx-tip-block">
+                <div className="sx-payment-panel-head compact">
+                  <div>
+                    <span>{t("riderPayments.tip")}</span>
+                    <h2>{t("riderPayments.thankDriver")}</h2>
+                  </div>
+                  <b>{formatMoney(tipAmount)}</b>
+                </div>
+
+                <div className="sx-tip-grid">
+                  {[0, 5, 10, 15, 20].map((percent) => (
+                    <button
+                      key={percent}
+                      className={tipPercentage === percent ? "active" : ""}
+                      onClick={() => setTipPercentage(percent)}
+                    >
+                      <strong>{percent}%</strong>
+                      <span>{formatMoney(Math.round((fare * percent) / 100))}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="sx-total-card">
+                <SummaryRow label={t("riderPayments.baseFare")} value={formatMoney(baseFare)} />
+                <SummaryRow label={t("riderPayments.distanceLabel", { distance: distanceKm.toFixed(1) })} value={formatMoney(distanceFare)} />
+                <SummaryRow label={t("riderPayments.timeLabel", { minutes: tripMinutes })} value={formatMoney(timeFare)} />
+                <SummaryRow label={t("riderPayments.taxes")} value={formatMoney(taxes)} />
+                <SummaryRow label={t("riderPayments.yalaFee")} value={formatMoney(platformFee)} />
+                <SummaryRow label={t("riderPayments.tipPercent", { percent: tipPercentage })} value={formatMoney(tipAmount)} />
+                <SummaryRow label={t("riderPayments.platformProtection")} value={t("riderPayments.included")} />
+                <div className="sx-grand-total">
+                  <span>{t("riderPayments.total")}</span>
+                  <strong>{formatMoney(totalAmount)}</strong>
+                </div>
+              </div>
+
+              <div className="sx-driver-earnings-card">
+                <span>{t("riderPayments.driverEarnings")}</span>
+                <strong>{formatMoney(driverEarning)}</strong>
+                <small>{t("riderPayments.driverEarningsHelp")}</small>
+              </div>
+            </section>
+
+            <section className="sx-payment-panel">
+              <div className="sx-payment-panel-head">
+                <div>
+                  <span>{t("riderPayments.method")}</span>
+                  <h2>{t("riderPayments.paymentCards")}</h2>
+                </div>
+                <b>MRU</b>
+              </div>
+
+              <div className="sx-method-list">
+                {PAYMENT_METHODS.map((method) => (
+                  <button
+                    key={method.id}
+                    className={selectedMethod === method.id ? "selected" : ""}
+                    onClick={() => setSelectedMethod(method.id)}
+                  >
+                    <span className="sx-method-icon">{t(`riderPayments.methods.${method.titleKey}`).slice(0, 1)}</span>
+                    <span className="sx-method-copy">
+                      <strong>{t(`riderPayments.methods.${method.titleKey}`)}</strong>
+                      <small>{t(`riderPayments.methods.${method.subtitleKey}`)}</small>
+                    </span>
+                    <em>{t(`riderPayments.methods.${method.badgeKey}`)}</em>
+                  </button>
+                ))}
+              </div>
+
               <button
-                key={method.id}
-                className={selectedMethod === method.id ? "selected" : ""}
-                onClick={() => setSelectedMethod(method.id)}
+                className="sx-pay-button"
+                disabled={isCancelled}
+                onClick={() => makePayment(selectedMethod)}
               >
-                <span className="sx-method-icon">{t(`riderPayments.methods.${method.titleKey}`).slice(0, 1)}</span>
-                <span className="sx-method-copy">
-                  <strong>{t(`riderPayments.methods.${method.titleKey}`)}</strong>
-                  <small>{t(`riderPayments.methods.${method.subtitleKey}`)}</small>
-                </span>
-                <em>{t(`riderPayments.methods.${method.badgeKey}`)}</em>
+                {isCancelled
+                  ? t("riderPayments.rideCancelled")
+                  : isAutoPaid
+                    ? t("riderPayments.updateTip", { percent: tipPercentage })
+                    : isAuthorized
+                      ? t("riderPayments.saveTip", { percent: tipPercentage })
+                      : t("riderPayments.payAmount", { amount: formatMoney(totalAmount) })}
               </button>
-            ))}
+            </section>
           </div>
 
-          <button
-            className="sx-pay-button"
-            disabled={isCancelled}
-            onClick={() => makePayment(selectedMethod)}
-          >
-            {isCancelled
-              ? t("riderPayments.rideCancelled")
-              : isAutoPaid
-                ? t("riderPayments.updateTip", { percent: tipPercentage })
-                : isAuthorized
-                  ? t("riderPayments.saveTip", { percent: tipPercentage })
-                  : t("riderPayments.payAmount", { amount: formatMoney(totalAmount) })}
-          </button>
-        </section>
-      </div>
+          <div className="sx-payment-grid sx-lower-grid">
+            <ReceiptCard
+              payment={payment}
+              ride={ride}
+              fare={fare}
+              tipAmount={tipAmount}
+              total={totalAmount}
+              breakdown={{
+                baseFare,
+                distanceFare,
+                timeFare,
+                taxes,
+                platformFee,
+                driverEarning,
+                distanceKm,
+                tripMinutes,
+              }}
+              t={t}
+            />
+            <PaymentHistory payments={paymentHistory} loading={historyLoading} t={t} />
+          </div>
+        </>
+      )}
 
-      <div className="sx-payment-grid sx-lower-grid">
-        <ReceiptCard
-          payment={payment}
-          ride={ride}
-          fare={fare}
-          tipAmount={tipAmount}
-          total={totalAmount}
-          breakdown={{
-            baseFare,
-            distanceFare,
-            timeFare,
-            taxes,
-            platformFee,
-            driverEarning,
-            distanceKm,
-            tripMinutes,
-          }}
-          t={t}
-        />
-        <PaymentHistory payments={paymentHistory} loading={historyLoading} t={t} />
-      </div>
-
-      {ride?.status === "completed" && !ratingSubmitted && (
-        <section className="sx-rating-panel">
+      {isCompletedRide && !ratingSubmitted && (
+        <section className="sx-rating-panel sx-completed-rating">
           <div>
             <span className="sx-payment-eyebrow">{t("riderPayments.driverRating")}</span>
             <h2>{t("riderPayments.howWasRide")}</h2>
+          </div>
+
+          <div className="sx-compliment-list">
+            {COMPLIMENT_OPTIONS.map((item) => (
+              <button
+                key={item}
+                type="button"
+                className={compliment === item ? "active" : ""}
+                onClick={() => setCompliment((current) => (current === item ? "" : item))}
+              >
+                {item}
+              </button>
+            ))}
           </div>
 
           <StarRating value={rating} onChange={setRating} />
@@ -584,7 +691,7 @@ function SummaryRow({ label, value }) {
   );
 }
 
-function ReceiptCard({ payment, ride, fare, tipAmount, total, breakdown, t }) {
+function ReceiptCard({ payment, ride, fare, tipAmount, total, breakdown, t, className = "" }) {
   const activePayment = payment || {};
   const receiptTotal = payment
     ? Number(activePayment.amount || 0) + Number(activePayment.tip_amount || 0)
@@ -623,7 +730,7 @@ function ReceiptCard({ payment, ride, fare, tipAmount, total, breakdown, t }) {
   };
 
   return (
-    <section className="sx-receipt-card">
+    <section className={`sx-receipt-card ${className}`.trim()}>
       <div className="sx-payment-panel-head">
         <div>
           <span>{t("riderPayments.receipt")}</span>
@@ -782,6 +889,10 @@ function PaymentStyles() {
         margin: 16px 0 0;
       }
 
+      .sx-payment-hero.is-completed {
+        grid-template-columns: 1fr;
+      }
+
       .sx-wallet-card {
         display: grid;
         align-content: center;
@@ -856,6 +967,11 @@ function PaymentStyles() {
         margin-top: 16px;
       }
 
+      .sx-completed-grid {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        align-items: stretch;
+      }
+
       .sx-payment-panel,
       .sx-receipt-card,
       .sx-history-panel,
@@ -866,6 +982,10 @@ function PaymentStyles() {
         border-radius: 8px;
         padding: 20px;
         box-shadow: 0 18px 44px rgba(15, 23, 42, 0.1);
+      }
+
+      .sx-completed-panel {
+        height: 100%;
       }
 
       .sx-payment-panel-head {
@@ -1134,6 +1254,33 @@ function PaymentStyles() {
         margin: 0;
       }
 
+      .sx-compliment-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .sx-compliment-list button {
+        border: 1px solid #cbd5e1;
+        border-radius: 999px;
+        background: #fff;
+        color: #0f172a;
+        padding: 8px 12px;
+        font-weight: 800;
+        cursor: pointer;
+        transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+      }
+
+      .sx-compliment-list button:hover {
+        transform: translateY(-1px);
+      }
+
+      .sx-compliment-list button.active {
+        background: #0f172a;
+        color: #fff;
+        border-color: #0f172a;
+      }
+
       .sx-rating-panel textarea {
         width: 100%;
         min-height: 94px;
@@ -1294,8 +1441,116 @@ function PaymentStyles() {
         color: #fff;
       }
 
+      .sx-compliment-list button {
+        background: rgba(255,255,255,0.06);
+        border-color: rgba(255,255,255,0.14);
+        color: #f8fafc;
+      }
+
+      .sx-compliment-list button.active {
+        background: rgba(250,204,21,0.12);
+        border-color: #facc15;
+        color: #fef08a;
+      }
+
       .sx-stars button.active {
         color: #facc15;
+      }
+
+      .sx-payments-page.is-completed-flow {
+        background:
+          radial-gradient(circle at 10% 0%, rgba(0, 166, 81, 0.12), transparent 36%),
+          radial-gradient(circle at 90% 0%, rgba(250, 204, 21, 0.14), transparent 32%),
+          linear-gradient(180deg, #f8fbff 0%, #f1f5fb 100%);
+        color: #0f172a;
+      }
+
+      .sx-payments-page.is-completed-flow .sx-payment-hero,
+      .sx-payments-page.is-completed-flow .sx-payment-grid,
+      .sx-payments-page.is-completed-flow .sx-rating-panel,
+      .sx-payments-page.is-completed-flow .sx-payment-alert,
+      .sx-payments-page.is-completed-flow .sx-payment-notice,
+      .sx-payments-page.is-completed-flow .sx-success-stage {
+        max-width: 980px;
+      }
+
+      .sx-payments-page.is-completed-flow .sx-payment-hero > div {
+        background: linear-gradient(160deg, #0a1d3f 0%, #143063 100%);
+        border: 1px solid rgba(255, 255, 255, 0.24);
+        border-radius: 24px;
+        padding: 24px;
+        box-shadow: 0 20px 48px rgba(15, 23, 42, 0.18);
+      }
+
+      .sx-payments-page.is-completed-flow .sx-payment-hero h1 {
+        max-width: 620px;
+        font-size: clamp(30px, 4.4vw, 46px);
+        line-height: 1.04;
+      }
+
+      .sx-payments-page.is-completed-flow .sx-payment-hero p {
+        max-width: 640px;
+        color: #dbe7ff;
+        margin-top: 12px;
+      }
+
+      .sx-payments-page.is-completed-flow .sx-payment-panel,
+      .sx-payments-page.is-completed-flow .sx-receipt-card,
+      .sx-payments-page.is-completed-flow .sx-rating-panel {
+        background: #ffffff;
+        color: #0f172a;
+        border: 1px solid #dbe6f3;
+        border-radius: 22px;
+        box-shadow: 0 14px 32px rgba(15, 23, 42, 0.08);
+        backdrop-filter: none;
+      }
+
+      .sx-payments-page.is-completed-flow .sx-completed-rating {
+        margin-top: 14px;
+      }
+
+      .sx-payments-page.is-completed-flow .sx-payment-panel-head span,
+      .sx-payments-page.is-completed-flow .sx-summary-row span,
+      .sx-payments-page.is-completed-flow .sx-method-copy small {
+        color: #64748b;
+      }
+
+      .sx-payments-page.is-completed-flow .sx-total-card,
+      .sx-payments-page.is-completed-flow .sx-method-list button,
+      .sx-payments-page.is-completed-flow .sx-stars button,
+      .sx-payments-page.is-completed-flow .sx-compliment-list button,
+      .sx-payments-page.is-completed-flow .sx-rating-panel textarea {
+        background: #f8fbff;
+        color: #0f172a;
+        border: 1px solid #d5e2f0;
+      }
+
+      .sx-payments-page.is-completed-flow .sx-method-list button.selected,
+      .sx-payments-page.is-completed-flow .sx-compliment-list button.active {
+        background: rgba(0, 166, 81, 0.08);
+        border-color: #00a651;
+        box-shadow: inset 0 0 0 1px #00a651;
+        color: #065f46;
+      }
+
+      .sx-payments-page.is-completed-flow .sx-method-icon,
+      .sx-payments-page.is-completed-flow .sx-pay-button {
+        background: #00a651;
+        color: #ffffff;
+      }
+
+      .sx-payments-page.is-completed-flow .sx-pay-button {
+        border-radius: 14px;
+      }
+
+      .sx-payments-page.is-completed-flow .sx-receipt-button {
+        background: #ffffff;
+        color: #0f172a;
+        border: 1px solid #cbd5e1;
+      }
+
+      .sx-payments-page.is-completed-flow .sx-stars button.active {
+        color: #f59e0b;
       }
 
       .sx-success-stage {

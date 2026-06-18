@@ -9,6 +9,7 @@ Requirements: 1.1, 1.4, 1.5, 1.6
 import logging
 
 from celery import shared_task
+from django.core.management import call_command
 
 from taxi.drivers.services.qr_service import QRCodeService, QRGenerationError
 
@@ -71,3 +72,9 @@ def generate_qr_code_task(self, driver_profile_id: int) -> None:
         )
         # Retry with exponential backoff
         raise self.retry(exc=exc, countdown=2**self.request.retries)
+
+
+@shared_task
+def notify_expiring_driver_documents_task() -> None:
+    """Run daily 30-day renewal reminders for expiring driver documents."""
+    call_command("notify_expiring_driver_documents")

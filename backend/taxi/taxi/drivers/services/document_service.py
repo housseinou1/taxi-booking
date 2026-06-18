@@ -155,7 +155,7 @@ class DocumentService:
             driver: The DriverProfile instance.
             document_type: One of the DOCUMENT_TYPES choices.
             file: The uploaded file object.
-            issued_at: Issue date, required for the driver license.
+        issued_at: Optional issue date metadata.
             expires_at: Expiration date for time-limited documents.
 
         Returns:
@@ -177,17 +177,10 @@ class DocumentService:
         if not validation.valid:
             raise ValueError(validation.error)
 
+        # Dates are optional — the physical document contains all date info
         today = timezone.localdate()
-        if document_type == "license" and not issued_at:
-            raise ValueError("Driver License issue date is required.")
         if issued_at and issued_at > today:
             raise ValueError("Document issue date cannot be in the future.")
-        if document_type in EXPIRING_DOCUMENT_TYPES and not expires_at:
-            raise ValueError(
-                f"{dict(DriverDocument.DOCUMENT_TYPES)[document_type]} expiration date is required."
-            )
-        if expires_at and expires_at <= today:
-            raise ValueError("Document expiration date must be in the future.")
         if issued_at and expires_at and expires_at <= issued_at:
             raise ValueError("Expiration date must be after the issue date.")
 

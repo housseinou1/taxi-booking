@@ -9,6 +9,8 @@ describe("DriverStatusPanel active ride workflow", () => {
     status: "driver_arrived",
     rider_name: "Aminata Diallo",
     rider_picture: "https://example.com/rider.jpg",
+    rider_phone: "+222 33 11 22 33",
+    rider_location: "Ksar, Avenue Gamal",
     pickup: "Ksar",
     destination: "Arafat",
     fare: 350,
@@ -26,6 +28,8 @@ describe("DriverStatusPanel active ride workflow", () => {
     expect(screen.getByText("Ksar")).toBeInTheDocument();
     expect(screen.getByText("Arafat")).toBeInTheDocument();
     expect(screen.getByText("350 MRU")).toBeInTheDocument();
+    expect(screen.getByText(/33 11 22 33/)).toBeInTheDocument();
+    expect(screen.getByText(/Ksar, Avenue Gamal/)).toBeInTheDocument();
   });
 
   it("renders the existing ride status action inside the active ride panel", () => {

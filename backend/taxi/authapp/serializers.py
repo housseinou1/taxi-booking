@@ -50,7 +50,7 @@ class RegisterSerializer(serializers.ModelSerializer):
     national_id_document = serializers.FileField(required=False, allow_null=True)
 
     user_type = serializers.ChoiceField(
-        choices=["rider", "driver"],
+        choices=["rider", "driver", "admin"],
         write_only=True
     )
     city = serializers.PrimaryKeyRelatedField(
@@ -139,6 +139,11 @@ class RegisterSerializer(serializers.ModelSerializer):
                 {"user_type": f"Registration from the {app_type} app must use user_type '{app_type}'."}
             )
 
+        if user_type == "admin" and app_type != "web":
+            raise serializers.ValidationError(
+                {"user_type": "Admin accounts can only be created from the web app context."}
+            )
+
         # --- Existing field-level validation ---
         if attrs.get("user_type") == "rider":
             if not attrs.get("profile_picture"):
@@ -178,6 +183,11 @@ class RegisterSerializer(serializers.ModelSerializer):
             rider_status="pending" if user_type == "rider" else "approved",
             profile_picture=profile_picture,
         )
+
+        if user_type == "admin":
+            user.is_staff = True
+            user.is_superuser = True
+            user.is_active = True
 
         user.set_password(password)
         user.save()

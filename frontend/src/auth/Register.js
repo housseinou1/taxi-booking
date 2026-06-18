@@ -20,12 +20,42 @@ function getLogoForApp() {
  * Priority: getAppType() (if "driver" or "rider") > URL ?role= param > default "rider"
  * When getAppType() returns a known app type, it is final and non-overridable.
  */
+const getRequestedRole = () => {
+  const params = new URLSearchParams(window.location.search);
+  const requestedRole = params.get("role");
+  const nextParam = params.get("next") || "";
+  const storedNext = localStorage.getItem("sx_login_redirect") || "";
+
+  const normalizeRoute = (value) => {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+    try {
+      if (raw.startsWith("http://") || raw.startsWith("https://")) {
+        return new URL(raw).pathname || "";
+      }
+      return raw.startsWith("/") ? raw : `/${raw.replace(/^\/+/, "")}`;
+    } catch (error) {
+      return raw.startsWith("/") ? raw : `/${raw.replace(/^\/+/, "")}`;
+    }
+  };
+
+  const nextRoute = normalizeRoute(nextParam || storedNext);
+  if (nextRoute === "/admin" || nextRoute === "/admin-dashboard" || nextRoute.startsWith("/admin/")) {
+    return "admin";
+  }
+
+  return requestedRole === "driver" || requestedRole === "rider" || requestedRole === "admin"
+    ? requestedRole
+    : "";
+};
+
 const getInitialUserType = () => {
   const appType = getAppType();
   if (appType === "driver" || appType === "rider") {
     return appType;
   }
-  const requestedRole = new URLSearchParams(window.location.search).get("role");
+  const requestedRole = getRequestedRole();
+  if (requestedRole === "admin") return "admin";
   return requestedRole === "driver" ? "driver" : "rider";
 };
 
@@ -35,7 +65,8 @@ const getInitialUserType = () => {
  */
 const isAppTypeLocked = () => {
   const appType = getAppType();
-  return appType === "driver" || appType === "rider";
+  const requestedRole = getRequestedRole();
+  return appType === "driver" || appType === "rider" || Boolean(requestedRole);
 };
 
 function Register() {
@@ -60,6 +91,9 @@ function Register() {
   const [verificationCode, setVerificationCode] = useState("");
   const [verificationStep, setVerificationStep] = useState(false);
   const [debugCode, setDebugCode] = useState("");
+  const registrationRoles = !verificationStep && !isAppTypeLocked()
+    ? ["rider", "driver"]
+    : [];
 
   useEffect(() => {
     let isActive = true;
@@ -227,6 +261,13 @@ function Register() {
         return;
       }
 
+      if (formData.user_type === "admin") {
+        localStorage.removeItem("needs_payment_setup");
+        localStorage.removeItem("needs_vehicle_setup");
+        window.location.replace("/admin");
+        return;
+      }
+
       window.location.replace("/");
   };
 
@@ -271,13 +312,15 @@ function Register() {
               ? "Phone verification"
               : formData.user_type === "rider"
                 ? t("auth.riderAccount")
-                : t("auth.driverAccount")}
+                : formData.user_type === "admin"
+                  ? "Admin Account"
+                  : t("auth.driverAccount")}
           </span>
           <h2>{verificationStep ? "Enter your SMS code" : t("auth.signUp")}</h2>
         </div>
 
         {!verificationStep && !isAppTypeLocked() && <div className="auth-register-tabs">
-          {["rider", "driver"].map((type) => (
+          {registrationRoles.map((type) => (
             <button
               key={type}
               type="button"

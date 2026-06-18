@@ -8,25 +8,107 @@ import { getAppType } from "../native/platform";
 const logoSrc = "/yala-logo.png";
 const riderLogoSrc = "/yala-rider-logo.png";
 const driverLogoSrc = "/yala-driver-logo.png";
+const adminLogoSrc = "/yala-admin-logo.png";
+
+function normalizeContextRoute(value) {
+  if (!value) return "";
+  const raw = String(value).trim();
+
+  try {
+    const decoded = decodeURIComponent(raw);
+    if (decoded.startsWith("http://") || decoded.startsWith("https://")) {
+      return new URL(decoded).pathname.toLowerCase();
+    }
+    return decoded.toLowerCase();
+  } catch (error) {
+    if (raw.startsWith("http://") || raw.startsWith("https://")) {
+      try {
+        return new URL(raw).pathname.toLowerCase();
+      } catch (urlError) {
+        return raw.toLowerCase();
+      }
+    }
+    return raw.toLowerCase();
+  }
+}
+
+function getNextRouteFromSearch() {
+  const search = window.location.search || "";
+  const params = new URLSearchParams(search);
+  const directNext = params.get("next");
+  if (directNext) return directNext;
+
+  // Handle malformed links like ?next%3D%2Fadmin (encoded "next=/admin" as key).
+  if (search.includes("next%3D")) {
+    const decoded = decodeURIComponent(search.replace(/^\?/, ""));
+    const match = decoded.match(/(?:^|&)next=([^&]+)/i);
+    if (match?.[1]) return match[1];
+  }
+
+  return "";
+}
+
+function getLoginContext() {
+  const path = window.location.pathname || "";
+  const next = getNextRouteFromSearch();
+  const storedNext = localStorage.getItem("sx_login_redirect") || "";
+  const route = normalizeContextRoute(next || storedNext || path);
+
+  if (
+    route === "/admin" ||
+    route === "/admin-dashboard" ||
+    route.startsWith("/admin/")
+  ) {
+    return "admin";
+  }
+
+  if (
+    route === "/driver" ||
+    route === "/driver-profile" ||
+    route.startsWith("/driver/")
+  ) {
+    return "driver";
+  }
+
+  if (
+    route === "/rider" ||
+    route === "/rider-dashboard" ||
+    route.startsWith("/rider-") ||
+    route.startsWith("/ride/") ||
+    route === "/history" ||
+    route === "/saved-places" ||
+    route === "/delivery" ||
+    route === "/payment-setup"
+  ) {
+    return "rider";
+  }
+
+  const appType = getAppType();
+  if (appType === "rider" || appType === "driver") return appType;
+  return "web";
+}
 
 function getLogoForApp() {
-  const appType = getAppType();
-  if (appType === "rider") return riderLogoSrc;
-  if (appType === "driver") return driverLogoSrc;
+  const context = getLoginContext();
+  if (context === "admin") return adminLogoSrc;
+  if (context === "rider") return riderLogoSrc;
+  if (context === "driver") return driverLogoSrc;
   return logoSrc;
 }
 
 function getAppLabel() {
-  const appType = getAppType();
-  if (appType === "rider") return "Yala Rider";
-  if (appType === "driver") return "Yala Driver";
+  const context = getLoginContext();
+  if (context === "admin") return "Yala Admin";
+  if (context === "rider") return "Yala Rider";
+  if (context === "driver") return "Yala Driver";
   return "Yala";
 }
 
 function getAppHint() {
-  const appType = getAppType();
-  if (appType === "rider") return "This is Rider app";
-  if (appType === "driver") return "This is Driver app";
+  const context = getLoginContext();
+  if (context === "admin") return "This is Admin app";
+  if (context === "rider") return "This is Rider app";
+  if (context === "driver") return "This is Driver app";
   return "This is Yala app";
 }
 
@@ -89,6 +171,19 @@ export default function Login({ onLogin }) {
   };
 
   const navigateToRegister = () => {
+    const context = getLoginContext();
+    if (context === "admin") {
+      window.location.href = "/register?role=admin";
+      return;
+    }
+    if (context === "driver") {
+      window.location.href = "/register?role=driver";
+      return;
+    }
+    if (context === "rider") {
+      window.location.href = "/register?role=rider";
+      return;
+    }
     window.location.href = "/register";
   };
 

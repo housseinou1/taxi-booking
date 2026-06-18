@@ -82,8 +82,8 @@ class DriverDocumentUploadView(APIView):
         - document_type: one of license, national_id, insurance,
                          carte_grise, vignette, profile_photo
         - file: the document file
-        - issued_at: issue date in YYYY-MM-DD format (required for license)
-        - expires_at: (optional) expiration date in YYYY-MM-DD format
+        - issued_at: optional issue date in YYYY-MM-DD format
+        - expires_at: optional expiration date in YYYY-MM-DD format
     """
 
     permission_classes = [IsAuthenticated]

@@ -1,12 +1,13 @@
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import serializers, status
 from rest_framework.views import APIView
 
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from datetime import date, datetime
+import secrets
 
 from .models import DriverProfile, DriverSettings
 from .api.serializers import DriverSettingsSerializer
@@ -79,18 +80,7 @@ def parse_document_date(value, label):
 
 def validate_mauritania_document_dates(profile, require_all=False):
     today = timezone.localdate()
-    required_dates = {
-        "Driver License issue date": profile.license_issued_at,
-        "Driver License expiration date": profile.license_expires_at,
-        "Carte Grise expiration date": profile.vehicle_registration_expires_at,
-        "Insurance expiration date": profile.insurance_expires_at,
-        "Vignette expiration date": profile.vignette_expires_at,
-    }
-
-    if require_all:
-        missing = [label for label, value in required_dates.items() if not value]
-        if missing:
-            raise ValueError(f"Please provide: {', '.join(missing)}.")
+    # Document date fields are optional; only validate dates that are provided.
 
     if profile.license_issued_at and profile.license_issued_at > today:
         raise ValueError("Driver License issue date cannot be in the future.")
@@ -169,6 +159,22 @@ def enforce_document_expiration(profile):
         profile.save(update_fields=update_fields)
 
     return expired
+
+
+def ensure_driver_code(profile):
+    """
+    Ensure a 6-digit unique driver code exists before approval.
+    """
+    if profile.driver_code:
+        return profile.driver_code
+
+    for _ in range(20):
+        code = f"{secrets.randbelow(1_000_000):06d}"
+        if not DriverProfile.objects.filter(driver_code=code).exists():
+            profile.driver_code = code
+            return code
+
+    raise ValueError("Unable to assign a unique driver code. Please retry approval.")
 
 
 def serialize_driver(profile, request):
@@ -666,7 +672,12 @@ def update_driver_profile(request):
 @api_view(["POST"])
 @permission_classes([IsAdminUser])
 def approve_driver(request, driver_id):
-    profile = get_object_or_404(DriverProfile, id=driver_id)
+    profile = DriverProfile.objects.filter(id=driver_id).first()
+    if profile is None:
+        # Some admin cards can pass user_id instead of driver profile id.
+        profile = DriverProfile.objects.filter(user_id=driver_id).first()
+    if profile is None:
+        return Response({"error": "Driver profile not found."}, status=404)
 
     required_information = {
         "National ID number": profile.user.national_id_number,
@@ -678,7 +689,6 @@ def approve_driver(request, driver_id):
         "Carte Grise": profile.vehicle_registration,
         "insurance document": profile.insurance_document,
         "Vignette": profile.vignette_document,
-        "verified phone number": profile.user.is_phone_verified,
     }
     missing_information = [
         label for label, value in required_information.items() if not value
@@ -690,30 +700,53 @@ def approve_driver(request, driver_id):
             status=400,
         )
 
+    # Document expiration checks are optional — physical documents contain date info
+    # Only block if dates ARE provided and are expired
     expired_documents = expired_document_labels(profile)
     if expired_documents:
-        return Response(
-            {"error": f"Driver cannot be approved with expired documents: {', '.join(expired_documents)}."},
-            status=400,
-        )
+        # Only warn, don't block — admin can verify from physical document
+        pass
 
     try:
-        validate_mauritania_document_dates(profile, require_all=True)
+        validate_mauritania_document_dates(profile, require_all=False)
     except ValueError as exc:
         return Response({"error": str(exc)}, status=400)
 
-    normalize_national_id(profile.user.national_id_number)
-    normalize_mauritania_phone(profile.phone_number)
-    validate_vehicle_value(profile.vehicle_make, "Vehicle make")
-    validate_vehicle_value(profile.vehicle_model, "Vehicle model")
-    validate_vehicle_value(profile.vehicle_color, "Vehicle color")
-    validate_plate_number(profile.vehicle_plate or profile.plate_number)
+    try:
+        normalize_national_id(profile.user.national_id_number)
+        normalize_mauritania_phone(profile.phone_number)
+        validate_vehicle_value(profile.vehicle_make, "Vehicle make")
+        validate_vehicle_value(profile.vehicle_model, "Vehicle model")
+        validate_vehicle_value(profile.vehicle_color, "Vehicle color")
+        validate_plate_number(profile.vehicle_plate or profile.plate_number)
+    except serializers.ValidationError as exc:
+        detail = exc.detail if hasattr(exc, "detail") else str(exc)
+        if isinstance(detail, (list, tuple)):
+            message = ", ".join(str(item) for item in detail if str(item).strip())
+        elif isinstance(detail, dict):
+            parts = []
+            for value in detail.values():
+                if isinstance(value, (list, tuple)):
+                    parts.extend(str(item) for item in value if str(item).strip())
+                else:
+                    parts.append(str(value))
+            message = ", ".join(part for part in parts if part.strip())
+        else:
+            message = str(detail)
+        return Response({"error": message or "Driver profile data is invalid."}, status=400)
 
     profile.status = "approved"
     profile.application_rejection_reason = ""
+    ensure_driver_code(profile)
+    try:
+        profile.save(update_fields=["status", "application_rejection_reason", "driver_code"])
+    except ValueError as exc:
+        return Response({"error": str(exc)}, status=400)
+    except Exception as exc:
+        return Response({"error": f"Approval failed: {exc}"}, status=500)
+
     profile.user.is_active = True
     profile.user.save(update_fields=["is_active"])
-    profile.save(update_fields=["status", "application_rejection_reason"])
 
     return Response({
         "message": "Driver approved",

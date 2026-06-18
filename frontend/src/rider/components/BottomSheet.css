@@ -63,7 +63,7 @@
 .bottom-sheet__handle-bar {
   width: 44px;
   height: 5px;
-  background: #d1d5db;
+  background: var(--yala-gray-300);
   border-radius: var(--radius-full);
 }
 

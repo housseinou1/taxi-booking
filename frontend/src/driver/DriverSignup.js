@@ -4,7 +4,7 @@ import { API_URL } from "../apiConfig";
 const DRIVER_TERMS_VERSION = "driver-terms-2026-05";
 
 const driverTerms = [
-  "I confirm that my license, vehicle registration, insurance, National ID, and profile information are real and current.",
+  "I confirm that my license, carte grise, vignette, insurance, National ID, and profile information are real and current.",
   "I agree to follow Mauritania traffic laws, drive safely, and never drive under the influence of alcohol, drugs, or unsafe fatigue.",
   "I will keep the vehicle clean, roadworthy, insured, and suitable for carrying riders.",
   "I understand that riders and drivers may rate each other, and poor safety or service reports may lead to review, suspension, or removal.",
@@ -22,15 +22,8 @@ function DriverSignup() {
     vehicle_model: "",
     vehicle_color: "",
     plate_number: "",
-    license_expires_at: "",
-    vehicle_registration_expires_at: "",
-    insurance_expires_at: "",
   });
 
-  const [driverPhoto, setDriverPhoto] = useState(null);
-  const [licenseFile, setLicenseFile] = useState(null);
-  const [vehicleRegistrationFile, setVehicleRegistrationFile] = useState(null);
-  const [insuranceDocument, setInsuranceDocument] = useState(null);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -57,18 +50,8 @@ function DriverSignup() {
         return;
       }
 
-      const missingDocuments = [
-        !driverPhoto && "profile photo",
-        !licenseFile && "driver license",
-        !vehicleRegistrationFile && "vehicle registration",
-        !insuranceDocument && "insurance document",
-        !formData.license_expires_at && "license expiration date",
-        !formData.vehicle_registration_expires_at && "registration expiration date",
-        !formData.insurance_expires_at && "insurance expiration date",
-      ].filter(Boolean);
-
-      if (missingDocuments.length) {
-        alert(`Please add: ${missingDocuments.join(", ")}.`);
+      if (!formData.vehicle_make || !formData.vehicle_model || !formData.plate_number) {
+        alert("Please fill in all vehicle information (make, model, and plate number).");
         return;
       }
 
@@ -80,27 +63,8 @@ function DriverSignup() {
       data.append("vehicle_model", formData.vehicle_model);
       data.append("vehicle_color", formData.vehicle_color);
       data.append("plate_number", formData.plate_number);
-      data.append("license_expires_at", formData.license_expires_at);
-      data.append("vehicle_registration_expires_at", formData.vehicle_registration_expires_at);
-      data.append("insurance_expires_at", formData.insurance_expires_at);
       data.append("terms_accepted", "true");
       data.append("terms_version", DRIVER_TERMS_VERSION);
-
-      if (driverPhoto) {
-        data.append("driver_photo", driverPhoto);
-      }
-
-      if (licenseFile) {
-        data.append("license_file", licenseFile);
-      }
-
-      if (vehicleRegistrationFile) {
-        data.append("vehicle_registration", vehicleRegistrationFile);
-      }
-
-      if (insuranceDocument) {
-        data.append("insurance_document", insuranceDocument);
-      }
 
       const response = await fetch(`${API_URL}/drivers/register/`, {
         method: "POST",
@@ -117,14 +81,14 @@ function DriverSignup() {
         return;
       }
 
-      alert("Driver application submitted successfully. Admin approval is now pending.");
+      alert("Account created! Please upload your documents from the Driver Dashboard to get approved.");
 
       localStorage.removeItem("needs_vehicle_setup");
 
       window.location.href = "/driver";
     } catch (error) {
       console.error(error);
-      alert("Server error. Make sure Django is running.");
+      alert("Server error. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -134,18 +98,18 @@ function DriverSignup() {
     <div style={pageStyle}>
       <div style={cardStyle}>
         <div style={heroStyle}>
-          <span style={eyebrowStyle}>Yala driver verification</span>
-          <h1 style={titleStyle}>Submit your driver application</h1>
+          <span style={eyebrowStyle}>Yala driver registration</span>
+          <h1 style={titleStyle}>Add your vehicle information</h1>
           <p style={subtitleStyle}>
-            Upload the required documents. Admin approval is required before you can go online.
+            Enter your car details to create your driver account. You can upload documents later from the Driver Dashboard.
           </p>
         </div>
 
         <div style={statusStripStyle}>
           <span style={statusDotStyle} />
           <div>
-            <strong>Pending after submission</strong>
-            <small>License, insurance, registration, and profile photo will be reviewed.</small>
+            <strong>After registration</strong>
+            <small>Upload documents from Dashboard → Documents to get approved.</small>
           </div>
         </div>
 
@@ -206,59 +170,6 @@ function DriverSignup() {
           style={inputStyle}
         />
 
-        <label style={labelStyle}>Upload driver profile photo</label>
-        <input
-          type="file"
-          accept="image/*"
-          onChange={(e) => setDriverPhoto(e.target.files[0])}
-          style={fileStyle}
-        />
-
-        <label style={labelStyle}>Upload driver license</label>
-        <input
-          type="file"
-          onChange={(e) => setLicenseFile(e.target.files[0])}
-          style={fileStyle}
-        />
-        <label style={labelStyle}>License expiration date</label>
-        <input
-          type="date"
-          name="license_expires_at"
-          value={formData.license_expires_at}
-          onChange={handleChange}
-          style={inputStyle}
-        />
-
-        <label style={labelStyle}>Upload vehicle registration</label>
-        <input
-          type="file"
-          onChange={(e) => setVehicleRegistrationFile(e.target.files[0])}
-          style={fileStyle}
-        />
-        <label style={labelStyle}>Vehicle registration expiration date</label>
-        <input
-          type="date"
-          name="vehicle_registration_expires_at"
-          value={formData.vehicle_registration_expires_at}
-          onChange={handleChange}
-          style={inputStyle}
-        />
-
-        <label style={labelStyle}>Upload insurance document</label>
-        <input
-          type="file"
-          onChange={(e) => setInsuranceDocument(e.target.files[0])}
-          style={fileStyle}
-        />
-        <label style={labelStyle}>Insurance expiration date</label>
-        <input
-          type="date"
-          name="insurance_expires_at"
-          value={formData.insurance_expires_at}
-          onChange={handleChange}
-          style={inputStyle}
-        />
-
         <section style={termsBoxStyle}>
           <div style={termsHeaderStyle}>
             <span>Driver Terms and Conditions</span>
@@ -294,7 +205,7 @@ function DriverSignup() {
             cursor: loading || !termsAccepted ? "not-allowed" : "pointer",
           }}
         >
-          {loading ? "Submitting..." : "Submit Application"}
+          {loading ? "Creating account..." : "Create Driver Account"}
         </button>
       </div>
     </div>

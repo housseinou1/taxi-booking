@@ -66,8 +66,8 @@
 }
 
 .trip-card__status--cancelled {
-  background: rgba(220, 38, 38, 0.1);
-  color: #dc2626;
+  background: var(--yala-red-soft);
+  color: var(--yala-red);
 }
 
 .trip-card__status--active {
@@ -102,7 +102,7 @@
 }
 
 .trip-card__dot--destination {
-  background: #dc2626;
+  background: var(--yala-red);
 }
 
 .trip-card__address {

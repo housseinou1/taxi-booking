@@ -10,7 +10,7 @@
   padding: var(--space-sm) var(--space-md);
   border: none;
   border-radius: var(--radius-md);
-  background: #DC2626;
+  background: var(--yala-red);
   color: var(--yala-white);
   font-family: var(--font-family);
   font-size: var(--font-size-sm);
@@ -22,7 +22,7 @@
 }
 
 .sos-button:hover {
-  background: #B91C1C;
+  background: var(--yala-red-strong);
 }
 
 .sos-button:active {
@@ -30,7 +30,7 @@
 }
 
 .sos-button:focus-visible {
-  outline: 2px solid #DC2626;
+  outline: 2px solid var(--yala-red);
   outline-offset: 2px;
 }
 

@@ -110,6 +110,22 @@
   font-size: 15px;
 }
 
+.driver-status-panel__rider-meta {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.driver-status-panel__rider-phone,
+.driver-status-panel__rider-location {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 12px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .driver-status-panel__ride-route {
   display: flex;
   align-items: center;

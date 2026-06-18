@@ -26,6 +26,71 @@ const MAX_RETRIES = 3;
 const RETRY_INTERVAL_MS = 5000;
 const EARNINGS_REFRESH_INTERVAL_MS = 10000;
 
+const toAmount = (value) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const normalizePeriodTotal = (periodData = {}) =>
+  toAmount(periodData.total_earnings ?? periodData.total ?? 0);
+
+function normalizeEarningsPayload(payload = {}) {
+  // New backend shape:
+  // { earnings: { today: { total_earnings }, ... }, bonus_breakdowns: { ... } }
+  if (payload.earnings && typeof payload.earnings === "object") {
+    const periods = payload.earnings;
+    const breakdowns = payload.bonus_breakdowns || {};
+
+    const mapBreakdown = (entry = {}) => ({
+      bonus: toAmount(entry.bonus ?? entry.bonus_earnings ?? 0),
+      incentive: toAmount(entry.incentive ?? entry.incentive_earnings ?? 0),
+      referral: toAmount(entry.referral ?? entry.referral_earnings ?? 0),
+    });
+
+    return {
+      today_earnings: normalizePeriodTotal(periods.today),
+      week_earnings: normalizePeriodTotal(periods.week),
+      month_earnings: normalizePeriodTotal(periods.month),
+      total_earnings: normalizePeriodTotal(periods.lifetime),
+      breakdown: {
+        today: mapBreakdown(breakdowns.today),
+        week: mapBreakdown(breakdowns.week),
+        month: mapBreakdown(breakdowns.month),
+        lifetime: mapBreakdown(breakdowns.lifetime),
+      },
+    };
+  }
+
+  // Legacy shape (already flat)
+  return {
+    ...payload,
+    today_earnings: toAmount(payload.today_earnings),
+    week_earnings: toAmount(payload.week_earnings),
+    month_earnings: toAmount(payload.month_earnings),
+    total_earnings: toAmount(payload.total_earnings),
+  };
+}
+
+function normalizeChartPayload(payload) {
+  // Supports all shapes:
+  // - [ ... ]
+  // - { data: [ ... ] }
+  // - { chart_data: [ ... ] }
+  const list = Array.isArray(payload)
+    ? payload
+    : Array.isArray(payload?.data)
+      ? payload.data
+      : Array.isArray(payload?.chart_data)
+        ? payload.chart_data
+        : [];
+
+  return list.map((item) => ({
+    ...item,
+    value: toAmount(item?.value ?? item?.earnings ?? 0),
+    earnings: toAmount(item?.earnings ?? item?.value ?? 0),
+  }));
+}
+
 // ─── Currency Formatter (always 2 decimal places) ───────────────────────────
 /**
  * Formats a numeric value as MRU with exactly 2 decimal places.
@@ -169,7 +234,7 @@ export default function DriverEarnings() {
         `${API_URL}/drivers/me/earnings/`,
         authHeaders
       );
-      setEarnings(response.data);
+      setEarnings(normalizeEarningsPayload(response.data || {}));
       retryCountRef.current = 0;
       setSyncing(false);
     } catch (err) {
@@ -203,7 +268,7 @@ export default function DriverEarnings() {
         `${API_URL}/drivers/me/earnings/chart/?period=${period}`,
         authHeaders
       );
-      setChartData(response.data.data || response.data || []);
+      setChartData(normalizeChartPayload(response.data));
     } catch (err) {
       console.error("Chart data fetch error:", err);
       setChartData([]);
@@ -243,10 +308,10 @@ export default function DriverEarnings() {
   const getPeriodEarnings = (period) => {
     if (!earnings) return 0;
     switch (period) {
-      case "today": return earnings.today_earnings || 0;
-      case "week": return earnings.week_earnings || 0;
-      case "month": return earnings.month_earnings || 0;
-      case "lifetime": return earnings.total_earnings || 0;
+      case "today": return toAmount(earnings.today_earnings);
+      case "week": return toAmount(earnings.week_earnings);
+      case "month": return toAmount(earnings.month_earnings);
+      case "lifetime": return toAmount(earnings.total_earnings);
       default: return 0;
     }
   };
@@ -258,9 +323,9 @@ export default function DriverEarnings() {
     }
     const breakdown = earnings.breakdown[activePeriod] || earnings.breakdown || {};
     return {
-      bonus: breakdown.bonus || 0,
-      incentive: breakdown.incentive || 0,
-      referral: breakdown.referral || 0,
+      bonus: toAmount(breakdown.bonus ?? breakdown.bonus_earnings),
+      incentive: toAmount(breakdown.incentive ?? breakdown.incentive_earnings),
+      referral: toAmount(breakdown.referral ?? breakdown.referral_earnings),
     };
   };
 
@@ -269,7 +334,7 @@ export default function DriverEarnings() {
     if (chartPeriod === "daily") return DAY_LABELS;
     if (chartPeriod === "monthly") return MONTH_LABELS;
     // Weekly: generate week labels based on data length
-    return chartData.map((_, i) => `W${i + 1}`);
+    return Array.isArray(chartData) ? chartData.map((_, i) => `W${i + 1}`) : [];
   };
 
   // ─── Normalize chart data to ensure correct bar count ──────────────────
@@ -307,6 +372,7 @@ export default function DriverEarnings() {
   const breakdown = getBonusBreakdown();
   const normalizedData = getNormalizedChartData();
   const chartLabels = getChartLabels();
+  const weekTotal = getPeriodEarnings("week");
 
   if (loading) {
     return (
@@ -368,6 +434,11 @@ export default function DriverEarnings() {
         <h2 style={styles.earningsAmount}>
           {formatEarningsMRU(getPeriodEarnings(activePeriod))}
         </h2>
+        {activePeriod !== "week" && (
+          <span style={styles.weekTotalHint}>
+            Week total: {formatEarningsMRU(weekTotal)}
+          </span>
+        )}
       </div>
 
       {/* Bonus/Incentive/Referral Line Items */}
@@ -485,6 +556,14 @@ const styles = {
     fontWeight: "800",
     color: COLORS.primaryGreen,
     margin: 0,
+  },
+  weekTotalHint: {
+    display: "block",
+    marginTop: "10px",
+    fontSize: "12px",
+    fontWeight: "700",
+    color: COLORS.textMuted,
+    letterSpacing: "0.01em",
   },
   breakdownCard: {
     backgroundColor: COLORS.cardBg,

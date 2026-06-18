@@ -264,7 +264,6 @@ function App() {
   const withInstall = (content, options = {}) => (
     <>
       {content}
-      {getAppType() === 'web' && <YalaAIAssistant />}
       {options.showNotifications !== false && isAuthenticated && <NotificationCenter />}
       {shouldShowInstallButton() && <InstallAppButton />}
     </>
@@ -438,12 +437,6 @@ function App() {
   if (page === "driver-vehicle-setup") {
     return withInstall(
       <div>
-        <TopBar
-          title={`${MARKET.brandName} Driver Vehicle Setup`}
-          goHome={goHome}
-          logout={logout}
-        />
-
         <div style={setupPageStyle}>
           <div style={setupCardStyle}>
             <h1 style={setupTitleStyle}>🚗 Add Vehicle Information</h1>
@@ -590,7 +583,12 @@ function App() {
   if (page === "admin-share-analytics") {
     return withInstall(
       <div>
-        <TopBar title={`${MARKET.brandName} Share Analytics`} goHome={goHome} logout={logout} />
+        <TopBar
+          title={`${MARKET.brandName} Share Analytics`}
+          goHome={goHome}
+          logout={logout}
+          minimalActions
+        />
         <ShareAdminDashboard />
       </div>
     );
@@ -599,7 +597,12 @@ function App() {
   if (page === "admin") {
     return withInstall(
       <div>
-        <TopBar title={`${MARKET.brandName} Admin`} goHome={goHome} logout={logout} />
+        <TopBar
+          title={`${MARKET.brandName} Admin`}
+          goHome={goHome}
+          logout={logout}
+          minimalActions
+        />
         <AdminDashboard />
       </div>
     );

@@ -67,6 +67,20 @@ function estimateEtaMinutes(from, to) {
   return Math.max(1, Math.round((distanceKm / 32) * 60));
 }
 
+function estimateDistanceKm(from, to) {
+  if (!Array.isArray(from) || !Array.isArray(to)) return null;
+  const toRadians = (value) => (value * Math.PI) / 180;
+  const earthRadiusKm = 6371;
+  const latDelta = toRadians(to[0] - from[0]);
+  const lngDelta = toRadians(to[1] - from[1]);
+  const a =
+    Math.sin(latDelta / 2) ** 2 +
+    Math.cos(toRadians(from[0])) *
+      Math.cos(toRadians(to[0])) *
+      Math.sin(lngDelta / 2) ** 2;
+  return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 function getCoordinatePair(lat, lng) {
   const parsedLat = Number(lat);
   const parsedLng = Number(lng);
@@ -149,18 +163,46 @@ function RideTracker({ ride, driverPosition, onChat, onShare, onSOS, onPayRate, 
   }, [ride.status]);
 
   const currentStep = getCurrentStepIndex();
-  const driverAssigned = DRIVER_ASSIGNED_STATUSES.has(ride.status) && Boolean(ride.driver_name);
-  const driverPhoto = ride.driver_photo_url || ride.driver_picture;
+  const rawDriverName =
+    ride.driver_name ||
+    ride.driver?.full_name ||
+    [ride.driver_first_name, ride.driver_last_name].filter(Boolean).join(' ').trim();
+  const driverName = rawDriverName || 'Driver';
+  const driverPhoto =
+    ride.driver_photo_url ||
+    ride.driver_picture ||
+    ride.driver_photo ||
+    ride.driver?.profile_picture ||
+    ride.driver?.photo_url;
   const vehiclePhoto = ride.vehicle_photo_url || ride.vehicle_photo;
   const vehicleName =
     [ride.vehicle_make, ride.vehicle_model].filter(Boolean).join(' ') ||
+    [ride.car_make, ride.car_model].filter(Boolean).join(' ') ||
     ride.vehicle ||
     'Vehicle details pending';
-  const vehicleCategory = ride.vehicle_category_label || ride.vehicle_category || ride.ride_type;
+  const vehicleCategory =
+    ride.vehicle_category_label ||
+    ride.vehicle_category ||
+    ride.car_type ||
+    ride.ride_type;
   const driverLevel = ride.driver_level_label || ride.driver_level || ride.driver_category_label || ride.driver_category;
   const driverRating = Number(ride.driver_avg_rating || ride.driver_rating || 0).toFixed(1);
   const pinCode = ride.pickup_pin || ride.pin_code;
-  const callNumber = ride.driver_phone || ride.private_call_number;
+  const callNumber = ride.driver_phone || ride.driver?.phone_number || ride.private_call_number;
+  const plateNumber = ride.plate_number || ride.vehicle_plate || ride.driver_vehicle_plate;
+  const driverAssigned = DRIVER_ASSIGNED_STATUSES.has(ride.status) && Boolean(rawDriverName);
+  const effectiveDriverPosition =
+    driverPosition ||
+    getCoordinatePair(ride.driver_current_lat, ride.driver_current_lng) ||
+    getCoordinatePair(ride.driver_lat, ride.driver_lng);
+  const targetPosition =
+    ride.status === 'in_progress'
+      ? getCoordinatePair(ride.destination_lat, ride.destination_lng) || ride.destination?.position
+      : getCoordinatePair(ride.pickup_lat, ride.pickup_lng) || ride.pickup?.position;
+  const movementDistanceKm =
+    effectiveDriverPosition && Array.isArray(targetPosition)
+      ? estimateDistanceKm(effectiveDriverPosition, targetPosition.map(Number))
+      : null;
 
   /**
    * Handle cancellation confirmation.
@@ -206,16 +248,16 @@ function RideTracker({ ride, driverPosition, onChat, onShare, onSOS, onPayRate, 
               <img
                 className="ride-tracker__driver-photo"
                 src={driverPhoto}
-                alt={`${ride.driver_name} profile`}
+                alt={`${driverName} profile`}
               />
             ) : (
               <div className="ride-tracker__driver-photo--placeholder" aria-hidden="true">
-                {ride.driver_name.slice(0, 1).toUpperCase()}
+                {driverName.slice(0, 1).toUpperCase()}
               </div>
             )}
             <div className="ride-tracker__driver-details">
               <div className="ride-tracker__driver-title">
-                <p className="ride-tracker__driver-name">{ride.driver_name}</p>
+                <p className="ride-tracker__driver-name">{driverName}</p>
                 {ride.driver_verified && <span className="ride-tracker__verified-badge">Verified</span>}
               </div>
               <p className="ride-tracker__driver-meta">
@@ -223,6 +265,7 @@ function RideTracker({ ride, driverPosition, onChat, onShare, onSOS, onPayRate, 
                 {driverLevel && <span>{driverLevel}</span>}
                 {ride.driver_code && <span>Code {ride.driver_code}</span>}
               </p>
+              <p className="ride-tracker__driver-contact">📞 {callNumber || 'Phone unavailable'}</p>
             </div>
           </div>
 
@@ -235,12 +278,16 @@ function RideTracker({ ride, driverPosition, onChat, onShare, onSOS, onPayRate, 
             <div className="ride-tracker__vehicle-details">
               <p className="ride-tracker__vehicle-name">{vehicleName}</p>
               <p className="ride-tracker__vehicle-info">
-                {[ride.vehicle_color, vehicleCategory].filter(Boolean).join(' · ')}
+                {[ride.vehicle_color || ride.car_color, vehicleCategory].filter(Boolean).join(' · ')}
               </p>
-              <span className="ride-tracker__plate">{ride.plate_number || 'Plate pending'}</span>
+              <span className="ride-tracker__plate">{plateNumber || 'Plate pending'}</span>
             </div>
             {ride.vehicle_verified && <span className="ride-tracker__vehicle-verified">Verified vehicle</span>}
           </div>
+          <p className="ride-tracker__movement">
+            📍 {ride.status === 'in_progress' ? 'Driver moving to destination' : 'Driver moving to pickup'}
+            {movementDistanceKm != null ? ` · ~${movementDistanceKm.toFixed(1)} km away` : ' · Live location updating'}
+          </p>
         </section>
       ) : (
         <div className="ride-tracker__searching" role="status">

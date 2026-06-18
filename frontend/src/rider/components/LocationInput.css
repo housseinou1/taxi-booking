@@ -194,8 +194,8 @@
 .location-stack .location-input--destination::before {
   width: 9px;
   height: 9px;
-  border-radius: 2px;
-  background: #ff6b6b;
+  border-radius: 3px;
+  background: var(--map-destination);
 }
 
 .location-stack .location-input--pickup::after {

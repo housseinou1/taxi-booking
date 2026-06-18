@@ -27,8 +27,6 @@ const DOCUMENT_TYPES = [
     label: "Driver License",
     icon: "🪪",
     required: true,
-    requiresIssueDate: true,
-    requiresExpiration: true,
   },
   { key: "national_id", label: "National ID", icon: "🆔", required: true },
   {
@@ -36,21 +34,31 @@ const DOCUMENT_TYPES = [
     label: "Insurance",
     icon: "🛡️",
     required: true,
-    requiresExpiration: true,
   },
   {
     key: "carte_grise",
     label: "Carte Grise",
     icon: "📋",
     required: true,
-    requiresExpiration: true,
   },
   {
     key: "vignette",
     label: "Vignette",
     icon: "📄",
     required: true,
-    requiresExpiration: true,
+  },
+  {
+    key: "vehicle_registration",
+    label: "Vehicle Registration",
+    icon: "📝",
+    required: false,
+  },
+  {
+    key: "plate_number_photo",
+    label: "Plate Number",
+    icon: "🔢",
+    required: true,
+    imageOnly: true,
   },
   { key: "profile_photo", label: "Profile Photo", icon: "📷", required: true },
 ];
@@ -291,16 +299,6 @@ export default function DriverDocuments() {
     async () => {
       if (!pendingUpload) return;
       const { file, docTypeKey } = pendingUpload;
-      const docType = DOCUMENT_TYPES.find((item) => item.key === docTypeKey);
-
-      if (docType?.requiresIssueDate && !uploadDates.issued_at) {
-        setUploadError("Driver License issue date is required.");
-        return;
-      }
-      if (docType?.requiresExpiration && !uploadDates.expires_at) {
-        setUploadError(`${docType.label} expiration date is required.`);
-        return;
-      }
 
       setUploadingType(docTypeKey);
       setUploadError(null);
@@ -308,12 +306,6 @@ export default function DriverDocuments() {
         const formData = new FormData();
         formData.append("file", file);
         formData.append("document_type", docTypeKey);
-        if (uploadDates.issued_at) {
-          formData.append("issued_at", uploadDates.issued_at);
-        }
-        if (uploadDates.expires_at) {
-          formData.append("expires_at", uploadDates.expires_at);
-        }
 
         await axios.post(
           `${API_URL}/drivers/me/documents/upload/`,
@@ -453,32 +445,6 @@ export default function DriverDocuments() {
             Complete {DOCUMENT_TYPES.find((item) => item.key === pendingUpload.docTypeKey)?.label}
           </strong>
           <span style={uploadFileNameStyle}>{pendingUpload.file.name}</span>
-          {DOCUMENT_TYPES.find((item) => item.key === pendingUpload.docTypeKey)?.requiresIssueDate && (
-            <label style={uploadDateFieldStyle}>
-              <span>Issue date</span>
-              <input
-                type="date"
-                value={uploadDates.issued_at}
-                onChange={(event) =>
-                  setUploadDates((current) => ({ ...current, issued_at: event.target.value }))
-                }
-                style={uploadDateInputStyle}
-              />
-            </label>
-          )}
-          {DOCUMENT_TYPES.find((item) => item.key === pendingUpload.docTypeKey)?.requiresExpiration && (
-            <label style={uploadDateFieldStyle}>
-              <span>Expiration date</span>
-              <input
-                type="date"
-                value={uploadDates.expires_at}
-                onChange={(event) =>
-                  setUploadDates((current) => ({ ...current, expires_at: event.target.value }))
-                }
-                style={uploadDateInputStyle}
-              />
-            </label>
-          )}
           <div style={uploadActionsStyle}>
             <button
               type="button"

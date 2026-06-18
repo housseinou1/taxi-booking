@@ -35,11 +35,13 @@
   --panel-backdrop: blur(var(--panel-blur));
   --overlay-backdrop: rgba(0, 0, 0, 0.5);
   --floating-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  --driver-card-shadow: 0 14px 34px rgba(15, 23, 42, 0.16);
+  --driver-card-border: rgba(15, 23, 42, 0.1);
 
   /* Driver Layout */
   --header-height: 56px;
   --panel-radius: 20px;
-  --button-radius: 14px;
+  --button-radius: 12px;
   --menu-width: 300px;
   --go-button-height: 56px;
 

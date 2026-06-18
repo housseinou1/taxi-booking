@@ -85,6 +85,11 @@ describe('RideTracker component', () => {
       expect(screen.getByText('Toyota Corolla')).toBeInTheDocument();
     });
 
+    it('renders visible driver phone number in the driver card', () => {
+      render(<RideTracker ride={makeRide({ driver_phone: '+22240001122' })} />);
+      expect(screen.getByText('📞 +22240001122')).toBeInTheDocument();
+    });
+
     it('renders rating, level, driver code, and Yala verification', () => {
       render(<RideTracker ride={makeRide()} />);
       expect(screen.getByText('★ 4.8')).toBeInTheDocument();
@@ -101,6 +106,19 @@ describe('RideTracker component', () => {
       );
       expect(screen.getByText('White · Comfort')).toBeInTheDocument();
       expect(screen.getByText('Verified vehicle')).toBeInTheDocument();
+    });
+
+    it('shows live movement message after driver acceptance', () => {
+      render(
+        <RideTracker
+          ride={makeRide({
+            pickup_lat: 18.09,
+            pickup_lng: -15.97,
+          })}
+          driverPosition={[18.08, -15.97]}
+        />
+      );
+      expect(screen.getByText(/Driver moving to pickup/i)).toBeInTheDocument();
     });
 
     it('renders driver photo when available', () => {

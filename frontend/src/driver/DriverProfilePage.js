@@ -10,9 +10,9 @@ const DOCUMENT_TYPES = [
   { type: "insurance", label: "Insurance", group: "Vehicle Documents" },
   { type: "carte_grise", label: "Carte Grise", group: "Vehicle Documents" },
   { type: "vignette", label: "Vignette", group: "Vehicle Documents" },
-  { type: "vehicle_registration", label: "Vehicle Registration", group: "Vehicle Documents" },
   { type: "plate_number", label: "Plate Number", group: "Vehicle Documents" },
 ];
+
 
 const ACCORDION_SECTIONS = [
   {
@@ -66,9 +66,16 @@ const getDocumentStatus = (document) => {
   return document.status || "pending";
 };
 
-const documentNeedsAttention = (document) => {
-  const status = getDocumentStatus(document);
-  return ["expired", "rejected", "missing", "pending", "pending_review", "needs_review", "under_review", "submitted"].includes(status);
+const findDocumentByType = (documents, type) => {
+  if (!Array.isArray(documents)) return null;
+  if (type === "carte_grise") {
+    return (
+      documents.find((doc) => doc.document_type === "carte_grise") ||
+      documents.find((doc) => doc.document_type === "vehicle_registration") ||
+      null
+    );
+  }
+  return documents.find((doc) => doc.document_type === type) || null;
 };
 
 const initials = (name) =>
@@ -186,6 +193,7 @@ export default function DriverProfilePage({ onBack }) {
     event.target.value = "";
     if (!file || !documentType) return;
 
+    setError("");
     setUploadingType(documentType);
     const form = new FormData();
     form.append("document_type", documentType);
@@ -274,11 +282,21 @@ export default function DriverProfilePage({ onBack }) {
   const vehiclePhoto = getValue(vehicle.photo_url, vehicle.photo, base.vehicle_photo_url, base.vehicle_photo);
   const documentsByType = DOCUMENT_TYPES.map((item) => ({
     item,
-    document: data.documents.find((doc) => doc.document_type === item.type),
+    document: findDocumentByType(data.documents, item.type),
   }));
   const approvedDocuments = documentsByType.filter(({ document }) => getDocumentStatus(document) === "approved").length;
-  const documentsNeedingAttention = documentsByType.filter(({ document }) => documentNeedsAttention(document)).length;
-  const hasDocumentAttention = documentsNeedingAttention > 0;
+  const profileChecklist = [
+    Boolean(fullName && fullName !== "Yala Driver"),
+    Boolean(base.email || enhanced.email || user.email),
+    Boolean(base.phone_number || enhanced.phone_number || user.phone_number),
+    Boolean(make && make !== "Not provided" && model && model !== "Not provided"),
+    approvedDocuments >= Math.ceil(DOCUMENT_TYPES.length / 2),
+  ];
+  const profileStrength = Math.round(
+    (profileChecklist.filter(Boolean).length / profileChecklist.length) * 100
+  );
+  const contactPhone = displayValue(base.phone_number, enhanced.phone_number, user.phone_number);
+  const cityName = displayValue(base.city_name, enhanced.city_name, user.city_name);
 
   const vehicleRows = [
     ["Your Vehicle", `${make} ${model} · ${plate}`.trim(), "/driver/profile/edit"],
@@ -353,6 +371,28 @@ export default function DriverProfilePage({ onBack }) {
           <SummaryStat label="Years" value={yearsDriving} />
         </section>
 
+        <section className="driver-profile-identity-card" aria-label="Driver profile details">
+          <div className="driver-profile-identity-grid">
+            <IdentityItem label="Email" value={displayValue(base.email, enhanced.email, user.email)} />
+            <IdentityItem label="Phone" value={contactPhone} />
+            <IdentityItem label="City" value={cityName} />
+            <IdentityItem label="Level" value={titleCase(level)} />
+          </div>
+          <div className="driver-profile-strength">
+            <span>Profile strength</span>
+            <strong>{profileStrength}%</strong>
+            <div className="driver-profile-strength-bar">
+              <i style={{ width: `${profileStrength}%` }} />
+            </div>
+          </div>
+        </section>
+
+        <section className="driver-quick-actions" aria-label="Quick actions">
+          <MenuRow label="Documents" detail="Upload and review compliance files" onClick={handleDocumentsClick} />
+          <MenuRow label="Earnings" detail="View payouts and payment setup" onClick={() => handleMenuAction("/driver/earnings")} />
+          <MenuRow label="Support" detail="Open help, safety, and resources" onClick={() => handleMenuAction("/driver/support")} />
+        </section>
+
         <div className="driver-accordion-list">
           {ACCORDION_SECTIONS.map((section) => (
             <AccordionSection
@@ -360,7 +400,7 @@ export default function DriverProfilePage({ onBack }) {
               id={section.id}
               title={section.title}
               open={openSections.has(section.id)}
-              hasAlert={section.id === "account" && hasDocumentAttention}
+              hasAlert={false}
               onToggle={() => toggleSection(section.id)}
             >
               {section.id === "vehicle" && (
@@ -387,7 +427,19 @@ export default function DriverProfilePage({ onBack }) {
                   <div className="driver-documents-panel" ref={documentsPanelRef}>
                     {["Driver Documents", "Vehicle Documents"].map((group) => (
                       <section key={group}>
-                        <h3>{group}</h3>
+                        <h3>
+                          {group}
+                          <span>
+                            {
+                              documentsByType.filter(
+                                ({ item, document }) =>
+                                  item.group === group && getDocumentStatus(document) === "approved"
+                              ).length
+                            }
+                            /
+                            {documentsByType.filter(({ item }) => item.group === group).length} approved
+                          </span>
+                        </h3>
                         {documentsByType.filter(({ item }) => item.group === group).map(({ item, document }) => {
                           return (
                             <DocumentRow
@@ -431,6 +483,15 @@ function SummaryStat({ label, value, prefix = "" }) {
       <strong>{prefix}{value}</strong>
       <span>{label}</span>
     </div>
+  );
+}
+
+function IdentityItem({ label, value }) {
+  return (
+    <article className="driver-identity-item">
+      <small>{label}</small>
+      <strong>{value}</strong>
+    </article>
   );
 }
 
