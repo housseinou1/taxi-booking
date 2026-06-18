@@ -679,16 +679,10 @@ def approve_driver(request, driver_id):
     if profile is None:
         return Response({"error": "Driver profile not found."}, status=404)
 
+    # Minimal requirements for approval — just vehicle info and phone
     required_information = {
-        "National ID number": profile.user.national_id_number,
-        "National ID document": profile.user.national_id_document,
-        "driver photo": profile.driver_photo,
         "phone number": profile.phone_number,
         "Plate number": profile.vehicle_plate or profile.plate_number,
-        "driver license": profile.license_file,
-        "Carte Grise": profile.vehicle_registration,
-        "insurance document": profile.insurance_document,
-        "Vignette": profile.vignette_document,
     }
     missing_information = [
         label for label, value in required_information.items() if not value
@@ -699,41 +693,6 @@ def approve_driver(request, driver_id):
             {"error": f"Driver cannot be approved until these are provided: {', '.join(missing_information)}."},
             status=400,
         )
-
-    # Document expiration checks are optional — physical documents contain date info
-    # Only block if dates ARE provided and are expired
-    expired_documents = expired_document_labels(profile)
-    if expired_documents:
-        # Only warn, don't block — admin can verify from physical document
-        pass
-
-    try:
-        validate_mauritania_document_dates(profile, require_all=False)
-    except ValueError as exc:
-        return Response({"error": str(exc)}, status=400)
-
-    try:
-        normalize_national_id(profile.user.national_id_number)
-        normalize_mauritania_phone(profile.phone_number)
-        validate_vehicle_value(profile.vehicle_make, "Vehicle make")
-        validate_vehicle_value(profile.vehicle_model, "Vehicle model")
-        validate_vehicle_value(profile.vehicle_color, "Vehicle color")
-        validate_plate_number(profile.vehicle_plate or profile.plate_number)
-    except serializers.ValidationError as exc:
-        detail = exc.detail if hasattr(exc, "detail") else str(exc)
-        if isinstance(detail, (list, tuple)):
-            message = ", ".join(str(item) for item in detail if str(item).strip())
-        elif isinstance(detail, dict):
-            parts = []
-            for value in detail.values():
-                if isinstance(value, (list, tuple)):
-                    parts.extend(str(item) for item in value if str(item).strip())
-                else:
-                    parts.append(str(value))
-            message = ", ".join(part for part in parts if part.strip())
-        else:
-            message = str(detail)
-        return Response({"error": message or "Driver profile data is invalid."}, status=400)
 
     profile.status = "approved"
     profile.application_rejection_reason = ""
