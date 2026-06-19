@@ -30,11 +30,15 @@ export function buildRideRequest(bookingState) {
   const payload = {
     pickup_latitude: pickup.position[0],
     pickup_longitude: pickup.position[1],
+    pickup_address: pickup.label || pickup.address || "",
     destination_latitude: destination.position[0],
     destination_longitude: destination.position[1],
-    stops: (stops || []).map((stop) => ({
+    destination_address: destination.label || destination.address || "",
+    stops: (stops || []).map((stop, index) => ({
       latitude: stop.position[0],
       longitude: stop.position[1],
+      location_name: stop.label || stop.address || `Stop ${index + 1}`,
+      stop_order: index + 1,
     })),
     ride_type: rideType,
     distance_km: routeInfo ? routeInfo.distanceKm : 0,

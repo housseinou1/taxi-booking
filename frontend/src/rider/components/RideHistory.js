@@ -94,6 +94,19 @@ function RideHistory() {
 
   return (
     <div className="ride-history">
+      <header className="ride-history__topbar">
+        <button
+          type="button"
+          className="ride-history__back-btn"
+          onClick={() => {
+            window.location.href = '/rider-dashboard';
+          }}
+        >
+          Back
+        </button>
+        <strong>Ride History</strong>
+        <span aria-hidden="true" />
+      </header>
       <h1 className="ride-history__title">Ride History</h1>
       <div className="ride-history__list" role="list">
         {trips.map((trip) => (

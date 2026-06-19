@@ -112,7 +112,7 @@ def admin_flagged_list(request):
     """GET: Return a paginated list of flagged referrals."""
     queryset = FlaggedReferral.objects.select_related(
         "referrer", "referee", "resolved_by"
-    ).order_by("-flagged_at")
+    ).order_by("-flagged_at", "-id")
 
     paginator = FlaggedReferralPagination()
     page = paginator.paginate_queryset(queryset, request)

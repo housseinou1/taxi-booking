@@ -3,8 +3,8 @@ from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 
-from .models import WalletAccount
-from .views import apply_wallet_transaction
+from payments.models import WalletAccount
+from payments.views import apply_wallet_transaction
 
 
 class WalletTransactionTests(TestCase):

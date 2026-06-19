@@ -26,7 +26,6 @@ import RiderPayments from "./payments/PaymentPage";
 import { DriverProfilePage, RiderProfilePage } from "./profile/ProfilePages";
 import SupportCenter from "./support/SupportCenter";
 import LandingPage from "./landing/LandingPage";
-import RideHistory from "./history/RideHistory";
 import RiderRideHistory from "./rider/components/RideHistory";
 import { ShareBookingFlow, ShareRideScreen, ShareRideComplete, ShareAdminDashboard } from './components/share';
 import DeliveryCustomerApp from "./delivery/DeliveryCustomerApp";
@@ -37,6 +36,7 @@ import { API_URL } from "./apiConfig";
 import { MARKET } from "./marketConfig";
 import riderApi from "./rider/services/authenticatedApi";
 import { getAppType, shouldShowInstallButton } from './native/platform';
+import { initDeepLinkListener } from './native/deeplink';
 import {
   getRouteFromNotification,
   initPushNotifications,
@@ -84,6 +84,14 @@ function App() {
   const sessionCheckStarted = useRef(false);
 
   useEffect(() => {
+    initDeepLinkListener((route) => {
+      if (route) {
+        window.location.href = route;
+      }
+    });
+  }, []);
+
+  useEffect(() => {
     if (!isAuthenticated) return;
     initPushNotifications((data) => {
       const route = getRouteFromNotification(data, getAppType());
@@ -98,8 +106,7 @@ function App() {
     if (currentPath === "/payment-setup") setPage("payment-setup");
     else if (currentPath === "/driver-vehicle-setup") setPage("driver-vehicle-setup");
     else if (currentPath === "/rider-dashboard") setPage("rider-dashboard");
-    else if (currentPath === "/rider-history") setPage("rider-history");
-    else if (currentPath === "/history") setPage("rider-ride-history");
+    else if (currentPath === "/rider-history" || currentPath === "/history") setPage("rider-ride-history");
     else if (currentPath === "/rider-reviews") setPage("rider-reviews");
     else if (currentPath === "/saved-places") setPage("saved-places");
     else if (currentPath === "/rider-profile") setPage("rider-profile");
@@ -334,10 +341,6 @@ function App() {
 
   if (page === "rider-profile") {
     return withInstall(<RiderProfilePage />);
-  }
-
-  if (page === "rider-history") {
-    return withInstall(<RideHistory />);
   }
 
   if (page === "rider-ride-history") {

@@ -461,8 +461,8 @@ class TestGetExpiredOrMissing:
         driver = MagicMock()
         result = self.service.get_expired_or_missing(driver)
 
-        # All 6 required documents should be missing
-        assert len(result) == 6
+        # All required documents should be missing
+        assert len(result) == len(REQUIRED_DOCUMENT_TYPES)
         assert all(alert.reason == "missing" for alert in result)
 
     @patch("taxi.drivers.services.document_service.DriverDocument.objects")
@@ -479,7 +479,7 @@ class TestGetExpiredOrMissing:
         driver = MagicMock()
         result = self.service.get_expired_or_missing(driver)
 
-        assert len(result) == 6
+        assert len(result) == len(REQUIRED_DOCUMENT_TYPES)
         assert all(alert.reason == "missing" for alert in result)
 
     @patch("taxi.drivers.services.document_service.DriverDocument.objects")
@@ -496,7 +496,7 @@ class TestGetExpiredOrMissing:
         driver = MagicMock()
         result = self.service.get_expired_or_missing(driver)
 
-        assert len(result) == 6
+        assert len(result) == len(REQUIRED_DOCUMENT_TYPES)
         assert all(alert.reason == "expired" for alert in result)
         assert all(alert.expires_at == expired_doc.expires_at for alert in result)
 
@@ -552,14 +552,15 @@ class TestGetExpiredOrMissing:
 class TestRequiredDocumentTypes:
     """Tests for REQUIRED_DOCUMENT_TYPES constant."""
 
-    def test_all_six_types_present(self):
-        """All 6 required document types are defined."""
-        assert len(REQUIRED_DOCUMENT_TYPES) == 6
+    def test_all_required_types_present(self):
+        """All required document types are defined."""
+        assert len(REQUIRED_DOCUMENT_TYPES) == 7
         assert "license" in REQUIRED_DOCUMENT_TYPES
         assert "national_id" in REQUIRED_DOCUMENT_TYPES
         assert "insurance" in REQUIRED_DOCUMENT_TYPES
         assert "carte_grise" in REQUIRED_DOCUMENT_TYPES
         assert "vignette" in REQUIRED_DOCUMENT_TYPES
+        assert "plate_number_photo" in REQUIRED_DOCUMENT_TYPES
         assert "profile_photo" in REQUIRED_DOCUMENT_TYPES
 
 

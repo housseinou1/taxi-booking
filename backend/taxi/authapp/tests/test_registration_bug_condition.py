@@ -106,21 +106,29 @@ class TestRegistrationBugCondition(HypothesisTestCase):
         - The User model FK points to cities.City
         We create entries in both so the serializer validation and user creation work.
         """
-        # Create in locations app (for serializer queryset validation)
-        self.locations_region = LocationsRegion.objects.create(name="Nouakchott")
-        self.locations_city = LocationsCity.objects.create(
+        # Create in locations app (for serializer queryset validation).
+        # Use get_or_create because migrations and repeated Hypothesis examples
+        # can leave deterministic city fixtures already present.
+        self.locations_region, _ = LocationsRegion.objects.get_or_create(
+            name="Registration Test Region"
+        )
+        self.locations_city, _ = LocationsCity.objects.get_or_create(
             region=self.locations_region,
-            name="Nouakchott-Nord",
-            is_active=True,
+            name="Registration Test City",
+            defaults={"is_active": True},
         )
 
         # Create in cities app (for User model FK) with same PK
-        self.cities_region = CitiesRegion.objects.create(name="Nouakchott")
-        self.cities_city = CitiesCity.objects.create(
+        self.cities_region, _ = CitiesRegion.objects.get_or_create(
+            name="Registration Test Region"
+        )
+        self.cities_city, _ = CitiesCity.objects.get_or_create(
             id=self.locations_city.pk,
-            region=self.cities_region,
-            name="Nouakchott-Nord",
-            is_active=True,
+            defaults={
+                "region": self.cities_region,
+                "name": "Registration Test City",
+                "is_active": True,
+            },
         )
 
         self.factory = APIRequestFactory()

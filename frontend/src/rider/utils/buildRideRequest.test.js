@@ -18,9 +18,16 @@ describe('buildRideRequest', () => {
     expect(payload).toEqual({
       pickup_latitude: 18.0735,
       pickup_longitude: -15.9582,
+      pickup_address: 'Sebkha',
       destination_latitude: 18.0896,
       destination_longitude: -15.9754,
-      stops: [{ latitude: 18.1002, longitude: -15.9631 }],
+      destination_address: 'Toujounine',
+      stops: [{
+        latitude: 18.1002,
+        longitude: -15.9631,
+        location_name: 'Ksar',
+        stop_order: 1,
+      }],
       ride_type: 'regular',
       distance_km: 5,
       estimated_fare: 300,

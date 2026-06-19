@@ -1,8 +1,8 @@
 from django.test import SimpleTestCase, override_settings
-from rest_framework.test import APITestCase
 from rest_framework.exceptions import ValidationError
+from rest_framework.test import APITestCase
 
-from .validators import (
+from ..validators import (
     normalize_mauritania_phone,
     normalize_national_id,
     validate_person_name,
@@ -30,7 +30,7 @@ class IdentityValidationTests(SimpleTestCase):
 @override_settings(DEBUG=True, YALA_SMS_PROVIDER="console")
 class PhoneVerificationTests(APITestCase):
     def setUp(self):
-        from .models import User
+        from ..models import User
 
         self.user = User.objects.create_user(
             email="rider@example.com",
@@ -57,7 +57,7 @@ class PhoneVerificationTests(APITestCase):
         self.assertTrue(self.user.is_phone_verified)
 
     def test_rider_rejection_requires_clear_reason(self):
-        from .models import User
+        from ..models import User
 
         admin = User.objects.create_superuser(
             email="admin@example.com",
@@ -85,5 +85,3 @@ class PhoneVerificationTests(APITestCase):
             "Identity document could not be verified.",
         )
         self.assertFalse(self.user.is_active)
-
-# Create your tests here.

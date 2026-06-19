@@ -8,7 +8,6 @@ import HallOfFameAdminPanel from "./HallOfFameAdminPanel";
 const MARKET_OWNER_PERCENT = MARKET.ownerCommissionPercent;
 const logoSrc = "/yala-admin-logo.png";
 const ADMIN_BLUE = "#00A651";
-const ADMIN_BLUE_DARK = "#0f2a1b";
 const ADMIN_BLUE_PANEL = "rgba(15, 33, 25, 0.82)";
 const ADMIN_BLUE_PANEL_DARK = "rgba(12, 25, 20, 0.9)";
 const ADMIN_BLUE_SOFT = "rgba(110, 231, 183, 0.14)";
@@ -219,14 +218,6 @@ const isValidMauritaniaPhone = (value) => {
   if (digits.length !== 8) return false;
   if (new Set(digits).size === 1) return false;
   if (digits === "12345678" || digits === "87654321" || digits === "00000000") return false;
-  return true;
-};
-
-const isValidVehicleValue = (value) => {
-  const normalized = compactText(value);
-  if (normalized.length < 2) return false;
-  if (normalized.toUpperCase().startsWith("TEMP")) return false;
-  if (FAKE_VALUE_SET.has(normalized.toLowerCase())) return false;
   return true;
 };
 
@@ -709,44 +700,6 @@ function AdminDashboard() {
     } catch (error) {
       console.error(error);
       alert("Server error deleting rider");
-    }
-  };
-
-  const deleteDriverAccount = async (user) => {
-    const driverName = user?.full_name || user?.email || "this driver";
-    const driverProfileId = Number(user?.driver_profile_id || 0);
-
-    if (!driverProfileId) {
-      alert("Driver profile not found for this account.");
-      return;
-    }
-
-    const confirmed = window.confirm(
-      `Delete driver account for ${driverName}?\n\nThis action cannot be undone and will permanently remove the driver account, profile, and related driver data.`
-    );
-    if (!confirmed) return;
-
-    try {
-      const { response, data } = await callAdminApi(`/drivers/delete/${driverProfileId}/`, {
-        method: "DELETE",
-        headers: {
-          ...authHeaders(),
-        },
-      });
-
-      if (!response.ok) {
-        alert(getApiMessage(data, `Could not delete driver (HTTP ${response.status})`));
-        return;
-      }
-
-      alert(getApiMessage(data, "Driver deleted"));
-      fetchDrivers();
-      fetchUsers();
-      fetchRides();
-      fetchWithdrawals();
-    } catch (error) {
-      console.error(error);
-      alert("Server error deleting driver");
     }
   };
 
@@ -2636,14 +2589,12 @@ function UserAccessCard({
   setUserBlocked,
   updateRiderApproval,
   deleteRider,
-  deleteDriverAccount,
   showApprovalActions = false,
 }) {
   const isRiderAccount =
     (user.is_rider || user.user_type === "rider") && !user.is_staff;
   const isRider =
     isRiderAccount && !(user.is_driver || user.user_type === "driver");
-  const isDriverAccount = Boolean(user.is_driver && user.driver_profile_id);
   const riderRequirementChecks = [
     { label: "Profile photo", ok: Boolean(user.has_profile_picture || user.profile_picture) },
     { label: "National ID document", ok: Boolean(user.has_national_id_document || user.national_id_document) },
@@ -2780,15 +2731,6 @@ function UserAccessCard({
             onClick={() => deleteRider(user)}
           >
             🗑️ Delete Rider
-          </button>
-        )}
-        {isDriverAccount && (
-          <button
-            type="button"
-            style={dangerSolidButtonStyle}
-            onClick={() => deleteDriverAccount(user)}
-          >
-            Delete Driver
           </button>
         )}
       </div>

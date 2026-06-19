@@ -36,6 +36,7 @@ class DriverSettingsAPITestCase(TestCase):
         self.profile = DriverProfile.objects.create(
             user=self.user,
             status="approved",
+            driver_code="123456",
         )
         self.client.force_authenticate(user=self.user)
         self.url = "/drivers/me/settings/"

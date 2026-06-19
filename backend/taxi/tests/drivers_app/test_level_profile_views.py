@@ -12,6 +12,9 @@ Requirements: 5.1, 5.2, 5.3, 6.2, 6.3, 6.7
 
 import pytest
 from decimal import Decimal
+from django.core.cache import cache
+from django.db import connection
+from django.utils import timezone
 from rest_framework.test import APIClient
 from faker import Faker
 
@@ -28,8 +31,51 @@ STATS_URL = "/drivers/me/stats/"
 PROFILE_URL = "/drivers/me/profile/"
 
 
+def _create_test_city():
+    """Create matching city rows for registration serializer/model FKs."""
+    from cities.models import Region as CitiesRegion
+    from locations.models import City as LocationsCity, Region as LocationsRegion
+
+    pk = 91006
+    cities_region, _ = CitiesRegion.objects.get_or_create(name="Driver Level Region")
+    locations_region, _ = LocationsRegion.objects.get_or_create(name="Driver Level Region")
+    now = timezone.now().isoformat()
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """INSERT OR REPLACE INTO cities_city
+               (id, region_id, name, name_ar, name_fr, is_active,
+                latitude, longitude, created_at)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+            [pk, cities_region.pk, "Driver Level City", "", "", True, 0, 0, now],
+        )
+        cursor.execute(
+            """INSERT OR REPLACE INTO locations_city
+               (id, region_id, commune_id, name, slug, is_active, is_default,
+                latitude, longitude, created_at, updated_at)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+            [
+                pk,
+                locations_region.pk,
+                None,
+                "Driver Level City",
+                "driver-level-city",
+                True,
+                False,
+                None,
+                None,
+                now,
+                now,
+            ],
+        )
+
+    return LocationsCity.objects.get(pk=pk)
+
+
 def _register_driver():
     """Register a driver user and return (driver_profile, token)."""
+    cache.clear()
+    city = _create_test_city()
     payload = {
         "first_name": faker.first_name(),
         "last_name": faker.last_name(),
@@ -38,8 +84,9 @@ def _register_driver():
         "user_type": "driver",
         "phone_number": f"+2222{faker.numerify('#######')}",
         "national_id_number": f"9{faker.numerify('#########')}",
+        "city": city.pk,
     }
-    reg = client.post(REGISTER_URL, payload)
+    reg = client.post(REGISTER_URL, payload, HTTP_X_APP_TYPE="driver")
     assert reg.status_code == 201, f"Registration failed: {reg.data}"
 
     login = client.post(LOGIN_URL, {

@@ -14,6 +14,30 @@
   margin: 0 0 var(--space-lg);
 }
 
+.ride-history__topbar {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.ride-history__back-btn {
+  border: 1px solid var(--yala-gray-100);
+  background: var(--yala-white);
+  color: var(--yala-navy);
+  border-radius: var(--radius-full);
+  padding: 8px 14px;
+  min-height: var(--tap-target-min);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+
+.ride-history__topbar strong {
+  text-align: center;
+  color: var(--yala-navy);
+}
+
 /* Trip list */
 .ride-history__list {
   display: flex;

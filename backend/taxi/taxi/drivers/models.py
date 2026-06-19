@@ -301,6 +301,11 @@ class DriverProfile(models.Model):
         if self.terms_accepted and not self.terms_accepted_at:
             self.terms_accepted_at = timezone.now()
 
+        if self.status == "approved" and not self.driver_code:
+            from taxi.drivers.driver_code import ensure_driver_code
+
+            ensure_driver_code(self)
+
         super().save(*args, **kwargs)
 
     def __str__(self):

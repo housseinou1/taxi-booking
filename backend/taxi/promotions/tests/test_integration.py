@@ -15,6 +15,7 @@ from decimal import Decimal
 from datetime import timedelta
 
 import pytest
+from django.core.cache import cache
 from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APIClient
@@ -94,6 +95,7 @@ class TestFullPromoCodeFlow(TestCase):
     """
 
     def setUp(self):
+        cache.clear()
         self.service = PromoCodeService()
         self.rider = create_user("rider@test.com")
         self.driver = create_user("driver@test.com", user_type="driver")
@@ -244,6 +246,7 @@ class TestPaymentDiscountIntegration(TestCase):
     """
 
     def setUp(self):
+        cache.clear()
         self.rider = create_user("rider@test.com")
         self.promo = create_promo_code(
             code="HALF50",
@@ -457,6 +460,7 @@ class TestReferralFlowIntegration(TestCase):
     """
 
     def setUp(self):
+        cache.clear()
         self.service = PromoCodeService()
         # Existing rider (referrer) - signal auto-generates a referral code
         self.referrer = create_user("referrer@test.com")
@@ -597,6 +601,7 @@ class TestPromoCodeEdgeCases(TestCase):
     """Test edge cases in the promo code integration flow."""
 
     def setUp(self):
+        cache.clear()
         self.rider = create_user("rider@test.com")
         self.client = APIClient()
         self.client.force_authenticate(user=self.rider)

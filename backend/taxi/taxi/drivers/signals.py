@@ -45,18 +45,15 @@ def trigger_qr_generation_on_approval(sender, instance, created, **kwargs):
         )
         return
 
-    # Validate that driver_code is present (Requirement 1.7)
     if not instance.driver_code:
-        logger.error(
-            "trigger_qr_generation_on_approval: DriverProfile id=%s has no driver_code. "
-            "Rejecting approval.",
+        from taxi.drivers.driver_code import ensure_driver_code
+
+        ensure_driver_code(instance)
+        DriverProfile.objects.filter(pk=instance.pk).update(driver_code=instance.driver_code)
+        logger.info(
+            "trigger_qr_generation_on_approval: Auto-assigned driver_code for "
+            "DriverProfile id=%s.",
             instance.pk,
-        )
-        # Revert the status change
-        DriverProfile.objects.filter(pk=instance.pk).update(status="pending")
-        instance.status = "pending"
-        raise ValueError(
-            "Driver Code must be assigned before approval."
         )
 
     # Dispatch the Celery task for async QR generation

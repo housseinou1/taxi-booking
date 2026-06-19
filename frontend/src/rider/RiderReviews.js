@@ -1,11 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { API_URL } from "../apiConfig";
 import { formatMoney } from "../marketConfig";
-
-const authHeaders = () => ({
-  Authorization: `Bearer ${localStorage.getItem("access")}`,
-});
+import { getRideHistory } from "./services/apiService";
 
 function RiderReviews() {
   const { t } = useTranslation();
@@ -21,14 +17,7 @@ function RiderReviews() {
         setLoading(true);
         setNotice("");
 
-        const response = await fetch(`${API_URL}/rides/history/`, {
-          headers: authHeaders(),
-        });
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.detail || data.error || t("riderReviews.errors.load"));
-        }
+        const data = await getRideHistory();
 
         if (mounted) {
           setRides(Array.isArray(data) ? data : []);
@@ -73,7 +62,7 @@ function RiderReviews() {
           {t("riderReviews.back")}
         </button>
         <strong>{t("riderReviews.topbar")}</strong>
-        <button type="button" onClick={() => (window.location.href = "/rider-history")}>
+        <button type="button" onClick={() => (window.location.href = "/history")}>
           {t("riderReviews.trips")}
         </button>
       </header>

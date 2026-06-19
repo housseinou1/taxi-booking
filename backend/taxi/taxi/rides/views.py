@@ -209,12 +209,6 @@ def request_ride(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    if not request.user.is_phone_verified:
-        return Response(
-            {"detail": "Verify your phone number before requesting a ride."},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-
     existing_ride = (
         Ride.objects.filter(rider=request.user, status__in=OPEN_RIDE_STATUSES)
         .order_by("-id")
@@ -230,18 +224,6 @@ def request_ride(request):
                 ),
                 "ride_id": existing_ride.id,
             },
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-
-    if not request.user.profile_picture:
-        return Response(
-            {"detail": "Rider profile photo is required before requesting a ride."},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-
-    if not request.user.phone_number:
-        return Response(
-            {"detail": "Rider phone number is required before requesting a ride."},
             status=status.HTTP_400_BAD_REQUEST,
         )
 

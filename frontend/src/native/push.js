@@ -125,7 +125,7 @@ export function getRouteFromNotification(data, appType) {
       case 'ride_started':
         return '/rider-dashboard';
       case 'ride_completed':
-        return '/rider-history';
+        return '/history';
       case 'payment_successful':
         return '/rider-payments';
       case 'chat_message':

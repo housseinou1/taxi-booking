@@ -203,6 +203,8 @@ describe('Property 4: Booking state to API payload transformation', () => {
         for (let i = 0; i < bookingState.stops.length; i++) {
           expect(payload.stops[i].latitude).toBe(bookingState.stops[i].position[0]);
           expect(payload.stops[i].longitude).toBe(bookingState.stops[i].position[1]);
+          expect(payload.stops[i].location_name).toBeTruthy();
+          expect(payload.stops[i].stop_order).toBe(i + 1);
         }
 
         // Verify ride type
