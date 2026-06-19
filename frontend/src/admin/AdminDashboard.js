@@ -160,6 +160,33 @@ const getApiCandidates = (path) => {
   return candidates;
 };
 
+const callAdminApi = async (path, options = {}) => {
+  const {
+    method = "GET",
+    headers = {},
+    body,
+  } = options;
+
+  const endpointCandidates = getApiCandidates(path);
+  let lastNetworkError = null;
+
+  for (const endpoint of endpointCandidates) {
+    try {
+      const response = await fetch(endpoint, {
+        method,
+        headers,
+        body,
+      });
+      const data = await readJsonSafe(response);
+      return { response, data };
+    } catch (error) {
+      lastNetworkError = error;
+    }
+  }
+
+  throw lastNetworkError || new Error("Network request failed");
+};
+
 const FAKE_VALUE_SET = new Set([
   "fake",
   "test",
@@ -495,47 +522,27 @@ function AdminDashboard() {
       return;
     }
 
-    const endpointPath = `/drivers/approve/${id}/`;
-    const endpointCandidates = getApiCandidates(endpointPath);
-    let lastNetworkError = null;
-
     try {
-      for (const endpoint of endpointCandidates) {
-        let response;
-        try {
-          response = await fetch(endpoint, {
-            method: "POST",
-            headers: {
-              ...authHeaders(),
-            },
-          });
-        } catch (networkError) {
-          lastNetworkError = networkError;
-          continue;
-        }
+      const { response, data } = await callAdminApi(`/drivers/approve/${id}/`, {
+        method: "POST",
+        headers: {
+          ...authHeaders(),
+        },
+      });
 
-        const data = await readJsonSafe(response);
-        if (response.ok) {
-          alert(getApiMessage(data, "Driver approved ✅"));
-          fetchDrivers();
-          fetchUsers();
-          return;
-        }
-
-        alert(getApiMessage(data, `Could not approve driver (HTTP ${response.status})`));
+      if (response.ok) {
+        alert(getApiMessage(data, "Driver approved ✅"));
+        fetchDrivers();
+        fetchUsers();
         return;
       }
-    } catch (error) {
-      lastNetworkError = error;
-    }
 
-    if (lastNetworkError) {
-      console.error("Approve driver network error:", lastNetworkError);
+      alert(getApiMessage(data, `Could not approve driver (HTTP ${response.status})`));
+    } catch (error) {
+      console.error("Approve driver network error:", error);
       alert(
-        `Server error approving driver: ${lastNetworkError.message || "Network request failed"}`
+        `Server error approving driver: ${error.message || "Network request failed"}`
       );
-    } else {
-      alert("Server error approving driver");
     }
   };
 
@@ -544,7 +551,7 @@ function AdminDashboard() {
     if (!reason || reason.trim().length < 5) return;
 
     try {
-      const response = await fetch(`${API_URL}/drivers/reject/${id}/`, {
+      const { response, data } = await callAdminApi(`/drivers/reject/${id}/`, {
         method: "POST",
         headers: {
           ...authHeaders(),
@@ -552,14 +559,13 @@ function AdminDashboard() {
         },
         body: JSON.stringify({ reason: reason.trim() }),
       });
-      const data = await readJsonSafe(response);
 
       if (response.ok) {
         alert(getApiMessage(data, "Driver rejected ❌"));
         fetchDrivers();
         fetchUsers();
       } else {
-        alert(getApiMessage(data, "Could not reject driver"));
+        alert(getApiMessage(data, `Could not reject driver (HTTP ${response.status})`));
       }
     } catch (error) {
       console.error(error);
@@ -574,18 +580,19 @@ function AdminDashboard() {
     if (!confirmed) return;
 
     try {
-      const response = await fetch(`${API_URL}/drivers/delete/${id}/`, {
+      const { response, data } = await callAdminApi(`/drivers/delete/${id}/`, {
         method: "DELETE",
-        headers: authHeaders(),
+        headers: {
+          ...authHeaders(),
+        },
       });
 
       if (response.ok) {
-        alert("Driver permanently deleted ✅");
+        alert(getApiMessage(data, "Driver permanently deleted ✅"));
         fetchDrivers();
         fetchUsers();
       } else {
-        const data = await response.json();
-        alert(data.error || "Could not delete driver");
+        alert(getApiMessage(data, `Could not delete driver (HTTP ${response.status})`));
       }
     } catch (error) {
       console.error(error);
@@ -595,7 +602,7 @@ function AdminDashboard() {
 
   const reintegrateDriver = async (id) => {
     try {
-      const response = await fetch(`${API_URL}/drivers/reintegrate/${id}/`, {
+      const { response, data } = await callAdminApi(`/drivers/reintegrate/${id}/`, {
         method: "POST",
         headers: {
           ...authHeaders(),
@@ -606,14 +613,12 @@ function AdminDashboard() {
         }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        alert(data.error || "Could not reintegrate driver");
+        alert(getApiMessage(data, `Could not reintegrate driver (HTTP ${response.status})`));
         return;
       }
 
-      alert(data.message || "Driver reintegrated");
+      alert(getApiMessage(data, "Driver reintegrated"));
       fetchDrivers();
       fetchUsers();
     } catch (error) {
@@ -625,19 +630,19 @@ function AdminDashboard() {
   const setUserBlocked = async (userId, shouldBlock) => {
     try {
       const endpoint = shouldBlock ? "block" : "unblock";
-      const response = await fetch(`${API_URL}/auth/users/${userId}/${endpoint}/`, {
+      const { response, data } = await callAdminApi(`/auth/users/${userId}/${endpoint}/`, {
         method: "POST",
-        headers: authHeaders(),
+        headers: {
+          ...authHeaders(),
+        },
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        alert(data.error || "Could not update user");
+        alert(getApiMessage(data, `Could not update user (HTTP ${response.status})`));
         return;
       }
 
-      alert(data.message || "User updated");
+      alert(getApiMessage(data, "User updated"));
       fetchUsers();
       fetchDrivers();
     } catch (error) {
@@ -654,7 +659,7 @@ function AdminDashboard() {
     if (action === "reject" && (!reason || reason.trim().length < 5)) return;
 
     try {
-      const response = await fetch(`${API_URL}/auth/users/${userId}/${action}-rider/`, {
+      const { response, data } = await callAdminApi(`/auth/users/${userId}/${action}-rider/`, {
         method: "POST",
         headers: {
           ...authHeaders(),
@@ -663,15 +668,14 @@ function AdminDashboard() {
         body: JSON.stringify(action === "reject" ? { reason: reason.trim() } : {}),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        alert(data.error || data.detail || "Could not update rider application");
+        alert(getApiMessage(data, `Could not update rider application (HTTP ${response.status})`));
         return;
       }
 
-      alert(data.message || "Rider application updated");
+      alert(getApiMessage(data, "Rider application updated"));
       fetchUsers();
+      fetchDrivers();
     } catch (error) {
       console.error(error);
       alert("Server error updating rider application");
@@ -686,14 +690,15 @@ function AdminDashboard() {
     if (!confirmed) return;
 
     try {
-      const response = await fetch(`${API_URL}/auth/users/${user.id}/delete-rider/`, {
+      const { response, data } = await callAdminApi(`/auth/users/${user.id}/delete-rider/`, {
         method: "DELETE",
-        headers: authHeaders(),
+        headers: {
+          ...authHeaders(),
+        },
       });
-      const data = await readJsonSafe(response);
 
       if (!response.ok) {
-        alert(getApiMessage(data, "Could not delete rider"));
+        alert(getApiMessage(data, `Could not delete rider (HTTP ${response.status})`));
         return;
       }
 
@@ -722,14 +727,15 @@ function AdminDashboard() {
     if (!confirmed) return;
 
     try {
-      const response = await fetch(`${API_URL}/drivers/delete/${driverProfileId}/`, {
+      const { response, data } = await callAdminApi(`/drivers/delete/${driverProfileId}/`, {
         method: "DELETE",
-        headers: authHeaders(),
+        headers: {
+          ...authHeaders(),
+        },
       });
-      const data = await readJsonSafe(response);
 
       if (!response.ok) {
-        alert(getApiMessage(data, "Could not delete driver"));
+        alert(getApiMessage(data, `Could not delete driver (HTTP ${response.status})`));
         return;
       }
 
@@ -754,7 +760,7 @@ function AdminDashboard() {
         return;
       }
 
-      const response = await fetch(`${API_URL}/drivers/category/${driverId}/`, {
+      const { response, data } = await callAdminApi(`/drivers/category/${driverId}/`, {
         method: "POST",
         headers: {
           ...authHeaders(),
@@ -765,10 +771,8 @@ function AdminDashboard() {
         }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        alert(data.error || data.detail || "Could not update driver category");
+        alert(getApiMessage(data, `Could not update driver category (HTTP ${response.status})`));
 
         if (response.status === 401 || response.status === 403) {
           window.location.href = "/login";
@@ -777,7 +781,7 @@ function AdminDashboard() {
         return;
       }
 
-      alert(data.message || "Driver category updated");
+      alert(getApiMessage(data, "Driver category updated"));
       fetchDrivers();
       fetchUsers();
     } catch (error) {
@@ -2635,7 +2639,10 @@ function UserAccessCard({
   deleteDriverAccount,
   showApprovalActions = false,
 }) {
-  const isRider = (user.is_rider || user.user_type === "rider") && !(user.is_driver || user.user_type === "driver");
+  const isRiderAccount =
+    (user.is_rider || user.user_type === "rider") && !user.is_staff;
+  const isRider =
+    isRiderAccount && !(user.is_driver || user.user_type === "driver");
   const isDriverAccount = Boolean(user.is_driver && user.driver_profile_id);
   const riderRequirementChecks = [
     { label: "Profile photo", ok: Boolean(user.has_profile_picture || user.profile_picture) },
@@ -2766,13 +2773,13 @@ function UserAccessCard({
         >
           {user.is_active ? "Block user" : "Unblock user"}
         </button>
-        {showApprovalActions && isRider && (
+        {isRiderAccount && (
           <button
             type="button"
             style={dangerSolidButtonStyle}
             onClick={() => deleteRider(user)}
           >
-            Delete Rider
+            🗑️ Delete Rider
           </button>
         )}
         {isDriverAccount && (

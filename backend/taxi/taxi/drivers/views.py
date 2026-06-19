@@ -177,6 +177,13 @@ def ensure_driver_code(profile):
     raise ValueError("Unable to assign a unique driver code. Please retry approval.")
 
 
+def get_driver_profile_by_any_id(driver_id):
+    profile = DriverProfile.objects.filter(id=driver_id).first()
+    if profile is None:
+        profile = DriverProfile.objects.filter(user_id=driver_id).first()
+    return profile
+
+
 def serialize_driver(profile, request):
     expired_documents = enforce_document_expiration(profile)
     driver_name = f"{profile.user.first_name} {profile.user.last_name}".strip()
@@ -672,10 +679,7 @@ def update_driver_profile(request):
 @api_view(["POST"])
 @permission_classes([IsAdminUser])
 def approve_driver(request, driver_id):
-    profile = DriverProfile.objects.filter(id=driver_id).first()
-    if profile is None:
-        # Some admin cards can pass user_id instead of driver profile id.
-        profile = DriverProfile.objects.filter(user_id=driver_id).first()
+    profile = get_driver_profile_by_any_id(driver_id)
     if profile is None:
         return Response({"error": "Driver profile not found."}, status=404)
 
@@ -716,7 +720,9 @@ def approve_driver(request, driver_id):
 @api_view(["POST"])
 @permission_classes([IsAdminUser])
 def reject_driver(request, driver_id):
-    profile = get_object_or_404(DriverProfile, id=driver_id)
+    profile = get_driver_profile_by_any_id(driver_id)
+    if profile is None:
+        return Response({"error": "Driver profile not found."}, status=404)
     reason = str(request.data.get("reason", "")).strip()
     if len(reason) < 5:
         return Response({"error": "A clear rejection reason is required."}, status=400)
@@ -738,7 +744,9 @@ def reject_driver(request, driver_id):
 @api_view(["POST"])
 @permission_classes([IsAdminUser])
 def reintegrate_driver(request, driver_id):
-    profile = get_object_or_404(DriverProfile, id=driver_id)
+    profile = get_driver_profile_by_any_id(driver_id)
+    if profile is None:
+        return Response({"error": "Driver profile not found."}, status=404)
     expired_documents = expired_document_labels(profile)
 
     if expired_documents:
@@ -797,7 +805,9 @@ def update_driver_category(request, driver_id):
 @permission_classes([IsAdminUser])
 def delete_driver(request, driver_id):
     """Permanently remove a driver and their user account from the system."""
-    profile = get_object_or_404(DriverProfile, id=driver_id)
+    profile = get_driver_profile_by_any_id(driver_id)
+    if profile is None:
+        return Response({"error": "Driver profile not found."}, status=404)
     user = profile.user
     driver_name = f"{user.first_name} {user.last_name}".strip() or user.email
 
