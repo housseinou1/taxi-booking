@@ -29,6 +29,15 @@ from .analytics import (
     driver_analytics,
     rider_analytics,
 )
+from features.views import (
+    list_airports,
+    book_airport_pickup,
+    my_airport_pickups,
+    report_lost_item,
+    my_lost_items,
+    admin_lost_items,
+)
+from operations.views import complete_maintenance, maintenance_reminders
 
 urlpatterns = [
     path("request/", request_ride),
@@ -38,6 +47,20 @@ urlpatterns = [
     path("available/", available_rides),
     path("history/", ride_history),
     path("driver-rides/", driver_rides),
+
+    # Airport services (also exposed under /features/; /rides/ works on current production nginx)
+    path("airports/", list_airports),
+    path("airports/book/", book_airport_pickup),
+    path("airports/my-pickups/", my_airport_pickups),
+
+    # Lost & Found (production nginx proxies /rides/, not /features/)
+    path("lost-found/report/", report_lost_item),
+    path("lost-found/my-items/", my_lost_items),
+    path("lost-found/admin/", admin_lost_items),
+
+    # Driver maintenance reminders
+    path("maintenance/", maintenance_reminders),
+    path("maintenance/<int:reminder_id>/complete/", complete_maintenance),
 
     path("accept/<int:ride_id>/", accept_ride),
     path("arrived/<int:ride_id>/", arrived_ride),

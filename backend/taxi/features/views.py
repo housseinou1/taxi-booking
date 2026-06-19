@@ -4,11 +4,13 @@ API views for all 5 advanced features.
 from decimal import Decimal
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 from rest_framework import status
 
+from .airports import ensure_default_airports, resolve_airport
 from .models import (
     AirportLocation, AirportPickup,
     CorporateAccount, CorporateEmployee,
@@ -21,8 +23,12 @@ from .models import (
 # ─── Airport Pickup ───────────────────────────────────────────────────────────
 
 @api_view(["GET"])
+@permission_classes([AllowAny])
 def list_airports(request):
     airports = AirportLocation.objects.filter(is_active=True)
+    if not airports.exists():
+        ensure_default_airports()
+        airports = AirportLocation.objects.filter(is_active=True)
     return Response([{
         "id": a.id, "name": a.name, "latitude": a.latitude, "longitude": a.longitude,
         "terminal_info": a.terminal_info, "pickup_instructions": a.pickup_instructions,
@@ -33,14 +39,31 @@ def list_airports(request):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def book_airport_pickup(request):
-    airport = get_object_or_404(AirportLocation, id=request.data.get("airport_id"))
+    airport = resolve_airport(
+        airport_id=request.data.get("airport_id"),
+        airport_name=request.data.get("airport_name"),
+    )
+    if not airport:
+        return Response({"detail": "Please select an airport."}, status=status.HTTP_400_BAD_REQUEST)
+
+    arrival_raw = request.data.get("arrival_time")
+    arrival_time = parse_datetime(str(arrival_raw)) if arrival_raw else None
+    if arrival_time and timezone.is_naive(arrival_time):
+        arrival_time = timezone.make_aware(arrival_time, timezone.get_current_timezone())
+    if not arrival_time:
+        return Response({"detail": "Valid flight time is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+    destination = (request.data.get("destination") or "").strip()
+    if not destination:
+        return Response({"detail": "Destination is required."}, status=status.HTTP_400_BAD_REQUEST)
+
     pickup = AirportPickup.objects.create(
         rider=request.user,
         airport=airport,
         service_type=request.data.get("service_type", "pickup"),
         flight_number=request.data.get("flight_number", ""),
-        arrival_time=request.data.get("arrival_time"),
-        destination=request.data.get("destination", ""),
+        arrival_time=arrival_time,
+        destination=destination,
         destination_lat=request.data.get("destination_lat", 0),
         destination_lng=request.data.get("destination_lng", 0),
         passenger_name=request.data.get("passenger_name", request.user.first_name),
@@ -106,11 +129,25 @@ def create_corporate_account(request):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def report_lost_item(request):
+    from taxi.rides.models import Ride
+
+    ride = None
+    ride_id = request.data.get("ride_id")
+    if ride_id not in (None, ""):
+        try:
+            ride = Ride.objects.get(id=int(ride_id))
+        except (Ride.DoesNotExist, ValueError, TypeError):
+            return Response({"detail": "Ride not found. Enter a valid ride number."}, status=status.HTTP_400_BAD_REQUEST)
+
+    description = (request.data.get("description") or "").strip()
+    if not description:
+        return Response({"detail": "Description is required."}, status=status.HTTP_400_BAD_REQUEST)
+
     item = LostItem.objects.create(
-        ride_id=request.data.get("ride_id"),
+        ride=ride,
         reported_by=request.user,
         reported_by_role=request.data.get("role", "rider"),
-        item_description=request.data.get("description", ""),
+        item_description=description,
         item_category=request.data.get("category", "other"),
         rider_phone=request.data.get("rider_phone", ""),
         driver_phone=request.data.get("driver_phone", ""),

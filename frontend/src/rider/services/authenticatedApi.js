@@ -57,14 +57,17 @@ const refreshAccessToken = async () => {
   return refreshPromise;
 };
 
-const withAuthorization = (config = {}, access = localStorage.getItem("access")) => ({
-  ...config,
-  timeout: config.timeout || 15000,
-  headers: {
-    ...(config.headers || {}),
-    Authorization: `Bearer ${access}`,
-  },
-});
+const withAuthorization = (config = {}, access = localStorage.getItem("access")) => {
+  const headers = { ...(config.headers || {}) };
+  if (access && access !== "null" && access !== "undefined") {
+    headers.Authorization = `Bearer ${access}`;
+  }
+  return {
+    ...config,
+    timeout: config.timeout || 15000,
+    headers,
+  };
+};
 
 const dispatchRequest = (method, url, data, config) => {
   const authorizedConfig = withAuthorization(config);
