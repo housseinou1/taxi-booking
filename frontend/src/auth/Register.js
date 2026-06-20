@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useTranslation } from "react-i18next";
-import { API_URL } from "../apiConfig";
+import { API_URL, getApiCandidates } from "../apiConfig";
 import { getAppType } from "../native/platform";
 
 const logoSrc = "/yala-logo.png";
@@ -98,26 +98,43 @@ function Register() {
   useEffect(() => {
     let isActive = true;
 
-    axios
-      .get(`${API_URL}/cities/`)
-      .then(({ data }) => {
-        if (isActive) {
-          const cityGroups = Array.isArray(data) ? data : [];
-          setCities(
-            cityGroups.flatMap((region) =>
-              (region.cities || []).map((city) => ({
-                ...city,
-                region_name: region.name,
-              })),
-            ),
-          );
+    const loadCities = async () => {
+      let lastError = null;
+
+      for (const endpoint of getApiCandidates("/cities/")) {
+        try {
+          const { data } = await axios.get(endpoint);
+          if (isActive) {
+            const cityGroups = Array.isArray(data) ? data : [];
+            setCities(
+              cityGroups.flatMap((region) =>
+                (region.cities || []).map((city) => ({
+                  ...city,
+                  region_name: region.name,
+                })),
+              ),
+            );
+            setErrorMessage("");
+          }
+          return;
+        } catch (error) {
+          lastError = error;
+          if (error?.response) {
+            break;
+          }
         }
-      })
-      .catch(() => {
-        if (isActive) {
-          setErrorMessage("Unable to load cities. Please refresh and try again.");
-        }
-      })
+      }
+
+      if (isActive) {
+        setErrorMessage(
+          lastError?.response
+            ? "Unable to load cities. Run: python manage.py bootstrap_yala"
+            : "Unable to reach the Yala server. Start backend on port 8000.",
+        );
+      }
+    };
+
+    loadCities()
       .finally(() => {
         if (isActive) {
           setCitiesLoading(false);
@@ -189,13 +206,28 @@ function Register() {
         payload.append("national_id_document", nationalIdDocument);
       }
 
-      await axios.post(`${API_URL}/auth/register/`, payload, {
+      const postWithFallback = async (path, data, config = {}) => {
+        let lastError = null;
+        for (const endpoint of getApiCandidates(path)) {
+          try {
+            return await axios.post(endpoint, data, config);
+          } catch (error) {
+            lastError = error;
+            if (error?.response) {
+              throw error;
+            }
+          }
+        }
+        throw lastError || new Error("Network request failed");
+      };
+
+      await postWithFallback("/auth/register/", payload, {
         headers: {
           "X-App-Type": getAppType(),
         },
       });
 
-      const loginResponse = await axios.post(`${API_URL}/auth/login/`, {
+      const loginResponse = await postWithFallback("/auth/login/", {
         email: formData.email.trim().toLowerCase(),
         password: formData.password,
       });
@@ -204,8 +236,8 @@ function Register() {
       localStorage.setItem("refresh", loginResponse.data.refresh);
       localStorage.setItem("user", JSON.stringify(loginResponse.data));
 
-      const codeResponse = await axios.post(
-        `${API_URL}/auth/phone/request-code/`,
+      const codeResponse = await postWithFallback(
+        "/auth/phone/request-code/",
         {},
         { headers: { Authorization: `Bearer ${loginResponse.data.access}` } },
       );

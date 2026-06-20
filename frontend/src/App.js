@@ -625,12 +625,7 @@ function App() {
   }
 
   if (page === "services") {
-    return withInstall(
-      <div>
-        <TopBar title={`${MARKET.brandName} Services`} goHome={goHome} logout={logout} />
-        <LaunchServices />
-      </div>
-    );
+    return withInstall(<LaunchServices />);
   }
 
   if (["terms", "privacy"].includes(page)) {

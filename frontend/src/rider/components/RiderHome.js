@@ -11,6 +11,7 @@ import BookingConfirmation from './BookingConfirmation';
 import RideTracker from './RideTracker';
 import RideChat from '../../components/RideChat';
 import SafetyEmergencyPanel from '../../safety/SafetyEmergencyPanel';
+import RiderHamburgerMenu from './RiderHamburgerMenu';
 import wsService from '../services/wsService';
 import routeService from '../services/routeService';
 import apiService from '../services/apiService';
@@ -61,6 +62,7 @@ function RiderHome() {
   const [locationMessage, setLocationMessage] = useState('');
   const [showChat, setShowChat] = useState(false);
   const [showSafety, setShowSafety] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
   const savedIntentHandledRef = useRef(false);
 
   const {
@@ -302,10 +304,29 @@ function RiderHome() {
     window.location.href = path;
   }, []);
 
+  const handleLogout = useCallback(() => {
+    [
+      "access",
+      "refresh",
+      "user",
+      "selectedRideId",
+      "needs_payment_setup",
+      "needs_vehicle_setup",
+      "sx_login_redirect",
+      "yala_next_place",
+    ].forEach((key) => localStorage.removeItem(key));
+
+    window.location.replace(`/login?logout=${Date.now()}`);
+  }, []);
+
   // ─── Booking flow handlers ─────────────────────────────────────────
   const handleDestinationFocus = useCallback(() => {
     dispatch({ type: 'SET_BOOKING_STEP', payload: 'location' });
   }, [dispatch]);
+
+  const handleBookRideFromMenu = useCallback(() => {
+    handleDestinationFocus();
+  }, [handleDestinationFocus]);
 
   const riderInitial = (profile?.first_name || 'R').slice(0, 1).toUpperCase();
 
@@ -769,7 +790,7 @@ function RiderHome() {
       {bookingStep === 'idle' && (
         <>
           <header className="rider-home__top-bar">
-            <button className="rider-home__menu-btn" type="button" onClick={() => handleNavigate('/services')} aria-label="Open services menu">
+            <button className="rider-home__menu-btn" type="button" onClick={() => setShowMenu(true)} aria-label="Open rider menu">
               ☰
             </button>
             <button className="rider-home__avatar-btn" type="button" onClick={() => handleNavigate('/rider-profile')} aria-label="Open rider profile">
@@ -811,6 +832,15 @@ function RiderHome() {
         </div>,
         document.body
       )}
+
+      <RiderHamburgerMenu
+        isOpen={showMenu}
+        onClose={() => setShowMenu(false)}
+        riderProfile={profile || {}}
+        onNavigate={handleNavigate}
+        onBookRide={handleBookRideFromMenu}
+        onLogout={handleLogout}
+      />
     </div>
   );
 }

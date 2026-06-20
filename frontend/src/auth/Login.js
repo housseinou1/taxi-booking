@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useTranslation } from "react-i18next";
-import { API_URL } from "../apiConfig";
+import { API_URL, getApiCandidates } from "../apiConfig";
 import { getSafeRedirectPath, getUserRole } from "./roleRouting";
 import { getAppType } from "../native/platform";
 
@@ -9,6 +9,41 @@ const logoSrc = "/yala-logo.png";
 const riderLogoSrc = "/yala-rider-logo.png";
 const driverLogoSrc = "/yala-driver-logo.png";
 const adminLogoSrc = "/yala-admin-logo.png";
+
+function getLoginApiCandidates() {
+  return getApiCandidates("/auth/login/");
+}
+
+function getLoginErrorMessage(error, t) {
+  if (error?.response) {
+    const data = error.response.data;
+    if (typeof data === "string" && data.trim()) {
+      return data.trim();
+    }
+    if (data?.error) {
+      return data.error;
+    }
+    if (data?.detail) {
+      return data.detail;
+    }
+    if (error.response.status === 401) {
+      return "Invalid email or password. If the database was reset, create a new account from Register.";
+    }
+    if (error.response.status === 403) {
+      return "This account has been blocked. Please contact support.";
+    }
+    if (error.response.status === 429) {
+      return "Too many login attempts. Please wait and try again.";
+    }
+    return `${t("auth.loginFailed")} (HTTP ${error.response.status})`;
+  }
+
+  if (error?.request) {
+    return "Cannot reach the Yala server. Stop npm start, run it again, then retry login.";
+  }
+
+  return t("auth.loginFailed");
+}
 
 function normalizeContextRoute(value) {
   if (!value) return "";
@@ -136,10 +171,27 @@ export default function Login({ onLogin }) {
     try {
       setLoading(true);
 
-      const response = await axios.post(`${API_URL}/auth/login/`, {
-        email: email.trim().toLowerCase(),
-        password,
-      });
+      let response = null;
+      let lastError = null;
+
+      for (const endpoint of getLoginApiCandidates()) {
+        try {
+          response = await axios.post(endpoint, {
+            email: email.trim().toLowerCase(),
+            password,
+          });
+          break;
+        } catch (error) {
+          lastError = error;
+          if (error?.response) {
+            break;
+          }
+        }
+      }
+
+      if (!response) {
+        throw lastError || new Error("Login request failed");
+      }
 
       const appType = getAppType();
       const userRole = getUserRole(response.data);
@@ -164,7 +216,7 @@ export default function Login({ onLogin }) {
         window.location.href = getRedirectPath(response.data);
       }
     } catch (error) {
-      setErrorMessage(error.response?.data?.error || t("auth.loginFailed"));
+      setErrorMessage(getLoginErrorMessage(error, t));
     } finally {
       setLoading(false);
     }
