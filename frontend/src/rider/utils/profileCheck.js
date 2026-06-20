@@ -1,11 +1,9 @@
 /**
- * Check if a rider's profile is complete enough to proceed with booking.
- * Blocks booking if either profile_picture or phone_number is empty/null.
+ * Check whether a rider profile includes both photo and phone.
+ * Used for optional UI hints only; ride requests are not blocked on this.
  *
- * @param {object} profile - Rider profile object
- * @param {string|null} profile.profile_picture - Profile picture URL or null
- * @param {string|null} profile.phone_number - Phone number or null
- * @returns {boolean} True if profile is complete, false otherwise
+ * @param {object|null|undefined} profile - Rider profile object
+ * @returns {boolean} True when both profile_picture and phone_number are present
  */
 export function isProfileComplete(profile) {
   if (!profile) return false;
@@ -14,4 +12,12 @@ export function isProfileComplete(profile) {
   const hasPhone = profile.phone_number != null && profile.phone_number !== '';
 
   return hasPicture && hasPhone;
+}
+
+/**
+ * Whether the rider can proceed with booking.
+ * Backend no longer requires photo/phone before request_ride.
+ */
+export function canRequestRide() {
+  return true;
 }

@@ -1,6 +1,5 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useCallback, useRef } from 'react';
 import PromoCodeInput from './PromoCodeInput';
-import { isProfileComplete } from '../utils/profileCheck';
 import './BookingConfirmation.css';
 
 /**
@@ -28,7 +27,7 @@ const RIDE_TYPE_LABELS = {
  * - onPromoApply: (code: string) => void — called when promo code is submitted
  * - loading: boolean — whether ride request is in progress
  * - error: optional error string from ride request failure
- * - profile: rider profile object for completeness check
+ * - profile: optional rider profile object (display only)
  * - routeInfo: optional route info { distanceKm, etaMinutes }
  * - promoError: optional error from promo validation
  * - promoLoading: optional loading state for promo validation
@@ -50,7 +49,6 @@ function BookingConfirmation({
   promoError,
   promoLoading,
 }) {
-  const [profileWarning, setProfileWarning] = useState(false);
   const submittingRef = useRef(false);
 
   const hasDiscount = discountedFare != null && discountedFare < fare;
@@ -62,13 +60,6 @@ function BookingConfirmation({
       return;
     }
 
-    // Profile completeness guard
-    if (!isProfileComplete(profile)) {
-      setProfileWarning(true);
-      return;
-    }
-
-    setProfileWarning(false);
     submittingRef.current = true;
 
     try {
@@ -78,11 +69,7 @@ function BookingConfirmation({
     } finally {
       submittingRef.current = false;
     }
-  }, [loading, profile, onConfirm]);
-
-  const dismissProfileWarning = () => {
-    setProfileWarning(false);
-  };
+  }, [loading, onConfirm]);
 
   return (
     <div className="booking-confirmation" role="region" aria-label="Booking confirmation">
@@ -159,26 +146,6 @@ function BookingConfirmation({
         error={promoError}
         loading={promoLoading}
       />
-
-      {/* Profile Incomplete Warning */}
-      {profileWarning && (
-        <div
-          className="booking-confirmation__profile-warning"
-          role="alert"
-          aria-live="assertive"
-        >
-          <span className="booking-confirmation__profile-warning-text">
-            Please complete your profile (photo and phone number) before booking.
-          </span>
-          <button
-            className="booking-confirmation__profile-warning-dismiss"
-            onClick={dismissProfileWarning}
-            aria-label="Dismiss profile warning"
-          >
-            ✕
-          </button>
-        </div>
-      )}
 
       {/* Error Notification */}
       {error && (

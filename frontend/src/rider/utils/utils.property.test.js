@@ -1,7 +1,7 @@
 import * as fc from 'fast-check';
 import { calculateFare } from './fareCalculator';
 import { filterLocations } from './locationFilter';
-import { isProfileComplete } from './profileCheck';
+import { isProfileComplete, canRequestRide } from './profileCheck';
 import { buildRideRequest } from './buildRideRequest';
 import { applyDiscount } from './discountCalculator';
 import { MARKET } from '../../marketConfig';
@@ -116,23 +116,21 @@ describe('Property 1: Location autocomplete filter correctness', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────────
-// Property 5: Profile completeness guard
+// Property 5: Ride request availability
 // Validates: Requirements 4.3
 // ─────────────────────────────────────────────────────────────────────────────────
 
-describe('Property 5: Profile completeness guard', () => {
-  const nullableStringArb = fc.oneof(
-    fc.constant(null),
-    fc.constant(''),
-    fc.string({ minLength: 1, maxLength: 50 })
-  );
-
-  const profileArb = fc.record({
-    profile_picture: nullableStringArb,
-    phone_number: nullableStringArb,
+describe('Property 5: Ride request availability', () => {
+  it('does not block booking based on profile photo or phone', () => {
+    expect(canRequestRide()).toBe(true);
   });
 
-  it('blocks when either picture or phone is null/empty, proceeds when both present', () => {
+  it('still reports profile completeness separately for optional UI hints', () => {
+    const profileArb = fc.record({
+      profile_picture: fc.oneof(fc.constant(null), fc.constant(''), fc.string({ minLength: 1 })),
+      phone_number: fc.oneof(fc.constant(null), fc.constant(''), fc.string({ minLength: 1 })),
+    });
+
     fc.assert(
       fc.property(profileArb, (profile) => {
         const hasPicture =
@@ -141,8 +139,8 @@ describe('Property 5: Profile completeness guard', () => {
           profile.phone_number != null && profile.phone_number !== '';
         const expectedComplete = hasPicture && hasPhone;
 
-        const result = isProfileComplete(profile);
-        expect(result).toBe(expectedComplete);
+        expect(isProfileComplete(profile)).toBe(expectedComplete);
+        expect(canRequestRide()).toBe(true);
       }),
       PBT_CONFIG
     );

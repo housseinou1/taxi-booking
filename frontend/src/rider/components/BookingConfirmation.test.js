@@ -156,7 +156,7 @@ describe('BookingConfirmation component', () => {
     expect(defaultProps.onConfirm).toHaveBeenCalledTimes(1);
   });
 
-  it('shows profile warning when profile is incomplete', () => {
+  it('allows booking when profile is incomplete', () => {
     render(
       <BookingConfirmation
         {...defaultProps}
@@ -164,11 +164,11 @@ describe('BookingConfirmation component', () => {
       />
     );
     fireEvent.click(screen.getByRole('button', { name: /confirm booking/i }));
-    expect(defaultProps.onConfirm).not.toHaveBeenCalled();
-    expect(screen.getByText(/complete your profile/i)).toBeInTheDocument();
+    expect(defaultProps.onConfirm).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText(/complete your profile/i)).not.toBeInTheDocument();
   });
 
-  it('blocks booking when phone_number is missing', () => {
+  it('allows booking when phone_number is missing', () => {
     render(
       <BookingConfirmation
         {...defaultProps}
@@ -176,8 +176,8 @@ describe('BookingConfirmation component', () => {
       />
     );
     fireEvent.click(screen.getByRole('button', { name: /confirm booking/i }));
-    expect(defaultProps.onConfirm).not.toHaveBeenCalled();
-    expect(screen.getByText(/complete your profile/i)).toBeInTheDocument();
+    expect(defaultProps.onConfirm).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText(/complete your profile/i)).not.toBeInTheDocument();
   });
 
   it('shows loading state on confirm button', () => {
@@ -210,19 +210,5 @@ describe('BookingConfirmation component', () => {
     fireEvent.change(input, { target: { value: 'TEST' } });
     fireEvent.click(screen.getByRole('button', { name: /apply promo code/i }));
     expect(defaultProps.onPromoApply).toHaveBeenCalledWith('TEST');
-  });
-
-  it('dismisses profile warning when dismiss button is clicked', () => {
-    render(
-      <BookingConfirmation
-        {...defaultProps}
-        profile={{ profile_picture: null, phone_number: null }}
-      />
-    );
-    fireEvent.click(screen.getByRole('button', { name: /confirm booking/i }));
-    expect(screen.getByText(/complete your profile/i)).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: /dismiss profile warning/i }));
-    expect(screen.queryByText(/complete your profile/i)).not.toBeInTheDocument();
   });
 });

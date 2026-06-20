@@ -1,4 +1,4 @@
-import { isProfileComplete } from './profileCheck';
+import { isProfileComplete, canRequestRide } from './profileCheck';
 
 describe('isProfileComplete', () => {
   it('returns true when both profile_picture and phone_number are present', () => {
@@ -49,5 +49,11 @@ describe('isProfileComplete', () => {
 
   it('returns false when profile is undefined', () => {
     expect(isProfileComplete(undefined)).toBe(false);
+  });
+});
+
+describe('canRequestRide', () => {
+  it('always allows ride requests regardless of profile fields', () => {
+    expect(canRequestRide()).toBe(true);
   });
 });
