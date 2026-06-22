@@ -29,7 +29,8 @@ const go = (path) => {
   }
 };
 
-const HERO_TITLE = "Yala Technologies Rides Across Mauritania created by Housseinou Sakho";
+const HERO_HEADLINE = "Yala Technologies Rides Across Mauritania";
+const HERO_CREDIT = "created by Housseinou Sakho";
 
 const CITIES = [
   "Nouakchott", "Nouadhibou", "Rosso", "Kiffa", "Atar", "Zouérat",
@@ -167,7 +168,8 @@ export default function LandingPage() {
               <span className="mr-flag">🇲🇷</span>
               <span>{t("newLanding.badge")}</span>
             </div>
-            <h1>{HERO_TITLE}</h1>
+            <h1 className="hero-headline">{HERO_HEADLINE}</h1>
+            <p className="hero-credit">{HERO_CREDIT}</p>
             <p className="hero-subtitle">{t("newLanding.heroSubtitle")}</p>
             <div className="action-row">
               <button className="primary-button large" onClick={() => go(PLAY_STORE.rider)}>
@@ -614,7 +616,8 @@ function SiteStyles({ darkMode }) {
     .mr-badge { display:inline-flex; align-items:center; gap:8px; background:#fff; border:1px solid var(--line); border-radius:999px; padding:8px 16px 8px 10px; margin-bottom:20px; font-size:13px; font-weight:700; color:var(--green); box-shadow:0 2px 8px rgba(0,0,0,.04); }
     .mr-flag { font-size:20px; }
     .mr-flag-small { font-size:16px; }
-    .hero-copy h1 { font-size:clamp(40px,6vw,72px); line-height:1.02; letter-spacing:-0.03em; margin-bottom:20px; }
+    .hero-copy h1.hero-headline { font-size:clamp(28px,4.2vw,46px); line-height:1.12; letter-spacing:-0.02em; margin:0 0 10px; font-weight:800; }
+    .hero-credit { margin:0 0 16px; color:var(--muted); font-size:clamp(14px,1.8vw,17px); line-height:1.5; font-weight:600; letter-spacing:0.01em; }
     .hero-subtitle { color:var(--muted); font-size:18px; line-height:1.7; max-width:560px; }
     .action-row { display:flex; gap:10px; flex-wrap:wrap; margin-top:24px; }
     .secondary-actions { margin-top:12px; }
@@ -804,7 +807,8 @@ function SiteStyles({ darkMode }) {
     @media (max-width:720px) {
       .site-header { height:64px; padding:0 16px; }
       .hero-band { min-height:auto; padding:40px 18px 30px; }
-      .hero-copy h1 { font-size:38px; }
+      .hero-copy h1.hero-headline { font-size:26px; line-height:1.15; }
+      .hero-credit { font-size:14px; margin-bottom:12px; }
       .hero-subtitle { font-size:15px; }
       .hero-product { min-height:380px; margin-top:20px; }
       .phone-shot { width:180px; height:360px; border-width:6px; border-radius:24px; }
