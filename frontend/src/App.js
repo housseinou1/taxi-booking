@@ -27,6 +27,7 @@ import { DriverProfilePage, RiderProfilePage } from "./profile/ProfilePages";
 import SupportCenter from "./support/SupportCenter";
 import LandingPage from "./landing/LandingPage";
 import RiderRideHistory from "./rider/components/RideHistory";
+import RiderShell from "./rider/components/RiderShell";
 import { ShareBookingFlow, ShareRideScreen, ShareRideComplete, ShareAdminDashboard } from './components/share';
 import DeliveryCustomerApp from "./delivery/DeliveryCustomerApp";
 import DeliveryDriverApp from "./delivery/DeliveryDriverApp";
@@ -54,6 +55,48 @@ function isRoleAllowedForAppType(role, appType) {
   if (appType === "rider") return role === "rider";
   if (appType === "driver") return role === "driver";
   return true;
+}
+
+function normalizeRouteContext(value) {
+  if (!value) return "";
+
+  try {
+    const decoded = decodeURIComponent(String(value));
+    if (decoded.startsWith("http://") || decoded.startsWith("https://")) {
+      return new URL(decoded).pathname.toLowerCase();
+    }
+    return decoded.toLowerCase();
+  } catch (error) {
+    return String(value).toLowerCase();
+  }
+}
+
+function getRouteAppType() {
+  const params = new URLSearchParams(window.location.search || "");
+  const route = normalizeRouteContext(
+    params.get("next") ||
+      localStorage.getItem("sx_login_redirect") ||
+      window.location.pathname
+  );
+
+  if (route === "/driver" || route.startsWith("/driver/")) return "driver";
+  if (
+    route === "/admin" ||
+    route === "/admin-dashboard" ||
+    route.startsWith("/admin/")
+  ) {
+    return "web";
+  }
+  if (
+    route === "/rider" ||
+    route === "/rider-dashboard" ||
+    route.startsWith("/rider-") ||
+    route.startsWith("/ride/")
+  ) {
+    return "rider";
+  }
+
+  return getAppType();
 }
 
 function isRouteAllowed(path) {
@@ -152,7 +195,7 @@ function App() {
   }, [page]);
 
   useEffect(() => {
-    const appType = getAppType();
+    const appType = getRouteAppType();
     if (appType === "web" || !isAuthenticated) return;
 
     const role = getUserRole(getStoredUser());
@@ -281,7 +324,7 @@ function App() {
     setSessionChecked(true);
 
     // Native apps are role-locked.
-    const appType = getAppType();
+    const appType = getRouteAppType();
     const role = getUserRole(userData);
     if (!isRoleAllowedForAppType(role, appType)) {
       clearAuthSession();
@@ -340,31 +383,40 @@ function App() {
   }
 
   if (page === "rider-profile") {
-    return withInstall(<RiderProfilePage />);
+    return withInstall(
+      <RiderShell title="Profile" backTo="/rider-dashboard">
+        <RiderProfilePage />
+      </RiderShell>
+    );
   }
 
   if (page === "rider-ride-history") {
-    return withInstall(<RiderRideHistory />);
+    return withInstall(
+      <RiderShell title="Trip history" backTo="/rider-dashboard">
+        <RiderRideHistory />
+      </RiderShell>
+    );
   }
 
   if (page === "rider-reviews") {
-    return withInstall(<RiderReviews />);
+    return withInstall(
+      <RiderShell title="Your reviews" backTo="/rider-dashboard">
+        <RiderReviews />
+      </RiderShell>
+    );
   }
 
   if (page === "saved-places") {
-    return withInstall(<SavedPlaces />);
+    return withInstall(
+      <RiderShell title="Saved places" backTo="/rider-dashboard">
+        <SavedPlaces />
+      </RiderShell>
+    );
   }
 
   if (page === "rider-payments") {
     return withInstall(
-      <div>
-        <TopBar
-          title={`${MARKET.brandName} Payments`}
-          goHome={goHome}
-          logout={logout}
-          minimalActions={selectedRide?.status === "completed"}
-        />
-
+      <RiderShell title="Payments" backTo="/rider-dashboard">
         {selectedRide ? (
           <RiderPayments ride={selectedRide} />
         ) : (
@@ -374,11 +426,11 @@ function App() {
               onClick={() => (window.location.href = "/rider-dashboard")}
               style={continueButtonStyle}
             >
-              Back to Rider Dashboard
+              Back to home
             </button>
           </div>
         )}
-      </div>
+      </RiderShell>
     );
   }
 
@@ -396,16 +448,10 @@ function App() {
 
   if (page === "payment-setup") {
     return withInstall(
-      <div>
-        <TopBar
-          title={`${MARKET.brandName} Payment Setup`}
-          goHome={goHome}
-          logout={logout}
-        />
-
+      <RiderShell title="Payment setup" backTo="/rider-dashboard">
         <div style={setupPageStyle}>
           <div style={setupCardStyle}>
-            <h1 style={setupTitleStyle}>💳 Add Your Payment Method</h1>
+            <h1 style={setupTitleStyle}>Add your payment method</h1>
 
             <p style={setupSubtitleStyle}>
               Add Card, Bank Account, Bankily, Masravi, Seddad, or Cash before
@@ -429,11 +475,11 @@ function App() {
               }}
               style={continueButtonStyle}
             >
-              Continue to Rider App
+              Continue
             </button>
           </div>
         </div>
-      </div>
+      </RiderShell>
     );
   }
 
@@ -612,20 +658,27 @@ function App() {
   }
 
   if (page === "settings") {
-    return withInstall(<SettingsPageView onLogout={logout} />);
+    return withInstall(
+      <RiderShell title="Settings" backTo="/rider-dashboard">
+        <SettingsPageView riderMode onLogout={logout} />
+      </RiderShell>
+    );
   }
 
   if (page === "support") {
     return withInstall(
-      <div>
-        <TopBar title={`${MARKET.brandName} Support`} goHome={goHome} logout={logout} />
-        <SupportCenter />
-      </div>
+      <RiderShell title="Help" backTo="/rider-dashboard">
+        <SupportCenter variant="rider" />
+      </RiderShell>
     );
   }
 
   if (page === "services") {
-    return withInstall(<LaunchServices />);
+    return withInstall(
+      <RiderShell title="Services" backTo="/rider-dashboard">
+        <LaunchServices embedded />
+      </RiderShell>
+    );
   }
 
   if (["terms", "privacy"].includes(page)) {
@@ -3173,9 +3226,145 @@ function LegalPage({ page }) {
   );
 }
 
-function TopBar({ title, goHome, logout, minimalActions = false }) {
+const RIDER_TOP_BAR_PATHS = [
+  "/rider-dashboard",
+  "/rider",
+  "/rider-profile",
+  "/rider-history",
+  "/rider-ride-history",
+  "/rider-reviews",
+  "/saved-places",
+  "/rider-payments",
+  "/support",
+  "/services",
+  "/settings",
+  "/payment-setup",
+];
+
+function isRiderTopBarContext() {
+  if (getAppType() === "rider") {
+    return true;
+  }
+
+  const path = window.location.pathname.replace(/\/+$/, "") || "/";
+  const isRiderPath = RIDER_TOP_BAR_PATHS.some(
+    (prefix) => path === prefix || path.startsWith(`${prefix}/`),
+  );
+
+  if (!isRiderPath) {
+    return false;
+  }
+
+  return getUserRole(getStoredUser()) === "rider";
+}
+
+function resolveTopBarMenuMode(minimalActions, menuMode = "auto") {
+  if (minimalActions) {
+    return "minimal";
+  }
+  if (menuMode !== "auto") {
+    return menuMode;
+  }
+  return isRiderTopBarContext() ? "rider" : "full";
+}
+
+function TopBar({ title, goHome, logout, minimalActions = false, menuMode = "auto" }) {
   const { t } = useTranslation();
   const [showSafety, setShowSafety] = useState(false);
+  const resolvedMenuMode = resolveTopBarMenuMode(minimalActions, menuMode);
+  const currentPath = window.location.pathname.replace(/\/+$/, "") || "/";
+
+  const navigate = (path) => {
+    window.location.href = path;
+  };
+
+  const safetyMenu = (
+    <div style={safetyMenuWrapStyle}>
+      <button
+        onClick={() => setShowSafety((current) => !current)}
+        style={safetyButtonStyle}
+      >
+        {t("settings.safetyEmergency")}
+      </button>
+
+      {showSafety && (
+        <div style={safetyDropdownStyle}>
+          <div style={safetyHeaderStyle}>
+            <strong>{t("settings.emergency")}</strong>
+            <span>Tap a number to call</span>
+          </div>
+
+          {MARKET.emergencyNumbers.map((item) => (
+            <a
+              key={item.number}
+              href={`tel:${item.number}`}
+              title={item.description}
+              style={safetyCallRowStyle}
+            >
+              <span>{item.label}</span>
+              <strong>{item.number}</strong>
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  const riderActions = (
+    <>
+      {safetyMenu}
+      <button onClick={() => navigate("/rider-dashboard")} style={topPrimaryButtonStyle}>
+        {t("common.rider")}
+      </button>
+      <button onClick={() => navigate("/rider-profile")} style={topButtonStyle}>
+        {t("profile.riderProfile")}
+      </button>
+      {currentPath !== "/support" && (
+        <button onClick={() => navigate("/support")} style={topButtonStyle}>
+          {t("common.support")}
+        </button>
+      )}
+      <button onClick={() => navigate("/settings")} style={topButtonStyle}>
+        {t("common.settings")}
+      </button>
+      <button onClick={logout} style={logoutButtonStyle}>
+        {t("common.logout")}
+      </button>
+    </>
+  );
+
+  const fullActions = (
+    <>
+      {safetyMenu}
+      <button onClick={() => navigate("/rider-dashboard")} style={topButtonStyle}>
+        {t("common.rider")}
+      </button>
+      <button onClick={() => navigate("/driver")} style={topButtonStyle}>
+        {t("common.driver")}
+      </button>
+      <button onClick={() => navigate("/rider-profile")} style={topButtonStyle}>
+        {t("profile.riderProfile")}
+      </button>
+      <button onClick={() => navigate("/driver-profile")} style={topButtonStyle}>
+        {t("profile.driverProfile")}
+      </button>
+      <button onClick={() => navigate("/admin")} style={topButtonStyle}>
+        {t("common.admin")}
+      </button>
+      <button onClick={goHome} style={topButtonStyle}>
+        {t("common.home")}
+      </button>
+      <button onClick={() => navigate("/support")} style={topButtonStyle}>
+        {t("common.support")}
+      </button>
+      <button onClick={() => navigate("/settings")} style={topButtonStyle}>
+        {t("common.settings")}
+      </button>
+      <button onClick={logout} style={logoutButtonStyle}>
+        {t("common.logout")}
+      </button>
+    </>
+  );
 
   return (
     <div style={topBarStyle}>
@@ -3190,79 +3379,13 @@ function TopBar({ title, goHome, logout, minimalActions = false }) {
       </div>
 
       <div style={topButtonGroupStyle}>
-        {minimalActions ? (
+        {resolvedMenuMode === "minimal" && (
           <button onClick={logout} style={logoutButtonStyle}>
             {t("common.logout")}
           </button>
-        ) : (
-          <>
-        <div style={safetyMenuWrapStyle}>
-          <button
-            onClick={() => setShowSafety((current) => !current)}
-            style={safetyButtonStyle}
-          >
-            {t("settings.safetyEmergency")}
-          </button>
-
-          {showSafety && (
-            <div style={safetyDropdownStyle}>
-              <div style={safetyHeaderStyle}>
-                <strong>{t("settings.emergency")}</strong>
-                <span>Tap a number to call</span>
-              </div>
-
-              {MARKET.emergencyNumbers.map((item) => (
-                <a
-                  key={item.number}
-                  href={`tel:${item.number}`}
-                  title={item.description}
-                  style={safetyCallRowStyle}
-                >
-                  <span>{item.label}</span>
-                  <strong>{item.number}</strong>
-                </a>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <button onClick={() => (window.location.href = "/rider-dashboard")} style={topButtonStyle}>
-          {t("common.rider")}
-        </button>
-
-        <button onClick={() => (window.location.href = "/driver")} style={topButtonStyle}>
-          {t("common.driver")}
-        </button>
-
-        <button onClick={() => (window.location.href = "/rider-profile")} style={topButtonStyle}>
-          {t("profile.riderProfile")}
-        </button>
-
-        <button onClick={() => (window.location.href = "/driver-profile")} style={topButtonStyle}>
-          {t("profile.driverProfile")}
-        </button>
-
-        <button onClick={() => (window.location.href = "/admin")} style={topButtonStyle}>
-          {t("common.admin")}
-        </button>
-
-        <button onClick={goHome} style={topButtonStyle}>
-          {t("common.home")}
-        </button>
-
-        <button onClick={() => (window.location.href = "/support")} style={topButtonStyle}>
-          {t("common.support")}
-        </button>
-
-        <button onClick={() => (window.location.href = "/settings")} style={topButtonStyle}>
-          {t("common.settings")}
-        </button>
-
-        <button onClick={logout} style={logoutButtonStyle}>
-          {t("common.logout")}
-        </button>
-          </>
         )}
+        {resolvedMenuMode === "rider" && riderActions}
+        {resolvedMenuMode === "full" && fullActions}
       </div>
     </div>
   );
@@ -3503,6 +3626,13 @@ const topButtonStyle = {
   borderRadius: "10px",
   fontWeight: "bold",
   cursor: "pointer",
+};
+
+const topPrimaryButtonStyle = {
+  ...topButtonStyle,
+  background: "rgba(0, 166, 81, 0.28)",
+  border: "1px solid rgba(74, 222, 128, 0.35)",
+  color: "#ecfdf5",
 };
 
 const logoutButtonStyle = {

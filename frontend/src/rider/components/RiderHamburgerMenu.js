@@ -1,17 +1,33 @@
 import React from "react";
 import "../../driver/components/HamburgerMenu.css";
+import "./RiderHamburgerMenu.css";
 
-const MENU_ITEMS = [
-  { icon: "BR", label: "Book a ride", action: "book" },
-  { icon: "RP", label: "Rider profile", path: "/rider-profile" },
-  { icon: "TH", label: "Trip history", path: "/rider-history" },
-  { icon: "SP", label: "Saved places", path: "/saved-places" },
-  { icon: "YS", label: "Yala services", path: "/services" },
-  { icon: "DL", label: "Delivery", path: "/delivery" },
-  { icon: "PM", label: "Payments", path: "/rider-payments" },
-  { icon: "HP", label: "Help & support", path: "/support" },
-  { icon: "ST", label: "Settings", path: "/settings" },
-  { icon: "LO", label: "Logout", action: "logout", danger: true },
+const MENU_SECTIONS = [
+  {
+    title: "Rides",
+    items: [
+      { icon: "🚗", label: "Book a ride", action: "book" },
+      { icon: "🕐", label: "Trip history", path: "/rider-history" },
+      { icon: "📍", label: "Saved places", path: "/saved-places" },
+    ],
+  },
+  {
+    title: "Account",
+    items: [
+      { icon: "👤", label: "Profile", path: "/rider-profile" },
+      { icon: "💳", label: "Payments", path: "/rider-payments" },
+      { icon: "⚙️", label: "Settings", path: "/settings" },
+    ],
+  },
+  {
+    title: "More",
+    items: [
+      { icon: "✨", label: "Yala services", path: "/services" },
+      { icon: "📦", label: "Delivery", path: "/delivery" },
+      { icon: "💬", label: "Help & support", path: "/support" },
+      { icon: "↪", label: "Log out", action: "logout", danger: true },
+    ],
+  },
 ];
 
 export default function RiderHamburgerMenu({
@@ -55,7 +71,7 @@ export default function RiderHamburgerMenu({
 
   return (
     <div
-      className={`hamburger-menu ${isOpen ? "hamburger-menu--open" : "hamburger-menu--closed"}`}
+      className={`hamburger-menu rider-menu ${isOpen ? "hamburger-menu--open" : "hamburger-menu--closed"}`}
       aria-hidden={!isOpen}
     >
       <div
@@ -78,9 +94,9 @@ export default function RiderHamburgerMenu({
             </div>
           )}
           <div className="hamburger-menu__profile-info">
-            <span className="hamburger-menu__eyebrow">Yala Rider</span>
+            <span className="hamburger-menu__eyebrow">Rider</span>
             <h2 className="hamburger-menu__name">{fullName}</h2>
-            <p>Profile, trips, and booking</p>
+            <p>Tap a destination to get moving</p>
           </div>
           <button
             className="hamburger-menu__close"
@@ -92,23 +108,30 @@ export default function RiderHamburgerMenu({
           </button>
         </div>
 
-        <ul className="hamburger-menu__items">
-          {MENU_ITEMS.map((item) => (
-            <li
-              key={item.label}
-              className={`hamburger-menu__item ${item.danger ? "hamburger-menu__item--danger" : ""}`}
-              onClick={() => handleItemClick(item)}
-              onKeyDown={(event) => handleItemKeyDown(event, item)}
-              role="menuitem"
-              tabIndex={isOpen ? 0 : -1}
-            >
-              <span className="hamburger-menu__item-icon" aria-hidden="true">
-                {item.icon}
-              </span>
-              <span className="hamburger-menu__item-label">{item.label}</span>
-            </li>
-          ))}
-        </ul>
+        {MENU_SECTIONS.map((section) => (
+          <div key={section.title}>
+            <p className="hamburger-menu__section">{section.title}</p>
+            <ul className="hamburger-menu__items">
+              {section.items.map((item) => (
+                <li
+                  key={item.label}
+                  className={`hamburger-menu__item ${item.danger ? "hamburger-menu__item--danger" : ""}`}
+                  onClick={() => handleItemClick(item)}
+                  onKeyDown={(event) => handleItemKeyDown(event, item)}
+                  role="menuitem"
+                  tabIndex={isOpen ? 0 : -1}
+                >
+                  <span className="hamburger-menu__item-icon" aria-hidden="true">
+                    {item.icon}
+                  </span>
+                  <span className="hamburger-menu__item-label">{item.label}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+
+        <div className="hamburger-menu__footer">Yala · Mauritania</div>
       </nav>
     </div>
   );

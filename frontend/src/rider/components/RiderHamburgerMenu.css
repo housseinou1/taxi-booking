@@ -1,0 +1,100 @@
+.rider-menu .hamburger-menu__drawer {
+  width: min(360px, 92vw);
+  background: #ffffff;
+}
+
+.rider-menu .hamburger-menu__header {
+  padding: max(20px, env(safe-area-inset-top)) 20px 16px;
+  grid-template-columns: 56px minmax(0, 1fr) 36px;
+  gap: 12px;
+  border-bottom: 1px solid #eceff1;
+}
+
+.rider-menu .hamburger-menu__avatar,
+.rider-menu .hamburger-menu__avatar-placeholder {
+  width: 56px;
+  height: 56px;
+  border: 2px solid #00a651;
+  background: #ecfdf3;
+  color: #047857;
+  font-size: 18px;
+}
+
+.rider-menu .hamburger-menu__eyebrow {
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.rider-menu .hamburger-menu__name {
+  font-size: 20px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.rider-menu .hamburger-menu__profile-info p {
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.rider-menu .hamburger-menu__section {
+  padding: 14px 20px 6px;
+  margin: 0;
+  color: #9ca3af;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.rider-menu .hamburger-menu__items {
+  padding: 0 0 12px;
+}
+
+.rider-menu .hamburger-menu__item {
+  min-height: 52px;
+  margin: 0 10px;
+  padding: 0 12px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.rider-menu .hamburger-menu__item:hover,
+.rider-menu .hamburger-menu__item:active {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.rider-menu .hamburger-menu__item-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #f3f4f6;
+  color: #111827;
+  font-size: 16px;
+  font-weight: 400;
+}
+
+.rider-menu .hamburger-menu__item--danger {
+  margin-top: 4px;
+  color: #dc2626;
+}
+
+.rider-menu .hamburger-menu__item--danger .hamburger-menu__item-icon {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.rider-menu .hamburger-menu__footer {
+  margin-top: auto;
+  padding: 12px 20px max(20px, env(safe-area-inset-bottom));
+  border-top: 1px solid #eceff1;
+  color: #9ca3af;
+  font-size: 12px;
+  font-weight: 500;
+}

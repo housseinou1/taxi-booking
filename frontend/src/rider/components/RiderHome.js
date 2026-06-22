@@ -791,7 +791,7 @@ function RiderHome() {
         <>
           <header className="rider-home__top-bar">
             <button className="rider-home__menu-btn" type="button" onClick={() => setShowMenu(true)} aria-label="Open rider menu">
-              ☰
+              <span className="rider-home__menu-icon" aria-hidden="true" />
             </button>
             <button className="rider-home__avatar-btn" type="button" onClick={() => handleNavigate('/rider-profile')} aria-label="Open rider profile">
               {riderInitial}
@@ -799,7 +799,7 @@ function RiderHome() {
           </header>
           <button className="rider-home__floating-search" type="button" onClick={handleDestinationFocus}>
             <span aria-hidden="true">⌕</span>
-            <strong>Where are you going?</strong>
+            <strong>Where to?</strong>
           </button>
           <div className="rider-home__map-caption">
             <strong>You are here</strong>

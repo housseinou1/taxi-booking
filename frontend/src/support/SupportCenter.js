@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { MARKET } from "../marketConfig";
@@ -33,9 +33,10 @@ const faqs = [
   },
 ];
 
-function SupportCenter() {
+function SupportCenter({ variant = "default" }) {
   const { t } = useTranslation();
-  const [activeTopic, setActiveTopic] = useState(supportTopics[0]);
+  const isRider = variant === "rider";
+  const [activeTopic, setActiveTopic] = useState(() => getInitialTopic());
   const [submitted, setSubmitted] = useState("");
   const [form, setForm] = useState({
     name: "",
@@ -49,6 +50,14 @@ function SupportCenter() {
   });
 
   const topicCopy = useMemo(() => getTopicCopy(activeTopic, t), [activeTopic, t]);
+
+  useEffect(() => {
+    const topic = getInitialTopic();
+    if (topic !== activeTopic) {
+      setActiveTopic(topic);
+      setSubmitted("");
+    }
+  }, [activeTopic]);
 
   const updateForm = (field, value) => {
     setForm((current) => ({
@@ -99,9 +108,32 @@ function SupportCenter() {
   };
 
   return (
-    <main className="sx-support-page">
+    <main className={`sx-support-page ${isRider ? "sx-support-page--rider" : ""}`}>
       <SupportStyles />
 
+      {isRider ? (
+        <section className="sx-support-rider-intro">
+          <p>Get help with rides, payments, lost items, and safety.</p>
+          <div className="sx-support-rider-quick">
+            <button type="button" onClick={() => setActiveTopic("ride")}>
+              <span>🚗</span>
+              <strong>Ride issue</strong>
+            </button>
+            <button type="button" onClick={() => setActiveTopic("payment")}>
+              <span>💳</span>
+              <strong>Payment</strong>
+            </button>
+            <button type="button" onClick={() => setActiveTopic("lost")}>
+              <span>🎒</span>
+              <strong>Lost item</strong>
+            </button>
+            <a href="#emergency" className="sx-support-rider-emergency">
+              <span>🆘</span>
+              <strong>Emergency</strong>
+            </a>
+          </div>
+        </section>
+      ) : (
       <section className="sx-support-hero">
         <div>
           <span>{t("supportCenter.eyebrow")}</span>
@@ -123,6 +155,7 @@ function SupportCenter() {
           </div>
         </aside>
       </section>
+      )}
 
       <section className="sx-support-grid">
         <article className="sx-support-panel sx-faq-panel">
@@ -275,6 +308,11 @@ function SupportCenter() {
       </section>
     </main>
   );
+}
+
+function getInitialTopic() {
+  const topic = new URLSearchParams(window.location.search || "").get("topic");
+  return supportTopics.includes(topic) ? topic : supportTopics[0];
 }
 
 function getTopicCopy(topic, t) {
@@ -586,6 +624,127 @@ function SupportStyles() {
         .sx-form-grid {
           grid-template-columns: 1fr;
         }
+      }
+
+      .sx-support-page--rider {
+        min-height: auto;
+        padding: 16px;
+        background: #ffffff;
+        color: #111827;
+      }
+
+      .sx-support-rider-intro {
+        max-width: 720px;
+        margin: 0 auto 16px;
+      }
+
+      .sx-support-rider-intro p {
+        margin: 0 0 14px;
+        color: #6b7280;
+        font-size: 15px;
+        line-height: 1.5;
+      }
+
+      .sx-support-rider-quick {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .sx-support-rider-quick button,
+      .sx-support-rider-emergency {
+        min-height: 72px;
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        background: #f9fafb;
+        color: #111827;
+        text-decoration: none;
+        padding: 12px;
+        display: grid;
+        gap: 6px;
+        justify-items: start;
+        cursor: pointer;
+        font: inherit;
+      }
+
+      .sx-support-rider-quick strong {
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .sx-support-rider-emergency {
+        background: #fef2f2;
+        border-color: #fecaca;
+        color: #991b1b;
+      }
+
+      .sx-support-page--rider .sx-support-grid {
+        margin-top: 8px;
+      }
+
+      .sx-support-page--rider .sx-support-panel,
+      .sx-support-page--rider .sx-emergency-panel {
+        border: 1px solid #e5e7eb;
+        background: #ffffff;
+        box-shadow: none;
+        color: #111827;
+      }
+
+      .sx-support-page--rider .sx-panel-head span,
+      .sx-support-page--rider .sx-emergency-panel span {
+        color: #00a651;
+      }
+
+      .sx-support-page--rider .sx-panel-head p,
+      .sx-support-page--rider .sx-emergency-panel p,
+      .sx-support-page--rider .sx-faq-list p {
+        color: #6b7280;
+      }
+
+      .sx-support-page--rider .sx-faq-list details {
+        border-color: #e5e7eb;
+        background: #f9fafb;
+        color: #111827;
+      }
+
+      .sx-support-page--rider .sx-support-form label {
+        color: #374151;
+      }
+
+      .sx-support-page--rider .sx-support-form input,
+      .sx-support-page--rider .sx-support-form select,
+      .sx-support-page--rider .sx-support-form textarea {
+        border: 1px solid #d1d5db;
+        background: #ffffff;
+        color: #111827;
+      }
+
+      .sx-support-page--rider .sx-topic-tabs button {
+        border: 1px solid #d1d5db;
+        background: #ffffff;
+        color: #111827;
+      }
+
+      .sx-support-page--rider .sx-topic-tabs button.active {
+        background: #111827;
+        color: #ffffff;
+        border-color: #111827;
+      }
+
+      .sx-support-page--rider .sx-submit-support {
+        background: #00a651;
+        color: #ffffff;
+      }
+
+      .sx-support-page--rider .sx-emergency-grid a {
+        border-color: #fecaca;
+        background: #fef2f2;
+        color: #991b1b;
+      }
+
+      .sx-support-page--rider .sx-emergency-grid strong {
+        color: #991b1b;
+        font-size: 1.4rem;
       }
     `}</style>
   );

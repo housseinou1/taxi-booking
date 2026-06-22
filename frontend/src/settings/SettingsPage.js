@@ -5,7 +5,7 @@ import { MARKET } from "../marketConfig";
 
 const LOGO_SRC = "/yala-logo.png";
 
-function SettingsPage({ onLogout }) {
+function SettingsPage({ onLogout, riderMode = false }) {
   const { t, i18n } = useTranslation();
   const user = useMemo(() => getStoredUser(), []);
   const [language, setLanguage] = useState(normalizeLanguageCode(i18n.language));
@@ -84,9 +84,10 @@ function SettingsPage({ onLogout }) {
   ];
 
   return (
-    <main className={`settings-page settings-${theme.toLowerCase()}`}>
+    <main className={`settings-page settings-${theme.toLowerCase()} ${riderMode ? "settings-page--rider" : ""}`}>
       <SettingsPageStyles />
 
+      {!riderMode && (
       <header className="settings-topbar">
         <button className="settings-brand" onClick={() => (window.location.href = "/")}>
           <img src={LOGO_SRC} alt={`${MARKET.brandName} logo`} />
@@ -99,7 +100,9 @@ function SettingsPage({ onLogout }) {
           <button onClick={() => (window.location.href = "/admin")}>{t("common.admin")}</button>
         </nav>
       </header>
+      )}
 
+      {!riderMode && (
       <section className="settings-hero">
         <div>
           <span className="settings-kicker">{t("settings.accountCenter")}</span>
@@ -115,6 +118,7 @@ function SettingsPage({ onLogout }) {
           </div>
         </aside>
       </section>
+      )}
 
       <section className="settings-grid">
         <article className="settings-panel settings-preferences">
@@ -699,6 +703,30 @@ function SettingsPageStyles() {
         .settings-language-selector {
           grid-template-columns: 1fr;
         }
+      }
+
+      .settings-page--rider {
+        min-height: auto;
+        padding: 0 16px 24px;
+        background: #ffffff;
+        color: #111827;
+      }
+
+      .settings-page--rider .settings-grid {
+        margin-top: 8px;
+      }
+
+      .settings-page--rider .settings-panel,
+      .settings-page--rider .settings-emergency-panel,
+      .settings-page--rider .settings-logout-panel {
+        border: 1px solid #e5e7eb;
+        background: #ffffff;
+        box-shadow: none;
+      }
+
+      .settings-page--rider .settings-option {
+        border-color: #e5e7eb;
+        background: #f9fafb;
       }
     `}</style>
   );

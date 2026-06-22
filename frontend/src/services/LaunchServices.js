@@ -216,7 +216,7 @@ async function apiPost(path, data) {
   return authenticatedRequestFirst(paths, { method: "post", data });
 }
 
-function LaunchServices() {
+function LaunchServices({ embedded = false }) {
   const user = useMemo(() => JSON.parse(localStorage.getItem("user") || "{}"), []);
   const role = user.is_staff ? "admin" : user.user_type || "rider";
   const sections = role === "driver"
@@ -244,7 +244,8 @@ function LaunchServices() {
   const [active, setActive] = useState(initialSection);
 
   return (
-    <main className="yala-services">
+    <main className={`yala-services ${embedded ? "yala-services--embedded" : ""}`}>
+      {!embedded && (
       <header className="ys-header">
         <div>
           <span>Yala operations</span>
@@ -253,6 +254,7 @@ function LaunchServices() {
         </div>
         <div className="ys-role">{role}</div>
       </header>
+      )}
 
       <nav className="ys-tabs" aria-label="Yala services">
         {sections.map((section) => (
