@@ -99,7 +99,7 @@
 
 .ride-tracker__driver-contact {
   margin: 9px 0 0;
-  color: var(--yala-navy);
+  color: #111827;
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
 }
@@ -154,7 +154,7 @@
 
 .ride-tracker__vehicle-name {
   margin: 0 0 4px;
-  color: var(--yala-navy);
+  color: #111827;
   font-size: var(--font-size-md);
   font-weight: var(--font-weight-bold);
 }
@@ -173,11 +173,11 @@
 .ride-tracker__plate {
   display: inline-block;
   padding: 5px 9px;
-  border: 2px solid var(--yala-navy);
+  border: 2px solid #111827;
   border-radius: var(--radius-sm);
   background: var(--yala-white);
   font-weight: var(--font-weight-semibold);
-  color: var(--yala-navy);
+  color: #111827;
   letter-spacing: 1px;
 }
 
@@ -352,7 +352,7 @@
 }
 
 .ride-tracker__step--completed .ride-tracker__step-label {
-  color: var(--yala-navy);
+  color: #111827;
 }
 
 .ride-tracker__step-connector {
@@ -407,7 +407,7 @@
 .ride-tracker__eta-value {
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-bold);
-  color: var(--yala-navy);
+  color: #111827;
 }
 
 .ride-tracker__pin {
@@ -605,14 +605,14 @@
 .ride-tracker__modal-title {
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-semibold);
-  color: var(--yala-navy);
+  color: #111827;
   margin: 0 0 18px 0;
 }
 
 .ride-tracker__btn--call,
 .ride-tracker__btn--share {
   background: var(--yala-gray-100);
-  color: var(--yala-navy);
+  color: #111827;
   text-decoration: none;
 }
 
@@ -655,7 +655,7 @@
   cursor: pointer;
   font-family: var(--font-family);
   font-size: var(--font-size-md);
-  color: var(--yala-navy);
+  color: #111827;
   transition: border-color var(--transition-fast), background var(--transition-fast);
   min-height: var(--tap-target-min);
 }

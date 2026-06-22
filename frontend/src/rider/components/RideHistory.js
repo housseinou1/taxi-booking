@@ -52,7 +52,7 @@ function RideHistory() {
 
   if (loading) {
     return (
-      <div className="ride-history" role="status" aria-label="Loading ride history">
+      <div className="ride-history ride-history--lyft" role="status" aria-label="Loading ride history">
         <div className="ride-history__loading">
           <span className="ride-history__spinner" aria-hidden="true" />
           <span>Loading your trips...</span>
@@ -63,7 +63,7 @@ function RideHistory() {
 
   if (error) {
     return (
-      <div className="ride-history" role="alert">
+      <div className="ride-history ride-history--lyft" role="alert">
         <div className="ride-history__error">
           <p className="ride-history__error-message">{error}</p>
           <button
@@ -80,7 +80,7 @@ function RideHistory() {
 
   if (trips.length === 0) {
     return (
-      <div className="ride-history">
+      <div className="ride-history ride-history--lyft">
         <div className="ride-history__empty">
           <span className="ride-history__empty-icon" aria-hidden="true">🚗</span>
           <h2 className="ride-history__empty-title">No trips yet</h2>
@@ -93,21 +93,7 @@ function RideHistory() {
   }
 
   return (
-    <div className="ride-history">
-      <header className="ride-history__topbar">
-        <button
-          type="button"
-          className="ride-history__back-btn"
-          onClick={() => {
-            window.location.href = '/rider-dashboard';
-          }}
-        >
-          Back
-        </button>
-        <strong>Ride History</strong>
-        <span aria-hidden="true" />
-      </header>
-      <h1 className="ride-history__title">Ride History</h1>
+    <div className="ride-history ride-history--lyft">
       <div className="ride-history__list" role="list">
         {trips.map((trip) => (
           <div key={trip.id} role="listitem">

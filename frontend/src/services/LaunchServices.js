@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 
 import { API_URL, getApiCandidates } from "../apiConfig";
+import { isRiderLyftUI } from "../native/platform";
 import riderApi from "../rider/services/authenticatedApi";
 import "./LaunchServices.css";
 
@@ -244,7 +245,11 @@ function LaunchServices({ embedded = false }) {
   const [active, setActive] = useState(initialSection);
 
   return (
-    <main className={`yala-services ${embedded ? "yala-services--embedded" : ""}`}>
+    <main
+      className={`yala-services ${embedded ? "yala-services--embedded" : ""} ${
+        embedded && isRiderLyftUI() ? "yala-services--rider-lyft" : ""
+      }`}
+    >
       {!embedded && (
       <header className="ys-header">
         <div>

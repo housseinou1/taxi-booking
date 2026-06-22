@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useTranslation } from "react-i18next";
 import { API_URL, getApiCandidates } from "../apiConfig";
-import { getAppType } from "../native/platform";
+import { getAppType, isRiderLyftUI } from "../native/platform";
 
 const logoSrc = "/yala-logo.png";
 const riderLogoSrc = "/yala-rider-logo.png";
@@ -324,7 +324,7 @@ function Register() {
     }
   };
 
-  const isRiderLyft = getAppType() === "rider" || formData.user_type === "rider";
+  const isRiderLyft = isRiderLyftUI() || formData.user_type === "rider";
 
   return (
     <main className={`auth-register-page${isRiderLyft ? " auth-register-page--lyft" : ""}`}>

@@ -9,7 +9,9 @@ function SettingsPage({ onLogout, riderMode = false }) {
   const { t, i18n } = useTranslation();
   const user = useMemo(() => getStoredUser(), []);
   const [language, setLanguage] = useState(normalizeLanguageCode(i18n.language));
-  const [theme, setTheme] = useState(localStorage.getItem("sx_theme") || "Dark");
+  const [theme, setTheme] = useState(
+    () => localStorage.getItem("sx_theme") || (riderMode ? "Light" : "Dark"),
+  );
   const [notificationsEnabled, setNotificationsEnabled] = useState(
     localStorage.getItem("sx_notifications") !== "off"
   );
@@ -140,6 +142,7 @@ function SettingsPage({ onLogout, riderMode = false }) {
             }
           />
 
+          {!riderMode && (
           <SettingControl
             title={t("settings.theme")}
             description={t("settings.themeDescription")}
@@ -155,6 +158,7 @@ function SettingsPage({ onLogout, riderMode = false }) {
               />
             }
           />
+          )}
 
           <SettingControl
             title={t("settings.notifications")}

@@ -7,10 +7,15 @@
   font-family: var(--font-family);
 }
 
+.ride-history--lyft {
+  padding: 0 0 24px;
+  background: transparent;
+}
+
 .ride-history__title {
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-bold);
-  color: var(--yala-navy);
+  color: #111827;
   margin: 0 0 var(--space-lg);
 }
 
@@ -94,7 +99,7 @@
   background: var(--yala-green);
   color: var(--yala-white);
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: 999px;
   font-family: var(--font-family);
   font-size: var(--font-size-md);
   font-weight: var(--font-weight-semibold);
@@ -134,7 +139,7 @@
 .ride-history__empty-title {
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-semibold);
-  color: var(--yala-navy);
+  color: #111827;
   margin: 0;
 }
 

@@ -3,7 +3,7 @@ import axios from "axios";
 import { useTranslation } from "react-i18next";
 import { API_URL } from "../apiConfig";
 import { formatMoney } from "../marketConfig";
-import { getAppType } from "../native/platform";
+import { isRiderLyftUI } from "../native/platform";
 import PostRidePayRate from "../rider/components/PostRidePayRate";
 
 const PAYMENT_METHODS = [
@@ -233,7 +233,7 @@ function PaymentPage({ ride }) {
   const isAutoPaid = paymentStatus === "paid";
   const isAuthorized = paymentStatus === "authorized";
   const isCompletedRide = rideStatus === "completed";
-  const lyftRider = getAppType() === "rider";
+  const lyftRider = isRiderLyftUI();
   const paymentPageClass = `sx-payments-page${lyftRider ? " sx-payments-page--lyft" : ""}${isCompletedRide ? " is-completed-flow" : ""}`;
 
   const walletBalance = useMemo(() => {

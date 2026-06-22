@@ -439,15 +439,7 @@ function App() {
             <RiderPayments ride={selectedRide} />
           )
         ) : (
-          <div style={emptyPageStyle}>
-            <h2>No completed ride found.</h2>
-            <button
-              onClick={() => (window.location.href = "/rider-dashboard")}
-              style={continueButtonStyle}
-            >
-              Back to home
-            </button>
-          </div>
+          <RiderPayments />
         )}
       </RiderShell>
     );

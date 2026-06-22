@@ -713,3 +713,384 @@
   border-color: #fecaca;
   color: #b91c1c;
 }
+
+/* ─── Shared secondary screens (Saved places, Reviews, History) ───────────── */
+
+.rider-secondary-page {
+  padding: 0 0 24px;
+  color: #111827;
+  font-family: var(--font-family, "Plus Jakarta Sans", sans-serif);
+}
+
+.rider-secondary-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.rider-secondary-lead {
+  margin: 0;
+  color: #6b7280;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.rider-secondary-link-btn {
+  border: 0;
+  background: transparent;
+  color: var(--yala-green, #00a651);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.rider-secondary-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.rider-secondary-stat-card {
+  padding: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.rider-secondary-stat-card span {
+  display: block;
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.rider-secondary-stat-card strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 22px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.rider-secondary-stat-card small {
+  display: block;
+  margin-top: 4px;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.reviews-score-main strong {
+  font-size: 34px;
+  color: var(--yala-green, #00a651);
+}
+
+.rider-secondary-panel {
+  padding: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.rider-secondary-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.rider-secondary-panel-head span {
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.rider-secondary-panel-head strong {
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: #ecfdf3;
+  color: #047857;
+  font-size: 13px;
+}
+
+.rider-secondary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.rider-secondary-row:last-child {
+  border-bottom: 0;
+}
+
+.rider-secondary-row-body strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.rider-secondary-row-body span,
+.rider-secondary-row-body small {
+  display: block;
+  margin-top: 2px;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.rider-secondary-primary-btn,
+.rider-secondary-ghost-btn {
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.rider-secondary-primary-btn {
+  border: 0;
+  background: var(--yala-green, #00a651);
+  color: #ffffff;
+}
+
+.rider-secondary-ghost-btn {
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #111827;
+}
+
+.rider-secondary-empty {
+  padding: 24px 12px;
+  text-align: center;
+  color: #6b7280;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.rider-secondary-notice {
+  margin: 0;
+  color: #047857;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.rider-secondary-alert {
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.saved-places-content,
+.reviews-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.saved-places-content {
+  grid-template-columns: minmax(280px, 0.9fr) minmax(0, 1.1fr);
+}
+
+.reviews-grid {
+  grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+}
+
+.saved-places-form {
+  display: grid;
+  gap: 11px;
+}
+
+.saved-places-form label {
+  display: grid;
+  gap: 6px;
+  color: #374151;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.saved-places-form input,
+.saved-places-form select {
+  min-height: 46px;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  padding: 0 12px;
+  background: #f9fafb;
+  color: #111827;
+  font: inherit;
+}
+
+.saved-places-list {
+  display: grid;
+  gap: 0;
+}
+
+.saved-places-list .place-card {
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.place-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: #ecfdf3;
+  color: #047857;
+  font-weight: 800;
+}
+
+.place-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+}
+
+.review-card {
+  padding: 12px 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.review-card:last-child {
+  border-bottom: 0;
+}
+
+.review-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.review-card-head span,
+.review-card small {
+  display: block;
+  margin-top: 2px;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.review-card-head b {
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: #f3f4f6;
+  color: #111827;
+  font-size: 13px;
+}
+
+.review-stars {
+  margin: 8px 0;
+  color: #111827;
+  font-size: 18px;
+  letter-spacing: 2px;
+}
+
+.review-card p {
+  margin: 0 0 6px;
+  color: #374151;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.unrated-card {
+  padding: 12px 0;
+}
+
+.ride-history--lyft {
+  padding: 0 0 24px;
+  background: transparent;
+}
+
+.ride-history--lyft .ride-history__empty-title,
+.ride-history--lyft .ride-history__error-message {
+  color: #111827;
+}
+
+.ride-history--lyft .ride-history__retry-btn {
+  border-radius: 999px;
+}
+
+/* ─── Services (embedded rider) ─────────────────────────────────────────── */
+
+.yala-services--rider-lyft {
+  font-family: var(--font-family, "Plus Jakarta Sans", sans-serif);
+  color: #111827;
+}
+
+.yala-services--rider-lyft .ys-tabs {
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 4px;
+  border-radius: 999px;
+  background: #f3f4f6;
+}
+
+.yala-services--rider-lyft .ys-tabs button {
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #6b7280;
+  font-weight: 700;
+}
+
+.yala-services--rider-lyft .ys-tabs button.active {
+  background: #ffffff;
+  color: #111827;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+}
+
+.yala-services--rider-lyft .ys-section-title span {
+  color: #6b7280;
+  font-weight: 700;
+}
+
+.yala-services--rider-lyft .ys-section-title h2 {
+  color: #111827;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.yala-services--rider-lyft .ys-panel {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+.yala-services--rider-lyft .ys-form button,
+.yala-services--rider-lyft .ys-small-button {
+  border-radius: 999px;
+  background: var(--yala-green, #00a651);
+  color: #ffffff;
+}
+
+.yala-services--rider-lyft .ys-form input,
+.yala-services--rider-lyft .ys-form select,
+.yala-services--rider-lyft .ys-form textarea {
+  border-radius: 12px;
+  border-color: #d1d5db;
+  background: #f9fafb;
+}
+
+@media (max-width: 760px) {
+  .rider-secondary-stats,
+  .saved-places-content,
+  .reviews-grid {
+    grid-template-columns: 1fr;
+  }
+}

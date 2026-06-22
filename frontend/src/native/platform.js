@@ -115,3 +115,38 @@ export function getAppType() {
 export function shouldShowInstallButton() {
   return !isNative();
 }
+
+const RIDER_LYFT_ROUTES = [
+  "/rider",
+  "/rider-dashboard",
+  "/rider-history",
+  "/history",
+  "/rider-reviews",
+  "/saved-places",
+  "/rider-profile",
+  "/rider-payments",
+  "/ride/share",
+  "/delivery",
+  "/payment-setup",
+  "/settings",
+  "/support",
+  "/services",
+];
+
+/**
+ * True for native rider app and web rider account screens (Lyft-style UI).
+ */
+export function isRiderLyftUI() {
+  if (getAppType() === "rider") {
+    return true;
+  }
+
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  const path = window.location.pathname || "";
+  return RIDER_LYFT_ROUTES.some(
+    (route) => path === route || path.startsWith(`${route}/`),
+  );
+}

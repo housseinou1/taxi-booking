@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { API_URL } from "../apiConfig";
 import { MARKET, formatMoney } from "../marketConfig";
-import { getAppType } from "../native/platform";
+import { isRiderLyftUI } from "../native/platform";
 
 const authConfig = () => ({
   headers: {
@@ -128,7 +128,7 @@ function ProfilePage({ role }) {
     0
   );
 
-  const isRiderLyft = !isDriver && getAppType() === "rider";
+  const isRiderLyft = !isDriver && isRiderLyftUI();
 
   return (
     <main className={`sx-profile-page ${isRiderLyft ? "sx-profile-page--lyft" : ""}`}>

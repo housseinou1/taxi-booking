@@ -122,38 +122,27 @@ function SavedPlaces() {
   };
 
   return (
-    <main className="saved-places-page">
-      <SavedPlacesStyles />
-
-      <header className="places-topbar">
-        <button type="button" onClick={() => (window.location.href = "/rider-dashboard")}>
-          {t("savedPlaces.back")}
-        </button>
-        <strong>{t("savedPlaces.topbar")}</strong>
-        <button type="button" onClick={() => setPlaces(defaultPlaces)}>
+    <div className="rider-secondary-page saved-places-page">
+      <div className="rider-secondary-toolbar">
+        <p className="rider-secondary-lead">{t("savedPlaces.subtitle")}</p>
+        <button type="button" className="rider-secondary-link-btn" onClick={() => setPlaces(defaultPlaces)}>
           {t("savedPlaces.reset")}
         </button>
-      </header>
+      </div>
 
-      <section className="places-hero">
-        <span>{t("savedPlaces.eyebrow")}</span>
-        <h1>{t("savedPlaces.title")}</h1>
-        <p>{t("savedPlaces.subtitle")}</p>
-      </section>
-
-      <section className="places-feature-grid">
+      <section className="rider-secondary-stats saved-places-feature-grid">
         <PlaceFeature title="Home" label={typeLabel("Home")} place={homePlace} displayNote={displayNote} onUse={handleUsePlaceForRide} onRemove={removePlace} />
         <PlaceFeature title="Work" label={typeLabel("Work")} place={workPlace} displayNote={displayNote} onUse={handleUsePlaceForRide} onRemove={removePlace} />
-        <div className="places-feature-card">
+        <div className="rider-secondary-stat-card">
           <span>{t("savedPlaces.favorites")}</span>
           <strong>{favoritePlaces.length}</strong>
           <small>{t("savedPlaces.savedCustomPlaces")}</small>
         </div>
       </section>
 
-      <section className="places-content">
-        <form className="places-form" onSubmit={savePlace}>
-          <div className="places-panel-head">
+      <section className="saved-places-content">
+        <form className="rider-secondary-panel saved-places-form" onSubmit={savePlace}>
+          <div className="rider-secondary-panel-head">
             <span>{t("savedPlaces.addSavedPlace")}</span>
             <strong>{typeLabel(type)}</strong>
           </div>
@@ -212,35 +201,35 @@ function SavedPlaces() {
             />
           </label>
 
-          <button type="submit">{t("savedPlaces.savePlace")}</button>
-          {message && <p>{message}</p>}
+          <button type="submit" className="rider-secondary-primary-btn">{t("savedPlaces.savePlace")}</button>
+          {message && <p className="rider-secondary-notice">{message}</p>}
         </form>
 
-        <section className="places-list">
-          <div className="places-panel-head">
+        <section className="rider-secondary-panel saved-places-list">
+          <div className="rider-secondary-panel-head">
             <span>{t("savedPlaces.allPlaces")}</span>
             <strong>{places.length}</strong>
           </div>
 
           {places.length === 0 ? (
-            <div className="places-empty">{t("savedPlaces.empty")}</div>
+            <div className="rider-secondary-empty">{t("savedPlaces.empty")}</div>
           ) : (
             places.map((place) => (
-              <article key={place.id} className="place-card">
+              <article key={place.id} className="rider-secondary-row place-card">
                 <div className="place-icon">{place.type.slice(0, 1)}</div>
-                <div>
+                <div className="rider-secondary-row-body">
                   <strong>{place.name}</strong>
                   <span>{place.location}, {place.city}</span>
                   <small>{displayNote(place) || typeLabel(place.type)}</small>
                 </div>
                 <div className="place-actions">
-                  <button type="button" onClick={() => handleUsePlaceForRide(place, "destination")}>
+                  <button type="button" className="rider-secondary-primary-btn" onClick={() => handleUsePlaceForRide(place, "destination")}>
                     {t("savedPlaces.dropoff")}
                   </button>
-                  <button type="button" onClick={() => handleUsePlaceForRide(place, "pickup")}>
+                  <button type="button" className="rider-secondary-ghost-btn" onClick={() => handleUsePlaceForRide(place, "pickup")}>
                     {t("savedPlaces.pickup")}
                   </button>
-                  <button type="button" onClick={() => removePlace(place.id)}>
+                  <button type="button" className="rider-secondary-ghost-btn" onClick={() => removePlace(place.id)}>
                     {t("savedPlaces.remove")}
                   </button>
                 </div>
@@ -249,281 +238,26 @@ function SavedPlaces() {
           )}
         </section>
       </section>
-    </main>
+    </div>
   );
 }
 
 function PlaceFeature({ title, label, place, displayNote, onUse, onRemove }) {
   const { t } = useTranslation();
   return (
-    <article className="places-feature-card">
+    <article className="rider-secondary-stat-card places-feature-card">
       <span>{label}</span>
       <strong>{place?.location || t("savedPlaces.notSet")}</strong>
       <small>{place ? `${place.city} · ${displayNote(place)}` : t("savedPlaces.addThisSavedPlace")}</small>
       {place && (
-        <div>
-          <button type="button" onClick={() => onUse(place, title === "Home" ? "pickup" : "destination")}>
+        <div className="place-actions">
+          <button type="button" className="rider-secondary-primary-btn" onClick={() => onUse(place, title === "Home" ? "pickup" : "destination")}>
             {t("savedPlaces.use")}
           </button>
-          <button type="button" onClick={() => onRemove(place.id)}>{t("savedPlaces.remove")}</button>
+          <button type="button" className="rider-secondary-ghost-btn" onClick={() => onRemove(place.id)}>{t("savedPlaces.remove")}</button>
         </div>
       )}
     </article>
-  );
-}
-
-function SavedPlacesStyles() {
-  return (
-    <style>{`
-      .saved-places-page {
-        min-height: 100vh;
-        padding: 14px;
-        box-sizing: border-box;
-        background:
-          radial-gradient(circle at 10% 4%, rgba(0, 166, 81, 0.30), transparent 28%),
-          radial-gradient(circle at 90% 8%, rgba(243, 189, 52, 0.24), transparent 30%),
-          linear-gradient(180deg, #08111f 0%, #101827 42%, #f8fafc 42%, #edf2f7 100%);
-        color: #0f172a;
-      }
-
-      .places-topbar,
-      .places-hero,
-      .places-feature-grid,
-      .places-content {
-        max-width: 1000px;
-        margin-left: auto;
-        margin-right: auto;
-      }
-
-      .places-topbar {
-        display: grid;
-        grid-template-columns: 72px 1fr 72px;
-        gap: 10px;
-        align-items: center;
-        color: #fff;
-        margin-bottom: 16px;
-      }
-
-      .places-topbar strong {
-        text-align: center;
-        font-size: 18px;
-      }
-
-      .places-topbar button,
-      .places-form button,
-      .place-actions button,
-      .places-feature-card button {
-        min-height: 40px;
-        border: 0;
-        border-radius: 999px;
-        font-weight: 900;
-        cursor: pointer;
-      }
-
-      .places-topbar button {
-        background: rgba(255,255,255,0.1);
-        color: #fff;
-      }
-
-      .places-hero {
-        color: #fff;
-        padding: 20px 0 22px;
-      }
-
-      .places-hero span,
-      .places-panel-head span,
-      .places-feature-card span {
-        font-size: 12px;
-        font-weight: 900;
-        text-transform: uppercase;
-        color: rgba(255,255,255,0.66);
-      }
-
-      .places-hero h1 {
-        margin: 8px 0;
-        max-width: 700px;
-        font-size: clamp(30px, 8vw, 48px);
-        line-height: 1;
-        letter-spacing: 0;
-      }
-
-      .places-hero p {
-        max-width: 560px;
-        margin: 0;
-        color: rgba(255,255,255,0.72);
-        font-weight: 650;
-        line-height: 1.5;
-      }
-
-      .places-feature-grid {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 10px;
-        margin-bottom: 12px;
-      }
-
-      .places-feature-card,
-      .places-form,
-      .places-list {
-        border: 1px solid rgba(15,23,42,0.08);
-        border-radius: 8px;
-        background: rgba(255,255,255,0.96);
-        box-shadow: 0 18px 40px rgba(15,23,42,0.08);
-      }
-
-      .places-feature-card {
-        padding: 14px;
-        display: grid;
-        gap: 7px;
-      }
-
-      .places-feature-card span,
-      .places-panel-head span {
-        color: #64748b;
-      }
-
-      .places-feature-card strong {
-        font-size: 20px;
-      }
-
-      .places-feature-card small,
-      .place-card small,
-      .place-card span {
-        color: #64748b;
-        font-weight: 750;
-      }
-
-      .places-feature-card div,
-      .place-actions {
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-      }
-
-      .places-feature-card button,
-      .place-actions button {
-        padding: 0 13px;
-        background: #08111f;
-        color: #fff;
-      }
-
-      .places-feature-card button:first-child,
-      .place-actions button:first-child,
-      .places-form button {
-        background: #00a651;
-        color: #fff;
-      }
-
-      .places-content {
-        display: grid;
-        grid-template-columns: minmax(280px, 0.85fr) minmax(0, 1.15fr);
-        gap: 12px;
-      }
-
-      .places-form,
-      .places-list {
-        padding: 14px;
-      }
-
-      .places-form {
-        display: grid;
-        gap: 11px;
-        align-content: start;
-      }
-
-      .places-panel-head {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-      }
-
-      .places-panel-head strong {
-        border-radius: 999px;
-        padding: 7px 10px;
-        background: #dcfce7;
-        color: #166534;
-      }
-
-      .places-form label {
-        display: grid;
-        gap: 6px;
-        color: #334155;
-        font-weight: 900;
-      }
-
-      .places-form input,
-      .places-form select {
-        min-height: 46px;
-        border: 1px solid #dbe3ef;
-        border-radius: 8px;
-        padding: 0 12px;
-        color: #0f172a;
-        font-weight: 800;
-        background: #fff;
-      }
-
-      .places-form p {
-        margin: 0;
-        color: #166534;
-        font-weight: 850;
-      }
-
-      .places-list {
-        display: grid;
-        gap: 10px;
-        align-content: start;
-      }
-
-      .place-card {
-        display: grid;
-        grid-template-columns: 44px minmax(0, 1fr) auto;
-        gap: 10px;
-        align-items: center;
-        border: 1px solid #e5e7eb;
-        border-radius: 8px;
-        padding: 12px;
-        background: #fff;
-      }
-
-      .place-icon {
-        width: 44px;
-        height: 44px;
-        border-radius: 14px;
-        display: grid;
-        place-items: center;
-        background: linear-gradient(135deg, #08111f, #00a651);
-        color: #fff;
-        font-weight: 950;
-      }
-
-      .place-card strong,
-      .place-card span,
-      .place-card small {
-        display: block;
-      }
-
-      .places-empty {
-        padding: 22px;
-        text-align: center;
-        color: #64748b;
-        font-weight: 850;
-      }
-
-      @media (max-width: 760px) {
-        .places-feature-grid,
-        .places-content {
-          grid-template-columns: 1fr;
-        }
-
-        .place-card {
-          grid-template-columns: 44px minmax(0, 1fr);
-        }
-
-        .place-actions {
-          grid-column: 1 / -1;
-        }
-      }
-    `}</style>
   );
 }
 
