@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { API_URL } from "../apiConfig";
 import { languageOptions, normalizeLanguageCode } from "../i18n";
 import { useDriverContext } from "./context/DriverContext";
+import { getDriverColors, isDriverLyftUI } from "./lyftColors";
 import {
   getRideAlertSoundStyle,
   setRideAlertSoundStyle,
@@ -44,6 +45,8 @@ const NOTIFICATION_SOUND_OPTIONS = [
 
 // ─── Main Component ─────────────────────────────────────────────────────────
 export default function DriverSettings() {
+  const lyftUI = isDriverLyftUI();
+  const themeColors = getDriverColors();
   const token = localStorage.getItem("access");
   const { t, i18n } = useTranslation();
   const { state } = useDriverContext();
@@ -190,7 +193,7 @@ export default function DriverSettings() {
   // ─── Loading State ──────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div style={containerStyle}>
+      <div style={{ ...containerStyle, ...(lyftUI ? { backgroundColor: themeColors.darkNavy, minHeight: "auto", paddingTop: 12 } : null) }} className={lyftUI ? "driver-page--lyft" : undefined}>
         <div style={loadingStyle}>
           <span style={loadingSpinnerStyle}>⏳</span>
           <p style={loadingTextStyle}>Loading settings...</p>
@@ -202,7 +205,7 @@ export default function DriverSettings() {
   // ─── Error State ────────────────────────────────────────────────────────
   if (error) {
     return (
-      <div style={containerStyle}>
+      <div style={{ ...containerStyle, ...(lyftUI ? { backgroundColor: themeColors.darkNavy, minHeight: "auto", paddingTop: 12 } : null) }} className={lyftUI ? "driver-page--lyft" : undefined}>
         <div style={errorCardStyle}>
           <p style={errorTextStyle}>{error}</p>
           <button style={retryButtonStyle} onClick={fetchSettings}>
@@ -218,15 +221,23 @@ export default function DriverSettings() {
   );
 
   return (
-    <div style={containerStyle}>
+    <div
+      className={lyftUI ? "driver-page--lyft" : undefined}
+      style={{
+        ...containerStyle,
+        ...(lyftUI ? { backgroundColor: themeColors.darkNavy, minHeight: "auto", paddingTop: 12, paddingBottom: 24 } : null),
+      }}
+    >
       {/* Mauritania accent bar */}
-      <div style={mauritaniaAccentBarStyle} aria-hidden="true" />
+      {!lyftUI && <div style={mauritaniaAccentBarStyle} aria-hidden="true" />}
 
       {/* Header */}
+      {!lyftUI && (
       <div style={headerStyle}>
         <h1 style={titleStyle}>⚙️ Settings</h1>
         <p style={subtitleStyle}>Customize your app experience</p>
       </div>
+      )}
 
       {/* Language Section */}
       <SettingsSection title="🌐 Language" description="Choose your preferred language">
@@ -333,6 +344,7 @@ export default function DriverSettings() {
       </SettingsSection>
 
       {/* Dark Mode Section */}
+      {!lyftUI && (
       <SettingsSection title="🌙 Appearance" description="Toggle dark mode">
         <ToggleRow
           label="Dark Mode"
@@ -341,6 +353,7 @@ export default function DriverSettings() {
           onChange={() => handleToggle("dark_mode")}
         />
       </SettingsSection>
+      )}
 
       {/* Security Section */}
       <SettingsSection

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useTranslation } from "react-i18next";
 import { API_URL, getApiCandidates } from "../apiConfig";
-import { getAppType, isRiderLyftUI } from "../native/platform";
+import { getAppType, isRiderLyftUI, isDriverLyftUI } from "../native/platform";
 
 const logoSrc = "/yala-logo.png";
 const riderLogoSrc = "/yala-rider-logo.png";
@@ -325,9 +325,10 @@ function Register() {
   };
 
   const isRiderLyft = isRiderLyftUI() || formData.user_type === "rider";
+  const isDriverLyft = isDriverLyftUI() || formData.user_type === "driver";
 
   return (
-    <main className={`auth-register-page${isRiderLyft ? " auth-register-page--lyft" : ""}`}>
+    <main className={`auth-register-page${isRiderLyft ? " auth-register-page--lyft" : ""}${isDriverLyft ? " auth-register-page--lyft-driver auth-register-page--lyft" : ""}`}>
       <AuthRegisterStyles />
       <section className="auth-register-hero">
         <img src={getLogoForApp()} alt="Yala" />

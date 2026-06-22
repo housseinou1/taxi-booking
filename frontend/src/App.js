@@ -28,6 +28,7 @@ import SupportCenter from "./support/SupportCenter";
 import LandingPage from "./landing/LandingPage";
 import RiderRideHistory from "./rider/components/RideHistory";
 import RiderShell from "./rider/components/RiderShell";
+import DriverShell from "./driver/components/DriverShell";
 import PostRidePayRate from "./rider/components/PostRidePayRate";
 import { ShareBookingFlow, ShareRideScreen, ShareRideComplete, ShareAdminDashboard } from './components/share';
 import DeliveryCustomerApp from "./delivery/DeliveryCustomerApp";
@@ -119,6 +120,22 @@ const LazyDriverSupport = React.lazy(() => import("./driver/DriverSupport"));
 const LazyDriverAchievements = React.lazy(() => import("./driver/DriverAchievements"));
 const LazyDriverHallOfFame = React.lazy(() => import("./driver/DriverHallOfFame"));
 const LazyDriverRideHistory = React.lazy(() => import("./driver/DriverRideHistory"));
+const LazyDriverSettings = React.lazy(() => import("./driver/DriverSettings"));
+
+const driverPageFallback = (
+  <div className="driver-shell-loading">Loading...</div>
+);
+
+function wrapDriverSecondaryPage(title, node, { backTo = "/driver", withProvider = true } = {}) {
+  const body = withProvider ? <DriverProvider>{node}</DriverProvider> : node;
+  const content = <Suspense fallback={driverPageFallback}>{body}</Suspense>;
+
+  return (
+    <DriverShell title={title} backTo={backTo}>
+      {content}
+    </DriverShell>
+  );
+}
 
 function App() {
   const currentPath = window.location.pathname;
@@ -563,63 +580,27 @@ function App() {
   }
 
   if (page === "driver-earnings") {
-    return withInstall(
-      <DriverProvider>
-        <Suspense fallback={<div style={{ minHeight: "100vh", backgroundColor: "#0B1220", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff" }}>Loading...</div>}>
-          <LazyDriverEarnings />
-        </Suspense>
-      </DriverProvider>
-    );
+    return withInstall(wrapDriverSecondaryPage("Earnings", <LazyDriverEarnings />));
   }
 
   if (page === "driver-hall-of-fame") {
-    return withInstall(
-      <DriverProvider>
-        <Suspense fallback={<div style={{ minHeight: "100vh", backgroundColor: "#0B1220", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff" }}>Loading Hall of Fame...</div>}>
-          <LazyDriverHallOfFame />
-        </Suspense>
-      </DriverProvider>
-    );
+    return withInstall(wrapDriverSecondaryPage("Hall of Fame", <LazyDriverHallOfFame />));
   }
 
   if (page === "driver-feedback") {
-    return withInstall(
-      <DriverProvider>
-        <Suspense fallback={<div style={{ minHeight: "100vh", backgroundColor: "#0B1220", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff" }}>Loading...</div>}>
-          <LazyDriverFeedback />
-        </Suspense>
-      </DriverProvider>
-    );
+    return withInstall(wrapDriverSecondaryPage("Ratings", <LazyDriverFeedback />));
   }
 
   if (page === "driver-support") {
-    return withInstall(
-      <DriverProvider>
-        <Suspense fallback={<div style={{ minHeight: "100vh", backgroundColor: "#0B1220", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff" }}>Loading...</div>}>
-          <LazyDriverSupport />
-        </Suspense>
-      </DriverProvider>
-    );
+    return withInstall(wrapDriverSecondaryPage("Help", <LazyDriverSupport />));
   }
 
   if (page === "driver-achievements") {
-    return withInstall(
-      <DriverProvider>
-        <Suspense fallback={<div style={{ minHeight: "100vh", backgroundColor: "#0B1220", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff" }}>Loading...</div>}>
-          <LazyDriverAchievements />
-        </Suspense>
-      </DriverProvider>
-    );
+    return withInstall(wrapDriverSecondaryPage("Achievements", <LazyDriverAchievements />));
   }
 
   if (page === "driver-history") {
-    return withInstall(
-      <DriverProvider>
-        <Suspense fallback={<div style={{ minHeight: "100vh", backgroundColor: "#0B1220", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff" }}>Loading...</div>}>
-          <LazyDriverRideHistory />
-        </Suspense>
-      </DriverProvider>
-    );
+    return withInstall(wrapDriverSecondaryPage("Ride History", <LazyDriverRideHistory />));
   }
 
   if (page === "driver-profile") {
@@ -669,6 +650,9 @@ function App() {
   }
 
   if (page === "settings") {
+    if (getAppType() === "driver") {
+      return withInstall(wrapDriverSecondaryPage("Settings", <LazyDriverSettings />));
+    }
     return withInstall(
       <RiderShell title="Settings" backTo="/rider-dashboard">
         <SettingsPageView riderMode onLogout={logout} />

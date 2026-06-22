@@ -1,0 +1,114 @@
+/**
+ * Lyft-style driver theme — white surfaces, list rows, pill CTAs, map-first dashboard.
+ */
+
+/* Login / Register reuse rider Lyft form styles */
+.yala-login--lyft-driver,
+.auth-register-page--lyft-driver {
+  /* aliases — same rules as rider in lyft-rider.css */
+}
+
+.yala-login--lyft-driver {
+  background: #ffffff;
+  color: #111827;
+}
+
+/* ─── Driver map dashboard ─────────────────────────────────────────────────── */
+
+.driver-app--lyft .driver-dashboard__menu-btn {
+  background: rgba(255, 255, 255, 0.96) !important;
+  color: #111827 !important;
+  border: 1px solid rgba(229, 231, 235, 0.9) !important;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12) !important;
+}
+
+.driver-app--lyft .driver-dashboard__notice {
+  background: rgba(255, 255, 255, 0.96) !important;
+  color: #111827 !important;
+  border: 1px solid #e5e7eb !important;
+}
+
+.driver-app--lyft .driver-status-panel {
+  background: rgba(255, 255, 255, 0.98) !important;
+  border-top: 1px solid #e5e7eb;
+  box-shadow: 0 -8px 32px rgba(15, 23, 42, 0.08);
+}
+
+.driver-app--lyft .driver-status-panel__handle {
+  background: #d1d5db !important;
+}
+
+.driver-app--lyft .driver-status-panel__title {
+  color: #111827 !important;
+}
+
+.driver-app--lyft .driver-status-panel__subtitle--offline {
+  color: #6b7280 !important;
+}
+
+.driver-app--lyft .driver-status-panel__rider-name,
+.driver-app--lyft .driver-status-panel__route-label {
+  color: #111827 !important;
+}
+
+.driver-app--lyft .driver-status-panel__route-value {
+  color: #6b7280 !important;
+}
+
+/* ─── Driver profile center ───────────────────────────────────────────────── */
+
+.driver-profile-shell--lyft {
+  background: #f3f4f6 !important;
+  color: #111827 !important;
+}
+
+.driver-profile-shell--lyft .driver-profile-header {
+  background: #ffffff !important;
+  border-bottom: 1px solid #e5e7eb !important;
+}
+
+.driver-profile-shell--lyft .driver-profile-header h1,
+.driver-profile-shell--lyft .driver-profile-header p,
+.driver-profile-shell--lyft .driver-profile-header span {
+  color: #111827 !important;
+}
+
+.driver-profile-shell--lyft .driver-profile-card,
+.driver-profile-shell--lyft .driver-profile-section,
+.driver-profile-shell--lyft .driver-profile-row,
+.driver-profile-shell--lyft .driver-profile-stat {
+  background: #ffffff !important;
+  border-color: #e5e7eb !important;
+  box-shadow: none !important;
+}
+
+.driver-profile-shell--lyft .driver-profile-row button,
+.driver-profile-shell--lyft .driver-profile-link-row {
+  color: #111827 !important;
+}
+
+/* ─── Driver secondary pages inside shell ─────────────────────────────────── */
+
+.driver-page--lyft {
+  padding: 0 0 16px;
+  max-width: 428px;
+  margin: 0 auto;
+}
+
+.driver-page--lyft .driver-page__back {
+  display: none;
+}
+
+.driver-support--lyft [style*="tabNavStyle"],
+.driver-support--lyft div[role="tablist"] {
+  border-color: #e5e7eb !important;
+}
+
+.driver-support--lyft button[role="tab"] {
+  color: #6b7280 !important;
+}
+
+.driver-page--lyft .driver-settings-section,
+.driver-page--lyft [style*="sectionCardStyle"] {
+  border-radius: 16px !important;
+}

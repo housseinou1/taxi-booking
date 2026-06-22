@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import axios from "axios";
 
 import { API_URL } from "../apiConfig";
+import { getDriverColors, isDriverLyftUI } from "./lyftColors";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -265,6 +266,8 @@ export function EmergencySupportButton() {
 // ─── Main Support Center Component ──────────────────────────────────────────
 
 export default function DriverSupport() {
+  const lyftUI = isDriverLyftUI();
+  const themeColors = getDriverColors();
   const token = localStorage.getItem("access");
   const [activeTab, setActiveTab] = useState("help");
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -679,15 +682,23 @@ export default function DriverSupport() {
   // ─── Main Render ──────────────────────────────────────────────────────────
 
   return (
-    <div style={containerStyle}>
+    <div
+      className={lyftUI ? "driver-page--lyft driver-support--lyft" : undefined}
+      style={{
+        ...containerStyle,
+        ...(lyftUI ? { backgroundColor: themeColors.darkNavy, minHeight: "auto", paddingTop: 12, paddingBottom: 24 } : null),
+      }}
+    >
       {/* Mauritania accent bar */}
-      <div style={mauritaniaAccentBarStyle} aria-hidden="true" />
+      {!lyftUI && <div style={mauritaniaAccentBarStyle} aria-hidden="true" />}
 
       {/* Page Header */}
+      {!lyftUI && (
       <div style={headerStyle}>
         <h1 style={pageTitleStyle}>🛟 Support Center</h1>
         <p style={pageSubtitleStyle}>Get help, chat with support, or report an emergency</p>
       </div>
+      )}
 
       {/* Tab Navigation */}
       <div style={tabNavStyle} role="tablist" aria-label="Support sections">

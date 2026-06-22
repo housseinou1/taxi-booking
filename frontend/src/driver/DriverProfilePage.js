@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import axios from "axios";
 
 import { API_URL } from "../apiConfig";
+import { isDriverLyftUI } from "./lyftColors";
 import "./DriverProfilePage.css";
 
 const DOCUMENT_TYPES = [
@@ -315,7 +316,7 @@ export default function DriverProfilePage({ onBack }) {
   ];
 
   return (
-    <main className="driver-profile-shell">
+    <main className={`driver-profile-shell${isDriverLyftUI() ? " driver-profile-shell--lyft" : ""}`}>
       <input
         ref={fileInputRef}
         type="file"

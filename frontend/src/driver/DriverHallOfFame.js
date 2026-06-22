@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useState } from "react";
 
 import { API_URL } from "../apiConfig";
+import { isDriverLyftUI } from "./lyftColors";
 
 
 export default function DriverHallOfFame() {
+  const lyftUI = isDriverLyftUI();
   const [data, setData] = useState({ my_recognitions: [], my_stats: {}, achievement_badges: [], driver_of_month: [], top_city: [], top_mauritania: [] });
   const [loading, setLoading] = useState(true);
 
@@ -22,10 +24,12 @@ export default function DriverHallOfFame() {
   useEffect(() => { load(); }, [load]);
 
   return (
-    <main className="hof-page">
-      <HallStyles />
+    <main className={lyftUI ? "hof-page hof-page--lyft driver-page--lyft" : "hof-page"}>
+      <HallStyles lyft={lyftUI} />
       <header className="hof-hero">
-        <button type="button" onClick={() => (window.location.href = "/driver/achievements")}>Back</button>
+        {!lyftUI && (
+          <button type="button" onClick={() => (window.location.href = "/driver/achievements")}>Back</button>
+        )}
         <span>Yala Driver Recognition</span>
         <h1>Hall of Fame</h1>
         <p>Celebrating Mauritania's most loyal, trusted, and accomplished Yala drivers.</p>
@@ -90,7 +94,22 @@ function RecognitionCard({ item }) {
   );
 }
 
-function HallStyles() {
+function HallStyles({ lyft = false }) {
+  if (lyft) {
+    return <style>{`
+    .hof-page--lyft{min-height:auto;background:#f3f4f6;color:#111827;padding:8px 0 24px;font-family:"Plus Jakarta Sans",Inter,"Segoe UI",sans-serif}
+    .hof-page--lyft .hof-hero,.hof-page--lyft .hof-section{max-width:1100px;margin:0 auto}.hof-page--lyft .hof-hero{padding:8px 0 20px;border-bottom:1px solid #e5e7eb}
+    .hof-page--lyft .hof-hero span{display:block;margin-top:8px;color:#00A651;font-size:12px;font-weight:900;text-transform:uppercase}.hof-page--lyft .hof-hero h1{font-size:28px;margin:6px 0;color:#111827;letter-spacing:-0.02em}.hof-page--lyft .hof-hero p,.hof-page--lyft .hof-empty,.hof-page--lyft .hof-loading{color:#6b7280}
+    .hof-page--lyft .hof-section{padding-top:20px}.hof-page--lyft .hof-section h2{font-size:18px;color:#111827}.hof-page--lyft .hof-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(245px,1fr));gap:12px}
+    .hof-page--lyft .hof-card{position:relative;border:1px solid #e5e7eb;border-left:5px solid #00A651;border-radius:12px;background:#fff;padding:15px;color:#111827}.hof-page--lyft .hof-card.silver{border-left-color:#94a3b8}.hof-page--lyft .hof-card.bronze{border-left-color:#d97706}
+    .hof-page--lyft .hof-badge{position:absolute;right:12px;top:12px;border-radius:999px;background:#00A651;color:#fff;padding:4px 8px;font-size:10px;font-weight:800;text-transform:uppercase}.hof-page--lyft .hof-card.silver .hof-badge{background:#64748b}.hof-page--lyft .hof-card.bronze .hof-badge{background:#d97706}
+    .hof-page--lyft .hof-card>span{color:#6b7280;font-size:11px;font-weight:800;text-transform:uppercase}.hof-page--lyft .hof-card h3{margin:10px 0 6px;color:#111827}.hof-page--lyft .hof-card p{color:#6b7280;font-size:13px}
+    .hof-page--lyft .hof-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:14px}.hof-page--lyft .hof-stats div{background:#f3f4f6;padding:8px;border-radius:8px;text-align:center}.hof-page--lyft .hof-stats b,.hof-page--lyft .hof-stats small{display:block}.hof-page--lyft .hof-stats small{color:#6b7280;font-size:10px;margin-top:3px}
+    .hof-page--lyft .hof-progress{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.hof-page--lyft .hof-progress div,.hof-page--lyft .hof-achievements article{border:1px solid #e5e7eb;border-radius:12px;background:#fff;padding:14px}.hof-page--lyft .hof-progress b,.hof-page--lyft .hof-progress span,.hof-page--lyft .hof-achievements b,.hof-page--lyft .hof-achievements strong,.hof-page--lyft .hof-achievements small{display:block}.hof-page--lyft .hof-progress b{font-size:28px;color:#00A651}.hof-page--lyft .hof-progress span,.hof-page--lyft .hof-achievements small{color:#6b7280;margin-top:5px}.hof-page--lyft .hof-achievements{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}.hof-page--lyft .hof-achievements b{font-size:27px;margin-bottom:7px}
+    @media(max-width:600px){.hof-page--lyft .hof-progress{grid-template-columns:1fr}}
+  `}</style>;
+  }
+
   return <style>{`
     .hof-page{min-height:100vh;background:#07111f;color:#fff;padding:18px 16px 80px;font-family:Inter,"Segoe UI",sans-serif}
     .hof-hero,.hof-section{max-width:1100px;margin:0 auto}.hof-hero{padding:20px 0 26px;border-bottom:1px solid rgba(255,255,255,.12)}

@@ -5,6 +5,7 @@ import { API_URL } from "../apiConfig";
 import { MARKET, isPointInServiceArea } from "../marketConfig";
 import { subscribeRideUpdates } from "../socket";
 import { preloadNotificationSound, vibrateNative, playRideAlertChime } from "../native/sound";
+import { isDriverLyftUI } from "../native/platform";
 
 import DriverMapView from "./components/DriverMapView";
 import { getNavigationDestination } from "./components/MultiStopProgress";
@@ -62,6 +63,7 @@ const noticeStyle = {
 // ─── Main Container ─────────────────────────────────────────────────────────
 
 export default function DriverDashboardNew() {
+  const lyftUI = isDriverLyftUI();
   // ─── State ──────────────────────────────────────────────────────────────────
   const [isOnline, setIsOnline] = useState(false);
   const [toggleLoading, setToggleLoading] = useState(false);
@@ -490,6 +492,7 @@ export default function DriverDashboardNew() {
 
   return (
     <main
+      className={lyftUI ? "driver-app--lyft" : undefined}
       style={{
         position: "relative",
         width: "100%",
@@ -513,7 +516,21 @@ export default function DriverDashboardNew() {
       {/* Hamburger menu button - top left */}
       <button
         onClick={() => setMenuOpen(true)}
-        style={hamburgerButtonStyle}
+        className={lyftUI ? "driver-dashboard__menu-btn" : undefined}
+        style={lyftUI ? {
+          position: "fixed",
+          top: 16,
+          left: 16,
+          zIndex: 10,
+          width: 44,
+          height: 44,
+          borderRadius: "50%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          cursor: "pointer",
+          padding: 0,
+        } : hamburgerButtonStyle}
         aria-label="Open menu"
         type="button"
       >
@@ -528,7 +545,23 @@ export default function DriverDashboardNew() {
       />
 
       {/* Notice bar (if driverNotice) */}
-      {driverNotice && <div style={noticeStyle}>{driverNotice}</div>}
+      {driverNotice && (
+        <div className={lyftUI ? "driver-dashboard__notice" : undefined} style={lyftUI ? {
+          position: "fixed",
+          top: 70,
+          left: 16,
+          right: 16,
+          zIndex: 10,
+          padding: 12,
+          borderRadius: 12,
+          fontSize: 13,
+          fontWeight: 600,
+          textAlign: "center",
+        } : noticeStyle}
+        >
+          {driverNotice}
+        </div>
+      )}
 
       {/* Ride request overlay when new rides available */}
       {isOnline && availableRides.length > 0 && !activeRide && (

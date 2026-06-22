@@ -252,7 +252,7 @@ export default function Login({ onLogin }) {
   };
 
   return (
-    <main className={`yala-login ${getLoginContext() === "rider" ? "yala-login--lyft" : ""}`}>
+    <main className={`yala-login ${getLoginContext() === "rider" || getLoginContext() === "driver" ? "yala-login--lyft" : ""}`}>
       <LoginStyles />
 
       <div className="yala-login__logo-area">

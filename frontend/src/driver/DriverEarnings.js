@@ -3,20 +3,7 @@ import axios from "axios";
 
 import { API_URL } from "../apiConfig";
 import { MARKET } from "../marketConfig";
-
-// ─── Yala Branding Colors ───────────────────────────────────────────────────
-const COLORS = {
-  primaryGreen: "#00A651",
-  goldAccent: "#D4AF37",
-  darkNavy: "#0B1220",
-  white: "#FFFFFF",
-  lightGray: "rgba(255, 255, 255, 0.6)",
-  cardBg: "rgba(255, 255, 255, 0.06)",
-  cardBorder: "rgba(255, 255, 255, 0.1)",
-  barDefault: "#00A651",
-  barZero: "rgba(255, 255, 255, 0.15)",
-  textMuted: "rgba(255, 255, 255, 0.5)",
-};
+import { bindDriverTheme } from "./themeRefresh";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 const PERIODS = ["today", "week", "month", "lifetime"];
@@ -113,6 +100,7 @@ function EarningsBarChart({ data, labels, chartPeriod }) {
   const maxValue = Math.max(...data.map((d) => Number(d.value || 0)), 1);
   const CHART_HEIGHT = 160;
   const MIN_BAR_HEIGHT = 6; // baseline height for zero-value bars
+  const { styles, COLORS } = driverTheme;
 
   return (
     <div style={styles.chartContainer} role="img" aria-label={`${chartPeriod} earnings bar chart`}>
@@ -149,6 +137,7 @@ function EarningsBarChart({ data, labels, chartPeriod }) {
 
 // ─── Period Tab Button ──────────────────────────────────────────────────────
 function PeriodTab({ label, active, onClick }) {
+  const { styles, COLORS } = driverTheme;
   return (
     <button
       type="button"
@@ -156,7 +145,7 @@ function PeriodTab({ label, active, onClick }) {
       style={{
         ...styles.periodTab,
         backgroundColor: active ? COLORS.primaryGreen : "transparent",
-        color: active ? COLORS.white : COLORS.lightGray,
+        color: active ? COLORS.onPrimary : COLORS.lightGray,
         borderColor: active ? COLORS.primaryGreen : COLORS.cardBorder,
       }}
       aria-pressed={active}
@@ -168,6 +157,7 @@ function PeriodTab({ label, active, onClick }) {
 
 // ─── Chart Period Tab ───────────────────────────────────────────────────────
 function ChartPeriodTab({ label, active, onClick }) {
+  const { styles, COLORS } = driverTheme;
   return (
     <button
       type="button"
@@ -185,6 +175,7 @@ function ChartPeriodTab({ label, active, onClick }) {
 
 // ─── Line Item Component ────────────────────────────────────────────────────
 function EarningsLineItem({ label, amount, icon }) {
+  const { styles } = driverTheme;
   return (
     <div style={styles.lineItem}>
       <div style={styles.lineItemLeft}>
@@ -198,6 +189,8 @@ function EarningsLineItem({ label, amount, icon }) {
 
 // ─── Main Earnings Center Component ─────────────────────────────────────────
 export default function DriverEarnings() {
+  const { lyftUI } = syncDriverTheme();
+  const { COLORS, styles } = driverTheme;
   const token = localStorage.getItem("access");
 
   const [activePeriod, setActivePeriod] = useState("today");
@@ -400,14 +393,27 @@ export default function DriverEarnings() {
   }
 
   return (
-    <div style={styles.container}>
+    <div
+      className={lyftUI ? "driver-page--lyft" : undefined}
+      style={{
+        ...styles.container,
+        ...(lyftUI ? { minHeight: "auto", paddingTop: 12 } : null),
+      }}
+    >
       {/* Header */}
+      {!lyftUI && (
       <div style={styles.header}>
         <h1 style={styles.title}>Earnings</h1>
         {syncing && (
           <span style={styles.syncBadge}>Syncing...</span>
         )}
       </div>
+      )}
+      {lyftUI && syncing && (
+        <div style={{ ...styles.header, marginBottom: 12 }}>
+          <span style={styles.syncBadge}>Syncing...</span>
+        </div>
+      )}
 
       {/* Period Tabs */}
       <div style={styles.periodTabs} role="tablist" aria-label="Earnings period">
@@ -476,6 +482,7 @@ export default function DriverEarnings() {
       </div>
 
       {/* Back to Dashboard */}
+      {!lyftUI && (
       <button
         type="button"
         onClick={() => { window.location.href = "/driver"; }}
@@ -483,12 +490,13 @@ export default function DriverEarnings() {
       >
         ← Back to Dashboard
       </button>
+      )}
     </div>
   );
 }
 
 // ─── Styles ─────────────────────────────────────────────────────────────────
-const styles = {
+const theme = bindDriverTheme((COLORS) => ({
   container: {
     minHeight: "100vh",
     backgroundColor: COLORS.darkNavy,
@@ -746,4 +754,6 @@ const styles = {
     textAlign: "center",
     marginTop: "8px",
   },
-};
+}));
+
+const { bag: driverTheme, syncDriverTheme } = theme;

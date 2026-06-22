@@ -29,6 +29,8 @@ const go = (path) => {
   }
 };
 
+const HERO_TITLE = "Yala Technologies Rides Across Mauritania created by Housseinou Sakho";
+
 const CITIES = [
   "Nouakchott", "Nouadhibou", "Rosso", "Kiffa", "Atar", "Zouérat",
   "Kaédi", "Néma", "Sélibaby", "Aleg", "Tidjikja", "Aioun el Atrouss",
@@ -165,7 +167,7 @@ export default function LandingPage() {
               <span className="mr-flag">🇲🇷</span>
               <span>{t("newLanding.badge")}</span>
             </div>
-            <h1>{t("newLanding.heroTitle")}</h1>
+            <h1>{HERO_TITLE}</h1>
             <p className="hero-subtitle">{t("newLanding.heroSubtitle")}</p>
             <div className="action-row">
               <button className="primary-button large" onClick={() => go(PLAY_STORE.rider)}>

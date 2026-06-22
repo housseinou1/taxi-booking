@@ -2,19 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 
 import { API_URL } from "../apiConfig";
-
-// ─── Yala Branding Colors ───────────────────────────────────────────────────
-const COLORS = {
-  primaryGreen: "#00A651",
-  goldAccent: "#D4AF37",
-  darkNavy: "#0B1220",
-  white: "#FFFFFF",
-  lightGray: "rgba(255, 255, 255, 0.6)",
-  cardBg: "rgba(255, 255, 255, 0.06)",
-  cardBorder: "rgba(255, 255, 255, 0.1)",
-  textMuted: "rgba(255, 255, 255, 0.5)",
-  starYellow: "#FBBF24",
-};
+import { bindDriverTheme } from "./themeRefresh";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 const REVIEWS_PER_PAGE = 20;
@@ -28,6 +16,7 @@ const COMPLIMENT_CATEGORIES = [
 
 // ─── Rating Stars Component ─────────────────────────────────────────────────
 function RatingStars({ rating, size = 20 }) {
+  const { COLORS, styles } = driverTheme;
   const stars = [];
   const roundedRating = Math.round(rating * 2) / 2; // round to nearest 0.5
 
@@ -52,6 +41,7 @@ function RatingStars({ rating, size = 20 }) {
 
 // ─── Line Chart Component (30-day rating history) ───────────────────────────
 function RatingHistoryChart({ data }) {
+  const { COLORS, styles } = driverTheme;
   if (!data || data.length === 0) {
     return (
       <div style={styles.emptyChart}>
@@ -171,6 +161,7 @@ function RatingHistoryChart({ data }) {
 
 // ─── Review Card Component ──────────────────────────────────────────────────
 function ReviewCard({ review }) {
+  const { styles } = driverTheme;
   const rating = Number(review.rating || 0);
   const text = review.text || review.review_text || review.comment || "";
   const date = review.date || review.ride_date || review.created_at || "";
@@ -201,6 +192,7 @@ function ReviewCard({ review }) {
 
 // ─── Compliment Category Card ───────────────────────────────────────────────
 function ComplimentCard({ icon, label, count }) {
+  const { styles } = driverTheme;
   return (
     <div style={styles.complimentCard}>
       <span style={styles.complimentIcon}>{icon}</span>
@@ -214,6 +206,8 @@ function ComplimentCard({ icon, label, count }) {
 
 // ─── Main Feedback Center Component ─────────────────────────────────────────
 export default function DriverFeedback() {
+  const { lyftUI } = syncDriverTheme();
+  const { COLORS, styles } = driverTheme;
   const token = localStorage.getItem("access");
 
   const [feedbackData, setFeedbackData] = useState(null);
@@ -367,11 +361,19 @@ export default function DriverFeedback() {
   }
 
   return (
-    <div style={styles.container}>
+    <div
+      className={lyftUI ? "driver-page--lyft" : undefined}
+      style={{
+        ...styles.container,
+        ...(lyftUI ? { minHeight: "auto", paddingTop: 12 } : null),
+      }}
+    >
       {/* Header */}
+      {!lyftUI && (
       <div style={styles.header}>
         <h1 style={styles.title}>Feedback Center</h1>
       </div>
+      )}
 
       {/* Average Rating Section */}
       <div style={styles.ratingCard}>
@@ -471,6 +473,7 @@ export default function DriverFeedback() {
       </div>
 
       {/* Back to Dashboard */}
+      {!lyftUI && (
       <button
         type="button"
         onClick={() => { window.location.href = "/driver"; }}
@@ -478,12 +481,13 @@ export default function DriverFeedback() {
       >
         ← Back to Dashboard
       </button>
+      )}
     </div>
   );
 }
 
 // ─── Styles ─────────────────────────────────────────────────────────────────
-const styles = {
+const theme = bindDriverTheme((COLORS) => ({
   container: {
     minHeight: "100vh",
     backgroundColor: COLORS.darkNavy,
@@ -815,4 +819,6 @@ const styles = {
     textAlign: "center",
     marginTop: "8px",
   },
-};
+}));
+
+const { bag: driverTheme, syncDriverTheme } = theme;

@@ -150,3 +150,41 @@ export function isRiderLyftUI() {
     (route) => path === route || path.startsWith(`${route}/`),
   );
 }
+
+const DRIVER_LYFT_ROUTES = [
+  "/driver",
+  "/driver/profile",
+  "/driver/profile/edit",
+  "/driver/documents",
+  "/driver/code",
+  "/driver/earnings",
+  "/driver/feedback",
+  "/driver/support",
+  "/driver/achievements",
+  "/driver/hall-of-fame",
+  "/driver/history",
+  "/driver/deliveries",
+  "/driver-vehicle-setup",
+  "/driver-profile",
+  "/login",
+  "/register",
+  "/settings",
+];
+
+/**
+ * True for native driver app and web driver account screens (Lyft-style UI).
+ */
+export function isDriverLyftUI() {
+  if (getAppType() === "driver") {
+    return true;
+  }
+
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  const path = window.location.pathname || "";
+  return DRIVER_LYFT_ROUTES.some(
+    (route) => path === route || path.startsWith(`${route}/`),
+  );
+}

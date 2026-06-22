@@ -2,19 +2,127 @@ import React, { useCallback, useEffect, useState } from "react";
 import axios from "axios";
 
 import { API_URL } from "../apiConfig";
+import { bindDriverTheme } from "./themeRefresh";
 
-// ─── Yala Branding Colors ───────────────────────────────────────────────────
-const COLORS = {
-  primaryGreen: "#00A651",
-  goldAccent: "#D4AF37",
-  darkNavy: "#0B1220",
-  white: "#FFFFFF",
-  cardBg: "#111827",
-  textMuted: "#9CA3AF",
-};
+function buildStyles(COLORS) {
+  return {
+    containerStyle: {
+      minHeight: "100vh",
+      backgroundColor: COLORS.darkNavy,
+      padding: "20px 16px 100px",
+      fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    },
+    headerStyle: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: "24px",
+      flexWrap: "wrap",
+      gap: "12px",
+    },
+    titleStyle: {
+      color: COLORS.white,
+      fontSize: "22px",
+      fontWeight: "800",
+      margin: 0,
+    },
+    pointsBadgeStyle: {
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      padding: "8px 16px",
+      borderRadius: "12px",
+      background: `linear-gradient(135deg, ${COLORS.goldAccent}22, ${COLORS.goldAccent}44)`,
+      border: `1px solid ${COLORS.goldAccent}66`,
+    },
+    headerActionsStyle: {
+      display: "flex",
+      alignItems: "center",
+      gap: "8px",
+    },
+    hallButtonStyle: {
+      minHeight: "44px",
+      border: `1px solid ${COLORS.goldAccent}`,
+      borderRadius: "999px",
+      background: COLORS.goldAccent,
+      color: COLORS.onPrimary === "#FFFFFF" ? "#111827" : COLORS.onPrimary,
+      padding: "0 14px",
+      fontWeight: "900",
+      cursor: "pointer",
+    },
+    pointsLabelStyle: {
+      color: COLORS.goldAccent,
+      fontSize: "11px",
+      fontWeight: "600",
+      textTransform: "uppercase",
+    },
+    pointsValueStyle: {
+      color: COLORS.white,
+      fontSize: "18px",
+      fontWeight: "900",
+    },
+    loadingStyle: {
+      color: COLORS.textMuted,
+      textAlign: "center",
+      padding: "60px 20px",
+      fontSize: "15px",
+    },
+    emptyStyle: {
+      textAlign: "center",
+      padding: "60px 20px",
+    },
+    emptyIconStyle: {
+      fontSize: "48px",
+      display: "block",
+      marginBottom: "16px",
+    },
+    emptyTextStyle: {
+      color: COLORS.white,
+      fontSize: "16px",
+      fontWeight: "600",
+      margin: "0 0 8px",
+    },
+    emptySubtextStyle: {
+      color: COLORS.textMuted,
+      fontSize: "14px",
+      margin: 0,
+    },
+    gridStyle: {
+      display: "grid",
+      gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
+      gap: "12px",
+    },
+    cardStyle: {
+      background: COLORS.cardBg,
+      borderRadius: "14px",
+      padding: "20px 12px",
+      textAlign: "center",
+      border: `1px solid ${COLORS.cardBorder}`,
+    },
+    badgeIconStyle: {
+      fontSize: "36px",
+      display: "block",
+      marginBottom: "10px",
+    },
+    cardTitleStyle: {
+      color: COLORS.white,
+      fontSize: "13px",
+      fontWeight: "700",
+      margin: "0 0 6px",
+    },
+    cardDateStyle: {
+      color: COLORS.textMuted,
+      fontSize: "11px",
+      margin: 0,
+    },
+  };
+}
 
-// ─── Main Component ─────────────────────────────────────────────────────────
+const { bag: driverTheme, syncDriverTheme } = bindDriverTheme(buildStyles);
+
 export default function DriverAchievements() {
+  const { lyftUI } = syncDriverTheme();
+  const styles = driverTheme.styles;
   const token = localStorage.getItem("access");
   const [achievements, setAchievements] = useState([]);
   const [rewardPoints, setRewardPoints] = useState(0);
@@ -48,35 +156,55 @@ export default function DriverAchievements() {
   }, [fetchAchievements]);
 
   return (
-    <div style={containerStyle}>
-      <header style={headerStyle}>
-        <h1 style={titleStyle}>Achievements & Rewards</h1>
-        <div style={headerActionsStyle}>
-          <button style={hallButtonStyle} onClick={() => (window.location.href = "/driver/hall-of-fame")}>
+    <div
+      className={lyftUI ? "driver-page--lyft" : undefined}
+      style={{
+        ...styles.containerStyle,
+        ...(lyftUI ? { minHeight: "auto", paddingTop: 12 } : null),
+      }}
+    >
+      {!lyftUI && (
+        <header style={styles.headerStyle}>
+          <h1 style={styles.titleStyle}>Achievements & Rewards</h1>
+          <div style={styles.headerActionsStyle}>
+            <button style={styles.hallButtonStyle} onClick={() => (window.location.href = "/driver/hall-of-fame")}>
+              Hall of Fame
+            </button>
+            <div style={styles.pointsBadgeStyle}>
+              <span style={styles.pointsLabelStyle}>Reward Points</span>
+              <span style={styles.pointsValueStyle}>{rewardPoints}</span>
+            </div>
+          </div>
+        </header>
+      )}
+
+      {lyftUI && (
+        <div style={{ ...styles.headerActionsStyle, marginBottom: 16, justifyContent: "space-between" }}>
+          <button style={styles.hallButtonStyle} onClick={() => (window.location.href = "/driver/hall-of-fame")}>
             Hall of Fame
           </button>
-          <div style={pointsBadgeStyle}>
-            <span style={pointsLabelStyle}>Reward Points</span>
-            <span style={pointsValueStyle}>{rewardPoints}</span>
+          <div style={styles.pointsBadgeStyle}>
+            <span style={styles.pointsLabelStyle}>Reward Points</span>
+            <span style={styles.pointsValueStyle}>{rewardPoints}</span>
           </div>
         </div>
-      </header>
+      )}
 
       {loading ? (
-        <div style={loadingStyle}>Loading achievements...</div>
+        <div style={styles.loadingStyle}>Loading achievements...</div>
       ) : achievements.length === 0 ? (
-        <div style={emptyStyle}>
-          <span style={emptyIconStyle}>🏆</span>
-          <p style={emptyTextStyle}>No achievements earned yet.</p>
-          <p style={emptySubtextStyle}>Complete rides and maintain high ratings to unlock achievements.</p>
+        <div style={styles.emptyStyle}>
+          <span style={styles.emptyIconStyle}>🏆</span>
+          <p style={styles.emptyTextStyle}>No achievements earned yet.</p>
+          <p style={styles.emptySubtextStyle}>Complete rides and maintain high ratings to unlock achievements.</p>
         </div>
       ) : (
-        <div style={gridStyle}>
+        <div style={styles.gridStyle}>
           {achievements.map((achievement) => (
-            <div key={achievement.id} style={cardStyle}>
-              <span style={badgeIconStyle}>{achievement.icon || "🏅"}</span>
-              <h3 style={cardTitleStyle}>{achievement.name}</h3>
-              <p style={cardDateStyle}>
+            <div key={achievement.id} style={styles.cardStyle}>
+              <span style={styles.badgeIconStyle}>{achievement.icon || "🏅"}</span>
+              <h3 style={styles.cardTitleStyle}>{achievement.name}</h3>
+              <p style={styles.cardDateStyle}>
                 {achievement.earned_at
                   ? new Date(achievement.earned_at).toLocaleDateString()
                   : ""}
@@ -88,131 +216,3 @@ export default function DriverAchievements() {
     </div>
   );
 }
-
-// ─── Styles ─────────────────────────────────────────────────────────────────
-const containerStyle = {
-  minHeight: "100vh",
-  backgroundColor: COLORS.darkNavy,
-  padding: "20px 16px 100px",
-  fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-};
-
-const headerStyle = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  marginBottom: "24px",
-  flexWrap: "wrap",
-  gap: "12px",
-};
-
-const titleStyle = {
-  color: COLORS.white,
-  fontSize: "22px",
-  fontWeight: "800",
-  margin: 0,
-};
-
-const pointsBadgeStyle = {
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  padding: "8px 16px",
-  borderRadius: "12px",
-  background: `linear-gradient(135deg, ${COLORS.goldAccent}22, ${COLORS.goldAccent}44)`,
-  border: `1px solid ${COLORS.goldAccent}66`,
-};
-
-const headerActionsStyle = {
-  display: "flex",
-  alignItems: "center",
-  gap: "8px",
-};
-
-const hallButtonStyle = {
-  minHeight: "44px",
-  border: `1px solid ${COLORS.goldAccent}`,
-  borderRadius: "6px",
-  background: COLORS.goldAccent,
-  color: "#111827",
-  padding: "0 14px",
-  fontWeight: "900",
-  cursor: "pointer",
-};
-
-const pointsLabelStyle = {
-  color: COLORS.goldAccent,
-  fontSize: "11px",
-  fontWeight: "600",
-  textTransform: "uppercase",
-};
-
-const pointsValueStyle = {
-  color: COLORS.white,
-  fontSize: "18px",
-  fontWeight: "900",
-};
-
-const loadingStyle = {
-  color: COLORS.textMuted,
-  textAlign: "center",
-  padding: "60px 20px",
-  fontSize: "15px",
-};
-
-const emptyStyle = {
-  textAlign: "center",
-  padding: "60px 20px",
-};
-
-const emptyIconStyle = {
-  fontSize: "48px",
-  display: "block",
-  marginBottom: "16px",
-};
-
-const emptyTextStyle = {
-  color: COLORS.white,
-  fontSize: "16px",
-  fontWeight: "600",
-  margin: "0 0 8px",
-};
-
-const emptySubtextStyle = {
-  color: COLORS.textMuted,
-  fontSize: "14px",
-  margin: 0,
-};
-
-const gridStyle = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
-  gap: "12px",
-};
-
-const cardStyle = {
-  background: COLORS.cardBg,
-  borderRadius: "14px",
-  padding: "20px 12px",
-  textAlign: "center",
-  border: "1px solid rgba(255,255,255,0.08)",
-};
-
-const badgeIconStyle = {
-  fontSize: "36px",
-  display: "block",
-  marginBottom: "10px",
-};
-
-const cardTitleStyle = {
-  color: COLORS.white,
-  fontSize: "13px",
-  fontWeight: "700",
-  margin: "0 0 6px",
-};
-
-const cardDateStyle = {
-  color: COLORS.textMuted,
-  fontSize: "11px",
-  margin: 0,
-};
