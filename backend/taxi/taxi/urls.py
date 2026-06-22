@@ -7,9 +7,13 @@ from taxi.drivers.urls import admin_document_urlpatterns, admin_qr_urlpatterns
 from taxi.drivers.views_verification import VerifyDriverView
 from taxi.rides.share_admin_views import share_analytics, share_analytics_chart
 from taxi.ai_support import support_ai
+from health.views import readiness
 
 
 urlpatterns = [
+    path("health/", readiness, name="health"),
+    path("api/health/", include("health.urls")),
+
     # Admin document review endpoints (before Django admin catch-all)
     path("admin/documents/", include(admin_document_urlpatterns)),
 

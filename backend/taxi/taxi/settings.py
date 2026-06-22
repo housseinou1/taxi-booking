@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     "incentives",
     "referrals",
     "operations",
+    "health",
 ]
 
 MIDDLEWARE = [
