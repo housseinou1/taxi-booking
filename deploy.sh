@@ -7,8 +7,8 @@
 set -e
 
 SERVER_IP="142.93.99.142"
-DOMAIN="yala.mr"
-API_DOMAIN="api.yala.mr"
+DOMAIN="yalataxi.live"
+API_DOMAIN="api.yalataxi.live"
 APP_USER="yala"
 APP_DIR="/home/yala/app"
 VENV_DIR="/home/yala/venv"
@@ -73,8 +73,8 @@ DJANGO_ALLOWED_HOSTS=$SERVER_IP,$DOMAIN,$API_DOMAIN
 DATABASE_URL=postgres://$DB_USER:$DB_PASS@localhost:5432/$DB_NAME
 REDIS_URL=redis://localhost:6379/0
 CORS_ALLOW_ALL_ORIGINS=False
-CORS_ALLOWED_ORIGINS=https://$DOMAIN,http://$DOMAIN,http://$SERVER_IP
-CSRF_TRUSTED_ORIGINS=https://$DOMAIN,https://$API_DOMAIN,http://$SERVER_IP
+CORS_ALLOWED_ORIGINS=https://$DOMAIN,https://www.$DOMAIN,https://$API_DOMAIN,capacitor://localhost,http://localhost,http://$SERVER_IP
+CSRF_TRUSTED_ORIGINS=https://$DOMAIN,https://www.$DOMAIN,https://$API_DOMAIN,http://$SERVER_IP
 FRONTEND_URL=https://$DOMAIN
 SECURE_SSL_REDIRECT=False
 APP_FEE_PERCENT=30
@@ -93,7 +93,7 @@ curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
 apt install -y nodejs
 cd $APP_DIR/frontend
 sudo -u $APP_USER npm ci --legacy-peer-deps
-sudo -u $APP_USER REACT_APP_API_URL=http://$SERVER_IP:8000 npm run build
+sudo -u $APP_USER REACT_APP_API_URL=https://$API_DOMAIN REACT_APP_WS_URL=wss://$API_DOMAIN/ws/rides/ npm run build
 
 # ─── 9. Systemd services ──────────────────────────────────────────────────────
 echo "[9/10] Creating systemd services..."
@@ -154,6 +154,7 @@ server {
     location /safety/ { proxy_pass http://127.0.0.1:8000; include proxy_params; }
     location /locations/ { proxy_pass http://127.0.0.1:8000; include proxy_params; }
     location /deliveries/ { proxy_pass http://127.0.0.1:8000; include proxy_params; }
+    location /support/ { proxy_pass http://127.0.0.1:8000; include proxy_params; }
     location /admin/ { proxy_pass http://127.0.0.1:8000; include proxy_params; }
 
     # Media files

@@ -146,6 +146,7 @@
 
 /* Lyft-like stacked pickup / destination card */
 .location-stack {
+  position: relative;
   overflow: hidden;
   border: 1px solid var(--yala-gray-100);
   border-radius: var(--radius-lg);
@@ -158,8 +159,53 @@
   padding: 4px var(--space-md) 4px 44px;
 }
 
-.location-stack .location-input + .location-input {
+.location-stack .location-input + .location-input,
+.location-stack .location-stack__stop-row + .location-input,
+.location-stack .location-input + .location-stack__stop-row,
+.location-stack .location-stack__stop-row + .location-stack__stop-row,
+.location-stack .location-stack__add-row {
   border-top: 1px solid var(--yala-gray-100);
+}
+
+.location-stack__stop-row {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+}
+
+.location-stack__stop-row .location-input {
+  flex: 1;
+  padding-right: 44px;
+}
+
+.location-stack__remove-stop {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--yala-red-soft);
+  color: var(--yala-red-strong);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.location-stack__add-row {
+  display: grid;
+  gap: 0;
+}
+
+.location-stack__add-row .rider-home__add-stop-btn {
+  margin: 8px 12px 0;
+  width: calc(100% - 24px);
+}
+
+.location-stack__add-row .location-input {
+  border-top: 0;
 }
 
 .location-stack .location-input__label {
@@ -175,6 +221,7 @@
 }
 
 .location-stack .location-input--pickup::before,
+.location-stack .location-input--stop::before,
 .location-stack .location-input--destination::before {
   content: "";
   position: absolute;
@@ -189,6 +236,12 @@
 .location-stack .location-input--pickup::before {
   background: var(--yala-green);
   box-shadow: 0 0 0 3px var(--yala-green-soft);
+}
+
+.location-stack .location-input--stop::before {
+  width: 8px;
+  height: 8px;
+  background: #6b7280;
 }
 
 .location-stack .location-input--destination::before {

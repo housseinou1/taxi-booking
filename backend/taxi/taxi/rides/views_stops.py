@@ -9,11 +9,23 @@ from rest_framework import status
 from .models import Ride, RideStop
 from .serializers import RideStopSerializer
 
+MAX_RIDE_STOPS = 3
+EDITABLE_STOP_STATUSES = {
+    "requested",
+    "accepted",
+    "driver_arriving",
+    "driver_arrived",
+}
+
+
+def can_edit_ride_stops(ride):
+    return ride.status in EDITABLE_STOP_STATUSES
+
 
 class RideStopListCreateView(APIView):
     """
     POST /rides/{ride_id}/stops/ - Add a stop to a ride.
-    Only allowed when ride status is "requested" (during booking).
+    Allowed before the trip starts (through driver_arrived).
     """
 
     permission_classes = [IsAuthenticated]
@@ -28,10 +40,20 @@ class RideStopListCreateView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        # Only allow adding stops when ride status is "requested"
-        if ride.status != "requested":
+        if not can_edit_ride_stops(ride):
             return Response(
-                {"detail": "Stops can only be added when ride status is 'requested'."},
+                {
+                    "detail": (
+                        "Stops can only be added before the trip starts "
+                        "(requested, accepted, driver arriving, or driver arrived)."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if ride.stops.count() >= MAX_RIDE_STOPS:
+            return Response(
+                {"detail": f"A ride can have at most {MAX_RIDE_STOPS} stops."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -119,10 +141,14 @@ class RideStopDeleteView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        # Only allow removing stops when ride status is "requested"
-        if ride.status != "requested":
+        if not can_edit_ride_stops(ride):
             return Response(
-                {"detail": "Stops can only be removed when ride status is 'requested'."},
+                {
+                    "detail": (
+                        "Stops can only be removed before the trip starts "
+                        "(requested, accepted, driver arriving, or driver arrived)."
+                    )
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

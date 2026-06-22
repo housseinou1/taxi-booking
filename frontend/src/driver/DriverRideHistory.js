@@ -3,7 +3,6 @@ import axios from "axios";
 
 import { API_URL } from "../apiConfig";
 import { formatMoney } from "../marketConfig";
-import { useDriverContext } from "./context/DriverContext";
 
 // ─── Yala Branding Colors ───────────────────────────────────────────────────
 const COLORS = {
@@ -18,7 +17,6 @@ const COLORS = {
 // ─── Main Component ─────────────────────────────────────────────────────────
 export default function DriverRideHistory() {
   const token = localStorage.getItem("access");
-  const { state } = useDriverContext();
   const [rides, setRides] = useState([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);

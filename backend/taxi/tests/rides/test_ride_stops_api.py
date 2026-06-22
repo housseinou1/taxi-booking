@@ -138,13 +138,30 @@ class TestAddStop:
         assert response.data["stop_order"] == 2
 
     @pytest.mark.django_db
-    def test_add_stop_rejects_non_requested_status(self, rider_client, ride_in_progress):
+    def test_add_stop_rejects_in_progress_status(self, rider_client, ride_in_progress):
         response = rider_client.post(
             f"/rides/{ride_in_progress.id}/stops/",
             {"location_name": "Market", "latitude": 18.08, "longitude": -15.96},
         )
         assert response.status_code == 400
-        assert "requested" in response.data["detail"]
+        assert "before the trip starts" in response.data["detail"]
+
+    @pytest.mark.django_db
+    def test_add_stop_allowed_when_accepted(self, rider_client, rider, driver_user):
+        ride = Ride.objects.create(
+            rider=rider,
+            driver=driver_user,
+            pickup="Pickup A",
+            destination="Destination B",
+            status="accepted",
+            fare=500,
+        )
+        response = rider_client.post(
+            f"/rides/{ride.id}/stops/",
+            {"location_name": "Market", "latitude": 18.08, "longitude": -15.96},
+        )
+        assert response.status_code == 201
+        assert response.data["location_name"] == "Market"
 
     @pytest.mark.django_db
     def test_add_stop_rejects_non_rider(self, driver_client, ride_requested):

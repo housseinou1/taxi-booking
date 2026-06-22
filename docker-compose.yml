@@ -28,6 +28,8 @@ services:
       - ./backend/taxi/media:/app/media
     env_file:
       - ./backend/taxi/.env.production
+    environment:
+      DATABASE_URL: postgres://yala_user:${POSTGRES_PASSWORD}@postgres:5432/yala_db
     depends_on:
       - postgres
       - redis

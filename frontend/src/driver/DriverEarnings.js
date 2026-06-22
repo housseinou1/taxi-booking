@@ -3,7 +3,6 @@ import axios from "axios";
 
 import { API_URL } from "../apiConfig";
 import { MARKET } from "../marketConfig";
-import { useDriverContext } from "./context/DriverContext";
 
 // ─── Yala Branding Colors ───────────────────────────────────────────────────
 const COLORS = {
@@ -200,7 +199,6 @@ function EarningsLineItem({ label, amount, icon }) {
 // ─── Main Earnings Center Component ─────────────────────────────────────────
 export default function DriverEarnings() {
   const token = localStorage.getItem("access");
-  const { state } = useDriverContext();
 
   const [activePeriod, setActivePeriod] = useState("today");
   const [chartPeriod, setChartPeriod] = useState("daily");
@@ -280,12 +278,11 @@ export default function DriverEarnings() {
   // ─── Initial Load ───────────────────────────────────────────────────────
   useEffect(() => {
     fetchEarnings();
-    fetchChartData(chartPeriod);
+  }, [fetchEarnings]);
 
-    return () => {
-      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
-      if (refreshTimerRef.current) clearInterval(refreshTimerRef.current);
-    };
+  useEffect(() => () => {
+    if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+    if (refreshTimerRef.current) clearInterval(refreshTimerRef.current);
   }, []);
 
   // ─── Auto-refresh earnings (within 10 seconds of ride completion) ───────

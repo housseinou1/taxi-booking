@@ -1,0 +1,715 @@
+/**
+ * Lyft-style rider theme — white surfaces, list rows, pill CTAs, map-first layout.
+ * Uses Yala green instead of Lyft pink. Import via RiderApp.js.
+ */
+
+/* ─── Login (rider app) ─────────────────────────────────────────────────── */
+
+.yala-login--lyft {
+  background: #ffffff;
+  color: #111827;
+  justify-content: flex-start;
+  padding-top: max(48px, env(safe-area-inset-top));
+}
+
+.yala-login--lyft .yala-login__logo-area {
+  margin-bottom: 28px;
+}
+
+.yala-login--lyft .yala-login__logo {
+  width: 72px;
+  height: 72px;
+  border-radius: 18px;
+  box-shadow: 0 8px 24px rgba(0, 166, 81, 0.18);
+}
+
+.yala-login--lyft .yala-login__brand {
+  color: #111827;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.yala-login--lyft .yala-login__tagline {
+  color: #6b7280;
+}
+
+.yala-login--lyft .yala-login__app-hint {
+  border-color: rgba(0, 166, 81, 0.25);
+  background: rgba(0, 166, 81, 0.08);
+  color: #00884a;
+}
+
+.yala-login--lyft .yala-login__form {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 12px 40px rgba(15, 23, 42, 0.08);
+  backdrop-filter: none;
+}
+
+.yala-login--lyft .yala-login__error {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+
+.yala-login--lyft .yala-login__label {
+  color: #374151;
+}
+
+.yala-login--lyft .yala-login__input {
+  border: 1px solid #d1d5db;
+  background: #f9fafb;
+  color: #111827;
+}
+
+.yala-login--lyft .yala-login__input:focus {
+  border-color: var(--yala-green, #00a651);
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(0, 166, 81, 0.12);
+}
+
+.yala-login--lyft .yala-login__input::placeholder {
+  color: #9ca3af;
+}
+
+.yala-login--lyft .yala-login__btn-primary {
+  border-radius: 999px;
+  font-weight: 700;
+  box-shadow: 0 10px 24px rgba(0, 166, 81, 0.22);
+}
+
+.yala-login--lyft .yala-login__btn-secondary {
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #111827;
+  border-radius: 999px;
+}
+
+/* ─── Profile (inside RiderShell) ───────────────────────────────────────── */
+
+.sx-profile-page--lyft {
+  min-height: auto;
+  padding: 0;
+  background: #f3f4f6;
+  color: #111827;
+  font-family: var(--font-family, "Plus Jakarta Sans", sans-serif);
+}
+
+.sx-profile-page--lyft .sx-profile-hero {
+  display: block;
+  margin: 0 0 12px;
+}
+
+.sx-profile-page--lyft .sx-profile-person {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 24px 20px 20px;
+  border: 0;
+  border-radius: 0;
+  background: #ffffff;
+  box-shadow: none;
+}
+
+.sx-profile-page--lyft .sx-profile-photo {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #e5e7eb;
+  display: grid;
+  place-items: center;
+  font-size: 28px;
+  font-weight: 700;
+  color: #374151;
+  margin-bottom: 12px;
+}
+
+.sx-profile-page--lyft .sx-profile-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.sx-profile-page--lyft .sx-profile-kicker {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 4px;
+}
+
+.sx-profile-page--lyft .sx-profile-person h1 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.sx-profile-page--lyft .sx-profile-person > div > p {
+  margin: 4px 0 0;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.sx-profile-page--lyft .sx-profile-badges {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.sx-profile-page--lyft .sx-profile-badges span {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(0, 166, 81, 0.1);
+  color: #00884a;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.sx-profile-page--lyft .sx-profile-contact {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  border: 0;
+  border-radius: 0;
+  background: #ffffff;
+  border-top: 1px solid #f3f4f6;
+  box-shadow: none;
+}
+
+.sx-profile-page--lyft .sx-info-tile {
+  padding: 14px 8px;
+  text-align: center;
+  border-right: 1px solid #f3f4f6;
+}
+
+.sx-profile-page--lyft .sx-info-tile:last-child {
+  border-right: 0;
+}
+
+.sx-profile-page--lyft .sx-info-tile span {
+  display: block;
+  font-size: 11px;
+  color: #6b7280;
+  margin-bottom: 4px;
+}
+
+.sx-profile-page--lyft .sx-info-tile strong {
+  font-size: 16px;
+  color: #111827;
+}
+
+.sx-profile-page--lyft .sx-profile-grid {
+  display: grid;
+  gap: 12px;
+  padding: 0 0 24px;
+}
+
+.sx-profile-page--lyft .sx-profile-panel {
+  border: 0;
+  border-radius: 0;
+  background: #ffffff;
+  box-shadow: none;
+  overflow: hidden;
+}
+
+.sx-profile-page--lyft .sx-panel-head {
+  padding: 16px 16px 8px;
+  border-bottom: 0;
+}
+
+.sx-profile-page--lyft .sx-panel-head span {
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.sx-profile-page--lyft .sx-panel-head h2 {
+  margin: 2px 0 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.sx-profile-page--lyft .sx-panel-head button {
+  border: 0;
+  background: transparent;
+  color: var(--yala-green, #00a651);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 0;
+}
+
+.sx-profile-page--lyft .sx-info-list,
+.sx-profile-page--lyft .sx-method-list,
+.sx-profile-page--lyft .sx-trip-list,
+.sx-profile-page--lyft .sx-settings-list {
+  padding: 0 16px 12px;
+}
+
+.sx-profile-page--lyft .sx-info-row,
+.sx-profile-page--lyft .sx-method-row,
+.sx-profile-page--lyft .sx-trip-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.sx-profile-page--lyft .sx-info-row span,
+.sx-profile-page--lyft .sx-method-row span {
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.sx-profile-page--lyft .sx-info-row strong,
+.sx-profile-page--lyft .sx-method-row strong {
+  color: #111827;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: right;
+}
+
+.sx-profile-page--lyft .sx-settings-list {
+  display: grid;
+  gap: 0;
+  padding: 0;
+}
+
+.sx-profile-page--lyft .sx-settings-list button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 16px;
+  border: 0;
+  border-bottom: 1px solid #f3f4f6;
+  border-radius: 0;
+  background: #ffffff;
+  color: #111827;
+  font-size: 15px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sx-profile-page--lyft .sx-settings-list button::after {
+  content: "›";
+  color: #9ca3af;
+  font-size: 20px;
+  font-weight: 400;
+}
+
+.sx-profile-page--lyft .sx-settings-list button:hover {
+  background: #f9fafb;
+  transform: none;
+}
+
+.sx-profile-page--lyft .sx-trip-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 0 16px 12px;
+}
+
+.sx-profile-page--lyft .sx-empty-state {
+  padding: 20px 16px;
+  text-align: center;
+  color: #6b7280;
+}
+
+.sx-profile-page--lyft .sx-profile-loading {
+  min-height: 200px;
+  background: #ffffff;
+  color: #6b7280;
+  border: 0;
+  border-radius: 0;
+}
+
+/* ─── Payments (non-completed rider flow) ───────────────────────────────── */
+
+.sx-payments-page--lyft {
+  min-height: auto;
+  padding: 0;
+  background: #f3f4f6;
+  color: #111827;
+  font-family: var(--font-family, "Plus Jakarta Sans", sans-serif);
+}
+
+.sx-payments-page--lyft .sx-payment-hero {
+  background: #ffffff;
+  padding: 16px 16px 20px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.sx-payments-page--lyft .sx-payment-eyebrow {
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+.sx-payments-page--lyft .sx-payment-hero h1 {
+  color: #111827;
+  font-size: 22px;
+  font-weight: 700;
+  margin: 6px 0;
+}
+
+.sx-payments-page--lyft .sx-payment-hero p {
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.sx-payments-page--lyft .sx-payment-grid {
+  padding: 12px 0 24px;
+  gap: 12px;
+}
+
+.sx-payments-page--lyft .sx-payment-panel,
+.sx-payments-page--lyft .sx-receipt-card,
+.sx-payments-page--lyft .sx-rating-panel {
+  border: 0;
+  border-radius: 0;
+  background: #ffffff;
+  box-shadow: none;
+}
+
+.sx-payments-page--lyft .sx-method-list button {
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #111827;
+  border-radius: 12px;
+}
+
+.sx-payments-page--lyft .sx-method-list button.selected {
+  border-color: var(--yala-green, #00a651);
+  background: rgba(0, 166, 81, 0.08);
+}
+
+.sx-payments-page--lyft .sx-pay-button {
+  border-radius: 999px;
+  background: var(--yala-green, #00a651);
+  font-weight: 700;
+}
+
+.sx-payments-page--lyft .sx-empty-payment {
+  padding: 32px 16px;
+  text-align: center;
+}
+
+.sx-payments-page--lyft .sx-empty-payment button {
+  margin-top: 12px;
+  padding: 12px 20px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--yala-green, #00a651);
+  color: #ffffff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* ─── Settings (rider mode) — Lyft account list ─────────────────────────── */
+
+.settings-page--lyft {
+  min-height: auto !important;
+  padding: 0 0 24px !important;
+  background: #f3f4f6 !important;
+  color: #111827 !important;
+}
+
+.settings-page--lyft .settings-grid {
+  display: grid;
+  gap: 12px;
+  margin-top: 0 !important;
+}
+
+.settings-page--lyft .settings-panel,
+.settings-page--lyft .settings-emergency-panel,
+.settings-page--lyft .settings-logout-panel {
+  width: 100% !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: #ffffff !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+.settings-page--lyft .settings-panel-heading {
+  padding: 16px 16px 8px;
+}
+
+.settings-page--lyft .settings-panel-heading span {
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.settings-page--lyft .settings-panel-heading h2 {
+  margin: 2px 0 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.settings-page--lyft .settings-control {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.settings-page--lyft .settings-control strong {
+  color: #111827;
+  font-size: 15px;
+}
+
+.settings-page--lyft .settings-control span {
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.settings-page--lyft .settings-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 16px !important;
+  border: 0 !important;
+  border-bottom: 1px solid #f3f4f6 !important;
+  border-radius: 0 !important;
+  background: #ffffff !important;
+  color: #111827 !important;
+  text-align: left;
+}
+
+.settings-page--lyft .settings-option strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.settings-page--lyft .settings-option span {
+  display: block;
+  font-size: 13px;
+  color: #6b7280;
+  margin-top: 2px;
+}
+
+.settings-page--lyft .settings-option em {
+  color: #9ca3af;
+  font-style: normal;
+  font-size: 18px;
+}
+
+.settings-page--lyft .settings-option::after {
+  content: "›";
+  color: #9ca3af;
+  font-size: 20px;
+  margin-left: 8px;
+}
+
+.settings-page--lyft .settings-logout-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px !important;
+}
+
+.settings-page--lyft .settings-logout-panel strong {
+  color: #111827;
+  font-size: 16px;
+}
+
+.settings-page--lyft .settings-logout-panel p {
+  color: #6b7280;
+  font-size: 13px;
+  margin: 4px 0 0;
+}
+
+.settings-page--lyft .settings-logout-panel button {
+  flex-shrink: 0;
+  padding: 10px 18px;
+  border: 0;
+  border-radius: 999px;
+  background: #111827;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.settings-page--lyft .settings-emergency-grid a {
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  color: #111827;
+}
+
+/* ─── Rider home idle — Lyft dashboard ──────────────────────────────────── */
+
+.rider-home__idle--lyft {
+  padding-top: 4px;
+}
+
+.rider-home__idle--lyft .rider-home__idle-greeting {
+  font-size: 22px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 4px;
+}
+
+.rider-home__idle--lyft .rider-home__idle-subtitle {
+  color: #6b7280;
+  font-size: 14px;
+  margin: 0 0 16px;
+}
+
+.rider-home__lyft-search-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 52px;
+  padding: 0 16px;
+  margin-bottom: 16px;
+  border: 0;
+  border-radius: 12px;
+  background: #f3f4f6;
+  color: #111827;
+  cursor: pointer;
+  text-align: left;
+}
+
+.rider-home__lyft-search-card span {
+  font-size: 18px;
+  color: #6b7280;
+}
+
+.rider-home__lyft-search-card strong {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.rider-home__shortcuts {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.rider-home__shortcut {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #111827;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.rider-home__shortcut-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #f3f4f6;
+  font-size: 16px;
+}
+
+/* ─── Register (rider app) ──────────────────────────────────────────────── */
+
+.auth-register-page--lyft {
+  background: #ffffff;
+  color: #111827;
+  justify-content: flex-start;
+  padding-top: max(48px, env(safe-area-inset-top));
+}
+
+.auth-register-page--lyft .auth-register-hero h1 {
+  color: #111827;
+}
+
+.auth-register-page--lyft .auth-register-hero p {
+  color: #6b7280;
+}
+
+.auth-register-page--lyft .auth-register-card {
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  box-shadow: 0 12px 40px rgba(15, 23, 42, 0.08);
+  backdrop-filter: none;
+}
+
+.auth-register-page--lyft .auth-register-header h2 {
+  color: #111827;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.auth-register-page--lyft .auth-register-tabs {
+  background: #f3f4f6;
+}
+
+.auth-register-page--lyft .auth-register-tabs button {
+  color: #6b7280;
+}
+
+.auth-register-page--lyft .auth-register-tabs button.active {
+  background: #ffffff;
+  color: #111827;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+}
+
+.auth-register-page--lyft .auth-register-card input,
+.auth-register-page--lyft .auth-register-card select {
+  border: 1px solid #d1d5db;
+  background: #f9fafb;
+  color: #111827;
+}
+
+.auth-register-page--lyft .auth-register-card input:focus,
+.auth-register-page--lyft .auth-register-card select:focus {
+  border-color: var(--yala-green, #00a651);
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(0, 166, 81, 0.12);
+}
+
+.auth-register-page--lyft .auth-register-city span,
+.auth-register-page--lyft .auth-register-file span {
+  color: #374151;
+}
+
+.auth-register-page--lyft .auth-register-primary {
+  border-radius: 999px;
+  background: var(--yala-green, #00a651);
+  font-weight: 700;
+  box-shadow: 0 10px 24px rgba(0, 166, 81, 0.22);
+}
+
+.auth-register-page--lyft .auth-register-secondary {
+  color: #6b7280;
+}
+
+.auth-register-page--lyft .auth-register-error {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #b91c1c;
+}

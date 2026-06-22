@@ -45,3 +45,17 @@ export function getStatusStepIndex(status) {
 export function isCancellable(status) {
   return CANCELLABLE_STATUSES.has(status);
 }
+
+const EDITABLE_STOP_STATUSES = new Set([
+  'requested',
+  'accepted',
+  'driver_arriving',
+  'driver_arrived',
+]);
+
+/**
+ * Riders can add or remove stops until the trip is in progress.
+ */
+export function canEditStops(status) {
+  return EDITABLE_STOP_STATUSES.has(status);
+}

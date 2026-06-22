@@ -1,0 +1,141 @@
+.route-timeline {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0;
+}
+
+.route-timeline__item {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 10px;
+  align-items: stretch;
+  min-height: 52px;
+}
+
+.route-timeline__item--last {
+  min-height: auto;
+}
+
+.route-timeline__rail {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 28px;
+  padding-top: 6px;
+}
+
+.route-timeline__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  z-index: 1;
+}
+
+.route-timeline__item--pickup .route-timeline__dot {
+  background: var(--yala-green);
+  box-shadow: 0 0 0 3px var(--yala-green-soft);
+}
+
+.route-timeline__item--stop .route-timeline__dot {
+  background: #6b7280;
+}
+
+.route-timeline__item--destination .route-timeline__dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  background: #111827;
+}
+
+.route-timeline__line {
+  width: 2px;
+  flex: 1;
+  min-height: 28px;
+  margin-top: 4px;
+  background: var(--yala-gray-300);
+  border-radius: 999px;
+}
+
+.route-timeline__item--stop.route-timeline__status--departed .route-timeline__line,
+.route-timeline__item--stop .route-timeline__status--departed ~ .route-timeline__line {
+  background: var(--yala-green);
+}
+
+.route-timeline__content {
+  display: grid;
+  gap: 2px;
+  padding-bottom: 14px;
+}
+
+.route-timeline__item--last .route-timeline__content {
+  padding-bottom: 0;
+}
+
+.route-timeline__meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.route-timeline__meta {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.route-timeline__label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-friendly);
+  line-height: 1.35;
+}
+
+.route-timeline__status {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.route-timeline__status--pending {
+  background: rgba(107, 114, 128, 0.15);
+  color: #6b7280;
+}
+
+.route-timeline__status--arrived {
+  background: rgba(212, 175, 55, 0.18);
+  color: #a16207;
+}
+
+.route-timeline__status--departed {
+  background: var(--yala-green-soft);
+  color: var(--yala-green-strong);
+}
+
+.route-timeline--compact .route-timeline__item {
+  min-height: 44px;
+}
+
+.route-timeline--compact .route-timeline__content {
+  padding-bottom: 10px;
+}
+
+.route-timeline--dark .route-timeline__meta {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.route-timeline--dark .route-timeline__label {
+  color: #fff;
+}
+
+.route-timeline--dark .route-timeline__line {
+  background: rgba(255, 255, 255, 0.18);
+}

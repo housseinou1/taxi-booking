@@ -33,6 +33,7 @@ const HELP_CATEGORIES = [
   { key: "earnings", label: "Earnings & Payments", icon: "💰" },
   { key: "account", label: "Account & Profile", icon: "👤" },
   { key: "vehicle", label: "Vehicle & Documents", icon: "🚗" },
+  { key: "lost_found", label: "Lost and Found", icon: "🧳" },
   { key: "safety", label: "Safety & Security", icon: "🛡️" },
 ];
 
@@ -61,6 +62,11 @@ const HELP_ARTICLES = {
     { id: 13, title: "Required documents and uploads", summary: "What documents you need to drive." },
     { id: 14, title: "Document expiration and renewal", summary: "Keep your documents up to date." },
     { id: 15, title: "Vehicle inspection requirements", summary: "Maintaining vehicle standards." },
+  ],
+  lost_found: [
+    { id: 19, title: "Report an item left in your vehicle", summary: "Tell Yala support what was found, the ride details, and how we can reach you." },
+    { id: 20, title: "Return a rider's belongings safely", summary: "Use support or live chat so the return is documented and coordinated by Yala." },
+    { id: 21, title: "Protect rider privacy", summary: "Do not open bags, wallets, or phones. Keep the item secure until support gives instructions." },
   ],
   safety: [
     { id: 16, title: "Emergency support features", summary: "How to use the emergency button." },
@@ -286,6 +292,19 @@ export default function DriverSupport() {
 
   const searchTimeoutRef = useRef(null);
 
+  useEffect(() => {
+    const topic = new URLSearchParams(window.location.search || "").get("topic");
+    if (topic !== "lost-found") return;
+
+    setActiveTab("contact");
+    setSelectedCategory(null);
+    setContactSubject("Lost and Found Item");
+    setContactMessage(
+      "I found an item after a ride.\n\nRide details:\nItem description:\nWhere the item is now:\nBest contact time:"
+    );
+    setChatMessage("Lost and found item report");
+  }, []);
+
   // ─── FAQ Search ───────────────────────────────────────────────────────────
 
   const fetchFaq = useCallback(
@@ -430,6 +449,14 @@ export default function DriverSupport() {
   const renderContactForm = () => (
     <div style={tabContentStyle}>
       <p style={sectionDescStyle}>Send a message to our support team</p>
+
+      {contactSubject === "Lost and Found Item" && (
+        <div style={lostFoundNoticeStyle}>
+          Lost and Found reports go to Yala support. Include the ride, item
+          description, and where the item is secured so support can coordinate
+          with the rider.
+        </div>
+      )}
 
       {contactStatus === "success" && (
         <div style={successMessageStyle} role="status">
@@ -791,7 +818,8 @@ const emergencyStatusStyle = {
   left: "16px",
   padding: "12px 16px",
   borderRadius: "14px",
-  border: "1px solid",
+  borderWidth: "1px",
+  borderStyle: "solid",
   zIndex: 9998,
   backdropFilter: "blur(8px)",
 };
@@ -821,7 +849,9 @@ const tabButtonStyle = {
   gap: "4px",
   padding: "10px 8px",
   borderRadius: "14px",
-  border: `1px solid ${COLORS.cardBorder}`,
+  borderWidth: "1px",
+  borderStyle: "solid",
+  borderColor: COLORS.cardBorder,
   backgroundColor: COLORS.cardBg,
   color: COLORS.lightGray,
   fontSize: "11px",
@@ -1020,6 +1050,17 @@ const errorMessageStyle = {
   color: COLORS.errorRed,
   fontSize: "13px",
   fontWeight: 600,
+  marginBottom: "16px",
+};
+
+const lostFoundNoticeStyle = {
+  padding: "12px 14px",
+  backgroundColor: "rgba(59, 130, 246, 0.12)",
+  border: `1px solid ${COLORS.chatBlue}`,
+  borderRadius: "12px",
+  color: COLORS.white,
+  fontSize: "13px",
+  lineHeight: 1.5,
   marginBottom: "16px",
 };
 

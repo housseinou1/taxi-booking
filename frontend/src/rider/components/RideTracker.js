@@ -1,9 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { isCancellable, getStatusStepIndex } from '../utils/rideStatus';
+import { isCancellable, canEditStops, getStatusStepIndex } from '../utils/rideStatus';
 import wsService from '../services/wsService';
 import { cancelRide } from '../services/apiService';
+import RouteTimeline, { buildLiveRoutePoints } from '../../components/RouteTimeline';
+import LocationInput from './LocationInput';
+import { getNextPendingStop } from '../../driver/components/MultiStopProgress';
 import './RideTracker.css';
+
+const MAX_STOPS = 3;
 
 /**
  * Cancellation reasons available to the rider.
@@ -89,12 +94,15 @@ function getCoordinatePair(lat, lng) {
     : null;
 }
 
-function RideTracker({ ride, driverPosition, onChat, onShare, onSOS, onPayRate, onCancelSuccess }) {
+function RideTracker({ ride, driverPosition, city = 'Nouakchott', onAddStop, onChat, onShare, onSOS, onPayRate, onCancelSuccess }) {
   const [eta, setEta] = useState(ride.eta_minutes);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState(null);
+  const [showAddStop, setShowAddStop] = useState(false);
+  const [addingStop, setAddingStop] = useState(false);
+  const [addStopError, setAddStopError] = useState(null);
 
   // Subscribe to ETA updates via WebSocket
   useEffect(() => {
@@ -195,14 +203,40 @@ function RideTracker({ ride, driverPosition, onChat, onShare, onSOS, onPayRate, 
     driverPosition ||
     getCoordinatePair(ride.driver_current_lat, ride.driver_current_lng) ||
     getCoordinatePair(ride.driver_lat, ride.driver_lng);
+  const nextPendingStop =
+    ride.status === 'in_progress' ? getNextPendingStop(ride.stops || []) : null;
   const targetPosition =
     ride.status === 'in_progress'
-      ? getCoordinatePair(ride.destination_lat, ride.destination_lng) || ride.destination?.position
+      ? nextPendingStop
+        ? getCoordinatePair(nextPendingStop.latitude, nextPendingStop.longitude)
+        : getCoordinatePair(ride.destination_lat, ride.destination_lng) || ride.destination?.position
       : getCoordinatePair(ride.pickup_lat, ride.pickup_lng) || ride.pickup?.position;
   const movementDistanceKm =
     effectiveDriverPosition && Array.isArray(targetPosition)
       ? estimateDistanceKm(effectiveDriverPosition, targetPosition.map(Number))
       : null;
+  const routePoints = buildLiveRoutePoints(ride);
+  const stopCount = Array.isArray(ride.stops) ? ride.stops.length : 0;
+  const canAddMoreStops = canEditStops(ride.status) && stopCount < MAX_STOPS && Boolean(onAddStop);
+
+  const handleAddStopSelect = useCallback(
+    async (location) => {
+      if (!location?.position || !onAddStop) return;
+
+      setAddingStop(true);
+      setAddStopError(null);
+
+      try {
+        await onAddStop(location);
+        setShowAddStop(false);
+      } catch (error) {
+        setAddStopError(error.message || 'Could not add stop. Try again.');
+      } finally {
+        setAddingStop(false);
+      }
+    },
+    [onAddStop]
+  );
 
   /**
    * Handle cancellation confirmation.
@@ -278,6 +312,57 @@ function RideTracker({ ride, driverPosition, onChat, onShare, onSOS, onPayRate, 
 
   return (
     <div className="ride-tracker" aria-label="Ride tracking panel">
+      <section className="ride-tracker__route" aria-label="Trip route">
+        <RouteTimeline points={routePoints} compact />
+        {canAddMoreStops && (
+          <div className="ride-tracker__add-stop">
+            {!showAddStop ? (
+              <button
+                type="button"
+                className="ride-tracker__add-stop-btn"
+                onClick={() => setShowAddStop(true)}
+              >
+                + Add stop ({stopCount}/{MAX_STOPS})
+              </button>
+            ) : (
+              <div className="ride-tracker__add-stop-form">
+                <LocationInput
+                  label={`Add stop ${stopCount + 1}`}
+                  value=""
+                  city={city}
+                  onSelect={handleAddStopSelect}
+                  variant="stop"
+                />
+                <button
+                  type="button"
+                  className="ride-tracker__add-stop-cancel"
+                  onClick={() => {
+                    setShowAddStop(false);
+                    setAddStopError(null);
+                  }}
+                  disabled={addingStop}
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+            {addStopError && (
+              <p className="ride-tracker__add-stop-error" role="alert">
+                {addStopError}
+              </p>
+            )}
+            {addingStop && (
+              <p className="ride-tracker__add-stop-loading">Adding stop...</p>
+            )}
+          </div>
+        )}
+        {ride.status === 'in_progress' && stopCount === 0 && (
+          <p className="ride-tracker__route-hint">
+            Stops must be added before the trip starts.
+          </p>
+        )}
+      </section>
+
       {/* Driver Info */}
       {driverAssigned ? (
         <section className="ride-tracker__assignment" aria-label="Driver and vehicle information">
@@ -328,7 +413,12 @@ function RideTracker({ ride, driverPosition, onChat, onShare, onSOS, onPayRate, 
             {ride.vehicle_verified && <span className="ride-tracker__vehicle-verified">Verified vehicle</span>}
           </div>
           <p className="ride-tracker__movement">
-            📍 {ride.status === 'in_progress' ? 'Driver moving to destination' : 'Driver moving to pickup'}
+            📍{' '}
+            {ride.status === 'in_progress'
+              ? nextPendingStop
+                ? `Driver heading to stop ${nextPendingStop.stop_order}`
+                : 'Driver moving to final destination'
+              : 'Driver moving to pickup'}
             {movementDistanceKm != null ? ` · ~${movementDistanceKm.toFixed(1)} km away` : ' · Live location updating'}
           </p>
         </section>

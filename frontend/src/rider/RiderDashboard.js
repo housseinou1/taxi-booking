@@ -258,8 +258,6 @@ export default function RiderDashboard() {
     ? liveDriverRouteInfo?.etaMinutes ||
       (liveTrackingDistance ? Math.max(1, Math.round((liveTrackingDistance / 32) * 60)) : null)
     : null;
-  const hasRequiredRiderProfile =
-    riderIdentity.has_profile_picture && Boolean(riderIdentity.phone_number?.trim());
   const canCancelCurrentRide =
     currentRide && cancellableRideStatuses.has(currentRide.status);
   const rideName = useCallback((type) => t(`riderDashboard.rideTypes.${type}.name`), [t]);
@@ -764,13 +762,6 @@ export default function RiderDashboard() {
   const requestRide = async () => {
     try {
       setRequestMessage("");
-
-      if (!hasRequiredRiderProfile) {
-        setShowAccountPanel(true);
-        setIdentityMessage(t("riderDashboard.messages.profileRequired"));
-        setRequestMessage(t("riderDashboard.messages.profileRequired"));
-        return;
-      }
 
       const invalidStop = stopLocations.find((stop) => stop.label && !stop.location);
       const incompleteStop = stops.find((stop) => !stop.location.trim());
@@ -1290,6 +1281,11 @@ export default function RiderDashboard() {
               <span style={profileMenuLabelStyle}>Support</span>
               <span style={profileMenuArrowStyle}>→</span>
             </button>
+            <button type="button" style={profileMenuItemStyle} onClick={() => { window.location.href = "/support?topic=lost"; }}>
+              <span style={profileMenuIconStyle}>🧳</span>
+              <span style={profileMenuLabelStyle}>Lost Items</span>
+              <span style={profileMenuArrowStyle}>→</span>
+            </button>
             <button type="button" style={{ ...profileMenuItemStyle, borderBottom: "none", color: "#ef4444" }} onClick={() => { localStorage.removeItem("access"); localStorage.removeItem("refresh"); window.location.href = "/login"; }}>
               <span style={profileMenuIconStyle}>🚪</span>
               <span style={profileMenuLabelStyle}>Logout</span>
@@ -1803,16 +1799,14 @@ export default function RiderDashboard() {
             type="button"
             onClick={requestRide}
             disabled={requesting}
-              style={{
-                ...primaryActionStyle,
-                opacity: requesting || !hasRequiredRiderProfile ? 0.68 : 1,
+            style={{
+              ...primaryActionStyle,
+              opacity: requesting ? 0.68 : 1,
             }}
           >
             {requesting
               ? t("riderDashboard.requesting")
-              : hasRequiredRiderProfile
-                ? t("riderDashboard.confirmRide", { ride: selectedRideLabel, fare: formatMoney(fare) })
-                : t("riderDashboard.addProfileRequired")}
+              : t("riderDashboard.confirmRide", { ride: selectedRideLabel, fare: formatMoney(fare) })}
           </button>
         )}
 
@@ -1830,7 +1824,7 @@ export default function RiderDashboard() {
             rideType={rideType}
             fare={fare}
             token={token}
-            hasProfile={hasRequiredRiderProfile}
+            hasProfile={true}
           />
         )}
       </section>

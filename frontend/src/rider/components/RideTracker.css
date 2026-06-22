@@ -185,6 +185,78 @@
   grid-column: 2;
 }
 
+.ride-tracker__route {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--yala-gray-300);
+  border-radius: var(--radius-md);
+  background: var(--yala-white);
+}
+
+.ride-tracker__add-stop {
+  display: grid;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.ride-tracker__add-stop-btn {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px dashed var(--yala-green);
+  border-radius: var(--radius-md);
+  background: var(--yala-green-soft);
+  color: var(--yala-green);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+
+.ride-tracker__add-stop-form {
+  display: grid;
+  gap: 8px;
+}
+
+.ride-tracker__add-stop-cancel {
+  justify-self: start;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.ride-tracker__add-stop-error {
+  margin: 0;
+  color: #b42318;
+  font-size: var(--font-size-sm);
+}
+
+.ride-tracker__add-stop-loading {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.ride-tracker__route-hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.ride-tracker__route-line {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-friendly);
+}
+
+.ride-tracker__route-line--stop {
+  color: var(--text-muted);
+}
+
 .ride-tracker__movement {
   margin: 0;
   padding: 9px 12px;

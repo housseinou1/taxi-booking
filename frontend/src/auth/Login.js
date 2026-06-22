@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useTranslation } from "react-i18next";
-import { API_URL, getApiCandidates } from "../apiConfig";
+import { getApiCandidates } from "../apiConfig";
 import { getSafeRedirectPath, getUserRole } from "./roleRouting";
 import { getAppType } from "../native/platform";
 
@@ -84,6 +84,11 @@ function getNextRouteFromSearch() {
 }
 
 function getLoginContext() {
+  const builtAppType = getAppType();
+  if (builtAppType === "rider" || builtAppType === "driver" || builtAppType === "admin") {
+    return builtAppType;
+  }
+
   const path = window.location.pathname || "";
   const next = getNextRouteFromSearch();
   const storedNext = localStorage.getItem("sx_login_redirect") || "";
@@ -118,8 +123,6 @@ function getLoginContext() {
     return "rider";
   }
 
-  const appType = getAppType();
-  if (appType === "rider" || appType === "driver") return appType;
   return "web";
 }
 
@@ -193,10 +196,19 @@ export default function Login({ onLogin }) {
         throw lastError || new Error("Login request failed");
       }
 
+      const loginContext = getLoginContext();
       const appType = getAppType();
       const userRole = getUserRole(response.data);
-      const riderAppMismatch = appType === "rider" && userRole !== "rider";
-      const driverAppMismatch = appType === "driver" && userRole !== "driver";
+      const expectedAppRole =
+        loginContext === "admin"
+          ? "web"
+          : loginContext === "driver" || loginContext === "rider"
+          ? loginContext
+          : appType;
+      const riderAppMismatch =
+        expectedAppRole === "rider" && userRole !== "rider";
+      const driverAppMismatch =
+        expectedAppRole === "driver" && userRole !== "driver";
 
       if (riderAppMismatch || driverAppMismatch) {
         const expected = appType === "driver" ? "Driver" : "Rider";
@@ -240,7 +252,7 @@ export default function Login({ onLogin }) {
   };
 
   return (
-    <main className="yala-login">
+    <main className={`yala-login ${getLoginContext() === "rider" ? "yala-login--lyft" : ""}`}>
       <LoginStyles />
 
       <div className="yala-login__logo-area">

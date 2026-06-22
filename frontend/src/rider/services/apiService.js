@@ -180,6 +180,24 @@ export async function validatePromo(code, estimatedFare) {
 }
 
 /**
+ * Add an intermediate stop to an active ride.
+ * @param {number} rideId
+ * @param {{ location_name: string, latitude: number, longitude: number, stop_order?: number }} stop
+ */
+export async function addRideStop(rideId, stop) {
+  try {
+    const response = await riderApi.post(
+      `${API_URL}/rides/${rideId}/stops/`,
+      stop,
+      { headers: authHeaders() }
+    );
+    return response.data;
+  } catch (error) {
+    throw handleError(error);
+  }
+}
+
+/**
  * Get the rider's currently active ride (if any).
  * Fetches ride history and returns the first ride with an active status.
  * @returns {Promise<object|null>} The active ride or null if none found.
@@ -222,6 +240,7 @@ export async function getRiderProfile() {
 const apiService = {
   getToken,
   requestRide,
+  addRideStop,
   cancelRide,
   getRideHistory,
   validatePromo,

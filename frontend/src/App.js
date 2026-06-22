@@ -73,6 +73,11 @@ function normalizeRouteContext(value) {
 }
 
 function getRouteAppType() {
+  const builtAppType = getAppType();
+  if (builtAppType === "rider" || builtAppType === "driver") {
+    return builtAppType;
+  }
+
   const params = new URLSearchParams(window.location.search || "");
   const route = normalizeRouteContext(
     params.get("next") ||
@@ -128,6 +133,11 @@ function App() {
   const sessionCheckStarted = useRef(false);
 
   useEffect(() => {
+    const builtAppType = getAppType();
+    if (builtAppType === "rider" || builtAppType === "driver" || builtAppType === "admin") {
+      localStorage.removeItem("sx_login_redirect");
+    }
+
     initDeepLinkListener((route) => {
       if (route) {
         window.location.href = route;

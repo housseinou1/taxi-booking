@@ -4,7 +4,8 @@
   "description": "Yala Driver - Earn Money Driving in Mauritania",
   "private": true,
   "scripts": {
-    "build": "cd ../frontend && cp .env.driver .env.local && npm run build && rm -rf ../driver-app/www && cp -r build ../driver-app/www",
+    "build": "powershell -NoProfile -Command \"Copy-Item ../frontend/.env.driver ../frontend/.env.local -Force; Push-Location ../frontend; npm run build; Pop-Location; Remove-Item ./www -Recurse -Force -ErrorAction SilentlyContinue; Copy-Item ../frontend/build ./www -Recurse -Force; node ../frontend/scripts/stamp-native-app-type.js driver ./www\"",
+    "build:local": "powershell -NoProfile -Command \"Copy-Item ../frontend/.env.driver.localtest ../frontend/.env.local -Force; Push-Location ../frontend; npm run build; Pop-Location; Remove-Item ./www -Recurse -Force -ErrorAction SilentlyContinue; Copy-Item ../frontend/build ./www -Recurse -Force; node ../frontend/scripts/stamp-native-app-type.js driver ./www\"",
     "sync": "npx cap sync",
     "open:ios": "npx cap open ios",
     "open:android": "npx cap open android",

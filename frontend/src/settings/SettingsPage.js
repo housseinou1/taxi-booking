@@ -84,7 +84,7 @@ function SettingsPage({ onLogout, riderMode = false }) {
   ];
 
   return (
-    <main className={`settings-page settings-${theme.toLowerCase()} ${riderMode ? "settings-page--rider" : ""}`}>
+    <main className={`settings-page settings-${theme.toLowerCase()} ${riderMode ? "settings-page--rider settings-page--lyft" : ""}`}>
       <SettingsPageStyles />
 
       {!riderMode && (

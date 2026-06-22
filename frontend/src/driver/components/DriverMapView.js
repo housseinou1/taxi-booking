@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useLayoutEffect, useMemo } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -50,6 +50,13 @@ const destinationIcon = new L.DivIcon({
   iconAnchor: [14, 14],
 });
 
+const stopIcon = new L.DivIcon({
+  className: "driver-map-marker",
+  html: `<div style="width:24px;height:24px;border-radius:50%;background:#F59E0B;border:2px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.3);font-size:10px;font-weight:800;color:#fff">S</div>`,
+  iconSize: [24, 24],
+  iconAnchor: [12, 12],
+});
+
 /**
  * Auto-centers map on driver position when no active ride
  */
@@ -95,12 +102,34 @@ export default function DriverMapView({
   routePath = [],
 }) {
   const center = driverPosition || [18.0735, -15.9582]; // Default: Nouakchott
+  const mapKey = activeRide?.id ? `ride-${activeRide.id}` : "driver-idle-map";
+
+  useLayoutEffect(() => {
+    return () => {
+      document
+        .querySelectorAll(".driver-map-container .leaflet-container")
+        .forEach((container) => {
+          if (container._leaflet_id) {
+            delete container._leaflet_id;
+          }
+        });
+    };
+  }, [mapKey]);
 
   const fitPoints = useMemo(() => {
     if (!activeRide) return null;
     const points = [];
     if (activeRide.pickup_lat && activeRide.pickup_lng) {
       points.push([activeRide.pickup_lat, activeRide.pickup_lng]);
+    }
+    if (Array.isArray(activeRide.stops)) {
+      [...activeRide.stops]
+        .sort((left, right) => Number(left.stop_order || 0) - Number(right.stop_order || 0))
+        .forEach((stop) => {
+          if (stop.latitude && stop.longitude) {
+            points.push([stop.latitude, stop.longitude]);
+          }
+        });
     }
     if (activeRide.destination_lat && activeRide.destination_lng) {
       points.push([activeRide.destination_lat, activeRide.destination_lng]);
@@ -109,9 +138,17 @@ export default function DriverMapView({
     return points.length >= 2 ? points : null;
   }, [activeRide, driverPosition]);
 
+  const rideStops = useMemo(() => {
+    if (!Array.isArray(activeRide?.stops)) return [];
+    return [...activeRide.stops].sort(
+      (left, right) => Number(left.stop_order || 0) - Number(right.stop_order || 0)
+    );
+  }, [activeRide]);
+
   return (
     <div className="driver-map-container" data-testid="driver-map-container">
       <MapContainer
+        key={mapKey}
         center={center}
         zoom={14}
         style={{ width: "100%", height: "100%" }}
@@ -150,6 +187,17 @@ export default function DriverMapView({
             position={[activeRide.destination_lat, activeRide.destination_lng]}
             icon={destinationIcon}
           />
+        )}
+
+        {/* Intermediate stop markers */}
+        {rideStops.map((stop, index) =>
+          stop.latitude && stop.longitude ? (
+            <Marker
+              key={stop.id || `stop-${index}`}
+              position={[stop.latitude, stop.longitude]}
+              icon={stopIcon}
+            />
+          ) : null
         )}
 
         {/* Route polyline - dark blue, weight 5 */}

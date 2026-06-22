@@ -47,6 +47,7 @@ const ACCORDION_SECTIONS = [
     rows: [
       ["Safety Hub", "Safety tools and trusted ride guidance", "/driver/support"],
       ["Help Center", "Common driver questions and answers", "/driver/support"],
+      ["Lost and Found Items", "Report rider belongings left in your vehicle", "/driver/support?topic=lost-found"],
       ["Learning Center", "Improve service quality with Yala tips", "/driver/support"],
     ],
   },

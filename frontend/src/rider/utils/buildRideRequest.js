@@ -34,7 +34,7 @@ export function buildRideRequest(bookingState) {
     destination_latitude: destination.position[0],
     destination_longitude: destination.position[1],
     destination_address: destination.label || destination.address || "",
-    stops: (stops || []).map((stop, index) => ({
+    stops: (stops || []).filter((stop) => stop?.position).map((stop, index) => ({
       latitude: stop.position[0],
       longitude: stop.position[1],
       location_name: stop.label || stop.address || `Stop ${index + 1}`,

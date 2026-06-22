@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 
 import { API_URL } from "../apiConfig";
-import { useDriverContext } from "./context/DriverContext";
 
 // ─── Yala Branding Colors ───────────────────────────────────────────────────
 const COLORS = {
@@ -62,7 +61,6 @@ function RatingHistoryChart({ data }) {
     );
   }
 
-  const CHART_WIDTH = 100; // percentage
   const CHART_HEIGHT = 120;
   const PADDING_TOP = 10;
   const PADDING_BOTTOM = 10;
@@ -217,7 +215,6 @@ function ComplimentCard({ icon, label, count }) {
 // ─── Main Feedback Center Component ─────────────────────────────────────────
 export default function DriverFeedback() {
   const token = localStorage.getItem("access");
-  const { state } = useDriverContext();
 
   const [feedbackData, setFeedbackData] = useState(null);
   const [historyData, setHistoryData] = useState([]);
@@ -317,7 +314,7 @@ export default function DriverFeedback() {
     };
 
     loadData();
-  }, []);
+  }, [fetchFeedbackSummary, fetchHistory, fetchReviews]);
 
   // ─── Pagination Handlers ────────────────────────────────────────────────
   const handleNextPage = () => {

@@ -1,17 +1,17 @@
 /**
  * Check whether a rider profile includes both photo and phone.
- * Used for optional UI hints only; ride requests are not blocked on this.
+ * Profile completion is optional for booking, but still useful for UI hints.
  *
  * @param {object|null|undefined} profile - Rider profile object
- * @returns {boolean} True when both profile_picture and phone_number are present
+ * @returns {boolean} True when both profile photo and phone number are present
  */
 export function isProfileComplete(profile) {
-  if (!profile) return false;
-
-  const hasPicture = profile.profile_picture != null && profile.profile_picture !== '';
-  const hasPhone = profile.phone_number != null && profile.phone_number !== '';
-
-  return hasPicture && hasPhone;
+  return Boolean(
+    profile?.profile_picture &&
+      String(profile.profile_picture).trim() &&
+      profile?.phone_number &&
+      String(profile.phone_number).trim()
+  );
 }
 
 /**

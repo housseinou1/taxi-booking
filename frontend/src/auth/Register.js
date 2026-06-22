@@ -324,8 +324,10 @@ function Register() {
     }
   };
 
+  const isRiderLyft = getAppType() === "rider" || formData.user_type === "rider";
+
   return (
-    <main className="auth-register-page">
+    <main className={`auth-register-page${isRiderLyft ? " auth-register-page--lyft" : ""}`}>
       <AuthRegisterStyles />
       <section className="auth-register-hero">
         <img src={getLogoForApp()} alt="Yala" />

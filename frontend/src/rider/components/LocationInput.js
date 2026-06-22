@@ -13,13 +13,14 @@ import './LocationInput.css';
  *   onSelect     — callback with { label, position, city }
  *   onFocus      — optional callback when input gains focus (expand bottom sheet)
  */
-function LocationInput({ label, value, city, savedPlaces, onSelect, onFocus, variant = '' }) {
+function LocationInput({ label, value, city, savedPlaces, onSelect, onFocus, variant = '', inputRef: externalInputRef }) {
   const [query, setQuery] = useState(value || '');
   const [results, setResults] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const debounceRef = useRef(null);
-  const inputRef = useRef(null);
+  const internalInputRef = useRef(null);
+  const inputRef = externalInputRef || internalInputRef;
   const dropdownRef = useRef(null);
 
   // Sync external value changes

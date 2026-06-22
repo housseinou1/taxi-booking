@@ -2,6 +2,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 
 import "./tokens.css";
+import "./lyft-rider.css";
 
 import { RideProvider } from "./context/RideContext";
 import RiderHome from "./components/RiderHome";

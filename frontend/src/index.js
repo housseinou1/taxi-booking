@@ -1,28 +1,59 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import "./index.css";
+import "./rider/lyft-rider.css";
 import "./i18n";
 import App from "./App";
-import { isNative } from "./native/platform";
+import { initNativeAppType, isNative } from "./native/platform";
 
-const root = ReactDOM.createRoot(document.getElementById("root"));
+const rootElement = document.getElementById("root");
+const root = ReactDOM.createRoot(rootElement);
 
-root.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
-
-// Only register service worker in browser/PWA mode, not in Capacitor native apps
-if ("serviceWorker" in navigator && !isNative()) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker
-      .register("/sw.js")
-      .catch((error) => console.log("Service worker registration failed:", error));
-  });
-} else if ("serviceWorker" in navigator && isNative()) {
-  // Unregister any previously registered service workers in native context
-  navigator.serviceWorker.getRegistrations().then((registrations) => {
-    registrations.forEach((registration) => registration.unregister());
-  });
+function renderApp() {
+  root.render(
+    <React.StrictMode>
+      <App />
+    </React.StrictMode>
+  );
 }
+
+function showBootSplash(message) {
+  rootElement.innerHTML = `
+    <main style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0B1220;color:#fff;font-family:'Plus Jakarta Sans',sans-serif;padding:24px;text-align:center;">
+      <div>
+        <div style="font-size:28px;font-weight:700;margin-bottom:8px;">Yala</div>
+        <div style="opacity:0.8;font-size:15px;">${message}</div>
+      </div>
+    </main>
+  `;
+}
+
+async function bootstrap() {
+  if (isNative()) {
+    showBootSplash("Starting Yala...");
+    await initNativeAppType();
+  }
+
+  renderApp();
+
+  const isLocalhost =
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1" ||
+    window.location.hostname === "";
+
+  // Only register service worker in browser/PWA mode, not local development or Capacitor native apps.
+  if ("serviceWorker" in navigator && !isNative() && !isLocalhost) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker
+        .register("/sw.js")
+        .catch((error) => console.log("Service worker registration failed:", error));
+    });
+  } else if ("serviceWorker" in navigator) {
+    // Unregister stale service workers in native and local development contexts.
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      registrations.forEach((registration) => registration.unregister());
+    });
+  }
+}
+
+bootstrap();

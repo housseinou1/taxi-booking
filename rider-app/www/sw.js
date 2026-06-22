@@ -1,4 +1,4 @@
-const CACHE_NAME = "sakho-express-v2";
+const CACHE_NAME = "yala-app-v3";
 const APP_SHELL = [
   "/",
   "/rider-dashboard",
@@ -31,6 +31,11 @@ self.addEventListener("fetch", (event) => {
   const { request } = event;
 
   if (request.method !== "GET") {
+    return;
+  }
+
+  if (request.mode === "navigate") {
+    event.respondWith(fetch(request).catch(() => caches.match("/")));
     return;
   }
 

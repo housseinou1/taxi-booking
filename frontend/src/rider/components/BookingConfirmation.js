@@ -1,5 +1,6 @@
 import React, { useCallback, useRef } from 'react';
 import PromoCodeInput from './PromoCodeInput';
+import RouteTimeline, { buildBookingRoutePoints } from '../../components/RouteTimeline';
 import './BookingConfirmation.css';
 
 /**
@@ -53,6 +54,7 @@ function BookingConfirmation({
 
   const hasDiscount = discountedFare != null && discountedFare < fare;
   const displayFare = hasDiscount ? discountedFare : fare;
+  const routePoints = buildBookingRoutePoints({ pickup, stops, destination });
 
   const handleConfirm = useCallback(async () => {
     // Prevent duplicate submissions
@@ -77,39 +79,8 @@ function BookingConfirmation({
       <div className="booking-confirmation__summary">
         <h2 className="booking-confirmation__title">Confirm Your Ride</h2>
 
-        {/* Pickup */}
-        <div className="booking-confirmation__row">
-          <span className="booking-confirmation__icon" aria-hidden="true">📍</span>
-          <div className="booking-confirmation__detail">
-            <span className="booking-confirmation__detail-label">Pickup</span>
-            <span className="booking-confirmation__detail-value">
-              {pickup?.label || 'Not set'}
-            </span>
-          </div>
-        </div>
-
-        {/* Stops */}
-        {stops.map((stop, index) => (
-          <div className="booking-confirmation__row" key={`stop-${index}`}>
-            <span className="booking-confirmation__icon" aria-hidden="true">⬤</span>
-            <div className="booking-confirmation__detail">
-              <span className="booking-confirmation__detail-label">Stop {index + 1}</span>
-              <span className="booking-confirmation__detail-value">
-                {stop?.label || `Stop ${index + 1}`}
-              </span>
-            </div>
-          </div>
-        ))}
-
-        {/* Destination */}
-        <div className="booking-confirmation__row">
-          <span className="booking-confirmation__icon" aria-hidden="true">🏁</span>
-          <div className="booking-confirmation__detail">
-            <span className="booking-confirmation__detail-label">Destination</span>
-            <span className="booking-confirmation__detail-value">
-              {destination?.label || 'Not set'}
-            </span>
-          </div>
+        <div className="booking-confirmation__route-card">
+          <RouteTimeline points={routePoints} compact />
         </div>
 
         {/* Ride Type */}

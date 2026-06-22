@@ -1,7 +1,19 @@
 import React from "react";
 import GoOnlineButton from "./GoOnlineButton";
 import DriverLevelBadge from "./DriverLevelBadge";
+import MultiStopProgress, { getNextPendingStop } from "./MultiStopProgress";
 import "./DriverStatusPanel.css";
+
+function openStopNavigation(stop) {
+  const lat = Number(stop?.latitude);
+  const lng = Number(stop?.longitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+  window.open(
+    `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`,
+    "_blank",
+    "noopener,noreferrer"
+  );
+}
 
 /**
  * DriverStatusPanel - Sliding bottom panel with status info, driver level, and Go Online button.
@@ -57,20 +69,9 @@ export default function DriverStatusPanel({
   const stopLabels = rideStops
     .map((stop, index) => stop?.location_name || stop?.label || stop?.address || `Stop ${index + 1}`)
     .filter(Boolean);
-  const nextPendingStopLabel =
-    activeRide?.status === "in_progress"
-      ? rideStops
-          .find((stop) => !(stop?.arrived_at && stop?.departed_at))
-          ?.location_name ||
-        rideStops
-          .find((stop) => !(stop?.arrived_at && stop?.departed_at))
-          ?.label ||
-        rideStops
-          .find((stop) => !(stop?.arrived_at && stop?.departed_at))
-          ?.address ||
-        stopLabels[0] ||
-        ""
-      : "";
+  const nextPendingStop =
+    activeRide?.status === "in_progress" ? getNextPendingStop(rideStops) : null;
+  const nextPendingStopLabel = nextPendingStop?.location_name || nextPendingStop?.label || "";
 
   return (
     <div className="driver-status-panel driver-status-panel--animate">
@@ -119,6 +120,22 @@ export default function DriverStatusPanel({
           {nextPendingStopLabel && (
             <div className="driver-status-panel__rider-location">
               🛑 Next stop: {nextPendingStopLabel}
+            </div>
+          )}
+          {!nextPendingStopLabel &&
+            activeRide?.status === "in_progress" &&
+            rideStops.length > 0 && (
+              <div className="driver-status-panel__rider-location">
+                🏁 Heading to final destination
+              </div>
+            )}
+          {rideStops.length > 0 && (
+            <div className="driver-status-panel__stops">
+              <MultiStopProgress
+                stops={rideStops}
+                rideStatus={activeRide.status}
+                onNavigateToStop={openStopNavigation}
+              />
             </div>
           )}
           <div className="driver-status-panel__ride-info">

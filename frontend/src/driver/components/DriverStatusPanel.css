@@ -140,6 +140,10 @@
   font-weight: 700;
 }
 
+.driver-status-panel__stops {
+  margin: 10px 0 12px;
+}
+
 .driver-status-panel__ride-info {
   display: flex;
   align-items: center;

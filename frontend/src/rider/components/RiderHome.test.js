@@ -141,6 +141,10 @@ function renderRiderHome() {
   );
 }
 
+function openLocationStep() {
+  fireEvent.click(document.querySelector('.rider-home__floating-search'));
+}
+
 // ─── Test suite ──────────────────────────────────────────────────────────────
 describe('RiderHome integration tests', () => {
   beforeEach(() => {
@@ -183,10 +187,9 @@ describe('RiderHome integration tests', () => {
     renderRiderHome();
 
     // Step 1: Home screen shows destination search button
-    expect(screen.getByText('Where are you going?')).toBeInTheDocument();
+    expect(screen.getAllByText('Where to?').length).toBeGreaterThan(0);
 
-    // Tap destination search to enter location step
-    fireEvent.click(screen.getByText('Where are you going?'));
+    openLocationStep();
 
     // Step 2: Location inputs should be visible (find by placeholder)
     const pickupInput = screen.getByPlaceholderText('Search pickup location...');
@@ -215,6 +218,9 @@ describe('RiderHome integration tests', () => {
     });
 
     fireEvent.click(screen.getAllByRole('option').find((el) => el.textContent.includes('Arafat')));
+
+    // Continue to ride type after setting pickup and destination
+    fireEvent.click(screen.getByRole('button', { name: /Find Rides/i }));
 
     // Step 3: Ride type selection should appear
     await waitFor(() => {
@@ -374,7 +380,7 @@ describe('RiderHome integration tests', () => {
 
     // Navigate through booking flow:
     // 1. Open destination search
-    fireEvent.click(screen.getByText('Where are you going?'));
+    openLocationStep();
 
     // 2. Set pickup
     const pickupInput = screen.getByPlaceholderText('Search pickup location...');
@@ -386,7 +392,7 @@ describe('RiderHome integration tests', () => {
     });
     fireEvent.click(screen.getAllByRole('option').find((el) => el.textContent.includes('Sebkha')));
 
-    // 3. Set destination (triggers rideType step since pickup is now set)
+    // 3. Set destination
     const destinationInput = screen.getByPlaceholderText('Search destination location...');
     fireEvent.change(destinationInput, { target: { value: 'Dar Naim' } });
 
@@ -395,6 +401,8 @@ describe('RiderHome integration tests', () => {
       expect(options.find((el) => el.textContent.includes('Dar Naim'))).toBeTruthy();
     });
     fireEvent.click(screen.getAllByRole('option').find((el) => el.textContent.includes('Dar Naim')));
+
+    fireEvent.click(screen.getByRole('button', { name: /Find Rides/i }));
 
     // 4. Select ride type
     await waitFor(() => {
@@ -459,9 +467,55 @@ describe('RiderHome integration tests', () => {
 
     // Completed ride must remain available so the rider can pay and rate.
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Pay and rate' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Rate your driver/i })).toBeInTheDocument();
     });
 
     expect(screen.getByText('Cheikh Ould')).toBeInTheDocument();
   }, 10000);
+
+  it('includes intermediate stops in the ride request payload', async () => {
+    renderRiderHome();
+
+    openLocationStep();
+
+    const pickupInput = screen.getByPlaceholderText('Search pickup location...');
+    fireEvent.change(pickupInput, { target: { value: 'Ksar' } });
+    await waitFor(() => {
+      expect(screen.getAllByRole('option').find((el) => el.textContent.includes('Ksar'))).toBeTruthy();
+    });
+    fireEvent.click(screen.getAllByRole('option').find((el) => el.textContent.includes('Ksar')));
+
+    const destinationInput = screen.getByPlaceholderText('Search destination location...');
+    fireEvent.change(destinationInput, { target: { value: 'Arafat' } });
+    await waitFor(() => {
+      expect(screen.getAllByRole('option').find((el) => el.textContent.includes('Arafat'))).toBeTruthy();
+    });
+    fireEvent.click(screen.getAllByRole('option').find((el) => el.textContent.includes('Arafat')));
+
+    const addStopInput = screen.getByPlaceholderText('Search add stop 1 location...');
+    fireEvent.change(addStopInput, { target: { value: 'Sebkha' } });
+    await waitFor(() => {
+      expect(screen.getAllByRole('option').find((el) => el.textContent.includes('Sebkha'))).toBeTruthy();
+    });
+    fireEvent.click(screen.getAllByRole('option').find((el) => el.textContent.includes('Sebkha')));
+
+    fireEvent.click(screen.getByRole('button', { name: /Find Rides/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Your route')).toBeInTheDocument();
+      expect(screen.getByText('Sebkha')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByLabelText(/Regular/));
+    fireEvent.click(screen.getByRole('button', { name: /Confirm booking/i }));
+
+    await waitFor(() => {
+      expect(mockRequestRide).toHaveBeenCalled();
+    });
+
+    const requestPayload = mockRequestRide.mock.calls[0][0];
+    expect(requestPayload.stops).toHaveLength(1);
+    expect(requestPayload.stops[0].location_name).toMatch(/Sebkha/i);
+    expect(requestPayload.stops[0].stop_order).toBe(1);
+  }, 15000);
 });

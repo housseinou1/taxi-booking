@@ -293,25 +293,6 @@ const inputStyle = {
   fontWeight: 800,
 };
 
-const labelStyle = {
-  display: "block",
-  marginTop: "12px",
-  marginBottom: "8px",
-  fontWeight: 900,
-  color: "#e5e7eb",
-};
-
-const fileStyle = {
-  width: "100%",
-  padding: "12px",
-  border: "1px dashed rgba(255,255,255,0.28)",
-  borderRadius: "12px",
-  marginBottom: "12px",
-  background: "rgba(255,255,255,0.06)",
-  color: "#e5e7eb",
-  boxSizing: "border-box",
-};
-
 const termsBoxStyle = {
   marginTop: "18px",
   border: "1px solid rgba(255,255,255,0.12)",

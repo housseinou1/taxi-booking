@@ -18,6 +18,7 @@ import apiService from '../services/apiService';
 import { calculateFare } from '../utils/fareCalculator';
 import { buildRideRequest } from '../utils/buildRideRequest';
 import { MARKET } from '../../marketConfig';
+import RouteTimeline, { buildBookingRoutePoints } from '../../components/RouteTimeline';
 import './RiderHome.css';
 
 const RIDE_TYPE_LABELS = {
@@ -27,6 +28,27 @@ const RIDE_TYPE_LABELS = {
   share: 'Share',
 };
 const MAX_STOPS = 3;
+
+function RouteSummary({ pickup, destination, stops, onEdit, onAddStop, canAddStop }) {
+  const routePoints = buildBookingRoutePoints({ pickup, stops, destination });
+
+  return (
+    <div className="rider-home__route-summary">
+      <div className="rider-home__route-summary-header">
+        <span>Your route</span>
+        <button type="button" className="rider-home__route-edit" onClick={onEdit}>
+          Edit
+        </button>
+      </div>
+      <RouteTimeline points={routePoints} compact />
+      {canAddStop && onAddStop && (
+        <button type="button" className="rider-home__add-stop-btn" onClick={onAddStop}>
+          + Add stop
+        </button>
+      )}
+    </div>
+  );
+}
 
 function getDriverPositionFromRide(ride) {
   const lat = Number(ride?.driver_current_lat);
@@ -64,6 +86,7 @@ function RiderHome() {
   const [showSafety, setShowSafety] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const savedIntentHandledRef = useRef(false);
+  const addStopInputRef = useRef(null);
 
   const {
     city,
@@ -249,7 +272,7 @@ function RiderHome() {
     async function fetchRoute() {
       const waypoints = [
         pickup.position,
-        ...stops.filter(Boolean).map((s) => s.position),
+        ...stops.filter((stop) => stop?.position).map((stop) => stop.position),
         destination.position,
       ];
 
@@ -369,10 +392,10 @@ function RiderHome() {
 
       if (target === 'pickup') {
         dispatch({ type: 'SET_PICKUP', payload: selectedLocation });
-        dispatch({ type: 'SET_BOOKING_STEP', payload: destination ? 'rideType' : 'location' });
+        dispatch({ type: 'SET_BOOKING_STEP', payload: 'location' });
       } else {
         dispatch({ type: 'SET_DESTINATION', payload: selectedLocation });
-        dispatch({ type: 'SET_BOOKING_STEP', payload: pickup ? 'rideType' : 'location' });
+        dispatch({ type: 'SET_BOOKING_STEP', payload: 'location' });
       }
     } catch (error) {
       // Ignore malformed saved place payloads.
@@ -432,12 +455,20 @@ function RiderHome() {
   const handleDestinationSelect = useCallback(
     (location) => {
       dispatch({ type: 'SET_DESTINATION', payload: location });
-      // Always transition to rideType after destination is selected
-      // The route useEffect will fetch the route when both pickup & destination exist
-      dispatch({ type: 'SET_BOOKING_STEP', payload: 'rideType' });
     },
     [dispatch]
   );
+
+  const handleEditRoute = useCallback(() => {
+    dispatch({ type: 'SET_BOOKING_STEP', payload: 'location' });
+  }, [dispatch]);
+
+  const handleFocusAddStop = useCallback(() => {
+    dispatch({ type: 'SET_BOOKING_STEP', payload: 'location' });
+    window.setTimeout(() => {
+      addStopInputRef.current?.focus();
+    }, 150);
+  }, [dispatch]);
 
   const handleAddStop = useCallback(
     (location) => {
@@ -467,9 +498,9 @@ function RiderHome() {
   const handleSavedDestination = useCallback(
     (location) => {
       dispatch({ type: 'SET_DESTINATION', payload: location });
-      dispatch({ type: 'SET_BOOKING_STEP', payload: pickup ? 'rideType' : 'location' });
+      dispatch({ type: 'SET_BOOKING_STEP', payload: 'location' });
     },
-    [dispatch, pickup]
+    [dispatch]
   );
 
   const handleMapClick = useCallback(
@@ -569,6 +600,33 @@ function RiderHome() {
     dispatch({ type: 'RIDE_CANCELLED' });
   }, [dispatch]);
 
+  const handleAddStopToActiveRide = useCallback(
+    async (location) => {
+      if (!currentRide?.id || !location?.position) return;
+
+      const existingStops = Array.isArray(currentRide.stops) ? currentRide.stops : [];
+      if (existingStops.length >= MAX_STOPS) {
+        throw new Error(`You can add up to ${MAX_STOPS} stops.`);
+      }
+
+      const newStop = await apiService.addRideStop(currentRide.id, {
+        location_name: location.label || location.address || `Stop ${existingStops.length + 1}`,
+        latitude: location.position[0],
+        longitude: location.position[1],
+      });
+
+      const updatedStops = [...existingStops, newStop].sort(
+        (left, right) => Number(left.stop_order || 0) - Number(right.stop_order || 0)
+      );
+
+      dispatch({
+        type: 'RIDE_UPDATE',
+        payload: { stops: updatedStops },
+      });
+    },
+    [currentRide, dispatch]
+  );
+
   const handleChat = useCallback(() => {
     setShowChat(true);
   }, []);
@@ -597,18 +655,32 @@ function RiderHome() {
     switch (bookingStep) {
       case 'idle':
         return (
-          <div className="rider-home__idle">
+          <div className="rider-home__idle rider-home__idle--lyft">
             <h1 className="rider-home__idle-greeting">Hi, {profile?.first_name || 'there'} 👋</h1>
-            <p className="rider-home__idle-subtitle">Ready to ride?</p>
-            <button className="rider-home__main-search" type="button" onClick={handleDestinationFocus}>
+            <p className="rider-home__idle-subtitle">Where are you going?</p>
+            <button className="rider-home__lyft-search-card" type="button" onClick={handleDestinationFocus}>
               <span aria-hidden="true">⌕</span>
-              <strong>Where to?</strong>
+              <strong>Search destination</strong>
             </button>
+            <div className="rider-home__shortcuts">
+              <button type="button" className="rider-home__shortcut" onClick={() => handleNavigate('/saved-places')}>
+                <span className="rider-home__shortcut-icon" aria-hidden="true">⌂</span>
+                Saved
+              </button>
+              <button type="button" className="rider-home__shortcut" onClick={() => handleNavigate('/rider-history')}>
+                <span className="rider-home__shortcut-icon" aria-hidden="true">🕐</span>
+                Trips
+              </button>
+              <button type="button" className="rider-home__shortcut" onClick={() => handleNavigate('/rider-profile')}>
+                <span className="rider-home__shortcut-icon" aria-hidden="true">👤</span>
+                Profile
+              </button>
+            </div>
             <ServiceHub onNavigate={handleNavigate} />
             <div className="rider-home__saved">
               <div>
-                <span>Your places</span>
-                <button type="button" onClick={() => handleNavigate('/saved-places')}>Edit</button>
+                <span>Saved places</span>
+                <button type="button" onClick={() => handleNavigate('/saved-places')}>See all</button>
               </div>
               <div className="rider-home__saved-grid">
                 {savedPlaces.slice(0, 2).map((place) => (
@@ -631,7 +703,7 @@ function RiderHome() {
               </button>
               <div>
                 <span>Set your route</span>
-                <h2>Pickup and drop-off</h2>
+                <h2>Pickup, stops, and drop-off</h2>
               </div>
             </div>
             <div className="location-stack">
@@ -642,6 +714,44 @@ function RiderHome() {
                 onSelect={handlePickupSelect}
                 variant="pickup"
               />
+              {stops.map((stop, index) => (
+                <div key={`stop-input-${index}`} className="location-stack__stop-row">
+                  <LocationInput
+                    label={`${t('riderHome.stop', 'Stop')} ${index + 1}`}
+                    value={stop?.label || ''}
+                    city={city}
+                    onSelect={(location) => handleUpdateStop(index, location)}
+                    variant="stop"
+                  />
+                  <button
+                    type="button"
+                    className="location-stack__remove-stop"
+                    onClick={() => handleRemoveStop(index)}
+                    aria-label={`Remove stop ${index + 1}`}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+              {stops.length < MAX_STOPS && (
+                <div className="location-stack__add-row">
+                  <button
+                    type="button"
+                    className="rider-home__add-stop-btn"
+                    onClick={handleFocusAddStop}
+                  >
+                    + {t('riderHome.addStop', 'Add stop')} ({stops.length}/{MAX_STOPS})
+                  </button>
+                  <LocationInput
+                    label={`${t('riderHome.addStop', 'Add stop')} ${stops.length + 1}`}
+                    value=""
+                    city={city}
+                    onSelect={handleAddStop}
+                    variant="stop"
+                    inputRef={addStopInputRef}
+                  />
+                </div>
+              )}
               <LocationInput
                 label={t('riderHome.destination', 'Destination')}
                 value={destination?.label || ''}
@@ -651,34 +761,6 @@ function RiderHome() {
                 onFocus={handleDestinationFocus}
                 variant="destination"
               />
-              {stops.map((stop, index) => (
-                <div key={`stop-input-${index}`} className="rider-home__stop-row">
-                  <LocationInput
-                    label={`Stop ${index + 1}`}
-                    value={stop?.label || ''}
-                    city={city}
-                    onSelect={(location) => handleUpdateStop(index, location)}
-                    variant="stop"
-                  />
-                  <button
-                    type="button"
-                    className="rider-home__stop-remove"
-                    onClick={() => handleRemoveStop(index)}
-                    aria-label={`Remove stop ${index + 1}`}
-                  >
-                    Remove
-                  </button>
-                </div>
-              ))}
-              {stops.length < MAX_STOPS && (
-                <LocationInput
-                  label={`Add stop ${stops.length + 1}`}
-                  value=""
-                  city={city}
-                  onSelect={handleAddStop}
-                  variant="stop"
-                />
-              )}
             </div>
             <div className="rider-home__location-actions">
               <button type="button" onClick={useCurrentLocation}>Use current GPS</button>
@@ -707,6 +789,14 @@ function RiderHome() {
       case 'rideType':
         return (
           <div className="rider-home__ride-type-content">
+            <RouteSummary
+              pickup={pickup}
+              destination={destination}
+              stops={stops}
+              onEdit={handleEditRoute}
+              onAddStop={handleFocusAddStop}
+              canAddStop={stops.length < MAX_STOPS}
+            />
             <h2 className="rider-home__section-title">
               {t('riderHome.chooseRide', 'Choose a ride')}
             </h2>
@@ -754,6 +844,8 @@ function RiderHome() {
           <RideTracker
             ride={currentRide}
             driverPosition={driverPosition}
+            city={city}
+            onAddStop={handleAddStopToActiveRide}
             onChat={handleChat}
             onShare={handleShareTrip}
             onSOS={handleSOS}

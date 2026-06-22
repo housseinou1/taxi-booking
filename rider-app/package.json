@@ -4,7 +4,8 @@
   "description": "Yala Rider - Book a Ride in Mauritania",
   "private": true,
   "scripts": {
-    "build": "cd ../frontend && cp .env.rider .env.local && npm run build && rm -rf ../rider-app/www && cp -r build ../rider-app/www",
+    "build": "powershell -NoProfile -Command \"Copy-Item ../frontend/.env.rider ../frontend/.env.local -Force; Push-Location ../frontend; npm run build; Pop-Location; Remove-Item ./www -Recurse -Force -ErrorAction SilentlyContinue; Copy-Item ../frontend/build ./www -Recurse -Force; node ../frontend/scripts/stamp-native-app-type.js rider ./www\"",
+    "build:local": "powershell -NoProfile -Command \"Copy-Item ../frontend/.env.rider.localtest ../frontend/.env.local -Force; Push-Location ../frontend; npm run build; Pop-Location; Remove-Item ./www -Recurse -Force -ErrorAction SilentlyContinue; Copy-Item ../frontend/build ./www -Recurse -Force; node ../frontend/scripts/stamp-native-app-type.js rider ./www\"",
     "sync": "npx cap sync",
     "open:ios": "npx cap open ios",
     "open:android": "npx cap open android",

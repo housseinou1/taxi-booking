@@ -16,31 +16,26 @@ const isBrowserLocalDev =
   (window.location.hostname === "localhost" ||
     window.location.hostname === "127.0.0.1");
 
-const shouldUseDevProxy =
-  isBrowserLocalDev &&
-  configuredApiUrl.startsWith("http") &&
-  !configuredApiUrl.includes("localhost") &&
-  !configuredApiUrl.includes("127.0.0.1");
+const localDevApiUrl = `${browserProtocol}://${browserHost}:8000`;
+const localDevWsUrl = `${browserProtocol === "https" ? "wss" : "ws"}://${browserHost}:8000/ws/rides/`;
 
-export const API_URL = shouldUseDevProxy
-  ? ""
-  : configuredApiUrl || `${browserProtocol}://${browserHost}:8000`;
+export const API_URL = isBrowserLocalDev
+  ? localDevApiUrl
+  : configuredApiUrl || localDevApiUrl;
 
 export const WS_URL =
-  process.env.REACT_APP_WS_URL ||
-  `${browserProtocol === "https" ? "wss" : "ws"}://${browserHost}:8000/ws/rides/`;
+  isBrowserLocalDev
+    ? localDevWsUrl
+    : process.env.REACT_APP_WS_URL || localDevWsUrl;
 
 export function getApiCandidates(path = "") {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
   const candidates = [`${API_URL}${normalizedPath}`];
 
-  if (shouldUseDevProxy) {
-    return candidates;
-  }
-
   if (
     typeof window !== "undefined" &&
     configuredApiUrl &&
+    !isBrowserLocalDev &&
     !configuredApiUrl.includes("localhost") &&
     !configuredApiUrl.includes("127.0.0.1")
   ) {

@@ -60,6 +60,19 @@ describe('buildRideRequest', () => {
     expect(payload.stops).toHaveLength(3);
   });
 
+  it('ignores stops without coordinates', () => {
+    const state = {
+      ...validState,
+      stops: [
+        { label: 'Incomplete', position: null },
+        { label: 'Stop2', position: [18.06, -15.96] },
+      ],
+    };
+    const payload = buildRideRequest(state);
+    expect(payload.stops).toHaveLength(1);
+    expect(payload.stops[0].location_name).toBe('Stop2');
+  });
+
   it('returns null when booking state is null', () => {
     expect(buildRideRequest(null)).toBeNull();
   });

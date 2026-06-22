@@ -8,7 +8,7 @@
  */
 
 // Platform detection
-export { isNative, getPlatform, getAppType, shouldShowInstallButton } from './platform';
+export { isNative, getPlatform, getAppType, initNativeAppType, shouldShowInstallButton } from './platform';
 
 // Secure token storage
 export { setToken, getToken, removeToken } from './storage';

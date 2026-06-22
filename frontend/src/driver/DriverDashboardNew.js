@@ -2,12 +2,12 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import axios from "axios";
 
 import { API_URL } from "../apiConfig";
-import { MARKET, formatMoney, isPointInServiceArea } from "../marketConfig";
+import { MARKET, isPointInServiceArea } from "../marketConfig";
 import { subscribeRideUpdates } from "../socket";
-import { preloadNotificationSound, playNativeSound, vibrateNative, playRideAlertChime } from "../native/sound";
-import { isNative } from "../native/platform";
+import { preloadNotificationSound, vibrateNative, playRideAlertChime } from "../native/sound";
 
 import DriverMapView from "./components/DriverMapView";
+import { getNavigationDestination } from "./components/MultiStopProgress";
 import EarningsHeader from "./components/EarningsHeader";
 import NotificationIcon from "./components/NotificationIcon";
 import HamburgerMenu from "./components/HamburgerMenu";
@@ -73,7 +73,7 @@ export default function DriverDashboardNew() {
   const [routePath, setRoutePath] = useState([]);
   const [menuOpen, setMenuOpen] = useState(false);
   const [currentView, setCurrentView] = useState("dashboard");
-  const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [unreadNotifications] = useState(0);
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [driverNotice, setDriverNotice] = useState("");
 
@@ -97,7 +97,7 @@ export default function DriverDashboardNew() {
     [driverRides]
   );
 
-  // Build a simple route preview path for DriverMapView.
+  // Build a route preview path for DriverMapView, including intermediate stops.
   useEffect(() => {
     if (!activeRide) {
       setRoutePath([]);
@@ -115,10 +115,39 @@ export default function DriverDashboardNew() {
         ? [Number(activeRide.destination_lat), Number(activeRide.destination_lng)]
         : null;
 
+    const sortedStops = Array.isArray(activeRide.stops)
+      ? [...activeRide.stops].sort(
+          (left, right) => Number(left.stop_order || 0) - Number(right.stop_order || 0)
+        )
+      : [];
+
+    const stopPoints = sortedStops
+      .map((stop) => {
+        const lat = Number(stop.latitude);
+        const lng = Number(stop.longitude);
+        return Number.isFinite(lat) && Number.isFinite(lng) ? [lat, lng] : null;
+      })
+      .filter(Boolean);
+
     const points = [];
     if (driverPosition) points.push(driverPosition);
-    if (pickupPoint) points.push(pickupPoint);
-    if (destinationPoint) points.push(destinationPoint);
+
+    if (activeRide.status === "in_progress") {
+      const nextStop = getNavigationDestination(sortedStops, "in_progress");
+      if (nextStop) {
+        const lat = Number(nextStop.latitude);
+        const lng = Number(nextStop.longitude);
+        if (Number.isFinite(lat) && Number.isFinite(lng)) {
+          points.push([lat, lng]);
+        }
+      } else if (destinationPoint) {
+        points.push(destinationPoint);
+      }
+    } else {
+      if (pickupPoint) points.push(pickupPoint);
+      stopPoints.forEach((point) => points.push(point));
+      if (destinationPoint) points.push(destinationPoint);
+    }
 
     setRoutePath(points.length >= 2 ? points : []);
   }, [activeRide, driverPosition]);
