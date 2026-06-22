@@ -1,0 +1,76 @@
+.post-ride {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 8px 16px 28px;
+  color: #111827;
+  font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.post-ride__hero { text-align: center; padding: 8px 0 18px; }
+.post-ride__eyebrow { margin: 0 0 6px; color: #6b7280; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.post-ride__hero h2 { margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; }
+.post-ride__destination { margin: 8px 0 0; color: #6b7280; font-size: 14px; font-weight: 500; }
+
+.post-ride__driver-card {
+  display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 14px; align-items: center;
+  padding: 16px; border: 1px solid #eceff1; border-radius: 18px; background: #f9fafb;
+}
+.post-ride__avatar { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; }
+.post-ride__avatar--placeholder { display: grid; place-items: center; background: #ecfdf3; color: #047857; font-size: 28px; font-weight: 800; }
+.post-ride__driver-card strong { display: block; font-size: 18px; font-weight: 800; }
+.post-ride__driver-card span { display: block; margin-top: 4px; color: #6b7280; font-size: 14px; }
+
+.post-ride__rating { margin-top: 22px; text-align: center; }
+.post-ride__stars { display: flex; justify-content: center; gap: 10px; }
+.post-ride__stars button {
+  width: 52px; height: 52px; border: 0; border-radius: 50%; background: #f3f4f6; color: #d1d5db;
+  font-size: 30px; cursor: pointer;
+}
+.post-ride__stars button.active { color: #111827; background: #fff; box-shadow: 0 8px 20px rgba(17, 24, 39, 0.12); transform: scale(1.04); }
+.post-ride__rating-label { margin: 10px 0 0; font-size: 15px; font-weight: 700; }
+
+.post-ride__compliments { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+.post-ride__compliments button {
+  border: 1px solid #e5e7eb; border-radius: 999px; background: #fff; padding: 10px 14px;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.post-ride__compliments button.active { border-color: #111827; background: #111827; color: #fff; }
+
+.post-ride__fare-card { margin-top: 20px; padding: 16px; border: 1px solid #eceff1; border-radius: 18px; background: #fff; }
+.post-ride__fare-row, .post-ride__fare-total { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+.post-ride__fare-row { padding: 8px 0; color: #6b7280; font-size: 14px; font-weight: 600; }
+.post-ride__fare-total { margin-top: 8px; padding-top: 12px; border-top: 1px solid #eceff1; font-weight: 800; }
+.post-ride__fare-total strong { font-size: 24px; }
+
+.post-ride__tips, .post-ride__methods { margin-top: 20px; }
+.post-ride__tips > p, .post-ride__methods > p { margin: 0 0 10px; font-size: 15px; font-weight: 700; }
+.post-ride__tip-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.post-ride__tip-grid button {
+  min-height: 68px; border: 1px solid #e5e7eb; border-radius: 14px; background: #fff;
+  display: grid; gap: 4px; place-items: center; cursor: pointer; font: inherit;
+}
+.post-ride__tip-grid button.active { border-color: #111827; background: #111827; color: #fff; }
+.post-ride__tip-grid button.active strong, .post-ride__tip-grid button.active span { color: #fff; }
+
+.post-ride__method-list { display: grid; gap: 8px; }
+.post-ride__method-list button {
+  display: grid; gap: 2px; text-align: left; padding: 12px 14px;
+  border: 1px solid #e5e7eb; border-radius: 14px; background: #fff; cursor: pointer; font: inherit;
+}
+.post-ride__method-list button.active { border-color: #00a651; background: #f0fdf4; box-shadow: inset 0 0 0 1px #00a651; }
+
+.post-ride__paid-badge { margin-top: 18px; padding: 12px; border-radius: 14px; background: #ecfdf3; color: #047857; font-weight: 700; text-align: center; }
+.post-ride__notice { margin-top: 14px; padding: 12px; border-radius: 12px; background: #fff7ed; color: #9a3412; font-size: 13px; font-weight: 600; }
+.post-ride__review {
+  width: 100%; margin-top: 14px; padding: 12px 14px; border: 1px solid #e5e7eb;
+  border-radius: 14px; font: inherit; resize: vertical; box-sizing: border-box;
+}
+.post-ride__primary, .post-ride__secondary { width: 100%; margin-top: 14px; min-height: 54px; border-radius: 999px; font-weight: 800; cursor: pointer; }
+.post-ride__primary { border: 0; background: #111827; color: #fff; font-size: 16px; }
+.post-ride__primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.post-ride__secondary { border: 0; background: transparent; color: #6b7280; font-size: 14px; min-height: auto; }
+
+@media (max-width: 420px) {
+  .post-ride__hero h2 { font-size: 24px; }
+  .post-ride__tip-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

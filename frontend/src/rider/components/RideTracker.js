@@ -233,6 +233,49 @@ function RideTracker({ ride, driverPosition, onChat, onShare, onSOS, onPayRate, 
     setCancelError(null);
   };
 
+  if (ride.status === 'completed') {
+    const fareLabel = ride.fare != null ? `${Math.round(Number(ride.fare))} MRU` : '—';
+
+    return (
+      <div className="ride-tracker ride-tracker--completed" aria-label="Trip completed">
+        <div className="ride-tracker__complete-badge" aria-hidden="true">✓</div>
+        <h2 className="ride-tracker__complete-title">You&apos;ve arrived</h2>
+        <p className="ride-tracker__complete-subtitle">Thanks for riding with Yala</p>
+
+        <div className="ride-tracker__complete-driver">
+          {driverPhoto ? (
+            <img className="ride-tracker__driver-photo" src={driverPhoto} alt={`${driverName} profile`} />
+          ) : (
+            <div className="ride-tracker__driver-photo--placeholder" aria-hidden="true">
+              {driverName.slice(0, 1).toUpperCase()}
+            </div>
+          )}
+          <div className="ride-tracker__driver-details">
+            <p className="ride-tracker__driver-name">{driverName}</p>
+            <p className="ride-tracker__driver-meta">
+              <strong>★ {driverRating}</strong>
+              <span>{vehicleName}</span>
+            </p>
+          </div>
+        </div>
+
+        <div className="ride-tracker__complete-fare">
+          <span>Trip total</span>
+          <strong>{fareLabel}</strong>
+        </div>
+
+        <button
+          className="ride-tracker__btn ride-tracker__btn--pay-rate"
+          onClick={onPayRate}
+          aria-label="Rate your driver"
+          type="button"
+        >
+          Rate your driver
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="ride-tracker" aria-label="Ride tracking panel">
       {/* Driver Info */}
@@ -339,17 +382,6 @@ function RideTracker({ ride, driverPosition, onChat, onShare, onSOS, onPayRate, 
 
       {/* Action Buttons */}
       <div className="ride-tracker__actions">
-        {ride.status === 'completed' && (
-          <button
-            className="ride-tracker__btn ride-tracker__btn--pay-rate"
-            onClick={onPayRate}
-            aria-label="Pay and rate"
-            type="button"
-          >
-            Pay & Rate
-          </button>
-        )}
-
         {callNumber && driverAssigned && (
           <a
             className="ride-tracker__btn ride-tracker__btn--call"

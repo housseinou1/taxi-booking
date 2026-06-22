@@ -3,6 +3,7 @@ import axios from "axios";
 import { useTranslation } from "react-i18next";
 import { API_URL } from "../apiConfig";
 import { formatMoney } from "../marketConfig";
+import PostRidePayRate from "../rider/components/PostRidePayRate";
 
 const PAYMENT_METHODS = [
   {
@@ -356,6 +357,10 @@ function PaymentPage({ ride }) {
         </div>
       </main>
     );
+  }
+
+  if (isCompletedRide) {
+    return <PostRidePayRate ride={ride} />;
   }
 
   return (

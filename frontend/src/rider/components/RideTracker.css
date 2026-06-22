@@ -423,8 +423,81 @@
 
 .ride-tracker__btn--pay-rate {
   width: 100%;
-  background: var(--yala-green);
-  color: var(--yala-white);
+  min-height: 54px;
+  border-radius: 999px;
+  background: #111827;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.ride-tracker--completed {
+  align-items: center;
+  text-align: center;
+  padding: 24px 20px 28px;
+  gap: 14px;
+}
+
+.ride-tracker__complete-badge {
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #111827;
+  color: #ffffff;
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.ride-tracker__complete-title {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: #111827;
+}
+
+.ride-tracker__complete-subtitle {
+  margin: -4px 0 8px;
+  color: #6b7280;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.ride-tracker__complete-driver {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 14px;
+  border: 1px solid #eceff1;
+  border-radius: 18px;
+  background: #f9fafb;
+  text-align: left;
+}
+
+.ride-tracker__complete-fare {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  border: 1px solid #eceff1;
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.ride-tracker__complete-fare span {
+  color: #6b7280;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.ride-tracker__complete-fare strong {
+  color: #111827;
+  font-size: 24px;
+  font-weight: 800;
 }
 
 /* ─── Cancel Modal ────────────────────────────────────────────────────────── */

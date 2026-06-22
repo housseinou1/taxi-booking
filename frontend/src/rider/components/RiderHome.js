@@ -589,13 +589,7 @@ function RiderHome() {
 
   useEffect(() => {
     if (currentRide?.status !== 'completed' || !currentRide.id) return;
-
     localStorage.setItem('selectedRideId', String(currentRide.id));
-    const redirectTimer = window.setTimeout(() => {
-      window.location.href = '/rider-payments';
-    }, 250);
-
-    return () => window.clearTimeout(redirectTimer);
   }, [currentRide?.id, currentRide?.status]);
 
   // ─── Render bottom sheet content based on booking step ─────────────

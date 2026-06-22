@@ -257,10 +257,10 @@ describe('RideTracker component', () => {
       expect(screen.queryByLabelText('Cancel ride')).not.toBeInTheDocument();
     });
 
-    it('shows Pay & Rate when completed', () => {
+    it('shows rate action when completed', () => {
       const onPayRate = jest.fn();
       render(<RideTracker ride={makeRide({ status: 'completed' })} onPayRate={onPayRate} />);
-      fireEvent.click(screen.getByRole('button', { name: 'Pay and rate' }));
+      fireEvent.click(screen.getByRole('button', { name: /rate your driver/i }));
       expect(onPayRate).toHaveBeenCalledTimes(1);
     });
   });

@@ -28,6 +28,7 @@ import SupportCenter from "./support/SupportCenter";
 import LandingPage from "./landing/LandingPage";
 import RiderRideHistory from "./rider/components/RideHistory";
 import RiderShell from "./rider/components/RiderShell";
+import PostRidePayRate from "./rider/components/PostRidePayRate";
 import { ShareBookingFlow, ShareRideScreen, ShareRideComplete, ShareAdminDashboard } from './components/share';
 import DeliveryCustomerApp from "./delivery/DeliveryCustomerApp";
 import DeliveryDriverApp from "./delivery/DeliveryDriverApp";
@@ -415,10 +416,18 @@ function App() {
   }
 
   if (page === "rider-payments") {
+    const isCompletedTrip = selectedRide?.status === "completed";
     return withInstall(
-      <RiderShell title="Payments" backTo="/rider-dashboard">
+      <RiderShell
+        title={isCompletedTrip ? "Rate your trip" : "Payments"}
+        backTo="/rider-dashboard"
+      >
         {selectedRide ? (
-          <RiderPayments ride={selectedRide} />
+          isCompletedTrip ? (
+            <PostRidePayRate ride={selectedRide} />
+          ) : (
+            <RiderPayments ride={selectedRide} />
+          )
         ) : (
           <div style={emptyPageStyle}>
             <h2>No completed ride found.</h2>
