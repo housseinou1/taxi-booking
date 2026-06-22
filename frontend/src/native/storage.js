@@ -4,20 +4,28 @@
  * falls back to localStorage in browser mode.
  */
 
-import { isNative } from './platform';
-
-let SecureStoragePlugin = null;
-try {
-  const mod = require('capacitor-secure-storage-plugin');
-  SecureStoragePlugin = mod.SecureStoragePlugin;
-} catch {
-  // Secure storage not available — will fall back to localStorage
-}
+import { isNative } from "./platform";
 
 const TOKEN_KEYS = {
-  access: 'jwt_access',
-  refresh: 'jwt_refresh',
+  access: "jwt_access",
+  refresh: "jwt_refresh",
 };
+
+let secureStoragePromise = null;
+
+function loadSecureStoragePlugin() {
+  if (!isNative()) {
+    return Promise.resolve(null);
+  }
+
+  if (!secureStoragePromise) {
+    secureStoragePromise = import("capacitor-secure-storage-plugin")
+      .then((mod) => mod.SecureStoragePlugin || null)
+      .catch(() => null);
+  }
+
+  return secureStoragePromise;
+}
 
 /**
  * Stores a token value securely.
@@ -25,7 +33,8 @@ const TOKEN_KEYS = {
  * @param {string} value - Token value to store
  */
 export async function setToken(key, value) {
-  if (isNative() && SecureStoragePlugin) {
+  const SecureStoragePlugin = await loadSecureStoragePlugin();
+  if (SecureStoragePlugin) {
     try {
       await SecureStoragePlugin.set({ key: TOKEN_KEYS[key] || key, value });
       return;
@@ -42,7 +51,8 @@ export async function setToken(key, value) {
  * @returns {Promise<string|null>} The token value or null if not found
  */
 export async function getToken(key) {
-  if (isNative() && SecureStoragePlugin) {
+  const SecureStoragePlugin = await loadSecureStoragePlugin();
+  if (SecureStoragePlugin) {
     try {
       const result = await SecureStoragePlugin.get({ key: TOKEN_KEYS[key] || key });
       return result.value;
@@ -58,7 +68,8 @@ export async function getToken(key) {
  * @param {string} key - Token key ('access' or 'refresh')
  */
 export async function removeToken(key) {
-  if (isNative() && SecureStoragePlugin) {
+  const SecureStoragePlugin = await loadSecureStoragePlugin();
+  if (SecureStoragePlugin) {
     try {
       await SecureStoragePlugin.remove({ key: TOKEN_KEYS[key] || key });
       return;
