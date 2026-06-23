@@ -1,0 +1,45 @@
+.documents-under-review-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  background: rgba(59, 130, 246, 0.12);
+  color: #0f172a;
+}
+
+.documents-under-review-banner--compact {
+  margin-bottom: 12px;
+  padding: 12px 14px;
+}
+
+.documents-under-review-banner__icon {
+  font-size: 20px;
+  line-height: 1;
+  margin-top: 2px;
+}
+
+.documents-under-review-banner strong {
+  display: block;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.documents-under-review-banner p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #334155;
+}
+
+.driver-profile-shell--lyft .documents-under-review-banner {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.driver-app--lyft .documents-under-review-banner {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}

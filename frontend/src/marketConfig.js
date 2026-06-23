@@ -244,6 +244,10 @@ export const MARKET = {
     comfort: { label: "Comfort", base: 350, perKm: 35 },
     share: { label: "Share", base: 150, perKm: 15 },
   },
+  waiting: {
+    freeMinutes: 3,
+    perMinuteFee: 50,
+  },
 };
 
 export function getLocationsByCity(city) {

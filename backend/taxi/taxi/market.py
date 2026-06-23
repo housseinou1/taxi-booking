@@ -32,6 +32,10 @@ MARKET = {
         "comfort": {"base": Decimal("350"), "per_km": Decimal("35")},
         "share": {"base": Decimal("150"), "per_km": Decimal("15")},
     },
+    "waiting": {
+        "free_minutes": 3,
+        "per_minute_fee": Decimal("50"),
+    },
 }
 
 

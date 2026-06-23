@@ -3,6 +3,13 @@ import axios from "axios";
 
 import { API_URL } from "../apiConfig";
 import { useDriverContext } from "./context/DriverContext";
+import DocumentsUnderReviewBanner from "./components/DocumentsUnderReviewBanner";
+import {
+  DOCUMENTS_UNDER_REVIEW_MESSAGE,
+  getExpiredOrMissingDocuments,
+  REQUIRED_DRIVER_DOCUMENT_TYPES,
+  shouldShowDocumentsUnderReview,
+} from "./utils/documentReview";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -21,47 +28,7 @@ const COLORS = {
   rejectedRed: "#EF4444",
 };
 
-const DOCUMENT_TYPES = [
-  {
-    key: "license",
-    label: "Driver License",
-    icon: "🪪",
-    required: true,
-  },
-  { key: "national_id", label: "National ID", icon: "🆔", required: true },
-  {
-    key: "insurance",
-    label: "Insurance",
-    icon: "🛡️",
-    required: true,
-  },
-  {
-    key: "carte_grise",
-    label: "Carte Grise",
-    icon: "📋",
-    required: true,
-  },
-  {
-    key: "vignette",
-    label: "Vignette",
-    icon: "📄",
-    required: true,
-  },
-  {
-    key: "vehicle_registration",
-    label: "Vehicle Registration",
-    icon: "📝",
-    required: false,
-  },
-  {
-    key: "plate_number_photo",
-    label: "Plate Number",
-    icon: "🔢",
-    required: true,
-    imageOnly: true,
-  },
-  { key: "profile_photo", label: "Profile Photo", icon: "📷", required: true },
-];
+const DOCUMENT_TYPES = REQUIRED_DRIVER_DOCUMENT_TYPES;
 
 const ACCEPTED_FORMATS = ["image/jpeg", "image/png", "application/pdf"];
 const ACCEPTED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".pdf"];
@@ -120,49 +87,7 @@ export function validateDocumentFile(file) {
   return { valid: true, error: null };
 }
 
-/**
- * Get documents that are expired or missing (required but not uploaded).
- * @param {Array} documents - Array of document objects from API
- * @returns {Array} Array of { key, label, reason } for problematic documents
- */
-export function getExpiredOrMissingDocuments(documents) {
-  const alerts = [];
-  const uploadedMap = {};
-
-  if (documents) {
-    documents.forEach((doc) => {
-      uploadedMap[doc.document_type] = doc;
-    });
-  }
-  if (!uploadedMap.carte_grise && uploadedMap.vehicle_registration) {
-    uploadedMap.carte_grise = uploadedMap.vehicle_registration;
-  }
-
-  DOCUMENT_TYPES.forEach((docType) => {
-    if (!docType.required) return;
-
-    const uploaded = uploadedMap[docType.key];
-
-    if (!uploaded) {
-      alerts.push({
-        key: docType.key,
-        label: docType.label,
-        reason: "missing",
-      });
-    } else if (uploaded.expires_at) {
-      const daysRemaining = getDaysRemaining(uploaded.expires_at);
-      if (daysRemaining !== null && daysRemaining < 0) {
-        alerts.push({
-          key: docType.key,
-          label: docType.label,
-          reason: "expired",
-        });
-      }
-    }
-  });
-
-  return alerts;
-}
+export { getExpiredOrMissingDocuments } from "./utils/documentReview";
 
 // ─── Main Component ─────────────────────────────────────────────────────────
 
@@ -181,6 +106,7 @@ export default function DriverDocuments() {
     issued_at: "",
     expires_at: "",
   });
+  const [documentsUnderReview, setDocumentsUnderReview] = useState(false);
 
   const fileInputRef = useRef(null);
   const selectedDocTypeRef = useRef(null);
@@ -204,7 +130,15 @@ export default function DriverDocuments() {
       );
       // Backend returns { documents: [...], expiring_documents: [...], alerts: [...] }
       const data = response.data;
-      setDocuments(data.documents || data.results || data || []);
+      const nextDocuments = data.documents || data.results || data || [];
+      setDocuments(nextDocuments);
+      setDocumentsUnderReview(
+        shouldShowDocumentsUnderReview({
+          documents: nextDocuments,
+          documentsUnderReview: data.documents_under_review,
+          allRequiredDocumentsUploaded: data.all_required_documents_uploaded,
+        })
+      );
     } catch (err) {
       setError("Failed to load documents. Please try again.");
       console.error("Documents fetch error:", err);
@@ -307,7 +241,7 @@ export default function DriverDocuments() {
         formData.append("file", file);
         formData.append("document_type", docTypeKey);
 
-        await axios.post(
+        const uploadResponse = await axios.post(
           `${API_URL}/drivers/me/documents/upload/`,
           formData,
           {
@@ -319,9 +253,13 @@ export default function DriverDocuments() {
         );
 
         setPendingUpload(null);
-        setUploadSuccess(
-          `${DOCUMENT_TYPES.find((d) => d.key === docTypeKey)?.label || "Document"} uploaded successfully.`
-        );
+        if (uploadResponse?.data?.documents_under_review) {
+          setUploadSuccess(DOCUMENTS_UNDER_REVIEW_MESSAGE);
+        } else {
+          setUploadSuccess(
+            `${DOCUMENT_TYPES.find((d) => d.key === docTypeKey)?.label || "Document"} uploaded successfully.`
+          );
+        }
 
         // Refresh documents list
         await fetchDocuments();
@@ -426,6 +364,8 @@ export default function DriverDocuments() {
           Upload and manage your required documents
         </p>
       </div>
+
+      {documentsUnderReview && <DocumentsUnderReviewBanner />}
 
       {/* Upload Feedback Messages */}
       {uploadError && (

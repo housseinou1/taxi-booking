@@ -51,6 +51,7 @@ class DriverDocumentListView(APIView):
         service = DocumentService()
         expiring = service.get_expiring_documents(profile)
         alerts = service.get_expired_or_missing(profile)
+        review_state = service.get_documents_review_state(profile)
 
         return Response(
             {
@@ -66,6 +67,7 @@ class DriverDocumentListView(APIView):
                     }
                     for alert in alerts
                 ],
+                **review_state,
             },
             status=status.HTTP_200_OK,
         )
@@ -166,7 +168,19 @@ class DriverDocumentUploadView(APIView):
             )
 
         serializer = DriverDocumentSerializer(document)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        service.mark_application_pending_if_complete(profile)
+        review_state = service.get_documents_review_state(profile)
+
+        response_payload = {
+            **serializer.data,
+            **review_state,
+        }
+        if review_state["documents_under_review"]:
+            response_payload["message"] = (
+                "All required documents uploaded. Your application is under admin review."
+            )
+
+        return Response(response_payload, status=status.HTTP_201_CREATED)
 
 
 class AdminDocumentApproveView(APIView):

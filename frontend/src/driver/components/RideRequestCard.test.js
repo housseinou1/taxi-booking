@@ -3,6 +3,10 @@ import { render, screen, act, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import RideRequestCard from "./RideRequestCard";
 
+jest.mock("../../native/sound", () => ({
+  playRideRequestAlert: jest.fn(() => Promise.resolve(true)),
+}));
+
 // ─── Test Helpers ───────────────────────────────────────────────────────────
 
 const mockRide = {

@@ -1,0 +1,48 @@
+.waiting-fee-banner {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #dbe4f0;
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+.waiting-fee-banner--grace {
+  border-color: #86efac;
+  background: #ecfdf3;
+}
+
+.waiting-fee-banner--billing {
+  border-color: #fdba74;
+  background: #fff7ed;
+}
+
+.waiting-fee-banner__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.waiting-fee-banner__header strong {
+  font-size: 0.95rem;
+}
+
+.waiting-fee-banner__timer {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.waiting-fee-banner__message,
+.waiting-fee-banner__fee {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.35;
+}
+
+.waiting-fee-banner__fee {
+  font-weight: 700;
+}

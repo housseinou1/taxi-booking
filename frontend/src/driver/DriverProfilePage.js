@@ -3,15 +3,21 @@ import axios from "axios";
 
 import { API_URL } from "../apiConfig";
 import { isDriverLyftUI } from "./lyftColors";
+import DocumentsUnderReviewBanner from "./components/DocumentsUnderReviewBanner";
+import {
+  DOCUMENTS_UNDER_REVIEW_MESSAGE,
+  shouldShowDocumentsUnderReview,
+} from "./utils/documentReview";
 import "./DriverProfilePage.css";
 
 const DOCUMENT_TYPES = [
   { type: "license", label: "Driver License", group: "Driver Documents" },
   { type: "national_id", label: "National ID", group: "Driver Documents" },
+  { type: "profile_photo", label: "Profile Photo", group: "Driver Documents" },
   { type: "insurance", label: "Insurance", group: "Vehicle Documents" },
   { type: "carte_grise", label: "Carte Grise", group: "Vehicle Documents" },
   { type: "vignette", label: "Vignette", group: "Vehicle Documents" },
-  { type: "plate_number", label: "Plate Number", group: "Vehicle Documents" },
+  { type: "plate_number_photo", label: "Plate Number", group: "Vehicle Documents" },
 ];
 
 
@@ -65,6 +71,7 @@ const getDocumentStatus = (document) => {
   if (!document?.file) return "missing";
   const expired = document.days_until_expiry !== undefined && document.days_until_expiry !== null && document.days_until_expiry < 0;
   if (expired) return "expired";
+  if (document.status === "pending_review") return "pending_review";
   return document.status || "pending";
 };
 
@@ -100,6 +107,8 @@ export default function DriverProfilePage({ onBack }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [uploadingType, setUploadingType] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
+  const [documentsUnderReview, setDocumentsUnderReview] = useState(false);
   const [openSections, setOpenSections] = useState(() => new Set(["account"]));
   const fileInputRef = useRef(null);
   const pendingDocumentType = useRef("");
@@ -145,8 +154,9 @@ export default function DriverProfilePage({ onBack }) {
       if (response.status !== "fulfilled") return;
       const [key] = endpoints[index];
       const payload = response.value.data;
-      if (key === "documents") next.documents = payload.documents || payload.results || [];
-      else if (key === "reviews") next.reviews = payload.results || payload.reviews || [];
+      if (key === "documents") {
+        next.documents = payload.documents || payload.results || [];
+      } else if (key === "reviews") next.reviews = payload.results || payload.reviews || [];
       else if (key === "achievements") next.achievements = payload.achievements || payload.results || [];
       else next[key] = payload;
     });
@@ -155,6 +165,17 @@ export default function DriverProfilePage({ onBack }) {
       setError("We could not load your driver profile. Please try again.");
     } else {
       setData(next);
+      const documentsPayload = responses[endpoints.findIndex(([key]) => key === "documents")];
+      const documentsResponse =
+        documentsPayload?.status === "fulfilled" ? documentsPayload.value.data : null;
+      setDocumentsUnderReview(
+        shouldShowDocumentsUnderReview({
+          documents: next.documents,
+          driverStatus: next.base?.status || next.profile?.status,
+          documentsUnderReview: documentsResponse?.documents_under_review,
+          allRequiredDocumentsUploaded: documentsResponse?.all_required_documents_uploaded,
+        })
+      );
     }
     setLoading(false);
   }, [authHeaders, token]);
@@ -196,18 +217,23 @@ export default function DriverProfilePage({ onBack }) {
     if (!file || !documentType) return;
 
     setError("");
+    setSuccessMessage("");
     setUploadingType(documentType);
     const form = new FormData();
     form.append("document_type", documentType);
     form.append("file", file);
 
     try {
-      await axios.post(`${API_URL}/drivers/me/documents/upload/`, form, {
+      const uploadResponse = await axios.post(`${API_URL}/drivers/me/documents/upload/`, form, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",
         },
       });
+      if (uploadResponse?.data?.documents_under_review) {
+        setSuccessMessage(DOCUMENTS_UNDER_REVIEW_MESSAGE);
+        setDocumentsUnderReview(true);
+      }
       await loadProfile();
     } catch (uploadError) {
       setError(uploadError.response?.data?.error || "Document upload failed. Please try again.");
@@ -336,6 +362,7 @@ export default function DriverProfilePage({ onBack }) {
         </button>
 
         {error && <div className="driver-profile-alert">{error}</div>}
+        {successMessage && <div className="driver-profile-success">{successMessage}</div>}
 
         <div className="driver-profile-brandbar">
           <span>Yala</span>
@@ -427,6 +454,7 @@ export default function DriverProfilePage({ onBack }) {
                   </div>
 
                   <div className="driver-documents-panel" ref={documentsPanelRef}>
+                    {documentsUnderReview && <DocumentsUnderReviewBanner />}
                     {["Driver Documents", "Vehicle Documents"].map((group) => (
                       <section key={group}>
                         <h3>
@@ -527,11 +555,11 @@ function DocumentRow({ item, document, uploading, onUpload }) {
   const status = getDocumentStatus(document);
   const labels = {
     approved: "Approved",
-    pending: "Pending",
-    pending_review: "Pending",
-    needs_review: "Pending",
-    under_review: "Pending",
-    submitted: "Pending",
+    pending: "Pending review",
+    pending_review: "Pending review",
+    needs_review: "Pending review",
+    under_review: "Pending review",
+    submitted: "Pending review",
     rejected: "Rejected",
     expired: "Expired",
     missing: "Missing",

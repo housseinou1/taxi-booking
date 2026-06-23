@@ -5,6 +5,7 @@ from django.utils import timezone
 from taxi.market import MARKET
 
 from .models import Ride, RideStop
+from .services.waiting_service import get_waiting_status
 
 
 def years_using_app(user):
@@ -75,6 +76,7 @@ class RideSerializer(serializers.ModelSerializer):
     pickup_pin = serializers.SerializerMethodField()
     pin_code = serializers.SerializerMethodField()
     pickup_pin_verified = serializers.SerializerMethodField()
+    waiting_status = serializers.SerializerMethodField()
 
     class Meta:
         model = Ride
@@ -97,6 +99,9 @@ class RideSerializer(serializers.ModelSerializer):
 
     def get_pickup_pin_verified(self, obj):
         return bool(obj.pickup_pin_verified_at)
+
+    def get_waiting_status(self, obj):
+        return get_waiting_status(obj)
 
     def get_pin_code(self, obj):
         return self.get_pickup_pin(obj)

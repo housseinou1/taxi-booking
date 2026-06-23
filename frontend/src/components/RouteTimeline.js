@@ -10,7 +10,7 @@ function getLiveStopStatus(stop) {
 
 const STATUS_LABELS = {
   pending: 'Pending',
-  arrived: 'Arrived',
+  arrived: 'At stop',
   departed: 'Done',
 };
 

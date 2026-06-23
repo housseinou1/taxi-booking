@@ -6,6 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 
+from .broadcast import broadcast_ride_update
 from .models import Ride, RideStop
 from .serializers import RideStopSerializer
 
@@ -216,6 +217,8 @@ class RideStopArrivedView(APIView):
         stop.arrived_at = timezone.now()
         stop.save(update_fields=["arrived_at"])
 
+        broadcast_ride_update(ride)
+
         serializer = RideStopSerializer(stop)
         return Response(serializer.data)
 
@@ -263,6 +266,8 @@ class RideStopDepartedView(APIView):
 
         stop.departed_at = timezone.now()
         stop.save(update_fields=["departed_at"])
+
+        broadcast_ride_update(ride)
 
         serializer = RideStopSerializer(stop)
         return Response(serializer.data)

@@ -198,6 +198,23 @@ export async function addRideStop(rideId, stop) {
 }
 
 /**
+ * Fetch a single ride by id (authoritative status for active tracking).
+ * @param {number|string} rideId
+ * @returns {Promise<object>}
+ */
+export async function getRideById(rideId) {
+  try {
+    const response = await riderApi.get(`${API_URL}/rides/${rideId}/`, {
+      headers: authHeaders(),
+    });
+
+    return response.data;
+  } catch (error) {
+    throw handleError(error);
+  }
+}
+
+/**
  * Get the rider's currently active ride (if any).
  * Fetches ride history and returns the first ride with an active status.
  * @returns {Promise<object|null>} The active ride or null if none found.
@@ -215,7 +232,15 @@ export async function getActiveRide() {
   try {
     const rides = await getRideHistory();
     const activeRide = rides.find((ride) => activeStatuses.has(ride.status));
-    return activeRide || null;
+    if (!activeRide?.id) {
+      return activeRide || null;
+    }
+
+    try {
+      return await getRideById(activeRide.id);
+    } catch (detailError) {
+      return activeRide;
+    }
   } catch (error) {
     throw handleError(error);
   }
@@ -243,6 +268,7 @@ const apiService = {
   addRideStop,
   cancelRide,
   getRideHistory,
+  getRideById,
   validatePromo,
   getActiveRide,
   getRiderProfile,

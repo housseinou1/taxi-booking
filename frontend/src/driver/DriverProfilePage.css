@@ -600,6 +600,17 @@
   font-weight: 800;
 }
 
+.driver-profile-success {
+  margin: 12px 0;
+  padding: 12px 14px;
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
 .driver-profile-state {
   min-height: 100vh;
   display: grid;

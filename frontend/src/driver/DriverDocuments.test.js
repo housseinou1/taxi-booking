@@ -350,13 +350,13 @@ describe("validateDocumentFile", () => {
 describe("getExpiredOrMissingDocuments", () => {
   it("returns empty array when all required documents are uploaded and not expired", () => {
     const docs = [
-      { document_type: "license", expires_at: null },
-      { document_type: "national_id", expires_at: null },
-      { document_type: "insurance", expires_at: null },
-      { document_type: "vehicle_registration", expires_at: null },
-      { document_type: "vignette", expires_at: null },
-      { document_type: "plate_number_photo", expires_at: null },
-      { document_type: "profile_photo", expires_at: null },
+      { document_type: "license", expires_at: null, status: "pending_review" },
+      { document_type: "national_id", expires_at: null, status: "pending_review" },
+      { document_type: "insurance", expires_at: null, status: "pending_review" },
+      { document_type: "carte_grise", expires_at: null, status: "pending_review" },
+      { document_type: "vignette", expires_at: null, status: "pending_review" },
+      { document_type: "plate_number_photo", expires_at: null, status: "pending_review" },
+      { document_type: "profile_photo", expires_at: null, status: "pending_review" },
     ];
     expect(getExpiredOrMissingDocuments(docs)).toEqual([]);
   });

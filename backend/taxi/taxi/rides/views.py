@@ -7,6 +7,7 @@ from django.shortcuts import get_object_or_404
 from django.db.models import Q, Sum
 from django.db import transaction
 from django.utils.timezone import now
+from django.utils import timezone
 
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
@@ -29,6 +30,8 @@ from locations.services import calculate_city_fare, resolve_city
 
 from .models import Ride, RideStop
 from .serializers import RideSerializer
+from .broadcast import broadcast_ride_update
+from .services.waiting_service import calculate_waiting_fee
 from .timeout import (
     cancel_ride_request_timeout,
     start_ride_request_timeout,
@@ -45,26 +48,6 @@ from notifications.push import (
 )
 
 logger = logging.getLogger(__name__)
-
-
-def broadcast_ride_update(ride):
-    """Send a ride status update to all connected WebSocket clients."""
-    try:
-        channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(
-            "rides",
-            {
-                "type": "ride_update",
-                "message": {
-                    "ride_id": ride.id,
-                    "status": ride.status,
-                    "rider_id": ride.rider_id,
-                    "driver_id": ride.driver_id,
-                },
-            },
-        )
-    except Exception:
-        pass  # Don't break the request if channel layer is unavailable
 
 
 def broadcast_ride_request_to_available_drivers(ride):
@@ -447,6 +430,24 @@ def ride_history(request):
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
+def ride_detail(request, ride_id):
+    ride = get_object_or_404(Ride, id=ride_id)
+
+    if not request.user.is_staff and ride.rider_id != request.user.id and ride.driver_id != request.user.id:
+        return Response(
+            {"detail": "You do not have access to this ride."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    serializer = RideSerializer(
+        ride,
+        context={"request": request},
+    )
+    return Response(serializer.data)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
 def driver_rides(request):
     rides = Ride.objects.filter(
         driver=request.user,
@@ -594,21 +595,10 @@ def start_ride(request, ride_id):
     ride.status = "in_progress"
     ride.pickup_pin_verified_at = now()
 
-    # Calculate waiting fee: free for 3 min, then charge per minute (max 5 min charged)
     waiting_fee = Decimal("0")
     if ride.driver_arrived_at:
-        waited_seconds = (now() - ride.driver_arrived_at).total_seconds()
-        free_wait_seconds = 3 * 60  # 3 minutes free
-        max_charged_seconds = 5 * 60  # max 5 minutes charged
-        per_minute_fee = Decimal("50")  # 50 MRU per minute
-
-        if waited_seconds > free_wait_seconds:
-            chargeable_seconds = min(
-                waited_seconds - free_wait_seconds,
-                max_charged_seconds
-            )
-            chargeable_minutes = Decimal(str(chargeable_seconds)) / Decimal("60")
-            waiting_fee = (chargeable_minutes * per_minute_fee).quantize(Decimal("0.01"))
+        waited_seconds = int((now() - ride.driver_arrived_at).total_seconds())
+        waiting_fee = calculate_waiting_fee(waited_seconds)
 
     ride.waiting_fee = waiting_fee
     if waiting_fee > 0:
@@ -896,7 +886,7 @@ def driver_earnings_summary(request):
         status="completed",
     )
 
-    today = now().date()
+    today = timezone.localdate()
 
     today_rides = completed_rides.filter(
         completed_at__date=today,
@@ -912,6 +902,24 @@ def driver_earnings_summary(request):
     )
 
     week_earnings = week_rides.aggregate(
+        total=Sum("driver_earning")
+    )["total"] or 0
+
+    month_start = today.replace(day=1)
+    month_rides = completed_rides.filter(
+        completed_at__date__gte=month_start,
+    )
+
+    month_earnings = month_rides.aggregate(
+        total=Sum("driver_earning")
+    )["total"] or 0
+
+    year_start = today.replace(month=1, day=1)
+    year_rides = completed_rides.filter(
+        completed_at__date__gte=year_start,
+    )
+
+    year_earnings = year_rides.aggregate(
         total=Sum("driver_earning")
     )["total"] or 0
 
@@ -982,10 +990,13 @@ def driver_earnings_summary(request):
         {
             "today_earnings": float(today_earnings),
             "week_earnings": float(week_earnings),
+            "month_earnings": float(month_earnings),
+            "year_earnings": float(year_earnings),
             "total_earnings": float(total_earnings),
             "withdrawable_balance": float(withdrawable_balance),
             "completed_rides": completed_rides.count(),
             "today_completed_rides": today_rides.count(),
+            "earnings_date": today.isoformat(),
             "charts": {
                 "daily": daily_chart,
                 "weekly": weekly_chart,

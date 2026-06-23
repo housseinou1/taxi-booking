@@ -174,6 +174,14 @@ def serialize_driver(profile, request):
     expired_documents = enforce_document_expiration(profile)
     driver_name = f"{profile.user.first_name} {profile.user.last_name}".strip()
 
+    from .services.driver_points_service import DriverPointsService
+    from .services.document_service import DocumentService
+
+    points_service = DriverPointsService()
+    points_progress = points_service.get_progress(profile)
+    points_service.sync_driver_level(profile)
+    review_state = DocumentService().get_documents_review_state(profile)
+
     if (not profile.user.is_active or profile.status != "approved") and profile.is_available:
         profile.is_available = False
         profile.save(update_fields=["is_available"])
@@ -234,6 +242,13 @@ def serialize_driver(profile, request):
         "terms_accepted": profile.terms_accepted,
         "terms_accepted_at": profile.terms_accepted_at,
         "terms_version": profile.terms_version,
+        "driver_level": points_progress["current_level"],
+        "level_points": points_progress["points"],
+        "next_level_points": points_progress["next_level_points"],
+        "next_level": points_progress["next_level"],
+        "level_progress_percentage": points_progress["progress_percentage"],
+        "points_rule": points_progress["points_rule"],
+        **review_state,
     }
 
 

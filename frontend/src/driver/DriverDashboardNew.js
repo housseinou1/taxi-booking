@@ -4,7 +4,8 @@ import axios from "axios";
 import { API_URL } from "../apiConfig";
 import { MARKET, isPointInServiceArea } from "../marketConfig";
 import { subscribeRideUpdates } from "../socket";
-import { preloadNotificationSound, vibrateNative, playRideAlertChime } from "../native/sound";
+import { preloadNotificationSound, unlockRideRequestSound, playRideRequestAlert } from "../native/sound";
+import { getDriverApprovalNotice } from "./utils/documentReview";
 import { isDriverLyftUI } from "../native/platform";
 
 import DriverMapView from "./components/DriverMapView";
@@ -17,8 +18,9 @@ import RideRequestCard from "./components/RideRequestCard";
 import DriverProfilePage from "./DriverProfilePage";
 import RideStatusButtons from "../RideStatusButtons";
 import "./driver-tokens.css";
+import "./lyft-driver.css";
 
-// ─── Styles ─────────────────────────────────────────────────────────────────
+const DRIVER_SOUND_ENABLED_KEY = "driver_ride_sound_enabled";
 
 const hamburgerButtonStyle = {
   position: "fixed",
@@ -69,7 +71,14 @@ export default function DriverDashboardNew() {
   const [toggleLoading, setToggleLoading] = useState(false);
   const [driverProfile, setDriverProfile] = useState(null);
   const [driverPosition, setDriverPosition] = useState(null);
-  const [todayEarnings, setTodayEarnings] = useState(0);
+  const [earningsPeriod, setEarningsPeriod] = useState("today");
+  const [earningsByPeriod, setEarningsByPeriod] = useState({
+    today: 0,
+    week: 0,
+    month: 0,
+    year: 0,
+  });
+  const [earningsDate, setEarningsDate] = useState(null);
   const [availableRides, setAvailableRides] = useState([]);
   const [driverRides, setDriverRides] = useState([]);
   const [routePath, setRoutePath] = useState([]);
@@ -80,6 +89,11 @@ export default function DriverDashboardNew() {
   const [driverNotice, setDriverNotice] = useState("");
 
   const alertedRideIdsRef = useRef(new Set());
+  const isOnlineRef = useRef(isOnline);
+
+  useEffect(() => {
+    isOnlineRef.current = isOnline;
+  }, [isOnline]);
 
   const token = localStorage.getItem("access");
 
@@ -200,13 +214,14 @@ export default function DriverDashboardNew() {
     try {
       const response = await axios.get(`${API_URL}/drivers/me/`, authHeaders);
       setDriverProfile(response.data);
-      setIsOnline(Boolean(response.data.is_available));
+      const online = Boolean(response.data.is_available);
+      setIsOnline(online);
+      if (online && localStorage.getItem(DRIVER_SOUND_ENABLED_KEY) === "1") {
+        setSoundEnabled(true);
+      }
 
       if (response.data.status && response.data.status !== "approved") {
-        setDriverNotice(
-          response.data.document_rejection_reason ||
-            `Driver account status: ${response.data.status}. Admin approval is required before going online.`
-        );
+        setDriverNotice(getDriverApprovalNotice(response.data));
       }
     } catch (error) {
       console.log("Driver status error:", error.response?.data || error);
@@ -261,7 +276,14 @@ export default function DriverDashboardNew() {
         `${API_URL}/rides/driver/earnings/`,
         authHeaders
       );
-      setTodayEarnings(response.data.today_earnings || 0);
+      const data = response.data || {};
+      setEarningsByPeriod({
+        today: data.today_earnings || 0,
+        week: data.week_earnings || 0,
+        month: data.month_earnings || 0,
+        year: data.year_earnings || 0,
+      });
+      setEarningsDate(data.earnings_date || null);
     } catch (error) {
       console.log("Driver stats error:", error.response?.data || error);
     }
@@ -275,11 +297,17 @@ export default function DriverDashboardNew() {
         {},
         authHeaders
       );
-      setIsOnline(Boolean(response.data.is_available));
+      const goingOnline = Boolean(response.data.is_available);
+      setIsOnline(goingOnline);
 
-      // Unlock sound on first "Go Online" tap
-      if (!soundEnabled && response.data.is_available) {
+      if (goingOnline) {
+        await unlockRideRequestSound();
         setSoundEnabled(true);
+        localStorage.setItem(DRIVER_SOUND_ENABLED_KEY, "1");
+        setDriverNotice("Sound alerts enabled for new ride requests.");
+      } else {
+        setSoundEnabled(false);
+        localStorage.removeItem(DRIVER_SOUND_ENABLED_KEY);
       }
     } catch (error) {
       console.log("Toggle availability error:", error.response?.data || error);
@@ -295,7 +323,37 @@ export default function DriverDashboardNew() {
     } finally {
       setToggleLoading(false);
     }
-  }, [authHeaders, isAuthError, sendToLogin, soundEnabled]);
+  }, [authHeaders, isAuthError, sendToLogin]);
+
+  const mergeIncomingRideRequest = useCallback((message) => {
+    const rideId = message?.ride_id || message?.id;
+    if (!rideId) return;
+
+    setAvailableRides((prev) => {
+      if (prev.some((ride) => String(ride.id || ride.ride_id) === String(rideId))) {
+        return prev;
+      }
+
+      return [
+        {
+          id: rideId,
+          ride_id: rideId,
+          pickup: message.pickup,
+          destination: message.destination,
+          pickup_lat: message.pickup_lat,
+          pickup_lng: message.pickup_lng,
+          destination_lat: message.destination_lat,
+          destination_lng: message.destination_lng,
+          fare: message.fare,
+          distance_km: message.distance_km,
+          stop_count: message.stop_count,
+          stops: message.stops,
+          countdown: message.countdown || 30,
+        },
+        ...prev,
+      ];
+    });
+  }, []);
 
   const updateDriverLocation = useCallback(
     async (location) => {
@@ -407,6 +465,28 @@ export default function DriverDashboardNew() {
     preloadNotificationSound();
   }, [fetchDriverStatus, fetchAvailableRides, fetchDriverStats]);
 
+  // Refetch earnings when the calendar day rolls over (Today resets at midnight).
+  useEffect(() => {
+    const getLocalDateKey = () => {
+      const now = new Date();
+      const month = String(now.getMonth() + 1).padStart(2, "0");
+      const day = String(now.getDate()).padStart(2, "0");
+      return `${now.getFullYear()}-${month}-${day}`;
+    };
+
+    const checkCalendarDay = () => {
+      const localToday = getLocalDateKey();
+      if (earningsDate && earningsDate !== localToday) {
+        fetchDriverStats();
+        fetchDriverStatus();
+      }
+    };
+
+    checkCalendarDay();
+    const interval = setInterval(checkCalendarDay, 60000);
+    return () => clearInterval(interval);
+  }, [earningsDate, fetchDriverStats, fetchDriverStatus]);
+
   // Poll every 3s
   useEffect(() => {
     const interval = setInterval(() => {
@@ -420,14 +500,33 @@ export default function DriverDashboardNew() {
   // WebSocket subscription
   useEffect(() => {
     const unsub = subscribeRideUpdates((msg) => {
-      if (msg && (msg.type === "ride_update" || msg.status || msg.ride_id)) {
+      if (!msg) return;
+
+      if (msg.type === "ride_request" && isOnlineRef.current) {
+        mergeIncomingRideRequest(msg);
+        playRideRequestAlert({ force: true });
+      }
+
+      if (
+        msg.type === "ride_request" ||
+        msg.type === "ride_request_expired" ||
+        msg.type === "ride_update" ||
+        msg.type === "ride_status_update" ||
+        msg.status ||
+        msg.ride_id
+      ) {
         fetchAvailableRides();
         fetchDriverRides();
         fetchDriverStats();
       }
     });
     return () => unsub();
-  }, [fetchAvailableRides, fetchDriverRides, fetchDriverStats]);
+  }, [
+    fetchAvailableRides,
+    fetchDriverRides,
+    fetchDriverStats,
+    mergeIncomingRideRequest,
+  ]);
 
   // Geolocation: watch driver position
   useEffect(() => {
@@ -465,20 +564,16 @@ export default function DriverDashboardNew() {
     if (!isOnline || availableRides.length === 0 || !soundEnabled) return;
 
     const newRideIds = availableRides
-      .map((ride) => ride.id)
-      .filter((id) => !alertedRideIdsRef.current.has(id));
+      .map((ride) => ride.id || ride.ride_id)
+      .filter((id) => id && !alertedRideIdsRef.current.has(id));
 
     if (newRideIds.length === 0) return;
 
-    // Play Lyft-style chime and vibrate for new rides
-    playRideAlertChime();
-    vibrateNative(true);
-    // Repeat chime after delay for emphasis
-    setTimeout(() => playRideAlertChime(), 1200);
-
-    // Update alerted set
-    alertedRideIdsRef.current = new Set(availableRides.map((ride) => ride.id));
+    newRideIds.forEach((id) => alertedRideIdsRef.current.add(id));
   }, [availableRides, isOnline, soundEnabled]);
+
+  const incomingRide = availableRides[0] || null;
+  const incomingRideId = incomingRide?.id || incomingRide?.ride_id;
 
   // ─── Render ─────────────────────────────────────────────────────────────────
 
@@ -507,7 +602,10 @@ export default function DriverDashboardNew() {
       />
 
       <EarningsHeader
-        earnings={todayEarnings}
+        earnings={earningsByPeriod[earningsPeriod] ?? 0}
+        period={earningsPeriod}
+        onPeriodChange={setEarningsPeriod}
+        lyftUI={lyftUI}
         onTap={() => {
           window.location.href = "/driver/earnings";
         }}
@@ -564,11 +662,13 @@ export default function DriverDashboardNew() {
       )}
 
       {/* Ride request overlay when new rides available */}
-      {isOnline && availableRides.length > 0 && !activeRide && (
+      {isOnline && incomingRide && !activeRide && (
         <RideRequestCard
-          ride={availableRides[0]}
-          onAccept={() => acceptRide(availableRides[0].id)}
-          onDecline={() => declineRide(availableRides[0].id)}
+          ride={incomingRide}
+          enableSound
+          onAccept={() => incomingRideId && acceptRide(incomingRideId)}
+          onDecline={() => incomingRideId && declineRide(incomingRideId)}
+          onExpired={() => incomingRideId && declineRide(incomingRideId)}
         />
       )}
 
@@ -580,7 +680,7 @@ export default function DriverDashboardNew() {
         driverLevel={{
           level: driverProfile?.driver_level || "bronze",
           points: driverProfile?.level_points || 0,
-          nextLevelPoints: driverProfile?.next_level_points || 2000,
+          nextLevelPoints: driverProfile?.next_level_points || 3000,
         }}
         onCancelRide={() => setDriverCancelOpen(true)}
         rideActions={
@@ -630,7 +730,7 @@ export default function DriverDashboardNew() {
             "",
           level: driverProfile?.driver_level || "bronze",
           points: driverProfile?.level_points || 0,
-          nextLevelPoints: driverProfile?.next_level_points || 2000,
+          nextLevelPoints: driverProfile?.next_level_points || 3000,
         }}
         onNavigate={(path) => {
           if (path === "/driver/account" || path === "/driver/profile") {

@@ -7,6 +7,7 @@ from .views import (
     cancel_scheduled_ride,
     available_rides,
     ride_history,
+    ride_detail,
     driver_rides,
     accept_ride,
     arrived_ride,
@@ -46,6 +47,7 @@ urlpatterns = [
     path("scheduled/cancel/<int:ride_id>/", cancel_scheduled_ride),
     path("available/", available_rides),
     path("history/", ride_history),
+    path("<int:ride_id>/", ride_detail),
     path("driver-rides/", driver_rides),
 
     # Airport services (also exposed under /features/; /rides/ works on current production nginx)

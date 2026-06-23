@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { API_URL } from "./apiConfig";
+import WaitingFeeBanner from "./components/WaitingFeeBanner";
 
 function RideStatusButtons({ ride, onStatusChange, distanceToNextKm }) {
   const [workingAction, setWorkingAction] = useState("");
@@ -136,6 +137,7 @@ function RideStatusButtons({ ride, onStatusChange, distanceToNextKm }) {
 
       {ride.status === "driver_arrived" && (
         <>
+          <WaitingFeeBanner ride={ride} audience="driver" />
           <div style={pickupPinCardStyle}>
             <label htmlFor={`pickup-pin-${ride.id}`} style={pickupPinLabelStyle}>
               Rider pickup PIN

@@ -380,6 +380,50 @@ class DocumentService:
 
         return alerts
 
+    def get_documents_review_state(self, driver: DriverProfile) -> dict:
+        """
+        Summarize whether the driver finished uploading required documents
+        and is waiting for admin review.
+        """
+        alerts = self.get_expired_or_missing(driver)
+        missing_types = [
+            alert.document_type for alert in alerts if alert.reason == "missing"
+        ]
+        expired_types = [
+            alert.document_type for alert in alerts if alert.reason == "expired"
+        ]
+        all_required_uploaded = len(missing_types) == 0
+        documents_under_review = (
+            all_required_uploaded
+            and not expired_types
+            and driver.status != "approved"
+        )
+
+        return {
+            "all_required_documents_uploaded": all_required_uploaded,
+            "documents_under_review": documents_under_review,
+            "missing_document_types": missing_types,
+            "expired_document_types": expired_types,
+        }
+
+    def mark_application_pending_if_complete(self, driver: DriverProfile) -> bool:
+        """
+        Move a completed application back to pending review once every
+        required document has been uploaded.
+        """
+        state = self.get_documents_review_state(driver)
+        if not state["all_required_documents_uploaded"]:
+            return False
+        if state["expired_document_types"]:
+            return False
+        if driver.status == "approved":
+            return False
+
+        if driver.status != "pending":
+            driver.status = "pending"
+            driver.save(update_fields=["status"])
+        return True
+
     def _notify_document_status(self, document: DriverDocument) -> None:
         """
         Send a notification to the driver about a document status change.

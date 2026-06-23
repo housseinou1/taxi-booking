@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { isCancellable, canEditStops, getStatusStepIndex } from '../utils/rideStatus';
 import wsService from '../services/wsService';
 import { cancelRide } from '../services/apiService';
 import RouteTimeline, { buildLiveRoutePoints } from '../../components/RouteTimeline';
+import WaitingFeeBanner from '../../components/WaitingFeeBanner';
 import LocationInput from './LocationInput';
 import { getNextPendingStop } from '../../driver/components/MultiStopProgress';
 import './RideTracker.css';
@@ -129,9 +130,13 @@ function RideTracker({ ride, driverPosition, city = 'Nouakchott', onAddStop, onC
       getCoordinatePair(ride.driver_lat, ride.driver_lng);
     if (!effectiveDriverPosition) return;
 
+    const nextStop =
+      ride.status === 'in_progress' ? getNextPendingStop(ride.stops || []) : null;
     const target =
       ride.status === 'in_progress'
-        ? getCoordinatePair(ride.destination_lat, ride.destination_lng) || ride.destination?.position
+        ? nextStop
+          ? getCoordinatePair(nextStop.latitude, nextStop.longitude)
+          : getCoordinatePair(ride.destination_lat, ride.destination_lng) || ride.destination?.position
         : getCoordinatePair(ride.pickup_lat, ride.pickup_lng) || ride.pickup?.position;
 
     if (Array.isArray(target) && target.every((coordinate) => Number.isFinite(Number(coordinate)))) {
@@ -150,6 +155,7 @@ function RideTracker({ ride, driverPosition, city = 'Nouakchott', onAddStop, onC
     ride.pickup_lng,
     ride.pickup,
     ride.status,
+    ride.stops,
   ]);
 
   /**
@@ -217,6 +223,23 @@ function RideTracker({ ride, driverPosition, city = 'Nouakchott', onAddStop, onC
       : null;
   const routePoints = buildLiveRoutePoints(ride);
   const stopCount = Array.isArray(ride.stops) ? ride.stops.length : 0;
+  const progressSteps = useMemo(() => {
+    if (ride.status === 'in_progress') {
+      if (nextPendingStop) {
+        return PROGRESS_STEPS.map((step) =>
+          step.key === 'in_progress'
+            ? { ...step, label: `To Stop ${nextPendingStop.stop_order}` }
+            : step
+        );
+      }
+      return PROGRESS_STEPS.map((step) =>
+        step.key === 'in_progress'
+          ? { ...step, label: 'Heading to destination' }
+          : step
+      );
+    }
+    return PROGRESS_STEPS;
+  }, [ride.status, nextPendingStop]);
   const canAddMoreStops = canEditStops(ride.status) && stopCount < MAX_STOPS && Boolean(onAddStop);
 
   const handleAddStopSelect = useCallback(
@@ -432,9 +455,11 @@ function RideTracker({ ride, driverPosition, city = 'Nouakchott', onAddStop, onC
         </div>
       )}
 
+      {ride.status === 'driver_arrived' && <WaitingFeeBanner ride={ride} audience="rider" />}
+
       {/* Progress Indicator */}
       {driverAssigned && <div className="ride-tracker__progress" role="progressbar" aria-valuenow={currentStep + 1} aria-valuemin={1} aria-valuemax={4}>
-        {PROGRESS_STEPS.map((step, index) => {
+        {progressSteps.map((step, index) => {
           const isCompleted = index < currentStep;
           const isActive = index === currentStep;
           let stepClass = 'ride-tracker__step';
@@ -445,7 +470,7 @@ function RideTracker({ ride, driverPosition, city = 'Nouakchott', onAddStop, onC
             <div key={step.key} className={stepClass}>
               <div className="ride-tracker__step-dot" />
               <span className="ride-tracker__step-label">{step.label}</span>
-              {index < PROGRESS_STEPS.length - 1 && (
+              {index < progressSteps.length - 1 && (
                 <div className="ride-tracker__step-connector" />
               )}
             </div>

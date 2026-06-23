@@ -30,7 +30,7 @@ export default function DriverStatusPanel({
   loading,
   onToggle,
   activeRide,
-  driverLevel = { level: "bronze", points: 0, nextLevelPoints: 2000 },
+  driverLevel = { level: "bronze", points: 0, nextLevelPoints: 3000 },
   onCancelRide,
   rideActions,
 }) {
