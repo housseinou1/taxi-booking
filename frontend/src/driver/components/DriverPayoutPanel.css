@@ -1,0 +1,211 @@
+.driver-payout-panel {
+  margin-top: 10px;
+  padding: 14px;
+  border: 1px solid #e8efe9;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #f8fbf9 0%, #f2f7f4 100%);
+}
+
+.driver-payout-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.driver-payout-header h3 {
+  margin: 0;
+  color: var(--ink, #15211b);
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.driver-payout-header span {
+  color: var(--yala-green-dark, #045d35);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.driver-payout-loading {
+  margin: 0;
+  color: var(--muted, #66746d);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.driver-payout-error {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px solid #fac0ca;
+  border-radius: 12px;
+  background: #fff0f3;
+  color: #9f1239;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.driver-payout-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.driver-payout-summary article {
+  padding: 10px 12px;
+  border: 1px solid var(--line, #dfe8e2);
+  border-radius: 14px;
+  background: #fff;
+}
+
+.driver-payout-summary small {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--muted, #66746d);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.driver-payout-summary strong {
+  display: block;
+  color: var(--ink, #15211b);
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.driver-payout-form,
+.driver-payout-withdraw {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line, #dfe8e2);
+}
+
+.driver-payout-withdraw h4,
+.driver-payout-history h4 {
+  margin: 0;
+  color: var(--ink, #15211b);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.driver-payout-withdraw p {
+  margin: 0;
+  color: var(--muted, #66746d);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.driver-payout-form label,
+.driver-payout-withdraw label {
+  display: grid;
+  gap: 6px;
+}
+
+.driver-payout-form span,
+.driver-payout-withdraw span {
+  color: var(--muted, #66746d);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.driver-payout-form input,
+.driver-payout-withdraw input {
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--line, #dfe8e2);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--ink, #15211b);
+  font: inherit;
+}
+
+.driver-payout-form input:focus,
+.driver-payout-withdraw input:focus {
+  outline: 2px solid rgba(8, 122, 69, 0.18);
+  border-color: var(--yala-green, #087a45);
+}
+
+.driver-payout-form button,
+.driver-payout-withdraw button {
+  min-height: 42px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--yala-green, #087a45);
+  color: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.driver-payout-form button:disabled,
+.driver-payout-withdraw button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.driver-payout-history {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line, #dfe8e2);
+}
+
+.driver-payout-history-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line, #dfe8e2);
+}
+
+.driver-payout-history-row:last-child {
+  border-bottom: 0;
+}
+
+.driver-payout-history-row strong {
+  display: block;
+  color: var(--ink, #15211b);
+  font-size: 14px;
+}
+
+.driver-payout-history-row small {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted, #66746d);
+  font-size: 12px;
+}
+
+.driver-payout-status {
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #fff0c9;
+  color: #765404;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.driver-payout-status.approved,
+.driver-payout-status.paid {
+  background: #dff7e8;
+  color: #0d713f;
+}
+
+.driver-payout-status.rejected {
+  background: #ffe2e7;
+  color: #a60f36;
+}
+
+@media (max-width: 720px) {
+  .driver-payout-summary {
+    grid-template-columns: 1fr;
+  }
+}

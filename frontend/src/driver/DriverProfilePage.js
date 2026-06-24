@@ -4,6 +4,7 @@ import axios from "axios";
 import { API_URL } from "../apiConfig";
 import { isDriverLyftUI } from "./lyftColors";
 import DocumentsUnderReviewBanner from "./components/DocumentsUnderReviewBanner";
+import DriverPayoutPanel from "./components/DriverPayoutPanel";
 import {
   DOCUMENTS_UNDER_REVIEW_MESSAGE,
   shouldShowDocumentsUnderReview,
@@ -113,6 +114,7 @@ export default function DriverProfilePage({ onBack }) {
   const fileInputRef = useRef(null);
   const pendingDocumentType = useRef("");
   const documentsPanelRef = useRef(null);
+  const payoutPanelRef = useRef(null);
   const token = localStorage.getItem("access");
 
   const authHeaders = useMemo(
@@ -189,9 +191,14 @@ export default function DriverProfilePage({ onBack }) {
     const shouldOpenDocuments =
       window.location.pathname === "/driver/documents" ||
       window.location.search.includes("section=documents");
-    if (!shouldOpenDocuments) return;
+    const shouldOpenPayout = window.location.search.includes("section=payout");
+    if (!shouldOpenDocuments && !shouldOpenPayout) return;
     setOpenSections((current) => new Set([...current, "account"]));
     window.setTimeout(() => {
+      if (shouldOpenPayout) {
+        payoutPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        return;
+      }
       documentsPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 75);
   }, [loading]);
@@ -257,10 +264,21 @@ export default function DriverProfilePage({ onBack }) {
     }, 0);
   };
 
+  const handlePayoutClick = () => {
+    setOpenSections((current) => new Set([...current, "account"]));
+    window.setTimeout(() => {
+      payoutPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 0);
+  };
+
   const handleMenuAction = (action) => {
     if (!action) return;
     if (action === "documents") {
       handleDocumentsClick();
+      return;
+    }
+    if (action === "payout") {
+      handlePayoutClick();
       return;
     }
     window.location.href = action;
@@ -335,7 +353,8 @@ export default function DriverProfilePage({ onBack }) {
 
   const accountRows = [
     ["Your Info", displayValue(base.email, enhanced.email, user.email), "/driver/profile/edit"],
-    ["Pay and Tax Info", "Payment setup and tax records", "/driver/earnings"],
+    ["Pay and Tax Info", "Earnings, tax records, and payout history", "/driver/earnings"],
+    ["Bank account", "Save bank details for withdrawal requests", "payout"],
     ["Documents", `${approvedDocuments}/${DOCUMENT_TYPES.length} approved`, "documents"],
     ["Settings", "App, privacy, and notification settings", "/settings"],
     ["Dashboard", "Return to driver dashboard", "/driver"],
@@ -451,6 +470,16 @@ export default function DriverProfilePage({ onBack }) {
                     {accountRows.map(([label, detail, action]) => (
                       <MenuRow key={label} label={label} detail={detail} onClick={() => handleMenuAction(action)} />
                     ))}
+                  </div>
+
+                  <div ref={payoutPanelRef}>
+                    <DriverPayoutPanel
+                      authHeaders={authHeaders}
+                      onMessage={(message) => {
+                        setError("");
+                        setSuccessMessage(message);
+                      }}
+                    />
                   </div>
 
                   <div className="driver-documents-panel" ref={documentsPanelRef}>

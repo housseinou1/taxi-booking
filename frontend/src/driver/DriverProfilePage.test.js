@@ -41,6 +41,10 @@ function setupLocationMock() {
 
 function mockProfileEndpoints() {
   axios.get.mockImplementation((url) => {
+    if (url.includes("/payments/payout-methods/")) return Promise.resolve({ data: [] });
+    if (url.includes("/payments/withdrawals/")) {
+      return Promise.resolve({ data: { available_balance: "0", withdrawals: [] } });
+    }
     if (url.includes("/drivers/me/profile/")) return Promise.resolve({ data: profileResponse });
     if (url.includes("/drivers/me/stats/")) return Promise.resolve({ data: statsResponse });
     if (url.includes("/drivers/me/documents/")) return Promise.resolve({ data: { documents: [] } });
