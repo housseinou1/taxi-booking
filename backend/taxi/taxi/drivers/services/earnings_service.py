@@ -85,10 +85,17 @@ class EarningsService:
                     month=now.month + 1, day=1,
                     hour=0, minute=0, second=0, microsecond=0
                 )
+        elif period == "year":
+            start = now.replace(
+                month=1, day=1, hour=0, minute=0, second=0, microsecond=0
+            )
+            end = start.replace(year=start.year + 1)
         elif period == "lifetime":
             return None, None
         else:
-            raise ValueError(f"Invalid period: {period}. Must be one of: today, week, month, lifetime")
+            raise ValueError(
+                f"Invalid period: {period}. Must be one of: today, week, month, year, lifetime"
+            )
 
         return start, end
 
@@ -158,7 +165,7 @@ class EarningsService:
             dict with keys: today, week, month, lifetime
             Each value is a dict from get_period_earnings()
         """
-        periods = ["today", "week", "month", "lifetime"]
+        periods = ["today", "week", "month", "year", "lifetime"]
         return {
             period: self.get_period_earnings(driver_profile, period)
             for period in periods

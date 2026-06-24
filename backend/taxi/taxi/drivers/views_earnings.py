@@ -43,7 +43,7 @@ class DriverEarningsView(APIView):
 
         # Get bonus breakdown for each period
         bonus_breakdowns = {}
-        for period in ["today", "week", "month", "lifetime"]:
+        for period in ["today", "week", "month", "year", "lifetime"]:
             bonus_breakdowns[period] = earnings_service.get_bonus_breakdown(
                 driver_profile, period
             )

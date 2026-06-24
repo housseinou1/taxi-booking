@@ -11,6 +11,7 @@ import {
   setRideAlertSoundStyle,
   RIDE_ALERT_SOUND_STYLE_STANDARD,
   RIDE_ALERT_SOUND_STYLE_LYFT,
+  playRideRequestAlert,
 } from "../native/sound";
 
 // ─── Yala Branding Colors ───────────────────────────────────────────────────
@@ -160,9 +161,10 @@ export default function DriverSettings() {
   );
 
   const handleNotificationSoundStyleChange = useCallback(
-    (style) => {
+    async (style) => {
       const normalized = setRideAlertSoundStyle(style);
       setNotificationSoundStyleState(normalized);
+      await playRideRequestAlert({ force: true });
       showToast(`Notification sound: ${normalized === "lyft" ? "Lyft" : "Standard"}`);
     },
     [showToast]

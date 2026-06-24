@@ -19,7 +19,16 @@ import {
 } from "../socket";
 import { EmergencySupportButton } from "./DriverSupport";
 import { isNative } from "../native/platform";
-import { preloadNotificationSound, playNativeSound, vibrateNative, playRideAlertChime } from "../native/sound";
+import {
+  getRideAlertSoundStyle,
+  preloadNotificationSound,
+  playNativeSound,
+  setRideAlertSoundStyle,
+  vibrateNative,
+  playRideAlertChime,
+  RIDE_ALERT_SOUND_STYLE_LYFT,
+  RIDE_ALERT_SOUND_STYLE_STANDARD,
+} from "../native/sound";
 
 const logoSrc = "/yala-driver-logo.png";
 const DRIVER_GREEN = "#0F8F4D";
@@ -163,6 +172,9 @@ export default function DriverApp() {
   });
   const [completedRides, setCompletedRides] = useState(0);
   const [soundEnabled, setSoundEnabled] = useState(false);
+  const [rideAlertSoundStyle, setRideAlertSoundStyleState] = useState(
+    getRideAlertSoundStyle()
+  );
   const [driverProfile, setDriverProfile] = useState(null);
   const [showSafety, setShowSafety] = useState(false);
   const [showDriverMenu, setShowDriverMenu] = useState(false);
@@ -330,6 +342,11 @@ export default function DriverApp() {
     setDriverNotice("Sound alerts are enabled.");
   }, [soundEnabled]);
 
+  const chooseRideAlertSoundStyle = useCallback((style) => {
+    const selectedStyle = setRideAlertSoundStyle(style);
+    setRideAlertSoundStyleState(selectedStyle);
+  }, []);
+
   const playBeep = useCallback(async () => {
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     if (!AudioContextClass) return;
@@ -447,11 +464,23 @@ export default function DriverApp() {
       .map((ride) => ride.id)
       .filter((id) => !alertedRideIdsRef.current.has(id));
 
-    if (newRideIds.length === 0 || !soundEnabled) return;
+    if (newRideIds.length === 0) return;
+
+    if (!soundEnabled) {
+      alertedRideIdsRef.current = new Set(availableRides.map((ride) => ride.id));
+      return;
+    }
 
     ringForNewRequest();
     alertedRideIdsRef.current = new Set(availableRides.map((ride) => ride.id));
   }, [availableRides, isOnline, ringForNewRequest, soundEnabled]);
+
+  const testRideAlertSound = useCallback(async () => {
+    await unlockNotificationSound();
+    await vibrateNative(true);
+    await playRideAlertChime();
+    setDriverNotice("Ride alert sound test played.");
+  }, [unlockNotificationSound]);
 
   const fetchDriverStatus = useCallback(async () => {
     try {
@@ -1199,6 +1228,74 @@ export default function DriverApp() {
                   : "Driver verification pending"}
             </strong>
             <p style={driverApprovalTextStyle}>{approvalMessage}</p>
+          </div>
+        </div>
+
+        <div style={rideAlertCardStyle}>
+          <div style={rideAlertIconStyle}>S</div>
+          <div style={rideAlertBodyStyle}>
+            <div style={rideAlertHeaderStyle}>
+              <div>
+                <span style={smallLabelStyle}>Ride alerts</span>
+                <strong style={rideAlertTitleStyle}>
+                  {soundEnabled ? "Sound is ready" : "Enable sound before requests"}
+                </strong>
+              </div>
+              <span
+                style={{
+                  ...rideAlertStatusStyle,
+                  background: soundEnabled ? "#ecfdf3" : "#fff7ed",
+                  color: soundEnabled ? "#166534" : "#9a3412",
+                }}
+              >
+                {soundEnabled ? "On" : "Off"}
+              </span>
+            </div>
+            <p style={rideAlertCopyStyle}>
+              Lyft-style chime with vibration for new nearby ride requests.
+            </p>
+            <div style={rideAlertChoiceRowStyle}>
+              <button
+                type="button"
+                onClick={() => chooseRideAlertSoundStyle(RIDE_ALERT_SOUND_STYLE_LYFT)}
+                style={{
+                  ...rideAlertChoiceButtonStyle,
+                  ...(rideAlertSoundStyle === RIDE_ALERT_SOUND_STYLE_LYFT
+                    ? rideAlertChoiceActiveStyle
+                    : {}),
+                }}
+              >
+                Lyft style
+              </button>
+              <button
+                type="button"
+                onClick={() => chooseRideAlertSoundStyle(RIDE_ALERT_SOUND_STYLE_STANDARD)}
+                style={{
+                  ...rideAlertChoiceButtonStyle,
+                  ...(rideAlertSoundStyle === RIDE_ALERT_SOUND_STYLE_STANDARD
+                    ? rideAlertChoiceActiveStyle
+                    : {}),
+                }}
+              >
+                Classic
+              </button>
+            </div>
+            <div style={rideAlertActionRowStyle}>
+              <button
+                type="button"
+                onClick={unlockNotificationSound}
+                style={rideAlertPrimaryButtonStyle}
+              >
+                {soundEnabled ? "Sound enabled" : "Enable sound"}
+              </button>
+              <button
+                type="button"
+                onClick={testRideAlertSound}
+                style={rideAlertSecondaryButtonStyle}
+              >
+                Test sound
+              </button>
+            </div>
           </div>
         </div>
 
@@ -2298,6 +2395,115 @@ const driverApprovalTextStyle = {
   color: "#475467",
   lineHeight: 1.35,
   fontWeight: 800,
+};
+
+const rideAlertCardStyle = {
+  marginTop: "14px",
+  display: "grid",
+  gridTemplateColumns: "44px minmax(0, 1fr)",
+  gap: "12px",
+  padding: "14px",
+  borderRadius: "22px",
+  background: "white",
+  border: "1px solid #e7e5df",
+  boxShadow: "0 12px 28px rgba(15, 23, 42, 0.08)",
+};
+
+const rideAlertIconStyle = {
+  width: "44px",
+  height: "44px",
+  borderRadius: "16px",
+  display: "grid",
+  placeItems: "center",
+  background: "#f5f3ff",
+  color: "#6d28d9",
+  fontSize: "1.2rem",
+  fontWeight: 950,
+};
+
+const rideAlertBodyStyle = {
+  display: "grid",
+  gap: "10px",
+  minWidth: 0,
+};
+
+const rideAlertHeaderStyle = {
+  display: "flex",
+  alignItems: "flex-start",
+  justifyContent: "space-between",
+  gap: "10px",
+};
+
+const rideAlertTitleStyle = {
+  display: "block",
+  marginTop: "4px",
+  color: "#111827",
+  fontSize: "1rem",
+  fontWeight: 950,
+};
+
+const rideAlertStatusStyle = {
+  borderRadius: "999px",
+  padding: "6px 10px",
+  fontSize: "0.78rem",
+  fontWeight: 950,
+  whiteSpace: "nowrap",
+};
+
+const rideAlertCopyStyle = {
+  margin: 0,
+  color: "#667085",
+  fontSize: "0.88rem",
+  lineHeight: 1.35,
+  fontWeight: 750,
+};
+
+const rideAlertChoiceRowStyle = {
+  display: "grid",
+  gridTemplateColumns: "1fr 1fr",
+  gap: "8px",
+};
+
+const rideAlertChoiceButtonStyle = {
+  minHeight: "38px",
+  border: "1px solid #e5e7eb",
+  borderRadius: "999px",
+  background: "#f9fafb",
+  color: "#475467",
+  fontWeight: 900,
+  cursor: "pointer",
+};
+
+const rideAlertChoiceActiveStyle = {
+  borderColor: "#6d28d9",
+  background: "#f5f3ff",
+  color: "#5b21b6",
+};
+
+const rideAlertActionRowStyle = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
+  gap: "8px",
+};
+
+const rideAlertPrimaryButtonStyle = {
+  minHeight: "42px",
+  border: "none",
+  borderRadius: "999px",
+  background: "#111827",
+  color: "white",
+  fontWeight: 950,
+  cursor: "pointer",
+};
+
+const rideAlertSecondaryButtonStyle = {
+  minHeight: "42px",
+  border: "1px solid #d1d5db",
+  borderRadius: "999px",
+  background: "white",
+  color: "#111827",
+  fontWeight: 950,
+  cursor: "pointer",
 };
 
 const sheetStatusPillStyle = {

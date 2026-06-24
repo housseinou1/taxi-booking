@@ -28,6 +28,8 @@
   --level-gold-soft: rgba(255, 215, 0, 0.14);
   --level-platinum: #E5E4E2;
   --level-platinum-soft: rgba(229, 228, 226, 0.14);
+  --level-elite: #111827;
+  --level-elite-soft: rgba(17, 24, 39, 0.08);
 
   /* Panel & Overlay Styles */
   --panel-bg: rgba(11, 18, 32, 0.92);
@@ -48,4 +50,55 @@
   /* Driver Transitions */
   --panel-slide-duration: 300ms;
   --panel-slide-easing: ease-out;
+}
+
+/* ─── Earnings Header Pill ─────────────────────────────────────────────── */
+.driver-earnings-header {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--panel-bg);
+  backdrop-filter: var(--panel-backdrop);
+  -webkit-backdrop-filter: var(--panel-backdrop);
+  box-shadow: var(--floating-shadow);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.driver-earnings-header__label,
+.driver-earnings-header__amount {
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.driver-earnings-header__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.driver-earnings-header__label small {
+  font-size: 10px;
+  opacity: 0.8;
+}
+
+.driver-earnings-header__amount {
+  font-size: 15px;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: -0.02em;
 }

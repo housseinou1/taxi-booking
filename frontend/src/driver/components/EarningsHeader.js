@@ -1,55 +1,63 @@
 import React from "react";
 import { formatMoney } from "../../marketConfig";
 
+const PERIOD_OPTIONS = [
+  { key: "today", label: "Today" },
+  { key: "week", label: "This Week" },
+  { key: "month", label: "This Month" },
+  { key: "year", label: "This Year" },
+];
+
 /**
- * EarningsHeader - Floating pill at top-center showing today's earnings.
- *
- * Props:
- * - earnings: number - today's earnings amount
- * - onTap: function - called on click, navigates to earnings page
+ * Floating earnings pill — tap label to cycle Today / Week / Month / Year; tap amount for details.
  */
-export default function EarningsHeader({ earnings = 0, onTap }) {
+export default function EarningsHeader({
+  earnings = 0,
+  period = "today",
+  onPeriodChange,
+  onTap,
+  lyftUI = false,
+}) {
+  const currentIndex = Math.max(
+    0,
+    PERIOD_OPTIONS.findIndex((option) => option.key === period)
+  );
+  const current = PERIOD_OPTIONS[currentIndex] || PERIOD_OPTIONS[0];
+
+  const cyclePeriod = (event) => {
+    event.stopPropagation();
+    if (typeof onPeriodChange !== "function") return;
+    const next = PERIOD_OPTIONS[(currentIndex + 1) % PERIOD_OPTIONS.length];
+    onPeriodChange(next.key);
+  };
+
   return (
-    <button
-      type="button"
-      onClick={onTap}
-      style={styles.container}
-      aria-label={`Today's earnings: ${formatMoney(earnings)}`}
+    <div
+      className={
+        lyftUI
+          ? "driver-earnings-header driver-earnings-header--lyft"
+          : "driver-earnings-header"
+      }
     >
-      <span style={styles.label}>Today</span>
-      <strong style={styles.amount}>{formatMoney(earnings)}</strong>
-    </button>
+      <button
+        type="button"
+        className="driver-earnings-header__label"
+        onClick={cyclePeriod}
+        aria-label={`Earnings period: ${current.label}. Tap to change.`}
+      >
+        {current.label}
+        <small aria-hidden="true">▾</small>
+      </button>
+      <button
+        type="button"
+        className="driver-earnings-header__amount"
+        onClick={onTap}
+        aria-label={`${current.label} earnings: ${formatMoney(earnings)}`}
+      >
+        {formatMoney(earnings)}
+      </button>
+    </div>
   );
 }
 
-const styles = {
-  container: {
-    position: "fixed",
-    top: 16,
-    left: "50%",
-    transform: "translateX(-50%)",
-    zIndex: 10,
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-    padding: "10px 20px",
-    borderRadius: 999,
-    background: "var(--panel-bg, rgba(11, 18, 32, 0.92))",
-    backdropFilter: "blur(16px)",
-    WebkitBackdropFilter: "blur(16px)",
-    border: "1px solid rgba(255,255,255,0.1)",
-    boxShadow: "var(--floating-shadow, 0 4px 20px rgba(0,0,0,0.25))",
-    cursor: "pointer",
-    WebkitTapHighlightColor: "transparent",
-  },
-  label: {
-    color: "rgba(255,255,255,0.6)",
-    fontSize: 12,
-    fontWeight: 600,
-  },
-  amount: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: 700,
-  },
-};
+export { PERIOD_OPTIONS };

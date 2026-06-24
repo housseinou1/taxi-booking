@@ -6,7 +6,7 @@ import { MARKET } from "../marketConfig";
 import { bindDriverTheme } from "./themeRefresh";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
-const PERIODS = ["today", "week", "month", "lifetime"];
+const PERIODS = ["today", "week", "month", "year", "lifetime"];
 const CHART_PERIODS = ["daily", "weekly", "monthly"];
 const MAX_RETRIES = 3;
 const RETRY_INTERVAL_MS = 5000;
@@ -37,11 +37,13 @@ function normalizeEarningsPayload(payload = {}) {
       today_earnings: normalizePeriodTotal(periods.today),
       week_earnings: normalizePeriodTotal(periods.week),
       month_earnings: normalizePeriodTotal(periods.month),
+      year_earnings: normalizePeriodTotal(periods.year),
       total_earnings: normalizePeriodTotal(periods.lifetime),
       breakdown: {
         today: mapBreakdown(breakdowns.today),
         week: mapBreakdown(breakdowns.week),
         month: mapBreakdown(breakdowns.month),
+        year: mapBreakdown(breakdowns.year),
         lifetime: mapBreakdown(breakdowns.lifetime),
       },
     };
@@ -53,6 +55,7 @@ function normalizeEarningsPayload(payload = {}) {
     today_earnings: toAmount(payload.today_earnings),
     week_earnings: toAmount(payload.week_earnings),
     month_earnings: toAmount(payload.month_earnings),
+    year_earnings: toAmount(payload.year_earnings),
     total_earnings: toAmount(payload.total_earnings),
   };
 }
@@ -301,6 +304,7 @@ export default function DriverEarnings() {
       case "today": return toAmount(earnings.today_earnings);
       case "week": return toAmount(earnings.week_earnings);
       case "month": return toAmount(earnings.month_earnings);
+      case "year": return toAmount(earnings.year_earnings);
       case "lifetime": return toAmount(earnings.total_earnings);
       default: return 0;
     }
@@ -432,7 +436,8 @@ export default function DriverEarnings() {
         <span style={styles.earningsLabel}>
           {activePeriod === "today" ? "Today's Earnings" :
            activePeriod === "week" ? "This Week" :
-           activePeriod === "month" ? "This Month" : "Lifetime Earnings"}
+           activePeriod === "month" ? "This Month" :
+           activePeriod === "year" ? "This Year" : "Lifetime Earnings"}
         </span>
         <h2 style={styles.earningsAmount}>
           {formatEarningsMRU(getPeriodEarnings(activePeriod))}

@@ -7,12 +7,6 @@ const TIER_CONFIG = {
     softBg: "var(--level-bronze-soft, #fff3e8)",
     code: "B",
   },
-  silver: {
-    name: "Silver Driver",
-    color: "var(--level-silver, #6b7280)",
-    softBg: "var(--level-silver-soft, #f1f5f9)",
-    code: "S",
-  },
   gold: {
     name: "Gold Driver",
     color: "var(--level-gold, #b7791f)",
@@ -25,25 +19,29 @@ const TIER_CONFIG = {
     softBg: "var(--level-platinum-soft, #eaf1ff)",
     code: "P",
   },
+  elite: {
+    name: "Elite Driver",
+    color: "var(--level-elite, #111827)",
+    softBg: "var(--level-elite-soft, #f3f4f6)",
+    code: "E",
+  },
+  silver: {
+    name: "Silver Driver",
+    color: "var(--level-silver, #6b7280)",
+    softBg: "var(--level-silver-soft, #f1f5f9)",
+    code: "S",
+  },
 };
 
-/**
- * DriverLevelBadge - Shows driver tier, points progress, and progress bar.
- *
- * Props:
- * - level: string ('bronze'|'silver'|'gold'|'platinum')
- * - points: number - current points
- * - nextLevelPoints: number - points required for next level
- */
 export default function DriverLevelBadge({
   level = "bronze",
   points = 0,
-  nextLevelPoints = 2000,
+  nextLevelPoints = 3000,
 }) {
-  const tier = TIER_CONFIG[level] || TIER_CONFIG.bronze;
-  const progress = nextLevelPoints > 0
-    ? Math.min(100, Math.round((points / nextLevelPoints) * 100))
-    : 0;
+  const normalizedLevel = TIER_CONFIG[level] ? level : "bronze";
+  const tier = TIER_CONFIG[normalizedLevel];
+  const target = nextLevelPoints > 0 ? nextLevelPoints : points || 1;
+  const progress = Math.min(100, Math.round((points / target) * 100));
 
   return (
     <div style={styles.container}>
@@ -56,8 +54,9 @@ export default function DriverLevelBadge({
             {tier.name}
           </strong>
           <span style={styles.points}>
-            {points.toLocaleString()} / {nextLevelPoints.toLocaleString()} points
+            {Number(points).toLocaleString()} / {Number(target).toLocaleString()} points
           </span>
+          <span style={styles.rule}>3 points per 10 MRU earned</span>
         </div>
       </div>
       <div style={styles.progressTrack}>
@@ -110,6 +109,12 @@ const styles = {
     color: "#706972",
     marginTop: 2,
     fontWeight: 700,
+  },
+  rule: {
+    fontSize: 11,
+    color: "#9ca3af",
+    marginTop: 2,
+    fontWeight: 600,
   },
   progressTrack: {
     height: 6,
