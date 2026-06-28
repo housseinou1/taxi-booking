@@ -255,6 +255,7 @@ const getDriverApprovalMissingItems = (driver, relatedUser = null) => {
 const ADMIN_SECTION_KEYS = new Set([
   "overview",
   "verification",
+  "users",
   "riders",
   "drivers",
   "rides",
@@ -291,6 +292,8 @@ function AdminDashboard() {
   const [rides, setRides] = useState([]);
   const [withdrawals, setWithdrawals] = useState([]);
   const [deliveryStats, setDeliveryStats] = useState(null);
+  const [merchants, setMerchants] = useState([]);
+  const [userGroup, setUserGroup] = useState("all");
   const [cities, setCities] = useState([]);
   const [regions, setRegions] = useState([]);
   const [cityAnalytics, setCityAnalytics] = useState({ summary: {}, cities: [] });
@@ -482,6 +485,23 @@ function AdminDashboard() {
     }
   }, [authHeaders]);
 
+  const fetchMerchants = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_URL}/deliveries/admin/business-accounts/`, {
+        headers: authHeaders(),
+      });
+      if (!response.ok) {
+        setMerchants([]);
+        return;
+      }
+      const data = await response.json();
+      setMerchants(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Merchants fetch error:", error);
+      setMerchants([]);
+    }
+  }, [authHeaders]);
+
   const fetchOwnerPayout = useCallback(async () => {
     try {
       const response = await fetch(`${API_URL}/payments/owner-payout/`, {
@@ -515,9 +535,11 @@ function AdminDashboard() {
     fetchRides();
     fetchWithdrawals();
     fetchDeliveryStats();
+    fetchMerchants();
     fetchOwnerPayout();
   }, [
     fetchDeliveryStats,
+    fetchMerchants,
     fetchDriverPerformance,
     fetchDrivers,
     fetchLocations,
@@ -889,6 +911,7 @@ function AdminDashboard() {
   const menuItems = [
     { key: "overview", label: "Overview" },
     { key: "verification", label: "Verification" },
+    { key: "users", label: "Users" },
     { key: "riders", label: "Riders" },
     { key: "drivers", label: "Drivers" },
     { key: "rides", label: "Dispatch" },
@@ -933,6 +956,45 @@ function AdminDashboard() {
     )
   );
   const blockedUsers = users.filter((user) => !user.is_active && !user.is_staff);
+
+  const adminStaff = sortAlphabetically(users.filter((user) => user.is_staff));
+  const isCourierUser = (user) =>
+    (user.is_driver || user.user_type === "driver") &&
+    Boolean(user.delivery_mode_enabled || user.is_courier);
+  const couriers = platformDrivers.filter(isCourierUser);
+  const userGroups = [
+    { key: "all", label: "All Users", count: users.length },
+    { key: "riders", label: "Riders", count: riders.length },
+    { key: "drivers", label: "Drivers", count: platformDrivers.length },
+    { key: "couriers", label: "Couriers", count: couriers.length },
+    { key: "merchants", label: "Merchants", count: merchants.length },
+    { key: "admins", label: "Admin Staff", count: adminStaff.length },
+  ];
+  const userGroupSource = {
+    all: users,
+    riders,
+    drivers: platformDrivers,
+    couriers,
+    admins: adminStaff,
+  };
+  const directoryUsers = (userGroupSource[userGroup] || users).filter((user) =>
+    matchesSearch(user, searchQuery, [
+      "full_name",
+      "email",
+      "phone_number",
+      "user_type",
+      "national_id_number",
+    ])
+  );
+  const filteredMerchants = merchants.filter((merchant) =>
+    matchesSearch(merchant, searchQuery, [
+      "company_name",
+      "contact_person",
+      "contact_email",
+      "contact_phone",
+      "tax_id",
+    ])
+  );
 
   const paidRides = rides.filter((ride) => ride.payment_status === "paid");
   const unpaidRides = rides.filter((ride) => ride.payment_status !== "paid");
@@ -1015,6 +1077,58 @@ function AdminDashboard() {
     0
   );
   const pendingApprovals = pendingDrivers.length + pendingRiders.length;
+
+  const rideDate = (ride) => {
+    const value = ride.created_at || ride.requested_at || ride.created;
+    if (!value) return null;
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  };
+  const sumFaresBetween = (start, end) =>
+    rides.reduce((total, ride) => {
+      const date = rideDate(ride);
+      if (!date || date < start || date >= end) return total;
+      return total + Number(ride.fare || 0);
+    }, 0);
+  const countRidesBetween = (start, end) =>
+    rides.reduce((count, ride) => {
+      const date = rideDate(ride);
+      if (!date || date < start || date >= end) return count;
+      return count + 1;
+    }, 0);
+  const growthTrend = (current, previous) => {
+    if (!previous || previous <= 0) return null;
+    const pct = Math.round(((current - previous) / previous) * 1000) / 10;
+    if (pct === 0) return null;
+    return { value: `${Math.abs(pct)}%`, dir: pct >= 0 ? "up" : "down" };
+  };
+  const startOfDay = (offsetDays = 0) => {
+    const date = new Date();
+    date.setHours(0, 0, 0, 0);
+    date.setDate(date.getDate() - offsetDays);
+    return date;
+  };
+  const now = new Date();
+  const weekAgo = startOfDay(7);
+  const twoWeeksAgo = startOfDay(14);
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const yesterdayStart = startOfDay(1);
+  const todayStart = startOfDay(0);
+
+  const dailyRevenueTrend = growthTrend(
+    sumFaresBetween(todayStart, now),
+    sumFaresBetween(yesterdayStart, todayStart)
+  );
+  const ridesWeeklyTrend = growthTrend(
+    countRidesBetween(weekAgo, now),
+    countRidesBetween(twoWeeksAgo, weekAgo)
+  );
+  const revenueMonthlyTrend = growthTrend(
+    sumFaresBetween(monthStart, now),
+    sumFaresBetween(lastMonthStart, monthStart)
+  );
+
   const emergencyWatchList = [
     ...activeRides.slice(0, 5).map((ride) => ({
       id: `ride-${ride.id}`,
@@ -1039,6 +1153,7 @@ function AdminDashboard() {
   const menuCounts = {
     overview: activeRides.length,
     verification: pendingDrivers.length,
+    users: users.length,
     riders: riders.length,
     drivers: platformDrivers.length,
     rides: rides.length,
@@ -1121,6 +1236,8 @@ function AdminDashboard() {
     fetchUsers();
     fetchRides();
     fetchWithdrawals();
+    fetchDeliveryStats();
+    fetchMerchants();
     fetchOwnerPayout();
   };
 
@@ -1274,18 +1391,21 @@ function AdminDashboard() {
               value={formatMoney(totalRevenue)}
               tone="green"
               sub="All-time gross"
+              trend={revenueMonthlyTrend}
             />
             <StatCard
               title="Daily Revenue"
               value={formatMoney(dailyRevenue)}
               tone="teal"
-              sub="Today"
+              sub="Today vs yesterday"
+              trend={dailyRevenueTrend}
             />
             <StatCard
               title="Total Rides"
               value={rides.length}
               tone="blue"
               sub={`${activeRides.length} active now`}
+              trend={ridesWeeklyTrend}
             />
             <StatCard
               title="Total Deliveries"
@@ -1457,6 +1577,115 @@ function AdminDashboard() {
                   updateRiderApproval={updateRiderApproval}
                   deleteRider={deleteRider}
                   showApprovalActions
+                />
+              ))
+            )}
+          </div>
+        )}
+
+        {page === "users" && (
+          <div style={card}>
+            <SectionTitle
+              title="User management"
+              subtitle="One place for every account group — riders, drivers, couriers, merchants, and admin staff. Search, review, approve, suspend, or restore access."
+            />
+
+            <div style={statsGrid}>
+              {userGroups.map((group) => (
+                <StatCard
+                  key={group.key}
+                  title={group.label}
+                  value={group.count}
+                  tone={
+                    group.key === "merchants"
+                      ? "violet"
+                      : group.key === "admins"
+                        ? "amber"
+                        : group.key === "couriers"
+                          ? "teal"
+                          : "blue"
+                  }
+                />
+              ))}
+            </div>
+
+            <div style={userGroupTabsStyle}>
+              {userGroups.map((group) => (
+                <button
+                  key={group.key}
+                  type="button"
+                  onClick={() => setUserGroup(group.key)}
+                  style={{
+                    ...userGroupTabStyle,
+                    ...(userGroup === group.key ? userGroupTabActiveStyle : {}),
+                  }}
+                >
+                  {group.label} ({group.count})
+                </button>
+              ))}
+            </div>
+
+            {userGroup === "couriers" && couriers.length === 0 && (
+              <p style={userGroupNoteStyle}>
+                Couriers are drivers with delivery mode enabled. None are currently
+                flagged — enable delivery mode on a driver to see them here.
+              </p>
+            )}
+
+            {userGroup === "merchants" ? (
+              filteredMerchants.length === 0 ? (
+                <p>No merchant business accounts found.</p>
+              ) : (
+                filteredMerchants.map((merchant) => (
+                  <div key={merchant.id} style={accessCardStyle}>
+                    <div>
+                      <h3 style={accessTitleStyle}>{merchant.company_name}</h3>
+                      <p style={accessMetaStyle}>{merchant.contact_email}</p>
+                      <div style={accessPillRowStyle}>
+                        <span style={rolePillStyle}>Merchant</span>
+                        <span
+                          style={{
+                            ...rolePillStyle,
+                            background: merchant.is_active
+                              ? ADMIN_SUCCESS_BG
+                              : ADMIN_DANGER_BG,
+                            color: merchant.is_active
+                              ? ADMIN_SUCCESS_TEXT
+                              : ADMIN_DANGER_TEXT,
+                          }}
+                        >
+                          {merchant.is_active ? "Active" : "Inactive"}
+                        </span>
+                        <span style={rolePillStyle}>
+                          {merchant.delivery_count || 0} deliveries
+                        </span>
+                        <span style={rolePillStyle}>
+                          {merchant.payment_terms === "monthly"
+                            ? "Monthly invoice"
+                            : "Prepaid"}
+                        </span>
+                      </div>
+                      <p style={accessMetaStyle}>
+                        Contact: {merchant.contact_person} ·{" "}
+                        {merchant.contact_phone}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )
+            ) : directoryUsers.length === 0 ? (
+              <p>No users found in this group.</p>
+            ) : (
+              directoryUsers.map((user) => (
+                <UserAccessCard
+                  key={user.id}
+                  user={user}
+                  setUserBlocked={setUserBlocked}
+                  updateRiderApproval={updateRiderApproval}
+                  deleteRider={deleteRider}
+                  showApprovalActions={
+                    userGroup === "riders" || userGroup === "all"
+                  }
                 />
               ))
             )}
@@ -2703,7 +2932,9 @@ function UserAccessCard({
         <h3 style={accessTitleStyle}>{user.full_name || "User"}</h3>
         <p style={accessMetaStyle}>{user.email}</p>
         <div style={accessPillRowStyle}>
-          <span style={rolePillStyle}>{user.is_driver ? "Driver" : "Rider"}</span>
+          <span style={rolePillStyle}>
+            {user.is_staff ? "Admin" : user.is_driver ? "Driver" : "Rider"}
+          </span>
           {isRider && (
             <span
               style={{
@@ -3886,6 +4117,42 @@ const statsGrid = {
   gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
   gap: "16px",
   marginTop: "20px",
+};
+
+const userGroupTabsStyle = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: "10px",
+  margin: "22px 0 18px",
+};
+
+const userGroupTabStyle = {
+  padding: "8px 16px",
+  borderRadius: "999px",
+  border: `1px solid ${ADMIN_BLUE_BORDER}`,
+  background: "rgba(15, 23, 42, 0.5)",
+  color: "#cbd5e1",
+  fontSize: "0.82rem",
+  fontWeight: 800,
+  cursor: "pointer",
+  transition: "all 160ms ease",
+};
+
+const userGroupTabActiveStyle = {
+  background: "linear-gradient(135deg, rgba(37, 99, 235, 0.32), rgba(59, 130, 246, 0.22))",
+  color: "#ffffff",
+  borderColor: "rgba(96, 165, 250, 0.6)",
+  boxShadow: "inset 0 0 0 1px rgba(96, 165, 250, 0.22)",
+};
+
+const userGroupNoteStyle = {
+  margin: "0 0 16px",
+  padding: "12px 16px",
+  borderRadius: "12px",
+  background: "rgba(37, 99, 235, 0.1)",
+  border: `1px solid ${ADMIN_BLUE_BORDER}`,
+  color: "#cbd5e1",
+  fontSize: "0.86rem",
 };
 
 const statCard = {
