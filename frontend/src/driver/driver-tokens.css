@@ -50,6 +50,15 @@
   /* Driver Transitions */
   --panel-slide-duration: 300ms;
   --panel-slide-easing: ease-out;
+
+  /* Dashboard-specific tokens */
+  --dd-card-radius: 18px;
+  --dd-card-shadow: 0 2px 10px rgba(16, 24, 39, 0.05);
+  --dd-green-primary: #087a45;
+  --dd-green-dark: #034f2f;
+  --dd-green-deep: #012d1c;
+  --dd-lime-accent: #31d565;
+  --dd-gold-accent: #f5b719;
 }
 
 /* ─── Earnings Header Pill ─────────────────────────────────────────────── */

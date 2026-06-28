@@ -126,3 +126,880 @@
 .driver-page--lyft [style*="sectionCardStyle"] {
   border-radius: 16px !important;
 }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   Yala Driver Dashboard — Uber-style Green Theme (Phase 2)
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+.dd-shell {
+  --dd-green: #087a45;
+  --dd-green-dark: #034f2f;
+  --dd-green-deep: #012d1c;
+  --dd-lime: #31d565;
+  --dd-gold: #f5b719;
+  --dd-ink: #101827;
+  --dd-muted: #667085;
+  --dd-line: #e6ebe8;
+  --dd-soft: #f6f8f7;
+  --dd-danger: #d7193f;
+  --dd-radius: 18px;
+  --dd-shadow: 0 2px 10px rgba(16, 24, 39, 0.05);
+  --dd-safe-top: env(safe-area-inset-top, 0px);
+  --dd-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --dd-safe-left: env(safe-area-inset-left, 0px);
+  --dd-safe-right: env(safe-area-inset-right, 0px);
+
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  background: var(--dd-soft);
+  color: var(--dd-ink);
+  font-family: "Plus Jakarta Sans", Inter, system-ui, -apple-system, sans-serif;
+  box-sizing: border-box;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.dd-shell *, .dd-shell *::before, .dd-shell *::after {
+  box-sizing: border-box;
+}
+
+/* ─── Header ─────────────────────────────────────────────────────────────── */
+
+.dd-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: calc(12px + var(--dd-safe-top)) calc(16px + var(--dd-safe-right)) 12px calc(16px + var(--dd-safe-left));
+  background: #fff;
+  border-bottom: 1px solid var(--dd-line);
+  box-shadow: 0 1px 4px rgba(16, 24, 39, 0.03);
+}
+
+.dd-header-menu {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--dd-soft);
+  color: var(--dd-ink);
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.dd-header-logo {
+  font-size: 18px;
+  font-weight: 950;
+  color: var(--dd-green);
+  letter-spacing: -0.03em;
+}
+
+.dd-header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dd-header-bell {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--dd-soft);
+  font-size: 16px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.12s;
+}
+
+.dd-header-bell:hover {
+  background: #e5eee8;
+}
+
+.dd-header-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--dd-green);
+}
+
+.dd-header-avatar--fallback {
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #e8f5ee, #fff);
+  color: var(--dd-green);
+  font-size: 15px;
+  font-weight: 950;
+}
+
+/* ─── Notice Banner ──────────────────────────────────────────────────────── */
+
+.dd-notice {
+  margin: 12px 16px 0;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: var(--dd-green-deep);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* ─── Scrollable Content ─────────────────────────────────────────────────── */
+
+.dd-scroll {
+  padding: 16px;
+  padding-left: calc(16px + var(--dd-safe-left));
+  padding-right: calc(16px + var(--dd-safe-right));
+  padding-bottom: calc(90px + var(--dd-safe-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 600px;
+  margin: 0 auto;
+  will-change: scroll-position;
+  transform: translateZ(0);
+}
+
+/* ─── Hero Status Card ───────────────────────────────────────────────────── */
+
+.dd-hero-card {
+  padding: 20px;
+  background: #fff;
+  border-radius: var(--dd-radius);
+  box-shadow: var(--dd-shadow);
+  border: 1px solid var(--dd-line);
+}
+
+.dd-hero-top {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.dd-hero-photo {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+}
+
+.dd-hero-photo img {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid var(--dd-green);
+}
+
+.dd-hero-photo span {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 3px solid var(--dd-green);
+  background: linear-gradient(135deg, #e8f5ee, #fff);
+  color: var(--dd-green);
+  font-size: 22px;
+  font-weight: 950;
+}
+
+.dd-hero-dot {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #98a2b3;
+  border: 3px solid #fff;
+}
+
+.dd-hero-dot.online {
+  background: var(--dd-lime);
+}
+
+.dd-hero-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.dd-hero-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dd-hero-name {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 950;
+  letter-spacing: -0.03em;
+  color: var(--dd-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dd-hero-verified {
+  width: 20px;
+  height: 20px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--dd-gold);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 900;
+  flex-shrink: 0;
+}
+
+.dd-hero-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.dd-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #eef2f0;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--dd-muted);
+}
+
+.dd-status-pill.online {
+  background: #e5f8eb;
+  color: var(--dd-green);
+}
+
+.dd-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #98a2b3;
+}
+
+.dd-status-pill.online .dd-status-dot {
+  background: var(--dd-lime);
+}
+
+.dd-hero-rating {
+  font-size: 13px;
+  font-weight: 900;
+  color: var(--dd-gold);
+}
+
+.dd-hero-vehicle {
+  margin: 6px 0 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--dd-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dd-hero-vehicle b {
+  color: var(--dd-ink);
+}
+
+/* ─── Wallet Card ────────────────────────────────────────────────────────── */
+
+.dd-wallet-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px;
+  border-radius: var(--dd-radius);
+  background: linear-gradient(135deg, #17212d, #08121d);
+  color: #fff;
+  box-shadow: var(--dd-shadow);
+}
+
+.dd-wallet-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dd-wallet-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.dd-wallet-amount {
+  font-size: 28px;
+  font-weight: 950;
+  letter-spacing: -0.04em;
+  color: #fff;
+}
+
+.dd-wallet-btn {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+/* ─── Earnings Grid ──────────────────────────────────────────────────────── */
+
+.dd-earnings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.dd-earn-card {
+  padding: 16px 14px;
+  border-radius: var(--dd-radius);
+  background: #fff;
+  border: 1px solid var(--dd-line);
+  box-shadow: var(--dd-shadow);
+  text-align: center;
+}
+
+.dd-earn-card strong {
+  display: block;
+  font-size: 17px;
+  font-weight: 950;
+  color: var(--dd-ink);
+  letter-spacing: -0.03em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dd-earn-card span {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 750;
+  color: var(--dd-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+/* ─── Goal / Bonus Card ──────────────────────────────────────────────────── */
+
+.dd-goal-card {
+  padding: 20px;
+  border-radius: var(--dd-radius);
+  background:
+    radial-gradient(circle at 85% 20%, rgba(8, 122, 69, 0.12), transparent 10rem),
+    #fff;
+  border: 1px solid var(--dd-line);
+  box-shadow: var(--dd-shadow);
+}
+
+.dd-goal-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 950;
+  color: var(--dd-ink);
+}
+
+.dd-goal-desc {
+  margin: 6px 0 14px;
+  font-size: 13px;
+  color: var(--dd-muted);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.dd-goal-desc strong {
+  color: var(--dd-green);
+}
+
+.dd-goal-bar {
+  height: 10px;
+  border-radius: 999px;
+  background: #e5eee8;
+  overflow: hidden;
+}
+
+.dd-goal-bar-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--dd-green), var(--dd-lime));
+  transition: width 0.4s ease;
+}
+
+.dd-goal-stats {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--dd-muted);
+}
+
+/* ─── Map Section ────────────────────────────────────────────────────────── */
+
+.dd-map-section {
+  border-radius: var(--dd-radius);
+  overflow: hidden;
+  height: 220px;
+  border: 1px solid var(--dd-line);
+  box-shadow: var(--dd-shadow);
+  position: relative;
+}
+
+.dd-map-section > div {
+  width: 100%;
+  height: 100%;
+}
+
+/* ─── Quick Actions Grid ─────────────────────────────────────────────────── */
+
+.dd-actions-section {
+  padding: 20px;
+  background: #fff;
+  border-radius: var(--dd-radius);
+  border: 1px solid var(--dd-line);
+  box-shadow: var(--dd-shadow);
+}
+
+.dd-section-title {
+  margin: 0 0 14px;
+  font-size: 16px;
+  font-weight: 950;
+  color: var(--dd-ink);
+  letter-spacing: -0.02em;
+}
+
+.dd-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.dd-action-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 6px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--dd-soft);
+  color: var(--dd-ink);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 800;
+  text-align: center;
+  transition: background 0.12s;
+}
+
+.dd-action-item:hover {
+  background: #e5f0ea;
+}
+
+.dd-action-icon {
+  font-size: 24px;
+  line-height: 1;
+}
+
+/* ─── Activity Feed ──────────────────────────────────────────────────────── */
+
+.dd-activity-section {
+  padding: 20px;
+  background: #fff;
+  border-radius: var(--dd-radius);
+  border: 1px solid var(--dd-line);
+  box-shadow: var(--dd-shadow);
+}
+
+.dd-activity-feed {
+  display: flex;
+  flex-direction: column;
+}
+
+.dd-activity-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--dd-line);
+}
+
+.dd-activity-item:last-child {
+  border-bottom: 0;
+}
+
+.dd-activity-icon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--dd-soft);
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.dd-activity-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.dd-activity-text strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--dd-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dd-activity-text small {
+  display: block;
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--dd-muted);
+  font-weight: 600;
+}
+
+.dd-activity-empty {
+  text-align: center;
+  padding: 20px 0;
+  color: var(--dd-muted);
+}
+
+.dd-activity-empty span {
+  font-size: 32px;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.dd-activity-empty p {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* ─── Bottom Navigation ──────────────────────────────────────────────────── */
+
+.dd-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 90;
+  display: flex;
+  align-items: stretch;
+  justify-content: space-around;
+  height: calc(68px + var(--dd-safe-bottom));
+  padding-bottom: var(--dd-safe-bottom);
+  padding-left: var(--dd-safe-left);
+  padding-right: var(--dd-safe-right);
+  background: #fff;
+  border-top: 1px solid var(--dd-line);
+  box-shadow: 0 -2px 8px rgba(16, 24, 39, 0.04);
+}
+
+/* Ensure DriverStatusPanel sits above bottom nav */
+.dd-shell .driver-status-panel {
+  z-index: 95;
+  padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+}
+
+.dd-nav-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border: 0;
+  background: transparent;
+  color: var(--dd-muted);
+  cursor: pointer;
+  padding: 8px 4px;
+  transition: color 0.12s;
+}
+
+.dd-nav-tab.active {
+  color: var(--dd-green);
+}
+
+.dd-nav-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.dd-nav-label {
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.dd-nav-tab--center {
+  position: relative;
+}
+
+.dd-nav-go-btn {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--dd-soft);
+  font-size: 22px;
+  color: var(--dd-muted);
+  margin-top: -20px;
+  border: 3px solid #fff;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+}
+
+.dd-nav-go-btn span.online {
+  color: var(--dd-green);
+}
+
+/* ─── Cancel Modal ───────────────────────────────────────────────────────── */
+
+.dd-cancel-modal {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 200;
+  padding: 24px 20px calc(24px + var(--dd-safe-bottom));
+  border-radius: 20px 20px 0 0;
+  background: #fff;
+  box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.18);
+  color: var(--dd-ink);
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.dd-cancel-modal h3 {
+  margin: 0 0 4px;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.dd-cancel-modal p {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--dd-muted);
+}
+
+.dd-cancel-reason {
+  display: block;
+  width: 100%;
+  padding: 12px 14px;
+  margin-bottom: 6px;
+  border-radius: 10px;
+  border: 1px solid var(--dd-line);
+  background: var(--dd-soft);
+  text-align: left;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--dd-ink);
+}
+
+.dd-cancel-reason.active {
+  border-color: var(--dd-danger);
+  background: #fef2f2;
+}
+
+.dd-cancel-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.dd-cancel-keep {
+  flex: 1;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid var(--dd-line);
+  background: #fff;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  color: var(--dd-ink);
+}
+
+.dd-cancel-confirm {
+  flex: 1;
+  padding: 14px;
+  border-radius: 12px;
+  border: 0;
+  background: var(--dd-danger);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.dd-cancel-confirm:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ─── Dashboard Responsive ───────────────────────────────────────────────── */
+
+@media (max-width: 480px) {
+  .dd-scroll {
+    padding: 12px;
+    padding-bottom: calc(80px + var(--dd-safe-bottom));
+  }
+
+  .dd-hero-name {
+    font-size: 18px;
+  }
+
+  .dd-hero-photo, .dd-hero-photo img, .dd-hero-photo span {
+    width: 52px;
+    height: 52px;
+  }
+
+  .dd-wallet-amount {
+    font-size: 24px;
+  }
+
+  .dd-earnings-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .dd-actions-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+
+  .dd-action-item {
+    padding: 10px 4px;
+    font-size: 10px;
+  }
+
+  .dd-action-icon {
+    font-size: 20px;
+  }
+
+  .dd-map-section {
+    height: 180px;
+  }
+}
+
+/* ─── Dashboard Dark Mode ────────────────────────────────────────────────── */
+
+@media (prefers-color-scheme: dark) {
+  .dd-shell {
+    --dd-ink: #f1f5f2;
+    --dd-muted: #9ca3af;
+    --dd-line: #2d3830;
+    --dd-soft: #1a2420;
+    background: #0f1a14;
+  }
+
+  .dd-header {
+    background: #111b15;
+    border-bottom-color: var(--dd-line);
+  }
+
+  .dd-hero-card,
+  .dd-earn-card,
+  .dd-goal-card,
+  .dd-actions-section,
+  .dd-activity-section {
+    background: #1a2420;
+    border-color: var(--dd-line);
+  }
+
+  .dd-action-item {
+    background: #1f2e27;
+  }
+
+  .dd-action-item:hover {
+    background: #263a30;
+  }
+
+  .dd-bottom-nav {
+    background: #111b15;
+    border-top-color: var(--dd-line);
+  }
+
+  .dd-cancel-modal {
+    background: #1a2420;
+    color: var(--dd-ink);
+  }
+
+  .dd-cancel-reason {
+    background: #1f2e27;
+    border-color: var(--dd-line);
+    color: var(--dd-ink);
+  }
+
+  .dd-cancel-keep {
+    background: #1f2e27;
+    border-color: var(--dd-line);
+    color: var(--dd-ink);
+  }
+
+  .dd-notice {
+    background: #0a3020;
+  }
+
+  .dd-header-menu {
+    background: #1f2e27;
+    color: var(--dd-ink);
+  }
+
+  .dd-nav-go-btn {
+    background: #1f2e27;
+    border-color: #111b15;
+  }
+
+  .dd-activity-icon {
+    background: #1f2e27;
+  }
+
+  .dd-hero-photo span {
+    background: linear-gradient(135deg, #1a3025, #1a2420);
+  }
+}
+
+/* ─── Lyft override for dashboard ────────────────────────────────────────── */
+
+.dd-shell.driver-app--lyft .dd-header {
+  background: #fff;
+  border-bottom-color: #e5e7eb;
+}
+
+.dd-shell.driver-app--lyft .dd-header-logo {
+  color: #111827;
+}
+
+.dd-shell.driver-app--lyft .dd-hero-card,
+.dd-shell.driver-app--lyft .dd-earn-card,
+.dd-shell.driver-app--lyft .dd-goal-card,
+.dd-shell.driver-app--lyft .dd-actions-section,
+.dd-shell.driver-app--lyft .dd-activity-section {
+  background: #fff;
+  border-color: #e5e7eb;
+}

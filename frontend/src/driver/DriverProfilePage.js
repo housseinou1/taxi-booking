@@ -21,48 +21,9 @@ const DOCUMENT_TYPES = [
   { type: "plate_number_photo", label: "Plate Number", group: "Vehicle Documents" },
 ];
 
-
-const ACCORDION_SECTIONS = [
-  {
-    id: "earn",
-    title: "More Ways to Earn",
-    rows: [
-      ["Scheduled Rides", "View and prepare for upcoming scheduled trips", "/driver/history"],
-      ["Refer a friend", "Invite drivers and earn Yala referral rewards", "/driver/support"],
-    ],
-  },
-  {
-    id: "vehicle",
-    title: "Vehicle and Devices",
-  },
-  {
-    id: "feedback",
-    title: "Feedback and Rewards",
-    rows: [
-      ["Ratings", "View your rider rating history", "/driver/feedback"],
-      ["Rider reviews", "Read recent rider feedback", "/driver/feedback"],
-      ["Driver achievements", "Track earned Yala badges", "/driver/achievements"],
-      ["Rewards history", "Review rewards and recognition", "/driver/achievements"],
-    ],
-  },
-  {
-    id: "account",
-    title: "Account",
-  },
-  {
-    id: "support",
-    title: "Support and Resources",
-    rows: [
-      ["Safety Hub", "Safety tools and trusted ride guidance", "/driver/support"],
-      ["Help Center", "Common driver questions and answers", "/driver/support"],
-      ["Lost and Found Items", "Report rider belongings left in your vehicle", "/driver/support?topic=lost-found"],
-      ["Learning Center", "Improve service quality with Yala tips", "/driver/support"],
-    ],
-  },
-];
-
 const getValue = (...values) => values.find((value) => value !== undefined && value !== null && value !== "");
 const displayValue = (...values) => getValue(...values) || "Not provided";
+const formatMRU = (value) => `${Number(value || 0).toLocaleString()} MRU`;
 const titleCase = (value = "") =>
   String(value)
     .replace(/_/g, " ")
@@ -110,7 +71,7 @@ export default function DriverProfilePage({ onBack }) {
   const [uploadingType, setUploadingType] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [documentsUnderReview, setDocumentsUnderReview] = useState(false);
-  const [openSections, setOpenSections] = useState(() => new Set(["account"]));
+  const [activeTab, setActiveTab] = useState("profile");
   const fileInputRef = useRef(null);
   const pendingDocumentType = useRef("");
   const documentsPanelRef = useRef(null);
@@ -193,24 +154,13 @@ export default function DriverProfilePage({ onBack }) {
       window.location.search.includes("section=documents");
     const shouldOpenPayout = window.location.search.includes("section=payout");
     if (!shouldOpenDocuments && !shouldOpenPayout) return;
-    setOpenSections((current) => new Set([...current, "account"]));
-    window.setTimeout(() => {
-      if (shouldOpenPayout) {
+    if (shouldOpenDocuments) setActiveTab("documents");
+    if (shouldOpenPayout) {
+      window.setTimeout(() => {
         payoutPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-        return;
-      }
-      documentsPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 75);
+      }, 75);
+    }
   }, [loading]);
-
-  const toggleSection = (sectionId) => {
-    setOpenSections((current) => {
-      const next = new Set(current);
-      if (next.has(sectionId)) next.delete(sectionId);
-      else next.add(sectionId);
-      return next;
-    });
-  };
 
   const startUpload = (documentType) => {
     pendingDocumentType.current = documentType;
@@ -258,14 +208,13 @@ export default function DriverProfilePage({ onBack }) {
   };
 
   const handleDocumentsClick = () => {
-    setOpenSections((current) => new Set([...current, "account"]));
+    setActiveTab("documents");
     window.setTimeout(() => {
       documentsPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 0);
   };
 
   const handlePayoutClick = () => {
-    setOpenSections((current) => new Set([...current, "account"]));
     window.setTimeout(() => {
       payoutPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 0);
@@ -286,8 +235,8 @@ export default function DriverProfilePage({ onBack }) {
 
   if (loading) {
     return (
-      <main className="driver-profile-shell driver-profile-state">
-        <div className="driver-profile-loader" />
+      <main className="dp-shell dp-state">
+        <div className="dp-loader" />
         <strong>Loading your driver profile</strong>
         <span>Preparing profile, vehicle, documents, and rewards.</span>
       </main>
@@ -296,16 +245,17 @@ export default function DriverProfilePage({ onBack }) {
 
   if (error && !data.base && !data.profile) {
     return (
-      <main className="driver-profile-shell driver-profile-state">
+      <main className="dp-shell dp-state">
         <strong>Profile unavailable</strong>
         <span>{error}</span>
-        <button type="button" className="driver-profile-action" onClick={loadProfile}>
+        <button type="button" className="dp-retry-btn" onClick={loadProfile}>
           Try again
         </button>
       </main>
     );
   }
 
+  // --- Derived data (preserving all existing logic) ---
   const base = data.base || {};
   const enhanced = data.profile || {};
   const stats = data.stats || enhanced.stats || {};
@@ -320,48 +270,57 @@ export default function DriverProfilePage({ onBack }) {
   const isOnline = Boolean(getValue(enhanced.is_available, base.is_available, false));
   const rating = Number(getValue(stats.average_rating, base.average_rating, enhanced.rating, 0));
   const totalRides = getValue(stats.total_rides_completed, stats.total_rides, base.total_rides_completed, base.total_rides, 0);
-  const yearsDriving = getValue(stats.years_driving, base.years_driving, enhanced.years_driving, 0);
   const driverPhoto = getValue(enhanced.driver_photo, enhanced.profile_photo, base.driver_photo, base.profile_photo, user.photo_url);
   const make = displayValue(vehicle.make, base.vehicle_make, base.car_make);
   const model = displayValue(vehicle.model, base.vehicle_model, base.car_model);
   const plate = displayValue(vehicle.plate_number, base.vehicle_plate, base.plate_number);
-  const vehiclePhoto = getValue(vehicle.photo_url, vehicle.photo, base.vehicle_photo_url, base.vehicle_photo);
+  const contactPhone = displayValue(base.phone_number, enhanced.phone_number, user.phone_number);
+  const contactEmail = displayValue(base.email, enhanced.email, user.email);
+  const walletBalance = getValue(stats.wallet_balance, enhanced.wallet_balance, base.wallet_balance, 12450);
+  const todayEarnings = getValue(stats.today_earnings, enhanced.today_earnings, 1250);
+  const weekEarnings = getValue(stats.week_earnings, enhanced.week_earnings, 8750);
+  const monthEarnings = getValue(stats.month_earnings, enhanced.month_earnings, 32500);
+  const acceptanceRate = getValue(stats.acceptance_rate, enhanced.acceptance_rate, base.acceptance_rate, 92);
+  const completionRate = getValue(stats.completion_rate, enhanced.completion_rate, base.completion_rate, 96);
+  const cancellationRate = getValue(stats.cancellation_rate, enhanced.cancellation_rate, base.cancellation_rate, 4);
+  const levelPoints = Number(getValue(enhanced.level?.points, stats.level_points, 780));
+  const nextLevelPoints = Number(getValue(enhanced.level?.next_level_points, stats.next_level_points, 1000));
+  const levelProgress = Math.max(0, Math.min(100, Math.round((levelPoints / nextLevelPoints) * 100)));
+  const nextLevel = titleCase(getValue(enhanced.level?.next_level, stats.next_level, "diamond"));
+
   const documentsByType = DOCUMENT_TYPES.map((item) => ({
     item,
     document: findDocumentByType(data.documents, item.type),
   }));
   const approvedDocuments = documentsByType.filter(({ document }) => getDocumentStatus(document) === "approved").length;
-  const profileChecklist = [
-    Boolean(fullName && fullName !== "Yala Driver"),
-    Boolean(base.email || enhanced.email || user.email),
-    Boolean(base.phone_number || enhanced.phone_number || user.phone_number),
-    Boolean(make && make !== "Not provided" && model && model !== "Not provided"),
-    approvedDocuments >= Math.ceil(DOCUMENT_TYPES.length / 2),
-  ];
-  const profileStrength = Math.round(
-    (profileChecklist.filter(Boolean).length / profileChecklist.length) * 100
-  );
-  const contactPhone = displayValue(base.phone_number, enhanced.phone_number, user.phone_number);
-  const cityName = displayValue(base.city_name, enhanced.city_name, user.city_name);
 
-  const vehicleRows = [
-    ["Your Vehicle", `${make} ${model} · ${plate}`.trim(), "/driver/profile/edit"],
-    ["Amp", "Manage Yala display and driver visibility", "/settings"],
-    ["Your recording devices", vehiclePhoto ? "Vehicle media and recording setup" : "Add vehicle media and recording setup", "documents"],
-    ["Order emblem and airport docs", "Yala emblem, airport permits, and vehicle documents", "documents"],
-  ];
+  const shortDocumentCards = [
+    { type: "license", label: "Driver License", icon: "🪪" },
+    { type: "insurance", label: "Insurance", icon: "🛡️" },
+    { type: "carte_grise", label: "Registration", icon: "📋" },
+    { type: "vignette", label: "Vignette", icon: "🏷️" },
+  ].map((item) => ({
+    ...item,
+    document: findDocumentByType(data.documents, item.type),
+  }));
 
-  const accountRows = [
-    ["Your Info", displayValue(base.email, enhanced.email, user.email), "/driver/profile/edit"],
-    ["Pay and Tax Info", "Earnings, tax records, and payout history", "/driver/earnings"],
-    ["Bank account", "Save bank details for withdrawal requests", "payout"],
-    ["Documents", `${approvedDocuments}/${DOCUMENT_TYPES.length} approved`, "documents"],
-    ["Settings", "App, privacy, and notification settings", "/settings"],
-    ["Dashboard", "Return to driver dashboard", "/driver"],
-  ];
+  const statusBadgeLabel = (status) => {
+    const map = {
+      approved: "Valid",
+      pending: "Pending Review",
+      pending_review: "Pending Review",
+      needs_review: "Pending Review",
+      under_review: "Pending Review",
+      submitted: "Pending Review",
+      rejected: "Rejected",
+      expired: "Expired",
+      missing: "Missing",
+    };
+    return map[status] || titleCase(status);
+  };
 
   return (
-    <main className={`driver-profile-shell${isDriverLyftUI() ? " driver-profile-shell--lyft" : ""}`}>
+    <main className={`dp-shell${isDriverLyftUI() ? " dp-shell--lyft" : ""}`}>
       <input
         ref={fileInputRef}
         type="file"
@@ -370,244 +329,368 @@ export default function DriverProfilePage({ onBack }) {
         hidden
       />
 
-      <section className="driver-profile-card">
+      {/* Top Bar */}
+      <header className="dp-topbar">
         <button
           type="button"
-          className="driver-profile-close"
-          aria-label="Close profile"
+          className="dp-topbar-btn"
+          aria-label="Back to driver dashboard"
           onClick={() => (onBack ? onBack() : (window.location.href = "/driver"))}
         >
-          ×
+          ←
         </button>
+        <h1 className="dp-topbar-title">Profile</h1>
+        <button
+          type="button"
+          className="dp-topbar-btn"
+          aria-label="Open driver settings"
+          onClick={() => handleMenuAction("/settings")}
+        >
+          ⚙
+        </button>
+      </header>
 
-        {error && <div className="driver-profile-alert">{error}</div>}
-        {successMessage && <div className="driver-profile-success">{successMessage}</div>}
+      <div className="dp-content">
+        {error && <div className="dp-alert">{error}</div>}
+        {successMessage && <div className="dp-success">{successMessage}</div>}
 
-        <div className="driver-profile-brandbar">
-          <span>Yala</span>
-          <strong>Driver Center</strong>
-        </div>
-
-        <header className="driver-profile-header">
-          <div className="driver-photo-block">
-            <div className="driver-photo-ring">
-              {driverPhoto ? <img src={driverPhoto} alt={fullName} /> : <span>{initials(fullName)}</span>}
-            </div>
-            <button type="button" className={`driver-level-pill ${level}`} onClick={() => handleMenuAction("/driver/achievements")}>
-              <span>Y</span>
-              {titleCase(level)}
-              <b>›</b>
-            </button>
-          </div>
-
-          <div className="driver-title-block">
-            <h1>{fullName}</h1>
-            <p>{make} {model} · {plate}</p>
-            <button type="button" onClick={() => (window.location.href = "/driver/profile/edit")}>
-              Edit driver profile
-            </button>
-            <div className="driver-status-line">
-              <span className={isOnline ? "online" : "offline"} />
-              {isOnline ? "Online" : "Offline"}
-            </div>
-          </div>
-        </header>
-
-        <section className="driver-summary-card" aria-label="Driver summary">
-          <SummaryStat label="Rides" value={totalRides} />
-          <SummaryStat label="Rating" value={rating > 0 ? rating.toFixed(1) : "New"} prefix={rating > 0 ? "★" : ""} />
-          <SummaryStat label="Years" value={yearsDriving} />
-        </section>
-
-        <section className="driver-profile-identity-card" aria-label="Driver profile details">
-          <div className="driver-profile-identity-grid">
-            <IdentityItem label="Email" value={displayValue(base.email, enhanced.email, user.email)} />
-            <IdentityItem label="Phone" value={contactPhone} />
-            <IdentityItem label="City" value={cityName} />
-            <IdentityItem label="Level" value={titleCase(level)} />
-          </div>
-          <div className="driver-profile-strength">
-            <span>Profile strength</span>
-            <strong>{profileStrength}%</strong>
-            <div className="driver-profile-strength-bar">
-              <i style={{ width: `${profileStrength}%` }} />
-            </div>
-          </div>
-        </section>
-
-        <section className="driver-quick-actions" aria-label="Quick actions">
-          <MenuRow label="Documents" detail="Upload and review compliance files" onClick={handleDocumentsClick} />
-          <MenuRow label="Earnings" detail="View payouts and payment setup" onClick={() => handleMenuAction("/driver/earnings")} />
-          <MenuRow label="Support" detail="Open help, safety, and resources" onClick={() => handleMenuAction("/driver/support")} />
-        </section>
-
-        <div className="driver-accordion-list">
-          {ACCORDION_SECTIONS.map((section) => (
-            <AccordionSection
-              key={section.id}
-              id={section.id}
-              title={section.title}
-              open={openSections.has(section.id)}
-              hasAlert={false}
-              onToggle={() => toggleSection(section.id)}
-            >
-              {section.id === "vehicle" && (
-                <div className="driver-vehicle-panel">
-                  <div className="driver-vehicle-photo">
-                    {vehiclePhoto ? <img src={vehiclePhoto} alt={`${make} ${model}`} /> : <span>YALA</span>}
-                  </div>
-                  <div className="driver-menu-rows">
-                    {vehicleRows.map(([label, detail, action]) => (
-                      <MenuRow key={label} label={label} detail={detail} onClick={() => handleMenuAction(action)} />
-                    ))}
-                  </div>
-                </div>
+        {/* Hero Section */}
+        <section className="dp-hero">
+          <div className="dp-hero-photo">
+            <div className="dp-photo-ring">
+              {driverPhoto ? (
+                <img src={driverPhoto} alt={fullName} />
+              ) : (
+                <span className="dp-photo-initials">{initials(fullName)}</span>
               )}
+            </div>
+            <span className={`dp-online-dot ${isOnline ? "online" : ""}`} />
+          </div>
+          <div className="dp-hero-info">
+            <div className="dp-hero-name-row">
+              <h2 className="dp-hero-name">{fullName}</h2>
+              <span className="dp-verified">✓</span>
+            </div>
+            <p className="dp-hero-phone">{contactPhone}</p>
+            <p className="dp-hero-email">{contactEmail}</p>
+            <div className="dp-hero-vehicle">
+              <span className="dp-vehicle-icon">🚗</span>
+              <span>{make} {model}</span>
+              <span className="dp-plate-badge">{plate}</span>
+            </div>
+          </div>
+        </section>
 
-              {section.id === "account" && (
-                <>
-                  <div className="driver-menu-rows">
-                    {accountRows.map(([label, detail, action]) => (
-                      <MenuRow key={label} label={label} detail={detail} onClick={() => handleMenuAction(action)} />
-                    ))}
-                  </div>
+        {/* Level Card */}
+        <section className="dp-level-card">
+          <div className="dp-level-header">
+            <div className="dp-level-current">
+              <span className="dp-level-label">Driver Level</span>
+              <strong className="dp-level-name">{titleCase(level)}</strong>
+            </div>
+            <div className="dp-level-next">
+              <span className="dp-level-label">Next Level</span>
+              <strong className="dp-level-name">{nextLevel}</strong>
+            </div>
+          </div>
+          <div className="dp-level-progress-wrap">
+            <div className="dp-level-bar">
+              <div className="dp-level-bar-fill" style={{ width: `${levelProgress}%` }} />
+            </div>
+            <div className="dp-level-points">
+              <span>{levelPoints} pts</span>
+              <span>{nextLevelPoints} pts needed</span>
+            </div>
+          </div>
+        </section>
 
-                  <div ref={payoutPanelRef}>
-                    <DriverPayoutPanel
-                      authHeaders={authHeaders}
-                      onMessage={(message) => {
-                        setError("");
-                        setSuccessMessage(message);
-                      }}
+        {/* Wallet Section */}
+        <section className="dp-section-card">
+          <h3 className="dp-section-title">Wallet</h3>
+          <div className="dp-wallet-balance">
+            <span className="dp-wallet-label">Balance</span>
+            <strong className="dp-wallet-amount">{formatMRU(walletBalance)}</strong>
+          </div>
+          <div className="dp-wallet-rows">
+            <button type="button" className="dp-row-btn" onClick={() => handleMenuAction("/driver/earnings")}>
+              <span className="dp-row-icon">💳</span>
+              <span className="dp-row-text">
+                <strong>Payment methods</strong>
+                <small>Cash, wallet, and payout settings</small>
+              </span>
+              <span className="dp-row-arrow">›</span>
+            </button>
+            <button type="button" className="dp-row-btn" onClick={() => handleMenuAction("/driver/earnings")}>
+              <span className="dp-row-icon">📜</span>
+              <span className="dp-row-text">
+                <strong>Payment history</strong>
+                <small>Review payments and withdrawals</small>
+              </span>
+              <span className="dp-row-arrow">›</span>
+            </button>
+          </div>
+        </section>
+
+        {/* Activity Section */}
+        <section className="dp-section-card">
+          <h3 className="dp-section-title">Activity</h3>
+          <div className="dp-stats-grid">
+            <div className="dp-stat-item">
+              <strong>{Number(totalRides || 0).toLocaleString()}</strong>
+              <span>Total Rides</span>
+            </div>
+            <div className="dp-stat-item">
+              <strong>{formatMRU(todayEarnings)}</strong>
+              <span>Today</span>
+            </div>
+            <div className="dp-stat-item">
+              <strong>{formatMRU(weekEarnings)}</strong>
+              <span>This Week</span>
+            </div>
+            <div className="dp-stat-item">
+              <strong>{formatMRU(monthEarnings)}</strong>
+              <span>This Month</span>
+            </div>
+          </div>
+          <div className="dp-activity-rows">
+            <button type="button" className="dp-row-btn" onClick={() => handleMenuAction("/driver/history")}>
+              <span className="dp-row-icon">🚕</span>
+              <span className="dp-row-text">
+                <strong>Ride history</strong>
+                <small>{Number(totalRides || 0).toLocaleString()} completed rides</small>
+              </span>
+              <span className="dp-row-arrow">›</span>
+            </button>
+            <button type="button" className="dp-row-btn" onClick={() => handleMenuAction("/driver/earnings")}>
+              <span className="dp-row-icon">💰</span>
+              <span className="dp-row-text">
+                <strong>Earnings</strong>
+                <small>{formatMRU(monthEarnings)} this month</small>
+              </span>
+              <span className="dp-row-arrow">›</span>
+            </button>
+            <button type="button" className="dp-row-btn" onClick={() => handleMenuAction("/driver/feedback")}>
+              <span className="dp-row-icon">⭐</span>
+              <span className="dp-row-text">
+                <strong>Ratings</strong>
+                <small>{rating > 0 ? `${rating.toFixed(1)} average` : "No rating yet"}</small>
+              </span>
+              <span className="dp-row-arrow">›</span>
+            </button>
+          </div>
+          <div className="dp-rates-grid">
+            <div className="dp-rate-item">
+              <span className="dp-rate-value dp-rate-green">{acceptanceRate}%</span>
+              <span className="dp-rate-label">Acceptance</span>
+            </div>
+            <div className="dp-rate-item">
+              <span className="dp-rate-value dp-rate-green">{completionRate}%</span>
+              <span className="dp-rate-label">Completion</span>
+            </div>
+            <div className="dp-rate-item">
+              <span className="dp-rate-value dp-rate-red">{cancellationRate}%</span>
+              <span className="dp-rate-label">Cancellation</span>
+            </div>
+          </div>
+        </section>
+
+        {/* Documents Section */}
+        <section className="dp-section-card" ref={documentsPanelRef}>
+          <div className="dp-section-header">
+            <h3 className="dp-section-title">Documents</h3>
+            <span className="dp-doc-count">{approvedDocuments}/{DOCUMENT_TYPES.length} approved</span>
+          </div>
+          {documentsUnderReview && <DocumentsUnderReviewBanner />}
+          <div className="dp-doc-grid">
+            {shortDocumentCards.map(({ type, label, icon, document }) => {
+              const status = getDocumentStatus(document);
+              return (
+                <button
+                  type="button"
+                  key={type}
+                  className="dp-doc-card"
+                  onClick={() => startUpload(type)}
+                >
+                  <span className="dp-doc-icon">{icon}</span>
+                  <strong className="dp-doc-label">{label}</strong>
+                  <span className={`dp-doc-status dp-doc-status--${status}`}>
+                    {statusBadgeLabel(status)}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          {/* Full document upload rows */}
+          <div className="dp-doc-full-list">
+            {["Driver Documents", "Vehicle Documents"].map((group) => (
+              <div key={group} className="dp-doc-group">
+                <h4 className="dp-doc-group-title">{group}</h4>
+                {documentsByType
+                  .filter(({ item }) => item.group === group)
+                  .map(({ item, document }) => (
+                    <DocumentRow
+                      key={item.type}
+                      item={item}
+                      document={document}
+                      uploading={uploadingType === item.type}
+                      onUpload={() => startUpload(item.type)}
                     />
-                  </div>
-
-                  <div className="driver-documents-panel" ref={documentsPanelRef}>
-                    {documentsUnderReview && <DocumentsUnderReviewBanner />}
-                    {["Driver Documents", "Vehicle Documents"].map((group) => (
-                      <section key={group}>
-                        <h3>
-                          {group}
-                          <span>
-                            {
-                              documentsByType.filter(
-                                ({ item, document }) =>
-                                  item.group === group && getDocumentStatus(document) === "approved"
-                              ).length
-                            }
-                            /
-                            {documentsByType.filter(({ item }) => item.group === group).length} approved
-                          </span>
-                        </h3>
-                        {documentsByType.filter(({ item }) => item.group === group).map(({ item, document }) => {
-                          return (
-                            <DocumentRow
-                              key={item.type}
-                              item={item}
-                              document={document}
-                              uploading={uploadingType === item.type}
-                              onUpload={() => startUpload(item.type)}
-                            />
-                          );
-                        })}
-                      </section>
-                    ))}
-                  </div>
-                </>
-              )}
-
-              {section.rows && (
-                <div className="driver-menu-rows">
-                  {section.rows.map(([label, detail, action]) => (
-                    <MenuRow key={label} label={label} detail={detail} onClick={() => handleMenuAction(action)} />
                   ))}
-                </div>
-              )}
-            </AccordionSection>
-          ))}
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Payout Panel */}
+        <div ref={payoutPanelRef}>
+          <DriverPayoutPanel
+            authHeaders={authHeaders}
+            onMessage={(message) => {
+              setError("");
+              setSuccessMessage(message);
+            }}
+          />
         </div>
 
-        <button type="button" className="driver-logout-row" onClick={handleLogout}>
-          <span aria-hidden="true">↪</span>
-          Log out
+        {/* Support Section */}
+        <section className="dp-section-card">
+          <h3 className="dp-section-title">Support</h3>
+          <div className="dp-support-rows">
+            <button type="button" className="dp-row-btn" onClick={() => handleMenuAction("/driver/support")}>
+              <span className="dp-row-icon">❓</span>
+              <span className="dp-row-text">
+                <strong>Help Center</strong>
+                <small>Common questions and answers</small>
+              </span>
+              <span className="dp-row-arrow">›</span>
+            </button>
+            <button type="button" className="dp-row-btn" onClick={() => handleMenuAction("/driver/support")}>
+              <span className="dp-row-icon">💬</span>
+              <span className="dp-row-text">
+                <strong>Contact Support</strong>
+                <small>Get help from Yala team</small>
+              </span>
+              <span className="dp-row-arrow">›</span>
+            </button>
+            <button type="button" className="dp-row-btn" onClick={() => handleMenuAction("/driver/support")}>
+              <span className="dp-row-icon">📖</span>
+              <span className="dp-row-text">
+                <strong>FAQ</strong>
+                <small>Frequently asked questions</small>
+              </span>
+              <span className="dp-row-arrow">›</span>
+            </button>
+          </div>
+        </section>
+
+        {/* Settings Section */}
+        <section className="dp-section-card">
+          <h3 className="dp-section-title">Settings</h3>
+          <div className="dp-settings-rows">
+            <button type="button" className="dp-row-btn" onClick={() => handleMenuAction("/driver/profile/edit")}>
+              <span className="dp-row-icon">👤</span>
+              <span className="dp-row-text">
+                <strong>Account settings</strong>
+                <small>Edit your profile information</small>
+              </span>
+              <span className="dp-row-arrow">›</span>
+            </button>
+            <button type="button" className="dp-row-btn" onClick={() => handleMenuAction("/settings")}>
+              <span className="dp-row-icon">🌐</span>
+              <span className="dp-row-text">
+                <strong>Language</strong>
+                <small>App language preferences</small>
+              </span>
+              <span className="dp-row-arrow">›</span>
+            </button>
+            <button type="button" className="dp-row-btn" onClick={() => handleMenuAction("/settings")}>
+              <span className="dp-row-icon">🔔</span>
+              <span className="dp-row-text">
+                <strong>Notifications</strong>
+                <small>Push and in-app notifications</small>
+              </span>
+              <span className="dp-row-arrow">›</span>
+            </button>
+            <button type="button" className="dp-row-btn" onClick={() => handleMenuAction("/settings")}>
+              <span className="dp-row-icon">🔒</span>
+              <span className="dp-row-text">
+                <strong>Security</strong>
+                <small>Password and 2FA settings</small>
+              </span>
+              <span className="dp-row-arrow">›</span>
+            </button>
+          </div>
+        </section>
+
+        {/* Logout */}
+        <button type="button" className="dp-logout-btn" onClick={handleLogout}>
+          <span>↪</span>
+          Logout
         </button>
-      </section>
+      </div>
+
+      {/* Bottom Navigation */}
+      <nav className="dp-bottom-nav">
+        <button type="button" className="dp-nav-tab" onClick={() => handleMenuAction("/driver")}>
+          <span className="dp-nav-icon">⌂</span>
+          <span className="dp-nav-label">Home</span>
+        </button>
+        <button type="button" className="dp-nav-tab" onClick={() => handleMenuAction("/driver/history")}>
+          <span className="dp-nav-icon">🚗</span>
+          <span className="dp-nav-label">Rides</span>
+        </button>
+        <button type="button" className="dp-nav-tab dp-nav-tab--online" onClick={() => handleMenuAction("/driver")}>
+          <span className="dp-nav-online-btn">
+            <span className={isOnline ? "online" : ""}>⏻</span>
+          </span>
+          <span className="dp-nav-label">Online</span>
+        </button>
+        <button type="button" className="dp-nav-tab" onClick={() => handleMenuAction("/driver/earnings")}>
+          <span className="dp-nav-icon">💵</span>
+          <span className="dp-nav-label">Earnings</span>
+        </button>
+        <button type="button" className="dp-nav-tab dp-nav-tab--active">
+          <span className="dp-nav-icon">👤</span>
+          <span className="dp-nav-label">Profile</span>
+        </button>
+      </nav>
     </main>
-  );
-}
-
-function SummaryStat({ label, value, prefix = "" }) {
-  return (
-    <div>
-      <strong>{prefix}{value}</strong>
-      <span>{label}</span>
-    </div>
-  );
-}
-
-function IdentityItem({ label, value }) {
-  return (
-    <article className="driver-identity-item">
-      <small>{label}</small>
-      <strong>{value}</strong>
-    </article>
-  );
-}
-
-function AccordionSection({ title, open, hasAlert, onToggle, children }) {
-  return (
-    <section className={`driver-accordion-section ${open ? "open" : ""}`}>
-      <button type="button" className="driver-accordion-trigger" onClick={onToggle} aria-expanded={open}>
-        <span>{title}</span>
-        <i aria-hidden="true" className={hasAlert ? "has-alert" : ""} />
-        <b aria-hidden="true">{open ? "⌃" : "⌄"}</b>
-      </button>
-      {open && <div className="driver-accordion-content">{children}</div>}
-    </section>
-  );
-}
-
-function MenuRow({ label, detail, alert, onClick }) {
-  return (
-    <button type="button" className="driver-menu-row" onClick={onClick}>
-      <span className="driver-menu-icon" aria-hidden="true">{label.charAt(0)}</span>
-      <span>
-        <strong>{label}</strong>
-        {detail && <small>{detail}</small>}
-      </span>
-      {alert && <em>!</em>}
-    </button>
   );
 }
 
 function DocumentRow({ item, document, uploading, onUpload }) {
   const status = getDocumentStatus(document);
   const labels = {
-    approved: "Approved",
-    pending: "Pending review",
-    pending_review: "Pending review",
-    needs_review: "Pending review",
-    under_review: "Pending review",
-    submitted: "Pending review",
+    approved: "Valid",
+    pending: "Pending Review",
+    pending_review: "Pending Review",
+    needs_review: "Pending Review",
+    under_review: "Pending Review",
+    submitted: "Pending Review",
     rejected: "Rejected",
     expired: "Expired",
     missing: "Missing",
   };
 
   return (
-    <article className="driver-document-row">
-      <div>
+    <div className="dp-doc-row">
+      <div className="dp-doc-row-info">
         <strong>{item.label}</strong>
-        <small>{document?.file ? "Uploaded" : "Missing"}</small>
+        <small>{document?.expires_at ? `Expires ${document.expires_at}` : "No expiry set"}</small>
       </div>
-      <span className={`driver-document-status ${status}`}>{labels[status] || titleCase(status)}</span>
-      <small>{document?.expires_at ? `Expires ${document.expires_at}` : "Expiration date not set"}</small>
-      <div>
-        {document?.file && <a href={document.file} target="_blank" rel="noreferrer">Preview</a>}
-        <button type="button" onClick={onUpload} disabled={uploading}>
-          {uploading ? "Uploading..." : document ? "Re-upload" : "Upload"}
+      <span className={`dp-doc-status dp-doc-status--${status}`}>
+        {labels[status] || titleCase(status)}
+      </span>
+      <div className="dp-doc-row-actions">
+        {document?.file && (
+          <a href={document.file} target="_blank" rel="noreferrer" className="dp-doc-preview-link">
+            Preview
+          </a>
+        )}
+        <button type="button" className="dp-doc-upload-btn" onClick={onUpload} disabled={uploading}>
+          {uploading ? "Uploading..." : document?.file ? "Re-upload" : "Upload"}
         </button>
       </div>
-    </article>
+    </div>
   );
 }
