@@ -38,15 +38,21 @@ jest.mock('./MapView', () => {
 // ─── Mock services ───────────────────────────────────────────────────────────
 const mockSubscribeRideUpdates = jest.fn(() => jest.fn());
 const mockSubscribeDriverPosition = jest.fn(() => jest.fn());
+const mockJoinRideGroup = jest.fn();
+const mockLeaveRideGroup = jest.fn();
 
 jest.mock('../services/wsService', () => ({
   __esModule: true,
   default: {
     subscribeRideUpdates: (...args) => mockSubscribeRideUpdates(...args),
     subscribeDriverPosition: (...args) => mockSubscribeDriverPosition(...args),
+    joinRideGroup: (...args) => mockJoinRideGroup(...args),
+    leaveRideGroup: (...args) => mockLeaveRideGroup(...args),
   },
   subscribeRideUpdates: (...args) => mockSubscribeRideUpdates(...args),
   subscribeDriverPosition: (...args) => mockSubscribeDriverPosition(...args),
+  joinRideGroup: (...args) => mockJoinRideGroup(...args),
+  leaveRideGroup: (...args) => mockLeaveRideGroup(...args),
 }));
 
 const mockGetRoute = jest.fn();
@@ -59,7 +65,10 @@ jest.mock('../services/routeService', () => ({
 const mockRequestRide = jest.fn();
 const mockGetRiderProfile = jest.fn();
 const mockGetActiveRide = jest.fn();
+const mockGetRideById = jest.fn();
 const mockValidatePromo = jest.fn();
+const mockAddRideStop = jest.fn();
+const mockCancelRide = jest.fn();
 
 jest.mock('../services/apiService', () => ({
   __esModule: true,
@@ -67,12 +76,18 @@ jest.mock('../services/apiService', () => ({
     requestRide: (...args) => mockRequestRide(...args),
     getRiderProfile: (...args) => mockGetRiderProfile(...args),
     getActiveRide: (...args) => mockGetActiveRide(...args),
+    getRideById: (...args) => mockGetRideById(...args),
     validatePromo: (...args) => mockValidatePromo(...args),
+    addRideStop: (...args) => mockAddRideStop(...args),
+    cancelRide: (...args) => mockCancelRide(...args),
   },
   requestRide: (...args) => mockRequestRide(...args),
   getRiderProfile: (...args) => mockGetRiderProfile(...args),
   getActiveRide: (...args) => mockGetActiveRide(...args),
+  getRideById: (...args) => mockGetRideById(...args),
   validatePromo: (...args) => mockValidatePromo(...args),
+  addRideStop: (...args) => mockAddRideStop(...args),
+  cancelRide: (...args) => mockCancelRide(...args),
 }));
 
 // ─── Mock marketConfig ───────────────────────────────────────────────────────
@@ -156,6 +171,7 @@ describe('RiderHome integration tests', () => {
       profile_picture: 'https://example.com/photo.jpg',
     });
     mockGetActiveRide.mockResolvedValue(null);
+    mockGetRideById.mockResolvedValue(null);
     mockGetRoute.mockResolvedValue({
       points: [[18.0735, -15.9582], [18.0896, -15.9754]],
       distanceKm: 5,
@@ -183,7 +199,7 @@ describe('RiderHome integration tests', () => {
   // Test 1: Full booking flow — location → ride type → confirm → tracking
   // Validates: Requirements 4.1, 4.5
   // ─────────────────────────────────────────────────────────────────────────
-  it('completes the full booking flow: location → ride type → confirm → tracking', async () => {
+  it('completes the full booking flow: location → confirm → tracking', async () => {
     renderRiderHome();
 
     // Step 1: Home screen shows destination search button
@@ -209,7 +225,7 @@ describe('RiderHome integration tests', () => {
     // Click the Ksar option
     fireEvent.click(screen.getAllByRole('option').find((el) => el.textContent.includes('Ksar')));
 
-    // Set destination — since pickup is now set, selecting destination triggers rideType step
+    // Set destination — with pickup already set, selecting destination advances to confirm
     fireEvent.change(destinationInput, { target: { value: 'Arafat' } });
 
     await waitFor(() => {
@@ -219,19 +235,7 @@ describe('RiderHome integration tests', () => {
 
     fireEvent.click(screen.getAllByRole('option').find((el) => el.textContent.includes('Arafat')));
 
-    // Continue to ride type after setting pickup and destination
-    fireEvent.click(screen.getByRole('button', { name: /Find Rides/i }));
-
-    // Step 3: Ride type selection should appear
-    await waitFor(() => {
-      expect(screen.getByText('Choose a ride')).toBeInTheDocument();
-    });
-
-    // Select Comfort ride type
-    const comfortCard = screen.getByLabelText(/Comfort/);
-    fireEvent.click(comfortCard);
-
-    // Step 4: Booking confirmation should appear
+    // Step 3: Booking confirmation should appear automatically
     await waitFor(() => {
       expect(screen.getByText('Confirm Your Ride')).toBeInTheDocument();
     });
@@ -240,7 +244,7 @@ describe('RiderHome integration tests', () => {
     const confirmBtn = screen.getByRole('button', { name: /Confirm booking/i });
     fireEvent.click(confirmBtn);
 
-    // Step 5: After successful API call, should transition to tracking (driver info shown)
+    // Step 4: After successful API call, should transition to tracking (driver info shown)
     await waitFor(() => {
       expect(screen.getByText('Amadou Ba')).toBeInTheDocument();
     });
@@ -259,8 +263,9 @@ describe('RiderHome integration tests', () => {
       return jest.fn();
     });
 
-    // Simulate an active ride on mount
-    mockGetActiveRide.mockResolvedValue({
+    // Simulate an active ride on mount. The ride is mutated as the backend
+    // status changes so that the post-update refetch reflects the new status.
+    let activeRide = {
       id: 99,
       status: 'driver_arriving',
       driver_name: 'Ibrahim Sy',
@@ -273,7 +278,9 @@ describe('RiderHome integration tests', () => {
       fare: 250,
       pin_code: '7788',
       eta_minutes: 4,
-    });
+    };
+    mockGetActiveRide.mockImplementation(() => Promise.resolve(activeRide));
+    mockGetRideById.mockImplementation(() => Promise.resolve(activeRide));
 
     renderRiderHome();
 
@@ -287,6 +294,7 @@ describe('RiderHome integration tests', () => {
 
     // Simulate WebSocket status update to 'driver_arrived'
     act(() => {
+      activeRide = { ...activeRide, status: 'driver_arrived' };
       rideUpdateCallbacks.forEach((callback) => callback({ ride_id: 99, status: 'driver_arrived' }));
     });
 
@@ -295,13 +303,15 @@ describe('RiderHome integration tests', () => {
       expect(screen.getByText('Arrived')).toBeInTheDocument();
     });
 
-    // Simulate another status update to 'in_progress'
+    // Simulate another status update to 'in_progress'. With no pending stops the
+    // in-progress step renders as "Heading to destination".
     act(() => {
+      activeRide = { ...activeRide, status: 'in_progress' };
       rideUpdateCallbacks.forEach((callback) => callback({ ride_id: 99, status: 'in_progress' }));
     });
 
     await waitFor(() => {
-      expect(screen.getByText('In Progress')).toBeInTheDocument();
+      expect(screen.getByText('Heading to destination')).toBeInTheDocument();
     });
   }, 10000);
 
@@ -402,15 +412,7 @@ describe('RiderHome integration tests', () => {
     });
     fireEvent.click(screen.getAllByRole('option').find((el) => el.textContent.includes('Dar Naim')));
 
-    fireEvent.click(screen.getByRole('button', { name: /Find Rides/i }));
-
-    // 4. Select ride type
-    await waitFor(() => {
-      expect(screen.getByText('Choose a ride')).toBeInTheDocument();
-    });
-    fireEvent.click(screen.getByLabelText(/Regular/));
-
-    // 5. Confirm booking (should fail)
+    // 4. Selecting both locations advances directly to the booking confirmation
     await waitFor(() => {
       expect(screen.getByText('Confirm Your Ride')).toBeInTheDocument();
     });
@@ -478,6 +480,7 @@ describe('RiderHome integration tests', () => {
 
     openLocationStep();
 
+    // Set pickup first (destination not yet set, so we stay on the location step).
     const pickupInput = screen.getByPlaceholderText('Search pickup location...');
     fireEvent.change(pickupInput, { target: { value: 'Ksar' } });
     await waitFor(() => {
@@ -485,12 +488,8 @@ describe('RiderHome integration tests', () => {
     });
     fireEvent.click(screen.getAllByRole('option').find((el) => el.textContent.includes('Ksar')));
 
-    const destinationInput = screen.getByPlaceholderText('Search destination location...');
-    fireEvent.change(destinationInput, { target: { value: 'Arafat' } });
-    await waitFor(() => {
-      expect(screen.getAllByRole('option').find((el) => el.textContent.includes('Arafat'))).toBeTruthy();
-    });
-    fireEvent.click(screen.getAllByRole('option').find((el) => el.textContent.includes('Arafat')));
+    // Reveal the add-stop input and add an intermediate stop before the destination.
+    fireEvent.click(screen.getByRole('button', { name: /Add stop \(0\/3\)/i }));
 
     const addStopInput = screen.getByPlaceholderText('Search add stop 1 location...');
     fireEvent.change(addStopInput, { target: { value: 'Sebkha' } });
@@ -499,14 +498,18 @@ describe('RiderHome integration tests', () => {
     });
     fireEvent.click(screen.getAllByRole('option').find((el) => el.textContent.includes('Sebkha')));
 
-    fireEvent.click(screen.getByRole('button', { name: /Find Rides/i }));
+    // Setting the destination now advances to the confirmation step.
+    const destinationInput = screen.getByPlaceholderText('Search destination location...');
+    fireEvent.change(destinationInput, { target: { value: 'Arafat' } });
+    await waitFor(() => {
+      expect(screen.getAllByRole('option').find((el) => el.textContent.includes('Arafat'))).toBeTruthy();
+    });
+    fireEvent.click(screen.getAllByRole('option').find((el) => el.textContent.includes('Arafat')));
 
     await waitFor(() => {
-      expect(screen.getByText('Your route')).toBeInTheDocument();
-      expect(screen.getByText('Sebkha')).toBeInTheDocument();
+      expect(screen.getByText('Confirm Your Ride')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByLabelText(/Regular/));
     fireEvent.click(screen.getByRole('button', { name: /Confirm booking/i }));
 
     await waitFor(() => {

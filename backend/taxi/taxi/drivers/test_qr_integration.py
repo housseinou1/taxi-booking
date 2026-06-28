@@ -6,7 +6,6 @@ Tests: create driver → assign driver_code → approve → QR code generated
 Requirements: 1.1, 1.6
 """
 
-import pytest
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 
@@ -56,10 +55,10 @@ class QRCodeEndToEndWiringTest(TestCase):
         assert profile.qr_code_image.name != "", "qr_code_image should have a file path"
         assert profile.qr_code_generated_at is not None, "qr_code_generated_at should be set"
 
-    def test_approval_without_driver_code_rejects(self):
+    def test_approval_without_driver_code_auto_assigns(self):
         """
-        End-to-end: approving a driver without driver_code should raise
-        ValueError and revert status.
+        End-to-end: approving a driver without driver_code auto-assigns one
+        and still generates the QR code.
         """
         profile = DriverProfile.objects.create(
             user=self.user,
@@ -67,15 +66,15 @@ class QRCodeEndToEndWiringTest(TestCase):
             driver_code=None,
         )
 
-        # Approve should raise because driver_code is missing
+        # Approving with no driver_code auto-assigns one instead of rejecting.
         profile.status = "approved"
-        with pytest.raises(ValueError, match="Driver Code must be assigned"):
-            profile.save()
+        profile.save()
 
-        # Verify status was reverted
+        # Verify the approval stuck and a driver_code + QR code were assigned.
         profile.refresh_from_db()
-        assert profile.status == "pending"
-        assert profile.qr_code_uuid is None
+        assert profile.status == "approved"
+        assert profile.driver_code
+        assert profile.qr_code_uuid is not None
 
     def test_reapproval_preserves_existing_qr(self):
         """

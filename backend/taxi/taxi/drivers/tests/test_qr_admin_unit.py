@@ -590,15 +590,16 @@ class TestRegenerationFlow(TestCase):
     CELERY_TASK_EAGER_PROPAGATES=True,
     SECRET_KEY="test-secret-key-for-property-tests-12345",
 )
-class TestApprovalRejectionMissingDriverCode(TestCase):
+class TestApprovalAutoAssignsMissingDriverCode(TestCase):
     """
-    Integration test: approval rejection when driver_code is missing (Req 1.7).
+    Integration test: approving a driver without a driver_code auto-assigns one
+    and proceeds with QR generation (Req 1.7).
     """
 
-    def test_approval_rejected_without_driver_code(self):
+    def test_approval_auto_assigns_missing_driver_code(self):
         """
         When a driver profile without a driver_code is set to approved,
-        the signal should reject the approval and revert the status.
+        the signal auto-assigns a driver_code and generates the QR code.
         """
         driver_user = User.objects.create_user(
             email="integration_nocode@test.com",
@@ -612,17 +613,15 @@ class TestApprovalRejectionMissingDriverCode(TestCase):
             driver_code=None,  # No driver code
         )
 
-        # Attempt to approve without driver_code should raise ValueError
+        # Approving without a driver_code no longer raises — it auto-assigns one.
         profile.status = "approved"
-        with self.assertRaises(ValueError) as ctx:
-            profile.save()
+        profile.save()
 
-        self.assertIn("Driver Code must be assigned", str(ctx.exception))
-
-        # Verify status was reverted to pending
+        # Verify the approval stuck and a driver_code + QR code were assigned.
         profile.refresh_from_db()
-        self.assertEqual(profile.status, "pending")
-        self.assertIsNone(profile.qr_code_uuid)
+        self.assertEqual(profile.status, "approved")
+        self.assertTrue(profile.driver_code)
+        self.assertIsNotNone(profile.qr_code_uuid)
 
 
 @override_settings(
