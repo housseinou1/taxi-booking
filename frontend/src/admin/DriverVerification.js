@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { API_URL } from "../apiConfig";
 
 function DriverVerification({ onBack }) {
@@ -25,10 +25,11 @@ function DriverVerification({ onBack }) {
   const getApiMessage = (data, fallback) =>
     data?.error || data?.detail || data?.message || fallback;
 
-  const fetchDrivers = async () => {
+  const fetchDrivers = useCallback(async () => {
     try {
+      const token = localStorage.getItem("token");
       const res = await fetch(`${API_URL}/drivers/`, {
-        headers: authHeaders(),
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       const data = await res.json();
       setDrivers(Array.isArray(data) ? data : []);
@@ -38,11 +39,11 @@ function DriverVerification({ onBack }) {
     }
 
     setLoading(false);
-  };
+  }, []);
 
   useEffect(() => {
     fetchDrivers();
-  }, []);
+  }, [fetchDrivers]);
 
   const approveDriver = async (id) => {
     const response = await fetch(`${API_URL}/drivers/approve/${id}/`, {

@@ -24,7 +24,6 @@ const proxyPaths = [
   "/locations",
   "/support",
   "/media",
-  "/admin",
   "/api",
 ];
 
