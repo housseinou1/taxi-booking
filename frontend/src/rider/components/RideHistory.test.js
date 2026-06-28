@@ -94,13 +94,15 @@ describe('RideHistory component', () => {
     });
   });
 
-  it('renders a title when trips are present', async () => {
+  it('renders the trip list when trips are present', async () => {
     apiService.getRideHistory.mockResolvedValue(mockTrips);
     render(<RideHistory />);
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /ride history/i })).toBeInTheDocument();
+      expect(screen.getByRole('list')).toBeInTheDocument();
     });
+
+    expect(screen.getAllByRole('listitem')).toHaveLength(3);
   });
 });
 

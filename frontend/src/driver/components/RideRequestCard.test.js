@@ -274,7 +274,10 @@ describe("RideRequestCard", () => {
       />
     );
 
-    expect(screen.getByText("Pickup")).toBeInTheDocument();
-    expect(screen.getByText("Destination")).toBeInTheDocument();
+    const routeTexts = document.querySelectorAll(
+      ".ride-request-sheet__route-text"
+    );
+    expect(routeTexts[0]).toHaveTextContent("Pickup");
+    expect(routeTexts[1]).toHaveTextContent("Destination");
   });
 });
