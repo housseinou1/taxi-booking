@@ -1,5 +1,7 @@
 import re
 
+from decimal import Decimal
+
 from rest_framework import serializers
 
 from promotions.models import PromoCode, ReferralCode
@@ -129,7 +131,7 @@ class PromoCodeValidateSerializer(serializers.Serializer):
 
     code = serializers.CharField(required=True)
     estimated_fare = serializers.DecimalField(
-        required=True, max_digits=10, decimal_places=2, min_value=0.01
+        required=True, max_digits=10, decimal_places=2, min_value=Decimal("0.01")
     )
 
 

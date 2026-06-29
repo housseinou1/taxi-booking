@@ -2,8 +2,11 @@ from rest_framework import serializers
 
 from .models import (
     DriverPayoutMethod,
+    MerchantWithdrawalRequest,
     OwnerPayoutMethod,
     Payment,
+    PaymentRecord,
+    RefundRequest,
     RiderPaymentMethod,
     WithdrawalRequest,
     WalletAccount,
@@ -213,3 +216,63 @@ class WalletAccountSerializer(serializers.ModelSerializer):
     class Meta:
         model = WalletAccount
         fields = ["id", "balance", "currency", "is_active", "updated_at"]
+
+
+class PaymentRecordSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PaymentRecord
+        fields = (
+            "id",
+            "source",
+            "customer",
+            "courier",
+            "merchant",
+            "ride_id",
+            "delivery",
+            "merchant_order",
+            "amount",
+            "promo_discount",
+            "method",
+            "status",
+            "payment_timing",
+            "transaction_id",
+            "app_fee",
+            "courier_earning",
+            "merchant_earning",
+            "currency",
+            "created_at",
+        )
+
+
+class RefundRequestSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RefundRequest
+        fields = (
+            "id",
+            "payment_record",
+            "customer",
+            "amount",
+            "reason",
+            "status",
+            "note",
+            "admin_note",
+            "fraud_flag",
+            "created_at",
+            "resolved_at",
+        )
+
+
+class MerchantWithdrawalRequestSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MerchantWithdrawalRequest
+        fields = (
+            "id",
+            "merchant",
+            "amount",
+            "status",
+            "note",
+            "admin_note",
+            "reference",
+            "created_at",
+            "paid_at",
+        )

@@ -376,7 +376,7 @@ class Migration(migrations.Migration):
         migrations.AddConstraint(
             model_name="driverfavoritearea",
             constraint=models.CheckConstraint(
-                check=models.Q(("radius_km__gt", 0)), name="positive_radius"
+                check=models.Q(radius_km__gt=0), name="positive_radius"
             ),
         ),
         migrations.AlterUniqueTogether(

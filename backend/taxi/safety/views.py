@@ -11,9 +11,11 @@ from rest_framework.response import Response
 
 from taxi.rides.models import Ride
 
+from deliveries.models import Delivery
+
 from .models import EmergencyContact, SafetyIncident, TripShare
 from .serializers import EmergencyContactSerializer, SafetyIncidentSerializer
-from .services import dispatch_emergency_alert, ride_snapshot
+from .services import delivery_snapshot, dispatch_emergency_alert, ride_snapshot
 
 
 ACTIVE_RIDE_STATUSES = {
@@ -24,6 +26,29 @@ ACTIVE_RIDE_STATUSES = {
     "driver_arrived",
     "in_progress",
 }
+
+
+ACTIVE_DELIVERY_STATUSES = {
+    "accepted",
+    "courier_arriving",
+    "picked_up",
+    "in_transit",
+    "delivering",
+}
+
+
+def _delivery_for_user(user, delivery_id, require_active=False):
+    if not delivery_id:
+        return None
+    delivery = get_object_or_404(
+        Delivery.objects.select_related("customer", "driver"),
+        id=delivery_id,
+    )
+    if not user.is_staff and user.id not in (delivery.customer_id, delivery.driver_id):
+        return None
+    if require_active and delivery.status not in ACTIVE_DELIVERY_STATUSES:
+        return None
+    return delivery
 
 
 def _ride_for_user(user, ride_id, require_active=False):
@@ -84,24 +109,52 @@ def emergency_contact_detail(request, contact_id):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def trigger_sos(request):
-    ride = _ride_for_user(request.user, request.data.get("ride_id"), require_active=True)
-    if not ride:
-        return Response(
-            {"detail": "SOS requires an active ride belonging to this user."},
-            status=status.HTTP_400_BAD_REQUEST,
+    delivery_id = request.data.get("delivery_id")
+    ride_id = request.data.get("ride_id")
+
+    if delivery_id:
+        delivery = _delivery_for_user(request.user, delivery_id, require_active=True)
+        if not delivery:
+            return Response(
+                {"detail": "SOS requires an active delivery belonging to this user."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        reported_user = (
+            delivery.driver
+            if request.user.id == delivery.customer_id
+            else delivery.customer
         )
-    incident = SafetyIncident.objects.create(
-        reporter=request.user,
-        ride=ride,
-        reported_user=ride.driver if request.user.id == ride.rider_id else ride.rider,
-        incident_type="sos",
-        severity="critical",
-        description=str(request.data.get("description", "")).strip(),
-        latitude=_coordinate(request.data.get("latitude")),
-        longitude=_coordinate(request.data.get("longitude")),
-        location_accuracy_meters=_coordinate(request.data.get("accuracy")),
-        trip_snapshot=ride_snapshot(ride),
-    )
+        incident = SafetyIncident.objects.create(
+            reporter=request.user,
+            delivery=delivery,
+            reported_user=reported_user,
+            incident_type="sos",
+            severity="critical",
+            description=str(request.data.get("description", "")).strip(),
+            latitude=_coordinate(request.data.get("latitude")),
+            longitude=_coordinate(request.data.get("longitude")),
+            location_accuracy_meters=_coordinate(request.data.get("accuracy")),
+            trip_snapshot=delivery_snapshot(delivery),
+        )
+    else:
+        ride = _ride_for_user(request.user, ride_id, require_active=True)
+        if not ride:
+            return Response(
+                {"detail": "SOS requires an active ride or delivery belonging to this user."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        incident = SafetyIncident.objects.create(
+            reporter=request.user,
+            ride=ride,
+            reported_user=ride.driver if request.user.id == ride.rider_id else ride.rider,
+            incident_type="sos",
+            severity="critical",
+            description=str(request.data.get("description", "")).strip(),
+            latitude=_coordinate(request.data.get("latitude")),
+            longitude=_coordinate(request.data.get("longitude")),
+            location_accuracy_meters=_coordinate(request.data.get("accuracy")),
+            trip_snapshot=ride_snapshot(ride),
+        )
     alert = dispatch_emergency_alert(incident)
     return Response(
         {

@@ -153,6 +153,12 @@ def admin_pay_bonus(request):
         reason=request.data.get("reason", "Manual bonus"),
         admin_note=request.data.get("note", ""),
     )
+    try:
+        from notifications.push import notify_courier_bonus
+
+        notify_courier_bonus(driver, amount, payment.reason, program_id=payment.program_id)
+    except Exception:
+        pass
     return Response({"message": f"{amount} MRU bonus paid to {driver.email}", "id": payment.id}, status=status.HTTP_201_CREATED)
 
 

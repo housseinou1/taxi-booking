@@ -198,7 +198,14 @@ class RegisterView(generics.CreateAPIView):
                 status=status.HTTP_429_TOO_MANY_REQUESTS,
                 headers={"Retry-After": str(retry_after)},
             )
-        return super().create(request, *args, **kwargs)
+        response = super().create(request, *args, **kwargs)
+
+        # Add redirect_to for delivery courier registrations
+        app_type = request.META.get("HTTP_X_APP_TYPE", "").strip().lower()
+        if app_type == "delivery" and response.status_code == 201:
+            response.data["redirect_to"] = "/delivery/profile-setup"
+
+        return response
 
 
 @api_view(["POST"])

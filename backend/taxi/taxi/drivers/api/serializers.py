@@ -54,6 +54,8 @@ class DriverProfileSerializer(serializers.ModelSerializer):
 
 class DriverDocumentSerializer(serializers.ModelSerializer):
     days_until_expiry = serializers.SerializerMethodField()
+    display_status = serializers.SerializerMethodField()
+    is_uploaded = serializers.SerializerMethodField()
 
     class Meta:
         model = DriverDocument
@@ -63,6 +65,8 @@ class DriverDocumentSerializer(serializers.ModelSerializer):
             "document_type",
             "file",
             "status",
+            "display_status",
+            "is_uploaded",
             "rejection_reason",
             "issued_at",
             "expires_at",
@@ -74,6 +78,8 @@ class DriverDocumentSerializer(serializers.ModelSerializer):
         read_only_fields = [
             "id",
             "status",
+            "display_status",
+            "is_uploaded",
             "rejection_reason",
             "uploaded_at",
             "reviewed_at",
@@ -90,6 +96,14 @@ class DriverDocumentSerializer(serializers.ModelSerializer):
         today = timezone.localdate()
         delta = (obj.expires_at - today).days
         return delta
+
+    def get_display_status(self, obj):
+        from taxi.drivers.services.document_service import get_document_display_status
+
+        return get_document_display_status(obj)
+
+    def get_is_uploaded(self, obj):
+        return bool(obj.file)
 
 
 class DriverDocumentUploadSerializer(serializers.ModelSerializer):
@@ -172,6 +186,7 @@ class DriverSettingsSerializer(serializers.ModelSerializer):
             "driver",
             "language",
             "notifications_rides",
+            "notifications_delivery_updates",
             "notifications_promotions",
             "notifications_system",
             "gps_accuracy",

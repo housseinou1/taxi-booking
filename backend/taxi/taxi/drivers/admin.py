@@ -224,6 +224,7 @@ class DriverSettingsAdmin(admin.ModelAdmin):
         "driver",
         "language",
         "notifications_rides",
+        "notifications_delivery_updates",
         "notifications_promotions",
         "notifications_system",
         "gps_accuracy",

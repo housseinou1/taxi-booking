@@ -21,6 +21,7 @@ class IncentiveProgram(models.Model):
         ("intercity", "Complete Intercity Trip"),
         ("seasonal", "Seasonal Bonus"),
         ("holiday", "Holiday Bonus"),
+        ("delivery_count", "Complete X Deliveries"),
     ]
     STATUS_CHOICES = [
         ("active", "Active"),

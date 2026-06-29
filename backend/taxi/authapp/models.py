@@ -38,6 +38,7 @@ class User(AbstractUser):
     USER_TYPES = (
         ("rider", "Rider"),
         ("driver", "Driver"),
+        ("merchant", "Merchant"),
     )
 
     GENDER_CHOICES = (

@@ -11,6 +11,31 @@ from .models import EmergencyAlert
 logger = logging.getLogger(__name__)
 
 
+def delivery_snapshot(delivery):
+    if not delivery:
+        return {}
+    return {
+        "delivery_id": delivery.id,
+        "status": delivery.status,
+        "pickup": delivery.pickup,
+        "destination": delivery.destination,
+        "pickup_lat": delivery.pickup_lat,
+        "pickup_lng": delivery.pickup_lng,
+        "destination_lat": delivery.destination_lat,
+        "destination_lng": delivery.destination_lng,
+        "customer_id": delivery.customer_id,
+        "customer_name": delivery.customer.get_full_name().strip() or delivery.customer.email,
+        "driver_id": delivery.driver_id,
+        "driver_name": (
+            delivery.driver.get_full_name().strip() or delivery.driver.email
+            if delivery.driver
+            else ""
+        ),
+        "service_category": delivery.service_category,
+        "service_city": delivery.service_city,
+    }
+
+
 def ride_snapshot(ride):
     if not ride:
         return {}
@@ -57,6 +82,7 @@ def dispatch_emergency_alert(incident):
         "incident_id": incident.id,
         "reference": incident.reference,
         "ride_id": incident.ride_id or "",
+        "delivery_id": incident.delivery_id or "",
         "latitude": incident.latitude or "",
         "longitude": incident.longitude or "",
         "deep_link": "/admin-dashboard",
@@ -79,6 +105,12 @@ def dispatch_emergency_alert(incident):
             incident.ride.driver
             if incident.reporter_id == incident.ride.rider_id
             else incident.ride.rider
+        )
+    elif incident.delivery:
+        counterpart = (
+            incident.delivery.driver
+            if incident.reporter_id == incident.delivery.customer_id
+            else incident.delivery.customer
         )
     counterpart_notified = False
     if counterpart:

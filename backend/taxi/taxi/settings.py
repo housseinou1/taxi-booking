@@ -50,7 +50,9 @@ INSTALLED_APPS = [
     "chat",
     "promotions",
     "deliveries",
+    "merchants",
     "safety",
+    "security",
     "cities",
     "features",
     "intercity",
@@ -244,6 +246,16 @@ YALA_SMS_API_URL = os.getenv("YALA_SMS_API_URL", "")
 YALA_SMS_API_KEY = os.getenv("YALA_SMS_API_KEY", "")
 YALA_SMS_SENDER = os.getenv("YALA_SMS_SENDER", "Yala")
 
+# ── Delivery notifications ───────────────────────────────────────────────────
+YALA_MASKED_CALL_RELAY = os.getenv("YALA_MASKED_CALL_RELAY", "")
+DELIVERY_GEOFENCE_RADIUS_KM = float(os.getenv("DELIVERY_GEOFENCE_RADIUS_KM", "0.5"))
+DELIVERY_LOCATION_MIN_INTERVAL_SECONDS = int(
+    os.getenv("DELIVERY_LOCATION_MIN_INTERVAL_SECONDS", "15")
+)
+DELIVERY_LOCATION_MIN_DISTANCE_METERS = int(
+    os.getenv("DELIVERY_LOCATION_MIN_DISTANCE_METERS", "50")
+)
+
 # ── Push Notifications (Web Push / VAPID) ─────────────────────────────────────
 PUSH_PRIVATE_KEY = os.getenv("PUSH_PRIVATE_KEY", "")
 PUSH_PUBLIC_KEY = os.getenv("PUSH_PUBLIC_KEY", "")
@@ -331,6 +343,23 @@ CELERY_BEAT_SCHEDULE = {
         "task": "taxi.drivers.tasks.notify_expiring_driver_documents_task",
         "schedule": 86400,  # Every 24 hours (in seconds)
     },
+    # ── Delivery tasks ────────────────────────────────────────────────────────
+    "delivery-check-offer-timeouts": {
+        "task": "deliveries.tasks.check_offer_timeouts",
+        "schedule": 15,  # Every 15 seconds
+    },
+    "delivery-dispatch-scheduled": {
+        "task": "deliveries.tasks.dispatch_scheduled_deliveries",
+        "schedule": 60,  # Every 60 seconds
+    },
+    "delivery-cleanup-stale-requests": {
+        "task": "deliveries.tasks.cleanup_stale_requests",
+        "schedule": 300,  # Every 5 minutes
+    },
+    "delivery-remind-cash-settlement": {
+        "task": "deliveries.tasks.remind_cash_settlement",
+        "schedule": 1800,  # Every 30 minutes
+    },
 }
 
 YALA_MAX_DRIVER_SPEED_KMH = int(os.getenv("YALA_MAX_DRIVER_SPEED_KMH", "180"))
@@ -356,3 +385,7 @@ if not DEBUG:
     SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "31536000"))
     SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool("SECURE_HSTS_INCLUDE_SUBDOMAINS", True)
     SECURE_HSTS_PRELOAD = env_bool("SECURE_HSTS_PRELOAD", False)
+
+
+# ── Suppress ImageField check when Pillow is not installed (dev/test) ─────────
+SILENCED_SYSTEM_CHECKS = ["fields.E210"]

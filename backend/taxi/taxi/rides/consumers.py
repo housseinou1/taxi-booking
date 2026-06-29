@@ -64,6 +64,7 @@ class RideConsumer(AsyncWebsocketConsumer):
         self.ride_groups = set()
         self.session_groups = set()
         self.delivery_groups = set()
+        self.merchant_groups = set()
         # Timestamp of last location broadcast to session groups (throttle)
         self._last_session_location_broadcast = 0.0
 
@@ -85,6 +86,12 @@ class RideConsumer(AsyncWebsocketConsumer):
             await self.channel_layer.group_add(
                 self.rider_group, self.channel_name
             )
+
+            merchant_group = f"merchant_{self.user.id}"
+            has_merchant = await self._user_has_merchant_profile()
+            if has_merchant:
+                await self.channel_layer.group_add(merchant_group, self.channel_name)
+                self.merchant_groups.add(merchant_group)
 
             logger.debug(
                 "WebSocket connected: %s (user=%s, driver_group=%s, rider_group=%s)",
@@ -137,6 +144,13 @@ class RideConsumer(AsyncWebsocketConsumer):
         self.ride_groups.clear()
         self.session_groups.clear()
         self.delivery_groups.clear()
+
+        for merchant_group in list(self.merchant_groups):
+            await self.channel_layer.group_discard(
+                merchant_group, self.channel_name
+            )
+        self.merchant_groups.clear()
+
         logger.debug(
             "WebSocket disconnected: %s (code=%s)", self.channel_name, close_code
         )
@@ -169,6 +183,10 @@ class RideConsumer(AsyncWebsocketConsumer):
             await self._handle_join_delivery(data)
         elif msg_type == "leave_delivery":
             await self._handle_leave_delivery(data)
+        elif msg_type == "join_merchant":
+            await self._handle_join_merchant(data)
+        elif msg_type == "leave_merchant":
+            await self._handle_leave_merchant(data)
         else:
             # Backward compatibility: broadcast to shared rides group
             await self.channel_layer.group_send(
@@ -444,6 +462,32 @@ class RideConsumer(AsyncWebsocketConsumer):
             )
         )
 
+    async def _handle_join_merchant(self, data):
+        """Join merchant notification group for real-time order alerts."""
+        if not self.user or not self.user.is_authenticated:
+            await self.send(text_data=json.dumps({"error": "Authentication required"}))
+            return
+
+        merchant_group = f"merchant_{self.user.id}"
+        await self.channel_layer.group_add(merchant_group, self.channel_name)
+        self.merchant_groups.add(merchant_group)
+
+        await self.send(
+            text_data=json.dumps({"type": "joined_merchant", "merchant_user_id": self.user.id})
+        )
+
+    async def _handle_leave_merchant(self, data):
+        if not self.user or not self.user.is_authenticated:
+            return
+
+        merchant_group = f"merchant_{self.user.id}"
+        await self.channel_layer.group_discard(merchant_group, self.channel_name)
+        self.merchant_groups.discard(merchant_group)
+
+        await self.send(
+            text_data=json.dumps({"type": "left_merchant", "merchant_user_id": self.user.id})
+        )
+
     # ─── Outbound event handlers (channel layer → client) ────────────────
 
     async def ride_update(self, event):
@@ -696,7 +740,20 @@ class RideConsumer(AsyncWebsocketConsumer):
         except Exception as exc:
             logger.error("WebSocket send error (delivery_event): %s", exc)
 
+    async def merchant_event(self, event):
+        """Real-time merchant order notifications."""
+        try:
+            await self.send(text_data=json.dumps(event["message"]))
+        except Exception as exc:
+            logger.error("WebSocket send error (merchant_event): %s", exc)
+
     # ─── Database helpers ─────────────────────────────────────────────────
+
+    @database_sync_to_async
+    def _user_has_merchant_profile(self):
+        from merchants.models import Merchant
+
+        return Merchant.objects.filter(owner_id=self.user.id).exists()
 
     @database_sync_to_async
     def _update_driver_location(self, lat, lng):

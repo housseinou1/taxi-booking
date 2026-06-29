@@ -283,6 +283,11 @@ class WalletTransaction(models.Model):
     TYPE_CHOICES = [
         ("top_up", "Top Up"),
         ("ride_payment", "Ride Payment"),
+        ("delivery_payment", "Delivery Payment"),
+        ("merchant_payment", "Merchant Order Payment"),
+        ("courier_earning", "Courier Earning"),
+        ("merchant_earning", "Merchant Earning"),
+        ("payout", "Payout"),
         ("refund", "Refund"),
         ("referral", "Referral Reward"),
         ("bonus", "Bonus"),
@@ -300,3 +305,210 @@ class WalletTransaction(models.Model):
     class Meta:
         ordering = ["-created_at"]
         indexes = [models.Index(fields=["wallet", "-created_at"], name="wallet_tx_history_idx")]
+
+
+class CommissionConfig(models.Model):
+    """Admin-configurable commission rates per vertical."""
+
+    VERTICAL_CHOICES = [
+        ("delivery", "Delivery"),
+        ("merchant", "Merchant Order"),
+    ]
+
+    vertical = models.CharField(max_length=20, choices=VERTICAL_CHOICES, unique=True)
+    courier_rate = models.DecimalField(max_digits=5, decimal_places=4, default=0.80)
+    platform_rate = models.DecimalField(max_digits=5, decimal_places=4, default=0.20)
+    merchant_rate = models.DecimalField(
+        max_digits=5,
+        decimal_places=4,
+        default=0.90,
+        help_text="Share of goods subtotal kept by merchant.",
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.vertical} commission config"
+
+
+class PaymentRecord(models.Model):
+    """Unified payment ledger for deliveries, merchant orders, and rides."""
+
+    METHOD_CHOICES = [
+        ("cash", "Cash"),
+        ("card", "Card"),
+        ("wallet", "Wallet"),
+        ("bankily", "Bankily"),
+        ("masrvi", "Masravi"),
+        ("seddad", "Seddad"),
+        ("promo_credit", "Promo / Credit"),
+    ]
+
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("authorized", "Authorized"),
+        ("paid", "Paid"),
+        ("failed", "Failed"),
+        ("refunded", "Refunded"),
+        ("cancelled", "Cancelled"),
+    ]
+
+    TIMING_CHOICES = [
+        ("before_delivery", "Before Delivery"),
+        ("after_delivery", "After Delivery"),
+        ("cash_on_delivery", "Cash on Delivery"),
+    ]
+
+    SOURCE_CHOICES = [
+        ("ride", "Ride"),
+        ("delivery", "Delivery"),
+        ("merchant_order", "Merchant Order"),
+    ]
+
+    source = models.CharField(max_length=20, choices=SOURCE_CHOICES)
+    customer = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="payment_records",
+    )
+    courier = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="courier_payment_records",
+    )
+    merchant = models.ForeignKey(
+        "merchants.Merchant",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="payment_records",
+    )
+
+    ride_id = models.IntegerField(null=True, blank=True)
+    delivery = models.ForeignKey(
+        "deliveries.Delivery",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="payment_records",
+    )
+    merchant_order = models.ForeignKey(
+        "merchants.MerchantOrder",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="payment_records",
+    )
+
+    amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    promo_discount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    method = models.CharField(max_length=20, choices=METHOD_CHOICES, default="cash")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
+    payment_timing = models.CharField(
+        max_length=20, choices=TIMING_CHOICES, default="after_delivery"
+    )
+    transaction_id = models.CharField(max_length=120, blank=True, default="")
+    provider_token = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Tokenized payment reference only — never store raw card data.",
+    )
+
+    app_fee = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    courier_earning = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    merchant_earning = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+
+    wallet_transaction = models.ForeignKey(
+        WalletTransaction,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="payment_records",
+    )
+    currency = models.CharField(max_length=10, default="MRU")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["status", "-created_at"], name="payment_record_status_idx"),
+            models.Index(fields=["source", "-created_at"], name="payment_record_source_idx"),
+        ]
+
+    def __str__(self):
+        return f"PaymentRecord #{self.id} — {self.source} — {self.amount} {self.currency}"
+
+
+class RefundRequest(models.Model):
+    REASON_CHOICES = [
+        ("cancelled_order", "Cancelled Order"),
+        ("failed_delivery", "Failed Delivery"),
+        ("merchant_rejected", "Merchant Rejected Order"),
+        ("customer_complaint", "Customer Complaint"),
+    ]
+
+    STATUS_CHOICES = [
+        ("requested", "Requested"),
+        ("approved", "Approved"),
+        ("rejected", "Rejected"),
+        ("refunded", "Refunded"),
+    ]
+
+    payment_record = models.ForeignKey(
+        PaymentRecord, on_delete=models.CASCADE, related_name="refund_requests"
+    )
+    customer = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="refund_requests",
+    )
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    reason = models.CharField(max_length=30, choices=REASON_CHOICES)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="requested")
+    note = models.TextField(blank=True, default="")
+    admin_note = models.TextField(blank=True, default="")
+    fraud_flag = models.BooleanField(default=False)
+    wallet_refund_tx = models.ForeignKey(
+        WalletTransaction,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="refund_requests",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Refund #{self.id} — {self.amount} — {self.status}"
+
+
+class MerchantWithdrawalRequest(models.Model):
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("approved", "Approved"),
+        ("rejected", "Rejected"),
+        ("paid", "Paid"),
+    ]
+
+    merchant = models.ForeignKey(
+        "merchants.Merchant",
+        on_delete=models.CASCADE,
+        related_name="withdrawal_requests",
+    )
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
+    note = models.TextField(blank=True, default="")
+    admin_note = models.TextField(blank=True, default="")
+    reference = models.CharField(max_length=120, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]

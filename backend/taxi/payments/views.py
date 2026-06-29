@@ -11,8 +11,9 @@ from rest_framework import status
 
 from taxi.rides.models import Ride
 from taxi.market import get_app_fee_percent_display
-from notifications.push import notify_payment_completed, notify_payment_successful
+from notifications.push import notify_courier_payout, notify_payment_completed, notify_payment_successful
 from .services import calculate_payment_amounts
+from .wallet_ledger import apply_wallet_transaction, get_or_create_wallet
 
 from .models import (
     DriverPayoutMethod,
@@ -34,32 +35,17 @@ from .serializers import (
 )
 
 
-def apply_wallet_transaction(wallet, amount, is_credit, transaction_type, reference="", note=""):
-    amount = Decimal(str(amount))
-    if amount <= 0:
-        raise ValueError("Amount must be positive.")
-    with transaction.atomic():
-        wallet = WalletAccount.objects.select_for_update().get(pk=wallet.pk)
-        new_balance = wallet.balance + amount if is_credit else wallet.balance - amount
-        if new_balance < 0:
-            raise ValueError("Insufficient wallet balance.")
-        wallet.balance = new_balance
-        wallet.save(update_fields=["balance", "updated_at"])
-        return WalletTransaction.objects.create(
-            wallet=wallet,
-            transaction_type=transaction_type,
-            amount=amount,
-            is_credit=is_credit,
-            balance_after=new_balance,
-            reference=reference,
-            note=note,
-        )
+def driver_withdrawal_balance(driver):
+    from .settlement_service import courier_balance_summary
+
+    summary = courier_balance_summary(driver)
+    return Decimal(summary["available_balance"])
 
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def my_wallet(request):
-    wallet, _ = WalletAccount.objects.get_or_create(owner=request.user)
+    wallet = get_or_create_wallet(request.user)
     data = WalletAccountSerializer(wallet).data
     data["recent_transactions"] = WalletTransactionSerializer(wallet.transactions.all()[:25], many=True).data
     return Response(data)
@@ -103,7 +89,7 @@ def wallet_pay_ride(request, ride_id):
     amount, app_fee, tip_percentage, tip_amount, driver_earning, discount = calculate_payment_amounts(
         ride.fare, Decimal(str(request.data.get("tip_percentage", 0)))
     )
-    wallet, _ = WalletAccount.objects.get_or_create(owner=request.user)
+    wallet = get_or_create_wallet(request.user)
     try:
         wallet_tx = apply_wallet_transaction(
             wallet, amount, False, "ride_payment", reference=f"ride:{ride.id}"
@@ -131,20 +117,6 @@ def wallet_pay_ride(request, ride_id):
         {"payment": PaymentSerializer(payment).data, "wallet_transaction": WalletTransactionSerializer(wallet_tx).data},
         status=status.HTTP_201_CREATED,
     )
-
-
-def driver_withdrawal_balance(driver):
-    total_earned = Ride.objects.filter(
-        driver=driver,
-        status="completed",
-    ).aggregate(total=Sum("driver_earning"))["total"] or Decimal("0")
-
-    reserved_or_paid = WithdrawalRequest.objects.filter(
-        driver=driver,
-        status__in=["pending", "approved"],
-    ).aggregate(total=Sum("amount"))["total"] or Decimal("0")
-
-    return max(total_earned - reserved_or_paid, Decimal("0"))
 
 
 def owner_commission_total():
@@ -625,6 +597,10 @@ def approve_withdrawal(request, withdrawal_id):
     withdrawal.status = "approved"
     withdrawal.admin_note = request.data.get("admin_note", withdrawal.admin_note)
     withdrawal.save(update_fields=["status", "admin_note", "updated_at"])
+    try:
+        notify_courier_payout(withdrawal.driver, withdrawal)
+    except Exception:
+        pass
     return Response({"message": "Withdrawal approved", "withdrawal": WithdrawalRequestSerializer(withdrawal).data})
 
 

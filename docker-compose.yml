@@ -58,6 +58,34 @@ services:
     expose:
       - "6379"
 
+  celery-worker:
+    build:
+      context: ./backend/taxi
+      dockerfile: Dockerfile
+    command: celery -A taxi worker --loglevel=info --concurrency=2
+    env_file:
+      - ./backend/taxi/.env.production
+    environment:
+      DATABASE_URL: postgres://yala_user:${POSTGRES_PASSWORD}@postgres:5432/yala_db
+    depends_on:
+      - postgres
+      - redis
+    restart: always
+
+  celery-beat:
+    build:
+      context: ./backend/taxi
+      dockerfile: Dockerfile
+    command: celery -A taxi beat --loglevel=info
+    env_file:
+      - ./backend/taxi/.env.production
+    environment:
+      DATABASE_URL: postgres://yala_user:${POSTGRES_PASSWORD}@postgres:5432/yala_db
+    depends_on:
+      - postgres
+      - redis
+    restart: always
+
 volumes:
   postgres_data:
   redis_data:

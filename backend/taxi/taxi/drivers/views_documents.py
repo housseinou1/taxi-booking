@@ -22,6 +22,12 @@ from .api.serializers import DriverDocumentSerializer
 from .models import DriverDocument, DriverProfile
 from .services.document_service import DocumentService
 
+from deliveries.courier_onboarding import (
+    get_courier_documents_review_state,
+    get_required_courier_document_types,
+)
+from deliveries.models import DriverDeliverySettings
+
 
 class DriverDocumentListView(APIView):
     """
@@ -50,13 +56,26 @@ class DriverDocumentListView(APIView):
         # Also include expiration warnings and alerts
         service = DocumentService()
         expiring = service.get_expiring_documents(profile)
-        alerts = service.get_expired_or_missing(profile)
-        review_state = service.get_documents_review_state(profile)
+        settings = DriverDeliverySettings.objects.filter(driver=request.user).first()
+        delivery_context = request.query_params.get("context") == "delivery"
+
+        if delivery_context:
+            vehicle_type = settings.delivery_vehicle_type if settings else "motorcycle"
+            review_state = get_courier_documents_review_state(profile, vehicle_type)
+            alerts = service.get_expired_or_missing(
+                profile,
+                required_types=list(get_required_courier_document_types(vehicle_type)),
+            )
+        else:
+            alerts = service.get_expired_or_missing(profile)
+            review_state = service.get_documents_review_state(profile)
 
         return Response(
             {
                 "documents": serializer.data,
                 "expiring_documents": expiring,
+                "delivery_context": delivery_context,
+                "delivery_vehicle_type": settings.delivery_vehicle_type if settings else "",
                 "alerts": [
                     {
                         "document_type": alert.document_type,
@@ -205,6 +224,17 @@ class AdminDocumentApproveView(APIView):
         service = DocumentService()
         document = service.approve_document(document, reviewer=request.user)
 
+        from security.services.audit_service import log_from_request
+
+        log_from_request(
+            request,
+            action="document_approval",
+            entity_type="document",
+            entity_id=document.id,
+            summary=f"Document approved: {document.document_type}",
+            details={"driver_id": document.driver_id, "document_type": document.document_type},
+        )
+
         serializer = DriverDocumentSerializer(document)
         return Response(
             {
@@ -247,6 +277,17 @@ class AdminDocumentRejectView(APIView):
         service = DocumentService()
         document = service.reject_document(
             document, reviewer=request.user, reason=reason
+        )
+
+        from security.services.audit_service import log_from_request
+
+        log_from_request(
+            request,
+            action="document_approval",
+            entity_type="document",
+            entity_id=document.id,
+            summary=f"Document rejected: {document.document_type}",
+            details={"driver_id": document.driver_id, "reason": reason},
         )
 
         serializer = DriverDocumentSerializer(document)

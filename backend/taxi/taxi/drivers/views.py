@@ -684,11 +684,18 @@ def approve_driver(request, driver_id):
     if profile is None:
         return Response({"error": "Driver profile not found."}, status=404)
 
-    # Minimal requirements for approval — just vehicle info and phone
+    # Minimal requirements for approval — phone always; plate only for motor vehicles
     required_information = {
         "phone number": profile.phone_number,
-        "Plate number": profile.vehicle_plate or profile.plate_number,
     }
+    from deliveries.models import DriverDeliverySettings
+
+    delivery_settings = DriverDeliverySettings.objects.filter(driver=profile.user).first()
+    delivery_vehicle_type = (
+        delivery_settings.delivery_vehicle_type if delivery_settings else ""
+    )
+    if delivery_vehicle_type != "bicycle":
+        required_information["Plate number"] = profile.vehicle_plate or profile.plate_number
     missing_information = [
         label for label, value in required_information.items() if not value
     ]

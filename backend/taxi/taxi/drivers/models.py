@@ -17,6 +17,7 @@ def _check_constraint(name, predicate):
 class DriverProfile(models.Model):
     STATUS_CHOICES = [
         ("pending", "Pending"),
+        ("pending_review", "Pending Review"),
         ("approved", "Approved"),
         ("rejected", "Rejected"),
     ]
@@ -482,6 +483,7 @@ class DriverSettings(models.Model):
         max_length=5, choices=LANGUAGE_CHOICES, default="en"
     )
     notifications_rides = models.BooleanField(default=True)
+    notifications_delivery_updates = models.BooleanField(default=True)
     notifications_promotions = models.BooleanField(default=True)
     notifications_system = models.BooleanField(default=True)
     gps_accuracy = models.CharField(

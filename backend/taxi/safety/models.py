@@ -34,6 +34,9 @@ class SafetyIncident(models.Model):
         ("safety_incident", "Safety Incident"),
         ("report_driver", "Driver Report"),
         ("report_rider", "Rider Report"),
+        ("report_courier", "Courier Report"),
+        ("report_merchant", "Merchant Report"),
+        ("delivery_problem", "Delivery Problem"),
     ]
     STATUS_CHOICES = [
         ("open", "Open"),
@@ -69,6 +72,13 @@ class SafetyIncident(models.Model):
         blank=True,
         related_name="safety_incidents",
     )
+    delivery = models.ForeignKey(
+        "deliveries.Delivery",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="safety_incidents",
+    )
     incident_type = models.CharField(max_length=30, choices=TYPE_CHOICES)
     severity = models.CharField(max_length=20, choices=SEVERITY_CHOICES, default="high")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="open")
@@ -96,6 +106,7 @@ class SafetyIncident(models.Model):
             models.Index(fields=["status", "-created_at"], name="safety_status_created_idx"),
             models.Index(fields=["incident_type", "-created_at"], name="safety_type_created_idx"),
             models.Index(fields=["ride", "-created_at"], name="safety_ride_created_idx"),
+            models.Index(fields=["delivery", "-created_at"], name="safety_delivery_created_idx"),
         ]
 
     def save(self, *args, **kwargs):

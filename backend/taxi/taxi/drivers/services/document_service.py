@@ -50,6 +50,24 @@ EXPIRING_DOCUMENT_TYPES = {
 # Expiration warning window in days
 EXPIRATION_WARNING_DAYS = 30
 
+DOCUMENT_DISPLAY_STATUSES = (
+    "uploaded",
+    "pending_review",
+    "approved",
+    "rejected",
+    "expired",
+)
+
+
+def get_document_display_status(document: DriverDocument) -> str:
+    """Return the user-facing document lifecycle status."""
+    today = date.today()
+    if document.expires_at and document.expires_at < today:
+        return "expired"
+    if document.status == "pending_review":
+        return "pending_review"
+    return document.status
+
 
 @dataclass
 class ValidationResult:
@@ -317,7 +335,11 @@ class DocumentService:
         delta = document.expires_at - today
         return delta.days
 
-    def get_expired_or_missing(self, driver: DriverProfile) -> List[DocumentAlert]:
+    def get_expired_or_missing(
+        self,
+        driver: DriverProfile,
+        required_types: Optional[List[str]] = None,
+    ) -> List[DocumentAlert]:
         """
         Return a list of required documents that are expired or missing.
 
@@ -328,6 +350,7 @@ class DocumentService:
 
         Args:
             driver: The DriverProfile instance.
+            required_types: Optional list of document type keys to check.
 
         Returns:
             List of DocumentAlert objects for each problematic document.
@@ -335,7 +358,7 @@ class DocumentService:
         today = date.today()
         alerts = []
 
-        for doc_type in REQUIRED_DOCUMENT_TYPES:
+        for doc_type in required_types or REQUIRED_DOCUMENT_TYPES:
             compatible_types = [doc_type]
             if doc_type == "carte_grise":
                 compatible_types.append("vehicle_registration")
@@ -419,8 +442,8 @@ class DocumentService:
         if driver.status == "approved":
             return False
 
-        if driver.status != "pending":
-            driver.status = "pending"
+        if driver.status not in ("approved", "rejected", "pending_review"):
+            driver.status = "pending_review"
             driver.save(update_fields=["status"])
         return True
 

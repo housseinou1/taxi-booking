@@ -37,6 +37,7 @@ class SafetyIncidentSerializer(serializers.ModelSerializer):
             "reported_user",
             "reported_user_name",
             "ride",
+            "delivery",
             "incident_type",
             "severity",
             "status",
