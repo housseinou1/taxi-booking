@@ -54,9 +54,11 @@ class DeliveryAdmin(admin.ModelAdmin):
         }),
         ("Category-Specific", {
             "fields": (
-                "restaurant_name", "preparation_time_minutes",
-                "prescription_reference", "is_temperature_sensitive",
-                "shopping_list", "max_budget_mru",
+                "restaurant_name", "food_items", "preparation_time_minutes",
+                "pharmacy_name", "prescription_reference", "prescription_photo",
+                "is_urgent", "is_temperature_sensitive",
+                "store_name", "shopping_list", "item_quantity", "substitution_notes",
+                "is_secure_delivery", "max_budget_mru",
             ),
             "classes": ("collapse",),
         }),
@@ -145,10 +147,11 @@ class DriverDeliverySettingsAdmin(admin.ModelAdmin):
     list_display = (
         "driver",
         "delivery_mode_enabled",
+        "delivery_vehicle_type",
         "max_package_size",
         "total_deliveries_completed",
         "delivery_rating",
     )
-    list_filter = ("delivery_mode_enabled", "max_package_size", "accepts_food", "accepts_pharmacy")
+    list_filter = ("delivery_mode_enabled", "delivery_vehicle_type", "max_package_size", "accepts_food", "accepts_pharmacy")
     search_fields = ("driver__email", "driver__first_name", "driver__last_name")
     raw_id_fields = ("driver",)

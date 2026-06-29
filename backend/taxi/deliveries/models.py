@@ -1,5 +1,18 @@
 from django.conf import settings
 from django.db import models
+import secrets
+
+
+def default_delivery_cities():
+    return ["Nouakchott"]
+
+
+def default_declined_driver_ids():
+    return []
+
+
+def generate_delivery_pickup_pin():
+    return f"{secrets.randbelow(10000):04d}"
 
 
 class BusinessAccount(models.Model):
@@ -38,8 +51,10 @@ class Delivery(models.Model):
     STATUS_CHOICES = [
         ("requested", "Requested"),
         ("accepted", "Accepted"),
+        ("courier_arriving", "Courier Arriving"),
         ("picked_up", "Picked Up"),
-        ("delivering", "Delivering"),
+        ("in_transit", "In Transit"),
+        ("delivering", "Delivering"),  # legacy alias
         ("delivered", "Delivered"),
         ("cancelled", "Cancelled"),
     ]
@@ -49,14 +64,21 @@ class Delivery(models.Model):
         ("small", "Small Package"),
         ("medium", "Medium Package"),
         ("large", "Large Package"),
+        ("extra_large", "Extra Large Package"),
     ]
 
     SERVICE_CATEGORY_CHOICES = [
-        ("food", "Food Delivery"),
-        ("package", "Package Delivery"),
-        ("document", "Document Delivery"),
-        ("pharmacy", "Pharmacy Delivery"),
-        ("shopping", "Shopping Delivery"),
+        ("food", "Food"),
+        ("pharmacy", "Pharmacy / Medicine"),
+        ("grocery", "Grocery"),
+        ("package", "Parcel"),
+        ("documents", "Documents"),
+        ("shopping", "Shopping"),
+        ("restaurant", "Restaurant Orders"),
+        ("market", "Market Delivery"),
+        ("household", "Water / Household"),
+        ("business", "Business Delivery"),
+        ("courier", "Courier"),
     ]
 
     # ── Core fields (existing) ────────────────────────────────────────────────
@@ -72,6 +94,7 @@ class Delivery(models.Model):
         blank=True,
         related_name="driver_deliveries",
     )
+    service_city = models.CharField(max_length=120, default="Nouakchott")
     pickup = models.CharField(max_length=255)
     destination = models.CharField(max_length=255)
     pickup_lat = models.FloatField(default=18.0735)
@@ -83,6 +106,7 @@ class Delivery(models.Model):
     package_type = models.CharField(
         max_length=20, choices=PACKAGE_TYPES, default="small"
     )
+    courier_type_required = models.CharField(max_length=20, default="motorcycle")
     package_description = models.TextField(blank=True, default="")
     package_photo = models.ImageField(
         upload_to="deliveries/packages/", null=True, blank=True
@@ -100,7 +124,9 @@ class Delivery(models.Model):
     driver_notes = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     accepted_at = models.DateTimeField(null=True, blank=True)
+    courier_arriving_at = models.DateTimeField(null=True, blank=True)
     picked_up_at = models.DateTimeField(null=True, blank=True)
+    in_transit_at = models.DateTimeField(null=True, blank=True)
     delivered_at = models.DateTimeField(null=True, blank=True)
 
     # ── New: Service category ─────────────────────────────────────────────────
@@ -132,14 +158,26 @@ class Delivery(models.Model):
     # ── New: Category-specific fields ─────────────────────────────────────────
     # Food delivery
     restaurant_name = models.CharField(max_length=150, blank=True, default="")
+    food_items = models.TextField(blank=True, default="")
     preparation_time_minutes = models.PositiveIntegerField(null=True, blank=True)
 
     # Pharmacy delivery
+    pharmacy_name = models.CharField(max_length=150, blank=True, default="")
     prescription_reference = models.CharField(max_length=100, blank=True, default="")
+    prescription_photo = models.ImageField(
+        upload_to="deliveries/prescriptions/", null=True, blank=True
+    )
+    is_urgent = models.BooleanField(default=False)
     is_temperature_sensitive = models.BooleanField(default=False)
 
-    # Shopping delivery
+    # Grocery / market / shopping
+    store_name = models.CharField(max_length=150, blank=True, default="")
     shopping_list = models.TextField(blank=True, default="")
+    item_quantity = models.CharField(max_length=255, blank=True, default="")
+    substitution_notes = models.TextField(blank=True, default="")
+
+    # Documents
+    is_secure_delivery = models.BooleanField(default=False)
     max_budget_mru = models.DecimalField(
         max_digits=10, decimal_places=2, null=True, blank=True
     )
@@ -158,11 +196,62 @@ class Delivery(models.Model):
     extra_stop_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     express_surcharge = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     fragile_surcharge = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    package_size_surcharge = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    surge_surcharge = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    night_surcharge = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    waiting_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    heavy_surcharge = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    courier_multiplier = models.DecimalField(max_digits=4, decimal_places=2, default=1.2)
+    promo_code = models.CharField(max_length=30, blank=True, default="")
+    pricing_snapshot = models.JSONField(default=dict, blank=True)
     discount_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     driver_earning = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     platform_commission = models.DecimalField(
         max_digits=10, decimal_places=2, default=0
     )
+
+    # ── Assignment / lifecycle ────────────────────────────────────────────────
+    pickup_pin = models.CharField(
+        max_length=4,
+        default=generate_delivery_pickup_pin,
+        help_text="PIN shown to customer for pickup verification.",
+    )
+    pickup_pin_verified_at = models.DateTimeField(null=True, blank=True)
+    offered_driver = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="offered_deliveries",
+    )
+    offer_sent_at = models.DateTimeField(null=True, blank=True)
+    declined_driver_ids = models.JSONField(default=default_declined_driver_ids, blank=True)
+    assignment_round = models.PositiveIntegerField(default=0)
+    estimated_duration_minutes = models.PositiveIntegerField(null=True, blank=True)
+
+    PAYMENT_METHOD_CHOICES = [
+        ("cash", "Cash"),
+        ("card", "Card"),
+        ("wallet", "Yala Wallet"),
+    ]
+    PAYMENT_STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("paid", "Paid"),
+        ("failed", "Failed"),
+    ]
+
+    payment_method = models.CharField(
+        max_length=20, choices=PAYMENT_METHOD_CHOICES, default="cash"
+    )
+    payment_status = models.CharField(
+        max_length=20, choices=PAYMENT_STATUS_CHOICES, default="pending"
+    )
+    tip_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    customer_rating = models.PositiveSmallIntegerField(null=True, blank=True)
+    customer_review = models.TextField(blank=True, default="")
+    rated_at = models.DateTimeField(null=True, blank=True)
+    near_pickup_notified = models.BooleanField(default=False)
+    near_dropoff_notified = models.BooleanField(default=False)
 
     class Meta:
         ordering = ["-created_at"]
@@ -304,6 +393,12 @@ class DeliveryDispute(models.Model):
 class DriverDeliverySettings(models.Model):
     """Per-driver delivery preferences and stats."""
 
+    DELIVERY_VEHICLE_CHOICES = [
+        ("bicycle", "Bicycle"),
+        ("motorcycle", "Motorcycle"),
+        ("car", "Car"),
+    ]
+
     MAX_PACKAGE_SIZE_CHOICES = [
         ("document", "Document only"),
         ("small", "Up to Small"),
@@ -317,6 +412,12 @@ class DriverDeliverySettings(models.Model):
         related_name="delivery_settings",
     )
     delivery_mode_enabled = models.BooleanField(default=False)
+    delivery_cities = models.JSONField(default=default_delivery_cities, blank=True)
+    delivery_vehicle_type = models.CharField(
+        max_length=20,
+        choices=DELIVERY_VEHICLE_CHOICES,
+        default="motorcycle",
+    )
     max_package_size = models.CharField(
         max_length=20, choices=MAX_PACKAGE_SIZE_CHOICES, default="large"
     )
@@ -328,6 +429,8 @@ class DriverDeliverySettings(models.Model):
     delivery_rating = models.DecimalField(
         max_digits=3, decimal_places=1, default=5.0
     )
+    is_suspended = models.BooleanField(default=False)
+    suspension_reason = models.TextField(blank=True, default="")
 
     class Meta:
         indexes = [
@@ -338,3 +441,62 @@ class DriverDeliverySettings(models.Model):
 
     def __str__(self):
         return f"Delivery settings for {self.driver}"
+
+
+class DeliveryChatMessage(models.Model):
+    """Template chat messages between customer and courier during a delivery."""
+
+    delivery = models.ForeignKey(
+        Delivery,
+        on_delete=models.CASCADE,
+        related_name="chat_messages",
+    )
+    sender = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="delivery_chat_messages",
+    )
+    template_key = models.CharField(max_length=50, blank=True, default="")
+    text = models.TextField()
+    read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+        indexes = [
+            models.Index(fields=["delivery", "created_at"], name="delivery_chat_time_idx"),
+        ]
+
+    def __str__(self):
+        return f"Delivery #{self.delivery_id} chat: {self.text[:40]}"
+
+
+class DeliveryCallSession(models.Model):
+    """Short-lived masked call session for customer ↔ courier contact."""
+
+    delivery = models.ForeignKey(
+        Delivery,
+        on_delete=models.CASCADE,
+        related_name="call_sessions",
+    )
+    customer = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="delivery_call_sessions_as_customer",
+    )
+    courier = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="delivery_call_sessions_as_courier",
+    )
+    session_code = models.CharField(max_length=12, unique=True)
+    dial_number = models.CharField(max_length=30)
+    is_masked = models.BooleanField(default=False)
+    expires_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Call session {self.session_code} for delivery #{self.delivery_id}"
