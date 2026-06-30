@@ -336,47 +336,18 @@ export default function DeliveryCourierDashboard() {
         onlineToggleLoading={modeLoading}
         onlineToggleDisabled={!deliveryMode && expiredDocAlerts.length > 0}
         activeDelivery={activeDelivery}
-        todayEarnings={null}
-        earningsLabel={todayEarnings ? `${todayEarnings.amount} MRU today` : "0 MRU today"}
-        sheetHead={
-          !activeDelivery ? (
-            <div className="delivery-courier-dash__sheet-head">
-              <div className="delivery-courier-dash__sheet-profile">
-                <div className="delivery-courier-dash__avatar delivery-courier-dash__avatar--compact">
-                  {courierProfile?.photo_url ? (
-                    <img src={courierProfile.photo_url} alt="" />
-                  ) : (
-                    <span>{initials || "YC"}</span>
-                  )}
-                </div>
-                <div>
-                  <span className="delivery-courier-dash__hello">Bonjour, {firstName}</span>
-                  <span className="delivery-courier-dash__level-pill">🏅 {courierLevel}</span>
-                </div>
-              </div>
-              <div className="delivery-courier-dash__sheet-stats">
-                <span>{totalDeliveries} deliveries</span>
-                <span>{rating} ★</span>
-                <span>{acceptanceRate}% accept</span>
-              </div>
-            </div>
-          ) : null
-        }
+        todayEarnings={todayEarnings}
+        earningsLabel={todayEarnings ? `${todayEarnings.amount} MRU` : "0 MRU"}
+        sheetHead={null}
         sheetTitle={
           activeDelivery
             ? getTripHeadline(activeDelivery)
-            : tab === "active" && active.length
-            ? "Active delivery"
             : "Ready to deliver"
         }
         sheetSubtitle={
           activeDelivery
             ? `${activeDelivery.fare} MRU · ${activeDelivery.distance_km} km`
-            : deliveryMode
-            ? `${getDeliveryVehicleLabel(deliveryVehicleType)} · ${deliveryCities.join(", ")} · ${available.length} request${
-                available.length === 1 ? "" : "s"
-              } nearby`
-            : `Good morning, ${firstName}. Go online to receive delivery requests`
+            : `${getDeliveryVehicleLabel(deliveryVehicleType)} · ${deliveryCities.join(", ")}`
         }
       >
         {activeDelivery ? (

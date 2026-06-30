@@ -97,6 +97,8 @@
   background: var(--du-white);
   box-shadow: 8px 0 32px rgba(0, 0, 0, 0.18);
   padding: calc(20px + env(safe-area-inset-top, 0px)) 16px 24px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   animation: deliveryUberMenuIn 220ms ease-out;
 }
 
@@ -609,7 +611,7 @@
   right: 0;
   bottom: calc(64px + var(--du-safe-bottom));
   z-index: 15;
-  max-height: min(58vh, 520px);
+  max-height: min(38vh, 340px);
   display: flex;
   flex-direction: column;
   background: var(--du-white);
