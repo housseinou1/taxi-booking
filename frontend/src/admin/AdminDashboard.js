@@ -4,6 +4,7 @@ import { MARKET, formatMoney } from "../marketConfig";
 import AnalyticsDashboard from "./AnalyticsDashboard";
 import SafetyAdminPanel from "./SafetyAdminPanel";
 import HallOfFameAdminPanel from "./HallOfFameAdminPanel";
+import DeliveryAdminPanel from "../delivery/DeliveryAdminPanel";
 
 const MARKET_OWNER_PERCENT = MARKET.ownerCommissionPercent;
 const logoSrc = "/yala-admin-logo.png";
@@ -872,7 +873,7 @@ function AdminDashboard() {
     { key: "riders", label: "Riders" },
     { key: "drivers", label: "Drivers" },
     { key: "rides", label: "Dispatch" },
-    { key: "deliveries", label: "Deliveries", path: "/admin/deliveries" },
+    { key: "deliveries", label: "Deliveries" },
     { key: "emergency", label: "Emergency" },
     { key: "vehicles", label: "Vehicles" },
     { key: "cities", label: "Cities" },
@@ -887,6 +888,7 @@ function AdminDashboard() {
     { key: "overview", label: "Overview" },
     { key: "riders", label: "Riders" },
     { key: "drivers", label: "Drivers" },
+    { key: "deliveries", label: "Deliveries" },
     { key: "payments", label: "Payments" },
   ];
 
@@ -1458,6 +1460,16 @@ function AdminDashboard() {
                 />
               ))
             )}
+          </div>
+        )}
+
+        {page === "deliveries" && (
+          <div style={card}>
+            <SectionTitle
+              title="Yala Delivery"
+              subtitle="Orders, couriers, merchants, revenue, and approvals."
+            />
+            <DeliveryAdminPanel embedded />
           </div>
         )}
 
@@ -3593,14 +3605,19 @@ const pageStyleCompact = {
 };
 
 const sidebarCompact = {
-  position: "relative",
-  top: "auto",
-  height: "auto",
+  position: "fixed",
+  top: 0,
+  left: 0,
+  bottom: 0,
+  width: "min(300px, 85vw)",
+  height: "100vh",
   minWidth: 0,
   padding: "18px 16px 12px",
-  borderRight: "none",
-  borderBottom: "1px solid rgba(148, 163, 184, 0.24)",
-  boxShadow: "none",
+  borderRight: "1px solid rgba(148, 163, 184, 0.24)",
+  boxShadow: "8px 0 24px rgba(0, 0, 0, 0.3)",
+  zIndex: 1000,
+  overflowY: "auto",
+  transition: "transform 0.28s cubic-bezier(0.4, 0, 0.2, 1)",
 };
 
 const contentCompact = {
@@ -3722,7 +3739,8 @@ const opsHeroStyle = {
 
 const opsHeroCompactStyle = {
   gridTemplateColumns: "minmax(0, 1fr)",
-  padding: "20px",
+  padding: "16px",
+  marginBottom: "14px",
 };
 
 const opsKickerStyle = {
@@ -3734,7 +3752,7 @@ const opsKickerStyle = {
 
 const opsTitleStyle = {
   margin: "7px 0 8px",
-  fontSize: "2rem",
+  fontSize: "clamp(1.4rem, 5vw, 2rem)",
   letterSpacing: 0,
 };
 

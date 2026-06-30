@@ -1,0 +1,2490 @@
+/**
+ * Uber-style layout for Yala Delivery courier app.
+ * Map-first shell, floating controls, bottom sheet, pill CTAs.
+ */
+
+.delivery-uber {
+  --du-black: #000000;
+  --du-white: #ffffff;
+  --du-orange: #f58220;
+  --du-orange-light: #ffb800;
+  --du-brown: #3c2415;
+  --du-cream: #fff8e8;
+  --du-gray-50: #f6f6f6;
+  --du-gray-100: #eeeeee;
+  --du-gray-200: #e2e2e2;
+  --du-gray-400: #9ca3af;
+  --du-gray-600: #6b7280;
+  --du-gray-900: #111827;
+  --du-green: #06c167;
+  --du-red: #cd0930;
+  --du-blue: #276ef1;
+  --du-sheet-radius: 16px;
+  --du-shadow: 0 -8px 40px rgba(0, 0, 0, 0.14);
+  --du-safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  position: relative;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow: hidden;
+  background: var(--du-gray-100);
+  color: var(--du-gray-900);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.delivery-uber__map-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.delivery-uber__map-layer .delivery-map-container {
+  width: 100%;
+  height: 100%;
+}
+
+.delivery-uber__map--fallback {
+  position: absolute;
+  inset: 0;
+}
+
+.delivery-uber__top-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.delivery-uber__earnings-pill {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--du-white);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.14);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--du-black);
+}
+
+.delivery-uber__sheet-eyebrow {
+  margin: 0 0 2px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--du-gray-600);
+}
+
+.delivery-uber__sheet--active-trip {
+  max-height: min(78vh, 680px);
+}
+
+.delivery-uber__menu-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  border: none;
+  background: rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+}
+
+.delivery-uber__menu {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 45;
+  width: min(300px, 86vw);
+  background: var(--du-white);
+  box-shadow: 8px 0 32px rgba(0, 0, 0, 0.18);
+  padding: calc(20px + env(safe-area-inset-top, 0px)) 16px 24px;
+  animation: deliveryUberMenuIn 220ms ease-out;
+}
+
+@keyframes deliveryUberMenuIn {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.delivery-uber__menu-brand {
+  padding: 8px 8px 20px;
+  border-bottom: 1px solid var(--du-gray-200);
+  margin-bottom: 8px;
+}
+
+.delivery-uber__menu-brand strong {
+  display: block;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+.delivery-uber__menu-logo {
+  display: block;
+  width: 120px;
+  height: auto;
+  margin-bottom: 4px;
+}
+
+.delivery-uber__menu-brand span {
+  color: var(--du-gray-600);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.delivery-uber__menu-nav {
+  display: flex;
+  flex-direction: column;
+}
+
+.delivery-uber__menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 14px 8px;
+  text-align: left;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--du-gray-900);
+  cursor: pointer;
+  border-radius: 10px;
+  position: relative;
+}
+
+.delivery-uber__menu-item:hover {
+  background: var(--du-gray-50);
+}
+
+.delivery-uber__menu-item-icon {
+  width: 28px;
+  text-align: center;
+}
+
+.delivery-uber__menu-profile {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 4px 8px 18px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--du-gray-200);
+}
+
+.delivery-uber__menu-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #ff8a3d, #ff6b00);
+  color: #fff;
+  font-weight: 800;
+  font-size: 18px;
+}
+
+.delivery-uber__menu-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.delivery-uber__menu-profile-body {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.delivery-uber__menu-profile-body strong {
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--du-gray-900);
+}
+
+.delivery-uber__menu-profile-meta {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--du-gray-600);
+  line-height: 1.35;
+}
+
+.delivery-uber__menu-status {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.delivery-uber__menu-status.is-online {
+  background: rgba(16, 185, 129, 0.14);
+  color: #047857;
+}
+
+.delivery-uber__menu-status.is-offline {
+  background: var(--du-gray-100);
+  color: var(--du-gray-600);
+}
+
+.delivery-uber__menu-item-label {
+  flex: 1;
+}
+
+.delivery-uber__menu-item.is-active {
+  background: rgba(255, 107, 0, 0.1);
+  color: #c2410c;
+}
+
+.delivery-uber__menu-badge {
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.delivery-uber__menu-footer {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--du-gray-200);
+}
+
+.delivery-uber__menu {
+  display: flex;
+  flex-direction: column;
+}
+
+.delivery-uber__menu-signout {
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 12px 8px;
+  text-align: left;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  color: #dc2626;
+  cursor: pointer;
+  border-radius: 10px;
+}
+
+.delivery-uber__menu-signout:hover {
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.delivery-courier-support-card h2 {
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+
+.delivery-courier-support-card p {
+  margin: 0 0 14px;
+  color: var(--du-gray-600);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.delivery-courier-emergency-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.delivery-courier-emergency-link {
+  display: grid;
+  gap: 4px;
+  padding: 12px 10px;
+  border-radius: 12px;
+  background: #ef4444;
+  color: #fff;
+  text-decoration: none;
+  text-align: center;
+  font-weight: 800;
+}
+
+.delivery-courier-emergency-link span {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.delivery-courier-support-call {
+  display: inline-flex;
+  justify-content: center;
+  width: 100%;
+  text-decoration: none;
+}
+
+.delivery-courier-support-form {
+  display: grid;
+  gap: 12px;
+}
+
+.delivery-courier-support-form textarea {
+  width: 100%;
+  min-height: 110px;
+  padding: 12px 14px;
+  border: 1px solid var(--du-gray-200);
+  border-radius: 12px;
+  font: inherit;
+  resize: vertical;
+}
+
+.delivery-courier-support-notice {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(16, 185, 129, 0.12);
+  color: #047857;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.delivery-courier-faq-list {
+  display: grid;
+  gap: 10px;
+}
+
+.delivery-courier-faq-item {
+  border: 1px solid var(--du-gray-200);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: var(--du-gray-50);
+}
+
+.delivery-courier-faq-item summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--du-gray-900);
+}
+
+.delivery-courier-faq-item p {
+  margin: 10px 0 0;
+  font-size: 14px;
+  color: var(--du-gray-600);
+  line-height: 1.5;
+}
+
+@media (max-width: 420px) {
+  .delivery-courier-emergency-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.delivery-uber__nav-icon {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.delivery-uber-list {
+  background: var(--du-white);
+  border: 1px solid var(--du-gray-200);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.delivery-uber-list-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 16px;
+  border: none;
+  border-bottom: 1px solid var(--du-gray-100);
+  background: var(--du-white);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.delivery-uber-list-row:last-child {
+  border-bottom: none;
+}
+
+.delivery-uber-list-row strong {
+  display: block;
+  font-size: 15px;
+}
+
+.delivery-uber-list-row p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--du-gray-600);
+}
+
+.delivery-uber-list-row > span {
+  color: var(--du-gray-400);
+  font-size: 22px;
+  line-height: 1;
+}
+
+.delivery-uber-page__header-spacer {
+  width: 44px;
+}
+
+.delivery-uber__job--offer {
+  border-width: 2px;
+  border-color: var(--du-black);
+}
+
+.delivery-uber__accept-bar {
+  margin-top: 12px;
+}
+
+.delivery-uber__accept-bar .delivery-uber__btn {
+  width: 100%;
+  height: 48px;
+  font-size: 16px;
+}
+
+.delivery-uber-payout-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.delivery-uber__form-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.delivery-uber__form-grid input,
+.delivery-uber__form-grid select,
+.delivery-uber__form-grid textarea {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--du-gray-200);
+  border-radius: 12px;
+  background: var(--du-white);
+  color: var(--du-gray-900);
+  padding: 0 12px;
+  font: inherit;
+}
+
+/* Map placeholder */
+.delivery-uber__map {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(0, 0, 0, 0.03) 100%),
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 39px,
+      rgba(0, 0, 0, 0.03) 39px,
+      rgba(0, 0, 0, 0.03) 40px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 39px,
+      rgba(0, 0, 0, 0.03) 39px,
+      rgba(0, 0, 0, 0.03) 40px
+    ),
+    #d4d4d8;
+}
+
+.delivery-uber__map::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 38%, rgba(255, 255, 255, 0.55), transparent 58%);
+  pointer-events: none;
+}
+
+/* Top floating bar */
+.delivery-uber__top {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px;
+  pointer-events: none;
+}
+
+.delivery-uber__top > * {
+  pointer-events: auto;
+}
+
+.delivery-uber__icon-btn {
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: var(--du-white);
+  color: var(--du-black);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.14);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.delivery-uber__status-pill {
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--du-white);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.14);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+}
+
+.delivery-uber__status-pill.is-online {
+  background: var(--du-black);
+  color: var(--du-white);
+}
+
+.delivery-uber__status-pill.is-offline {
+  color: var(--du-gray-600);
+}
+
+/* Toast */
+.delivery-uber__toast {
+  position: fixed;
+  top: calc(72px + env(safe-area-inset-top, 0px));
+  left: 16px;
+  right: 16px;
+  z-index: 25;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--du-black);
+  color: var(--du-white);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  animation: deliveryUberFadeIn 200ms ease;
+}
+
+.delivery-uber__toast.is-error {
+  background: var(--du-red);
+}
+
+@keyframes deliveryUberFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Bottom sheet */
+.delivery-uber__sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(64px + var(--du-safe-bottom));
+  z-index: 15;
+  max-height: min(58vh, 520px);
+  display: flex;
+  flex-direction: column;
+  background: var(--du-white);
+  border-radius: var(--du-sheet-radius) var(--du-sheet-radius) 0 0;
+  box-shadow: var(--du-shadow);
+  animation: deliveryUberSlideUp 280ms ease-out;
+}
+
+.delivery-uber__sheet--full {
+  bottom: 0;
+  max-height: min(88vh, 760px);
+  border-radius: var(--du-sheet-radius) var(--du-sheet-radius) 0 0;
+  padding-bottom: calc(12px + var(--du-safe-bottom));
+}
+
+@keyframes deliveryUberSlideUp {
+  from {
+    transform: translateY(24px);
+    opacity: 0.6;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.delivery-uber__sheet-handle {
+  width: 36px;
+  height: 4px;
+  margin: 10px auto 6px;
+  border-radius: 999px;
+  background: var(--du-gray-200);
+  flex-shrink: 0;
+}
+
+.delivery-uber__sheet-head {
+  padding: 4px 20px 12px;
+  flex-shrink: 0;
+}
+
+.delivery-uber__sheet-head h1 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+}
+
+.delivery-uber__sheet-head p {
+  margin: 4px 0 0;
+  color: var(--du-gray-600);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.delivery-uber__sheet-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 16px 16px;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Vehicle chips */
+.delivery-uber__chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 0 0 12px;
+  scrollbar-width: none;
+}
+
+.delivery-uber__chips::-webkit-scrollbar {
+  display: none;
+}
+
+.delivery-uber__chip {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border: 1.5px solid var(--du-gray-200);
+  border-radius: 999px;
+  background: var(--du-white);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--du-gray-900);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.delivery-uber__chip.is-active {
+  border-color: var(--du-black);
+  background: var(--du-black);
+  color: var(--du-white);
+}
+
+.delivery-uber__chip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.delivery-work-cities {
+  margin: 0 0 14px;
+}
+
+.delivery-work-cities--compact {
+  margin-bottom: 10px;
+}
+
+.delivery-work-cities__label {
+  display: block;
+  margin: 0 0 6px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--du-gray-900);
+}
+
+.delivery-work-cities__hint {
+  margin: 0 0 8px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--du-gray-500);
+}
+
+.delivery-work-cities__select {
+  width: 100%;
+  margin: 0 0 10px;
+  padding: 12px 14px;
+  border: 1.5px solid var(--du-gray-200);
+  border-radius: 10px;
+  background: var(--du-white);
+  font: inherit;
+  font-size: 14px;
+  color: var(--du-gray-900);
+}
+
+.delivery-work-cities__chips {
+  padding-bottom: 0;
+}
+
+/* Primary CTA */
+.delivery-uber__cta {
+  width: 100%;
+  height: 52px;
+  margin: 0 0 14px;
+  border: none;
+  border-radius: 8px;
+  background: var(--du-black);
+  color: var(--du-white);
+  font: inherit;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  cursor: pointer;
+}
+
+.delivery-uber__cta.is-online {
+  background: var(--du-red);
+}
+
+.delivery-uber__cta:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Tabs */
+.delivery-uber__tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  margin: 0 0 12px;
+  border-bottom: 1px solid var(--du-gray-200);
+}
+
+.delivery-uber__tab {
+  position: relative;
+  padding: 12px 8px;
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--du-gray-600);
+  cursor: pointer;
+}
+
+.delivery-uber__tab.is-active {
+  color: var(--du-black);
+}
+
+.delivery-uber__tab.is-active::after {
+  content: "";
+  position: absolute;
+  left: 20%;
+  right: 20%;
+  bottom: -1px;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: var(--du-black);
+}
+
+/* Job cards */
+.delivery-uber__job {
+  border: 1px solid var(--du-gray-200);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 10px;
+  background: var(--du-white);
+}
+
+.delivery-uber__job-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.delivery-uber__job-fare {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.delivery-uber__job-meta {
+  font-size: 12px;
+  color: var(--du-gray-600);
+  font-weight: 600;
+}
+
+.delivery-uber__job-route {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0;
+  padding-left: 4px;
+}
+
+.delivery-uber__job-stop {
+  display: grid;
+  grid-template-columns: 14px 1fr;
+  gap: 10px;
+  align-items: start;
+}
+
+.delivery-uber__job-dot {
+  width: 10px;
+  height: 10px;
+  margin-top: 4px;
+  border-radius: 50%;
+  background: var(--du-black);
+}
+
+.delivery-uber__job-dot.is-drop {
+  background: var(--du-green);
+}
+
+.delivery-uber__job-stop small {
+  display: block;
+  color: var(--du-gray-600);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.delivery-uber__job-stop strong {
+  display: block;
+  font-size: 14px;
+  line-height: 1.35;
+  font-weight: 600;
+}
+
+.delivery-uber__job-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 12px;
+}
+
+.delivery-uber__tag {
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--du-gray-100);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--du-gray-900);
+}
+
+.delivery-uber__job-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.delivery-uber__btn {
+  border: none;
+  border-radius: 8px;
+  padding: 12px 16px;
+  background: var(--du-black);
+  color: var(--du-white);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.delivery-uber__btn--secondary {
+  background: var(--du-gray-100);
+  color: var(--du-black);
+}
+
+.delivery-uber__btn--sm {
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+.delivery-uber__btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.delivery-uber__input {
+  width: 72px;
+  height: 42px;
+  border: 1px solid var(--du-gray-200);
+  border-radius: 8px;
+  padding: 0 10px;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.delivery-uber__empty {
+  padding: 28px 12px;
+  text-align: center;
+  color: var(--du-gray-600);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.delivery-uber__progress {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+  margin: 8px 0 12px;
+}
+
+.delivery-uber__progress span {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--du-gray-200);
+}
+
+.delivery-uber__progress span.is-done {
+  background: var(--du-black);
+}
+
+.delivery-uber__nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0;
+  padding: 8px 8px calc(8px + var(--du-safe-bottom));
+  background: var(--du-white);
+  border-top: 1px solid var(--du-gray-200);
+}
+
+.delivery-uber__nav-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  border: none;
+  background: transparent;
+  color: var(--du-gray-600);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 6px 4px;
+}
+
+.delivery-uber__nav-btn span:first-child {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.delivery-uber__nav-btn.is-active {
+  color: var(--du-black);
+}
+
+/* Onboarding / secondary pages */
+.delivery-uber-page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--du-gray-50);
+  color: var(--du-gray-900);
+  padding-bottom: calc(24px + var(--du-safe-bottom));
+}
+
+.delivery-uber-page__header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px;
+  background: var(--du-white);
+  border-bottom: 1px solid var(--du-gray-200);
+}
+
+.delivery-uber-page__header h1 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.delivery-uber-page__content {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.delivery-uber-card {
+  background: var(--du-white);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+  border: 1px solid var(--du-gray-200);
+}
+
+.delivery-uber-card h2 {
+  margin: 0 0 6px;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+.delivery-uber-card p {
+  margin: 0;
+  color: var(--du-gray-600);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.delivery-uber-step {
+  display: grid;
+  grid-template-columns: 40px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--du-gray-100);
+}
+
+.delivery-uber-step:last-child {
+  border-bottom: none;
+}
+
+.delivery-uber-step__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--du-gray-100);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+.delivery-uber-step.is-complete .delivery-uber-step__icon {
+  background: #e8f8ef;
+}
+
+.delivery-uber-step strong {
+  display: block;
+  font-size: 15px;
+}
+
+.delivery-uber-step p {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--du-gray-600);
+}
+
+.delivery-uber-field {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.delivery-uber-field input,
+.delivery-uber-field select,
+.delivery-uber-field textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--du-gray-200);
+  border-radius: 8px;
+  padding: 14px 12px;
+  font: inherit;
+  font-size: 16px;
+  background: var(--du-white);
+}
+
+.delivery-uber-page .delivery-onboarding-progress {
+  width: 100%;
+  height: 6px;
+  background: var(--du-gray-200);
+  border-radius: 999px;
+  overflow: hidden;
+  margin: 12px 0 6px;
+}
+
+.delivery-uber-page .delivery-onboarding-progress-bar {
+  height: 100%;
+  background: var(--du-black);
+  border-radius: 999px;
+}
+
+/* Login */
+.yala-login--delivery-uber {
+  justify-content: flex-start !important;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: max(22px, env(safe-area-inset-top)) 18px calc(22px + env(safe-area-inset-bottom)) !important;
+  background:
+    radial-gradient(circle at 50% 8%, rgba(245, 130, 32, 0.17), transparent 34%),
+    linear-gradient(180deg, #fffaf4 0%, #f8fafc 46%, #ffffff 100%) !important;
+  color: #111827 !important;
+}
+
+.yala-login--delivery-uber .yala-login__logo-area {
+  margin: 26px 0 22px !important;
+  max-width: 360px;
+}
+
+.yala-login--delivery-uber .yala-login__logo {
+  width: 96px !important;
+  height: 96px !important;
+  border-radius: 26px !important;
+  margin-bottom: 16px !important;
+  box-shadow: 0 18px 44px rgba(245, 130, 32, 0.16), 0 10px 30px rgba(17, 24, 39, 0.08) !important;
+}
+
+.yala-login--delivery-uber .yala-login__brand {
+  margin: 0 !important;
+  color: #111827 !important;
+  font-size: clamp(36px, 10vw, 48px) !important;
+  font-weight: 900 !important;
+  letter-spacing: -0.06em !important;
+}
+
+.yala-login--delivery-uber .yala-login__tagline {
+  max-width: 330px !important;
+  margin-top: 16px !important;
+  color: #4b5563 !important;
+  font-size: 18px !important;
+  line-height: 1.35 !important;
+}
+
+.yala-login--delivery-uber .yala-login__label {
+  gap: 10px !important;
+  margin-bottom: 18px !important;
+  color: #111827 !important;
+  font-size: 15px !important;
+  font-weight: 850 !important;
+}
+
+.yala-login--delivery-uber .yala-login__app-hint {
+  margin-top: 12px !important;
+  padding: 8px 14px !important;
+  border-color: rgba(245, 130, 32, 0.35) !important;
+  background: #fff3e6 !important;
+  color: #8a4b0d !important;
+  font-size: 12px !important;
+  letter-spacing: 0.03em !important;
+}
+
+.yala-login--delivery-uber .yala-login__form {
+  max-width: 430px !important;
+  padding: 26px 22px 22px !important;
+  border-radius: 30px !important;
+  background: rgba(255, 255, 255, 0.94) !important;
+  border: 1px solid rgba(17, 24, 39, 0.06) !important;
+  box-shadow: 0 24px 70px rgba(17, 24, 39, 0.13) !important;
+  backdrop-filter: blur(18px);
+}
+
+.yala-login--delivery-uber .yala-login__input {
+  min-height: 56px !important;
+  padding: 0 18px !important;
+  border-radius: 18px !important;
+  background: #f8fafc !important;
+  border: 1.5px solid #edf0f3 !important;
+  color: #111827 !important;
+  font-size: 18px !important;
+  font-weight: 750 !important;
+}
+
+.yala-login--delivery-uber .yala-login__input:focus {
+  border-color: #f58220 !important;
+  background: #ffffff !important;
+  box-shadow: 0 0 0 4px rgba(245, 130, 32, 0.14) !important;
+}
+
+.yala-login--delivery-uber .yala-login__input::placeholder {
+  color: #9ca3af !important;
+}
+
+.yala-login--delivery-uber .yala-login__submit,
+.yala-login--delivery-uber button[type="submit"] {
+  min-height: 58px !important;
+  margin-top: 20px !important;
+  background: #111827 !important;
+  border-radius: 999px !important;
+  color: #ffffff !important;
+  font-size: 17px !important;
+  font-weight: 850 !important;
+  box-shadow: 0 16px 34px rgba(245, 130, 32, 0.22) !important;
+}
+
+.yala-login--delivery-uber .yala-login__btn-secondary {
+  border: 0 !important;
+  background: transparent !important;
+  color: #111827 !important;
+  border-radius: 999px !important;
+  min-height: 52px !important;
+  margin-top: 12px !important;
+  font-weight: 850 !important;
+  box-shadow: none !important;
+}
+
+.yala-login--delivery-uber .yala-login__btn-secondary:active {
+  background: #f3f4f6 !important;
+}
+
+.yala-login--delivery-uber .yala-login__footer-link {
+  display: none;
+  width: 100%;
+  max-width: 380px;
+  margin-top: 16px;
+  padding: 14px 16px;
+  border: none;
+  background: transparent;
+  color: #111827;
+  font-size: 15px;
+  font-weight: 700;
+  text-align: center;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+@media (max-width: 480px) {
+  .yala-login--delivery-uber {
+    padding: max(18px, env(safe-area-inset-top)) 16px calc(20px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .yala-login--delivery-uber .yala-login__logo-area {
+    margin-top: 18px !important;
+  }
+
+  .yala-login--delivery-uber .yala-login__brand {
+    font-size: 40px !important;
+  }
+
+  .yala-login--delivery-uber .yala-login__tagline {
+    font-size: 17px !important;
+    line-height: 1.35 !important;
+  }
+
+  .yala-login--delivery-uber .yala-login__form {
+    padding: 24px 20px 22px !important;
+    border-radius: 28px !important;
+  }
+}
+
+.delivery-uber-account-logo {
+  width: 112px;
+  height: auto;
+  margin-bottom: 10px;
+}
+
+.delivery-uber-card--brand h2 {
+  margin-top: 0;
+}
+
+.delivery-uber-offer {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 16px 16px calc(88px + var(--du-safe-bottom));
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.delivery-uber-offer__card {
+  width: min(440px, 100%);
+  background: var(--du-white);
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: var(--du-shadow);
+}
+
+.delivery-uber-offer__timer {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--du-black);
+  color: var(--du-white);
+  font-weight: 800;
+  margin-bottom: 12px;
+}
+
+.delivery-uber-offer__eyebrow,
+.delivery-uber-trip__stage {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--du-gray-600);
+}
+
+.delivery-uber-offer__fare {
+  font-size: 40px;
+  font-weight: 800;
+  letter-spacing: -1px;
+  line-height: 1;
+}
+
+.delivery-uber-offer__meta,
+.delivery-uber-trip__meta {
+  margin: 6px 0 14px;
+  color: var(--du-gray-600);
+  font-size: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.delivery-uber-offer__route,
+.delivery-uber-trip__route {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.delivery-uber-offer__route small,
+.delivery-uber-trip__stop small {
+  display: block;
+  color: var(--du-gray-600);
+  font-size: 12px;
+  margin-bottom: 2px;
+}
+
+.delivery-uber-offer__route strong,
+.delivery-uber-trip__stop strong {
+  display: block;
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.delivery-uber-offer__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.delivery-uber-offer__pin-note {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: var(--du-gray-600);
+  line-height: 1.45;
+}
+
+.delivery-uber-offer__actions {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 10px;
+}
+
+.delivery-uber-trip {
+  display: grid;
+  gap: 12px;
+}
+
+.delivery-uber-trip__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.delivery-uber-trip__head strong {
+  font-size: 18px;
+}
+
+.delivery-uber-trip__subtitle,
+.delivery-uber-trip__contact,
+.delivery-uber-trip__notes {
+  margin: 0;
+  color: var(--du-gray-600);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.delivery-uber-trip__stop {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  gap: 10px;
+  align-items: start;
+}
+
+.delivery-uber-trip__stops {
+  display: grid;
+  gap: 10px;
+}
+
+.delivery-uber-trip__stop-btn {
+  border: 1px solid var(--du-gray-200);
+  background: var(--du-gray-50);
+  border-radius: 12px;
+  padding: 12px;
+  text-align: left;
+  font: inherit;
+}
+
+.delivery-uber-trip__stop-btn.is-active {
+  border-color: var(--du-black);
+  background: var(--du-white);
+}
+
+.delivery-uber-proof {
+  display: grid;
+  gap: 12px;
+  padding-top: 8px;
+}
+
+.delivery-uber-proof h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.delivery-uber-proof p {
+  margin: 0;
+  color: var(--du-gray-600);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.delivery-uber-proof__label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--du-gray-600);
+}
+
+.delivery-uber-proof__pin {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--du-gray-200);
+  border-radius: 12px;
+  padding: 16px;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 0.35em;
+  text-align: center;
+}
+
+.delivery-uber-proof__photo {
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--du-gray-100);
+  min-height: 180px;
+}
+
+.delivery-uber-proof__photo img {
+  display: block;
+  width: 100%;
+  height: 220px;
+  object-fit: cover;
+}
+
+.delivery-uber-proof__photo-placeholder {
+  display: grid;
+  place-items: center;
+  min-height: 180px;
+  color: var(--du-gray-600);
+  font-size: 14px;
+}
+
+.delivery-uber-proof__error {
+  margin: 0;
+  color: var(--du-red);
+  font-size: 13px;
+}
+
+@media (min-width: 900px) {
+  .delivery-uber__sheet {
+    left: 50%;
+    right: auto;
+    width: min(440px, calc(100% - 32px));
+    transform: translateX(-50%);
+  }
+
+  .delivery-uber__nav {
+    left: 50%;
+    right: auto;
+    width: min(440px, 100%);
+    transform: translateX(-50%);
+  }
+}
+
+/* ─── Customer Uber-style screens ───────────────────────────────────────── */
+
+.delivery-uber--customer {
+  --du-mauritania-green: #00a651;
+}
+
+.delivery-uber__top--customer {
+  align-items: center;
+}
+
+.delivery-uber__search {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  margin: 0 8px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 999px;
+  background: var(--du-white);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.12);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--du-gray-900);
+  text-align: left;
+}
+
+.delivery-uber__search-icon {
+  font-size: 16px;
+}
+
+.delivery-uber__top-spacer {
+  flex: 1;
+}
+
+.delivery-uber__locate-btn {
+  position: absolute;
+  right: 16px;
+  bottom: calc(42vh + 16px);
+  z-index: 3;
+  width: 48px;
+  height: 48px;
+  border: none;
+  border-radius: 999px;
+  background: var(--du-white);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.16);
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.delivery-uber__sheet--customer {
+  max-height: min(42vh, 420px);
+}
+
+.delivery-uber__sheet--customer.is-form {
+  max-height: min(72vh, 680px);
+}
+
+.delivery-uber__sheet--customer.is-compact {
+  max-height: min(52vh, 520px);
+}
+
+.delivery-uber__category-grid--home {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.delivery-uber__category-grid--more {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 8px;
+}
+
+.delivery-uber__category-card--compact {
+  padding: 12px;
+}
+
+.delivery-uber__category-card--compact small {
+  display: none;
+}
+
+.delivery-uber__category-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.delivery-uber__category-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 16px;
+  border: 1.5px solid var(--du-gray-200);
+  border-radius: 16px;
+  background: var(--du-white);
+  text-align: left;
+  cursor: pointer;
+}
+
+.delivery-uber__category-card strong {
+  font-size: 16px;
+}
+
+.delivery-uber__category-card small {
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--du-gray-600);
+}
+
+.delivery-uber__category-icon {
+  font-size: 28px;
+}
+
+.delivery-uber__link-btn {
+  width: 100%;
+  margin-top: 12px;
+  border: none;
+  background: transparent;
+  color: var(--du-orange);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.delivery-uber__link-btn--muted {
+  color: var(--du-gray-600);
+  font-weight: 600;
+}
+
+.delivery-uber__stack--form {
+  padding-bottom: 8px;
+}
+
+.delivery-uber__input-card--category label + label {
+  margin-top: 12px;
+}
+
+.delivery-uber__toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.delivery-uber__toggle {
+  width: 44px;
+  height: 26px;
+  accent-color: var(--du-orange);
+  cursor: pointer;
+}
+
+.delivery-uber__file-input {
+  width: 100%;
+  font-size: 13px;
+}
+
+.delivery-uber__file-name {
+  display: block;
+  margin-top: 6px;
+  color: var(--du-gray-600);
+  font-size: 12px;
+}
+
+.delivery-uber__stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.delivery-uber__back-inline {
+  align-self: flex-start;
+  border: none;
+  background: transparent;
+  color: var(--du-gray-600);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.delivery-uber__stack-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.delivery-uber__stack-head h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.delivery-uber__stack-head p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--du-gray-600);
+}
+
+.delivery-uber__stack-icon {
+  font-size: 30px;
+}
+
+.delivery-uber__input-card {
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--du-gray-50);
+  border: 1px solid var(--du-gray-200);
+}
+
+.delivery-uber__input-card--split {
+  display: grid;
+  gap: 12px;
+}
+
+.delivery-uber__input-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--du-gray-600);
+}
+
+.delivery-uber__input-card input,
+.delivery-uber__input-card select,
+.delivery-uber__input-card textarea {
+  width: 100%;
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-size: 15px;
+  color: var(--du-gray-900);
+}
+
+.delivery-uber__input-card textarea {
+  resize: vertical;
+}
+
+.delivery-uber__cta--orange {
+  background: var(--du-orange);
+  color: var(--du-white);
+}
+
+.delivery-uber__cta--orange.is-online,
+.delivery-uber__cta--orange:active {
+  background: #e67412;
+}
+
+.delivery-uber__cta--ghost {
+  background: var(--du-white);
+  color: var(--du-gray-900);
+  border: 1.5px solid var(--du-gray-200);
+}
+
+.delivery-uber__option-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.delivery-uber__option-card {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 14px;
+  border: 2px solid var(--du-gray-200);
+  border-radius: 16px;
+  background: var(--du-white);
+  text-align: left;
+  cursor: pointer;
+}
+
+.delivery-uber__option-card.is-selected {
+  border-color: var(--du-orange);
+  box-shadow: 0 0 0 1px var(--du-orange);
+}
+
+.delivery-uber__option-icon {
+  font-size: 28px;
+}
+
+.delivery-uber__option-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.delivery-uber__option-body p {
+  margin: 4px 0 8px;
+  font-size: 13px;
+  color: var(--du-gray-600);
+}
+
+.delivery-uber__option-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--du-mauritania-green, #00a651);
+}
+
+.delivery-uber__option-price {
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.delivery-uber__option-check {
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  border: 2px solid var(--du-gray-300, #d1d5db);
+}
+
+.delivery-uber__option-check.is-on {
+  border-color: var(--du-orange);
+  background: radial-gradient(circle, var(--du-orange) 45%, transparent 46%);
+}
+
+.delivery-uber__input-card--promo {
+  padding-bottom: 12px;
+}
+
+.delivery-uber__promo-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+.delivery-uber__promo-note {
+  display: block;
+  margin-top: 8px;
+  color: var(--du-mauritania-green, #00a651);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.delivery-uber__fare-card {
+  padding: 16px;
+  border-radius: 16px;
+  background: var(--du-white);
+  border: 1.5px solid var(--du-gray-200);
+}
+
+.delivery-uber__fare-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+.delivery-uber__fare-card-head span {
+  color: var(--du-gray-600);
+  font-size: 12px;
+}
+
+.delivery-uber__fare-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.delivery-uber__fare-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.delivery-uber__fare-line.is-muted {
+  color: var(--du-gray-600);
+  font-size: 12px;
+}
+
+.delivery-uber__fare-line.is-discount span:last-child {
+  color: var(--du-mauritania-green, #00a651);
+}
+
+.delivery-uber__fare-promo {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: var(--du-mauritania-green, #00a651);
+  font-weight: 600;
+}
+
+.delivery-uber__fare-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--du-gray-200);
+  font-size: 15px;
+}
+
+.delivery-uber__fare-total strong {
+  font-size: 22px;
+  color: var(--du-orange);
+}
+
+.delivery-uber__fare-split {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+  color: var(--du-gray-600);
+  font-size: 11px;
+}
+
+.delivery-uber__searching {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+  padding: 8px 0 4px;
+}
+
+.delivery-uber__pulse {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  margin-bottom: 8px;
+}
+
+.delivery-uber__pulse span {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: rgba(245, 130, 32, 0.2);
+  animation: deliveryPulse 1.8s ease-out infinite;
+}
+
+.delivery-uber__pulse span:nth-child(2) {
+  animation-delay: 0.45s;
+}
+
+.delivery-uber__pulse span:nth-child(3) {
+  animation-delay: 0.9s;
+}
+
+@keyframes deliveryPulse {
+  0% {
+    transform: scale(0.35);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.2);
+    opacity: 0;
+  }
+}
+
+.delivery-uber__searching-eta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 4px 0 8px;
+}
+
+.delivery-uber__tracking {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.delivery-uber__courier-card {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 14px;
+  border-radius: 16px;
+  background: var(--du-gray-50);
+}
+
+.delivery-uber__courier-avatar {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--du-orange);
+  color: var(--du-white);
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.delivery-uber__courier-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--du-gray-600);
+}
+
+.delivery-uber__courier-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.delivery-uber__round-btn {
+  width: 42px;
+  height: 42px;
+  border: none;
+  border-radius: 999px;
+  background: var(--du-white);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.delivery-uber__route-mini {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--du-white);
+  border: 1px solid var(--du-gray-200);
+}
+
+.delivery-uber__route-mini small {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--du-gray-600);
+}
+
+.delivery-uber__timeline {
+  display: grid;
+  gap: 10px;
+}
+
+.delivery-uber__timeline-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--du-gray-600);
+}
+
+.delivery-uber__timeline-step.is-done {
+  color: var(--du-gray-900);
+  font-weight: 600;
+}
+
+.delivery-uber__timeline-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--du-gray-300, #d1d5db);
+}
+
+.delivery-uber__timeline-step.is-done .delivery-uber__timeline-dot {
+  background: var(--du-mauritania-green, #00a651);
+}
+
+.delivery-uber__tracking-price {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 4px;
+  font-size: 15px;
+}
+
+.delivery-uber__complete-hero {
+  text-align: center;
+  padding: 8px 0;
+}
+
+.delivery-uber__complete-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  margin-bottom: 8px;
+  border-radius: 999px;
+  background: rgba(0, 166, 81, 0.12);
+  color: var(--du-mauritania-green, #00a651);
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.delivery-uber__summary-card {
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: var(--du-gray-50);
+  border: 1px solid var(--du-gray-200);
+}
+
+.delivery-uber__summary-card h3 {
+  margin: 0 0 10px;
+  font-size: 15px;
+}
+
+.delivery-uber__summary-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  font-size: 14px;
+}
+
+.delivery-uber__summary-row + .delivery-uber__summary-row {
+  border-top: 1px solid var(--du-gray-200);
+}
+
+.delivery-uber__summary-row .is-green {
+  color: var(--du-mauritania-green, #00a651);
+}
+
+.delivery-uber__tip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.delivery-uber__stars {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.delivery-uber__stars button {
+  border: none;
+  background: transparent;
+  font-size: 28px;
+  color: var(--du-gray-300, #d1d5db);
+  cursor: pointer;
+}
+
+.delivery-uber__stars button.is-on {
+  color: var(--du-orange-light);
+}
+
+.delivery-uber__pin-banner {
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(0, 166, 81, 0.1);
+  color: var(--du-gray-900);
+  font-size: 13px;
+}
+
+.delivery-uber__pin-banner--pickup {
+  background: rgba(245, 130, 32, 0.12);
+}
+
+.delivery-uber__pin-inline {
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(245, 130, 32, 0.1);
+  font-size: 13px;
+}
+
+.delivery-uber__eta-banner {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--du-gray-100);
+}
+
+.delivery-uber__eta-banner strong {
+  font-size: 22px;
+  color: var(--du-orange);
+}
+
+.delivery-uber__eta-banner span {
+  font-size: 13px;
+  color: var(--du-gray-600);
+}
+
+.delivery-uber-trip__pickup-proof {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.delivery-uber__earnings {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.delivery-uber__earnings-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.delivery-uber__earnings-card {
+  padding: 14px;
+  border-radius: 16px;
+  background: var(--du-gray-50);
+  border: 1px solid var(--du-gray-200);
+}
+
+.delivery-uber__earnings-card.is-highlight {
+  background: linear-gradient(180deg, rgba(245, 130, 32, 0.12), rgba(255, 255, 255, 1));
+  border-color: rgba(245, 130, 32, 0.35);
+}
+
+.delivery-uber__earnings-card small {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--du-gray-600);
+}
+
+.delivery-uber__earnings-card strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 22px;
+}
+
+.delivery-uber__earnings-card span {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--du-gray-600);
+}
+
+.delivery-uber__section-title {
+  margin: 4px 0 0;
+  font-size: 16px;
+}
+
+.delivery-uber__history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.delivery-uber__history-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--du-white);
+  border: 1px solid var(--du-gray-200);
+}
+
+.delivery-uber__history-item p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--du-gray-600);
+}
+
+.delivery-uber__history-meta {
+  text-align: right;
+  font-size: 12px;
+  color: var(--du-gray-600);
+}
+
+@media (max-width: 640px) {
+  .delivery-uber__earnings-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .delivery-uber__input-card--split {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Professional Yala Delivery courier refresh */
+
+.delivery-uber__online-toggle {
+  min-height: 54px;
+  border-radius: 999px;
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  background: #111827;
+  color: #fff;
+  box-shadow: 0 14px 30px rgba(17, 24, 39, 0.18);
+  font-weight: 900;
+  letter-spacing: -0.2px;
+}
+
+.delivery-uber__online-toggle.is-online {
+  background: linear-gradient(135deg, #FF6B00, #EA580C);
+  box-shadow: 0 16px 34px rgba(255, 107, 0, 0.26);
+}
+
+.delivery-uber__tabs {
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--du-gray-100);
+}
+
+.delivery-uber__tab {
+  border-radius: 999px;
+  font-weight: 850;
+}
+
+.delivery-uber__tab.is-active {
+  background: var(--du-white);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
+}
+
+.delivery-uber__tab.is-active::after {
+  display: none;
+}
+
+.delivery-uber__job {
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 22px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+}
+
+.delivery-uber__job--offer {
+  border-color: rgba(255, 107, 0, 0.38);
+  box-shadow: 0 16px 36px rgba(255, 107, 0, 0.16);
+}
+
+.delivery-uber__job-fare {
+  color: #FF6B00;
+  font-weight: 950;
+}
+
+.delivery-uber__job-dot {
+  background: #FF6B00;
+  box-shadow: 0 0 0 6px rgba(255, 107, 0, 0.12);
+}
+
+.delivery-uber__job-dot.is-drop {
+  background: #f58220;
+  box-shadow: 0 0 0 6px rgba(245, 130, 32, 0.12);
+}
+
+.delivery-uber__job-tags span,
+.delivery-dash__offer-package {
+  border-radius: 999px;
+  background: #fff7ed;
+  color: #9a3412;
+  font-weight: 800;
+}
+
+.delivery-uber-offer__card {
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 28px;
+  box-shadow: 0 22px 54px rgba(15, 23, 42, 0.22);
+}
+
+.delivery-uber-offer__timer {
+  background: #111827;
+  color: #fff;
+}
+
+.delivery-profile-setup__progress-wrap {
+  margin-bottom: 16px;
+}
+
+.delivery-profile-setup__steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.delivery-profile-setup__step {
+  font-size: 12px;
+  color: var(--du-gray-600);
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--du-gray-100);
+}
+
+.delivery-profile-setup__step.is-active {
+  background: #111827;
+  color: #fff;
+  font-weight: 600;
+}
+
+.delivery-profile-setup__step.is-done {
+  color: #111827;
+  background: rgba(17, 24, 39, 0.08);
+}
+
+.delivery-profile-setup__documents {
+  display: grid;
+  gap: 12px;
+}
+
+.delivery-profile-setup__doc-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.delivery-profile-setup__doc-card p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--du-gray-600);
+}
+
+.delivery-profile-setup__review p {
+  margin: 0 0 8px;
+}
+
+.delivery-profile-setup__terms {
+  margin: 0 0 12px;
+  padding-left: 18px;
+  color: var(--du-gray-600);
+  font-size: 14px;
+}
+
+.delivery-profile-setup__terms-check {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: 14px;
+}
+
+.delivery-profile-setup__footer {
+  margin-top: 20px;
+}
+
+.delivery-profile-setup__actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.delivery-profile-setup__actions .delivery-uber__cta {
+  flex: 1;
+}
+
+.delivery-courier-settings-panel,
+.delivery-courier-documents {
+  color: var(--du-gray-900);
+}
+
+.delivery-courier-settings-panel section,
+.delivery-courier-documents > div {
+  background: transparent !important;
+  min-height: auto !important;
+  padding: 0 !important;
+}

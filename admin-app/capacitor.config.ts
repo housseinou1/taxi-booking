@@ -4,6 +4,9 @@ const config: CapacitorConfig = {
   appId: 'com.yala.admin.mr',
   appName: 'Yala Admin',
   webDir: 'www',
+  server: {
+    allowNavigation: ['api.yalataxi.live', '*.yalataxi.live'],
+  },
   plugins: {
     SplashScreen: {
       launchAutoHide: true,
@@ -13,6 +16,9 @@ const config: CapacitorConfig = {
       showSpinner: false,
       splashFullScreen: true,
       splashImmersive: true,
+    },
+    CapacitorHttp: {
+      enabled: true,
     },
   },
 };

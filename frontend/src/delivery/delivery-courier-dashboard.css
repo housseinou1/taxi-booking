@@ -1,0 +1,852 @@
+/**
+ * Yala Delivery — Courier dashboard (distinct from Yala Driver taxi UI)
+ */
+
+.delivery-uber--courier {
+  --du-courier-accent: #f58220;
+  --du-courier-accent-dark: #e06f0a;
+  --du-courier-accent-light: #ffb800;
+  --du-courier-header: linear-gradient(135deg, #f58220 0%, #ff8c2a 48%, #ffb800 100%);
+  background: #f3f4f6;
+}
+
+.delivery-uber--courier .delivery-uber__map-layer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(245, 130, 32, 0.08) 0%,
+    transparent 22%,
+    transparent 55%,
+    rgba(255, 255, 255, 0.88) 92%
+  );
+  z-index: 1;
+}
+
+.delivery-uber--courier .delivery-uber__top {
+  padding-top: calc(8px + env(safe-area-inset-top, 0px));
+}
+
+.delivery-uber--courier .delivery-uber__top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 18px;
+  background: var(--du-courier-header);
+  box-shadow: 0 8px 28px rgba(245, 130, 32, 0.35);
+}
+
+.delivery-uber--courier .delivery-uber__icon-btn {
+  background: rgba(255, 255, 255, 0.96);
+  color: #3c2415;
+  box-shadow: 0 2px 8px rgba(60, 36, 21, 0.12);
+}
+
+.delivery-uber--courier .delivery-uber__top-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.delivery-uber--courier .delivery-uber__top-brand img {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.delivery-uber--courier .delivery-uber__top-brand strong {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #fff;
+  text-transform: uppercase;
+}
+
+.delivery-uber--courier .delivery-uber__top-brand span {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.delivery-uber--courier .delivery-uber__status-pill.is-online {
+  background: #3c2415;
+  color: #fff;
+}
+
+.delivery-uber--courier .delivery-uber__status-pill.is-offline {
+  background: rgba(255, 255, 255, 0.95);
+  color: #6b7280;
+}
+
+.delivery-uber--courier .delivery-uber__earnings-pill {
+  background: rgba(255, 255, 255, 0.95);
+  color: #3c2415;
+  font-weight: 700;
+}
+
+.delivery-uber--courier .delivery-uber__sheet {
+  border-top: 3px solid var(--du-courier-accent);
+}
+
+.delivery-uber--courier .delivery-uber__brand-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(245, 130, 32, 0.12);
+  color: var(--du-courier-accent-dark);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.delivery-uber--courier .delivery-uber__brand-mark::before {
+  content: "📦";
+  font-size: 12px;
+}
+
+.delivery-uber--courier .delivery-uber__sheet-head h1 {
+  color: #111827;
+}
+
+.delivery-uber--courier .delivery-uber__online-toggle {
+  width: 100%;
+  margin: 8px 0 12px;
+  padding: 14px 18px;
+  border: none;
+  border-radius: 14px;
+  background: #111827;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.delivery-uber--courier .delivery-uber__online-toggle.is-online {
+  background: var(--du-courier-header);
+  color: #fff;
+  box-shadow: 0 8px 24px rgba(245, 130, 32, 0.35);
+}
+
+.delivery-uber--courier .delivery-uber__tab.is-active {
+  color: var(--du-courier-accent-dark);
+  border-color: var(--du-courier-accent);
+}
+
+.delivery-uber--courier .delivery-uber__btn {
+  background: var(--du-courier-header);
+  color: #fff;
+}
+
+.delivery-uber--courier .delivery-uber__nav-btn.is-active {
+  color: var(--du-courier-accent-dark);
+}
+
+.delivery-uber--courier .delivery-uber__top-center--courier {
+  position: fixed;
+  top: calc(72px + env(safe-area-inset-top, 0px));
+  left: 16px;
+  right: 16px;
+  z-index: 19;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.delivery-uber--courier .delivery-uber__top-center--courier > * {
+  pointer-events: auto;
+}
+
+.delivery-uber--courier .delivery-uber__nav-btn.is-active .delivery-uber__nav-icon {
+  background: rgba(245, 130, 32, 0.15);
+  color: var(--du-courier-accent-dark);
+}
+
+.delivery-uber--courier .delivery-uber__nav-btn span:last-child {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.delivery-courier-dash__categories {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 14px;
+}
+
+.delivery-courier-dash__category {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 72px;
+  padding: 10px 6px;
+  border: 1.5px solid #f0e6dc;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #fffaf5 0%, #fff 100%);
+  text-align: center;
+}
+
+.delivery-courier-dash__category-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.delivery-courier-dash__category-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #3c2415;
+  line-height: 1.2;
+}
+
+.delivery-courier-dash__section-label {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #9ca3af;
+}
+
+.delivery-courier-dash__history-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 12px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--du-courier-accent-dark);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.delivery-courier-dash__earnings-row {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.delivery-courier-dash__earnings-card {
+  flex: 1;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #fff8f0, #fff);
+  border: 1px solid rgba(245, 130, 32, 0.2);
+}
+
+.delivery-courier-dash__earnings-card small {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #9ca3af;
+}
+
+.delivery-courier-dash__earnings-card strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 22px;
+  font-weight: 800;
+  color: #3c2415;
+}
+
+.delivery-courier-dash__earnings-card span {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+/* Map-first courier home (Uber-style) */
+.delivery-uber--courier {
+  background: #dfe3e8;
+}
+
+.delivery-uber--courier .delivery-uber__map-layer::after {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.08) 0%,
+    transparent 18%,
+    transparent 52%,
+    rgba(255, 255, 255, 0.42) 78%,
+    rgba(255, 255, 255, 0.72) 100%
+  );
+}
+
+.delivery-uber--courier .delivery-uber__sheet--courier-home {
+  max-height: min(46vh, 420px);
+}
+
+.delivery-uber__map-floating {
+  position: fixed;
+  top: calc(78px + env(safe-area-inset-top, 0px));
+  left: 16px;
+  right: 16px;
+  bottom: calc(50vh + 72px + env(safe-area-inset-bottom, 0px));
+  z-index: 18;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  pointer-events: none;
+}
+
+.delivery-uber__map-floating-pills {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.delivery-uber__go-online-btn {
+  min-width: min(240px, calc(100% - 32px));
+  padding: 16px 28px;
+  border: none;
+  border-radius: 999px;
+  background: #111827;
+  color: #fff;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  box-shadow: 0 12px 36px rgba(17, 24, 39, 0.28);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.delivery-uber__go-online-btn.is-online {
+  background: linear-gradient(135deg, #ff6b00 0%, #ff8a00 100%);
+  box-shadow: 0 12px 36px rgba(255, 107, 0, 0.35);
+}
+
+.delivery-uber__go-online-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.delivery-courier-dash__sheet-head {
+  display: grid;
+  gap: 10px;
+}
+
+.delivery-courier-dash__sheet-profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.delivery-courier-dash__avatar--compact {
+  width: 48px;
+  height: 48px;
+  font-size: 16px;
+  border-width: 2px;
+  box-shadow: none;
+}
+
+.delivery-courier-dash__sheet-profile .delivery-courier-dash__hello {
+  display: block;
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.delivery-courier-dash__level-pill {
+  display: inline-flex;
+  margin-top: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #fff7ed;
+  color: #c2410c;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.delivery-courier-dash__sheet-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.delivery-courier-dash__sheet-stats span {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #f3f4f6;
+  color: #4b5563;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.delivery-uber--courier .delivery-uber__top-bar {
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(10px);
+  border-radius: 0;
+  box-shadow: 0 1px 0 rgba(17, 24, 39, 0.06);
+}
+
+.delivery-uber--courier .delivery-uber__top-brand strong {
+  font-size: 17px;
+  text-transform: none;
+  letter-spacing: -0.02em;
+}
+
+.delivery-uber--courier .delivery-uber__sheet-head h1 {
+  margin-top: 8px;
+  font-size: 18px;
+}
+
+.delivery-uber--courier .delivery-uber__top-brand span {
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+@media (max-width: 520px) {
+  .delivery-uber__map-floating {
+    bottom: calc(48vh + 68px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+
+.delivery-uber--courier .delivery-uber__top-bar {
+  background: rgba(255, 255, 255, 0.98);
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 12px 16px;
+}
+
+.delivery-uber--courier .delivery-uber__top-brand {
+  align-items: flex-start;
+  gap: 0;
+}
+
+.delivery-uber--courier .delivery-uber__top-brand strong {
+  color: #111827;
+  font-size: 20px;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.delivery-uber--courier .delivery-uber__top-brand span {
+  color: #ff5a00;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.delivery-uber--courier .delivery-uber__icon-btn {
+  background: #fff;
+  color: #ff5a00;
+  box-shadow: none;
+  border: 0;
+  font-size: 24px;
+}
+
+.delivery-uber--courier .delivery-uber__bell-btn {
+  position: relative;
+  color: #111827;
+}
+
+.delivery-uber--courier .delivery-uber__bell-btn > span {
+  position: absolute;
+  top: 3px;
+  right: 2px;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.delivery-uber--courier .delivery-uber__sheet {
+  border-top: 0;
+  border-radius: 28px 28px 0 0;
+  box-shadow: 0 -16px 46px rgba(17, 24, 39, 0.12);
+}
+
+.delivery-courier-dash__hero-head {
+  display: grid;
+  gap: 10px;
+}
+
+.delivery-courier-dash__hero-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(150px, 0.8fr);
+  gap: 16px;
+  align-items: center;
+  padding: 18px 20px;
+  border-radius: 24px;
+  background: linear-gradient(135deg, #ff7a00 0%, #ff5a00 54%, #ff9d00 100%);
+  color: #fff;
+  box-shadow: 0 16px 34px rgba(255, 90, 0, 0.28);
+}
+
+.delivery-courier-dash__hero-main {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.delivery-courier-dash__hero-copy {
+  min-width: 0;
+}
+
+.delivery-courier-dash__hello {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  opacity: 0.9;
+}
+
+.delivery-courier-dash__hero-copy h1 {
+  margin: 0 0 8px;
+  color: #fff;
+  font-size: 23px;
+  line-height: 1.08;
+  letter-spacing: -0.04em;
+}
+
+.delivery-courier-dash__verified {
+  display: block;
+  margin-bottom: 8px;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.delivery-courier-dash__online-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.delivery-courier-dash__online-pill i {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #22c55e;
+}
+
+.delivery-courier-dash__online-pill.is-offline i {
+  background: #fed7aa;
+}
+
+.delivery-courier-dash__avatar {
+  width: 84px;
+  height: 84px;
+  border: 4px solid rgba(255, 255, 255, 0.86);
+  border-radius: 999px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  background: #fff7ed;
+  color: #ff5a00;
+  font-size: 25px;
+  font-weight: 900;
+  box-shadow: 0 14px 28px rgba(124, 45, 18, 0.26);
+}
+
+.delivery-courier-dash__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.delivery-courier-dash__level-card {
+  padding: 12px 0 12px 14px;
+  border-left: 1px solid rgba(255, 255, 255, 0.28);
+  color: #fff;
+}
+
+.delivery-courier-dash__level-card strong,
+.delivery-courier-dash__level-card span,
+.delivery-courier-dash__level-card small {
+  display: block;
+}
+
+.delivery-courier-dash__level-card strong {
+  color: #fff;
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.delivery-courier-dash__level-card span {
+  margin-top: 3px;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.delivery-courier-dash__level-card small {
+  margin-top: 7px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.delivery-courier-dash__level-bar {
+  height: 7px;
+  margin-top: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(124, 45, 18, 0.38);
+}
+
+.delivery-courier-dash__level-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #fff;
+}
+
+.delivery-courier-dash__stat-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  overflow: hidden;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 12px 30px rgba(17, 24, 39, 0.08);
+}
+
+.delivery-courier-dash__stat-strip article {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  justify-items: start;
+  align-items: center;
+  gap: 4px;
+  padding: 16px 14px;
+  border-right: 1px solid #eef0f3;
+  text-align: left;
+}
+
+.delivery-courier-dash__stat-strip article:last-child {
+  border-right: 0;
+}
+
+.delivery-courier-dash__stat-strip span {
+  grid-row: span 2;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: #fff7ed;
+  color: #ff5a00;
+  font-size: 17px;
+}
+
+.delivery-courier-dash__stat-strip strong {
+  color: #111827;
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.delivery-courier-dash__stat-strip small {
+  color: #4b5563;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.delivery-courier-dash__online-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #ff6b00, #ff8a00);
+  color: #fff;
+  box-shadow: 0 14px 32px rgba(255, 107, 0, 0.26);
+}
+
+.delivery-courier-dash__online-card div {
+  min-width: 0;
+}
+
+.delivery-courier-dash__online-card div > span {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  border-radius: 999px;
+  background: #22c55e;
+}
+
+.delivery-courier-dash__online-card div > span.is-offline {
+  background: #fed7aa;
+}
+
+.delivery-courier-dash__online-card strong {
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.delivery-courier-dash__online-card p {
+  margin: 4px 0 0;
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.delivery-uber--courier .delivery-courier-dash__online-card .delivery-uber__online-toggle {
+  width: auto;
+  min-width: 122px;
+  margin: 0;
+  border-radius: 999px;
+  background: #fff;
+  color: #ff5a00;
+  box-shadow: 0 10px 22px rgba(124, 45, 18, 0.16);
+}
+
+.delivery-courier-dash__section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 4px 0 8px;
+}
+
+.delivery-courier-dash__section-head .delivery-courier-dash__section-label {
+  margin: 0;
+}
+
+.delivery-courier-dash__section-head button {
+  border: 0;
+  background: transparent;
+  color: #ff5a00;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.delivery-courier-dash__categories {
+  grid-template-columns: repeat(6, minmax(66px, 1fr));
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.delivery-courier-dash__category {
+  min-height: 78px;
+  border-color: #ffedd5;
+  background: #fff7ed;
+}
+
+.delivery-courier-dash__overview {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.delivery-courier-dash__overview article {
+  display: grid;
+  gap: 5px;
+  justify-items: center;
+  padding: 14px 8px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid #eef0f3;
+  text-align: center;
+  box-shadow: 0 8px 20px rgba(17, 24, 39, 0.05);
+}
+
+.delivery-courier-dash__overview span {
+  font-size: 20px;
+}
+
+.delivery-courier-dash__overview strong {
+  color: #111827;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.delivery-courier-dash__overview small {
+  color: #6b7280;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+@media (max-width: 520px) {
+  .delivery-uber--courier .delivery-uber__top-bar {
+    padding-inline: 10px;
+  }
+
+  .delivery-courier-dash__hero-card {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .delivery-courier-dash__hero-main {
+    padding: 16px;
+    padding: 0;
+  }
+
+  .delivery-courier-dash__avatar {
+    width: 78px;
+    height: 78px;
+  }
+
+  .delivery-courier-dash__hero-copy h1 {
+    font-size: 22px;
+  }
+
+  .delivery-courier-dash__stat-strip,
+  .delivery-courier-dash__overview {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .delivery-courier-dash__level-card {
+    padding: 0;
+    border-left: 0;
+  }
+
+  .delivery-courier-dash__stat-strip article:nth-child(2n) {
+    border-right: 0;
+  }
+
+  .delivery-courier-dash__online-card {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .delivery-uber--courier .delivery-courier-dash__online-card .delivery-uber__online-toggle {
+    width: 100%;
+  }
+}
