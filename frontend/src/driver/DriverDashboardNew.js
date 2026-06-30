@@ -523,15 +523,15 @@ export default function DriverDashboardNew() {
             <span style={{ color: "#aaa", margin: "0 6px" }}>→</span>
             <span>🏁 {activeRide.destination || "Destination"}</span>
           </div>
-          <div style={rideActionsRow}>
+          <div style={{ width: "100%" }}>
             <RideStatusButtons
               ride={activeRide}
               onStatusChange={() => { fetchDriverRides(); fetchDriverStats(); }}
             />
-            <button type="button" style={cancelRideBtn} onClick={() => setDriverCancelOpen(true)}>
-              Cancel
-            </button>
           </div>
+          <button type="button" style={cancelRideBtn} onClick={() => setDriverCancelOpen(true)}>
+            Cancel ride
+          </button>
         </div>
       )}
 
@@ -792,14 +792,17 @@ const activeRideRoute = {
 const rideActionsRow = { display: "flex", gap: 8, alignItems: "center" };
 
 const cancelRideBtn = {
+  width: "100%",
+  marginTop: 10,
   background: "rgba(239,68,68,0.15)",
   border: "1px solid rgba(239,68,68,0.4)",
   color: "#ef4444",
-  borderRadius: 8,
-  padding: "6px 12px",
-  fontSize: 12,
-  fontWeight: 600,
+  borderRadius: 10,
+  padding: "12px 16px",
+  fontSize: 14,
+  fontWeight: 700,
   cursor: "pointer",
+  textAlign: "center",
 };
 
 // Floating side buttons
