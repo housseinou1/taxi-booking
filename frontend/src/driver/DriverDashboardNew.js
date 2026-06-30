@@ -461,7 +461,7 @@ export default function DriverDashboardNew() {
       </div>
 
       {/* ─── Notice Banner ──────────────────────────────────── */}
-      {driverNotice && (
+      {driverNotice && !activeRide && (
         <div style={noticeBannerStyle}>{driverNotice}</div>
       )}
 
@@ -762,9 +762,12 @@ const activeRidePanel = {
   zIndex: 20,
   background: "rgba(13,17,23,0.97)",
   borderRadius: 16,
-  padding: "14px 16px",
+  padding: "14px 16px 24px",
   border: "1px solid rgba(0,166,81,0.3)",
   boxShadow: "0 4px 24px rgba(0,0,0,0.5)",
+  maxHeight: "calc(100vh - 280px)",
+  overflowY: "auto",
+  WebkitOverflowScrolling: "touch",
 };
 
 const activeRideRow = {
