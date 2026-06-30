@@ -1,5 +1,4 @@
 import React from "react";
-import "../../driver/components/HamburgerMenu.css";
 import "./RiderHamburgerMenu.css";
 
 const MENU_SECTIONS = [
