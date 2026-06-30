@@ -48,7 +48,6 @@ export default function DriverDashboardNew() {
   const [currentView, setCurrentView] = useState("dashboard");
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [driverNotice, setDriverNotice] = useState("");
-  const [dashboardTab, setDashboardTab] = useState("map");
 
   const alertedRideIdsRef = useRef(new Set());
   const isOnlineRef = useRef(isOnline);
@@ -430,10 +429,16 @@ export default function DriverDashboardNew() {
   const vehicleModel = driverProfile?.vehicle?.model || driverProfile?.vehicle_model || driverProfile?.car_model || "";
   const vehiclePlate = driverProfile?.vehicle?.plate_number || driverProfile?.vehicle_plate || driverProfile?.plate_number || "";
   const acceptanceRate = driverProfile?.acceptance_rate || 92;
-  const totalRidesCompleted = driverProfile?.total_rides_completed || driverProfile?.total_rides || 0;
-  const weeklyGoalTarget = 50;
-  const weeklyGoalCurrent = Math.min(totalRidesCompleted % weeklyGoalTarget, weeklyGoalTarget);
-  const weeklyGoalProgress = Math.round((weeklyGoalCurrent / weeklyGoalTarget) * 100);
+  // ─── Auto-accept state ──────────────────────────────────────────────────────
+  const [autoAccept, setAutoAccept] = useState(false);
+
+  // Auto-accept incoming rides when enabled
+  useEffect(() => {
+    if (autoAccept && isOnline && incomingRide && !activeRide) {
+      const rideId = incomingRide?.id || incomingRide?.ride_id;
+      if (rideId) acceptRide(rideId);
+    }
+  }, [autoAccept, isOnline, incomingRide, activeRide, acceptRide]);
 
   // ─── Render ─────────────────────────────────────────────────────────────────
 
@@ -445,192 +450,138 @@ export default function DriverDashboardNew() {
   }
 
   return (
-    <main className={`dd-shell${lyftUI ? " driver-app--lyft" : ""}`}>
-      {/* ─── Top Header ─────────────────────────────────────── */}
-      <header className="dd-header">
-        <button type="button" className="dd-header-menu" onClick={() => setMenuOpen(true)} aria-label="Open menu">☰</button>
-        <span className="dd-header-logo">Yala Driver</span>
-        <div className="dd-header-right">
-          <button type="button" className="dd-header-bell" aria-label="Notifications">🔔</button>
-          {driverPhoto ? (
-            <img src={driverPhoto} alt={driverName} className="dd-header-avatar" />
-          ) : (
-            <span className="dd-header-avatar dd-header-avatar--fallback">
-              {(driverName || "Y").charAt(0).toUpperCase()}
-            </span>
-          )}
-        </div>
-      </header>
+    <main style={mapFirstShell}>
+      {/* ─── Fullscreen Map ──────────────────────────────────── */}
+      <div style={mapFullscreen}>
+        <DriverMapView
+          driverPosition={driverPosition}
+          activeRide={activeRide}
+          routePath={routePath}
+        />
+      </div>
 
       {/* ─── Notice Banner ──────────────────────────────────── */}
-      {driverNotice && <div className="dd-notice">{driverNotice}</div>}
+      {driverNotice && (
+        <div style={noticeBannerStyle}>{driverNotice}</div>
+      )}
 
-      {/* ─── Scrollable Content ─────────────────────────────── */}
-      <div className="dd-scroll">
+      {/* ─── Top Bar ─────────────────────────────────────────── */}
+      <div style={topBar}>
+        {/* Hamburger + notification dot */}
+        <button type="button" style={menuBtn} onClick={() => setMenuOpen(true)} aria-label="Open menu">
+          ☰
+          <span style={notifDot} />
+        </button>
 
-        {/* Hero Status Card */}
-        <section className="dd-hero-card">
-          <div className="dd-hero-top">
-            <div className="dd-hero-photo">
-              {driverPhoto ? (
-                <img src={driverPhoto} alt={driverName} />
-              ) : (
-                <span>{(driverName || "Y").charAt(0).toUpperCase()}</span>
-              )}
-              <span className={`dd-hero-dot ${isOnline ? "online" : ""}`} />
-            </div>
-            <div className="dd-hero-info">
-              <div className="dd-hero-name-row">
-                <h2 className="dd-hero-name">Bonjour, {driverName.split(" ")[0]}</h2>
-                <span className="dd-hero-verified">✓</span>
-              </div>
-              <div className="dd-hero-meta">
-                <span className={`dd-status-pill ${isOnline ? "online" : ""}`}>
-                  <span className="dd-status-dot" />
-                  {isOnline ? "Online" : "Offline"}
-                </span>
-                {driverRating > 0 && <span className="dd-hero-rating">★ {driverRating.toFixed(1)}</span>}
-              </div>
-              {(vehicleMake || vehicleModel) && (
-                <p className="dd-hero-vehicle">{vehicleMake} {vehicleModel} {vehiclePlate && <b>· {vehiclePlate}</b>}</p>
-              )}
-            </div>
-          </div>
-        </section>
+        {/* ON / OFF toggle pill — matches reference exactly */}
+        <button
+          type="button"
+          style={{ ...onOffPill, borderColor: isOnline ? "#00A651" : "#4a5568" }}
+          onClick={toggleAvailability}
+          disabled={toggleLoading}
+          aria-pressed={isOnline}
+          aria-label={isOnline ? "Go Offline" : "Go Online"}
+        >
+          <span style={{ ...powerIcon, color: isOnline ? "#00A651" : "#9ca3af" }}>⏻</span>
+          <span style={{ color: isOnline ? "#fff" : "#9ca3af", fontWeight: 700, fontSize: 13, letterSpacing: 1 }}>
+            {toggleLoading ? "..." : isOnline ? "ON" : "OFF"}
+          </span>
+          {/* Toggle slider */}
+          <span style={toggleTrack(isOnline)}>
+            <span style={toggleThumb(isOnline)} />
+          </span>
+        </button>
 
-        {/* Wallet Balance Card */}
-        <section className="dd-wallet-card">
-          <div className="dd-wallet-left">
-            <span className="dd-wallet-label">Wallet Balance</span>
-            <strong className="dd-wallet-amount">{formatMRU(earningsByPeriod.month)}</strong>
-          </div>
-          <button type="button" className="dd-wallet-btn" onClick={() => window.location.href = "/driver/earnings"}>💳</button>
-        </section>
+        {/* Auto Accept */}
+        <button
+          type="button"
+          style={{ ...autoAcceptBtn, borderColor: autoAccept ? "#00A651" : "#4a5568" }}
+          onClick={() => setAutoAccept((v) => !v)}
+          aria-pressed={autoAccept}
+        >
+          <span style={{ fontSize: 10, color: "#ccc", lineHeight: 1 }}>Auto</span>
+          <span style={{ fontSize: 10, color: "#ccc", lineHeight: 1 }}>Accept</span>
+          <span style={toggleTrack(autoAccept, true)}>
+            <span style={toggleThumb(autoAccept, true)} />
+          </span>
+        </button>
+      </div>
 
-        {/* Earnings Grid */}
-        <section className="dd-earnings-grid">
-          <div className="dd-earn-card">
-            <strong>{formatMRU(earningsByPeriod.today)}</strong>
-            <span>Today</span>
+      {/* ─── Active Ride Panel ───────────────────────────────── */}
+      {activeRide && (
+        <div style={activeRidePanel}>
+          <div style={activeRideRow}>
+            <span style={activeRideLabel}>
+              {activeRide.status === "driver_arriving" ? "Heading to pickup" :
+               activeRide.status === "driver_arrived" ? "Arrived at pickup" :
+               activeRide.status === "in_progress" ? "Ride in progress" : "Active ride"}
+            </span>
+            <span style={activeRideFare}>{activeRide.fare ? `${activeRide.fare} MRU` : ""}</span>
           </div>
-          <div className="dd-earn-card">
-            <strong>{formatMRU(earningsByPeriod.week)}</strong>
-            <span>This Week</span>
+          <div style={activeRideRoute}>
+            <span>📍 {activeRide.pickup || "Pickup"}</span>
+            <span style={{ color: "#aaa", margin: "0 6px" }}>→</span>
+            <span>🏁 {activeRide.destination || "Destination"}</span>
           </div>
-          <div className="dd-earn-card">
-            <strong>{formatMRU(earningsByPeriod.month)}</strong>
-            <span>This Month</span>
-          </div>
-          <div className="dd-earn-card">
-            <strong>{acceptanceRate}%</strong>
-            <span>Acceptance</span>
-          </div>
-        </section>
-
-        {/* Weekly Goal / Bonus Card */}
-        <section className="dd-goal-card">
-          <div className="dd-goal-info">
-            <h3 className="dd-goal-title">Weekly Goal</h3>
-            <p className="dd-goal-desc">Complete {weeklyGoalTarget} rides this week for <strong>{formatMRU(5000)}</strong> bonus</p>
-          </div>
-          <div className="dd-goal-progress-wrap">
-            <div className="dd-goal-bar">
-              <div className="dd-goal-bar-fill" style={{ width: `${weeklyGoalProgress}%` }} />
-            </div>
-            <div className="dd-goal-stats">
-              <span>{weeklyGoalCurrent} / {weeklyGoalTarget} rides</span>
-              <span>{weeklyGoalProgress}%</span>
-            </div>
-          </div>
-        </section>
-
-        {/* Map Section */}
-        <section className="dd-map-section">
-          <DriverMapView
-            driverPosition={driverPosition}
-            activeRide={activeRide}
-            routePath={routePath}
-          />
-        </section>
-
-        {/* Quick Actions Grid */}
-        <section className="dd-actions-section">
-          <h3 className="dd-section-title">Quick Actions</h3>
-          <div className="dd-actions-grid">
-            <button type="button" className="dd-action-item" onClick={() => window.location.href = "/driver/history"}>
-              <span className="dd-action-icon">🚕</span><span>My Rides</span>
-            </button>
-            <button type="button" className="dd-action-item" onClick={() => window.location.href = "/driver/earnings"}>
-              <span className="dd-action-icon">💰</span><span>Earnings</span>
-            </button>
-            <button type="button" className="dd-action-item" onClick={() => window.location.href = "/driver/history"}>
-              <span className="dd-action-icon">📊</span><span>Statistics</span>
-            </button>
-            <button type="button" className="dd-action-item" onClick={() => window.location.href = "/driver/feedback"}>
-              <span className="dd-action-icon">⭐</span><span>Ratings</span>
-            </button>
-            <button type="button" className="dd-action-item" onClick={() => { setCurrentView("documents"); }}>
-              <span className="dd-action-icon">📄</span><span>Documents</span>
-            </button>
-            <button type="button" className="dd-action-item" onClick={() => window.location.href = "/driver/achievements"}>
-              <span className="dd-action-icon">🏆</span><span>Rewards</span>
-            </button>
-            <button type="button" className="dd-action-item" onClick={() => window.location.href = "/driver/support"}>
-              <span className="dd-action-icon">💬</span><span>Support</span>
-            </button>
-            <button type="button" className="dd-action-item" onClick={() => window.location.href = "/driver/support"}>
-              <span className="dd-action-icon">👥</span><span>Invite</span>
-            </button>
-          </div>
-        </section>
-
-        {/* Recent Activity Feed */}
-        <section className="dd-activity-section">
-          <h3 className="dd-section-title">Recent Activity</h3>
-          <div className="dd-activity-feed">
-            {driverRides.slice(0, 5).map((ride, i) => (
-              <div key={ride.id || i} className="dd-activity-item">
-                <span className="dd-activity-icon">{ride.status === "completed" ? "✅" : ride.status === "cancelled" ? "❌" : "🚗"}</span>
-                <div className="dd-activity-text">
-                  <strong>{ride.pickup || "Pickup"} → {ride.destination || "Destination"}</strong>
-                  <small>{ride.fare ? `${ride.fare} MRU` : "Pending"} · {ride.status || "unknown"}</small>
-                </div>
-              </div>
-            ))}
-            {driverRides.length === 0 && (
-              <div className="dd-activity-empty">
-                <span>🚗</span>
-                <p>No recent activity yet. Go online to start receiving rides.</p>
-              </div>
-            )}
-          </div>
-        </section>
-
-      </div>{/* end dd-scroll */}
-
-      {/* Go Online / Status Panel (fixed-positioned bottom sheet) */}
-      <DriverStatusPanel
-        isOnline={isOnline}
-        loading={toggleLoading}
-        onToggle={toggleAvailability}
-        activeRide={activeRide}
-        driverLevel={{
-          level: driverProfile?.driver_level || "bronze",
-          points: driverProfile?.level_points || 0,
-          nextLevelPoints: driverProfile?.next_level_points || 3000,
-        }}
-        onCancelRide={() => setDriverCancelOpen(true)}
-        rideActions={
-          activeRide ? (
+          <div style={rideActionsRow}>
             <RideStatusButtons
               ride={activeRide}
               onStatusChange={() => { fetchDriverRides(); fetchDriverStats(); }}
             />
-          ) : null
-        }
-      />
+            <button type="button" style={cancelRideBtn} onClick={() => setDriverCancelOpen(true)}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
-      {/* Ride request overlay */}
+      {/* ─── Left float button ────────────────────────────────── */}
+      <button type="button" style={floatBtnLeft} onClick={() => setMenuOpen(true)} aria-label="Filters">
+        ⚙
+      </button>
+
+      {/* ─── Right float button ──────────────────────────────────*/}
+      <button type="button" style={floatBtnRight} aria-label="Settings">
+        ◎
+      </button>
+
+      {/* ─── Bottom Panel ────────────────────────────────────────*/}
+      <div style={bottomPanel}>
+        {/* Row 1: Today label + rating + AR */}
+        <div style={bottomRow1}>
+          <button type="button" style={todayBtn} onClick={() => setMenuOpen(true)}>
+            <span style={{ fontSize: 13, color: "#fff", marginRight: 2 }}>▾</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>Today</span>
+          </button>
+          <div style={ratingAR}>
+            <span style={{ color: "#f59e0b", fontSize: 14 }}>★</span>
+            <span style={{ color: "#fff", fontWeight: 700, fontSize: 14, marginLeft: 3 }}>
+              {driverRating > 0 ? driverRating.toFixed(1) : "5.0"}
+            </span>
+            <span style={arDivider} />
+            <span style={{ color: "#00A651", fontWeight: 700, fontSize: 14 }}>AR {acceptanceRate}%</span>
+          </div>
+        </div>
+        {/* Row 2: Trips + Earned */}
+        <div style={bottomRow2}>
+          <div style={statBlock}>
+            <div style={statBigVal}>
+              {driverRides.filter(r => r.status === "completed").length}
+              <span style={statArrow}> ›</span>
+            </div>
+            <div style={statSmallLabel}>Trip(s) completed</div>
+          </div>
+          <div style={statBlock}>
+            <div style={statBigVal}>
+              {Number(earningsByPeriod.today || 0).toFixed(2)} MRU
+              <span style={statArrow}> ›</span>
+            </div>
+            <div style={statSmallLabel}>Earned</div>
+          </div>
+        </div>
+      </div>
+
+      {/* ─── Ride Request Overlay ────────────────────────────── */}
       {isOnline && incomingRide && !activeRide && (
         <RideRequestCard
           ride={incomingRide}
@@ -641,7 +592,7 @@ export default function DriverDashboardNew() {
         />
       )}
 
-      {/* Driver cancel modal */}
+      {/* ─── Driver Cancel Modal ─────────────────────────────── */}
       {driverCancelOpen && (
         <div className="dd-cancel-modal">
           <h3>Cancel this ride?</h3>
@@ -660,29 +611,7 @@ export default function DriverDashboardNew() {
         </div>
       )}
 
-      {/* Bottom Navigation */}
-      <nav className="dd-bottom-nav">
-        <button type="button" className={`dd-nav-tab${dashboardTab === "map" ? " active" : ""}`} onClick={() => setDashboardTab("map")}>
-          <span className="dd-nav-icon">⌂</span><span className="dd-nav-label">Home</span>
-        </button>
-        <button type="button" className="dd-nav-tab" onClick={() => window.location.href = "/driver/history"}>
-          <span className="dd-nav-icon">🚗</span><span className="dd-nav-label">Rides</span>
-        </button>
-        <button type="button" className="dd-nav-tab dd-nav-tab--center" onClick={toggleAvailability}>
-          <span className="dd-nav-go-btn">
-            <span className={isOnline ? "online" : ""}>⏻</span>
-          </span>
-          <span className="dd-nav-label">Online</span>
-        </button>
-        <button type="button" className="dd-nav-tab" onClick={() => window.location.href = "/driver/earnings"}>
-          <span className="dd-nav-icon">💵</span><span className="dd-nav-label">Earnings</span>
-        </button>
-        <button type="button" className="dd-nav-tab" onClick={() => setCurrentView("profile")}>
-          <span className="dd-nav-icon">👤</span><span className="dd-nav-label">Profile</span>
-        </button>
-      </nav>
-
-      {/* Hamburger Menu (preserved) */}
+      {/* ─── Hamburger Menu ──────────────────────────────────── */}
       <HamburgerMenu
         isOpen={menuOpen}
         onClose={() => setMenuOpen(false)}
@@ -704,3 +633,270 @@ export default function DriverDashboardNew() {
     </main>
   );
 }
+
+// ─── Styles ──────────────────────────────────────────────────────────────────
+
+const mapFirstShell = {
+  position: "fixed",
+  inset: 0,
+  background: "#0d1117",
+  overflow: "hidden",
+  fontFamily: "'Inter', system-ui, sans-serif",
+};
+
+const mapFullscreen = {
+  position: "absolute",
+  inset: 0,
+  zIndex: 0,
+};
+
+const noticeBannerStyle = {
+  position: "absolute",
+  top: 72,
+  left: 12,
+  right: 12,
+  zIndex: 30,
+  background: "rgba(239,68,68,0.92)",
+  color: "#fff",
+  borderRadius: 10,
+  padding: "8px 14px",
+  fontSize: 13,
+  fontWeight: 500,
+};
+
+// Top bar — dark strip matching reference
+const topBar = {
+  position: "absolute",
+  top: 0,
+  left: 0,
+  right: 0,
+  zIndex: 20,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  background: "rgba(18,24,38,0.96)",
+  padding: "38px 14px 10px",
+  gap: 8,
+};
+
+const menuBtn = {
+  background: "none",
+  border: "none",
+  color: "#fff",
+  fontSize: 22,
+  cursor: "pointer",
+  position: "relative",
+  padding: "4px 8px",
+  lineHeight: 1,
+};
+
+const notifDot = {
+  position: "absolute",
+  top: 2,
+  right: 2,
+  width: 9,
+  height: 9,
+  borderRadius: "50%",
+  background: "#ef4444",
+  border: "2px solid rgba(18,24,38,0.96)",
+};
+
+// ON/OFF pill — dark rounded pill with power icon + text + mini toggle
+const onOffPill = {
+  display: "flex",
+  alignItems: "center",
+  gap: 7,
+  background: "rgba(30,36,50,0.98)",
+  border: "1.5px solid",
+  borderRadius: 24,
+  padding: "7px 14px",
+  cursor: "pointer",
+  flex: 1,
+  justifyContent: "center",
+  maxWidth: 140,
+};
+
+const powerIcon = { fontSize: 15, lineHeight: 1 };
+
+const toggleTrack = (active, small = false) => ({
+  width: small ? 28 : 32,
+  height: small ? 16 : 18,
+  borderRadius: 20,
+  background: active ? "#00A651" : "#374151",
+  position: "relative",
+  flexShrink: 0,
+  transition: "background 0.2s",
+});
+
+const toggleThumb = (active, small = false) => ({
+  position: "absolute",
+  top: small ? 2 : 2,
+  left: active ? (small ? 12 : 14) : 2,
+  width: small ? 12 : 14,
+  height: small ? 12 : 14,
+  borderRadius: "50%",
+  background: "#fff",
+  transition: "left 0.2s",
+});
+
+// Auto Accept button
+const autoAcceptBtn = {
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  gap: 2,
+  background: "rgba(30,36,50,0.98)",
+  border: "1.5px solid",
+  borderRadius: 10,
+  padding: "5px 8px",
+  cursor: "pointer",
+  minWidth: 54,
+};
+
+// Active ride panel
+const activeRidePanel = {
+  position: "absolute",
+  bottom: 140,
+  left: 12,
+  right: 12,
+  zIndex: 20,
+  background: "rgba(13,17,23,0.97)",
+  borderRadius: 16,
+  padding: "14px 16px",
+  border: "1px solid rgba(0,166,81,0.3)",
+  boxShadow: "0 4px 24px rgba(0,0,0,0.5)",
+};
+
+const activeRideRow = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  marginBottom: 6,
+};
+
+const activeRideLabel = { color: "#00A651", fontWeight: 700, fontSize: 13 };
+const activeRideFare = { color: "#fff", fontWeight: 700, fontSize: 15 };
+
+const activeRideRoute = {
+  color: "#ccc",
+  fontSize: 12,
+  marginBottom: 10,
+  display: "flex",
+  flexWrap: "wrap",
+  gap: 2,
+};
+
+const rideActionsRow = { display: "flex", gap: 8, alignItems: "center" };
+
+const cancelRideBtn = {
+  background: "rgba(239,68,68,0.15)",
+  border: "1px solid rgba(239,68,68,0.4)",
+  color: "#ef4444",
+  borderRadius: 8,
+  padding: "6px 12px",
+  fontSize: 12,
+  fontWeight: 600,
+  cursor: "pointer",
+};
+
+// Floating side buttons
+const floatBtnLeft = {
+  position: "absolute",
+  left: 14,
+  bottom: 145,
+  zIndex: 20,
+  width: 44,
+  height: 44,
+  borderRadius: "50%",
+  background: "#2563eb",
+  border: "none",
+  color: "#fff",
+  fontSize: 18,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  cursor: "pointer",
+  boxShadow: "0 2px 12px rgba(37,99,235,0.5)",
+};
+
+const floatBtnRight = {
+  position: "absolute",
+  right: 14,
+  bottom: 145,
+  zIndex: 20,
+  width: 44,
+  height: 44,
+  borderRadius: "50%",
+  background: "rgba(30,36,50,0.96)",
+  border: "1px solid rgba(255,255,255,0.12)",
+  color: "#fff",
+  fontSize: 18,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  cursor: "pointer",
+  boxShadow: "0 2px 12px rgba(0,0,0,0.4)",
+};
+
+// Bottom panel — matches reference exactly
+const bottomPanel = {
+  position: "absolute",
+  bottom: 0,
+  left: 0,
+  right: 0,
+  zIndex: 20,
+  background: "rgba(18,24,38,0.98)",
+  borderTopLeftRadius: 18,
+  borderTopRightRadius: 18,
+  padding: "14px 20px 28px",
+};
+
+const bottomRow1 = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  marginBottom: 14,
+};
+
+const todayBtn = {
+  background: "none",
+  border: "none",
+  display: "flex",
+  alignItems: "center",
+  gap: 2,
+  cursor: "pointer",
+  padding: 0,
+};
+
+const ratingAR = {
+  display: "flex",
+  alignItems: "center",
+  gap: 6,
+};
+
+const arDivider = {
+  width: 1,
+  height: 16,
+  background: "rgba(255,255,255,0.2)",
+  margin: "0 4px",
+};
+
+const bottomRow2 = {
+  display: "flex",
+  gap: 0,
+};
+
+const statBlock = {
+  flex: 1,
+};
+
+const statBigVal = {
+  color: "#fff",
+  fontWeight: 700,
+  fontSize: 17,
+  display: "flex",
+  alignItems: "center",
+};
+
+const statArrow = { color: "#9ca3af", fontSize: 14, marginLeft: 2 };
+const statSmallLabel = { color: "#9ca3af", fontSize: 12, marginTop: 2 };
