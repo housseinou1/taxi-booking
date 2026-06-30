@@ -31,8 +31,9 @@ VALID_TRANSITIONS = {
     "accepted": ["courier_arriving", "picked_up", "cancelled"],
     "courier_arriving": ["picked_up", "cancelled"],
     "picked_up": ["in_transit", "delivering"],
-    "in_transit": ["delivered"],
-    "delivering": ["delivered"],
+    "in_transit": ["delivered", "delivery_exception"],
+    "delivering": ["delivered", "delivery_exception"],
+    "delivery_exception": ["delivered", "cancelled"],
 }
 
 ACTIVE_STATUSES = [
@@ -42,9 +43,10 @@ ACTIVE_STATUSES = [
     "picked_up",
     "in_transit",
     "delivering",
+    "delivery_exception",
 ]
 
-PICKUP_VERIFY_CATEGORIES = {"package", "documents", "shopping", "pharmacy"}
+PICKUP_VERIFY_CATEGORIES = {"package", "documents", "shopping", "pharmacy", "food", "grocery", "restaurant", "market", "household", "business", "courier"}
 PROOF_REQUIRED_CATEGORIES = {"package", "documents"}
 
 pricing_service = DeliveryPricingService()
@@ -281,6 +283,7 @@ class DeliveryService:
         metadata = {
             "recipient_code": main_code,
             "pickup_pin": delivery.pickup_pin,
+            "dropoff_pin": delivery.dropoff_pin,
             "stop_codes": stop_codes,
             "fare_breakdown": fare_breakdown.as_dict(),
             "estimated_duration_minutes": estimated_duration,
@@ -300,7 +303,7 @@ class DeliveryService:
             )
         if Delivery.objects.filter(
             driver=driver,
-            status__in=["accepted", "courier_arriving", "picked_up", "in_transit", "delivering"],
+            status__in=["accepted", "courier_arriving", "picked_up", "in_transit", "delivering", "delivery_exception"],
         ).exists():
             raise DeliveryServiceError(
                 "Complete your active delivery before accepting another.",
@@ -348,6 +351,10 @@ class DeliveryService:
         from .notifications import notify_delivery_status_change
 
         notify_delivery_status_change(delivery, previous_status="requested")
+
+        # Send PIN notifications via SMS
+        self._send_pin_notifications(delivery)
+
         return delivery
 
     def transition_status(self, delivery: Delivery, new_status: str, **kwargs) -> Delivery:
@@ -501,6 +508,98 @@ class DeliveryService:
             notify_delivery_payment_event(delivery)
 
         return delivery
+
+    def _send_pin_notifications(self, delivery: Delivery):
+        """Send pickup PIN and dropoff PIN via push notification to the customer."""
+        import logging
+
+        logger = logging.getLogger(__name__)
+
+        try:
+            from notifications.push import send_push_to_user
+
+            # Push notification to customer with pickup PIN
+            send_push_to_user(
+                delivery.customer,
+                "Pickup PIN Ready",
+                f"Your pickup PIN is {delivery.pickup_pin}. "
+                f"Give this code to the courier when they collect your package.",
+                {
+                    "type": "delivery_pickup_pin",
+                    "delivery_id": delivery.id,
+                    "pickup_pin": delivery.pickup_pin,
+                    "deep_link": "/delivery",
+                },
+                app_type="rider",
+                android_channel_id="yala_deliveries",
+            )
+
+            # Push notification to customer with dropoff PIN
+            send_push_to_user(
+                delivery.customer,
+                "Delivery PIN for Recipient",
+                f"The recipient's delivery PIN is {delivery.dropoff_pin}. "
+                f"Share this with {delivery.recipient_name or 'the recipient'} — "
+                f"they'll give it to the courier at delivery.",
+                {
+                    "type": "delivery_dropoff_pin",
+                    "delivery_id": delivery.id,
+                    "dropoff_pin": delivery.dropoff_pin,
+                    "deep_link": "/delivery",
+                },
+                app_type="rider",
+                android_channel_id="yala_deliveries",
+            )
+        except Exception:
+            logger.exception("Failed to send PIN push notifications for delivery %s", delivery.id)
+
+        # Optional: send SMS if provider is configured (skip if not)
+        try:
+            from django.conf import settings as django_settings
+
+            if getattr(django_settings, "YALA_SMS_PROVIDER", "") and django_settings.YALA_SMS_PROVIDER != "disabled":
+                from authapp.phone_views import send_sms
+
+                sender_phone = getattr(delivery.customer, "phone_number", "") or ""
+                if sender_phone:
+                    try:
+                        send_sms(
+                            sender_phone,
+                            f"Yala Delivery #{delivery.id}: Pickup PIN is {delivery.pickup_pin}. "
+                            f"Dropoff PIN for recipient: {delivery.dropoff_pin}.",
+                        )
+                    except Exception:
+                        logger.debug("SMS send skipped/failed for delivery %s", delivery.id)
+        except Exception:
+            pass
+
+    def verify_dropoff_pin(
+        self,
+        delivery: Delivery,
+        dropoff_pin: str = "",
+        *,
+        actor=None,
+    ) -> None:
+        """Verify the 4-digit dropoff PIN provided by the recipient to the courier."""
+        from security.services.fraud_service import log_verification_event
+
+        submitted = str(dropoff_pin or "").strip()
+        if not submitted or not secrets.compare_digest(submitted, delivery.dropoff_pin):
+            log_verification_event(
+                delivery,
+                "dropoff_pin_fail",
+                actor=actor,
+                success=False,
+                metadata={"attempted": bool(submitted)},
+            )
+            raise DeliveryServiceError(
+                "Delivery PIN is incorrect.",
+                code="invalid_dropoff_pin",
+            )
+        delivery.dropoff_pin_verified_at = timezone.now()
+        log_verification_event(
+            delivery, "dropoff_pin_success", actor=actor, success=True
+        )
 
     def _validate_schedule(self, scheduled_pickup_at):
         now = timezone.now()

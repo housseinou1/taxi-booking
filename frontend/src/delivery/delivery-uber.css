@@ -1524,6 +1524,80 @@
   font-size: 13px;
 }
 
+.delivery-uber-proof__fallback-toggle {
+  border: 1px solid #fed7aa;
+  background: #fff7ed;
+  color: #9a3412;
+  border-radius: 999px;
+  padding: 12px 16px;
+  font-weight: 800;
+}
+
+.delivery-uber-proof__fallback,
+.delivery-uber-proof__review {
+  display: grid;
+  gap: 10px;
+  border: 1px solid #fed7aa;
+  background: #fff7ed;
+  border-radius: 16px;
+  padding: 14px;
+}
+
+.delivery-uber-proof__fallback strong,
+.delivery-uber-proof__review strong {
+  color: #9a3412;
+}
+
+.delivery-uber-proof__fallback-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.delivery-uber-proof__fallback-actions button {
+  border: 1px solid #fdba74;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 10px;
+  font-weight: 700;
+}
+
+.delivery-uber-proof__select,
+.delivery-uber-proof__textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--du-gray-200);
+  border-radius: 12px;
+  padding: 13px;
+  font: inherit;
+  background: #ffffff;
+}
+
+.delivery-uber-proof__confirm {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--du-gray-700);
+}
+
+.delivery-track__exception {
+  border: 1px solid #fed7aa;
+  background: #fff7ed;
+  border-radius: 18px;
+  padding: 14px;
+  margin: 12px 0;
+}
+
+.delivery-track__exception strong {
+  color: #9a3412;
+}
+
+.delivery-track__exception p {
+  margin: 6px 0 0;
+  color: #7c2d12;
+}
+
 @media (min-width: 900px) {
   .delivery-uber__sheet {
     left: 50%;
@@ -2192,6 +2266,26 @@
 
 .delivery-uber__pin-banner--pickup {
   background: rgba(245, 130, 32, 0.12);
+}
+
+.delivery-uber__pin-banner--dropoff {
+  background: rgba(39, 110, 241, 0.1);
+  border: 1px solid rgba(39, 110, 241, 0.2);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.delivery-uber__pin-banner--dropoff strong {
+  font-size: 20px;
+  letter-spacing: 0.15em;
+  color: #1d4ed8;
+}
+
+.delivery-uber__pin-banner--dropoff small {
+  font-size: 12px;
+  color: var(--du-gray-600);
 }
 
 .delivery-uber__pin-inline {

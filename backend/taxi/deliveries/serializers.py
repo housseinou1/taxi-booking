@@ -154,6 +154,8 @@ class DeliverySerializer(serializers.ModelSerializer):
     requires_pickup_verification = serializers.SerializerMethodField()
     pickup_pin = serializers.SerializerMethodField()
     pickup_pin_verified = serializers.SerializerMethodField()
+    dropoff_pin = serializers.SerializerMethodField()
+    dropoff_pin_verified = serializers.SerializerMethodField()
     eta_minutes = serializers.SerializerMethodField()
     offer_expires_in = serializers.SerializerMethodField()
     is_offered_to_me = serializers.SerializerMethodField()
@@ -272,6 +274,21 @@ class DeliverySerializer(serializers.ModelSerializer):
 
     def get_pickup_pin_verified(self, obj):
         return bool(obj.pickup_pin_verified_at)
+
+    def get_dropoff_pin(self, obj):
+        """Return dropoff PIN to the customer (sender) so they can share with recipient."""
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return ""
+        # Only show to customer (sender) or admin — courier should not see it
+        if obj.customer_id != request.user.id and not request.user.is_staff:
+            return ""
+        if obj.status in {"delivered", "cancelled"}:
+            return ""
+        return obj.dropoff_pin or ""
+
+    def get_dropoff_pin_verified(self, obj):
+        return bool(getattr(obj, "dropoff_pin_verified_at", None))
 
     def get_eta_minutes(self, obj):
         from .geo import eta_minutes_to_target

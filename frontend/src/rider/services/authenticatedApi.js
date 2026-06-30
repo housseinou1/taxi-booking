@@ -4,10 +4,15 @@ import { API_URL } from "../../apiConfig";
 
 let refreshPromise = null;
 let redirectStarted = false;
+let consecutiveRefreshFailures = 0;
+const MAX_REFRESH_FAILURES = 3;
 
 const isAuthenticationError = (error) =>
   error?.response?.status === 401 ||
   error?.response?.data?.code === "token_not_valid";
+
+const isNetworkError = (error) =>
+  !error?.response && (error?.code === "ECONNABORTED" || error?.message === "Network Error");
 
 const clearSessionAndRedirect = () => {
   localStorage.removeItem("access");
@@ -32,14 +37,15 @@ const refreshAccessToken = async () => {
   if (refreshPromise) return refreshPromise;
 
   const refresh = localStorage.getItem("refresh");
-  if (!refresh) {
+  if (!refresh || refresh === "null" || refresh === "undefined") {
     clearSessionAndRedirect();
     throw new Error("Your session expired. Please log in again.");
   }
 
   refreshPromise = axios
-    .post(`${API_URL}/auth/token/refresh/`, { refresh }, { timeout: 10000 })
+    .post(`${API_URL}/auth/token/refresh/`, { refresh }, { timeout: 15000 })
     .then((response) => {
+      consecutiveRefreshFailures = 0;
       localStorage.setItem("access", response.data.access);
       if (response.data.refresh) {
         localStorage.setItem("refresh", response.data.refresh);
@@ -47,6 +53,14 @@ const refreshAccessToken = async () => {
       return response.data.access;
     })
     .catch((error) => {
+      consecutiveRefreshFailures += 1;
+
+      // On network errors, don't redirect immediately — allow retry
+      if (isNetworkError(error) && consecutiveRefreshFailures < MAX_REFRESH_FAILURES) {
+        throw new Error("Network error during token refresh. Will retry on next request.");
+      }
+
+      // On auth errors or max failures, clear session
       clearSessionAndRedirect();
       throw error;
     })
@@ -91,8 +105,16 @@ const authenticatedRequest = async (method, url, data, config) => {
   } catch (error) {
     if (!isAuthenticationError(error)) throw error;
 
-    const access = await refreshAccessToken();
-    return retryRequest(method, url, data, config, access);
+    try {
+      const access = await refreshAccessToken();
+      return retryRequest(method, url, data, config, access);
+    } catch (refreshError) {
+      // If refresh failed due to network, throw original error so caller can handle
+      if (isNetworkError(refreshError)) {
+        throw error;
+      }
+      throw refreshError;
+    }
   }
 };
 

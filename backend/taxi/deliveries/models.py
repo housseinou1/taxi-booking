@@ -15,6 +15,10 @@ def generate_delivery_pickup_pin():
     return f"{secrets.randbelow(10000):04d}"
 
 
+def generate_delivery_dropoff_pin():
+    return f"{secrets.randbelow(10000):04d}"
+
+
 class BusinessAccount(models.Model):
     """Company account for bulk deliveries with invoicing."""
 
@@ -55,8 +59,24 @@ class Delivery(models.Model):
         ("picked_up", "Picked Up"),
         ("in_transit", "In Transit"),
         ("delivering", "Delivering"),  # legacy alias
+        ("delivery_exception", "Delivery Exception"),
         ("delivered", "Delivered"),
         ("cancelled", "Cancelled"),
+    ]
+
+    EXCEPTION_REASON_CHOICES = [
+        ("recipient_unavailable", "Recipient unavailable"),
+        ("recipient_forgot_pin", "Recipient forgot PIN"),
+        ("recipient_phone_unreachable", "Recipient phone unreachable"),
+        ("recipient_refused_pin", "Recipient refused PIN"),
+        ("other", "Other"),
+    ]
+
+    EXCEPTION_RESOLUTION_CHOICES = [
+        ("", "Pending review"),
+        ("approved", "Approved"),
+        ("rejected", "Rejected"),
+        ("refunded", "Refunded"),
     ]
 
     PACKAGE_TYPES = [
@@ -128,6 +148,28 @@ class Delivery(models.Model):
     picked_up_at = models.DateTimeField(null=True, blank=True)
     in_transit_at = models.DateTimeField(null=True, blank=True)
     delivered_at = models.DateTimeField(null=True, blank=True)
+    exception_reason = models.CharField(
+        max_length=40,
+        choices=EXCEPTION_REASON_CHOICES,
+        blank=True,
+        default="",
+    )
+    exception_note = models.TextField(blank=True, default="")
+    exception_reported_at = models.DateTimeField(null=True, blank=True)
+    exception_resolution = models.CharField(
+        max_length=20,
+        choices=EXCEPTION_RESOLUTION_CHOICES,
+        blank=True,
+        default="",
+    )
+    exception_resolved_at = models.DateTimeField(null=True, blank=True)
+    exception_resolved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="resolved_delivery_exceptions",
+    )
 
     # ── New: Service category ─────────────────────────────────────────────────
     service_category = models.CharField(
@@ -217,6 +259,12 @@ class Delivery(models.Model):
         help_text="PIN shown to customer for pickup verification.",
     )
     pickup_pin_verified_at = models.DateTimeField(null=True, blank=True)
+    dropoff_pin = models.CharField(
+        max_length=4,
+        default=generate_delivery_dropoff_pin,
+        help_text="PIN sent to recipient for delivery confirmation.",
+    )
+    dropoff_pin_verified_at = models.DateTimeField(null=True, blank=True)
     offered_driver = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,

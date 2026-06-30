@@ -10,6 +10,8 @@ CRITICAL_TYPES = {
     "delivery_cancelled",
     "delivery_payment_failed",
     "delivery_sos",
+    "delivery_pickup_pin",
+    "delivery_dropoff_pin",
 }
 
 

@@ -40,6 +40,9 @@ function getHapticsPlugin() {
 }
 
 let soundPreloaded = false;
+let deliverySoundPreloaded = false;
+let deliveryAlertIntervalId = null;
+let deliveryAlertActive = false;
 let sharedAudioContext = null;
 let lastRideAlertAt = 0;
 const RIDE_ALERT_MIN_GAP_MS = 350;
@@ -49,15 +52,18 @@ export const RIDE_ALERT_SOUND_STYLE_LYFT = "lyft";
 let rideAlertSoundStyleCache = null;
 
 function getNativeAudioAssetPaths() {
-  const paths = ["public/notification.wav", "notification.wav"];
-
-  if (getPlatform() === "android") {
-    paths.unshift("public/notification.wav");
-  } else if (getPlatform() === "ios") {
-    paths.unshift("public/notification.wav");
-  }
+  const paths = [
+    "public/delivery_request.wav",
+    "delivery_request.wav",
+    "public/notification.wav",
+    "notification.wav",
+  ];
 
   return [...new Set(paths)];
+}
+
+function getDeliveryNativeAudioAssetPaths() {
+  return ["public/delivery_request.wav", "delivery_request.wav", "public/notification.wav", "notification.wav"];
 }
 
 function normalizeRideAlertSoundStyle(style) {
@@ -96,15 +102,16 @@ export function setRideAlertSoundStyle(style) {
 
 function getNotificationAudioUrl() {
   const publicBase = process.env.PUBLIC_URL || "";
+  const fileName = "/delivery_request.wav";
 
   if (typeof window !== "undefined") {
     const origin = window.location?.origin;
     if (origin && origin !== "null") {
-      return `${origin}${publicBase}/notification.wav`;
+      return `${origin}${publicBase}${fileName}`;
     }
   }
 
-  return `${publicBase}/notification.wav`;
+  return `${publicBase}${fileName}`;
 }
 
 let notificationAudio = null;
@@ -127,7 +134,7 @@ export async function preloadNotificationSound() {
 
   const NativeAudio = await getNativeAudioPlugin();
   if (!NativeAudio?.preload) return false;
-  if (soundPreloaded) return true;
+  if (soundPreloaded && deliverySoundPreloaded) return true;
 
   for (const assetPath of getNativeAudioAssetPaths()) {
     try {
@@ -138,10 +145,51 @@ export async function preloadNotificationSound() {
         isUrl: false,
       });
       soundPreloaded = true;
-      console.log("NativeAudio preloaded:", assetPath);
-      return true;
     } catch (error) {
       console.log("NativeAudio preload failed for", assetPath, error.message || error);
+    }
+  }
+
+  for (const assetPath of getDeliveryNativeAudioAssetPaths()) {
+    try {
+      await NativeAudio.preload({
+        assetId: "delivery_request",
+        assetPath,
+        audioChannelNum: 1,
+        isUrl: false,
+      });
+      deliverySoundPreloaded = true;
+      console.log("NativeAudio preloaded delivery_request:", assetPath);
+      return true;
+    } catch (error) {
+      console.log("NativeAudio delivery preload failed for", assetPath, error.message || error);
+    }
+  }
+
+  return soundPreloaded || deliverySoundPreloaded;
+}
+
+async function playNativeDeliverySound() {
+  if (!isNative()) return false;
+
+  if (!deliverySoundPreloaded && !soundPreloaded) {
+    await preloadNotificationSound();
+  }
+
+  const NativeAudio = await getNativeAudioPlugin();
+  if (!NativeAudio?.play) return false;
+
+  const assetIds = deliverySoundPreloaded
+    ? ["delivery_request", "notification"]
+    : ["notification"];
+
+  for (const assetId of assetIds) {
+    try {
+      await NativeAudio.stop({ assetId }).catch(() => {});
+      await NativeAudio.play({ assetId, time: 0 });
+      return true;
+    } catch (error) {
+      console.log("NativeAudio play error:", assetId, error.message || error);
     }
   }
 
@@ -288,6 +336,87 @@ export async function unlockRideRequestSound() {
   await playNativeSound();
 
   return true;
+}
+
+/** Stop repeating delivery-offer alert immediately. */
+export function stopDeliveryOfferAlert() {
+  deliveryAlertActive = false;
+  if (deliveryAlertIntervalId) {
+    window.clearInterval(deliveryAlertIntervalId);
+    deliveryAlertIntervalId = null;
+  }
+
+  if (notificationAudio) {
+    try {
+      notificationAudio.pause();
+      notificationAudio.currentTime = 0;
+    } catch (error) {
+      // ignore
+    }
+  }
+
+  if (isNative()) {
+    getNativeAudioPlugin().then((NativeAudio) => {
+      if (!NativeAudio?.stop) return;
+      NativeAudio.stop({ assetId: "delivery_request" }).catch(() => {});
+      NativeAudio.stop({ assetId: "notification" }).catch(() => {});
+    });
+  }
+}
+
+/** Uber-style alert for incoming delivery offers. */
+export async function playDeliveryOfferAlert(options = {}) {
+  const force = options.force ?? true;
+
+  try {
+    await vibrateNative(true);
+  } catch (e) {
+    console.log("Vibration failed:", e?.message || e);
+  }
+
+  let played = false;
+
+  try {
+    played = await playRideAlertChime({ force });
+  } catch (e) {
+    console.log("Chime failed:", e?.message || e);
+  }
+
+  try {
+    const audio = getNotificationAudio();
+    audio.currentTime = 0;
+    audio.volume = 1;
+    await audio.play();
+    return true;
+  } catch (e) {
+    console.log("HTML5 delivery alert failed:", e?.message || e);
+  }
+
+  try {
+    await preloadNotificationSound();
+    if (await playNativeDeliverySound()) {
+      return true;
+    }
+    if (await playNativeSound()) {
+      return true;
+    }
+  } catch (e) {
+    console.log("Native delivery sound fallback failed:", e?.message || e);
+  }
+
+  return played;
+}
+
+/** Repeat delivery alert until stopped (accept/decline/timeout). */
+export async function startDeliveryOfferAlertLoop() {
+  stopDeliveryOfferAlert();
+  deliveryAlertActive = true;
+  await playDeliveryOfferAlert({ force: true });
+
+  deliveryAlertIntervalId = window.setInterval(() => {
+    if (!deliveryAlertActive) return;
+    playDeliveryOfferAlert({ force: true }).catch(() => {});
+  }, 3200);
 }
 
 export async function playRideRequestAlert({ force = false } = {}) {

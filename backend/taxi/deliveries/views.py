@@ -62,7 +62,23 @@ from .services.dispute_service import DisputeServiceError
 from payments.settlement_service import courier_balance_summary
 
 
-ACTIVE_CUSTOMER_STATUSES = ["requested", "accepted", "picked_up", "delivering"]
+ACTIVE_CUSTOMER_STATUSES = [
+    "requested",
+    "accepted",
+    "courier_arriving",
+    "picked_up",
+    "in_transit",
+    "delivering",
+    "delivery_exception",
+]
+
+DELIVERY_EXCEPTION_REASONS = {
+    "recipient_unavailable",
+    "recipient_forgot_pin",
+    "recipient_phone_unreachable",
+    "recipient_refused_pin",
+    "other",
+}
 
 delivery_service = DeliveryService()
 pricing_service = DeliveryPricingService()
@@ -138,7 +154,9 @@ def request_delivery(request):
     response_data = DeliverySerializer(delivery, context={"request": request}).data
     response_data["recipient_code"] = metadata["recipient_code"]
     response_data["pickup_pin"] = metadata.get("pickup_pin", "")
+    response_data["dropoff_pin"] = metadata.get("dropoff_pin", "")
     response_data["pickup_pin_note"] = "Share this PIN with your courier at pickup when required."
+    response_data["dropoff_pin_note"] = "This PIN was sent to the recipient. They will share it with the courier at delivery."
     response_data["recipient_code_note"] = "Share this code only with the recipient."
     response_data["estimated_duration_minutes"] = metadata.get("estimated_duration_minutes")
     if metadata.get("stop_codes"):
@@ -425,27 +443,39 @@ def start_delivery(request, delivery_id):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def confirm_delivery(request, delivery_id):
-    """Driver confirms delivery with recipient code and optional proof."""
+    """Driver confirms delivery with dropoff PIN and optional proof."""
     delivery, error_response = get_assigned_delivery(
         request, delivery_id, ["picked_up", "in_transit", "delivering"]
     )
     if error_response:
         return error_response
 
-    code = str(request.data.get("recipient_code", "")).strip()
-    if not code or not delivery_service.verify_recipient_code(delivery.recipient_code_hash, code):
-        from security.services.fraud_service import log_verification_event
+    # Accept either 'recipient_code' (legacy) or 'dropoff_pin' (new)
+    code = str(request.data.get("dropoff_pin") or request.data.get("recipient_code", "")).strip()
 
-        log_verification_event(
-            delivery,
-            "dropoff_code_fail",
-            actor=request.user,
-            success=False,
-        )
-        return Response(
-            {"detail": "Recipient confirmation code is incorrect.", "code": "invalid_code"},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+    # Try new dropoff_pin verification first, fall back to recipient_code_hash
+    pin_valid = False
+    if code and hasattr(delivery, "dropoff_pin") and delivery.dropoff_pin:
+        try:
+            delivery_service.verify_dropoff_pin(delivery, code, actor=request.user)
+            pin_valid = True
+        except DeliveryServiceError:
+            pass
+
+    if not pin_valid:
+        if not code or not delivery_service.verify_recipient_code(delivery.recipient_code_hash, code):
+            from security.services.fraud_service import log_verification_event
+
+            log_verification_event(
+                delivery,
+                "dropoff_code_fail",
+                actor=request.user,
+                success=False,
+            )
+            return Response(
+                {"detail": "Recipient confirmation code is incorrect.", "code": "invalid_code"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
     from security.services.fraud_service import check_early_delivery, log_verification_event
 
@@ -471,6 +501,10 @@ def confirm_delivery(request, delivery_id):
 
     delivery.driver_notes = request.data.get("driver_notes", delivery.driver_notes)
 
+    # Save dropoff_pin_verified_at if PIN was verified
+    if pin_valid and delivery.dropoff_pin_verified_at:
+        delivery.save(update_fields=["dropoff_pin_verified_at"])
+
     try:
         delivery = delivery_service.transition_status(delivery, "delivered")
         check_early_delivery(delivery, request.user)
@@ -487,6 +521,136 @@ def confirm_delivery(request, delivery_id):
         return Response({"detail": e.message}, status=status.HTTP_400_BAD_REQUEST)
 
     return Response(DeliverySerializer(delivery, context={"request": request}).data)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def report_delivery_exception(request, delivery_id):
+    """Courier reports a no-PIN drop-off issue with proof for admin review."""
+    delivery, error_response = get_assigned_delivery(
+        request, delivery_id, ["picked_up", "in_transit", "delivering"]
+    )
+    if error_response:
+        return error_response
+
+    reason = str(request.data.get("reason", "")).strip()
+    if reason not in DELIVERY_EXCEPTION_REASONS:
+        return Response(
+            {
+                "detail": "Select a valid reason before requesting admin review.",
+                "code": "reason_required",
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    proof = request.FILES.get("proof_of_delivery")
+    if not proof:
+        return Response(
+            {
+                "detail": "A proof photo is required when the recipient has no PIN.",
+                "code": "proof_required",
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if str(request.data.get("courier_confirmed", "")).lower() not in {"1", "true", "yes"}:
+        return Response(
+            {
+                "detail": "Confirm that the recipient could not provide the PIN.",
+                "code": "confirmation_required",
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    delivery.proof_of_delivery = proof
+    delivery.exception_reason = reason
+    delivery.exception_note = str(request.data.get("exception_note", "")).strip()
+    delivery.exception_reported_at = timezone.now()
+    delivery.exception_resolution = ""
+    delivery.driver_notes = request.data.get("driver_notes", delivery.driver_notes)
+
+    try:
+        delivery = delivery_service.transition_status(delivery, "delivery_exception")
+    except DeliveryServiceError as e:
+        return Response({"detail": e.message, "code": e.code}, status=status.HTTP_400_BAD_REQUEST)
+
+    from security.services.audit_service import log_from_request
+
+    log_from_request(
+        request,
+        action="status_change",
+        entity_type="delivery",
+        entity_id=delivery.id,
+        summary=f"Delivery #{delivery.id} submitted for admin review",
+    )
+    return Response(DeliverySerializer(delivery, context={"request": request}).data)
+
+
+def _resolve_delivery_exception(request, delivery_id, resolution):
+    delivery = get_object_or_404(Delivery, id=delivery_id, status="delivery_exception")
+    note = str(request.data.get("note", "")).strip()
+    delivery.exception_resolution = resolution
+    delivery.exception_note = note or delivery.exception_note
+    delivery.exception_resolved_at = timezone.now()
+    delivery.exception_resolved_by = request.user
+    delivery.save(
+        update_fields=[
+            "exception_resolution",
+            "exception_note",
+            "exception_resolved_at",
+            "exception_resolved_by",
+        ]
+    )
+
+    if resolution == "approved":
+        try:
+            delivery = delivery_service.transition_status(delivery, "delivered")
+        except DeliveryServiceError as e:
+            return Response({"detail": e.message, "code": e.code}, status=status.HTTP_400_BAD_REQUEST)
+    else:
+        delivery.status = "cancelled"
+        if resolution == "refunded":
+            delivery.payment_status = "failed"
+            delivery.save(update_fields=["status", "payment_status"])
+        else:
+            delivery.save(update_fields=["status"])
+        from .broadcast import broadcast_delivery_status
+        from .services.notifications import notify_delivery_cancelled_event
+
+        broadcast_delivery_status(delivery)
+        notify_delivery_cancelled_event(delivery, cancelled_by="admin")
+
+    from security.services.audit_service import log_from_request
+
+    log_from_request(
+        request,
+        action="status_change",
+        entity_type="delivery",
+        entity_id=delivery.id,
+        summary=f"Delivery #{delivery.id} exception {resolution}",
+    )
+    return Response(DeliverySerializer(delivery, context={"request": request}).data)
+
+
+@api_view(["POST"])
+@permission_classes([IsAdminUser])
+def approve_delivery_exception(request, delivery_id):
+    """Admin approves proof and marks a no-PIN delivery as delivered."""
+    return _resolve_delivery_exception(request, delivery_id, "approved")
+
+
+@api_view(["POST"])
+@permission_classes([IsAdminUser])
+def reject_delivery_exception(request, delivery_id):
+    """Admin rejects proof and closes a no-PIN delivery."""
+    return _resolve_delivery_exception(request, delivery_id, "rejected")
+
+
+@api_view(["POST"])
+@permission_classes([IsAdminUser])
+def refund_delivery_exception(request, delivery_id):
+    """Admin rejects proof and marks the delivery payment as failed/refund-needed."""
+    return _resolve_delivery_exception(request, delivery_id, "refunded")
 
 
 @api_view(["POST"])
@@ -1022,6 +1186,7 @@ def admin_analytics(request):
     active = qs.filter(status__in=ACTIVE_CUSTOMER_STATUSES).count()
     completed = qs.filter(status="delivered").count()
     cancelled = qs.filter(status="cancelled").count()
+    exceptions = qs.filter(status="delivery_exception").count()
     revenue = qs.filter(status="delivered").aggregate(total=Sum("fare"))["total"] or 0
 
     # Revenue by category
@@ -1055,6 +1220,7 @@ def admin_analytics(request):
         "active": active,
         "completed": completed,
         "cancelled": cancelled,
+        "exceptions": exceptions,
         "revenue": str(revenue),
         "revenue_by_category": {k: str(v) for k, v in revenue_by_category.items()},
         "avg_delivery_minutes": avg_delivery_minutes,
