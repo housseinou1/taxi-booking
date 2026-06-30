@@ -81,7 +81,6 @@ export default function DeliveryCourierDashboard() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    setError("");
     try {
       const [availableData, mineData] = await Promise.all([
         apiRequest(`${API_URL}/deliveries/available/`),
@@ -89,8 +88,14 @@ export default function DeliveryCourierDashboard() {
       ]);
       setAvailable(availableData);
       setMine(mineData);
+      setError("");
     } catch (err) {
-      setError(err.message);
+      // Only show error if we have no data at all
+      if (available.length === 0 && mine.length === 0) {
+        setError(err.message);
+        // Auto-dismiss after 5s
+        setTimeout(() => setError(""), 5000);
+      }
     } finally {
       setLoading(false);
     }

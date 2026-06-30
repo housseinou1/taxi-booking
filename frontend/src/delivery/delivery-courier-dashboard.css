@@ -950,10 +950,10 @@
   right: 0;
   bottom: calc(140px + env(safe-area-inset-bottom, 0px));
   z-index: 15;
-  max-height: 50vh;
+  max-height: 55vh;
   overflow-y: auto;
-  padding: 0 12px;
-  pointer-events: none;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 12px 12px;
 }
 
 .dcd-floating-content > * {
