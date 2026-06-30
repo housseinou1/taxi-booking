@@ -1,4 +1,4 @@
-import taxi.deliveries.models
+import deliveries.models
 from django.db import migrations, models
 
 
@@ -13,7 +13,7 @@ class Migration(migrations.Migration):
             model_name="delivery",
             name="dropoff_pin",
             field=models.CharField(
-                default=taxi.deliveries.models.generate_delivery_dropoff_pin,
+                default=deliveries.models.generate_delivery_dropoff_pin,
                 help_text="PIN sent to recipient for delivery confirmation.",
                 max_length=4,
             ),
