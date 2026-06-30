@@ -5,6 +5,12 @@
 
 import { isNative, getAppType, getPlatform } from './platform';
 import { getToken } from './storage';
+import {
+  playDeliveryOfferAlert,
+  startDeliveryOfferAlertLoop,
+  stopDeliveryOfferAlert,
+} from './sound';
+import { initDeliveryAlertNotifications } from './deliveryAlerts';
 
 let PushNotifications = null;
 let latestPushToken = null;
@@ -28,7 +34,14 @@ export async function initPushNotifications(onNotificationTap, apiUrl) {
   initialized = true;
 
   try {
+    await initDeliveryAlertNotifications();
+
     if (getPlatform() === 'android') {
+      // Delete and recreate delivery channel to ensure sound is applied
+      try {
+        await PushNotifications.deleteChannel({ id: 'yala_deliveries' });
+      } catch (_) { /* channel might not exist yet */ }
+
       await PushNotifications.createChannel({
         id: 'yala_rides',
         name: 'Yala ride updates',
@@ -36,6 +49,24 @@ export async function initPushNotifications(onNotificationTap, apiUrl) {
         importance: 5,
         visibility: 1,
         vibration: true,
+      });
+      await PushNotifications.createChannel({
+        id: 'yala_deliveries',
+        name: 'Yala delivery offers',
+        description: 'New delivery requests and trip updates',
+        importance: 5,
+        visibility: 1,
+        vibration: true,
+        sound: 'delivery_request',
+      });
+      await PushNotifications.createChannel({
+        id: 'yala_delivery_updates',
+        name: 'Yala delivery updates',
+        description: 'Courier arrival, delivery status, and payment alerts',
+        importance: 5,
+        visibility: 1,
+        vibration: true,
+        sound: 'delivery_request',
       });
     }
 
@@ -69,6 +100,15 @@ export async function initPushNotifications(onNotificationTap, apiUrl) {
     });
 
     PushNotifications.addListener('pushNotificationReceived', (notification) => {
+      const payload = notification?.data || notification?.notification?.data || {};
+      const type = payload?.type || notification?.data?.type;
+
+      if (type === 'delivery_new_request') {
+        startDeliveryOfferAlertLoop().catch(() => {
+          playDeliveryOfferAlert({ force: true }).catch(() => {});
+        });
+      }
+
       window.dispatchEvent(new CustomEvent('yala:push-received', {
         detail: notification,
       }));
@@ -76,6 +116,7 @@ export async function initPushNotifications(onNotificationTap, apiUrl) {
 
     // Listen for notification taps
     PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
+      stopDeliveryOfferAlert();
       const data = notification.notification.data;
       if (onNotificationTap) {
         onNotificationTap(data);
@@ -128,6 +169,15 @@ export function getRouteFromNotification(data, appType) {
         return '/history';
       case 'payment_successful':
         return '/rider-payments';
+      case 'delivery_accepted':
+      case 'delivery_courier_arriving':
+      case 'delivery_picked_up':
+      case 'delivery_delivered':
+      case 'delivery_cancelled':
+      case 'delivery_courier_near_pickup':
+      case 'delivery_courier_near_dropoff':
+      case 'delivery_chat_message':
+        return '/delivery';
       case 'chat_message':
       case 'ride_cancelled':
         return '/rider-dashboard';
@@ -146,6 +196,24 @@ export function getRouteFromNotification(data, appType) {
         return '/driver/earnings';
       default:
         return '/driver';
+    }
+  }
+
+  if (appType === 'delivery') {
+    switch (data.type) {
+      case 'delivery_new_request':
+      case 'delivery_assigned':
+      case 'delivery_status_update':
+      case 'delivery_cancelled':
+        return '/delivery/courier';
+      case 'delivery_payout':
+        return '/delivery/bank';
+      case 'delivery_bonus':
+        return '/delivery/earnings';
+      case 'delivery_chat_message':
+        return '/delivery/courier';
+      default:
+        return '/delivery/courier';
     }
   }
 

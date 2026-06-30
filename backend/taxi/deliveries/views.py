@@ -762,28 +762,47 @@ def pay_delivery(request, delivery_id):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def cancel_delivery(request, delivery_id):
-    """Cancel a delivery (rider or admin only)."""
+    """Cancel a delivery (rider, courier, or admin)."""
     delivery = get_object_or_404(Delivery, id=delivery_id)
 
-    if not request.user.is_staff and delivery.customer_id != request.user.id:
+    is_customer = delivery.customer_id == request.user.id
+    is_courier = delivery.driver_id == request.user.id
+    is_admin = request.user.is_staff
+
+    if not is_customer and not is_courier and not is_admin:
         return Response(
             {"detail": "You cannot cancel this delivery."},
             status=status.HTTP_403_FORBIDDEN,
         )
-    if delivery.status not in ["requested", "accepted"]:
+
+    # Couriers can cancel in accepted or courier_arriving
+    if is_courier and delivery.status not in ["accepted", "courier_arriving"]:
+        return Response(
+            {"detail": "You can only cancel before picking up the package."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Customers can cancel in requested or accepted
+    if is_customer and not is_admin and delivery.status not in ["requested", "accepted", "courier_arriving"]:
         return Response(
             {"detail": "This delivery can no longer be cancelled."},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
     delivery.status = "cancelled"
-    delivery.save(update_fields=["status"])
+    delivery.driver = None
+    delivery.save(update_fields=["status", "driver"])
 
     from .broadcast import broadcast_delivery_status
     from .services.notifications import notify_delivery_cancelled_event
 
     broadcast_delivery_status(delivery)
-    cancelled_by = "admin" if request.user.is_staff else "customer"
+    if is_admin:
+        cancelled_by = "admin"
+    elif is_courier:
+        cancelled_by = "courier"
+    else:
+        cancelled_by = "customer"
     notify_delivery_cancelled_event(delivery, cancelled_by=cancelled_by)
 
     from security.services.audit_service import log_from_request

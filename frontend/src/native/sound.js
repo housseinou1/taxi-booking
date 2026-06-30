@@ -2,7 +2,12 @@
  * Native sound and vibration utilities for Capacitor apps.
  */
 
+import { Capacitor } from "@capacitor/core";
 import { isNative, getPlatform } from "./platform";
+import {
+  cancelDeliveryOfferAlertNotification,
+  showDeliveryOfferAlertNotification,
+} from "./deliveryAlerts";
 
 let cachedNativeAudio = null;
 let cachedHaptics = null;
@@ -51,19 +56,30 @@ export const RIDE_ALERT_SOUND_STYLE_STANDARD = "standard";
 export const RIDE_ALERT_SOUND_STYLE_LYFT = "lyft";
 let rideAlertSoundStyleCache = null;
 
+function getCapacitorAssetUrl(fileName) {
+  if (Capacitor.isNativePlatform()) {
+    return Capacitor.convertFileSrc(`/${fileName}`);
+  }
+  const publicBase = process.env.PUBLIC_URL || "";
+  if (typeof window !== "undefined" && window.location?.origin && window.location.origin !== "null") {
+    return `${window.location.origin}${publicBase}/${fileName}`;
+  }
+  return `${publicBase}/${fileName}`;
+}
+
 function getNativeAudioAssetPaths() {
-  const paths = [
+  return [
+    getCapacitorAssetUrl("delivery_request.wav"),
+    getCapacitorAssetUrl("notification.wav"),
     "public/delivery_request.wav",
     "delivery_request.wav",
     "public/notification.wav",
     "notification.wav",
-  ];
-
-  return [...new Set(paths)];
+  ].filter((value, index, list) => list.indexOf(value) === index);
 }
 
 function getDeliveryNativeAudioAssetPaths() {
-  return ["public/delivery_request.wav", "delivery_request.wav", "public/notification.wav", "notification.wav"];
+  return getNativeAudioAssetPaths();
 }
 
 function normalizeRideAlertSoundStyle(style) {
@@ -103,10 +119,12 @@ export function setRideAlertSoundStyle(style) {
 function getNotificationAudioUrl() {
   const publicBase = process.env.PUBLIC_URL || "";
   const fileName = "/delivery_request.wav";
+  const fallbackFileName = "/notification.wav";
 
   if (typeof window !== "undefined") {
     const origin = window.location?.origin;
     if (origin && origin !== "null") {
+      // In Capacitor, files are served from the webview's origin
       return `${origin}${publicBase}${fileName}`;
     }
   }
@@ -114,7 +132,19 @@ function getNotificationAudioUrl() {
   return `${publicBase}${fileName}`;
 }
 
+function getNotificationAudioFallbackUrl() {
+  const publicBase = process.env.PUBLIC_URL || "";
+  if (typeof window !== "undefined") {
+    const origin = window.location?.origin;
+    if (origin && origin !== "null") {
+      return `${origin}${publicBase}/notification.wav`;
+    }
+  }
+  return `${publicBase}/notification.wav`;
+}
+
 let notificationAudio = null;
+let notificationAudioFallback = null;
 
 function getNotificationAudio() {
   const url = getNotificationAudioUrl();
@@ -126,25 +156,49 @@ function getNotificationAudio() {
   return notificationAudio;
 }
 
+function getNotificationAudioFallback() {
+  const url = getNotificationAudioFallbackUrl();
+  if (!notificationAudioFallback || notificationAudioFallback.src !== url) {
+    notificationAudioFallback = new Audio(url);
+    notificationAudioFallback.preload = "auto";
+    notificationAudioFallback.volume = 1;
+  }
+  return notificationAudioFallback;
+}
+
 /**
  * Preload the notification sound for instant playback.
  */
 export async function preloadNotificationSound() {
-  if (!isNative()) return false;
+  if (!isNative()) {
+    try {
+      getNotificationAudio().load();
+      getNotificationAudioFallback().load();
+    } catch (error) {
+      // ignore
+    }
+    return false;
+  }
 
   const NativeAudio = await getNativeAudioPlugin();
   if (!NativeAudio?.preload) return false;
   if (soundPreloaded && deliverySoundPreloaded) return true;
 
+  const preloadAsset = async (assetId, assetPath) => {
+    const isUrl = assetPath.startsWith("http") || assetPath.startsWith("capacitor") || assetPath.startsWith("file");
+    await NativeAudio.preload({
+      assetId,
+      assetPath,
+      audioChannelNum: 1,
+      isUrl,
+    });
+  };
+
   for (const assetPath of getNativeAudioAssetPaths()) {
     try {
-      await NativeAudio.preload({
-        assetId: "notification",
-        assetPath,
-        audioChannelNum: 1,
-        isUrl: false,
-      });
+      await preloadAsset("notification", assetPath);
       soundPreloaded = true;
+      break;
     } catch (error) {
       console.log("NativeAudio preload failed for", assetPath, error.message || error);
     }
@@ -152,15 +206,10 @@ export async function preloadNotificationSound() {
 
   for (const assetPath of getDeliveryNativeAudioAssetPaths()) {
     try {
-      await NativeAudio.preload({
-        assetId: "delivery_request",
-        assetPath,
-        audioChannelNum: 1,
-        isUrl: false,
-      });
+      await preloadAsset("delivery_request", assetPath);
       deliverySoundPreloaded = true;
       console.log("NativeAudio preloaded delivery_request:", assetPath);
-      return true;
+      break;
     } catch (error) {
       console.log("NativeAudio delivery preload failed for", assetPath, error.message || error);
     }
@@ -321,15 +370,28 @@ export async function unlockRideRequestSound() {
     // WebView may still block until the first real alert.
   }
 
+  // Unlock primary audio
   try {
     const audio = getNotificationAudio();
-    audio.volume = 0.4;
+    audio.volume = 0.01;
     await audio.play();
     audio.pause();
     audio.currentTime = 0;
     audio.volume = 1;
   } catch (error) {
-    console.log("Audio unlock failed:", error?.message || error);
+    console.log("Primary audio unlock failed:", error?.message || error);
+  }
+
+  // Unlock fallback audio
+  try {
+    const fallback = getNotificationAudioFallback();
+    fallback.volume = 0.01;
+    await fallback.play();
+    fallback.pause();
+    fallback.currentTime = 0;
+    fallback.volume = 1;
+  } catch (error) {
+    console.log("Fallback audio unlock failed:", error?.message || error);
   }
 
   await playRideAlertChime({ force: true });
@@ -345,6 +407,8 @@ export function stopDeliveryOfferAlert() {
     window.clearInterval(deliveryAlertIntervalId);
     deliveryAlertIntervalId = null;
   }
+
+  cancelDeliveryOfferAlertNotification().catch(() => {});
 
   if (notificationAudio) {
     try {
@@ -376,12 +440,14 @@ export async function playDeliveryOfferAlert(options = {}) {
 
   let played = false;
 
+  // Try Web Audio chime first (most reliable in WebView)
   try {
     played = await playRideAlertChime({ force });
   } catch (e) {
     console.log("Chime failed:", e?.message || e);
   }
 
+  // Try primary HTML5 Audio (delivery_request.wav)
   try {
     const audio = getNotificationAudio();
     audio.currentTime = 0;
@@ -389,9 +455,21 @@ export async function playDeliveryOfferAlert(options = {}) {
     await audio.play();
     return true;
   } catch (e) {
-    console.log("HTML5 delivery alert failed:", e?.message || e);
+    console.log("HTML5 primary audio failed:", e?.message || e);
   }
 
+  // Try fallback HTML5 Audio (notification.wav)
+  try {
+    const fallback = getNotificationAudioFallback();
+    fallback.currentTime = 0;
+    fallback.volume = 1;
+    await fallback.play();
+    return true;
+  } catch (e) {
+    console.log("HTML5 fallback audio failed:", e?.message || e);
+  }
+
+  // Try NativeAudio plugin
   try {
     await preloadNotificationSound();
     if (await playNativeDeliverySound()) {
@@ -408,13 +486,23 @@ export async function playDeliveryOfferAlert(options = {}) {
 }
 
 /** Repeat delivery alert until stopped (accept/decline/timeout). */
-export async function startDeliveryOfferAlertLoop() {
+export async function startDeliveryOfferAlertLoop(options = {}) {
   stopDeliveryOfferAlert();
   deliveryAlertActive = true;
+
+  await showDeliveryOfferAlertNotification({
+    title: options.title || "New Delivery Request",
+    body: options.body || "Pickup nearby — tap to accept or decline",
+  });
+
   await playDeliveryOfferAlert({ force: true });
 
   deliveryAlertIntervalId = window.setInterval(() => {
     if (!deliveryAlertActive) return;
+    showDeliveryOfferAlertNotification({
+      title: options.title || "New Delivery Request",
+      body: options.body || "Pickup nearby — tap to accept or decline",
+    }).catch(() => {});
     playDeliveryOfferAlert({ force: true }).catch(() => {});
   }, 3200);
 }

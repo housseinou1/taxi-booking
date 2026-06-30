@@ -13,6 +13,7 @@ import {
   confirmDeliveryWithProof,
   confirmStopWithProof,
   DeliveryJobCard,
+  reportDeliveryException,
 } from "./DeliveryShared";
 import { DeliveryCourierShell } from "./DeliveryUberLayout";
 import DeliveryCourierTypePicker from "./components/DeliveryCourierTypePicker";
@@ -20,6 +21,7 @@ import { getDeliveryVehicleLabel } from "./deliveryVehicleTypes";
 import { getTripHeadline } from "./deliveryTrip";
 import useDeliveryCourierRealtime from "./useDeliveryCourierRealtime";
 import useCourierLocationReporter from "./useCourierLocationReporter";
+import { stopDeliveryOfferAlert, startDeliveryOfferAlertLoop, unlockRideRequestSound } from "../native/sound";
 import { DEFAULT_DELIVERY_CITY } from "./deliveryCities";
 import { getCourierLevelInfo } from "./deliveryCourierLevel";
 import "./delivery-uber.css";
@@ -54,6 +56,7 @@ export default function DeliveryCourierDashboard() {
   const [chatOpen, setChatOpen] = useState(false);
   const [expiredDocAlerts, setExpiredDocAlerts] = useState([]);
   const noticeTimerRef = useRef(null);
+  const seenOfferIdsRef = useRef(new Set());
 
   const showNotice = (message) => {
     setNotice(message);
@@ -132,7 +135,7 @@ export default function DeliveryCourierDashboard() {
     };
   }, [loadSettings, load]);
 
-  const active = mine.filter((d) => !["delivered", "cancelled"].includes(d.status));
+  const active = mine.filter((d) => !["delivered", "cancelled", "delivery_exception"].includes(d.status));
   const activeDelivery = active[0] || null;
   const lifetime = courierProfile?.lifetime || {};
   const profileName = courierProfile?.full_name || "Yala Courier";
@@ -241,6 +244,11 @@ export default function DeliveryCourierDashboard() {
     try {
       setError("");
       const newValue = !deliveryMode;
+      if (newValue) {
+        await unlockRideRequestSound();
+      } else {
+        stopDeliveryOfferAlert();
+      }
       await apiRequest(`${API_URL}/deliveries/driver/mode/`, {
         method: "PATCH",
         body: JSON.stringify({ delivery_mode_enabled: newValue }),
@@ -258,6 +266,7 @@ export default function DeliveryCourierDashboard() {
     try {
       setActionBusy(true);
       setError("");
+      stopDeliveryOfferAlert();
       await apiRequest(`${API_URL}/deliveries/${delivery.id}/${action}/`, {
         method: "POST",
         body: body ? JSON.stringify(body) : undefined,
@@ -274,6 +283,7 @@ export default function DeliveryCourierDashboard() {
   };
 
   const handleDeclineOffer = async (delivery) => {
+    stopDeliveryOfferAlert();
     setDismissedOfferId(delivery.id);
     setHighlightedOfferId(null);
     try {
@@ -285,6 +295,7 @@ export default function DeliveryCourierDashboard() {
   };
 
   const handleOfferTimeout = async (delivery) => {
+    stopDeliveryOfferAlert();
     setDismissedOfferId(delivery.id);
     setHighlightedOfferId(null);
     try {
@@ -309,6 +320,7 @@ export default function DeliveryCourierDashboard() {
       await confirmDeliveryWithProof(delivery.id, pin, proofFile);
       showNotice(`Delivery #${delivery.id} completed`);
       await load();
+      setTab("requests");
     } catch (err) {
       setError(err.message);
     } finally {
@@ -323,6 +335,37 @@ export default function DeliveryCourierDashboard() {
       const res = await confirmStopWithProof(delivery.id, stopId, pin, proofFile);
       showNotice(res.all_stops_completed ? "Delivery completed" : "Stop confirmed");
       await load();
+      if (res.all_stops_completed) setTab("requests");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setActionBusy(false);
+    }
+  };
+
+  const handleDeliveryException = async (delivery, payload) => {
+    try {
+      setActionBusy(true);
+      setError("");
+      await reportDeliveryException(delivery.id, payload);
+      showNotice("Delivery sent to Yala support for review");
+      await load();
+      setTab("requests");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setActionBusy(false);
+    }
+  };
+
+  const handleCourierCancel = async (delivery) => {
+    try {
+      setActionBusy(true);
+      setError("");
+      await apiRequest(`${API_URL}/deliveries/${delivery.id}/cancel/`, { method: "POST" });
+      showNotice("Delivery cancelled");
+      await load();
+      setTab("requests");
     } catch (err) {
       setError(err.message);
     } finally {
@@ -364,8 +407,12 @@ export default function DeliveryCourierDashboard() {
             onStart={() => act(activeDelivery, "start")}
             onConfirm={handleConfirm}
             onConfirmStop={handleConfirmStop}
+            onDeliveryException={handleDeliveryException}
+            onCancel={handleCourierCancel}
             onCall={handleMaskedCall}
             onChat={() => setChatOpen(true)}
+            onResendPin={() => showNotice("PIN resend requested. Yala support can verify the recipient.")}
+            onAdminSupport={() => showNotice("Admin support request will be included with your review proof.")}
           />
         ) : (
           <>
@@ -450,10 +497,10 @@ export default function DeliveryCourierDashboard() {
 
             {!loading && tab === "active" && (
               <>
-                {mine.length === 0 ? (
-                  <div className="delivery-uber__empty">No deliveries yet. Completed runs appear in Delivery History.</div>
+                {active.length === 0 ? (
+                  <div className="delivery-uber__empty">All caught up! You don't have any active deliveries. New delivery requests will appear here.</div>
                 ) : null}
-                {mine.map((delivery) => (
+                {active.map((delivery) => (
                   <DeliveryJobCard key={delivery.id} delivery={delivery}>
                     <p style={{ margin: "0 0 8px", fontSize: 13, color: "#6b7280" }}>
                       {delivery.recipient_name} · {delivery.recipient_phone}

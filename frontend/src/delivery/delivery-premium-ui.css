@@ -2126,3 +2126,23 @@
     padding: 8px 10px;
   }
 }
+
+
+/* Cancel button for courier */
+.delivery-uber-trip__action-btn--cancel {
+  background: transparent;
+  color: #dc2626;
+  border: 1.5px solid #fecaca;
+  font-size: 14px;
+  font-weight: 700;
+  margin-top: 8px;
+}
+
+.delivery-uber-trip__action-btn--cancel:active {
+  background: rgba(220, 38, 38, 0.06);
+}
+
+.delivery-uber--dark .delivery-uber-trip__action-btn--cancel {
+  border-color: rgba(220, 38, 38, 0.3);
+  color: #f87171;
+}

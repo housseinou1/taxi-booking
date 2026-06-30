@@ -20,6 +20,7 @@ export default function DeliveryCourierTrip({
   onConfirm,
   onConfirmStop,
   onDeliveryException,
+  onCancel,
   onCall,
   onChat,
   onResendPin,
@@ -171,6 +172,21 @@ export default function DeliveryCourierTrip({
             onResendPin={onResendPin}
             onAdminSupport={onAdminSupport}
           />
+        ) : null}
+
+        {onCancel && ["accepted", "courier_arriving"].includes(delivery.status) ? (
+          <button
+            type="button"
+            className="delivery-uber-trip__action-btn delivery-uber-trip__action-btn--cancel"
+            disabled={busy}
+            onClick={() => {
+              if (window.confirm("Cancel this delivery? The customer will be notified.")) {
+                onCancel(delivery);
+              }
+            }}
+          >
+            Cancel delivery
+          </button>
         ) : null}
       </div>
     </div>
