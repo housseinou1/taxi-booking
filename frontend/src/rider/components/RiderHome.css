@@ -276,6 +276,28 @@
   flex-direction: column;
   gap: 16px;
   padding: 4px 0 20px;
+  min-height: 0;
+}
+
+.rider-home__location-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-bottom: 8px;
+}
+
+.rider-home__location-footer {
+  flex-shrink: 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--yala-gray-100);
+  background: var(--surface-sheet);
+}
+
+.rider-home__location-footer .yala-btn-primary {
+  margin-top: 0;
 }
 
 .rider-home__booking-heading {

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 
-import { subscribeRideUpdates } from "../socket";
+import { DELIVERY_WS_URL } from "../apiConfig";
 import {
   preloadNotificationSound,
   startDeliveryOfferAlertLoop,
@@ -51,6 +51,7 @@ export default function useDeliveryCourierRealtime({
   const setAvailableRef = useRef(setAvailable);
   const setDismissedOfferIdRef = useRef(setDismissedOfferId);
   const setHighlightedOfferIdRef = useRef(setHighlightedOfferId);
+  const retryRef = useRef(1000);
 
   useEffect(() => {
     loadRef.current = load;
@@ -97,15 +98,25 @@ export default function useDeliveryCourierRealtime({
       }
       await loadRef.current();
       if (forceAlert) {
+        const body = message?.pickup
+          ? `${message.pickup} → ${message.destination || "Dropoff"} · ${message.fare || "0"} MRU`
+          : "Pickup nearby — tap to accept or decline";
         try {
-          await startDeliveryOfferAlertLoop();
+          await startDeliveryOfferAlertLoop({
+            title: "New Delivery Request",
+            body,
+          });
         } catch (e) {
           console.log("Delivery offer alert failed:", e?.message || e);
         }
       }
     };
 
-    const unsubWs = subscribeRideUpdates((message) => {
+    let cancelled = false;
+    let retryTimer = null;
+    let ws = null;
+
+    const handleRealtimeMessage = (message) => {
       if (!message?.type) return;
 
       if (message.type === "delivery_new_request") {
@@ -120,7 +131,39 @@ export default function useDeliveryCourierRealtime({
       ) {
         loadRef.current();
       }
-    });
+    };
+
+    const connect = () => {
+      if (cancelled || !DELIVERY_WS_URL) return;
+      const token = localStorage.getItem("access");
+      const separator = DELIVERY_WS_URL.includes("?") ? "&" : "?";
+      const wsUrl = token
+        ? `${DELIVERY_WS_URL}${separator}token=${encodeURIComponent(token)}`
+        : DELIVERY_WS_URL;
+      ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        retryRef.current = 1000;
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          handleRealtimeMessage(JSON.parse(event.data));
+        } catch (_) {
+          // Ignore malformed websocket payloads.
+        }
+      };
+
+      ws.onclose = () => {
+        if (cancelled) return;
+        retryTimer = window.setTimeout(() => {
+          retryRef.current = Math.min(retryRef.current * 2, 16000);
+          connect();
+        }, retryRef.current);
+      };
+    };
+
+    connect();
 
     const onPush = (event) => {
       const payload = getPushPayload(event.detail);
@@ -137,7 +180,9 @@ export default function useDeliveryCourierRealtime({
 
     window.addEventListener("yala:push-received", onPush);
     return () => {
-      unsubWs();
+      cancelled = true;
+      if (retryTimer) window.clearTimeout(retryTimer);
+      ws?.close();
       window.removeEventListener("yala:push-received", onPush);
       stopDeliveryOfferAlert();
     };

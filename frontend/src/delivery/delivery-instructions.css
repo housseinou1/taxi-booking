@@ -1,0 +1,335 @@
+/* Customer delivery instruction form — Uber Eats checkout style */
+
+.delivery-instr {
+  border-radius: 16px;
+  background: #fff;
+  border: 1.5px solid #e5e7eb;
+  overflow: hidden;
+}
+
+.delivery-instr__toggle,
+.delivery-instr__head {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.delivery-instr__toggle strong,
+.delivery-instr__head strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.delivery-instr__toggle p,
+.delivery-instr__head p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.4;
+}
+
+.delivery-instr__chevron {
+  color: #ff6b00;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.delivery-instr__fields {
+  display: grid;
+  gap: 12px;
+  padding: 0 16px 16px;
+}
+
+.delivery-instr__field {
+  display: grid;
+  gap: 6px;
+}
+
+.delivery-instr__label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #374151;
+}
+
+.delivery-instr__label em {
+  font-style: normal;
+  font-size: 14px;
+}
+
+.delivery-instr__field input,
+.delivery-instr__field textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 12px;
+  font: inherit;
+  color: #111827;
+  background: #fff;
+  outline: none;
+}
+
+.delivery-instr__field input:focus,
+.delivery-instr__field textarea:focus {
+  border-color: #ff6b00;
+  box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.12);
+}
+
+.delivery-instr__saves {
+  display: grid;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.delivery-instr__check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.delivery-instr__check input {
+  width: 18px;
+  height: 18px;
+  accent-color: #ff6b00;
+}
+
+.delivery-cart__instructions {
+  margin-top: 4px;
+}
+
+.delivery-dash__card--flush {
+  padding: 0;
+  overflow: hidden;
+  border: none;
+  background: transparent;
+}
+
+/* Courier address cards — dark Uber Eats */
+
+.cce-address-cards {
+  display: grid;
+  gap: 12px;
+}
+
+.cce-address-card {
+  border-radius: 18px;
+  background: var(--yala-surface-elevated, #1f2937);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.cce-address-card.is-active {
+  border-color: rgba(255, 107, 0, 0.5);
+  box-shadow: 0 0 0 1px rgba(255, 107, 0, 0.15);
+}
+
+.cce-address-card.is-complete {
+  opacity: 0.82;
+}
+
+.cce-address-card__head {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  align-items: start;
+  padding: 14px;
+  border: none;
+  background: transparent;
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cce-address-card__icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+  font-weight: 800;
+  background: rgba(255, 107, 0, 0.15);
+  color: #fdba74;
+}
+
+.cce-address-card--pickup .cce-address-card__icon {
+  background: rgba(96, 165, 250, 0.15);
+  color: #93c5fd;
+}
+
+.cce-address-card__copy small {
+  display: block;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #ff8a3d;
+}
+
+.cce-address-card--pickup .cce-address-card__copy small {
+  color: #60a5fa;
+}
+
+.cce-address-card__copy strong {
+  display: block;
+  margin-top: 2px;
+  font-size: 16px;
+  line-height: 1.3;
+}
+
+.cce-address-card__copy p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #9ca3af;
+}
+
+.cce-address-card__done {
+  color: #22c55e;
+  font-weight: 800;
+}
+
+.cce-address-card__chevron {
+  color: #9ca3af;
+  font-size: 16px;
+}
+
+.cce-address-card__body {
+  padding: 0 14px 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.cce-address-card__phones {
+  display: grid;
+  gap: 6px;
+}
+
+.cce-address-card__phones-label {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #9ca3af;
+}
+
+.cce-address-card__phone {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #fff;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.cce-address-instr {
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.cce-address-instr__toggle {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border: none;
+  background: transparent;
+  color: #e5e7eb;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.cce-address-instr__toggle em {
+  font-style: normal;
+  color: #ff8a3d;
+  font-size: 12px;
+}
+
+.cce-address-instr__list {
+  list-style: none;
+  margin: 0;
+  padding: 0 12px 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.cce-address-instr__list li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: start;
+}
+
+.cce-address-instr__list small {
+  display: block;
+  color: #9ca3af;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.cce-address-instr__list p {
+  margin: 2px 0 0;
+  color: #f3f4f6;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.cce-address-card__actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.cce-address-card__action {
+  min-height: 42px;
+  border: none;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.cce-address-card__action span {
+  font-size: 16px;
+}
+
+.cce-address-card__action--chat {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.cce-address-card__action--call {
+  background: rgba(34, 197, 94, 0.15);
+  color: #86efac;
+}
+
+.cce-address-card__action--navigate {
+  background: linear-gradient(135deg, #ff8a3d, #ff6b00);
+  color: #fff;
+}

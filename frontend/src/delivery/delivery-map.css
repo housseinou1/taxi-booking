@@ -1,0 +1,57 @@
+.delivery-map-container {
+  width: 100%;
+  height: 100%;
+}
+
+.delivery-map-marker {
+  background: transparent;
+  border: 0;
+}
+
+.delivery-map-marker__pin {
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.28);
+}
+
+.delivery-map-marker__pin--courier {
+  width: 38px;
+  height: 38px;
+  border-color: #f58220;
+  background: #111827;
+  color: #f58220;
+  font-size: 11px;
+  font-weight: 950;
+}
+
+.delivery-map-marker__pin--pickup {
+  width: 30px;
+  height: 30px;
+  background: #00a651;
+}
+
+.delivery-map-marker__pin--pickup::after,
+.delivery-map-marker__pin--destination::after {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.delivery-map-marker__pin--destination {
+  width: 30px;
+  height: 30px;
+  background: #ef4444;
+}
+
+.delivery-map-marker__pin--stop {
+  width: 26px;
+  height: 26px;
+  background: #f59e0b;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 900;
+}

@@ -1,0 +1,694 @@
+.delivery-admin-uber {
+  min-height: 100vh;
+  background: #f5f6f8;
+  color: #111827;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.delivery-admin-uber__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 24px;
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.delivery-admin-uber__header h1 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.delivery-admin-uber__header p {
+  margin: 4px 0 0;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.delivery-admin-uber__back {
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  background: #fff;
+  padding: 10px 16px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.delivery-admin-uber__body {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px 24px 40px;
+}
+
+.delivery-admin-uber__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.delivery-admin-uber__tab {
+  border: none;
+  border-radius: 999px;
+  background: #fff;
+  padding: 10px 16px;
+  font: inherit;
+  font-weight: 600;
+  color: #6b7280;
+  cursor: pointer;
+}
+
+.delivery-admin-uber__tab.is-active {
+  background: #f58220;
+  color: #fff;
+}
+
+.delivery-admin-uber__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.delivery-admin-uber__stat {
+  padding: 16px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+}
+
+.delivery-admin-uber__stat strong {
+  display: block;
+  font-size: 28px;
+}
+
+.delivery-admin-uber__stat span {
+  display: block;
+  margin-top: 4px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.delivery-admin-uber__panel {
+  padding: 18px;
+  border-radius: 18px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  margin-bottom: 16px;
+}
+
+.delivery-admin-uber__panel h3 {
+  margin: 0 0 14px;
+  font-size: 16px;
+}
+
+.delivery-admin-uber__chart {
+  display: grid;
+  gap: 10px;
+}
+
+.delivery-admin-uber__chart-row {
+  display: grid;
+  grid-template-columns: 90px 1fr 80px;
+  gap: 12px;
+  align-items: center;
+  font-size: 13px;
+}
+
+.delivery-admin-uber__chart-bar {
+  height: 10px;
+  border-radius: 999px;
+  background: #f3f4f6;
+  overflow: hidden;
+}
+
+.delivery-admin-uber__chart-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #f58220, #00a651);
+}
+
+.delivery-admin-uber__table-wrap {
+  overflow-x: auto;
+}
+
+.delivery-admin-uber__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.delivery-admin-uber__table th,
+.delivery-admin-uber__table td {
+  padding: 12px 10px;
+  border-bottom: 1px solid #f3f4f6;
+  text-align: left;
+}
+
+.delivery-admin-uber__table th {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6b7280;
+}
+
+.delivery-admin-uber__badge {
+  display: inline-flex;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #f3f4f6;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.delivery-admin-uber__badge.is-active {
+  background: rgba(0, 166, 81, 0.12);
+  color: #00a651;
+}
+
+.delivery-admin-uber__badge.is-cancelled {
+  background: rgba(205, 9, 48, 0.1);
+  color: #cd0930;
+}
+
+.delivery-admin-uber__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.delivery-admin-uber__filters input,
+.delivery-admin-uber__filters select {
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
+  font: inherit;
+}
+
+.delivery-admin-uber__courier-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.delivery-admin-uber__courier-card {
+  padding: 14px;
+  border-radius: 14px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+}
+
+.delivery-admin-uber__empty {
+  padding: 24px;
+  text-align: center;
+  color: #6b7280;
+}
+
+.delivery-admin-uber__error {
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(205, 9, 48, 0.08);
+  color: #cd0930;
+}
+
+.delivery-admin__tabs--sub {
+  margin-top: 12px;
+}
+
+.delivery-admin__card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.delivery-admin__status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.delivery-admin__status-pill.is-approved {
+  background: rgba(0, 166, 81, 0.12);
+  color: #00a651;
+}
+
+.delivery-admin__status-pill.is-review {
+  background: rgba(59, 130, 246, 0.12);
+  color: #2563eb;
+}
+
+.delivery-admin__status-pill.is-danger {
+  background: rgba(205, 9, 48, 0.1);
+  color: #cd0930;
+}
+
+.delivery-admin__status-pill.is-warning {
+  background: rgba(245, 158, 11, 0.15);
+  color: #b45309;
+}
+
+.delivery-admin__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.delivery-admin__dot--danger {
+  background: #ef4444;
+}
+
+.delivery-admin__alert-box {
+  margin: 12px 0;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.delivery-admin__alert-box ul {
+  margin: 8px 0 0;
+  padding-left: 0;
+  list-style: none;
+}
+
+.delivery-admin__alert-box li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.delivery-admin__doc-section {
+  margin: 14px 0;
+  padding-top: 12px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.delivery-admin__doc-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.delivery-admin__doc-row {
+  display: grid;
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.delivery-admin__doc-thumb {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.delivery-admin__doc-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.delivery-admin__doc-meta small {
+  display: block;
+  width: 100%;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.delivery-admin__danger-text {
+  color: #cd0930;
+}
+
+.delivery-admin__muted {
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.delivery-admin__reject-form textarea {
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  font: inherit;
+}
+
+.delivery-admin__reject-form label {
+  display: block;
+  margin-top: 10px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.delivery-admin__actions button.is-secondary {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.delivery-admin-uber__badge.is-warning {
+  background: #fff7ed;
+  color: #9a3412;
+  border-color: #fdba74;
+}
+
+.delivery-admin-uber__exception-actions {
+  display: grid;
+  gap: 6px;
+  min-width: 220px;
+}
+
+.delivery-admin-uber__exception-actions strong {
+  color: #9a3412;
+  text-transform: capitalize;
+}
+
+.delivery-admin-uber__exception-actions span,
+.delivery-admin-uber__exception-actions a {
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.delivery-admin-uber__exception-actions a {
+  color: #ea580c;
+  font-weight: 700;
+}
+
+.delivery-admin-uber__exception-actions div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.delivery-admin-uber__exception-actions button {
+  border: 0;
+  border-radius: 999px;
+  background: #111827;
+  color: #ffffff;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.delivery-admin-uber__exception-actions button:nth-child(2) {
+  background: #7f1d1d;
+}
+
+.delivery-admin-uber__exception-actions button:nth-child(3) {
+  background: #9a3412;
+}
+
+.delivery-admin-uber__panel--chat {
+  padding-bottom: 0;
+}
+
+.delivery-admin-uber__muted {
+  margin: 0 0 16px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.delivery-admin-chat__layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 320px) 1fr;
+  gap: 16px;
+  min-height: 520px;
+}
+
+@media (max-width: 900px) {
+  .delivery-admin-chat__layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.delivery-admin-chat__cases,
+.delivery-admin-chat__thread {
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.delivery-admin-chat__cases-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.delivery-admin-chat__cases-head h3,
+.delivery-admin-chat__reports-list h4 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.delivery-admin-chat__cases-head button,
+.delivery-admin-chat__admin-actions button,
+.delivery-admin-chat__report-actions button,
+.delivery-admin-chat__hide {
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: #111827;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.delivery-admin-chat__case {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  padding: 14px 16px;
+  border: 0;
+  border-bottom: 1px solid #f3f4f6;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.delivery-admin-chat__case.is-active {
+  background: #fff7ed;
+}
+
+.delivery-admin-chat__case strong {
+  color: #111827;
+}
+
+.delivery-admin-chat__case span {
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.delivery-admin-chat__case-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.delivery-admin-chat__case-tags em {
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #9a3412;
+  background: #ffedd5;
+  border-radius: 999px;
+  padding: 4px 8px;
+}
+
+.delivery-admin-chat__badge {
+  justify-self: start;
+  font-size: 11px;
+  font-weight: 800;
+  color: #fff;
+  background: #ef4444;
+  border-radius: 999px;
+  padding: 4px 8px;
+}
+
+.delivery-admin-chat__reports-list {
+  padding: 12px 16px 16px;
+  border-top: 1px solid #f3f4f6;
+}
+
+.delivery-admin-chat__report-item {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid #fde68a;
+  border-radius: 12px;
+  background: #fffbeb;
+  color: #92400e;
+  text-align: left;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.delivery-admin-chat__thread {
+  display: flex;
+  flex-direction: column;
+  min-height: 520px;
+}
+
+.delivery-admin-chat__thread-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.delivery-admin-chat__thread-head h3 {
+  margin: 0 0 4px;
+}
+
+.delivery-admin-chat__thread-head p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.delivery-admin-chat__admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-content: flex-start;
+}
+
+.delivery-admin-chat__admin-actions .is-danger {
+  background: #7f1d1d;
+}
+
+.delivery-admin-chat__reports-panel {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f3f4f6;
+  background: #fffbeb;
+}
+
+.delivery-admin-chat__report-card {
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid #fde68a;
+}
+
+.delivery-admin-chat__report-card p {
+  margin: 6px 0;
+  color: #374151;
+  font-size: 14px;
+}
+
+.delivery-admin-chat__report-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.delivery-admin-chat__messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: #f9fafb;
+}
+
+.delivery-admin-chat__message {
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+}
+
+.delivery-admin-chat__message.is-courier {
+  border-color: #fed7aa;
+}
+
+.delivery-admin-chat__message.is-customer {
+  border-color: #dbeafe;
+}
+
+.delivery-admin-chat__message.is-hidden {
+  opacity: 0.72;
+  background: #fef2f2;
+}
+
+.delivery-admin-chat__message header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.delivery-admin-chat__message header strong {
+  color: #111827;
+}
+
+.delivery-admin-chat__message header .is-read {
+  color: #059669;
+  font-weight: 700;
+}
+
+.delivery-admin-chat__message p {
+  margin: 0;
+  color: #111827;
+  line-height: 1.45;
+}
+
+.delivery-admin-chat__image {
+  display: block;
+  margin-bottom: 8px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.delivery-admin-chat__image img {
+  display: block;
+  max-width: 220px;
+  border-radius: 12px;
+}
+
+.delivery-admin-chat__hide {
+  margin-top: 8px;
+  background: #7f1d1d !important;
+}
+
+.delivery-admin-chat__hidden-note {
+  display: block;
+  margin-top: 8px;
+  color: #b91c1c;
+}

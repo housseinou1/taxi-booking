@@ -3,18 +3,20 @@ import axios from "axios";
 import { useTranslation } from "react-i18next";
 import { getApiCandidates } from "../apiConfig";
 import { getSafeRedirectPath, getUserRole } from "./roleRouting";
-import { getAppType } from "../native/platform";
+import { getAppType, isDeliveryCourierPath } from "../native/platform";
+import "../delivery/delivery-uber.css";
 
 const logoSrc = "/yala-logo.png";
 const riderLogoSrc = "/yala-rider-logo.png";
 const driverLogoSrc = "/yala-driver-logo.png";
 const adminLogoSrc = "/yala-admin-logo.png";
+const deliveryLogoSrc = "/yala-delivery-logo.png";
 
 function getLoginApiCandidates() {
   return getApiCandidates("/auth/login/");
 }
 
-function getLoginErrorMessage(error, t) {
+function getLoginErrorMessage(error, t, context = "web") {
   if (error?.response) {
     const data = error.response.data;
     if (typeof data === "string" && data.trim()) {
@@ -39,7 +41,10 @@ function getLoginErrorMessage(error, t) {
   }
 
   if (error?.request) {
-    return "Cannot reach the Yala server. Stop npm start, run it again, then retry login.";
+    if (context === "delivery") {
+      return "Cannot reach the Yala Delivery server. Connect your phone to the same Wi-Fi as this PC, keep the backend running, then retry login.";
+    }
+    return "Connection error. Check your internet and try again.";
   }
 
   return t("auth.loginFailed");
@@ -85,7 +90,7 @@ function getNextRouteFromSearch() {
 
 function getLoginContext() {
   const builtAppType = getAppType();
-  if (builtAppType === "rider" || builtAppType === "driver" || builtAppType === "admin") {
+  if (builtAppType === "rider" || builtAppType === "driver" || builtAppType === "delivery" || builtAppType === "admin") {
     return builtAppType;
   }
 
@@ -100,6 +105,10 @@ function getLoginContext() {
     route.startsWith("/admin/")
   ) {
     return "admin";
+  }
+
+  if (isDeliveryCourierPath(route)) {
+    return "delivery";
   }
 
   if (
@@ -131,6 +140,7 @@ function getLogoForApp() {
   if (context === "admin") return adminLogoSrc;
   if (context === "rider") return riderLogoSrc;
   if (context === "driver") return driverLogoSrc;
+  if (context === "delivery") return deliveryLogoSrc;
   return logoSrc;
 }
 
@@ -139,6 +149,7 @@ function getAppLabel() {
   if (context === "admin") return "Yala Admin";
   if (context === "rider") return "Yala Rider";
   if (context === "driver") return "Yala Driver";
+  if (context === "delivery") return "Yala Delivery";
   return "Yala";
 }
 
@@ -147,7 +158,16 @@ function getAppHint() {
   if (context === "admin") return "This is Admin app";
   if (context === "rider") return "This is Rider app";
   if (context === "driver") return "This is Driver app";
+  if (context === "delivery") return "Yala Delivery — courier app";
   return "This is Yala app";
+}
+
+function getLoginSubtitle() {
+  const context = getLoginContext();
+  if (context === "delivery") {
+    return "Sign in to continue as a Yala Delivery courier.";
+  }
+  return null;
 }
 
 export default function Login({ onLogin }) {
@@ -202,16 +222,25 @@ export default function Login({ onLogin }) {
       const expectedAppRole =
         loginContext === "admin"
           ? "web"
-          : loginContext === "driver" || loginContext === "rider"
-          ? loginContext
-          : appType;
+          : loginContext === "driver" || loginContext === "rider" || loginContext === "delivery"
+          ? loginContext === "delivery"
+            ? "driver"
+            : loginContext
+          : appType === "delivery"
+            ? "driver"
+            : appType;
       const riderAppMismatch =
         expectedAppRole === "rider" && userRole !== "rider";
       const driverAppMismatch =
         expectedAppRole === "driver" && userRole !== "driver";
 
       if (riderAppMismatch || driverAppMismatch) {
-        const expected = appType === "driver" ? "Driver" : "Rider";
+        const expected =
+          appType === "delivery" || loginContext === "delivery"
+            ? "Yala Delivery courier"
+            : appType === "driver" || loginContext === "driver"
+              ? "Driver"
+              : "Rider";
         setErrorMessage(
           `This account is not a ${expected} account. Please create a ${expected} account to use this app.`
         );
@@ -228,7 +257,7 @@ export default function Login({ onLogin }) {
         window.location.href = getRedirectPath(response.data);
       }
     } catch (error) {
-      setErrorMessage(getLoginErrorMessage(error, t));
+      setErrorMessage(getLoginErrorMessage(error, t, getLoginContext()));
     } finally {
       setLoading(false);
     }
@@ -244,6 +273,10 @@ export default function Login({ onLogin }) {
       window.location.href = "/register?role=driver";
       return;
     }
+    if (context === "delivery") {
+      window.location.href = "/register?next=/delivery/profile-setup";
+      return;
+    }
     if (context === "rider") {
       window.location.href = "/register?role=rider";
       return;
@@ -251,8 +284,21 @@ export default function Login({ onLogin }) {
     window.location.href = "/register";
   };
 
+  const loginContext = getLoginContext();
+  const isDeliveryLogin = loginContext === "delivery" || getAppType() === "delivery";
+  const useSharedLyftLogin = ["rider", "driver"].includes(loginContext);
+  const [blockAutofill, setBlockAutofill] = useState(isDeliveryLogin);
+
+  useEffect(() => {
+    if (!isDeliveryLogin) return undefined;
+    setEmail("");
+    setPassword("");
+    const timer = window.setTimeout(() => setBlockAutofill(false), 150);
+    return () => window.clearTimeout(timer);
+  }, [isDeliveryLogin]);
+
   return (
-    <main className={`yala-login ${getLoginContext() === "rider" || getLoginContext() === "driver" ? "yala-login--lyft" : ""}`}>
+    <main className={`yala-login ${useSharedLyftLogin ? "yala-login--lyft" : ""}${isDeliveryLogin ? " yala-login--delivery-uber" : ""}`}>
       <LoginStyles />
 
       <div className="yala-login__logo-area">
@@ -263,10 +309,10 @@ export default function Login({ onLogin }) {
         />
         <h1 className="yala-login__brand">{getAppLabel()}</h1>
         <span className="yala-login__app-hint">{getAppHint()}</span>
-        <p className="yala-login__tagline">{t("auth.loginSubtitle")}</p>
+        <p className="yala-login__tagline">{getLoginSubtitle() || t("auth.loginSubtitle")}</p>
       </div>
 
-      <form onSubmit={handleLogin} className="yala-login__form">
+      <form onSubmit={handleLogin} className="yala-login__form" autoComplete={isDeliveryLogin ? "off" : "on"}>
         {errorMessage && (
           <div className="yala-login__error">{errorMessage}</div>
         )}
@@ -275,11 +321,22 @@ export default function Login({ onLogin }) {
           {t("auth.email")}
           <input
             type="email"
-            placeholder="you@example.com"
+            name={isDeliveryLogin ? "delivery-courier-email" : "email"}
+            placeholder={isDeliveryLogin ? "Enter your email" : "you@example.com"}
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             className="yala-login__input"
-            autoComplete="email"
+            autoComplete={isDeliveryLogin ? "off" : "email"}
+            autoCorrect="off"
+            autoCapitalize="none"
+            spellCheck={false}
+            readOnly={blockAutofill}
+            onFocus={(event) => {
+              if (blockAutofill) {
+                setBlockAutofill(false);
+                event.target.readOnly = false;
+              }
+            }}
           />
         </label>
 
@@ -287,11 +344,19 @@ export default function Login({ onLogin }) {
           {t("auth.password")}
           <input
             type="password"
-            placeholder="••••••••"
+            name={isDeliveryLogin ? "delivery-courier-password" : "password"}
+            placeholder={isDeliveryLogin ? "Enter your password" : "••••••••"}
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             className="yala-login__input"
-            autoComplete="current-password"
+            autoComplete={isDeliveryLogin ? "new-password" : "current-password"}
+            readOnly={blockAutofill}
+            onFocus={(event) => {
+              if (blockAutofill) {
+                setBlockAutofill(false);
+                event.target.readOnly = false;
+              }
+            }}
           />
         </label>
 
@@ -311,6 +376,24 @@ export default function Login({ onLogin }) {
           {t("auth.createAccount")}
         </button>
       </form>
+
+      {!isDeliveryLogin && (
+        <button
+          type="button"
+          onClick={navigateToRegister}
+          className="yala-login__footer-link"
+        >
+          {t("auth.createAccount")}
+        </button>
+      )}
+
+      {isDeliveryLogin ? (
+        <nav className="yala-login__legal-footer" aria-label="Legal">
+          <button type="button" onClick={() => { window.location.href = "/delivery/courier/terms"; }}>
+            Terms & Conditions
+          </button>
+        </nav>
+      ) : null}
     </main>
   );
 }
@@ -486,6 +569,18 @@ function LoginStyles() {
         background: rgba(255, 255, 255, 0.08);
       }
 
+      .yala-login__footer-link {
+        margin-top: 20px;
+        border: none;
+        background: transparent;
+        color: rgba(255, 255, 255, 0.6);
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: underline;
+        text-underline-offset: 3px;
+      }
+
       @media (max-width: 480px) {
         .yala-login {
           justify-content: flex-start;
@@ -504,6 +599,7 @@ function LoginStyles() {
           padding-top: 24px;
         }
       }
+
     `}</style>
   );
 }

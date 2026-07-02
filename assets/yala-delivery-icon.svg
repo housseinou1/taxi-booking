@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Yala Delivery App Icon: orange pin + package on warm white -->
+
+  <defs>
+    <linearGradient id="pinGradient" x1="512" y1="170" x2="512" y2="760" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFB800"/>
+      <stop offset="100%" stop-color="#F58220"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1024" height="1024" rx="180" fill="#FFF8E8"/>
+
+  <circle cx="512" cy="500" r="360" fill="#FFE08A" opacity="0.35"/>
+
+  <!-- Pin body -->
+  <path d="M512 170 C404 170 318 256 318 364 C318 500 512 760 512 760 C512 760 706 500 706 364 C706 256 620 170 512 170 Z" fill="url(#pinGradient)"/>
+
+  <!-- Pin inner circle -->
+  <circle cx="512" cy="360" r="118" fill="#FFF8E8"/>
+
+  <!-- Package box -->
+  <rect x="442" y="300" width="140" height="110" rx="12" fill="#8B5A2B"/>
+  <rect x="442" y="300" width="140" height="28" rx="12" fill="#A66B33"/>
+  <path d="M512 300 L582 328 L512 356 L442 328 Z" fill="#C98A2E"/>
+  <line x1="512" y1="300" x2="512" y2="356" stroke="#6E4520" stroke-width="4"/>
+</svg>

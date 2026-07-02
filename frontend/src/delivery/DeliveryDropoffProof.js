@@ -1,11 +1,14 @@
-import React, { useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 
+import { CourierActionButton, CourierStickyActionBar } from "./components/CourierActionButton";
 import { takePhoto } from "../native/camera";
 import { dataUrlToFile } from "./DeliveryShared";
 
 export default function DeliveryDropoffProof({
-  title = "Confirm delivery",
-  subtitle = "Ask the recipient for their 4-digit delivery PIN, then take a photo of the package handoff.",
+  title = "Complete delivery",
+  subtitle = "Ask the recipient for their 4-digit PIN, then take a proof photo.",
+  recipientName = "",
+  recipientPhone = "",
   onSubmit,
   onException,
   onCall,
@@ -22,6 +25,13 @@ export default function DeliveryDropoffProof({
   const [exceptionNote, setExceptionNote] = useState("");
   const [courierConfirmed, setCourierConfirmed] = useState(false);
   const [localError, setLocalError] = useState("");
+  const pinInputRef = useRef(null);
+
+  const canComplete = useMemo(() => {
+    const pinOk = pin.trim().length === 4;
+    const photoOk = !requiresPhoto || Boolean(photo?.dataUrl);
+    return pinOk && photoOk;
+  }, [pin, photo, requiresPhoto]);
 
   const capturePhoto = async () => {
     setLocalError("");
@@ -73,129 +83,161 @@ export default function DeliveryDropoffProof({
     ["other", "Other"],
   ];
 
+  const pinDigits = pin.padEnd(4, " ").split("").slice(0, 4);
+  const displayName = recipientName || "Recipient";
+
   return (
-    <div className="delivery-uber-proof">
-      <h3>{title}</h3>
-      <p>{subtitle}</p>
+    <div className="cce-pin-sheet delivery-uber-proof">
+      <div className="cce-pin-sheet__body">
+        <h3>{title}</h3>
+        <p>{subtitle}</p>
 
-      <label className="delivery-uber-proof__label" htmlFor="delivery-pin">
-        Delivery PIN
-      </label>
-      <input
-        id="delivery-pin"
-        className="delivery-uber-proof__pin"
-        inputMode="numeric"
-        pattern="[0-9]*"
-        maxLength={4}
-        placeholder="••••"
-        value={pin}
-        aria-label="4-digit delivery PIN"
-        onChange={(event) => {
-          setLocalError("");
-          setPin(event.target.value.replace(/\D/g, "").slice(0, 4));
-        }}
-      />
-
-      <div className="delivery-uber-proof__photo">
-        {photo?.dataUrl ? (
-          <img src={photo.dataUrl} alt="Delivery proof preview" />
-        ) : (
-          <div className="delivery-uber-proof__photo-placeholder">No photo yet</div>
-        )}
-      </div>
-
-      <button type="button" className="delivery-uber__btn delivery-uber__btn--secondary" onClick={capturePhoto}>
-        {photo ? "Retake photo" : requiresPhoto ? "Take delivery photo" : "Add delivery photo (optional)"}
-      </button>
-
-      {localError ? <p className="delivery-uber-proof__error">{localError}</p> : null}
-
-      <button
-        type="button"
-        className="delivery-uber__btn"
-        disabled={busy}
-        onClick={handleSubmit}
-      >
-        {busy ? "Completing..." : "Complete delivery"}
-      </button>
-
-      <button
-        type="button"
-        className="delivery-uber-proof__fallback-toggle"
-        onClick={() => {
-          setLocalError("");
-          setFallbackOpen((value) => !value);
-        }}
-      >
-        Recipient has no PIN
-      </button>
-
-      {fallbackOpen ? (
-        <div className="delivery-uber-proof__fallback">
-          <strong>No PIN fallback</strong>
-          <p>
-            Use this only when the recipient cannot provide the PIN. The order will go to Yala admin review and will not be marked delivered yet.
-          </p>
-
-          <div className="delivery-uber-proof__fallback-actions">
-            {onCall ? <button type="button" onClick={onCall}>Call recipient</button> : null}
-            {onChat ? <button type="button" onClick={onChat}>Send SMS/chat message</button> : null}
-            {onResendPin ? <button type="button" onClick={onResendPin}>Resend PIN to recipient</button> : null}
-            {onAdminSupport ? <button type="button" onClick={onAdminSupport}>Request admin support</button> : null}
+        {recipientName ? (
+          <div className="cce-recipient-card">
+            <span className="cce-recipient-card__avatar" aria-hidden>
+              {displayName.charAt(0).toUpperCase()}
+            </span>
+            <div>
+              <strong>{displayName}</strong>
+              <p style={{ margin: "2px 0 0", fontSize: 13, color: "var(--yala-muted)" }}>
+                {recipientPhone || "Recipient contact"}
+              </p>
+            </div>
           </div>
+        ) : null}
 
-          <label className="delivery-uber-proof__label" htmlFor="delivery-exception-reason">
-            Required reason
-          </label>
-          <select
-            id="delivery-exception-reason"
-            className="delivery-uber-proof__select"
-            value={reason}
+        <div
+          className="cce-pin-input-wrap"
+          onClick={() => pinInputRef.current?.focus()}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") pinInputRef.current?.focus();
+          }}
+        >
+          <input
+            ref={pinInputRef}
+            className="cce-pin-hidden"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            maxLength={4}
+            value={pin}
+            aria-label="4-digit delivery PIN"
             onChange={(event) => {
               setLocalError("");
-              setReason(event.target.value);
+              setPin(event.target.value.replace(/\D/g, "").slice(0, 4));
             }}
-          >
-            <option value="">Choose reason</option>
-            {reasonOptions.map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </select>
-
-          <label className="delivery-uber-proof__label" htmlFor="delivery-exception-note">
-            Note for admin
-          </label>
-          <textarea
-            id="delivery-exception-note"
-            className="delivery-uber-proof__textarea"
-            rows={3}
-            placeholder="Example: Recipient answered the phone but could not find the PIN."
-            value={exceptionNote}
-            onChange={(event) => setExceptionNote(event.target.value)}
           />
+          <div className="cce-pin-boxes" aria-hidden>
+            {pinDigits.map((digit, index) => (
+              <div key={index} className={`cce-pin-box ${digit.trim() ? "is-filled" : ""}`}>
+                {digit.trim() ? digit : "·"}
+              </div>
+            ))}
+          </div>
+        </div>
 
-          <label className="delivery-uber-proof__confirm">
-            <input
-              type="checkbox"
-              checked={courierConfirmed}
+        <div className="cce-proof-card">
+          {photo?.dataUrl ? (
+            <img src={photo.dataUrl} alt="Delivery proof preview" />
+          ) : (
+            <div className="cce-proof-card__placeholder">Proof photo</div>
+          )}
+        </div>
+
+        <CourierActionButton variant="nav" fullWidth onClick={capturePhoto}>
+          {photo ? "Retake photo" : requiresPhoto ? "Take delivery photo" : "Add photo (optional)"}
+        </CourierActionButton>
+
+        {localError ? <p className="cce-pin-error">{localError}</p> : null}
+
+        <button
+          type="button"
+          className="cce-pin-link"
+          onClick={() => {
+            setLocalError("");
+            setFallbackOpen((value) => !value);
+          }}
+        >
+          Can't get PIN?
+        </button>
+
+        {fallbackOpen ? (
+          <div className="delivery-uber-proof__fallback" style={{ marginTop: 12 }}>
+            <strong>No PIN fallback</strong>
+            <p>
+              Use only when the recipient cannot provide the PIN. Yala admin will review before completing.
+            </p>
+
+            <div className="delivery-uber-proof__fallback-actions">
+              {onCall ? <button type="button" onClick={onCall}>Call recipient</button> : null}
+              {onChat ? <button type="button" onClick={onChat}>Message</button> : null}
+              {onResendPin ? <button type="button" onClick={onResendPin}>Resend PIN</button> : null}
+              {onAdminSupport ? <button type="button" onClick={onAdminSupport}>Admin support</button> : null}
+            </div>
+
+            <label className="delivery-uber-proof__label" htmlFor="delivery-exception-reason">
+              Reason
+            </label>
+            <select
+              id="delivery-exception-reason"
+              className="delivery-uber-proof__select"
+              value={reason}
               onChange={(event) => {
                 setLocalError("");
-                setCourierConfirmed(event.target.checked);
+                setReason(event.target.value);
               }}
-            />
-            <span>I confirm the recipient could not provide the delivery PIN.</span>
-          </label>
+            >
+              <option value="">Choose reason</option>
+              {reasonOptions.map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
 
-          <button
-            type="button"
-            className="delivery-uber__btn delivery-uber__btn--secondary"
-            disabled={busy}
-            onClick={handleExceptionSubmit}
-          >
-            {busy ? "Sending to review..." : "Complete with proof photo + reason"}
-          </button>
-        </div>
-      ) : null}
+            <label className="delivery-uber-proof__label" htmlFor="delivery-exception-note">
+              Note for admin
+            </label>
+            <textarea
+              id="delivery-exception-note"
+              className="delivery-uber-proof__textarea"
+              rows={3}
+              placeholder="Brief description for support"
+              value={exceptionNote}
+              onChange={(event) => setExceptionNote(event.target.value)}
+            />
+
+            <label className="delivery-uber-proof__confirm">
+              <input
+                type="checkbox"
+                checked={courierConfirmed}
+                onChange={(event) => {
+                  setLocalError("");
+                  setCourierConfirmed(event.target.checked);
+                }}
+              />
+              <span>I confirm the recipient could not provide the PIN.</span>
+            </label>
+
+            <CourierActionButton variant="nav" fullWidth loading={busy} onClick={handleExceptionSubmit}>
+              Submit for review
+            </CourierActionButton>
+          </div>
+        ) : null}
+      </div>
+
+      <CourierStickyActionBar>
+        <CourierActionButton
+          variant="finish"
+          iconName="check"
+          fullWidth
+          loading={busy}
+          disabled={!canComplete}
+          onClick={handleSubmit}
+          ariaLabel={canComplete ? "Complete delivery" : "Confirm delivery PIN"}
+        >
+          {canComplete ? "Complete Delivery" : "Confirm PIN"}
+        </CourierActionButton>
+      </CourierStickyActionBar>
     </div>
   );
 }

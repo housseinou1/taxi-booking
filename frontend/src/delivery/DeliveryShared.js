@@ -1,6 +1,19 @@
 import React from "react";
 
-export const STATUS_ORDER = ["requested", "accepted", "picked_up", "delivering", "delivered"];
+import { API_URL } from "../apiConfig";
+import { getDeliveryCategoryIcon, getDeliveryCategoryLabel } from "./deliveryCategories";
+import { isDeliveryUberUI } from "../native/platform";
+
+export const STATUS_ORDER = [
+  "requested",
+  "accepted",
+  "courier_arriving",
+  "picked_up",
+  "in_transit",
+  "delivering",
+  "delivery_exception",
+  "delivered",
+];
 
 export const authHeaders = (json = true) => {
   const headers = {
@@ -11,22 +24,76 @@ export const authHeaders = (json = true) => {
 };
 
 export async function apiRequest(url, options = {}) {
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      ...authHeaders(options.body instanceof FormData ? false : true),
-      ...(options.headers || {}),
-    },
-  });
+  let response;
+  try {
+    response = await fetch(url, {
+      ...options,
+      headers: {
+        ...authHeaders(options.body instanceof FormData ? false : true),
+        ...(options.headers || {}),
+      },
+    });
+  } catch (error) {
+    throw new Error(
+      "Connection error. Check your internet and try again."
+    );
+  }
+
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const details = Object.values(data).flat().join(" ");
-    throw new Error(data.detail || data.error || details || "Request failed.");
+    const details = Object.values(data)
+      .flat()
+      .filter((value) => typeof value === "string" && value.trim())
+      .join(" ");
+    throw new Error(
+      data.detail ||
+        data.error ||
+        details ||
+        `Request failed (HTTP ${response.status}).`
+    );
   }
   return data;
 }
 
-export function DeliveryHeader({ subtitle, backPath = "/" }) {
+export function dataUrlToFile(dataUrl, filename = "upload.jpg") {
+  const [header, encoded] = String(dataUrl).split(",");
+  const mime = header?.match(/:(.*?);/)?.[1] || "image/jpeg";
+  const binary = atob(encoded);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return new File([bytes], filename, { type: mime });
+}
+
+export async function confirmDeliveryWithProof(deliveryId, recipientCode, proofFile) {
+  const form = new FormData();
+  form.append("recipient_code", recipientCode);
+  if (proofFile) {
+    form.append("proof_of_delivery", proofFile, proofFile.name || "delivery-proof.jpg");
+  }
+  return apiRequest(`${API_URL}/deliveries/${deliveryId}/confirm/`, { method: "POST", body: form });
+}
+
+export async function reportDeliveryException(deliveryId, { reason, exceptionNote, proofFile }) {
+  const form = new FormData();
+  form.append("reason", reason);
+  form.append("exception_note", exceptionNote || "");
+  form.append("courier_confirmed", "true");
+  if (proofFile) {
+    form.append("proof_of_delivery", proofFile, proofFile.name || "delivery-exception-proof.jpg");
+  }
+  return apiRequest(`${API_URL}/deliveries/${deliveryId}/exception/`, { method: "POST", body: form });
+}
+
+export async function confirmStopWithProof(deliveryId, stopId, recipientCode, proofFile) {
+  const form = new FormData();
+  form.append("recipient_code", recipientCode);
+  form.append("proof_photo", proofFile, proofFile.name || "delivery-proof.jpg");
+  return apiRequest(`${API_URL}/deliveries/${deliveryId}/stops/${stopId}/confirm/`, { method: "POST", body: form });
+}
+
+export function DeliveryHeader({ subtitle, backPath = "/", showBack = true }) {
   return (
     <header className="delivery-header">
       <div>
@@ -34,8 +101,13 @@ export function DeliveryHeader({ subtitle, backPath = "/" }) {
         <span>{subtitle}</span>
       </div>
       <div className="delivery-header-actions">
-        <button className="delivery-button delivery-button-secondary" onClick={() => (window.location.href = backPath)}>
-          Back
+        {showBack && (
+          <button className="delivery-button delivery-button-secondary" onClick={() => (window.location.href = backPath)}>
+            Back
+          </button>
+        )}
+        <button className="delivery-button delivery-button-secondary" onClick={() => (window.location.href = "/settings")}>
+          Settings
         </button>
         <button className="delivery-button" onClick={() => window.location.reload()}>
           Refresh
@@ -74,6 +146,15 @@ export function DeliveryRoute({ delivery }) {
   );
 }
 
+export function DeliveryCategoryTag({ category }) {
+  if (!category) return null;
+  return (
+    <span className="delivery-category-tag">
+      {getDeliveryCategoryIcon(category)} {getDeliveryCategoryLabel(category)}
+    </span>
+  );
+}
+
 export function DeliveryCard({ delivery, children }) {
   return (
     <article className="delivery-card">
@@ -95,4 +176,66 @@ export function DeliveryCard({ delivery, children }) {
       {children}
     </article>
   );
+}
+
+export function DeliveryUberJob({ delivery, children, highlight = false }) {
+  const activeIndex = delivery.status === "cancelled" ? -1 : STATUS_ORDER.indexOf(delivery.status);
+
+  return (
+    <article className={`delivery-uber__job ${highlight ? "delivery-uber__job--offer" : ""}`}>
+      <div className="delivery-uber__job-top">
+        <div>
+          <div className="delivery-uber__job-fare">{delivery.fare} MRU</div>
+          <div className="delivery-uber__job-meta">
+            {delivery.distance_km} km · {delivery.package_type}
+            {delivery.service_city ? ` · ${delivery.service_city}` : ""}
+          </div>
+        </div>
+        <span className="delivery-uber__tag">{delivery.status.replace("_", " ")}</span>
+      </div>
+
+      <div className="delivery-uber__progress" aria-hidden="true">
+        {STATUS_ORDER.map((step, index) => (
+          <span key={step} className={index <= activeIndex ? "is-done" : ""} />
+        ))}
+      </div>
+
+      <div className="delivery-uber__job-route">
+        <div className="delivery-uber__job-stop">
+          <span className="delivery-uber__job-dot" />
+          <div>
+            <small>Pickup</small>
+            <strong>{delivery.pickup}</strong>
+          </div>
+        </div>
+        <div className="delivery-uber__job-stop">
+          <span className="delivery-uber__job-dot is-drop" />
+          <div>
+            <small>Dropoff</small>
+            <strong>{delivery.destination}</strong>
+          </div>
+        </div>
+      </div>
+
+      {delivery.service_category ? (
+        <div className="delivery-uber__job-tags">
+          <span className="delivery-uber__tag">
+            {getDeliveryCategoryIcon(delivery.service_category)}{" "}
+            {getDeliveryCategoryLabel(delivery.service_category)}
+          </span>
+          {delivery.is_fragile ? <span className="delivery-uber__tag">Fragile</span> : null}
+          {delivery.is_scheduled ? <span className="delivery-uber__tag">Scheduled</span> : null}
+        </div>
+      ) : null}
+
+      {children}
+    </article>
+  );
+}
+
+export function DeliveryJobCard({ delivery, children, highlight = false }) {
+  if (isDeliveryUberUI()) {
+    return <DeliveryUberJob delivery={delivery} highlight={highlight}>{children}</DeliveryUberJob>;
+  }
+  return <DeliveryCard delivery={delivery}>{children}</DeliveryCard>;
 }

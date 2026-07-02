@@ -2,6 +2,7 @@ import React from "react";
 
 import MerchantStatusCard from "../components/MerchantStatusCard";
 import DeliveryStatusTimeline from "../components/DeliveryStatusTimeline";
+import { isDeliveryChatAvailable } from "../deliveryChatUtils";
 import { getStatusLabel, shouldShowPlate } from "../deliveryTrackingStatus";
 
 export default function DeliveryLiveTracking({
@@ -12,6 +13,7 @@ export default function DeliveryLiveTracking({
   onCall,
   onChat,
   onReportIssue,
+  chatUnread = 0,
 }) {
   const statusLabel = delivery.customer_display_label || getStatusLabel(delivery, etaMinutes);
   const courierLabel =
@@ -89,9 +91,21 @@ export default function DeliveryLiveTracking({
               📞
             </button>
           ) : null}
-          <button type="button" className="delivery-track__action-btn" onClick={onChat} aria-label="Chat courier">
-            💬
-          </button>
+          {isDeliveryChatAvailable(delivery.status) ? (
+            <button
+              type="button"
+              className="delivery-track__action-btn dcc-track-chat-btn"
+              onClick={onChat}
+              aria-label="Chat courier"
+            >
+              💬
+              {chatUnread > 0 ? (
+                <span className="dcc-track-chat-btn__badge" aria-hidden>
+                  {chatUnread > 9 ? "9+" : chatUnread}
+                </span>
+              ) : null}
+            </button>
+          ) : null}
           <button type="button" className="delivery-track__action-btn is-muted" onClick={onReportIssue} aria-label="Report issue">
             ⚠️
           </button>

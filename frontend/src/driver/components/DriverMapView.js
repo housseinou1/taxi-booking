@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useMemo } from "react";
+import React, { useEffect, useId, useMemo } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -26,6 +26,13 @@ L.Icon.Default.mergeOptions({
 const driverIcon = new L.DivIcon({
   className: "driver-map-marker",
   html: `<div style="width:36px;height:36px;border-radius:50%;background:#0B1220;border:3px solid #00A651;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.3)"><span style="font-size:12px;font-weight:900;color:#fff;letter-spacing:.02em">YD</span></div>`,
+  iconSize: [36, 36],
+  iconAnchor: [18, 18],
+});
+
+export const deliveryCourierIcon = new L.DivIcon({
+  className: "driver-map-marker delivery-courier-marker",
+  html: `<div style="width:36px;height:36px;border-radius:50%;background:#1a1d24;border:3px solid #FF6B00;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 12px rgba(255,107,0,0.35)"><span style="font-size:11px;font-weight:900;color:#FF6B00;letter-spacing:.02em">🚚</span></div>`,
   iconSize: [36, 36],
   iconAnchor: [18, 18],
 });
@@ -87,6 +94,96 @@ function FitBounds({ points }) {
 }
 
 /**
+ * Inner map shell — remounted as a whole when mapKey changes so Leaflet never
+ * reuses the same DOM container across instances.
+ */
+function DriverMapCanvas({
+  mapKey,
+  center,
+  driverPosition,
+  activeRide,
+  busyAreas,
+  routePath,
+  fitPoints,
+  rideStops,
+  courierMarkerIcon = null,
+  routeColor = "#0B1220",
+}) {
+  return (
+    <div className="driver-map-container" data-testid="driver-map-container">
+      <MapContainer
+        key={mapKey}
+        center={center}
+        zoom={14}
+        style={{ width: "100%", height: "100%" }}
+        zoomControl={false}
+        attributionControl={false}
+      >
+        <TileLayer
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        />
+
+        {!activeRide && driverPosition ? <MapAutoCenter position={driverPosition} /> : null}
+        {activeRide && fitPoints ? <FitBounds points={fitPoints} /> : null}
+
+        {driverPosition ? <Marker position={driverPosition} icon={courierMarkerIcon || driverIcon} /> : null}
+
+        {activeRide?.pickup_lat && activeRide?.pickup_lng ? (
+          <Marker position={[activeRide.pickup_lat, activeRide.pickup_lng]} icon={pickupIcon} />
+        ) : null}
+
+        {activeRide?.destination_lat && activeRide?.destination_lng ? (
+          <Marker
+            position={[activeRide.destination_lat, activeRide.destination_lng]}
+            icon={destinationIcon}
+          />
+        ) : null}
+
+        {rideStops.map((stop, index) =>
+          stop.latitude && stop.longitude ? (
+            <Marker
+              key={stop.id || `stop-${index}`}
+              position={[stop.latitude, stop.longitude]}
+              icon={stopIcon}
+            />
+          ) : null
+        )}
+
+        {routePath && routePath.length > 1 ? (
+          <Polyline
+            positions={routePath}
+            pathOptions={{
+              color: routeColor,
+              weight: 5,
+              opacity: 0.85,
+              lineCap: "round",
+              lineJoin: "round",
+            }}
+          />
+        ) : null}
+
+        {busyAreas
+          ? busyAreas.map((area, index) => (
+              <Polygon
+                key={`busy-area-${index}`}
+                positions={area.coordinates || area}
+                pathOptions={{
+                  color: area.color || "#FF6B35",
+                  fillColor: area.fillColor || area.color || "#FF6B35",
+                  fillOpacity: area.fillOpacity || 0.15,
+                  weight: 2,
+                  opacity: 0.6,
+                }}
+              />
+            ))
+          : null}
+      </MapContainer>
+    </div>
+  );
+}
+
+/**
  * DriverMapView - Full-screen Leaflet map for the driver dashboard.
  *
  * Props:
@@ -100,21 +197,12 @@ export default function DriverMapView({
   activeRide,
   busyAreas = [],
   routePath = [],
+  courierMarkerIcon = null,
+  routeColor = "#0B1220",
 }) {
-  const center = driverPosition || [18.0735, -15.9582]; // Default: Nouakchott
-  const mapKey = activeRide?.id ? `ride-${activeRide.id}` : "driver-idle-map";
-
-  useLayoutEffect(() => {
-    return () => {
-      document
-        .querySelectorAll(".driver-map-container .leaflet-container")
-        .forEach((container) => {
-          if (container._leaflet_id) {
-            delete container._leaflet_id;
-          }
-        });
-    };
-  }, [mapKey]);
+  const instanceId = useId();
+  const center = driverPosition || [18.0735, -15.9582];
+  const mapKey = activeRide?.id ? `ride-${activeRide.id}` : instanceId;
 
   const fitPoints = useMemo(() => {
     if (!activeRide) return null;
@@ -146,90 +234,18 @@ export default function DriverMapView({
   }, [activeRide]);
 
   return (
-    <div className="driver-map-container" data-testid="driver-map-container">
-      <MapContainer
-        key={mapKey}
-        center={center}
-        zoom={14}
-        style={{ width: "100%", height: "100%" }}
-        zoomControl={false}
-        attributionControl={false}
-      >
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        />
-
-        {/* Auto-center on driver when no active ride */}
-        {!activeRide && driverPosition && (
-          <MapAutoCenter position={driverPosition} />
-        )}
-
-        {/* Fit bounds to show all points during active ride */}
-        {activeRide && fitPoints && <FitBounds points={fitPoints} />}
-
-        {/* Driver position marker */}
-        {driverPosition && (
-          <Marker position={driverPosition} icon={driverIcon} />
-        )}
-
-        {/* Pickup marker (green) */}
-        {activeRide?.pickup_lat && activeRide?.pickup_lng && (
-          <Marker
-            position={[activeRide.pickup_lat, activeRide.pickup_lng]}
-            icon={pickupIcon}
-          />
-        )}
-
-        {/* Destination marker (red) */}
-        {activeRide?.destination_lat && activeRide?.destination_lng && (
-          <Marker
-            position={[activeRide.destination_lat, activeRide.destination_lng]}
-            icon={destinationIcon}
-          />
-        )}
-
-        {/* Intermediate stop markers */}
-        {rideStops.map((stop, index) =>
-          stop.latitude && stop.longitude ? (
-            <Marker
-              key={stop.id || `stop-${index}`}
-              position={[stop.latitude, stop.longitude]}
-              icon={stopIcon}
-            />
-          ) : null
-        )}
-
-        {/* Route polyline - dark blue, weight 5 */}
-        {routePath && routePath.length > 1 && (
-          <Polyline
-            positions={routePath}
-            pathOptions={{
-              color: "#0B1220",
-              weight: 5,
-              opacity: 0.85,
-              lineCap: "round",
-              lineJoin: "round",
-            }}
-          />
-        )}
-
-        {/* Busy area polygons - semi-transparent colored zones */}
-        {busyAreas &&
-          busyAreas.map((area, index) => (
-            <Polygon
-              key={`busy-area-${index}`}
-              positions={area.coordinates || area}
-              pathOptions={{
-                color: area.color || "#FF6B35",
-                fillColor: area.fillColor || area.color || "#FF6B35",
-                fillOpacity: area.fillOpacity || 0.15,
-                weight: 2,
-                opacity: 0.6,
-              }}
-            />
-          ))}
-      </MapContainer>
-    </div>
+    <DriverMapCanvas
+      key={mapKey}
+      mapKey={mapKey}
+      center={center}
+      driverPosition={driverPosition}
+      activeRide={activeRide}
+      busyAreas={busyAreas}
+      routePath={routePath}
+      fitPoints={fitPoints}
+      rideStops={rideStops}
+      courierMarkerIcon={courierMarkerIcon}
+      routeColor={routeColor}
+    />
   );
 }

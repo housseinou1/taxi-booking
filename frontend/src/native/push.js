@@ -104,7 +104,12 @@ export async function initPushNotifications(onNotificationTap, apiUrl) {
       const type = payload?.type || notification?.data?.type;
 
       if (type === 'delivery_new_request') {
-        startDeliveryOfferAlertLoop().catch(() => {
+        const title = notification?.title || notification?.notification?.title || 'New Delivery Request';
+        const body =
+          notification?.body ||
+          notification?.notification?.body ||
+          'Pickup nearby — tap to accept or decline';
+        startDeliveryOfferAlertLoop({ title, body }).catch(() => {
           playDeliveryOfferAlert({ force: true }).catch(() => {});
         });
       }

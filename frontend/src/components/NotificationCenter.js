@@ -7,7 +7,7 @@ const READ_KEY = "sx_read_notifications";
 const PUSH_KEY = "sx_push_notifications";
 const POLL_INTERVAL_MS = 6000;
 
-function NotificationCenter() {
+function NotificationCenter({ mode = "ride", variant = "floating" }) {
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [readIds, setReadIds] = useState(() => loadReadIds());
@@ -24,7 +24,7 @@ function NotificationCenter() {
     let cancelled = false;
 
     const loadNotifications = async () => {
-      const nextNotifications = await buildNotifications();
+      const nextNotifications = await buildNotifications(mode);
       if (!cancelled) {
         setNotifications(nextNotifications);
         const backendReadIds = nextNotifications
@@ -45,7 +45,7 @@ function NotificationCenter() {
       window.clearInterval(intervalId);
       window.removeEventListener("yala:push-received", loadNotifications);
     };
-  }, []);
+  }, [mode]);
 
   useEffect(() => {
     if (!pushEnabled || unreadCount === 0) return;
@@ -100,8 +100,17 @@ function NotificationCenter() {
     setPushEnabled(enabled);
   };
 
+  const isDelivery = mode === "delivery";
+  const rootClass = [
+    "sx-notification-center",
+    isDelivery ? "sx-notification-center--delivery" : "",
+    variant === "inline" ? "sx-notification-center--inline" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
-    <div className="sx-notification-center">
+    <div className={rootClass}>
       <NotificationCenterStyles />
 
       <button
@@ -131,7 +140,11 @@ function NotificationCenter() {
               <strong>Push notifications</strong>
               <span>
                 {pushEnabled
-                  ? "Enabled for ride and payment alerts."
+                  ? isDelivery
+                    ? "Enabled for delivery and payment alerts."
+                    : "Enabled for ride and payment alerts."
+                  : isDelivery
+                  ? "Enable browser alerts for courier arrival and delivery updates."
                   : "Enable browser alerts for driver arrival and payment updates."}
               </span>
             </div>
@@ -167,7 +180,7 @@ function NotificationCenter() {
   );
 }
 
-async function buildNotifications() {
+async function buildNotifications(mode = "ride") {
   const token = localStorage.getItem("access");
   const items = [];
 
@@ -221,26 +234,39 @@ async function buildNotifications() {
     }
   }
 
-  const baseline = [
-    {
-      id: "push-ready",
-      type: "push",
-      title: "Push notification UI ready",
-      message: "Enable alerts to receive ride, arrival, and payment updates.",
-      time: "Now",
-      url: "/settings",
-      rank: 1,
-    },
-    {
-      id: "safety-ready",
-      type: "ride",
-      title: "Safety alerts active",
-      message: "Emergency and support updates can appear here during trips.",
-      time: "Today",
-      url: "/support",
-      rank: 0,
-    },
-  ];
+  const baseline =
+    mode === "delivery"
+      ? [
+          {
+            id: "delivery-push-ready",
+            type: "push",
+            title: "Delivery alerts ready",
+            message: "Enable alerts to receive courier arrival and delivery updates.",
+            time: "Now",
+            url: "/delivery",
+            rank: 1,
+          },
+        ]
+      : [
+          {
+            id: "push-ready",
+            type: "push",
+            title: "Push notification UI ready",
+            message: "Enable alerts to receive ride, arrival, and payment updates.",
+            time: "Now",
+            url: "/settings",
+            rank: 1,
+          },
+          {
+            id: "safety-ready",
+            type: "ride",
+            title: "Safety alerts active",
+            message: "Emergency and support updates can appear here during trips.",
+            time: "Today",
+            url: "/support",
+            rank: 0,
+          },
+        ];
 
   return [...items, ...baseline]
     .sort((first, second) => Number(second.rank || 0) - Number(first.rank || 0))
@@ -248,6 +274,7 @@ async function buildNotifications() {
 }
 
 function notificationFromHistory(item) {
+  const deepLink = item.deep_link || item.data?.deep_link || "/";
   return {
     id: `history-${item.id}`,
     backendId: item.id,
@@ -255,13 +282,14 @@ function notificationFromHistory(item) {
     title: item.title,
     message: item.body,
     time: formatNotificationDate(item.created_at),
-    url: item.deep_link || item.data?.deep_link || "/",
+    url: deepLink.startsWith("/delivery") ? deepLink : deepLink,
     isRead: Boolean(item.is_read),
     rank: new Date(item.created_at || 0).getTime(),
   };
 }
 
 function notificationIconType(type = "") {
+  if (type.includes("delivery")) return "arrival";
   if (type.includes("payment") || type.includes("completed")) return "payment";
   if (type.includes("arriv") || type.includes("accepted")) return "arrival";
   if (type.includes("chat") || type.includes("message")) return "push";
@@ -706,10 +734,53 @@ function NotificationCenterStyles() {
           bottom: 76px;
         }
 
+        .sx-notification-center--inline {
+          top: auto;
+          right: auto;
+          bottom: auto;
+        }
+
         .sx-notification-panel {
           top: auto;
           bottom: 60px;
         }
+
+        .sx-notification-center--inline .sx-notification-panel {
+          top: calc(100% + 10px);
+          bottom: auto;
+          right: 0;
+        }
+      }
+
+      .sx-notification-center--inline {
+        position: relative;
+        top: auto;
+        right: auto;
+        bottom: auto;
+      }
+
+      .sx-notification-center--inline .sx-notification-trigger {
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.95);
+        color: #0f172a;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+      }
+
+      .sx-notification-center--inline .sx-bell-shape {
+        border-color: #0f172a;
+      }
+
+      .sx-notification-center--inline .sx-bell-shape::before,
+      .sx-notification-center--inline .sx-bell-shape::after {
+        background: #0f172a;
+      }
+
+      .sx-notification-center--delivery.sx-notification-center--inline .sx-notification-panel {
+        background:
+          radial-gradient(circle at 14% 0%, rgba(0, 166, 81, 0.18), transparent 34%),
+          #0b1220;
       }
     `}</style>
   );

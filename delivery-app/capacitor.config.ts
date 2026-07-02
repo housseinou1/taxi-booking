@@ -21,7 +21,7 @@ const config: CapacitorConfig = {
       presentationOptions: ['badge', 'sound', 'alert'],
     },
     CapacitorHttp: {
-      enabled: true,
+      enabled: false,
     },
   },
 };

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 
 import { API_URL } from "../apiConfig";
+import { getAppType, isDeliveryCourierApp } from "../native/platform";
 import "./DriverProfileEditPage.css";
 
 const PERSONAL_FILES = [
@@ -10,7 +11,7 @@ const PERSONAL_FILES = [
 ];
 
 const VEHICLE_FILES = [
-  ["license_file", "Driver license", "image/jpeg,image/png,image/webp,application/pdf"],
+  ["license_file", "Driving license", "image/jpeg,image/png,image/webp,application/pdf"],
   ["insurance_document", "Insurance", "image/jpeg,image/png,image/webp,application/pdf"],
   ["vignette_document", "Vignette", "image/jpeg,image/png,image/webp,application/pdf"],
   ["vehicle_registration", "Carte Grise / Vehicle registration", "image/jpeg,image/png,image/webp,application/pdf"],
@@ -34,6 +35,7 @@ const getValue = (...values) =>
   values.find((value) => value !== undefined && value !== null && value !== "") || "";
 
 export default function DriverProfileEditPage() {
+  const isDeliveryCourier = isDeliveryCourierApp();
   const token = localStorage.getItem("access");
   const [form, setForm] = useState(emptyForm);
   const [files, setFiles] = useState({});
@@ -45,7 +47,9 @@ export default function DriverProfileEditPage() {
 
   useEffect(() => {
     if (!token) {
-      window.location.href = "/login?next=/driver/profile/edit";
+      const loginNext =
+        isDeliveryCourierApp() ? "/delivery/profile/edit" : "/driver/profile/edit";
+      window.location.href = `/login?next=${encodeURIComponent(loginNext)}`;
       return;
     }
 
@@ -107,9 +111,15 @@ export default function DriverProfileEditPage() {
     if (files.national_id_document) identity.append("national_id_document", files.national_id_document);
 
     const driver = new FormData();
-    ["vehicle_make", "vehicle_model", "vehicle_color", "vehicle_plate", "car_type", "phone_number"].forEach((field) => {
+    const driverFields = isDeliveryCourier
+      ? ["vehicle_make", "vehicle_model", "vehicle_color", "vehicle_plate", "phone_number"]
+      : ["vehicle_make", "vehicle_model", "vehicle_color", "vehicle_plate", "car_type", "phone_number"];
+    driverFields.forEach((field) => {
       driver.append(field, form[field]);
     });
+    if (isDeliveryCourier) {
+      driver.append("car_type", "regular");
+    }
     if (files.profile_picture) driver.append("driver_photo", files.profile_picture);
     VEHICLE_FILES.forEach(([field]) => {
       if (files[field]) driver.append(field, files[field]);
@@ -144,11 +154,24 @@ export default function DriverProfileEditPage() {
   return (
     <main className="driver-edit-shell">
       <header className="driver-edit-header">
-        <button type="button" className="driver-edit-back" onClick={() => (window.location.href = "/driver/profile")} aria-label="Back to profile">←</button>
+        <button
+          type="button"
+          className="driver-edit-back"
+          onClick={() => {
+            window.location.href = isDeliveryCourier ? "/delivery/account" : "/driver/profile";
+          }}
+          aria-label="Back to profile"
+        >
+          ←
+        </button>
         <div>
-          <span>Driver management center</span>
+          <span>{isDeliveryCourier ? "Yala Delivery" : "Driver management center"}</span>
           <h1>Edit profile</h1>
-          <p>Keep your personal, vehicle, and compliance information current.</p>
+          <p>
+            {isDeliveryCourier
+              ? "Keep your courier profile, vehicle, and compliance information current."
+              : "Keep your personal, vehicle, and compliance information current."}
+          </p>
         </div>
       </header>
 
@@ -156,7 +179,14 @@ export default function DriverProfileEditPage() {
       {error && <div className="driver-edit-message error" role="alert">{String(error)}</div>}
 
       <form onSubmit={saveChanges}>
-        <EditSection title="Personal information" description="Information used for your Yala driver account.">
+        <EditSection
+          title="Personal information"
+          description={
+            isDeliveryCourier
+              ? "Information used for your Yala Delivery courier account."
+              : "Information used for your Yala driver account."
+          }
+        >
           <div className="driver-edit-grid">
             <Field label="First name" name="first_name" value={form.first_name} onChange={updateField} required />
             <Field label="Last name" name="last_name" value={form.last_name} onChange={updateField} required />
@@ -174,21 +204,30 @@ export default function DriverProfileEditPage() {
           <FileFields fields={PERSONAL_FILES} files={files} onChange={updateFile} />
         </EditSection>
 
-        <EditSection title="Vehicle information" description="Details riders and Yala support use to identify your vehicle.">
+        <EditSection
+          title="Vehicle information"
+          description={
+            isDeliveryCourier
+              ? "Details customers and Yala Delivery support use to identify your vehicle."
+              : "Details riders and Yala support use to identify your vehicle."
+          }
+        >
           <div className="driver-edit-grid">
             <Field label="Vehicle make" name="vehicle_make" value={form.vehicle_make} onChange={updateField} />
             <Field label="Vehicle model" name="vehicle_model" value={form.vehicle_model} onChange={updateField} />
             <Field label="Vehicle color" name="vehicle_color" value={form.vehicle_color} onChange={updateField} />
             <Field label="Plate number" name="vehicle_plate" value={form.vehicle_plate} onChange={updateField} />
-            <label className="driver-edit-field">
-              <span>Vehicle category</span>
-              <select name="car_type" value={form.car_type} onChange={updateField}>
-                <option value="economy">Economy</option>
-                <option value="xl">XL</option>
-                <option value="comfort">Comfort</option>
-                <option value="delivery">Delivery</option>
-              </select>
-            </label>
+            {!isDeliveryCourier ? (
+              <label className="driver-edit-field">
+                <span>Vehicle category</span>
+                <select name="car_type" value={form.car_type} onChange={updateField}>
+                  <option value="economy">Economy</option>
+                  <option value="xl">XL</option>
+                  <option value="comfort">Comfort</option>
+                  <option value="delivery">Delivery</option>
+                </select>
+              </label>
+            ) : null}
           </div>
         </EditSection>
 
@@ -197,7 +236,16 @@ export default function DriverProfileEditPage() {
         </EditSection>
 
         <div className="driver-edit-actions">
-          <button type="button" className="driver-edit-cancel" onClick={() => (window.location.href = "/driver/profile")}>Cancel</button>
+          <button
+            type="button"
+            className="driver-edit-cancel"
+            onClick={() => {
+              window.location.href =
+                isDeliveryCourierApp() ? "/delivery/account" : "/driver/profile";
+            }}
+          >
+            Cancel
+          </button>
           <button type="submit" className="driver-edit-save" disabled={saving}>{saving ? "Saving..." : "Save changes"}</button>
         </div>
       </form>

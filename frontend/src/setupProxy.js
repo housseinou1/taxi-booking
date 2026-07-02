@@ -14,6 +14,8 @@ const proxyPaths = [
   "/chat",
   "/promotions",
   "/deliveries",
+  "/merchants",
+  "/security",
   "/safety",
   "/features",
   "/intercity",
@@ -24,7 +26,6 @@ const proxyPaths = [
   "/locations",
   "/support",
   "/media",
-  "/admin",
   "/api",
 ];
 

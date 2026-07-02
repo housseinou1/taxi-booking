@@ -1,8 +1,9 @@
 import React, { useCallback, useRef } from 'react';
 import PromoCodeInput from './PromoCodeInput';
+import RideTypeSelector from './RideTypeSelector';
 import RouteTimeline, { buildBookingRoutePoints } from '../../components/RouteTimeline';
+import RiderTermsAcceptance from '../../legal/components/RiderTermsAcceptance';
 import './BookingConfirmation.css';
-
 /**
  * Ride type display labels.
  */
@@ -32,6 +33,8 @@ const RIDE_TYPE_LABELS = {
  * - routeInfo: optional route info { distanceKm, etaMinutes }
  * - promoError: optional error from promo validation
  * - promoLoading: optional loading state for promo validation
+ * - legalCompliant: whether rider already accepted current terms
+ * - termsChecked / privacyChecked / onTermsChange / onPrivacyChange
  */
 function BookingConfirmation({
   pickup,
@@ -43,22 +46,29 @@ function BookingConfirmation({
   promoCode,
   onConfirm,
   onPromoApply,
+  onRideTypeChange,
   loading,
   error,
   profile,
   routeInfo,
   promoError,
   promoLoading,
+  legalCompliant = false,
+  termsChecked = false,
+  privacyChecked = false,
+  onTermsChange,
+  onPrivacyChange,
 }) {
   const submittingRef = useRef(false);
 
   const hasDiscount = discountedFare != null && discountedFare < fare;
   const displayFare = hasDiscount ? discountedFare : fare;
   const routePoints = buildBookingRoutePoints({ pickup, stops, destination });
+  const legalReady = legalCompliant || (termsChecked && privacyChecked);
 
   const handleConfirm = useCallback(async () => {
     // Prevent duplicate submissions
-    if (loading || submittingRef.current) {
+    if (loading || submittingRef.current || !legalReady) {
       return;
     }
 
@@ -71,7 +81,7 @@ function BookingConfirmation({
     } finally {
       submittingRef.current = false;
     }
-  }, [loading, onConfirm]);
+  }, [loading, onConfirm, legalReady]);
 
   return (
     <div className="booking-confirmation" role="region" aria-label="Booking confirmation">
@@ -84,6 +94,16 @@ function BookingConfirmation({
         </div>
 
         {/* Ride Type */}
+        <div className="booking-confirmation__ride-types">
+          <span className="booking-confirmation__detail-label">Choose ride type</span>
+          <RideTypeSelector
+            distance={routeInfo?.distanceKm || 1}
+            etaMinutes={routeInfo?.etaMinutes}
+            selectedType={rideType}
+            onSelect={onRideTypeChange}
+          />
+        </div>
+
         <div className="booking-confirmation__row">
           <span className="booking-confirmation__icon" aria-hidden="true">🚗</span>
           <div className="booking-confirmation__detail">
@@ -93,7 +113,6 @@ function BookingConfirmation({
             </span>
           </div>
         </div>
-
         {/* Fare */}
         <div className="booking-confirmation__fare-section">
           <span className="booking-confirmation__fare-label">Estimated Fare</span>
@@ -118,6 +137,16 @@ function BookingConfirmation({
         loading={promoLoading}
       />
 
+      <RiderTermsAcceptance
+        termsChecked={termsChecked}
+        privacyChecked={privacyChecked}
+        onTermsChange={onTermsChange}
+        onPrivacyChange={onPrivacyChange}
+        compliant={legalCompliant}
+        hideIfCompliant
+        returnPath="/rider-dashboard"
+      />
+
       {/* Error Notification */}
       {error && (
         <div
@@ -133,7 +162,7 @@ function BookingConfirmation({
       <button
         className="booking-confirmation__confirm-btn"
         onClick={handleConfirm}
-        disabled={loading}
+        disabled={loading || !legalReady}
         aria-busy={loading}
         aria-label={loading ? 'Requesting ride...' : 'Confirm booking'}
       >

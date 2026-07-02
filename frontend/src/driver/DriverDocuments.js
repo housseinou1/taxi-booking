@@ -2,11 +2,14 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import axios from "axios";
 
 import { API_URL } from "../apiConfig";
-import { useDriverContext } from "./context/DriverContext";
+import { getAppType, isDeliveryCourierApp } from "../native/platform";
 import DocumentsUnderReviewBanner from "./components/DocumentsUnderReviewBanner";
 import {
   DOCUMENTS_UNDER_REVIEW_MESSAGE,
   getExpiredOrMissingDocuments,
+  getRequiredCourierDocumentTypes,
+  isBicycleCourier,
+  isMotorVehicleCourier,
   REQUIRED_DRIVER_DOCUMENT_TYPES,
   shouldShowDocumentsUnderReview,
 } from "./utils/documentReview";
@@ -24,11 +27,10 @@ const COLORS = {
   errorRed: "#EF4444",
   warningOrange: "#F59E0B",
   pendingBlue: "#3B82F6",
-  approvedGreen: "#10B981",
+  approvedGreen:
+   "#10B981",
   rejectedRed: "#EF4444",
 };
-
-const DOCUMENT_TYPES = REQUIRED_DRIVER_DOCUMENT_TYPES;
 
 const ACCEPTED_FORMATS = ["image/jpeg", "image/png", "application/pdf"];
 const ACCEPTED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".pdf"];
@@ -93,7 +95,6 @@ export { getExpiredOrMissingDocuments } from "./utils/documentReview";
 
 export default function DriverDocuments() {
   const token = localStorage.getItem("access");
-  const { state } = useDriverContext();
 
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -107,6 +108,19 @@ export default function DriverDocuments() {
     expires_at: "",
   });
   const [documentsUnderReview, setDocumentsUnderReview] = useState(false);
+  const [deliveryVehicleType, setDeliveryVehicleType] = useState("motorcycle");
+
+  const isDeliveryCourier = isDeliveryCourierApp();
+  const documentTypes = useMemo(
+    () =>
+      isDeliveryCourier
+        ? getRequiredCourierDocumentTypes(deliveryVehicleType)
+        : REQUIRED_DRIVER_DOCUMENT_TYPES,
+    [deliveryVehicleType, isDeliveryCourier],
+  );
+  const isBicycleCourierProfile = isDeliveryCourier && isBicycleCourier(deliveryVehicleType);
+  const isMotorVehicleCourierProfile =
+    isDeliveryCourier && isMotorVehicleCourier(deliveryVehicleType);
 
   const fileInputRef = useRef(null);
   const selectedDocTypeRef = useRef(null);
@@ -124,14 +138,17 @@ export default function DriverDocuments() {
     setError(null);
 
     try {
-      const response = await axios.get(
-        `${API_URL}/drivers/me/documents/`,
-        authHeaders
-      );
+      const documentsUrl = isDeliveryCourier
+        ? `${API_URL}/drivers/me/documents/?context=delivery`
+        : `${API_URL}/drivers/me/documents/`;
+      const response = await axios.get(documentsUrl, authHeaders);
       // Backend returns { documents: [...], expiring_documents: [...], alerts: [...] }
       const data = response.data;
       const nextDocuments = data.documents || data.results || data || [];
       setDocuments(nextDocuments);
+      if (data.delivery_vehicle_type) {
+        setDeliveryVehicleType(data.delivery_vehicle_type);
+      }
       setDocumentsUnderReview(
         shouldShowDocumentsUnderReview({
           documents: nextDocuments,
@@ -145,7 +162,7 @@ export default function DriverDocuments() {
     } finally {
       setLoading(false);
     }
-  }, [authHeaders, token]);
+  }, [authHeaders, isDeliveryCourier, token]);
 
   useEffect(() => {
     fetchDocuments();
@@ -212,7 +229,7 @@ export default function DriverDocuments() {
       }
 
       // Image-only restriction for plate number photo
-      const docType = DOCUMENT_TYPES.find((item) => item.key === docTypeKey);
+      const docType = documentTypes.find((item) => item.key === docTypeKey);
       if (docType?.imageOnly) {
         const ext = "." + file.name.split(".").pop().toLowerCase();
         if (ext === ".pdf" || file.type === "application/pdf") {
@@ -257,7 +274,7 @@ export default function DriverDocuments() {
           setUploadSuccess(DOCUMENTS_UNDER_REVIEW_MESSAGE);
         } else {
           setUploadSuccess(
-            `${DOCUMENT_TYPES.find((d) => d.key === docTypeKey)?.label || "Document"} uploaded successfully.`
+            `${documentTypes.find((d) => d.key === docTypeKey)?.label || "Document"} uploaded successfully.`
           );
         }
 
@@ -279,8 +296,8 @@ export default function DriverDocuments() {
   // ─── Computed Values ────────────────────────────────────────────────────
 
   const documentAlerts = useMemo(
-    () => getExpiredOrMissingDocuments(documents),
-    [documents]
+    () => getExpiredOrMissingDocuments(documents, documentTypes),
+    [documents, documentTypes]
   );
 
   const documentMap = useMemo(() => {
@@ -359,9 +376,13 @@ export default function DriverDocuments() {
 
       {/* Page Header */}
       <div style={headerStyle}>
-        <h1 style={pageTitleStyle}>📄 Document Center</h1>
+        <h1 style={pageTitleStyle}>{isDeliveryCourier ? "📄 Courier documents" : "📄 Document Center"}</h1>
         <p style={pageSubtitleStyle}>
-          Upload and manage your required documents
+          {isBicycleCourierProfile
+            ? "Upload your National ID. Profile photo is added during profile setup."
+            : isMotorVehicleCourierProfile
+            ? "Upload National ID, license, registration, and insurance for your courier type."
+            : "Upload and manage your required documents"}
         </p>
       </div>
 
@@ -382,7 +403,7 @@ export default function DriverDocuments() {
       {pendingUpload && (
         <div style={uploadDetailsStyle}>
           <strong style={uploadDetailsTitleStyle}>
-            Complete {DOCUMENT_TYPES.find((item) => item.key === pendingUpload.docTypeKey)?.label}
+            Complete {documentTypes.find((item) => item.key === pendingUpload.docTypeKey)?.label}
           </strong>
           <span style={uploadFileNameStyle}>{pendingUpload.file.name}</span>
           <div style={uploadActionsStyle}>
@@ -407,7 +428,7 @@ export default function DriverDocuments() {
 
       {/* Document List */}
       <div style={documentListStyle}>
-        {DOCUMENT_TYPES.map((docType) => {
+        {documentTypes.map((docType) => {
           const doc = documentMap[docType.key];
           const daysRemaining = doc?.expires_at
             ? getDaysRemaining(doc.expires_at)
@@ -448,13 +469,16 @@ function DocumentCard({
   isUploading,
   onUpload,
 }) {
-  const status = doc?.status || null;
+  const status = isExpired ? "expired" : doc?.display_status || doc?.status || null;
 
   return (
     <div style={documentCardStyle}>
       <div style={documentCardHeaderStyle}>
         <div style={documentInfoStyle}>
-          <span style={documentIconStyle}>{docType.icon}</span>
+          <span style={documentIconStyle}>
+            {docType.icon}
+            {isExpired ? <span style={expiredDotStyle} aria-label="Expired document" /> : null}
+          </span>
           <div>
             <h3 style={documentNameStyle}>{docType.label}</h3>
             {doc && (
@@ -541,6 +565,11 @@ function StatusBadge({ status }) {
     },
     rejected: {
       label: "Rejected",
+      color: COLORS.rejectedRed,
+      bgColor: "rgba(239, 68, 68, 0.15)",
+    },
+    expired: {
+      label: "Expired",
       color: COLORS.rejectedRed,
       bgColor: "rgba(239, 68, 68, 0.15)",
     },
@@ -810,6 +839,19 @@ const documentInfoStyle = {
 
 const documentIconStyle = {
   fontSize: "24px",
+  position: "relative",
+  display: "inline-flex",
+};
+
+const expiredDotStyle = {
+  position: "absolute",
+  top: -2,
+  right: -6,
+  width: 10,
+  height: 10,
+  borderRadius: "50%",
+  backgroundColor: "#ef4444",
+  border: "2px solid #0f172a",
 };
 
 const documentNameStyle = {

@@ -4,13 +4,15 @@ import { useTranslation } from "react-i18next";
 
 import Login from "./auth/Login";
 import Register from "./auth/Register";
-import { canAccessPage, getDashboardPath, getSafeRedirectPath, getUserRole } from "./auth/roleRouting";
+import { canAccessPage, getDashboardPath, getSafeRedirectPath, getUserRole, isPublicPage } from "./auth/roleRouting";
 
 import RiderApp from "./rider/RiderApp";
 import RiderReviews from "./rider/RiderReviews";
 import SavedPlaces from "./rider/SavedPlaces";
 
 import DriverSignup from "./driver/DriverSignup";
+import DriverLegalSignRoute from "./driver/DriverLegalSignRoute";
+import RiderLegalAcceptRoute from "./rider/RiderLegalAcceptRoute";
 import { DriverProvider } from "./driver/context/DriverContext";
 
 import AdminDashboard from "./admin/AdminDashboard";
@@ -32,13 +34,39 @@ import DriverShell from "./driver/components/DriverShell";
 import PostRidePayRate from "./rider/components/PostRidePayRate";
 import { ShareBookingFlow, ShareRideScreen, ShareRideComplete, ShareAdminDashboard } from './components/share';
 import DeliveryCustomerApp from "./delivery/DeliveryCustomerApp";
-import DeliveryDriverApp from "./delivery/DeliveryDriverApp";
-import DeliveryAdminView from "./delivery/DeliveryAdminView";
+import DeliveryDashboard from "./delivery/DeliveryDashboard";
+import DeliveryCourierProfileSetup from "./delivery/DeliveryCourierProfileSetup";
+import DeliveryCourierTermsRoute from "./delivery/DeliveryCourierTermsRoute";
+import DeliveryCourierLegalSignRoute from "./delivery/DeliveryCourierLegalSignRoute";
+import MerchantLegalSignRoute from "./merchant/MerchantLegalSignRoute";
+import DeliveryCustomerTermsRoute from "./delivery/DeliveryCustomerTermsRoute";
+import DeliveryCustomerSettings from "./delivery/DeliveryCustomerSettings";
+import DeliveryCourierProfile from "./delivery/DeliveryCourierProfile";
+import DeliveryWallet from "./delivery/DeliveryWallet";
+import DeliveryEarnings from "./delivery/DeliveryEarnings";
+import DeliveryDocuments from "./delivery/DeliveryDocuments";
+import DeliveryHistory from "./delivery/DeliveryHistory";
+import DeliveryCourierProfileEdit from "./delivery/DeliveryCourierProfileEdit";
+import DeliveryCourierSupport from "./delivery/DeliveryCourierSupport";
+import DeliveryCourierSettings from "./delivery/DeliveryCourierSettings";
+import MerchantApp from "./merchant/MerchantApp";
+import MerchantRegister from "./merchant/MerchantRegister";
+import WalletPage from "./payments/WalletPage";
+import AdminPaymentDashboard from "./admin/AdminPaymentDashboard";
 import LaunchServices from "./services/LaunchServices";
 import { API_URL } from "./apiConfig";
 import { MARKET } from "./marketConfig";
 import riderApi from "./rider/services/authenticatedApi";
-import { getAppType, shouldShowInstallButton } from './native/platform';
+import {
+  getAppHomePath,
+  getAppType,
+  isDeliveryCourierApp,
+  isDeliveryCourierPath,
+  isDeliveryNativeApp,
+  isTaxiDriverContext,
+  markDeliveryCourierSession,
+  shouldShowInstallButton,
+} from './native/platform';
 import { initDeepLinkListener } from './native/deeplink';
 import {
   getRouteFromNotification,
@@ -47,15 +75,39 @@ import {
 } from './native/push';
 
 const LOGO_SRC = "/yala-logo.png";
+const DELIVERY_LOGO_SRC = "/yala-delivery-logo.png";
+
+function getBrandLogoSrc() {
+  return getAppType() === "delivery" ? DELIVERY_LOGO_SRC : LOGO_SRC;
+}
 
 // Route filtering for native apps — only show relevant routes per app type
-const RIDER_ROUTES = ['/rider', '/rider-dashboard', '/rider-history', '/history', '/rider-reviews', '/saved-places', '/rider-profile', '/rider-payments', '/ride/share', '/delivery', '/services', '/login', '/register', '/settings', '/support', '/terms', '/privacy'];
-const DRIVER_ROUTES = ['/driver', '/driver/profile', '/driver/profile/edit', '/driver/documents', '/driver/code', '/driver/earnings', '/driver/feedback', '/driver/support', '/driver/achievements', '/driver/hall-of-fame', '/driver/history', '/driver/deliveries', '/services', '/login', '/register', '/settings', '/support', '/terms', '/privacy', '/admin', '/admin-dashboard', '/admin/share-analytics', '/admin/deliveries', '/rider-dashboard', '/rider', '/rider-history', '/history', '/rider-reviews', '/saved-places', '/rider-profile', '/rider-payments', '/ride/share', '/delivery', '/payment-setup', '/driver-vehicle-setup'];
+const RIDER_ROUTES = ['/rider', '/rider-dashboard', '/rider/legal', '/rider-history', '/history', '/rider-reviews', '/saved-places', '/rider-profile', '/rider-payments', '/wallet', '/ride/share', '/delivery', '/merchant', '/merchant/register', '/services', '/login', '/register', '/settings', '/support', '/terms', '/privacy'];
+const DRIVER_ROUTES = ['/driver', '/driver/sign', '/driver/profile', '/driver/profile/edit', '/driver/documents', '/driver/code', '/driver/earnings', '/driver/feedback', '/driver/support', '/driver/achievements', '/driver/hall-of-fame', '/driver/history', '/services', '/login', '/register', '/settings', '/support', '/terms', '/privacy', '/payment-setup', '/driver-vehicle-setup'];
+const DELIVERY_ROUTES = ['/delivery/courier', '/delivery/account', '/delivery/bank', '/delivery/wallet', '/delivery/history', '/delivery/profile-setup', '/delivery/vehicle-setup', '/delivery/earnings', '/delivery/documents', '/delivery/profile/edit', '/delivery/support', '/delivery/settings', '/delivery/courier/terms', '/delivery/courier/sign', '/delivery/customer/terms', '/delivery/customer/settings', '/driver/deliveries', '/login', '/register', '/settings', '/support', '/terms', '/privacy'];
+
+const TAXI_DRIVER_ONLY_PAGES = new Set([
+  "driver",
+  "driver-profile",
+  "driver-account",
+  "driver-premium-profile",
+  "driver-profile-edit",
+  "driver-documents",
+  "driver-code",
+  "driver-earnings",
+  "driver-feedback",
+  "driver-support",
+  "driver-achievements",
+  "driver-hall-of-fame",
+  "driver-history",
+  "driver-vehicle-setup",
+]);
 
 function isRoleAllowedForAppType(role, appType) {
   if (appType === "web") return true;
   if (appType === "rider") return role === "rider";
   if (appType === "driver") return role === "driver";
+  if (appType === "delivery") return role === "driver";
   return true;
 }
 
@@ -74,8 +126,9 @@ function normalizeRouteContext(value) {
 }
 
 function getRouteAppType() {
+  if (isDeliveryNativeApp()) return "delivery";
   const builtAppType = getAppType();
-  if (builtAppType === "rider" || builtAppType === "driver") {
+  if (builtAppType === "rider" || builtAppType === "driver" || builtAppType === "delivery") {
     return builtAppType;
   }
 
@@ -86,6 +139,8 @@ function getRouteAppType() {
       window.location.pathname
   );
 
+  if (route === "/delivery/courier" || route.startsWith("/delivery/courier")) return "delivery";
+  if (isDeliveryCourierPath(route)) return "delivery";
   if (route === "/driver" || route.startsWith("/driver/")) return "driver";
   if (
     route === "/admin" ||
@@ -109,7 +164,8 @@ function getRouteAppType() {
 function isRouteAllowed(path) {
   const appType = getAppType();
   if (appType === 'web') return true;
-  const routes = appType === 'rider' ? RIDER_ROUTES : DRIVER_ROUTES;
+  const routes =
+    appType === 'rider' ? RIDER_ROUTES : appType === 'delivery' ? DELIVERY_ROUTES : DRIVER_ROUTES;
   return routes.some(route => path === route || path.startsWith(route + '/'));
 }
 
@@ -138,7 +194,7 @@ function wrapDriverSecondaryPage(title, node, { backTo = "/driver", withProvider
 }
 
 function App() {
-  const currentPath = window.location.pathname;
+  const currentPath = (window.location.pathname || "/").replace(/\/+$/, "") || "/";
   const hasAuthSession = hasStoredAuthSession();
 
   const [page, setPage] = useState("home");
@@ -150,8 +206,30 @@ function App() {
   const sessionCheckStarted = useRef(false);
 
   useEffect(() => {
+    if (!isDeliveryCourierApp()) return;
+    if (TAXI_DRIVER_ONLY_PAGES.has(page)) {
+      window.location.replace("/delivery/courier");
+    }
+  }, [page]);
+
+  useEffect(() => {
+    if (isDeliveryCourierApp()) {
+      markDeliveryCourierSession();
+      document.title = "Yala Delivery";
+      return;
+    }
+    if (getAppType() === "driver") {
+      document.title = "Yala Driver";
+      return;
+    }
+    if (getAppType() === "rider") {
+      document.title = "Yala Rider";
+    }
+  }, [currentPath]);
+
+  useEffect(() => {
     const builtAppType = getAppType();
-    if (builtAppType === "rider" || builtAppType === "driver" || builtAppType === "admin") {
+    if (builtAppType === "rider" || builtAppType === "driver" || builtAppType === "delivery" || builtAppType === "admin") {
       localStorage.removeItem("sx_login_redirect");
     }
 
@@ -171,18 +249,81 @@ function App() {
   }, [isAuthenticated]);
 
   useEffect(() => {
+    if (currentPath === "/driver/deliveries") {
+      window.location.replace("/delivery/courier");
+      return;
+    }
+
+    if (isDeliveryNativeApp()) {
+      markDeliveryCourierSession();
+      const isTaxiDriverPath =
+        currentPath === "/" ||
+        currentPath === "/driver" ||
+        currentPath === "/driver-profile" ||
+        currentPath.startsWith("/driver/");
+      if (isTaxiDriverPath) {
+        if (currentPath !== "/delivery/courier") {
+          window.history.replaceState(null, "", "/delivery/courier");
+        }
+        setPage("delivery-driver");
+        return;
+      }
+    }
+
     // Route filtering for native apps — redirect to default if route not allowed
     // Route filtering disabled — all routes allowed for website deployment
 
     if (currentPath === "/payment-setup") setPage("payment-setup");
     else if (currentPath === "/driver-vehicle-setup") setPage("driver-vehicle-setup");
+    else if (currentPath === "/driver/sign") setPage("driver-legal-sign");
+    else if (currentPath === "/rider/legal") setPage("rider-legal-accept");
     else if (currentPath === "/rider-dashboard") setPage("rider-dashboard");
     else if (currentPath === "/rider-history" || currentPath === "/history") setPage("rider-ride-history");
     else if (currentPath === "/rider-reviews") setPage("rider-reviews");
     else if (currentPath === "/saved-places") setPage("saved-places");
     else if (currentPath === "/rider-profile") setPage("rider-profile");
     else if (currentPath === "/rider-payments") setPage("rider-payments");
+    else if (currentPath === "/wallet") setPage("wallet");
+    else if (currentPath === "/delivery/courier" || currentPath === "/driver/deliveries") setPage("delivery-driver");
+    else if (currentPath === "/delivery/profile-setup") setPage("delivery-profile-setup");
+    else if (currentPath === "/delivery/vehicle-setup") setPage("delivery-vehicle-setup");
+    else if (currentPath === "/delivery/account") setPage("delivery-account");
+    else if (currentPath === "/delivery/bank") setPage("delivery-bank");
+    else if (currentPath === "/delivery/wallet") setPage("delivery-wallet");
+    else if (currentPath === "/delivery/earnings") setPage("delivery-earnings");
+    else if (currentPath === "/delivery/history") setPage("delivery-history");
+    else if (currentPath === "/delivery/documents") setPage("delivery-documents");
+    else if (currentPath === "/delivery/profile/edit") setPage("delivery-profile-edit");
+    else if (currentPath === "/delivery/support") setPage("delivery-support");
+    else if (currentPath === "/delivery/settings") setPage("delivery-settings");
+    else if (currentPath === "/delivery/courier/terms") setPage("delivery-courier-terms");
+    else if (currentPath === "/delivery/courier/sign") setPage("delivery-courier-legal-sign");
+    else if (currentPath === "/delivery/customer/terms") setPage("delivery-customer-terms");
+    else if (currentPath === "/delivery/customer/settings") setPage("delivery-customer-settings");
+    else if (currentPath === "/delivery/terms") {
+      window.history.replaceState(null, "", "/delivery/courier/terms");
+      setPage("delivery-courier-terms");
+    }
+    else if (currentPath === "/terms" && isDeliveryCourierApp()) {
+      window.history.replaceState(null, "", "/delivery/courier/terms");
+      setPage("delivery-courier-terms");
+    }
+    else if (currentPath === "/settings" && isDeliveryCourierApp()) {
+      window.history.replaceState(null, "", "/delivery/settings");
+      setPage("delivery-settings");
+    }
+    else if (currentPath === "/driver/documents" && isDeliveryCourierApp()) {
+      window.history.replaceState(null, "", "/delivery/documents");
+      setPage("delivery-documents");
+    }
+    else if (currentPath === "/driver/profile/edit" && isDeliveryCourierApp()) {
+      window.history.replaceState(null, "", "/delivery/profile/edit");
+      setPage("delivery-profile-edit");
+    }
     else if (currentPath === "/delivery") setPage("delivery-customer");
+    else if (currentPath === "/merchant/register") setPage("merchant-register");
+    else if (currentPath === "/merchant/sign") setPage("merchant-legal-sign");
+    else if (currentPath === "/merchant") setPage("merchant");
     else if (currentPath === "/ride/share") setPage("share-booking");
     else if (currentPath.match(/^\/ride\/share\/\d+\/complete$/)) setPage("share-ride-complete");
     else if (currentPath.match(/^\/ride\/share\/\d+$/)) setPage("share-ride");
@@ -199,14 +340,24 @@ function App() {
     else if (currentPath === "/driver/achievements") setPage("driver-achievements");
     else if (currentPath === "/driver/hall-of-fame") setPage("driver-hall-of-fame");
     else if (currentPath === "/driver/history") setPage("driver-history");
-    else if (currentPath === "/driver/deliveries") setPage("delivery-driver");
-    else if (currentPath === "/driver") setPage("driver");
+    else if (currentPath === "/driver") {
+      if (!isTaxiDriverContext()) {
+        window.history.replaceState(null, "", "/delivery/courier");
+        setPage("delivery-driver");
+      } else {
+        setPage("driver");
+      }
+    }
     else if (currentPath === "/register") setPage("register");
     else if (currentPath === "/login") setPage("login");
     else if (currentPath === "/admin/share-analytics") setPage("admin-share-analytics");
     else if (currentPath === "/admin-dashboard") setPage("admin");
     else if (currentPath === "/admin") setPage("admin");
-    else if (currentPath === "/admin/deliveries") setPage("delivery-admin");
+    else if (currentPath === "/admin/deliveries") {
+      window.history.replaceState(null, "", "/admin?section=deliveries");
+      setPage("admin");
+    }
+    else if (currentPath === "/admin/payments") setPage("admin-payments");
     else if (currentPath === "/settings") setPage("settings");
     else if (currentPath === "/terms") setPage("terms");
     else if (currentPath === "/privacy") setPage("privacy");
@@ -330,13 +481,13 @@ function App() {
   };
 
   const goHome = () => {
-    window.location.href = "/";
+    window.location.href = getAppHomePath();
   };
 
   const logout = async () => {
     await unregisterPushNotifications(API_URL);
     clearAuthSession();
-    window.location.href = "/";
+    window.location.href = getAppHomePath();
   };
 
   const withInstall = (content, options = {}) => (
@@ -368,6 +519,12 @@ function App() {
       window.history.replaceState(null, "", "/rider");
       return;
     }
+    if (appType === 'delivery' || isDeliveryNativeApp()) {
+      markDeliveryCourierSession();
+      setPage("delivery-driver");
+      window.history.replaceState(null, "", "/delivery/courier");
+      return;
+    }
     if (appType === 'driver') {
       setPage("driver");
       window.history.replaceState(null, "", "/driver");
@@ -375,14 +532,45 @@ function App() {
     }
 
     // Web: route based on user role
-    const dashPath = getSafeRedirectPath(userData);
-    if (dashPath === "/rider" || dashPath === "/rider-dashboard") setPage("rider");
-    else if (dashPath === "/driver") setPage("driver");
-    else if (dashPath === "/admin" || dashPath === "/admin-dashboard") setPage("admin");
-    else if (dashPath === "/payment-setup") setPage("payment-setup");
-    else if (dashPath === "/driver-vehicle-setup") setPage("driver-vehicle-setup");
+    const params = new URLSearchParams(window.location.search || "");
+    const nextPath =
+      params.get("next") ||
+      localStorage.getItem("sx_login_redirect") ||
+      "";
+    const dashPath = getSafeRedirectPath(
+      userData,
+      nextPath || getDashboardPath(userData)
+    );
+    const resolvedPath =
+      dashPath === "/driver" && !isTaxiDriverContext()
+        ? "/delivery/courier"
+        : dashPath;
+    if (resolvedPath.startsWith("/delivery/")) {
+      markDeliveryCourierSession();
+    }
+    if (resolvedPath === "/rider" || resolvedPath === "/rider-dashboard") setPage("rider");
+    else if (resolvedPath === "/driver") setPage("driver");
+    else if (resolvedPath === "/admin" || resolvedPath === "/admin-dashboard") setPage("admin");
+    else if (resolvedPath === "/payment-setup") setPage("payment-setup");
+    else if (resolvedPath === "/driver-vehicle-setup") setPage("driver-vehicle-setup");
+    else if (resolvedPath === "/rider/legal") setPage("rider-legal-accept");
+    else if (resolvedPath === "/driver/sign") setPage("driver-legal-sign");
+    else if (resolvedPath === "/delivery/courier") setPage("delivery-driver");
+    else if (resolvedPath === "/delivery/profile-setup") setPage("delivery-profile-setup");
+    else if (resolvedPath === "/delivery/vehicle-setup") setPage("delivery-vehicle-setup");
+    else if (resolvedPath === "/delivery/account") setPage("delivery-account");
+    else if (resolvedPath === "/delivery/bank") setPage("delivery-bank");
+    else if (resolvedPath === "/delivery/wallet") setPage("delivery-wallet");
+    else if (resolvedPath === "/delivery/earnings") setPage("delivery-earnings");
+    else if (resolvedPath === "/delivery/history") setPage("delivery-history");
+    else if (resolvedPath === "/delivery/settings") setPage("delivery-settings");
+    else if (resolvedPath === "/delivery/courier/terms") setPage("delivery-courier-terms");
+    else if (resolvedPath === "/delivery/courier/sign") setPage("delivery-courier-legal-sign");
+    else if (resolvedPath === "/delivery/customer/terms") setPage("delivery-customer-terms");
+    else if (resolvedPath === "/delivery/customer/settings") setPage("delivery-customer-settings");
+    else if (resolvedPath === "/delivery/terms") setPage("delivery-courier-terms");
     else setPage("rider");
-    window.history.replaceState(null, "", dashPath);
+    window.history.replaceState(null, "", resolvedPath);
   };
 
   if (page === "login") return withInstall(<Login onLogin={handleLoginSuccess} />, { showNotifications: false });
@@ -391,7 +579,7 @@ function App() {
     return <SharedTripPage token={currentPath.split("/").filter(Boolean).pop()} />;
   }
 
-  if (isProtectedPage(page)) {
+  if (isProtectedPage(page) && !isPublicPage(page)) {
     if (!sessionChecked) {
       return withInstall(<AuthLoadingScreen />);
     }
@@ -463,15 +651,99 @@ function App() {
   }
 
   if (page === "delivery-customer") {
-    return withInstall(<DeliveryCustomerApp />);
+    return withInstall(<DeliveryCustomerApp />, { showNotifications: false });
   }
 
   if (page === "delivery-driver") {
-    return withInstall(<DeliveryDriverApp />);
+    return withInstall(<DeliveryDashboard />, { showNotifications: false });
+  }
+
+  if (page === "delivery-profile-setup") {
+    return withInstall(<DeliveryCourierProfileSetup />);
+  }
+
+  if (page === "delivery-vehicle-setup") {
+    return withInstall(<DeliveryCourierProfileSetup />);
+  }
+
+  if (page === "delivery-account") {
+    return withInstall(<DeliveryCourierProfile />);
+  }
+
+  if (page === "delivery-bank") {
+    return withInstall(<DeliveryWallet />);
+  }
+
+  if (page === "delivery-wallet") {
+    return withInstall(<DeliveryWallet />);
+  }
+
+  if (page === "delivery-earnings") {
+    return withInstall(<DeliveryEarnings />);
+  }
+
+  if (page === "delivery-history") {
+    return withInstall(<DeliveryHistory />);
+  }
+
+  if (page === "delivery-documents") {
+    return withInstall(<DeliveryDocuments />);
+  }
+
+  if (page === "delivery-profile-edit") {
+    return withInstall(<DeliveryCourierProfileEdit />);
+  }
+
+  if (page === "delivery-support") {
+    return withInstall(<DeliveryCourierSupport />);
+  }
+
+  if (page === "delivery-settings") {
+    return withInstall(<DeliveryCourierSettings />);
+  }
+
+  if (page === "delivery-courier-terms") {
+    return withInstall(<DeliveryCourierTermsRoute />);
+  }
+
+  if (page === "delivery-courier-legal-sign") {
+    return withInstall(<DeliveryCourierLegalSignRoute />);
+  }
+
+  if (page === "delivery-customer-terms") {
+    return withInstall(<DeliveryCustomerTermsRoute />);
+  }
+
+  if (page === "delivery-customer-settings") {
+    return withInstall(<DeliveryCustomerSettings />);
   }
 
   if (page === "delivery-admin") {
-    return withInstall(<DeliveryAdminView />);
+    window.location.replace("/admin?section=deliveries");
+    return null;
+  }
+
+  if (page === "merchant") {
+    return withInstall(<MerchantApp />);
+  }
+
+  if (page === "merchant-legal-sign") {
+    return withInstall(<MerchantLegalSignRoute />);
+  }
+
+  if (page === "merchant-register") {
+    return withInstall(
+      <MerchantRegister onSuccess={() => { window.location.href = "/merchant/sign"; }} />,
+      { showNotifications: false }
+    );
+  }
+
+  if (page === "wallet") {
+    return withInstall(<WalletPage onBack={() => { window.location.href = "/rider-dashboard"; }} />);
+  }
+
+  if (page === "admin-payments") {
+    return withInstall(<AdminPaymentDashboard />);
   }
 
   if (page === "payment-setup") {
@@ -543,7 +815,19 @@ function App() {
     return withInstall(<RiderApp />);
   }
 
+  if (page === "rider-legal-accept") {
+    return withInstall(<RiderLegalAcceptRoute />);
+  }
+
+  if (page === "driver-legal-sign") {
+    return withInstall(<DriverLegalSignRoute />);
+  }
+
   if (page === "driver") {
+    if (!isTaxiDriverContext()) {
+      window.location.replace("/delivery/courier");
+      return null;
+    }
     const LazyDriverDashboardNew = React.lazy(() => import("./driver/DriverDashboardNew"));
     return withInstall(
       <Suspense fallback={<div style={{ minHeight: "100vh", background: "#0B1220" }} />}>
@@ -650,6 +934,10 @@ function App() {
   }
 
   if (page === "settings") {
+    if (isDeliveryCourierApp()) {
+      window.location.replace("/delivery/settings");
+      return null;
+    }
     if (getAppType() === "driver") {
       return withInstall(wrapDriverSecondaryPage("Settings", <LazyDriverSettings />));
     }
@@ -661,6 +949,9 @@ function App() {
   }
 
   if (page === "support") {
+    if (getAppType() === "delivery" || isDeliveryCourierApp()) {
+      return withInstall(<DeliveryCourierSupport />);
+    }
     return withInstall(
       <RiderShell title="Help" backTo="/rider-dashboard">
         <SupportCenter variant="rider" />
@@ -687,14 +978,36 @@ function App() {
 
   // Native apps: show login if not authenticated, show appropriate app if authenticated
   if (getAppType() !== 'web') {
+    const nativeMarketplacePages = new Set(["delivery-customer", "merchant", "merchant-register", "merchant-legal-sign"]);
+    if (nativeMarketplacePages.has(page)) {
+      if (page === "delivery-customer") {
+        return withInstall(<DeliveryCustomerApp />, { showNotifications: false });
+      }
+      if (page === "merchant") return withInstall(<MerchantApp />);
+      if (page === "merchant-legal-sign") return withInstall(<MerchantLegalSignRoute />);
+      if (page === "merchant-register") {
+        return withInstall(
+          <MerchantRegister onSuccess={() => { window.location.href = "/merchant/sign"; }} />,
+          { showNotifications: false }
+        );
+      }
+    }
+
     if (isAuthenticated) {
-      if (getAppType() === 'driver') {
+      if (isDeliveryNativeApp()) {
+        markDeliveryCourierSession();
+        return withInstall(<DeliveryDashboard />);
+      }
+      if (getAppType() === 'driver' && isTaxiDriverContext()) {
         const LazyDriverDashboardNew = React.lazy(() => import("./driver/DriverDashboardNew"));
         return withInstall(
           <Suspense fallback={<div style={{ minHeight: "100vh", background: "#0B1220" }} />}>
             <LazyDriverDashboardNew />
           </Suspense>
         );
+      }
+      if (getAppType() === 'rider') {
+        return withInstall(<RiderApp />);
       }
       return withInstall(<RiderApp />);
     }
@@ -722,7 +1035,24 @@ function isProtectedPage(page) {
     "driver-achievements",
     "driver-history",
     "delivery-driver",
+    "delivery-profile-setup",
+    "delivery-vehicle-setup",
+    "delivery-account",
+    "delivery-bank",
+    "delivery-wallet",
+    "delivery-earnings",
+    "delivery-history",
+    "delivery-documents",
+    "delivery-profile-edit",
+    "delivery-support",
+    "delivery-settings",
+    "delivery-courier-terms",
+    "delivery-courier-legal-sign",
+    "delivery-customer-terms",
+    "delivery-customer-settings",
     "driver-vehicle-setup",
+    "rider-legal-accept",
+    "driver-legal-sign",
     "payment-setup",
     "rider",
     "rider-dashboard",
@@ -733,6 +1063,11 @@ function isProtectedPage(page) {
     "rider-profile",
     "rider-payments",
     "delivery-customer",
+    "merchant",
+    "merchant-register",
+    "merchant-legal-sign",
+    "wallet",
+    "admin-payments",
     "share-booking",
     "share-ride",
     "share-ride-complete",
@@ -806,7 +1141,7 @@ function AuthLoadingScreen({
   return (
     <main style={authLoadingStyle}>
       <div style={authLoadingCardStyle}>
-        <img src={LOGO_SRC} alt={`${MARKET.brandName} logo`} style={authLoadingLogoStyle} />
+        <img src={getBrandLogoSrc()} alt={`${MARKET.brandName} logo`} style={authLoadingLogoStyle} />
         <h1 style={authLoadingTitleStyle}>{MARKET.brandName}</h1>
         <p style={authLoadingTextStyle}>{message}</p>
         {actionHref && (
@@ -925,7 +1260,7 @@ function SakhoNavbar() {
       <NavbarStyles />
       <nav className="sakho-navbar" aria-label="Main navigation">
         <button className="sakho-nav-logo" onClick={() => goTo("/")}>
-          <img src={LOGO_SRC} alt={`${MARKET.brandName} logo`} />
+          <img src={getBrandLogoSrc()} alt={`${MARKET.brandName} logo`} />
           <span>{t("common.brand")}</span>
         </button>
 
@@ -1365,7 +1700,7 @@ function LandingFooter() {
   return (
     <footer className="sx-footer">
       <div>
-        <img src={LOGO_SRC} alt={`${MARKET.brandName} logo`} />
+        <img src={getBrandLogoSrc()} alt={`${MARKET.brandName} logo`} />
         <strong>{MARKET.brandName}</strong>
       </div>
       <div className="sx-footer-links">
@@ -2465,7 +2800,7 @@ function SettingsPage({ logout }) {
           </p>
         </div>
         <div className="settings-profile-card">
-          <img src={LOGO_SRC} alt={`${MARKET.brandName} account`} />
+          <img src={getBrandLogoSrc()} alt={`${MARKET.brandName} account`} />
           <div>
             <strong>{user?.first_name || user?.name || MARKET.brandName}</strong>
             <span>{user?.email || "Mobility account"}</span>
@@ -3390,7 +3725,7 @@ function BrandLogo() {
   return (
     <div style={brandLogoWrapStyle}>
       <img
-        src={LOGO_SRC}
+        src={getBrandLogoSrc()}
         alt={`${MARKET.brandName} logo`}
         style={brandLogoImageStyle}
       />

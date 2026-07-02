@@ -4,7 +4,7 @@
  * No-ops gracefully in browser mode.
  */
 
-import { isNative, getPlatform } from './platform';
+import { isNative, getPlatform, isDeliveryCourierApp } from './platform';
 
 let Geolocation = null;
 let BackgroundGeolocation = null;
@@ -72,10 +72,13 @@ export async function startBackgroundLocationTracking(wsConnection) {
   if (!isNative() || !BackgroundGeolocation) return;
 
   try {
+    const isDeliveryApp = isDeliveryCourierApp();
     watcherId = await BackgroundGeolocation.addWatcher(
       {
-        backgroundMessage: 'Yala Driver is tracking your location',
-        backgroundTitle: 'Location Active',
+        backgroundMessage: isDeliveryApp
+          ? 'Yala Delivery is tracking your location'
+          : 'Yala Driver is tracking your location',
+        backgroundTitle: isDeliveryApp ? 'Yala Delivery' : 'Location Active',
         requestPermissions: true,
         stale: false,
         distanceFilter: 10, // meters

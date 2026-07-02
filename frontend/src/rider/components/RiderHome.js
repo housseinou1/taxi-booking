@@ -17,6 +17,9 @@ import routeService from '../services/routeService';
 import apiService from '../services/apiService';
 import { calculateFare } from '../utils/fareCalculator';
 import { buildRideRequest } from '../utils/buildRideRequest';
+import { fetchLegalStatus, acceptRideLegal } from '../../legal/legalApi';
+import { redirectIfLegalResignRequired } from '../../legal/legalVersionGate';
+import { useRiderLegalAcceptance } from '../../legal/components/RiderTermsAcceptance';
 import { MARKET } from '../../marketConfig';
 import RouteTimeline, { buildBookingRoutePoints } from '../../components/RouteTimeline';
 import { getNextPendingStop } from '../../driver/components/MultiStopProgress';
@@ -106,6 +109,15 @@ function RiderHome() {
   const [showChat, setShowChat] = useState(false);
   const [showSafety, setShowSafety] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [legalCompliant, setLegalCompliant] = useState(false);
+  const [requiresResign, setRequiresResign] = useState(false);
+  const {
+    termsChecked,
+    privacyChecked,
+    allAccepted: legalAccepted,
+    setTermsChecked,
+    setPrivacyChecked,
+  } = useRiderLegalAcceptance();
   const savedIntentHandledRef = useRef(false);
   const addStopInputRef = useRef(null);
   const currentRideIdRef = useRef(null);
@@ -255,6 +267,30 @@ function RiderHome() {
     }
     fetchProfile();
   }, []);
+
+  useEffect(() => {
+    if (!localStorage.getItem('access')) return undefined;
+    fetchLegalStatus()
+      .then((data) => {
+        if (redirectIfLegalResignRequired(data, 'ride', '/rider-dashboard')) {
+          return;
+        }
+        const ride = data?.ride || data?.rider;
+        const compliant = Boolean(ride?.compliance_current);
+        const resign = Boolean(ride?.requires_resign);
+        setLegalCompliant(compliant);
+        setRequiresResign(resign);
+        if (compliant) {
+          setTermsChecked(true);
+          setPrivacyChecked(true);
+        } else if (resign) {
+          setTermsChecked(false);
+          setPrivacyChecked(false);
+        }
+      })
+      .catch(() => {});
+    return undefined;
+  }, [setTermsChecked, setPrivacyChecked]);
 
   // ─── WebSocket subscriptions for ride updates ──────────────────────
   useEffect(() => {
@@ -629,10 +665,19 @@ function RiderHome() {
 
   const handleConfirmBooking = useCallback(async () => {
     if (!pickup || !destination) return;
+    if (!legalCompliant && !legalAccepted) return;
 
     dispatch({ type: 'REQUEST_RIDE' });
 
     try {
+      if (!legalCompliant && legalAccepted) {
+        await acceptRideLegal({
+          device_info: (navigator.userAgent || '').slice(0, 500),
+        });
+        setLegalCompliant(true);
+        setRequiresResign(false);
+      }
+
       const payload = buildRideRequest({
         pickup,
         destination,
@@ -641,6 +686,8 @@ function RiderHome() {
         routeInfo,
         fare: discountedFare || fare,
         promoCode,
+        rideTermsAccepted: legalCompliant || termsChecked,
+        privacyAccepted: legalCompliant || privacyChecked,
       });
 
       const response = await apiService.requestRide(payload);
@@ -652,7 +699,7 @@ function RiderHome() {
     } catch (err) {
       dispatch({ type: 'SET_ERROR', payload: err.message || t('riderHome.requestFailed', 'Ride request failed. Please try again.') });
     }
-  }, [pickup, destination, stops, rideType, routeInfo, fare, discountedFare, promoCode, dispatch, t]);
+  }, [pickup, destination, stops, rideType, routeInfo, fare, discountedFare, promoCode, dispatch, t, legalCompliant, legalAccepted, termsChecked, privacyChecked]);
 
   const handlePromoApply = useCallback(
     async (code) => {
@@ -931,6 +978,11 @@ function RiderHome() {
             routeInfo={routeInfo}
             promoError={promoError}
             promoLoading={promoLoading}
+            legalCompliant={legalCompliant && !requiresResign}
+            termsChecked={termsChecked}
+            privacyChecked={privacyChecked}
+            onTermsChange={setTermsChecked}
+            onPrivacyChange={setPrivacyChecked}
           />
         );
 
@@ -956,6 +1008,28 @@ function RiderHome() {
 
   return (
     <div className="rider-home">
+      {requiresResign ? (
+        <div
+          className="rider-home__legal-banner"
+          role="alert"
+          style={{
+            position: 'fixed',
+            top: 12,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 1200,
+            maxWidth: 'min(92vw, 520px)',
+            padding: '12px 16px',
+            borderRadius: 12,
+            background: '#7f1d1d',
+            color: '#fff',
+            fontWeight: 700,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+          }}
+        >
+          Updated Yala Ride terms require your acceptance before you can request a ride.
+        </div>
+      ) : null}
       {/* Map background — always visible */}
       <div className="rider-home__map">
         <MapView

@@ -1,19 +1,6 @@
 import React, { useState } from "react";
 import { API_URL } from "../apiConfig";
 
-const DRIVER_TERMS_VERSION = "driver-terms-2026-05";
-
-const driverTerms = [
-  "I confirm that my license, carte grise, vignette, insurance, National ID, and profile information are real and current.",
-  "I agree to follow Mauritania traffic laws, drive safely, and never drive under the influence of alcohol, drugs, or unsafe fatigue.",
-  "I will keep the vehicle clean, roadworthy, insured, and suitable for carrying riders.",
-  "I understand that riders and drivers may rate each other, and poor safety or service reports may lead to review, suspension, or removal.",
-  "I agree not to collect unauthorized extra fees outside the fare, tip, or approved payment process shown in the app.",
-  "I will respect rider privacy and will not misuse phone numbers, pickup locations, drop-off locations, documents, or trip information.",
-  "I understand the admin may verify my documents, approve or reject my driver account, block my account, and review trips for safety or fraud.",
-  "I agree to use the emergency and support features responsibly and report serious safety issues immediately.",
-];
-
 function DriverSignup() {
   const [formData, setFormData] = useState({
     phone_number: "",
@@ -24,7 +11,6 @@ function DriverSignup() {
     plate_number: "",
   });
 
-  const [termsAccepted, setTermsAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
@@ -45,11 +31,6 @@ function DriverSignup() {
         return;
       }
 
-      if (!termsAccepted) {
-        alert("Please read and accept the driver terms and conditions.");
-        return;
-      }
-
       if (!formData.vehicle_make || !formData.vehicle_model || !formData.plate_number) {
         alert("Please fill in all vehicle information (make, model, and plate number).");
         return;
@@ -63,8 +44,6 @@ function DriverSignup() {
       data.append("vehicle_model", formData.vehicle_model);
       data.append("vehicle_color", formData.vehicle_color);
       data.append("plate_number", formData.plate_number);
-      data.append("terms_accepted", "true");
-      data.append("terms_version", DRIVER_TERMS_VERSION);
 
       const response = await fetch(`${API_URL}/drivers/register/`, {
         method: "POST",
@@ -81,11 +60,11 @@ function DriverSignup() {
         return;
       }
 
-      alert("Account created! Please upload your documents from the Driver Dashboard to get approved.");
+      alert("Vehicle saved. Next, sign the Yala Driver Agreement.");
 
       localStorage.removeItem("needs_vehicle_setup");
 
-      window.location.href = "/driver";
+      window.location.href = "/driver/sign?return=/driver";
     } catch (error) {
       console.error(error);
       alert("Server error. Please try again.");
@@ -170,42 +149,20 @@ function DriverSignup() {
           style={inputStyle}
         />
 
-        <section style={termsBoxStyle}>
-          <div style={termsHeaderStyle}>
-            <span>Driver Terms and Conditions</span>
-            <small>{DRIVER_TERMS_VERSION}</small>
-          </div>
-
-          <div style={termsListStyle}>
-            {driverTerms.map((term) => (
-              <p key={term} style={termItemStyle}>
-                {term}
-              </p>
-            ))}
-          </div>
-
-          <label style={termsCheckStyle}>
-            <input
-              type="checkbox"
-              checked={termsAccepted}
-              onChange={(event) => setTermsAccepted(event.target.checked)}
-            />
-            <span>
-              I have read and agree to the driver terms and conditions.
-            </span>
-          </label>
-        </section>
+        <p style={legalNoteStyle}>
+          After saving your vehicle, you will sign the Yala Driver Agreement electronically before going online.
+        </p>
 
         <button
           onClick={submitApplication}
-          disabled={loading || !termsAccepted}
+          disabled={loading}
           style={{
             ...buttonStyle,
-            opacity: loading || !termsAccepted ? 0.6 : 1,
-            cursor: loading || !termsAccepted ? "not-allowed" : "pointer",
+            opacity: loading ? 0.6 : 1,
+            cursor: loading ? "not-allowed" : "pointer",
           }}
         >
-          {loading ? "Creating account..." : "Create Driver Account"}
+          {loading ? "Saving vehicle..." : "Save vehicle & continue"}
         </button>
       </div>
     </div>
@@ -293,48 +250,16 @@ const inputStyle = {
   fontWeight: 800,
 };
 
-const termsBoxStyle = {
+const legalNoteStyle = {
   marginTop: "18px",
-  border: "1px solid rgba(255,255,255,0.12)",
-  borderRadius: "14px",
-  background: "rgba(255,255,255,0.06)",
+  marginBottom: "8px",
   padding: "14px",
-};
-
-const termsHeaderStyle = {
-  display: "flex",
-  justifyContent: "space-between",
-  gap: "10px",
-  alignItems: "center",
-  color: "white",
-  fontWeight: 900,
-  marginBottom: "10px",
-};
-
-const termsListStyle = {
-  maxHeight: "220px",
-  overflowY: "auto",
-  display: "grid",
-  gap: "8px",
-  paddingRight: "6px",
-};
-
-const termItemStyle = {
-  margin: 0,
-  color: "#cbd5e1",
-  fontSize: "0.92rem",
-  lineHeight: 1.4,
-};
-
-const termsCheckStyle = {
-  marginTop: "14px",
-  display: "grid",
-  gridTemplateColumns: "20px minmax(0, 1fr)",
-  gap: "10px",
-  alignItems: "start",
-  color: "white",
-  fontWeight: 800,
-  lineHeight: 1.35,
+  borderRadius: "12px",
+  background: "rgba(250, 204, 21, 0.1)",
+  border: "1px solid rgba(250, 204, 21, 0.22)",
+  color: "#fde68a",
+  lineHeight: 1.5,
+  fontWeight: 700,
 };
 
 const buttonStyle = {

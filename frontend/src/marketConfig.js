@@ -1,3 +1,5 @@
+import { MAURITANIA_WILAYA_CITIES } from "./data/mauritaniaWilayaCities";
+
 export const MARKET = {
   brandName: "Yala",
   brandTagline: "Ride Anywhere",
@@ -28,31 +30,7 @@ export const MARKET = {
     { label: "Fire", number: "118", description: "Fire emergency" },
   ],
   center: [18.0735, -15.9582],
-  cities: [
-    { label: "Nouakchott", center: [18.0735, -15.9582] },
-    { label: "Nouadhibou", center: [20.94188, -17.03842] },
-    { label: "Kiffa", center: [16.6166, -11.4042] },
-    { label: "Kaedi", center: [16.1503, -13.5037] },
-    { label: "Rosso", center: [16.51378, -15.80503] },
-    { label: "Zouerate", center: [22.7354, -12.4783] },
-    { label: "Atar", center: [20.5169, -13.0489] },
-    { label: "Selibaby", center: [15.15846, -12.1843] },
-    { label: "Nema", center: [16.6160, -7.2565] },
-    { label: "Aioun el Atrouss", center: [16.6614, -9.6149] },
-    { label: "Tidjikja", center: [18.5564, -11.4272] },
-    { label: "Aleg", center: [17.0528, -13.9089] },
-    { label: "Boutilimit", center: [17.5467, -14.6944] },
-    { label: "Akjoujt", center: [19.7464, -14.3853] },
-    { label: "R'Kiz", center: [16.9025, -15.9589] },
-    { label: "Wad Naga", center: [17.4581, -15.3336] },
-    { label: "Tiguent", center: [17.2358, -16.0269] },
-    { label: "Mederdra", center: [16.9214, -15.6581] },
-    { label: "Keur Macene", center: [16.5358, -16.2342] },
-    { label: "Benichab", center: [19.0819, -15.2117] },
-    { label: "Mhaijratt", center: [18.7206, -16.0578] },
-    { label: "Maghama", center: [15.5101, -12.8510] },
-    { label: "Toulel", center: [15.4850, -12.8200] },
-  ],
+  cities: MAURITANIA_WILAYA_CITIES.map(({ label, center }) => ({ label, center })),
   defaultPickup: {
     label: "Sebkha",
     position: [18.0735, -15.9582],

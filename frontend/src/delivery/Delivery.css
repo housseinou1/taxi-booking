@@ -336,9 +336,77 @@
 
 .delivery-categories {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
   margin: 14px 0;
+}
+
+.delivery-categories--legend {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.delivery-vehicle-panel {
+  margin-bottom: 18px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #dfe8e2;
+}
+
+.delivery-vehicle-panel h2 {
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+
+.delivery-vehicle-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.delivery-vehicle-btn {
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+  padding: 14px 10px;
+  border: 2px solid #d9e4de;
+  border-radius: 12px;
+  background: #fff;
+  cursor: pointer;
+  font: inherit;
+  color: #365348;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.delivery-vehicle-btn:hover:not(:disabled) {
+  border-color: #087a4b;
+  background: #f0faf5;
+}
+
+.delivery-vehicle-btn.active {
+  border-color: #087a4b;
+  background: #e3f5eb;
+  color: #064d30;
+}
+
+.delivery-vehicle-btn:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.delivery-vehicle-btn strong {
+  font-size: 14px;
+}
+
+.delivery-vehicle-btn small {
+  font-size: 11px;
+  color: #66746d;
+  text-align: center;
+  line-height: 1.35;
+}
+
+.delivery-vehicle-icon {
+  font-size: 24px;
+  line-height: 1;
 }
 
 .delivery-category-btn {
@@ -769,7 +837,10 @@
 
 @media (max-width: 480px) {
   .delivery-categories {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .delivery-vehicle-options {
+    grid-template-columns: 1fr;
   }
   .delivery-admin-stats {
     grid-template-columns: repeat(2, 1fr);
@@ -777,4 +848,265 @@
   .delivery-admin-tabs {
     overflow-x: auto;
   }
+}
+
+.delivery-onboarding {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.delivery-onboarding--loading,
+.delivery-onboarding--error {
+  min-height: 50vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.delivery-onboarding-hero {
+  background: #fff;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+}
+
+.delivery-onboarding-eyebrow {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #3b4fbf;
+  margin-bottom: 8px;
+}
+
+.delivery-onboarding-hero h1 {
+  margin: 0 0 8px;
+  font-size: 28px;
+  color: #0b1220;
+}
+
+.delivery-onboarding-hero p {
+  margin: 0 0 16px;
+  color: #4b5563;
+  line-height: 1.5;
+}
+
+.delivery-onboarding-progress {
+  width: 100%;
+  height: 8px;
+  background: #e8edf5;
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.delivery-onboarding-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #00a651, #3b4fbf);
+  border-radius: 999px;
+}
+
+.delivery-onboarding-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.delivery-onboarding-step {
+  display: grid;
+  grid-template-columns: 48px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  background: #fff;
+  border-radius: 14px;
+  padding: 14px;
+  border: 1px solid #e8edf5;
+}
+
+.delivery-onboarding-step.is-complete {
+  border-color: #b9e4cb;
+  background: #f7fcf9;
+}
+
+.delivery-onboarding-step.is-review {
+  border-color: #d7defa;
+  background: #f8f9ff;
+}
+
+.delivery-onboarding-step-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: #f3f6fb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+}
+
+.delivery-onboarding-step-body strong {
+  display: block;
+  color: #0b1220;
+  margin-bottom: 4px;
+}
+
+.delivery-onboarding-step-body p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.delivery-onboarding-notice {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #eef2ff;
+  color: #2f3f9f;
+}
+
+.delivery-onboarding-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+.delivery-vehicle-setup-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.delivery-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-weight: 600;
+  color: #0b1220;
+}
+
+.delivery-field input {
+  border: 1px solid #d7dde8;
+  border-radius: 10px;
+  padding: 12px;
+  font: inherit;
+}
+
+.delivery-terms-box {
+  background: #fff;
+  border: 1px solid #e8edf5;
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.delivery-terms-box h2 {
+  margin: 0 0 10px;
+  font-size: 18px;
+}
+
+.delivery-terms-box ul {
+  margin: 0 0 12px;
+  padding-left: 18px;
+  color: #4b5563;
+}
+
+.delivery-terms-check {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-weight: 500;
+}
+
+.delivery-error-banner {
+  background: #fff0f0;
+  color: #a51d28;
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.delivery-notice-banner {
+  background: #eef8f1;
+  color: #125a39;
+  border-radius: 10px;
+  padding: 12px;
+}
+
+/* ── Document Alert Banners ──────────────────────────────────────────────── */
+
+.delivery-alert-banner {
+  margin: 0 16px 12px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+}
+
+.delivery-alert-banner--review {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+.delivery-alert-banner__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #991b1b;
+}
+
+.delivery-alert-banner__item.is-expired {
+  color: #b91c1c;
+}
+
+.delivery-alert-banner__item.is-critical {
+  color: #7f1d1d;
+}
+
+.delivery-alert-banner__item.is-warning {
+  color: #92400e;
+}
+
+.delivery-alert-banner--review .delivery-alert-banner__item {
+  color: #78350f;
+}
+
+.delivery-alert-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: #ef4444;
+}
+
+.delivery-alert-dot.is-pending {
+  background: #f59e0b;
+}
+
+.delivery-alert-banner__action {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 10px;
+  border: 0;
+  border-radius: 8px;
+  background: #dc2626;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: center;
+}
+
+.delivery-alert-banner__action:active {
+  background: #b91c1c;
 }

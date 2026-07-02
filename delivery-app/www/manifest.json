@@ -1,0 +1,44 @@
+{
+  "short_name": "Yala Delivery",
+  "name": "Yala Delivery",
+  "description": "Deliver packages, food, groceries, and parcels across Mauritania as a Yala Delivery courier.",
+  "icons": [
+    {
+      "src": "yala-delivery-logo.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "favicon.ico",
+      "sizes": "32x32",
+      "type": "image/x-icon"
+    }
+  ],
+  "start_url": "/delivery/courier",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#FF6B00",
+  "background_color": "#08111F",
+  "categories": [
+    "food",
+    "shopping",
+    "business"
+  ],
+  "shortcuts": [
+    {
+      "name": "Yala Delivery Courier",
+      "short_name": "Courier",
+      "description": "Go online and accept deliveries",
+      "url": "/delivery/courier",
+      "icons": [
+        {
+          "src": "yala-delivery-logo.png",
+          "type": "image/png",
+          "sizes": "512x512"
+        }
+      ]
+    }
+  ]
+}

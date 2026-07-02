@@ -147,7 +147,7 @@
 /* Lyft-like stacked pickup / destination card */
 .location-stack {
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   border: 1px solid var(--yala-gray-100);
   border-radius: var(--radius-lg);
   background: var(--yala-white);

@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1920" width="1080" height="1920">
+  <!-- Yala Delivery Splash Screen -->
+
+  <defs>
+    <linearGradient id="splashPinGradient" x1="540" y1="520" x2="540" y2="980" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFB800"/>
+      <stop offset="100%" stop-color="#F58220"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1080" height="1920" fill="#FFF8E8"/>
+  <rect x="0" y="0" width="1080" height="6" fill="#F58220"/>
+
+  <circle cx="540" cy="820" r="360" fill="#FFE08A" opacity="0.35"/>
+
+  <!-- Pin -->
+  <path d="M540 520 C452 520 382 590 382 678 C382 780 540 980 540 980 C540 980 698 780 698 678 C698 590 628 520 540 520 Z" fill="url(#splashPinGradient)"/>
+  <circle cx="540" cy="670" r="118" fill="#FFF8E8"/>
+  <rect x="488" y="625" width="104" height="82" rx="10" fill="#8B5A2B"/>
+  <rect x="488" y="625" width="104" height="20" rx="10" fill="#A66B33"/>
+  <path d="M540 625 L592 645 L540 665 L488 645 Z" fill="#C98A2E"/>
+
+  <text x="540" y="1120" font-family="Arial, Helvetica, sans-serif" font-size="72" font-weight="bold" fill="#3C2415" text-anchor="middle">Yala</text>
+  <rect x="390" y="1155" width="300" height="58" rx="29" fill="#F58220"/>
+  <text x="540" y="1198" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="bold" fill="#FFFFFF" text-anchor="middle" letter-spacing="3">DELIVERY</text>
+  <text x="540" y="1270" font-family="Arial, Helvetica, sans-serif" font-size="28" fill="#3C2415" text-anchor="middle" opacity="0.8">Deliver. Fast. Reliable.</text>
+
+  <rect x="0" y="1914" width="1080" height="6" fill="#F58220"/>
+</svg>

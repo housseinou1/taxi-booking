@@ -2,10 +2,16 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import "./index.css";
 import "./rider/lyft-rider.css";
-import "./driver/lyft-driver.css";
 import "./i18n";
 import App from "./App";
-import { initNativeAppType, isNative } from "./native/platform";
+import {
+  getAppType,
+  initNativeAppType,
+  isDeliveryAppInstall,
+  isDeliveryNativeApp,
+  isNative,
+  isTaxiDriverContext,
+} from "./native/platform";
 
 const rootElement = document.getElementById("root");
 const root = ReactDOM.createRoot(rootElement);
@@ -29,12 +35,34 @@ function showBootSplash(message) {
   `;
 }
 
+async function loadAppTheme() {
+  const appType = getAppType();
+
+  if (isDeliveryNativeApp() || isDeliveryAppInstall()) {
+    await import("./delivery/delivery-uber.css");
+    document.documentElement.classList.add("yala-app--delivery");
+    return;
+  }
+
+  if (appType === "driver" || isTaxiDriverContext()) {
+    await import("./driver/lyft-driver.css");
+    document.documentElement.classList.add("yala-app--driver");
+    return;
+  }
+
+  if (appType === "web") {
+    await import("./driver/lyft-driver.css");
+    return;
+  }
+}
+
 async function bootstrap() {
   if (isNative()) {
     showBootSplash("Starting Yala...");
     await initNativeAppType();
   }
 
+  await loadAppTheme();
   renderApp();
 
   const isLocalhost =

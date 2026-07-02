@@ -99,6 +99,10 @@ export async function requestRide(params) {
       fare: params.estimated_fare,
       stops: params.stops || [],
       promo_code: params.promo_code || undefined,
+      ride_terms_accepted: params.ride_terms_accepted || params.rider_terms_accepted || undefined,
+      terms_accepted: params.terms_accepted || undefined,
+      privacy_accepted: params.privacy_accepted || undefined,
+      privacy_policy_accepted: params.privacy_policy_accepted || undefined,
     }, {
       headers: authHeaders(),
     });

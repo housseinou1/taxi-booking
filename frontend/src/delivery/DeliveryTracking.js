@@ -109,9 +109,12 @@ export default function DeliveryTracking({ deliveryId, onBack }) {
           {delivery.driver_name && (
             <div className="delivery-driver-info">
               <strong>{delivery.driver_name}</strong>
-              {delivery.vehicle && <span>{delivery.vehicle}</span>}
-              {delivery.plate_number && <span className="delivery-plate">{delivery.plate_number}</span>}
-              {delivery.driver_phone && <a href={`tel:${delivery.driver_phone}`} className="delivery-button delivery-button-sm">Call driver</a>}
+              {delivery.courier_vehicle_label && <span>{delivery.courier_vehicle_label}</span>}
+              {delivery.vehicle && delivery.courier_vehicle_type === "car" && <span>{delivery.vehicle}</span>}
+              {delivery.plate_number && delivery.courier_vehicle_type === "car" && (
+                <span className="delivery-plate">{delivery.plate_number}</span>
+              )}
+              {delivery.driver_phone && <a href={`tel:${delivery.driver_phone}`} className="delivery-button delivery-button-sm">Call courier</a>}
             </div>
           )}
 

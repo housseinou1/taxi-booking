@@ -129,9 +129,6 @@ export const sendDriverLocation = (rideId, latitude, longitude) => {
   });
 };
 
-// Start connection immediately
-connect();
-
 export default {
   subscribeRideUpdates,
   sendRideUpdate,

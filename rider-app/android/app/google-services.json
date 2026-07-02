@@ -7,6 +7,25 @@
   "client": [
     {
       "client_info": {
+        "mobilesdk_app_id": "1:915044985428:android:9be79a9d3ab784ecd55bc1",
+        "android_client_info": {
+          "package_name": "com.yala.delivery.mr"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC_bbVFI0YFGFBv_7lEqICsr7ogaUZ4t34"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:915044985428:android:511b3e9bf9d77605d55bc1",
         "android_client_info": {
           "package_name": "com.yala.driver.mr"

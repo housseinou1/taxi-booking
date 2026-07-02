@@ -17,7 +17,9 @@ const isBrowserLocalDev =
     window.location.hostname === "127.0.0.1");
 
 const localDevApiUrl = `${browserProtocol}://${browserHost}:8000`;
-const localDevWsUrl = `${browserProtocol === "https" ? "wss" : "ws"}://${browserHost}:8000/ws/rides/`;
+const localDevWsBase = `${browserProtocol === "https" ? "wss" : "ws"}://${browserHost}:8000/ws`;
+const localDevWsUrl = `${localDevWsBase}/rides/`;
+const localDevDeliveryWsUrl = `${localDevWsBase}/deliveries/`;
 
 export const API_URL = isBrowserLocalDev
   ? localDevApiUrl
@@ -27,6 +29,11 @@ export const WS_URL =
   isBrowserLocalDev
     ? localDevWsUrl
     : process.env.REACT_APP_WS_URL || localDevWsUrl;
+
+export const DELIVERY_WS_URL =
+  isBrowserLocalDev
+    ? localDevDeliveryWsUrl
+    : process.env.REACT_APP_DELIVERY_WS_URL || process.env.REACT_APP_WS_URL || localDevDeliveryWsUrl;
 
 export function getApiCandidates(path = "") {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;

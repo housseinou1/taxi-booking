@@ -2,16 +2,29 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useTranslation } from "react-i18next";
 import { API_URL, getApiCandidates } from "../apiConfig";
-import { getAppType, isRiderLyftUI, isDriverLyftUI } from "../native/platform";
+import {
+  clearDeliveryCourierSession,
+  getAppType,
+  isDeliveryCourierApp,
+  isDeliveryCourierPath,
+  isDriverLyftUI,
+  isDeliveryUberUI,
+  isRiderLyftUI,
+  markDeliveryCourierSession,
+} from "../native/platform";
+import "../delivery/delivery-uber.css";
 
 const logoSrc = "/yala-logo.png";
 const riderLogoSrc = "/yala-rider-logo.png";
 const driverLogoSrc = "/yala-driver-logo.png";
+const deliveryLogoSrc = "/yala-delivery-logo.png";
 
 function getLogoForApp() {
+  if (isDeliveryCourierApp()) return deliveryLogoSrc;
   const appType = getAppType();
   if (appType === "rider") return riderLogoSrc;
   if (appType === "driver") return driverLogoSrc;
+  if (appType === "delivery") return deliveryLogoSrc;
   return logoSrc;
 }
 
@@ -43,6 +56,9 @@ const getRequestedRole = () => {
   if (nextRoute === "/admin" || nextRoute === "/admin-dashboard" || nextRoute.startsWith("/admin/")) {
     return "admin";
   }
+  if (isDeliveryCourierPath(nextRoute)) {
+    return "driver";
+  }
 
   return requestedRole === "driver" || requestedRole === "rider" || requestedRole === "admin"
     ? requestedRole
@@ -51,6 +67,9 @@ const getRequestedRole = () => {
 
 const getInitialUserType = () => {
   const appType = getAppType();
+  if (appType === "delivery" || isDeliveryCourierApp()) {
+    return "driver";
+  }
   if (appType === "driver" || appType === "rider") {
     return appType;
   }
@@ -66,7 +85,7 @@ const getInitialUserType = () => {
 const isAppTypeLocked = () => {
   const appType = getAppType();
   const requestedRole = getRequestedRole();
-  return appType === "driver" || appType === "rider" || Boolean(requestedRole);
+  return appType === "driver" || appType === "rider" || appType === "delivery" || isDeliveryCourierApp() || Boolean(requestedRole);
 };
 
 function Register() {
@@ -126,10 +145,13 @@ function Register() {
       }
 
       if (isActive) {
+        const deliveryFlow = isDeliveryCourierApp() || isDeliveryUberUI() || getAppType() === "delivery";
         setErrorMessage(
           lastError?.response
             ? "Unable to load cities. Run: python manage.py bootstrap_yala"
-            : "Unable to reach the Yala server. Start backend on port 8000.",
+            : deliveryFlow
+              ? "Cannot reach the Yala Delivery server. Connect your phone to the same Wi‑Fi as this PC, keep the backend running, then retry."
+              : "Unable to reach the Yala server. Start backend on port 8000.",
         );
       }
     };
@@ -236,6 +258,19 @@ function Register() {
       localStorage.setItem("refresh", loginResponse.data.refresh);
       localStorage.setItem("user", JSON.stringify(loginResponse.data));
 
+      const params = new URLSearchParams(window.location.search);
+      const nextRoute = params.get("next") || localStorage.getItem("sx_login_redirect") || "";
+      if (
+        formData.user_type === "driver" &&
+        (isDeliveryCourierApp() || isDeliveryUberUI() || getAppType() === "delivery" || String(nextRoute).includes("/delivery/"))
+      ) {
+        markDeliveryCourierSession();
+        localStorage.removeItem("needs_payment_setup");
+        localStorage.removeItem("needs_vehicle_setup");
+        window.location.replace("/delivery/profile-setup");
+        return;
+      }
+
       const codeResponse = await postWithFallback(
         "/auth/phone/request-code/",
         {},
@@ -287,8 +322,21 @@ function Register() {
       }
 
       if (formData.user_type === "driver") {
-        localStorage.setItem("needs_vehicle_setup", "true");
         localStorage.removeItem("needs_payment_setup");
+        const params = new URLSearchParams(window.location.search);
+        const nextRoute = params.get("next") || localStorage.getItem("sx_login_redirect") || "";
+        if (
+          isDeliveryCourierApp() ||
+          isDeliveryUberUI() ||
+          String(nextRoute).includes("/delivery/")
+        ) {
+          markDeliveryCourierSession();
+          localStorage.removeItem("needs_vehicle_setup");
+          window.location.replace("/delivery/profile-setup");
+          return;
+        }
+        clearDeliveryCourierSession();
+        localStorage.setItem("needs_vehicle_setup", "true");
         window.location.replace("/driver-vehicle-setup");
         return;
       }
@@ -324,17 +372,36 @@ function Register() {
     }
   };
 
+  const isDeliveryCourierAppFlow = isDeliveryUberUI() || getAppType() === "delivery";
   const isRiderLyft = isRiderLyftUI() || formData.user_type === "rider";
-  const isDriverLyft = isDriverLyftUI() || formData.user_type === "driver";
+  const isDriverLyft =
+    !isDeliveryCourierAppFlow && (isDriverLyftUI() || formData.user_type === "driver");
+  const isDeliveryUber = isDeliveryCourierAppFlow;
+
+  const registerTitle = isDeliveryCourierAppFlow
+    ? "Create courier account"
+    : t("auth.registerTitle");
+  const registerSubtitle = isDeliveryCourierAppFlow
+    ? "Join Yala Delivery as a courier. Profile setup comes next."
+    : t("auth.registerSubtitle");
+  const accountLabel = verificationStep
+    ? "Phone verification"
+    : formData.user_type === "rider"
+      ? t("auth.riderAccount")
+      : formData.user_type === "admin"
+        ? "Admin Account"
+        : isDeliveryCourierAppFlow
+          ? "Courier account"
+          : t("auth.driverAccount");
 
   return (
-    <main className={`auth-register-page${isRiderLyft ? " auth-register-page--lyft" : ""}${isDriverLyft ? " auth-register-page--lyft-driver auth-register-page--lyft" : ""}`}>
+    <main className={`auth-register-page${isRiderLyft ? " auth-register-page--lyft" : ""}${isDriverLyft ? " auth-register-page--lyft-driver auth-register-page--lyft" : ""}${isDeliveryUber ? " auth-register-page--delivery yala-login--delivery-uber" : ""}`}>
       <AuthRegisterStyles />
       <section className="auth-register-hero">
-        <img src={getLogoForApp()} alt="Yala" />
-        <span>{t("auth.join")}</span>
-        <h1>{t("auth.registerTitle")}</h1>
-        <p>{t("auth.registerSubtitle")}</p>
+        <img src={getLogoForApp()} alt={isDeliveryCourierAppFlow ? "Yala Delivery" : "Yala"} />
+        <span>{isDeliveryCourierAppFlow ? "Yala Delivery" : t("auth.join")}</span>
+        <h1>{registerTitle}</h1>
+        <p>{registerSubtitle}</p>
       </section>
 
       <form
@@ -342,15 +409,7 @@ function Register() {
         onSubmit={verificationStep ? verifyPhone : registerUser}
       >
         <div className="auth-register-header">
-          <span>
-            {verificationStep
-              ? "Phone verification"
-              : formData.user_type === "rider"
-                ? t("auth.riderAccount")
-                : formData.user_type === "admin"
-                  ? "Admin Account"
-                  : t("auth.driverAccount")}
-          </span>
+          <span>{accountLabel}</span>
           <h2>{verificationStep ? "Enter your SMS code" : t("auth.signUp")}</h2>
         </div>
 
@@ -531,6 +590,14 @@ function Register() {
           {t("auth.alreadyHaveAccount")}
         </button>}
       </form>
+
+      {isDeliveryUber ? (
+        <nav className="auth-register-legal-footer" aria-label="Legal">
+          <button type="button" onClick={() => { window.location.href = "/delivery/courier/terms"; }}>
+            Terms & Conditions
+          </button>
+        </nav>
+      ) : null}
     </main>
   );
 }
@@ -810,6 +877,196 @@ function AuthRegisterStyles() {
 
         .auth-register-hero h1 {
           font-size: 22px;
+        }
+      }
+
+      /* ── Yala Delivery Uber-style registration (light courier app) ──── */
+
+      .auth-register-page--delivery {
+        min-height: 100dvh;
+        align-items: center;
+        padding: max(18px, env(safe-area-inset-top)) 18px calc(24px + env(safe-area-inset-bottom));
+        background:
+          radial-gradient(circle at 50% 0%, rgba(245, 130, 32, 0.18), transparent 34%),
+          linear-gradient(180deg, #fff7ed 0%, #f8fafc 44%, #ffffff 100%) !important;
+        color: #111827;
+      }
+
+      .auth-register-page--delivery .auth-register-hero {
+        width: min(440px, 100%);
+        margin: 8px 0 18px;
+      }
+
+      .auth-register-page--delivery .auth-register-hero img {
+        width: 92px;
+        height: 92px;
+        border: 0;
+        border-radius: 26px;
+        margin-bottom: 14px;
+        box-shadow: 0 18px 44px rgba(245, 130, 32, 0.16), 0 10px 30px rgba(17, 24, 39, 0.08);
+      }
+
+      .auth-register-page--delivery .auth-register-hero span,
+      .auth-register-page--delivery .auth-register-header span {
+        padding: 8px 14px;
+        border: 1px solid rgba(245, 130, 32, 0.22);
+        background: #fff3e6;
+        color: #8a4b0d;
+        font-size: 12px;
+        letter-spacing: 0.04em;
+      }
+
+      .auth-register-page--delivery .auth-register-hero h1 {
+        max-width: 360px;
+        margin: 10px auto 0;
+        color: #111827;
+        font-size: clamp(32px, 8vw, 46px);
+        font-weight: 950;
+        line-height: 0.98;
+        letter-spacing: -0.07em;
+      }
+
+      .auth-register-page--delivery .auth-register-hero p {
+        max-width: 330px;
+        margin-top: 14px;
+        color: #4b5563;
+        font-size: 16px;
+        font-weight: 600;
+        line-height: 1.35;
+      }
+
+      .auth-register-page--delivery .auth-register-card {
+        width: min(430px, 100%);
+        padding: 24px 22px 22px;
+        border: 1px solid rgba(17, 24, 39, 0.06);
+        border-radius: 30px;
+        background: rgba(255, 255, 255, 0.96);
+        box-shadow: 0 24px 70px rgba(17, 24, 39, 0.13);
+        backdrop-filter: blur(18px);
+      }
+
+      .auth-register-page--delivery .auth-register-header h2 {
+        margin-bottom: 18px;
+        color: #111827;
+        font-size: 38px;
+        font-weight: 950;
+        line-height: 1;
+        letter-spacing: -0.06em;
+      }
+
+      .auth-register-page--delivery .auth-register-error {
+        border-color: #fecdd3;
+        background: #fff1f2;
+        color: #991b1b;
+        font-size: 14px;
+        line-height: 1.35;
+      }
+
+      .auth-register-page--delivery .auth-register-card input,
+      .auth-register-page--delivery .auth-register-card select {
+        min-height: 58px;
+        margin-bottom: 13px;
+        padding: 0 18px;
+        border: 1.5px solid #e5e7eb;
+        border-radius: 18px;
+        background: #f8fafc;
+        color: #111827;
+        font-size: 17px;
+        font-weight: 750;
+      }
+
+      .auth-register-page--delivery .auth-register-card input::placeholder {
+        color: #6b7280;
+        opacity: 1;
+      }
+
+      .auth-register-page--delivery .auth-register-card select {
+        color: #111827;
+      }
+
+      .auth-register-page--delivery .auth-register-card input:focus,
+      .auth-register-page--delivery .auth-register-card select:focus {
+        border-color: #f58220;
+        background: #ffffff;
+        box-shadow: 0 0 0 4px rgba(245, 130, 32, 0.14);
+      }
+
+      .auth-register-page--delivery .auth-register-city {
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+
+      .auth-register-page--delivery .auth-register-city strong {
+        color: #111827;
+        font-size: 16px;
+        font-weight: 900;
+      }
+
+      .auth-register-page--delivery .auth-register-city span {
+        color: #6b7280;
+        font-size: 13px;
+      }
+
+      .auth-register-page--delivery .auth-register-primary {
+        min-height: 58px;
+        margin-top: 12px;
+        border-radius: 999px;
+        background: #111827;
+        color: #ffffff;
+        font-size: 17px;
+        font-weight: 900;
+        box-shadow: 0 16px 34px rgba(245, 130, 32, 0.22);
+      }
+
+      .auth-register-page--delivery .auth-register-primary:active {
+        background: #000000;
+      }
+
+      .auth-register-page--delivery .auth-register-secondary {
+        min-height: 52px;
+        border: 0;
+        border-radius: 999px;
+        background: transparent;
+        color: #111827;
+        font-weight: 900;
+      }
+
+      .auth-register-page--delivery .auth-register-verification-copy {
+        color: #4b5563;
+      }
+
+      @media (max-width: 560px) {
+        .auth-register-page--delivery {
+          padding: max(14px, env(safe-area-inset-top)) 14px calc(22px + env(safe-area-inset-bottom));
+          align-items: center;
+        }
+
+        .auth-register-page--delivery .auth-register-hero {
+          margin-top: 2px;
+          margin-bottom: 14px;
+        }
+
+        .auth-register-page--delivery .auth-register-hero img {
+          width: 84px;
+          height: 84px;
+          border-radius: 24px;
+        }
+
+        .auth-register-page--delivery .auth-register-hero h1 {
+          font-size: 34px;
+        }
+
+        .auth-register-page--delivery .auth-register-hero p {
+          font-size: 15px;
+        }
+
+        .auth-register-page--delivery .auth-register-card {
+          padding: 22px 18px 20px;
+          border-radius: 28px;
+        }
+
+        .auth-register-page--delivery .auth-register-header h2 {
+          font-size: 34px;
         }
       }
     `}</style>

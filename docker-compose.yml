@@ -9,10 +9,11 @@ services:
       - ./frontend/build:/usr/share/nginx/html
       - ./backend/taxi/staticfiles:/usr/share/nginx/static
       - ./backend/taxi/media:/usr/share/nginx/media
-      - ./certbot/conf:/etc/letsencrypt
+      - /etc/letsencrypt:/etc/letsencrypt:ro
       - ./certbot/www:/var/www/certbot
     depends_on:
-      - django
+      django:
+        condition: service_healthy
     restart: always
 
   django:
@@ -21,7 +22,6 @@ services:
       dockerfile: Dockerfile
     command: >
       sh -c "python manage.py migrate &&
-             python manage.py bootstrap_yala &&
              python manage.py collectstatic --noinput &&
              daphne -b 0.0.0.0 -p 8000 taxi.asgi:application"
     volumes:
@@ -31,11 +31,19 @@ services:
     environment:
       DATABASE_URL: postgres://yala_user:${POSTGRES_PASSWORD}@postgres:5432/yala_db
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     restart: always
     expose:
       - "8000"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import socket; s=socket.create_connection((\"127.0.0.1\",8000),timeout=5); s.close()' && echo ok"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
 
   postgres:
     image: postgres:15-alpine
@@ -48,6 +56,12 @@ services:
     restart: always
     expose:
       - "5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U yala_user -d yala_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   redis:
     image: redis:7-alpine
@@ -57,33 +71,42 @@ services:
     restart: always
     expose:
       - "6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   celery-worker:
     build:
       context: ./backend/taxi
       dockerfile: Dockerfile
-    command: celery -A taxi worker --loglevel=info --concurrency=2
+    command: sh -c "celery -A taxi.celery worker --loglevel=info --concurrency=2"
     env_file:
       - ./backend/taxi/.env.production
     environment:
       DATABASE_URL: postgres://yala_user:${POSTGRES_PASSWORD}@postgres:5432/yala_db
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     restart: always
 
   celery-beat:
     build:
       context: ./backend/taxi
       dockerfile: Dockerfile
-    command: celery -A taxi beat --loglevel=info
+    command: sh -c "celery -A taxi.celery beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler"
     env_file:
       - ./backend/taxi/.env.production
     environment:
       DATABASE_URL: postgres://yala_user:${POSTGRES_PASSWORD}@postgres:5432/yala_db
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     restart: always
 
 volumes:

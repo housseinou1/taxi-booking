@@ -101,7 +101,7 @@ export async function takePhoto() {
   return new Promise((resolve) => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = 'image/jpeg,image/png';
+    input.accept = 'image/jpeg,image/png,image/webp';
     input.capture = 'environment';
     input.onchange = async (e) => {
       const file = e.target.files?.[0];
@@ -148,7 +148,7 @@ export async function pickFromGallery() {
   return new Promise((resolve) => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = 'image/jpeg,image/png';
+    input.accept = 'image/jpeg,image/png,image/webp';
     input.onchange = async (e) => {
       const file = e.target.files?.[0];
       if (!file) {

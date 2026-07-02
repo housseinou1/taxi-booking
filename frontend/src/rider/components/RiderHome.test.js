@@ -206,10 +206,9 @@ describe('RiderHome integration tests', () => {
       expect(options.find((el) => el.textContent.includes('Ksar'))).toBeTruthy();
     });
 
-    // Click the Ksar option
-    fireEvent.click(screen.getAllByRole('option').find((el) => el.textContent.includes('Ksar')));
+    fireEvent.mouseDown(screen.getAllByRole('option').find((el) => el.textContent.includes('Ksar')));
 
-    // Set destination — since pickup is now set, selecting destination triggers rideType step
+    // Set destination — auto-advances to ride type when pickup is already set
     fireEvent.change(destinationInput, { target: { value: 'Arafat' } });
 
     await waitFor(() => {
@@ -217,26 +216,18 @@ describe('RiderHome integration tests', () => {
       expect(options.find((el) => el.textContent.includes('Arafat'))).toBeTruthy();
     });
 
-    fireEvent.click(screen.getAllByRole('option').find((el) => el.textContent.includes('Arafat')));
+    fireEvent.mouseDown(screen.getAllByRole('option').find((el) => el.textContent.includes('Arafat')));
 
-    // Continue to ride type after setting pickup and destination
-    fireEvent.click(screen.getByRole('button', { name: /Find Rides/i }));
-
-    // Step 3: Ride type selection should appear
-    await waitFor(() => {
-      expect(screen.getByText('Choose a ride')).toBeInTheDocument();
-    });
-
-    // Select Comfort ride type
-    const comfortCard = screen.getByLabelText(/Comfort/);
-    fireEvent.click(comfortCard);
-
-    // Step 4: Booking confirmation should appear
+    // Step 3: Confirmation should appear automatically
     await waitFor(() => {
       expect(screen.getByText('Confirm Your Ride')).toBeInTheDocument();
     });
 
-    // Confirm the booking
+    // Select Comfort ride type on confirmation screen
+    const comfortCard = screen.getByLabelText(/Comfort/);
+    fireEvent.click(comfortCard);
+
+    // Step 4: Confirm the booking
     const confirmBtn = screen.getByRole('button', { name: /Confirm booking/i });
     fireEvent.click(confirmBtn);
 
@@ -390,9 +381,9 @@ describe('RiderHome integration tests', () => {
       const options = screen.getAllByRole('option');
       expect(options.find((el) => el.textContent.includes('Sebkha'))).toBeTruthy();
     });
-    fireEvent.click(screen.getAllByRole('option').find((el) => el.textContent.includes('Sebkha')));
+    fireEvent.mouseDown(screen.getAllByRole('option').find((el) => el.textContent.includes('Sebkha')));
 
-    // 3. Set destination
+    // 3. Set destination (auto-advances to ride type)
     const destinationInput = screen.getByPlaceholderText('Search destination location...');
     fireEvent.change(destinationInput, { target: { value: 'Dar Naim' } });
 
@@ -400,20 +391,14 @@ describe('RiderHome integration tests', () => {
       const options = screen.getAllByRole('option');
       expect(options.find((el) => el.textContent.includes('Dar Naim'))).toBeTruthy();
     });
-    fireEvent.click(screen.getAllByRole('option').find((el) => el.textContent.includes('Dar Naim')));
+    fireEvent.mouseDown(screen.getAllByRole('option').find((el) => el.textContent.includes('Dar Naim')));
 
-    fireEvent.click(screen.getByRole('button', { name: /Find Rides/i }));
-
-    // 4. Select ride type
     await waitFor(() => {
-      expect(screen.getByText('Choose a ride')).toBeInTheDocument();
+      expect(screen.getByText('Confirm Your Ride')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByLabelText(/Regular/));
 
     // 5. Confirm booking (should fail)
-    await waitFor(() => {
-      expect(screen.getByText('Confirm Your Ride')).toBeInTheDocument();
-    });
 
     const confirmBtn = screen.getByRole('button', { name: /Confirm booking/i });
     fireEvent.click(confirmBtn);
@@ -483,26 +468,26 @@ describe('RiderHome integration tests', () => {
     await waitFor(() => {
       expect(screen.getAllByRole('option').find((el) => el.textContent.includes('Ksar'))).toBeTruthy();
     });
-    fireEvent.click(screen.getAllByRole('option').find((el) => el.textContent.includes('Ksar')));
+    fireEvent.mouseDown(screen.getAllByRole('option').find((el) => el.textContent.includes('Ksar')));
 
-    const destinationInput = screen.getByPlaceholderText('Search destination location...');
-    fireEvent.change(destinationInput, { target: { value: 'Arafat' } });
-    await waitFor(() => {
-      expect(screen.getAllByRole('option').find((el) => el.textContent.includes('Arafat'))).toBeTruthy();
-    });
-    fireEvent.click(screen.getAllByRole('option').find((el) => el.textContent.includes('Arafat')));
+    fireEvent.click(screen.getByRole('button', { name: /Add stop/i }));
 
     const addStopInput = screen.getByPlaceholderText('Search add stop 1 location...');
     fireEvent.change(addStopInput, { target: { value: 'Sebkha' } });
     await waitFor(() => {
       expect(screen.getAllByRole('option').find((el) => el.textContent.includes('Sebkha'))).toBeTruthy();
     });
-    fireEvent.click(screen.getAllByRole('option').find((el) => el.textContent.includes('Sebkha')));
+    fireEvent.mouseDown(screen.getAllByRole('option').find((el) => el.textContent.includes('Sebkha')));
 
-    fireEvent.click(screen.getByRole('button', { name: /Find Rides/i }));
+    const destinationInput = screen.getByPlaceholderText('Search destination location...');
+    fireEvent.change(destinationInput, { target: { value: 'Arafat' } });
+    await waitFor(() => {
+      expect(screen.getAllByRole('option').find((el) => el.textContent.includes('Arafat'))).toBeTruthy();
+    });
+    fireEvent.mouseDown(screen.getAllByRole('option').find((el) => el.textContent.includes('Arafat')));
 
     await waitFor(() => {
-      expect(screen.getByText('Your route')).toBeInTheDocument();
+      expect(screen.getByText('Confirm Your Ride')).toBeInTheDocument();
       expect(screen.getByText('Sebkha')).toBeInTheDocument();
     });
 

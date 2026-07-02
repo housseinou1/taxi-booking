@@ -30,6 +30,13 @@
   background: var(--surface-warm);
 }
 
+.booking-confirmation__ride-types {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
 /* Row layout for pickup/stop/destination/ride type */
 .booking-confirmation__row {
   display: flex;

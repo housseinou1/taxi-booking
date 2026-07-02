@@ -55,6 +55,13 @@ const APPS = {
     outputDir: 'driver-app',
     androidResDir: 'driver-app/android/app/src/main/res',
   },
+  delivery: {
+    iconSvg: 'assets/yala-delivery-icon.svg',
+    splashSvg: 'assets/yala-delivery-splash.svg',
+    outputDir: 'delivery-app',
+    androidResDir: 'delivery-app/android/app/src/main/res',
+    splashBackground: '#FFF8E8',
+  },
 };
 
 async function generateIcons() {
@@ -91,7 +98,7 @@ async function generateIcons() {
 
     // 2. Splash screen (2732x2732 for iPad Pro)
     if (splashSvg) {
-      await sharp(splashSvg).resize(2732, 2732, { fit: 'contain', background: appName === 'rider' ? '#00A651' : '#0B1220' }).png().toFile(path.join(resourcesDir, 'splash.png'));
+      await sharp(splashSvg).resize(2732, 2732, { fit: 'contain', background: config.splashBackground || (appName === 'rider' ? '#00A651' : '#0B1220') }).png().toFile(path.join(resourcesDir, 'splash.png'));
       console.log(`  ✓ resources/splash.png (2732x2732)`);
     }
 

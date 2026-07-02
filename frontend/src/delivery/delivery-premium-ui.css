@@ -1943,9 +1943,25 @@
   }
 
   .dcd-trip-sheet {
-    max-height: 65vh;
-    padding: 14px 14px 16px;
+    max-height: min(48vh, 400px);
     border-radius: 16px 16px 0 0;
+  }
+
+  .dcd-trip-sheet__body {
+    padding: 0 14px 10px;
+  }
+
+  .ccf-trip__header-meta strong {
+    font-size: 16px;
+  }
+
+  .ccf-trip__location-card strong {
+    font-size: 15px;
+  }
+
+  .ccf-btn--primary {
+    min-height: 50px;
+    font-size: 15px;
   }
 }
 
@@ -2110,9 +2126,8 @@
 /* Phone dark layout — combined */
 @media (max-width: 430px) {
   .delivery-uber--dark .dcd-trip-sheet {
-    padding: 12px 12px 14px;
+    max-height: min(48vh, 400px);
     border-radius: 14px 14px 0 0;
-    max-height: 68vh;
   }
 
   .delivery-uber--dark .delivery-uber-trip__contact-actions {

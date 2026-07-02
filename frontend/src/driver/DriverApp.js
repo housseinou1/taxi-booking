@@ -11,6 +11,7 @@ import RideStatusButtons from "../RideStatusButtons";
 import AnalyticsDashboard from "../admin/AnalyticsDashboard";
 import RideChat from "../components/RideChat";
 import RideCancellationModal from "../components/RideCancellationModal";
+import { fetchLegalStatus } from "../legal/legalApi";
 import {
   joinRideUpdates,
   leaveRideUpdates,
@@ -284,6 +285,10 @@ export default function DriverApp() {
 
   const activeRide = activeRides[0];
   const waitMinutes = isOnline ? Math.max(1, Math.min(9, availableRides.length + 1)) : 1;
+
+  const redirectToDriverAgreement = useCallback(() => {
+    window.location.href = "/driver/sign?return=/driver";
+  }, []);
 
   useEffect(() => {
     notificationAudioRef.current = new Audio("/notification.wav");
@@ -741,6 +746,17 @@ export default function DriverApp() {
 
     try {
       setDriverNotice("");
+
+      if (nextAvailability) {
+        const legalStatus = await fetchLegalStatus().catch(() => null);
+        const driverLegal = legalStatus?.driver;
+        if (driverLegal && (!driverLegal.signature_complete || driverLegal.requires_resign)) {
+          setDriverNotice("Please sign the Yala Driver Agreement before going online.");
+          redirectToDriverAgreement();
+          return;
+        }
+      }
+
       await unlockNotificationSound();
 
       const response = await axios.post(
@@ -760,10 +776,18 @@ export default function DriverApp() {
         sendToLogin("Your login expired. Please log in again before going online.");
         return;
       }
+      const detail = error.response?.data?.detail || error.response?.data?.error || "";
+      if (
+        error.response?.data?.code === "driver_terms_required" ||
+        error.response?.data?.driver_terms_required ||
+        String(detail).toLowerCase().includes("driver agreement")
+      ) {
+        setDriverNotice("Please sign the Yala Driver Agreement before going online.");
+        redirectToDriverAgreement();
+        return;
+      }
       setDriverNotice(
-        error.response?.data?.error ||
-          error.response?.data?.detail ||
-          "Could not change driver status. Please check approval and login."
+        detail || "Could not change driver status. Please check approval and login."
       );
     }
   };
@@ -1561,12 +1585,6 @@ export default function DriverApp() {
             />
             {openMenuSections.earn && (
               <>
-                <MenuRow
-                  icon="D"
-                  label="Yala Delivery"
-                  badge="Packages"
-                  onClick={() => (window.location.href = "/driver/deliveries")}
-                />
                 <MenuRow
                   icon="▣"
                   label="Scheduled Rides"

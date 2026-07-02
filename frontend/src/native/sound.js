@@ -529,3 +529,29 @@ export async function playRideRequestAlert({ force = false } = {}) {
 
   return chimePlayed;
 }
+
+export async function playChatMessageSound() {
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return false;
+    if (!sharedAudioContext) {
+      sharedAudioContext = new AudioContextClass();
+    }
+    const ctx = sharedAudioContext;
+    if (ctx.state === "suspended") {
+      await ctx.resume();
+    }
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.35, ctx.currentTime);
+    gain.connect(ctx.destination);
+    const osc = ctx.createOscillator();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(740, ctx.currentTime);
+    osc.connect(gain);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.12);
+    return true;
+  } catch (_) {
+    return false;
+  }
+}

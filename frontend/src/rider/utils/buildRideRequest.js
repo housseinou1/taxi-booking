@@ -49,5 +49,14 @@ export function buildRideRequest(bookingState) {
     payload.promo_code = promoCode;
   }
 
+  if (bookingState.rideTermsAccepted) {
+    payload.ride_terms_accepted = true;
+    payload.terms_accepted = true;
+  }
+  if (bookingState.privacyAccepted) {
+    payload.privacy_accepted = true;
+    payload.privacy_policy_accepted = true;
+  }
+
   return payload;
 }

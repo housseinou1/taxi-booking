@@ -1,4 +1,265 @@
-# Implementation Plan: Yala Driver Dashboard Redesign
+ZAx cz}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+4g[g44grrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr\=PROFESSIONAL DRIVER PROFILE REDESIGN FOR YALA
+
+I would like the Driver Profile redesigned to look professional, modern, and ready for Google Play Store and Apple App Store release.
+
+Current profile is too basic and does not provide enough information.
+
+Please structure the Driver Profile as follows:
+
+HEADER SECTION
+
+* Driver Profile Picture
+* Full Name
+* Driver Code
+* Driver Category (Bronze / Silver / Gold / Platinum)
+* Online / Offline Status
+* City
+* Join Date
+
+Example:
+
+Hama Diourra
+Driver Code: YD-458721
+Gold Driver
+Nouakchott, Mauritania
+Member since 2026
+
+────────────────────
+
+ACCOUNT INFORMATION
+
+Personal Information
+
+* First Name
+* Last Name
+* Email Address
+* Phone Number
+* National ID Number
+* Gender
+* Date Joined
+* City
+
+Edit Profile Button
+
+────────────────────
+
+VEHICLE INFORMATION
+
+Vehicle Details
+
+* Vehicle Make
+* Vehicle Model
+* Vehicle Year
+* Vehicle Color
+* Plate Number
+* Vehicle Category
+  (Economy / XL / Comfort / Delivery)
+
+Vehicle Photo
+
+Edit Vehicle Button
+
+────────────────────
+
+DOCUMENTS SECTION
+
+Driver Documents
+
+* National ID
+* Driver License
+* Profile Photo
+
+Vehicle Documents
+
+* Insurance
+* Vignette
+* Carte Grise
+* Vehicle Registration
+
+Each document should show:
+
+✓ Approved
+⏳ Pending
+✗ Rejected
+⚠ Expired
+
+View Document Button
+Upload New Button
+
+────────────────────
+
+PERFORMANCE SECTION
+
+Driver Statistics
+
+* Total Trips
+* Completed Trips
+* Acceptance Rate
+* Completion Rate
+* Cancellation Rate
+* Average Rating
+* Years Driving
+
+────────────────────
+
+EARNINGS SECTION
+
+Earnings Summary
+
+* Today
+* This Week
+* This Month
+* Lifetime Earnings
+* Withdrawable Balance
+
+View Earnings Dashboard Button
+
+────────────────────
+
+RATINGS & REVIEWS
+
+* Average Rating
+* Total Reviews
+* Recent Rider Reviews
+
+Example:
+
+★★★★★
+"Very polite driver."
+
+★★★★★
+"Clean vehicle and safe ride."
+
+────────────────────
+
+ACHIEVEMENTS
+
+* Bronze Driver
+* Silver Driver
+* Gold Driver
+* Platinum Driver
+* Top Driver of the Month
+* Highest Rated Driver
+
+Show badges and rewards earned.
+
+────────────────────
+
+SECURITY
+
+* Change Password
+* Two-Factor Authentication
+* Login Activity
+* Device Management
+
+────────────────────
+
+SETTINGS
+
+* Language
+* Notification Settings
+* Sound Settings
+* Privacy Settings
+
+────────────────────
+
+SUPPORT
+
+* Help Center
+* Contact Support
+* Report Issue
+
+────────────────────
+
+GOAL
+
+The Driver Profile should feel like a professional driver management center, not just a simple profile page.
+
+Please redesign the profile UI and provide screenshots before releasing the next Driver APK.
+
 
 ## Overview
 
@@ -70,7 +331,7 @@ Replace the monolithic `DriverApp.js` with a new modular, map-first driver dashb
   - Tappable → opens notification panel or navigates to notifications
   - _Requirements: 2.2, 2.3, 2.4_
 
-- [-] 9. Create DriverDashboardNew container
+- [ ] 9. Create DriverDashboardNew container
   - Create `frontend/src/driver/DriverDashboardNew.js`
   - Compose: DriverMapView + EarningsHeader + NotificationIcon + HamburgerMenu icon + DriverStatusPanel + RideRequestCard
   - Wire existing API hooks: fetchDriverStatus, fetchAvailableRides, fetchDriverRides, fetchDriverStats, updateDriverLocation
@@ -82,13 +343,13 @@ Replace the monolithic `DriverApp.js` with a new modular, map-first driver dashb
   - Replace "Stay Platinum" with DriverLevelBadge
   - _Requirements: 1.1, 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 9.1, 9.4, 9.5_
 
-- [~] 10. Wire DriverDashboardNew into App.js routing
+- [ ] 10. Wire DriverDashboardNew into App.js routing
   - Replace `<DriverApp />` with `<DriverDashboardNew />` in the App.js fallback for `getAppType() === 'driver'`
   - Keep old DriverApp.js as fallback at `/driver` route for web
   - Ensure `handleLoginSuccess` routes drivers to the new dashboard
   - _Requirements: 1.5, 9.3, 10.5_
 
-- [~] 11. Build, test, and deploy
+- [ ] 11. Build, test, and deploy
   - Build frontend with `.env.driver`
   - Deploy to driver-app/www
   - cap sync + gradle assembleDebug

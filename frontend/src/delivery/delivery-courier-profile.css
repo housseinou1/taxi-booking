@@ -1,0 +1,1410 @@
+/* ==========================================================================
+   Delivery Courier Profile Dashboard — Uber-style Orange Theme
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --cp-orange: #FF6B00;
+  --cp-orange-dark: #EA580C;
+  --cp-orange-light: rgba(255, 107, 0, 0.08);
+  --cp-green: #10b981;
+  --cp-green-bg: rgba(16, 185, 129, 0.1);
+  --cp-yellow: #f59e0b;
+  --cp-yellow-bg: rgba(245, 158, 11, 0.1);
+  --cp-red: #ef4444;
+  --cp-red-bg: rgba(239, 68, 68, 0.08);
+  --cp-bg: #f4f5f7;
+  --cp-card: #ffffff;
+  --cp-text: #111827;
+  --cp-text-secondary: #6b7280;
+  --cp-border: #e5e7eb;
+  --cp-radius: 18px;
+  --cp-radius-sm: 14px;
+  --cp-radius-xs: 10px;
+  --cp-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+  --cp-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.08);
+  --cp-font: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+/* Page container */
+.courier-profile {
+  min-height: 100vh;
+  background: var(--cp-bg);
+  font-family: var(--cp-font);
+  color: var(--cp-text);
+  display: flex;
+  flex-direction: column;
+  padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ==========================================================================
+   HEADER
+   ========================================================================== */
+.courier-profile__header {
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  gap: 8px;
+  padding: calc(14px + env(safe-area-inset-top, 0px)) 16px 14px;
+  background: var(--cp-card);
+  border-bottom: 1px solid var(--cp-border);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.courier-profile__header-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+}
+
+.courier-profile__header-title strong {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--cp-text);
+}
+
+.courier-profile__icon-btn {
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 12px;
+  background: #f3f4f6;
+  font-size: 20px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  color: var(--cp-text);
+  transition: background 0.15s;
+}
+
+.courier-profile__icon-btn:active {
+  background: #e5e7eb;
+}
+
+/* ==========================================================================
+   CONTENT AREA
+   ========================================================================== */
+.courier-profile__content {
+  padding: 16px;
+  display: grid;
+  gap: 16px;
+  flex: 1;
+}
+
+.courier-profile__empty,
+.courier-profile__error {
+  margin: 0;
+  padding: 20px;
+  border-radius: var(--cp-radius);
+  background: var(--cp-card);
+  font-size: 14px;
+  text-align: center;
+}
+
+.courier-profile__error {
+  color: #b91c1c;
+  background: var(--cp-red-bg);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+/* ==========================================================================
+   HERO SECTION
+   ========================================================================== */
+.courier-profile__hero {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 20px;
+  border-radius: var(--cp-radius);
+  background: var(--cp-card);
+  box-shadow: var(--cp-shadow);
+}
+
+.courier-profile__avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #ff8a3d, #FF6B00);
+  color: #fff;
+  font-size: 26px;
+  font-weight: 800;
+  box-shadow: 0 4px 16px rgba(255, 107, 0, 0.3);
+}
+
+.courier-profile__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.courier-profile__hero-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.courier-profile__hero-info h1 {
+  margin: 0 0 4px;
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.courier-profile__verified-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--cp-green-bg);
+  color: #059669;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.courier-profile__hero-desc {
+  margin: 4px 0 6px;
+  color: var(--cp-text-secondary);
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.courier-profile__hero-contact {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 4px;
+}
+
+.courier-profile__hero-contact span {
+  font-size: 12px;
+  color: var(--cp-text-secondary);
+}
+
+/* Level badge card inside hero */
+.courier-profile__hero-level {
+  flex-shrink: 0;
+  width: 140px;
+  padding: 14px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #ff8a3d 0%, #FF6B00 55%, #EA580C 100%);
+  color: #fff;
+  text-align: center;
+  box-shadow: 0 6px 20px rgba(255, 107, 0, 0.25);
+}
+
+.courier-profile__hero-level-icon {
+  font-size: 22px;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.courier-profile__hero-level strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.courier-profile__hero-level small {
+  display: block;
+  font-size: 10px;
+  opacity: 0.9;
+  line-height: 1.3;
+}
+
+/* ==========================================================================
+   ACCOUNT STATUS BANNER
+   ========================================================================== */
+.courier-profile__status-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border-radius: var(--cp-radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.courier-profile__status-banner-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.courier-profile__status-banner.is-approved {
+  background: var(--cp-green-bg);
+  color: #065f46;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.courier-profile__status-banner.is-pending {
+  background: var(--cp-yellow-bg);
+  color: #92400e;
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.courier-profile__status-banner.is-rejected {
+  background: var(--cp-red-bg);
+  color: #991b1b;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.courier-profile__status-banner strong {
+  font-weight: 700;
+}
+
+/* ==========================================================================
+   STATS ROW
+   ========================================================================== */
+.courier-profile__stats-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  padding: 16px;
+  border-radius: var(--cp-radius);
+  background: var(--cp-card);
+  box-shadow: var(--cp-shadow);
+}
+
+.courier-profile__stat {
+  text-align: center;
+  padding: 10px 4px;
+  border-radius: var(--cp-radius-xs);
+  background: #f9fafb;
+}
+
+.courier-profile__stat span {
+  display: block;
+  font-size: 10px;
+  color: var(--cp-text-secondary);
+  margin-bottom: 4px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.courier-profile__stat strong {
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--cp-text);
+}
+
+/* ==========================================================================
+   TWO COLUMN LAYOUT
+   ========================================================================== */
+.courier-profile__two-col {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+/* ==========================================================================
+   MENU LIST (Left column)
+   ========================================================================== */
+.courier-profile__menu-list {
+  padding: 12px;
+  border-radius: var(--cp-radius);
+  background: var(--cp-card);
+  box-shadow: var(--cp-shadow);
+}
+
+.courier-profile__menu-list h2 {
+  margin: 0 0 8px;
+  padding: 4px 8px;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--cp-text);
+}
+
+.courier-profile__menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 12px 10px;
+  border-radius: 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.courier-profile__menu-item:hover,
+.courier-profile__menu-item:active {
+  background: var(--cp-orange-light);
+}
+
+.courier-profile__menu-item-icon {
+  font-size: 20px;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #f3f4f6;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.courier-profile__menu-item-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.courier-profile__menu-item-text strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--cp-text);
+}
+
+.courier-profile__menu-item-text small {
+  display: block;
+  font-size: 12px;
+  color: var(--cp-text-secondary);
+  margin-top: 1px;
+}
+
+.courier-profile__menu-badge {
+  min-width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--cp-red);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+}
+
+.courier-profile__menu-item-arrow {
+  color: #d1d5db;
+  font-size: 14px;
+}
+
+/* ==========================================================================
+   DOCUMENTS PANEL (Right column)
+   ========================================================================== */
+.courier-profile__docs-panel {
+  padding: 16px;
+  border-radius: var(--cp-radius);
+  background: var(--cp-card);
+  box-shadow: var(--cp-shadow);
+}
+
+.courier-profile__docs-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.courier-profile__docs-panel-head h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.courier-profile__docs-panel-head button {
+  border: none;
+  background: transparent;
+  color: var(--cp-orange);
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.courier-profile__doc-list {
+  display: grid;
+  gap: 0;
+}
+
+.courier-profile__doc-row {
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 12px 0;
+  border-bottom: 1px solid #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.courier-profile__doc-row:last-child {
+  border-bottom: none;
+}
+
+.courier-profile__doc-main {
+  display: grid;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+
+.courier-profile__doc-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--cp-text);
+}
+
+.courier-profile__doc-status {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.courier-profile__doc-status.is-success { color: #059669; }
+.courier-profile__doc-status.is-warning { color: #d97706; }
+.courier-profile__doc-status.is-review { color: #2563eb; }
+.courier-profile__doc-status.is-danger { color: #dc2626; }
+.courier-profile__doc-status.is-muted { color: #9ca3af; }
+
+.courier-profile__doc-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.courier-profile__doc-meta small {
+  color: #9ca3af;
+  font-size: 11px;
+}
+
+.courier-profile__doc-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 13px;
+}
+
+.courier-profile__doc-icon.is-success {
+  background: rgba(16, 185, 129, 0.14);
+  color: #059669;
+}
+
+.courier-profile__doc-icon.is-warning {
+  background: rgba(245, 158, 11, 0.16);
+  color: #d97706;
+}
+
+.courier-profile__doc-icon.is-review {
+  background: rgba(59, 130, 246, 0.14);
+  color: #2563eb;
+}
+
+.courier-profile__doc-icon.is-danger {
+  background: rgba(239, 68, 68, 0.14);
+  color: #dc2626;
+}
+
+/* ==========================================================================
+   DELIVERY TYPE SECTION
+   ========================================================================== */
+.courier-profile__section {
+  padding: 18px;
+  border-radius: var(--cp-radius);
+  background: var(--cp-card);
+  box-shadow: var(--cp-shadow);
+}
+
+.courier-profile__section h2 {
+  margin: 0 0 14px;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.courier-profile__vehicle-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.courier-profile__vehicle-card {
+  position: relative;
+  padding: 16px 10px;
+  border-radius: 16px;
+  border: 2px solid var(--cp-border);
+  background: #fafafa;
+  text-align: center;
+  transition: all 0.2s;
+}
+
+.courier-profile__vehicle-card.is-active {
+  border-color: var(--cp-orange);
+  background: var(--cp-orange-light);
+  box-shadow: 0 4px 16px rgba(255, 107, 0, 0.15);
+}
+
+.courier-profile__vehicle-icon {
+  display: block;
+  font-size: 30px;
+  margin-bottom: 8px;
+}
+
+.courier-profile__vehicle-card strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 3px;
+}
+
+.courier-profile__vehicle-card small {
+  color: var(--cp-text-secondary);
+  font-size: 10px;
+  line-height: 1.3;
+}
+
+.courier-profile__vehicle-active {
+  display: inline-flex;
+  margin-top: 8px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--cp-orange);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+/* ==========================================================================
+   SUPPORT BANNER
+   ========================================================================== */
+.courier-profile__support-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px;
+  border-radius: var(--cp-radius);
+  background: var(--cp-orange-light);
+  border: 1px solid rgba(255, 107, 0, 0.15);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.courier-profile__support-banner:hover {
+  background: rgba(255, 107, 0, 0.12);
+}
+
+.courier-profile__support-banner-text {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.courier-profile__support-banner-text span:first-child {
+  font-size: 20px;
+}
+
+.courier-profile__support-banner-text strong {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--cp-orange-dark);
+}
+
+.courier-profile__support-banner-arrow {
+  font-size: 16px;
+  color: var(--cp-orange-dark);
+  font-weight: 700;
+}
+
+/* ==========================================================================
+   BOTTOM NAVIGATION
+   ========================================================================== */
+.courier-profile__nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px));
+  background: var(--cp-card);
+  border-top: 1px solid var(--cp-border);
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.04);
+}
+
+.courier-profile__nav button {
+  border: none;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 4px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--cp-text-secondary);
+  cursor: pointer;
+  font-family: var(--cp-font);
+  transition: color 0.15s;
+}
+
+.courier-profile__nav button span {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.courier-profile__nav button.is-active {
+  color: var(--cp-orange);
+}
+
+/* ==========================================================================
+   POLISHED COURIER PROFILE — reference-style orange layout
+   ========================================================================== */
+.courier-profile {
+  background:
+    radial-gradient(circle at 14% 0%, rgba(255, 255, 255, 0.9) 0 80px, transparent 81px),
+    linear-gradient(180deg, #ff6b00 0 118px, #f7f8fb 118px 100%);
+}
+
+.courier-profile__header {
+  background: transparent;
+  border-bottom: 0;
+  color: #fff;
+  box-shadow: none;
+}
+
+.courier-profile__header-title strong {
+  color: #fff;
+  font-size: 18px;
+}
+
+.courier-profile__icon-btn {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+.courier-profile__icon-btn:active {
+  background: rgba(255, 255, 255, 0.26);
+}
+
+.courier-profile__content {
+  gap: 14px;
+  padding-top: 0;
+}
+
+.courier-profile__hero {
+  position: relative;
+  gap: 18px;
+  align-items: center;
+  padding: 22px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 18px 40px rgba(17, 24, 39, 0.12);
+}
+
+.courier-profile__avatar {
+  position: relative;
+  width: 94px;
+  height: 94px;
+  border: 5px solid #fff;
+  box-shadow: 0 12px 30px rgba(255, 107, 0, 0.26);
+}
+
+.courier-profile__avatar-camera {
+  position: absolute;
+  right: -5px;
+  bottom: -3px;
+  width: 32px;
+  height: 32px;
+  border: 3px solid #fff;
+  border-radius: 999px;
+  background: #111827;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.courier-profile__hero-info h1 {
+  font-size: 24px;
+  letter-spacing: -0.04em;
+}
+
+.courier-profile__verified-badge {
+  background: #dcfce7;
+  color: #15803d;
+  font-weight: 800;
+}
+
+.courier-profile__hero-contact {
+  gap: 5px;
+}
+
+.courier-profile__hero-contact span {
+  font-size: 13px;
+}
+
+.courier-profile__hero-level {
+  width: 184px;
+  color: var(--cp-text);
+  background: linear-gradient(180deg, #fff7ed 0%, #ffffff 100%);
+  border: 1px solid rgba(255, 107, 0, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.7);
+}
+
+.courier-profile__hero-level-icon {
+  width: 58px;
+  height: 58px;
+  margin: 0 auto 8px;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  font-size: 26px;
+  color: #fff;
+  background: linear-gradient(145deg, #f59e0b, #9a3412);
+  box-shadow: 0 8px 18px rgba(154, 52, 18, 0.24);
+}
+
+.courier-profile__hero-level strong {
+  color: var(--cp-text);
+  font-size: 14px;
+}
+
+.courier-profile__hero-level small {
+  color: var(--cp-text-secondary);
+  opacity: 1;
+  font-size: 11px;
+}
+
+.courier-profile__level-progress {
+  height: 7px;
+  margin: 9px 0 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e5e7eb;
+}
+
+.courier-profile__level-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #ff6b00, #f59e0b);
+}
+
+.courier-profile__status-banner {
+  min-height: 70px;
+  padding: 16px 20px;
+  background: linear-gradient(90deg, #fff7ed, #fff);
+  box-shadow: var(--cp-shadow);
+}
+
+.courier-profile__status-banner-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: #dcfce7;
+  color: #16a34a;
+  font-weight: 900;
+}
+
+.courier-profile__status-banner span:nth-child(2) {
+  flex: 1;
+}
+
+.courier-profile__status-arrow {
+  margin-left: auto;
+  color: var(--cp-text);
+  font-size: 24px;
+  line-height: 1;
+}
+
+.courier-profile__stats-row {
+  padding: 0;
+  overflow: hidden;
+  gap: 0;
+  background: #fff;
+  border: 1px solid rgba(229, 231, 235, 0.8);
+}
+
+.courier-profile__stat {
+  padding: 18px 8px;
+  border-radius: 0;
+  background: #fff;
+  border-right: 1px solid #eef0f3;
+}
+
+.courier-profile__stat:last-child {
+  border-right: none;
+}
+
+.courier-profile__stat span {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 12px;
+}
+
+.courier-profile__stat strong {
+  color: var(--cp-orange);
+  font-size: 20px;
+}
+
+.courier-profile__menu-list,
+.courier-profile__docs-panel,
+.courier-profile__section {
+  border: 1px solid rgba(229, 231, 235, 0.84);
+  box-shadow: 0 12px 28px rgba(17, 24, 39, 0.07);
+}
+
+.courier-profile__overview-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.courier-profile__wallet-card,
+.courier-profile__performance-card {
+  position: relative;
+  overflow: hidden;
+  padding: 18px;
+  border-radius: 20px;
+  background: #fff;
+  border: 1px solid rgba(229, 231, 235, 0.84);
+  box-shadow: 0 12px 28px rgba(17, 24, 39, 0.07);
+}
+
+.courier-profile__wallet-card {
+  color: #fff;
+  background:
+    radial-gradient(circle at 90% 18%, rgba(255, 255, 255, 0.28) 0 42px, transparent 43px),
+    linear-gradient(135deg, #111827 0%, #1f2937 48%, #ff6b00 160%);
+}
+
+.courier-profile__wallet-card::after {
+  content: "";
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  width: 54px;
+  height: 54px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16);
+}
+
+.courier-profile__eyebrow {
+  display: block;
+  margin-bottom: 6px;
+  color: inherit;
+  opacity: 0.72;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.courier-profile__wallet-card strong,
+.courier-profile__performance-card strong {
+  display: block;
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+}
+
+.courier-profile__wallet-card p,
+.courier-profile__performance-card p {
+  max-width: 280px;
+  margin: 8px 0 0;
+  color: inherit;
+  opacity: 0.76;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.courier-profile__wallet-card button {
+  position: relative;
+  z-index: 1;
+  margin-top: 16px;
+  border: none;
+  border-radius: 999px;
+  padding: 10px 16px;
+  color: #111827;
+  background: #fff;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.courier-profile__performance-card {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.courier-profile__performance-card .courier-profile__eyebrow {
+  color: var(--cp-text-secondary);
+  opacity: 1;
+}
+
+.courier-profile__performance-card p {
+  grid-column: 1 / -1;
+  margin-top: 0;
+  color: var(--cp-text-secondary);
+  opacity: 1;
+}
+
+.courier-profile__performance-bar {
+  grid-column: 1 / -1;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #f1f5f9;
+}
+
+.courier-profile__performance-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #ff6b00, #f59e0b);
+}
+
+.courier-profile__quick-actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.courier-profile__quick-actions button {
+  position: relative;
+  min-height: 88px;
+  border: 1px solid rgba(229, 231, 235, 0.84);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 10px 24px rgba(17, 24, 39, 0.06);
+  display: grid;
+  place-items: center;
+  gap: 6px;
+  padding: 12px 8px;
+  color: var(--cp-text);
+  cursor: pointer;
+  font-family: var(--cp-font);
+}
+
+.courier-profile__quick-actions button:active {
+  transform: translateY(1px);
+  background: #fff7ed;
+}
+
+.courier-profile__quick-actions span {
+  width: 38px;
+  height: 38px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  color: var(--cp-orange);
+  background: rgba(255, 107, 0, 0.09);
+  font-size: 19px;
+}
+
+.courier-profile__quick-actions strong {
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.courier-profile__quick-actions em {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  color: #fff;
+  background: #ef4444;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.courier-profile__menu-list h2 {
+  display: none;
+}
+
+.courier-profile__menu-item {
+  padding: 14px 10px;
+  border-bottom: 1px solid #f1f3f6;
+}
+
+.courier-profile__menu-item:last-child {
+  border-bottom: 0;
+}
+
+.courier-profile__menu-item-icon {
+  color: var(--cp-orange);
+  background: rgba(255, 107, 0, 0.08);
+}
+
+.courier-profile__docs-panel-head button {
+  color: #ff5a00;
+}
+
+.courier-profile__doc-row {
+  padding: 14px 0;
+}
+
+.courier-profile__doc-icon {
+  border: 2px solid currentColor;
+  background: transparent;
+}
+
+.courier-profile__document-cards {
+  background: linear-gradient(180deg, #ffffff 0%, #fffaf5 100%);
+}
+
+.courier-profile__document-card-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.courier-profile__document-card {
+  min-height: 112px;
+  border: 1px solid #edf0f4;
+  border-radius: 16px;
+  background: #fff;
+  padding: 12px 8px;
+  display: grid;
+  place-items: center;
+  gap: 5px;
+  text-align: center;
+  cursor: pointer;
+  font-family: var(--cp-font);
+}
+
+.courier-profile__document-card span {
+  width: 34px;
+  height: 34px;
+  border-radius: 13px;
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+  background: #f8fafc;
+}
+
+.courier-profile__document-card strong {
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.courier-profile__document-card small {
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.courier-profile__document-card.is-success small,
+.courier-profile__document-card.is-success span {
+  color: #059669;
+}
+
+.courier-profile__document-card.is-warning small,
+.courier-profile__document-card.is-warning span {
+  color: #d97706;
+}
+
+.courier-profile__document-card.is-review small,
+.courier-profile__document-card.is-review span {
+  color: #2563eb;
+}
+
+.courier-profile__document-card.is-danger small,
+.courier-profile__document-card.is-danger span {
+  color: #dc2626;
+}
+
+.courier-profile__document-card.is-muted small,
+.courier-profile__document-card.is-muted span {
+  color: #9ca3af;
+}
+
+.courier-profile__section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.courier-profile__section-head h2 {
+  margin: 0;
+}
+
+.courier-profile__section-head span {
+  color: var(--cp-orange);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.courier-profile__section-head button {
+  border: none;
+  background: transparent;
+  color: var(--cp-orange);
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.courier-profile__vehicle-card {
+  min-height: 112px;
+  border-color: #edf0f4;
+  background: #fff;
+}
+
+.courier-profile__vehicle-card.is-active {
+  border-color: #ff6b00;
+  background: #fff7ed;
+}
+
+.courier-profile__support-banner {
+  min-height: 58px;
+  background: linear-gradient(90deg, #fff7ed, #ffedd5);
+}
+
+.courier-profile__activity-list {
+  display: grid;
+  gap: 0;
+}
+
+.courier-profile__activity-row {
+  display: grid;
+  grid-template-columns: 42px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 0;
+  border-bottom: 1px solid #f1f3f6;
+}
+
+.courier-profile__activity-row:last-child {
+  border-bottom: 0;
+}
+
+.courier-profile__activity-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 107, 0, 0.09);
+}
+
+.courier-profile__activity-row strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.courier-profile__activity-row small {
+  display: block;
+  margin-top: 2px;
+  color: var(--cp-text-secondary);
+  font-size: 12px;
+}
+
+.courier-profile__activity-row em {
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.courier-profile__activity-row.is-success em {
+  color: #059669;
+}
+
+.courier-profile__activity-row.is-orange em {
+  color: var(--cp-orange);
+}
+
+.courier-profile__activity-row.is-warning em {
+  color: #d97706;
+}
+
+.courier-profile__nav {
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 -10px 30px rgba(17, 24, 39, 0.08);
+}
+
+/* ==========================================================================
+   DARK COURIER MENU VARIANT (for DeliveryCourierMenu)
+   ========================================================================== */
+.delivery-uber__menu--courier-dark {
+  background: linear-gradient(180deg, #1a1d24 0%, #12151b 100%);
+  color: #f9fafb;
+  box-shadow: 8px 0 40px rgba(0, 0, 0, 0.45);
+}
+
+.delivery-uber__menu--courier-dark .delivery-uber__menu-brand {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+.delivery-uber__menu--courier-dark .delivery-uber__menu-brand span,
+.delivery-uber__menu--courier-dark .delivery-uber__menu-profile-meta {
+  color: rgba(255, 255, 255, 0.68);
+}
+
+.delivery-uber__menu--courier-dark .delivery-uber__menu-profile-body strong,
+.delivery-uber__menu--courier-dark .delivery-uber__menu-item {
+  color: #fff;
+}
+
+.delivery-uber__menu--courier-dark .delivery-uber__menu-item:hover,
+.delivery-uber__menu--courier-dark .delivery-uber__menu-item.is-active {
+  background: rgba(255, 107, 0, 0.14);
+  color: #ffb07a;
+}
+
+.delivery-uber__menu--courier-dark .delivery-uber__menu-footer {
+  border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+.delivery-uber__menu-level-card {
+  margin: 8px 8px 14px;
+  padding: 14px;
+  border-radius: 16px;
+  color: #fff;
+  background: linear-gradient(135deg, #ff8a3d 0%, #ff6b00 55%, #ea580c 100%);
+}
+
+.delivery-uber__menu-level-card strong {
+  display: block;
+  font-size: 16px;
+  margin-bottom: 4px;
+}
+
+.delivery-uber__menu-level-card small {
+  display: block;
+  font-size: 11px;
+  opacity: 0.92;
+  margin-bottom: 10px;
+}
+
+.delivery-uber__menu-level-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.28);
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.delivery-uber__menu-level-bar span {
+  display: block;
+  height: 100%;
+  background: #fff;
+  border-radius: inherit;
+}
+
+.delivery-uber__menu-subtitle {
+  display: block;
+  padding: 8px 8px 4px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.delivery-uber__menu--courier-dark .delivery-uber__menu-subtitle {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.delivery-uber__menu-notify {
+  margin-left: auto;
+  min-width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ==========================================================================
+   RESPONSIVE — TABLET+
+   ========================================================================== */
+@media (min-width: 768px) {
+  .courier-profile__content {
+    max-width: 860px;
+    margin: 0 auto;
+    width: 100%;
+    padding: 20px;
+  }
+
+  .courier-profile__stats-row {
+    grid-template-columns: repeat(5, 1fr);
+  }
+
+  .courier-profile__two-col {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .courier-profile__overview-grid {
+    grid-template-columns: 1.08fr 0.92fr;
+  }
+
+  .courier-profile__hero {
+    padding: 24px;
+  }
+}
+
+@media (max-width: 480px) {
+  .courier-profile__stats-row {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+
+  .courier-profile__stats-row .courier-profile__stat:nth-child(4),
+  .courier-profile__stats-row .courier-profile__stat:nth-child(5) {
+    grid-column: span 1;
+  }
+
+  .courier-profile__hero {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .courier-profile__hero-level {
+    width: 100%;
+    max-width: 200px;
+  }
+
+  .courier-profile__hero-contact {
+    align-items: center;
+  }
+
+  .courier-profile__quick-actions,
+  .courier-profile__document-card-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

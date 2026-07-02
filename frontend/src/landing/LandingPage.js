@@ -19,6 +19,7 @@ const ASSETS = {
 const PLAY_STORE = {
   rider: "https://play.google.com/store/apps/details?id=com.yala.rider.mr",
   driver: "https://play.google.com/store/apps/details?id=com.yala.driver.mr",
+  delivery: "https://play.google.com/store/apps/details?id=com.yala.delivery.mr",
 };
 
 const go = (path) => {
@@ -225,6 +226,7 @@ export default function LandingPage() {
             button={t("newLanding.getDriver")}
             onClick={() => go(PLAY_STORE.driver)}
           />
+          <CourierAction />
           <DeliveryAction />
           <AdminAction />
           <div className="account-action">
@@ -299,17 +301,19 @@ export default function LandingPage() {
             <span className="eyebrow">Yala Delivery</span>
             <h2>Send packages across Mauritania with confidence.</h2>
             <p className="product-description">
-              Request a pickup, follow the delivery live, and confirm the handoff with a private recipient PIN.
-              Yala Delivery uses the same verified driver network that powers every Yala ride.
+              Request Food, Courier, Packages, or Pharmacy Medicines with live tracking
+              and a private recipient PIN. Couriers use the separate Yala Delivery app.
             </p>
             <div className="delivery-points">
-              <InfoBlock icon="📦" title="Door-to-door pickup" text="Enter the pickup, recipient, and destination in one simple request." />
-              <InfoBlock icon="📍" title="Live delivery status" text="See each step from driver acceptance through successful handoff." />
-              <InfoBlock icon="🔐" title="Secure recipient PIN" text="The driver completes delivery only after the recipient confirms the private code." />
+              <InfoBlock icon="🍕" title="Food" text="Restaurant and meal delivery with insulated handling." />
+              <InfoBlock icon="🚴" title="Courier" text="Documents, errands, and same-day courier runs." />
+              <InfoBlock icon="📦" title="Packages" text="Parcels and boxed items, door-to-door." />
+              <InfoBlock icon="💊" title="Pharmacy Medicines" text="Prescription and pharmacy items with careful handling." />
             </div>
             <div className="action-row">
               <button className="primary-button" onClick={() => go("/delivery")}>Request a delivery</button>
-              <button className="outline-button" onClick={() => go("/driver/deliveries")}>Deliver with Yala</button>
+              <button className="outline-button" onClick={() => go("/login?next=%2Fdelivery%2Fcourier")}>Courier sign in</button>
+              <button className="outline-button" onClick={() => go(PLAY_STORE.delivery)}>Download courier app</button>
             </div>
           </div>
           <div className="delivery-visual" aria-label="Yala Delivery workflow">
@@ -452,7 +456,8 @@ export default function LandingPage() {
               <h4>Platform</h4>
               <button onClick={() => go("/rider-dashboard")}>Rider App</button>
               <button onClick={() => go("/driver")}>Driver App</button>
-              <button onClick={() => go("/delivery")}>Yala Delivery</button>
+              <button onClick={() => go("/login?next=%2Fdelivery%2Fcourier")}>Courier App</button>
+              <button onClick={() => go("/delivery")}>Send a package</button>
               <button onClick={() => go("/login?next=%2Fadmin")}>Yala Admin</button>
               <button onClick={() => go("/register")}>Register</button>
             </div>
@@ -491,15 +496,34 @@ function DownloadAction({ logo, title, text, button, onClick }) {
   );
 }
 
+function CourierAction() {
+  return (
+    <article className="download-action delivery-action">
+      <span className="delivery-action-icon" aria-hidden="true">🚚</span>
+      <div>
+        <h2>Yala Delivery Courier</h2>
+        <p>Deliver by Bicycle, Motorcycle, or Car across Food, Courier, Packages, and Pharmacy runs.</p>
+      </div>
+      <button className="download-button" onClick={() => go("/login?next=%2Fdelivery%2Fcourier")}>
+        Open courier app
+        <span aria-hidden="true">→</span>
+      </button>
+    </article>
+  );
+}
+
 function DeliveryAction() {
   return (
     <article className="download-action delivery-action">
       <span className="delivery-action-icon" aria-hidden="true">📦</span>
       <div>
-        <h2>Yala Delivery</h2>
-        <p>Send packages with verified drivers, live tracking, and a secure recipient PIN.</p>
+        <h2>Send a package</h2>
+        <p>Request Food, Courier, Packages, or Pharmacy Medicines with live tracking.</p>
       </div>
-      <button className="download-button" onClick={() => go("/delivery")}>Request delivery<span aria-hidden="true">→</span></button>
+      <button className="download-button" onClick={() => go("/delivery")}>
+        Request delivery
+        <span aria-hidden="true">→</span>
+      </button>
     </article>
   );
 }

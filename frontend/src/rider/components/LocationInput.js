@@ -22,6 +22,7 @@ function LocationInput({ label, value, city, savedPlaces, onSelect, onFocus, var
   const internalInputRef = useRef(null);
   const inputRef = externalInputRef || internalInputRef;
   const dropdownRef = useRef(null);
+  const selectingRef = useRef(false);
 
   // Sync external value changes
   useEffect(() => {
@@ -95,8 +96,8 @@ function LocationInput({ label, value, city, savedPlaces, onSelect, onFocus, var
   };
 
   const handleBlur = () => {
-    // Auto-select first matching result when user clicks away
     setTimeout(() => {
+      if (selectingRef.current) return;
       if (query.trim() && results.length > 0 && onSelect) {
         const exactMatch = results.find(
           (loc) => loc.label.toLowerCase() === query.trim().toLowerCase()
@@ -104,7 +105,6 @@ function LocationInput({ label, value, city, savedPlaces, onSelect, onFocus, var
         if (exactMatch) {
           handleSelect(exactMatch);
         } else {
-          // Select first result as best match
           handleSelect(results[0]);
         }
       }
@@ -112,6 +112,7 @@ function LocationInput({ label, value, city, savedPlaces, onSelect, onFocus, var
   };
 
   const handleSelect = (location) => {
+    selectingRef.current = true;
     setQuery(location.label);
     setIsOpen(false);
     setActiveIndex(-1);
@@ -122,6 +123,15 @@ function LocationInput({ label, value, city, savedPlaces, onSelect, onFocus, var
         city: location.city,
       });
     }
+    window.setTimeout(() => {
+      selectingRef.current = false;
+    }, 300);
+  };
+
+  const selectFromPointer = (event, location) => {
+    event.preventDefault();
+    event.stopPropagation();
+    handleSelect(location);
   };
 
   const handleSavedPlaceSelect = (savedPlace) => {
@@ -232,7 +242,8 @@ function LocationInput({ label, value, city, savedPlaces, onSelect, onFocus, var
                 }`}
                 role="option"
                 aria-selected={index === activeIndex}
-                onClick={() => handleSelect(location)}
+                onMouseDown={(event) => selectFromPointer(event, location)}
+                onTouchEnd={(event) => selectFromPointer(event, location)}
                 onMouseEnter={() => setActiveIndex(index)}
               >
                 <span className="location-input__option-icon" aria-hidden="true">

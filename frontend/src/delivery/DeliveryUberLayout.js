@@ -1,11 +1,16 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
+import NotificationCenter from "../components/NotificationCenter";
 import DeliveryCourierMenu from "./DeliveryCourierMenu";
 import DeliveryMapBackdrop from "./DeliveryMapBackdrop";
+import CourierBottomSheet from "./components/CourierBottomSheet";
 import { isDeliveryUberUI } from "../native/platform";
 import "./delivery-uber.css";
 import "./delivery-premium-ui.css";
 import "./delivery-courier-dashboard.css";
+import "./delivery-courier-flow.css";
+import "./delivery-courier-eats.css";
+import "./delivery-instructions.css";
 
 export function DeliveryUberPage({ title, onBack, children }) {
   if (!isDeliveryUberUI()) {
@@ -37,104 +42,168 @@ export function DeliveryCourierShell({
   activeDelivery = null,
   earningsLabel = "",
   todayEarnings = null,
-  courierMode = true,
   onToggleOnline = null,
   onlineToggleLoading = false,
   onlineToggleDisabled = false,
-  sheetTitle,
-  sheetSubtitle,
-  sheetHead,
   children,
   showNav = true,
   activeNav = "home",
+  onlineTimeLabel = "0h 0m",
+  sheetState = "half",
+  onSheetStateChange,
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [internalSheet, setInternalSheet] = useState(sheetState);
+
+  useEffect(() => {
+    setInternalSheet(sheetState);
+  }, [sheetState]);
+
+  const handleSheetChange = (next) => {
+    setInternalSheet(next);
+    onSheetStateChange?.(next);
+  };
+
+  const resolvedSheet = onSheetStateChange ? sheetState : internalSheet;
 
   return (
-    <main className="delivery-uber delivery-uber--courier delivery-uber--dark">
+    <main
+      className={`delivery-uber delivery-uber--courier delivery-uber--dark delivery-uber--eats${
+        activeDelivery ? " delivery-uber--trip-active" : ""
+      }`}
+    >
       <DeliveryMapBackdrop activeDelivery={activeDelivery} />
       <DeliveryCourierMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
 
-      {/* Top Bar: Hamburger + ON/OFF toggle + Refresh */}
-      <header className="dcd-top">
-        <button type="button" className="dcd-top__menu" onClick={() => setMenuOpen(true)} aria-label="Menu">
+      <header className="cce-topbar">
+        <button type="button" className="cce-glass-btn" onClick={() => setMenuOpen(true)} aria-label="Menu">
           ☰
         </button>
+
         <button
           type="button"
-          className={`dcd-top__toggle ${statusOnline ? "is-on" : ""}`}
+          className={`cce-online-pill ${statusOnline ? "is-online" : ""}`}
           disabled={onlineToggleLoading || onlineToggleDisabled}
           onClick={onToggleOnline}
           aria-label={statusOnline ? "Go offline" : "Go online"}
         >
-          <span className="dcd-top__toggle-icon">⏻</span>
-          <span>{onlineToggleLoading ? "..." : statusOnline ? "ON" : "OFF"}</span>
+          <span className="cce-online-pill__dot" aria-hidden />
+          <span>{onlineToggleLoading ? "…" : statusOnline ? "Online" : "Offline"}</span>
+          <span className="cce-online-pill__chevron" aria-hidden>▾</span>
         </button>
-        <button type="button" className="dcd-top__refresh" onClick={onRefresh} aria-label="Refresh">
-          ↻
-        </button>
+
+        <div className="cce-topbar__notify">
+          <NotificationCenter mode="delivery" variant="inline" />
+        </div>
       </header>
 
-      {/* Notices */}
-      {notice ? <div className="dcd-toast">{notice}</div> : null}
-      {error ? <div className="dcd-toast dcd-toast--error">{error}</div> : null}
+      {notice ? <div className="cce-toast">{notice}</div> : null}
+      {error ? <div className="cce-toast cce-toast--error">{error}</div> : null}
 
-      {/* Active delivery sheet (only when there's an active trip) */}
       {activeDelivery ? (
-        <section className="dcd-trip-sheet">
-          <div className="dcd-trip-sheet__handle" />
-          <h2>{sheetTitle}</h2>
-          {sheetSubtitle ? <p>{sheetSubtitle}</p> : null}
-          <div className="dcd-trip-sheet__body">{children}</div>
-        </section>
-      ) : (
-        <>
-          {/* Floating delivery request cards (if online and requests available) */}
-          <div className="dcd-floating-content">
-            {children}
+        <div className="cce-sheet-panel cce-sheet-panel--trip">
+          <div className="bottom-sheet bottom-sheet--half">
+            <div className="bottom-sheet__handle" aria-hidden>
+              <div className="bottom-sheet__handle-bar" />
+            </div>
+            <div className="bottom-sheet__content cce-sheet__content cce-sheet__content--trip">{children}</div>
           </div>
-
-          {/* Bottom Stats Bar */}
-          <section className="dcd-bottom-bar">
-            <div className="dcd-bottom-bar__row">
-              <span className="dcd-bottom-bar__label">Today</span>
-              <span className="dcd-bottom-bar__stat">★ {sheetHead?.props?.children?.[2]?.props?.children || "5.0"}</span>
-              <span className="dcd-bottom-bar__stat dcd-bottom-bar__stat--accent">AR {sheetHead?.props?.children?.[3]?.props?.children || "100%"}</span>
-            </div>
-            <div className="dcd-bottom-bar__stats">
-              <div className="dcd-bottom-bar__stat-item">
-                <strong>{todayEarnings?.count || 0}<span>›</span></strong>
-                <small>Trip(s) completed</small>
+        </div>
+      ) : (
+        <CourierBottomSheet state={resolvedSheet} onStateChange={handleSheetChange}>
+          {resolvedSheet === "collapsed" ? (
+            <div className="cce-today-peek">
+              <div className="cce-today-peek__item">
+                <strong>{todayEarnings?.count || 0}</strong>
+                <small>Deliveries</small>
               </div>
-              <div className="dcd-bottom-bar__stat-item">
-                <strong>{earningsLabel || "0 MRU"}<span>›</span></strong>
-                <small>Earned</small>
+              <div className="cce-today-peek__item is-accent">
+                <strong>{earningsLabel || "0 MRU"}</strong>
+                <small>Earnings</small>
+              </div>
+              <div className="cce-today-peek__item">
+                <strong>{onlineTimeLabel}</strong>
+                <small>Online</small>
               </div>
             </div>
-          </section>
-        </>
+          ) : (
+            children
+          )}
+        </CourierBottomSheet>
       )}
 
-      {/* Bottom Nav */}
       {showNav ? (
-        <nav className="dcd-nav" aria-label="Delivery navigation">
-          <button type="button" className={`dcd-nav__btn ${activeNav === "home" ? "is-active" : ""}`} onClick={() => { window.location.href = "/delivery/courier"; }}>
-            <span>⌂</span><span>Home</span>
+        <nav className="cce-nav" aria-label="Delivery navigation">
+          <button
+            type="button"
+            className={`cce-nav__btn ${activeNav === "home" ? "is-active" : ""}`}
+            onClick={() => {
+              window.location.href = "/delivery/courier";
+            }}
+          >
+            <span>⌂</span>
+            <span>Home</span>
           </button>
-          <button type="button" className={`dcd-nav__btn ${activeNav === "orders" ? "is-active" : ""}`} onClick={() => { window.location.href = "/delivery/history"; }}>
-            <span>☰</span><span>Orders</span>
+          <button
+            type="button"
+            className={`cce-nav__btn ${activeNav === "orders" ? "is-active" : ""}`}
+            onClick={() => {
+              window.location.href = "/delivery/history";
+            }}
+          >
+            <span>☰</span>
+            <span>Orders</span>
           </button>
-          <button type="button" className={`dcd-nav__btn ${activeNav === "earnings" ? "is-active" : ""}`} onClick={() => { window.location.href = "/delivery/earnings"; }}>
-            <span>$</span><span>Earnings</span>
+          <button
+            type="button"
+            className={`cce-nav__btn ${activeNav === "earnings" ? "is-active" : ""}`}
+            onClick={() => {
+              window.location.href = "/delivery/earnings";
+            }}
+          >
+            <span>$</span>
+            <span>Earnings</span>
           </button>
-          <button type="button" className={`dcd-nav__btn ${activeNav === "wallet" ? "is-active" : ""}`} onClick={() => { window.location.href = "/delivery/wallet"; }}>
-            <span>👛</span><span>Wallet</span>
+          <button
+            type="button"
+            className={`cce-nav__btn ${activeNav === "wallet" ? "is-active" : ""}`}
+            onClick={() => {
+              window.location.href = "/delivery/wallet";
+            }}
+          >
+            <span>👛</span>
+            <span>Wallet</span>
           </button>
-          <button type="button" className={`dcd-nav__btn ${activeNav === "profile" ? "is-active" : ""}`} onClick={() => { window.location.href = "/delivery/account"; }}>
-            <span>☺</span><span>Profile</span>
+          <button
+            type="button"
+            className={`cce-nav__btn ${activeNav === "profile" ? "is-active" : ""}`}
+            onClick={() => {
+              window.location.href = "/delivery/account";
+            }}
+          >
+            <span>☺</span>
+            <span>Profile</span>
           </button>
         </nav>
       ) : null}
+
+      <button
+        type="button"
+        className="cce-glass-btn"
+        style={{
+          position: "fixed",
+          right: 14,
+          bottom: "calc(var(--cce-nav-height) + 12px)",
+          zIndex: 17,
+          width: 44,
+          height: 44,
+          fontSize: 18,
+        }}
+        onClick={onRefresh}
+        aria-label="Refresh"
+      >
+        ↻
+      </button>
     </main>
   );
 }

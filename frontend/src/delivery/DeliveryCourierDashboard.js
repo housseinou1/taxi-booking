@@ -7,29 +7,63 @@ import {
 } from "./deliveryDocumentReview";
 import DeliveryCourierOffer from "./DeliveryCourierOffer";
 import DeliveryCourierTrip from "./DeliveryCourierTrip";
+import DeliveryCourierComplete from "./DeliveryCourierComplete";
 import DeliveryChatSheet from "./DeliveryChatSheet";
+import DeliveryCourierHomeSheet from "./components/DeliveryCourierHomeSheet";
 import {
   apiRequest,
   confirmDeliveryWithProof,
   confirmStopWithProof,
-  DeliveryJobCard,
   reportDeliveryException,
 } from "./DeliveryShared";
 import { DeliveryCourierShell } from "./DeliveryUberLayout";
-import DeliveryCourierTypePicker from "./components/DeliveryCourierTypePicker";
 import { getDeliveryVehicleLabel } from "./deliveryVehicleTypes";
-import { getTripHeadline } from "./deliveryTrip";
 import useDeliveryCourierRealtime from "./useDeliveryCourierRealtime";
 import useCourierLocationReporter from "./useCourierLocationReporter";
+import { useDeliveryChatUnread } from "./useDeliveryChatUnread";
 import { stopDeliveryOfferAlert, startDeliveryOfferAlertLoop, unlockRideRequestSound } from "../native/sound";
 import { DEFAULT_DELIVERY_CITY } from "./deliveryCities";
-import { getCourierLevelInfo } from "./deliveryCourierLevel";
 import "./delivery-uber.css";
 import "./delivery-premium-ui.css";
 import "./delivery-customer-dashboard.css";
 import "./delivery-courier-dashboard.css";
+import "./delivery-courier-flow.css";
+import "./delivery-courier-eats.css";
+import "./delivery-instructions.css";
 
 const POLL_MS = 20000;
+const ONLINE_TIME_KEY = "yala_delivery_online_ms";
+
+function getTodayKey() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function readStoredOnlineMs() {
+  try {
+    const raw = localStorage.getItem(ONLINE_TIME_KEY);
+    if (!raw) return 0;
+    const parsed = JSON.parse(raw);
+    if (parsed?.date !== getTodayKey()) return 0;
+    return Number(parsed.ms || 0);
+  } catch {
+    return 0;
+  }
+}
+
+function writeStoredOnlineMs(ms) {
+  try {
+    localStorage.setItem(ONLINE_TIME_KEY, JSON.stringify({ date: getTodayKey(), ms }));
+  } catch {
+    // ignore
+  }
+}
+
+function formatOnlineDuration(ms) {
+  const totalMinutes = Math.max(0, Math.floor(ms / 60000));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${hours}h ${minutes}m`;
+}
 
 /**
  * Yala Delivery courier dashboard — map-first, orange branding, delivery-only UI.
@@ -49,14 +83,20 @@ export default function DeliveryCourierDashboard() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("requests");
+  const [sheetState, setSheetState] = useState("half");
   const [actionBusy, setActionBusy] = useState(false);
   const [dismissedOfferId, setDismissedOfferId] = useState(null);
   const [highlightedOfferId, setHighlightedOfferId] = useState(null);
   const [todayEarnings, setTodayEarnings] = useState(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [expiredDocAlerts, setExpiredDocAlerts] = useState([]);
+  const [completedDelivery, setCompletedDelivery] = useState(null);
+  const [onlineTimeMs, setOnlineTimeMs] = useState(readStoredOnlineMs);
   const noticeTimerRef = useRef(null);
   const seenOfferIdsRef = useRef(new Set());
+  const offersBaselineReadyRef = useRef(false);
+  const alertedOfferIdRef = useRef(null);
+  const onlineSinceRef = useRef(null);
 
   const showNotice = (message) => {
     setNotice(message);
@@ -69,6 +109,10 @@ export default function DeliveryCourierDashboard() {
       setModeLoading(true);
       const settings = await apiRequest(`${API_URL}/deliveries/driver/mode/`);
       setDeliveryMode(settings.delivery_mode_enabled);
+      if (settings.delivery_mode_enabled) {
+        onlineSinceRef.current = onlineSinceRef.current || Date.now();
+        setOnlineTimeMs(readStoredOnlineMs());
+      }
       setDeliveryVehicleType(settings.delivery_vehicle_type || "motorcycle");
       setDeliveryCities(
         Array.isArray(settings.delivery_cities) && settings.delivery_cities.length
@@ -137,20 +181,15 @@ export default function DeliveryCourierDashboard() {
 
   const active = mine.filter((d) => !["delivered", "cancelled", "delivery_exception"].includes(d.status));
   const activeDelivery = active[0] || null;
-  const lifetime = courierProfile?.lifetime || {};
-  const profileName = courierProfile?.full_name || "Yala Courier";
-  const firstName = profileName.split(" ").filter(Boolean)[0] || "Courier";
-  const initials = profileName
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part.charAt(0).toUpperCase())
-    .join("");
-  const levelInfo = getCourierLevelInfo(courierProfile || {});
-  const courierLevel = levelInfo.label;
-  const totalDeliveries = lifetime.total_deliveries || todayEarnings?.count || 0;
-  const rating = lifetime.rating || "4.8";
-  const acceptanceRate = lifetime.acceptance_rate || 92;
+  const { unread: chatUnread, setUnread: setChatUnread } = useDeliveryChatUnread(
+    activeDelivery?.id,
+    activeDelivery?.status,
+    { enabled: Boolean(activeDelivery), chatOpen }
+  );
+  const liveOnlineMs =
+    deliveryMode && onlineSinceRef.current
+      ? onlineTimeMs + (Date.now() - onlineSinceRef.current)
+      : onlineTimeMs;
 
   const handleMaskedCall = useCallback(async () => {
     if (!activeDelivery?.id) return;
@@ -173,6 +212,22 @@ export default function DeliveryCourierDashboard() {
   const showIncomingOffer =
     incomingOffer && incomingOffer.id !== dismissedOfferId && incomingOffer.status === "requested";
 
+  useEffect(() => {
+    if (!showIncomingOffer || !incomingOffer?.id) {
+      if (!showIncomingOffer) {
+        alertedOfferIdRef.current = null;
+      }
+      return;
+    }
+    if (alertedOfferIdRef.current === incomingOffer.id) return;
+
+    alertedOfferIdRef.current = incomingOffer.id;
+    startDeliveryOfferAlertLoop({
+      title: "New Delivery Request",
+      body: `${incomingOffer.pickup || "Pickup"} → ${incomingOffer.destination || "Dropoff"} · ${incomingOffer.fare || "0"} MRU`,
+    }).catch(() => {});
+  }, [showIncomingOffer, incomingOffer?.id, incomingOffer?.pickup, incomingOffer?.destination, incomingOffer?.fare]);
+
   useDeliveryCourierRealtime({
     enabled: deliveryMode,
     hasActiveDelivery: Boolean(activeDelivery),
@@ -191,10 +246,85 @@ export default function DeliveryCourierDashboard() {
   }, [deliveryMode, activeDelivery, load]);
 
   useEffect(() => {
+    if (!deliveryMode) {
+      if (onlineSinceRef.current) {
+        const elapsed = Date.now() - onlineSinceRef.current;
+        setOnlineTimeMs((prev) => {
+          const next = prev + elapsed;
+          writeStoredOnlineMs(next);
+          return next;
+        });
+        onlineSinceRef.current = null;
+      }
+      return undefined;
+    }
+
+    if (!onlineSinceRef.current) {
+      onlineSinceRef.current = Date.now();
+    }
+
+    const timer = window.setInterval(() => {
+      if (!onlineSinceRef.current) return;
+      const live = readStoredOnlineMs() + (Date.now() - onlineSinceRef.current);
+      setOnlineTimeMs(live);
+    }, 30000);
+
+    return () => window.clearInterval(timer);
+  }, [deliveryMode]);
+
+  useEffect(() => {
     if (active.length > 0) {
       setTab("active");
+    } else if (!activeDelivery && !completedDelivery) {
+      setTab("requests");
     }
-  }, [active.length]);
+  }, [active.length, activeDelivery, completedDelivery]);
+
+  const refreshTodayEarnings = async () => {
+    try {
+      const data = await apiRequest(`${API_URL}/deliveries/courier/earnings/`);
+      const today = data?.today || {};
+      setTodayEarnings({
+        amount: Number(today.earnings || 0).toFixed(0),
+        count: today.count || 0,
+      });
+    } catch {
+      // ignore
+    }
+  };
+
+  useEffect(() => {
+    if (!deliveryMode) {
+      offersBaselineReadyRef.current = false;
+      seenOfferIdsRef.current.clear();
+      return;
+    }
+    if (offersBaselineReadyRef.current || loading) return;
+    available.forEach((item) => {
+      if (item?.id) seenOfferIdsRef.current.add(item.id);
+    });
+    offersBaselineReadyRef.current = true;
+  }, [deliveryMode, available, loading]);
+
+  // Poll/API fallback: ring when new offers appear (DoorDash-style even without WebSocket)
+  useEffect(() => {
+    if (!deliveryMode || activeDelivery || available.length === 0 || !offersBaselineReadyRef.current) return;
+
+    const freshOffers = available.filter(
+      (item) => item?.id && item.status === "requested" && !seenOfferIdsRef.current.has(item.id)
+    );
+    if (freshOffers.length === 0) return;
+
+    freshOffers.forEach((item) => seenOfferIdsRef.current.add(item.id));
+    const offer = freshOffers[0];
+    setDismissedOfferId(null);
+    setHighlightedOfferId(offer.id);
+
+    startDeliveryOfferAlertLoop({
+      title: "New Delivery Request",
+      body: `${offer.pickup || "Pickup"} → ${offer.destination || "Dropoff"} · ${offer.fare || "0"} MRU`,
+    }).catch(() => {});
+  }, [available, deliveryMode, activeDelivery]);
 
   const saveDeliveryCities = async (cities) => {
     try {
@@ -246,8 +376,11 @@ export default function DeliveryCourierDashboard() {
       const newValue = !deliveryMode;
       if (newValue) {
         await unlockRideRequestSound();
+        offersBaselineReadyRef.current = false;
       } else {
         stopDeliveryOfferAlert();
+        offersBaselineReadyRef.current = false;
+        seenOfferIdsRef.current.clear();
       }
       await apiRequest(`${API_URL}/deliveries/driver/mode/`, {
         method: "PATCH",
@@ -256,6 +389,9 @@ export default function DeliveryCourierDashboard() {
       setDeliveryMode(newValue);
       setDismissedOfferId(null);
       setHighlightedOfferId(null);
+      if (newValue) {
+        await load();
+      }
       showNotice(newValue ? "You're online for deliveries" : "You're offline");
     } catch (err) {
       setError(err.message);
@@ -267,6 +403,7 @@ export default function DeliveryCourierDashboard() {
       setActionBusy(true);
       setError("");
       stopDeliveryOfferAlert();
+      alertedOfferIdRef.current = null;
       await apiRequest(`${API_URL}/deliveries/${delivery.id}/${action}/`, {
         method: "POST",
         body: body ? JSON.stringify(body) : undefined,
@@ -284,6 +421,7 @@ export default function DeliveryCourierDashboard() {
 
   const handleDeclineOffer = async (delivery) => {
     stopDeliveryOfferAlert();
+    alertedOfferIdRef.current = null;
     setDismissedOfferId(delivery.id);
     setHighlightedOfferId(null);
     try {
@@ -296,6 +434,7 @@ export default function DeliveryCourierDashboard() {
 
   const handleOfferTimeout = async (delivery) => {
     stopDeliveryOfferAlert();
+    alertedOfferIdRef.current = null;
     setDismissedOfferId(delivery.id);
     setHighlightedOfferId(null);
     try {
@@ -317,10 +456,11 @@ export default function DeliveryCourierDashboard() {
     try {
       setActionBusy(true);
       setError("");
+      stopDeliveryOfferAlert();
       await confirmDeliveryWithProof(delivery.id, pin, proofFile);
-      showNotice(`Delivery #${delivery.id} completed`);
+      setCompletedDelivery({ ...delivery, status: "delivered" });
       await load();
-      setTab("requests");
+      await refreshTodayEarnings();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -332,10 +472,15 @@ export default function DeliveryCourierDashboard() {
     try {
       setActionBusy(true);
       setError("");
+      stopDeliveryOfferAlert();
       const res = await confirmStopWithProof(delivery.id, stopId, pin, proofFile);
-      showNotice(res.all_stops_completed ? "Delivery completed" : "Stop confirmed");
+      if (res.all_stops_completed) {
+        setCompletedDelivery({ ...delivery, status: "delivered" });
+      } else {
+        showNotice("Stop confirmed");
+      }
       await load();
-      if (res.all_stops_completed) setTab("requests");
+      await refreshTodayEarnings();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -386,17 +531,9 @@ export default function DeliveryCourierDashboard() {
         activeDelivery={activeDelivery}
         todayEarnings={todayEarnings}
         earningsLabel={todayEarnings ? `${todayEarnings.amount} MRU` : "0 MRU"}
-        sheetHead={null}
-        sheetTitle={
-          activeDelivery
-            ? getTripHeadline(activeDelivery)
-            : "Ready to deliver"
-        }
-        sheetSubtitle={
-          activeDelivery
-            ? `${activeDelivery.fare} MRU · ${activeDelivery.distance_km} km`
-            : `${getDeliveryVehicleLabel(deliveryVehicleType)} · ${deliveryCities.join(", ")}`
-        }
+        onlineTimeLabel={formatOnlineDuration(liveOnlineMs)}
+        sheetState={sheetState}
+        onSheetStateChange={setSheetState}
       >
         {activeDelivery ? (
           <DeliveryCourierTrip
@@ -411,116 +548,41 @@ export default function DeliveryCourierDashboard() {
             onCancel={handleCourierCancel}
             onCall={handleMaskedCall}
             onChat={() => setChatOpen(true)}
+            chatUnread={chatUnread}
             onResendPin={() => showNotice("PIN resend requested. Yala support can verify the recipient.")}
             onAdminSupport={() => showNotice("Admin support request will be included with your review proof.")}
           />
         ) : (
-          <>
-            {expiredDocAlerts.length > 0 ? (
-              <div className="delivery-alert-banner" style={{ margin: "0 0 12px" }} role="alert">
-                {expiredDocAlerts.map((alert) => (
-                  <p key={alert.key} className="delivery-alert-banner__item is-expired">
-                    <span className="delivery-alert-dot" aria-hidden="true" />
-                    {alert.label} expired. Update before going online.
-                  </p>
-                ))}
-                <button
-                  type="button"
-                  className="delivery-alert-banner__action"
-                  onClick={() => {
-                    window.location.href = "/delivery/documents";
-                  }}
-                >
-                  Update documents
-                </button>
-              </div>
-            ) : null}
-
-            <DeliveryCourierTypePicker
-              value={deliveryVehicleType}
-              onChange={saveVehicleType}
-              disabled={vehicleSaving || modeLoading}
-              compact
-            />
-
-            <div className="delivery-uber__tabs" role="tablist">
-              <button
-                type="button"
-                role="tab"
-                className={`delivery-uber__tab ${tab === "requests" ? "is-active" : ""}`}
-                onClick={() => setTab("requests")}
-              >
-                Requests ({available.length})
-              </button>
-              <button
-                type="button"
-                role="tab"
-                className={`delivery-uber__tab ${tab === "active" ? "is-active" : ""}`}
-                onClick={() => setTab("active")}
-              >
-                Active ({active.length})
-              </button>
-            </div>
-
-            {loading ? <div className="delivery-uber__empty">Loading deliveries...</div> : null}
-
-            {!loading && tab === "requests" && (
-              <>
-                {!deliveryMode ? (
-                  <div className="delivery-uber__empty">Go online to see nearby delivery requests.</div>
-                ) : null}
-                {deliveryMode && available.length === 0 ? (
-                  <div className="delivery-uber__empty">
-                    No delivery requests nearby. New orders appear automatically.
-                  </div>
-                ) : null}
-                {deliveryMode &&
-                  available.map((delivery) => (
-                    <DeliveryJobCard key={delivery.id} delivery={delivery} highlight>
-                      <p className="delivery-uber-offer__pin-note">
-                        Recipient gets a system-generated 4-digit PIN when you accept.
-                      </p>
-                      <div className="delivery-uber__accept-bar">
-                        <button
-                          type="button"
-                          className="delivery-uber__btn"
-                          disabled={active.length > 0 || actionBusy}
-                          onClick={() => act(delivery, "accept")}
-                        >
-                          Accept delivery · {delivery.fare} MRU
-                        </button>
-                      </div>
-                    </DeliveryJobCard>
-                  ))}
-              </>
-            )}
-
-            {!loading && tab === "active" && (
-              <>
-                {active.length === 0 ? (
-                  <div className="delivery-uber__empty">All caught up! You don't have any active deliveries. New delivery requests will appear here.</div>
-                ) : null}
-                {active.map((delivery) => (
-                  <DeliveryJobCard key={delivery.id} delivery={delivery}>
-                    <p style={{ margin: "0 0 8px", fontSize: 13, color: "#6b7280" }}>
-                      {delivery.recipient_name} · {delivery.recipient_phone}
-                    </p>
-                  </DeliveryJobCard>
-                ))}
-                <button
-                  type="button"
-                  className="delivery-courier-dash__history-link"
-                  onClick={() => {
-                    window.location.href = "/delivery/history";
-                  }}
-                >
-                  View delivery history
-                </button>
-              </>
-            )}
-          </>
+          <DeliveryCourierHomeSheet
+            deliveryMode={deliveryMode}
+            loading={loading}
+            tab={tab}
+            onTabChange={setTab}
+            available={available}
+            active={active}
+            actionBusy={actionBusy}
+            expiredDocAlerts={expiredDocAlerts}
+            deliveryVehicleType={deliveryVehicleType}
+            vehicleSaving={vehicleSaving}
+            modeLoading={modeLoading}
+            onVehicleChange={saveVehicleType}
+            onAccept={(delivery) => act(delivery, "accept")}
+            showInlineRequests={!showIncomingOffer}
+          />
         )}
       </DeliveryCourierShell>
+
+      {completedDelivery ? (
+        <DeliveryCourierComplete
+          delivery={completedDelivery}
+          onDone={() => {
+            setCompletedDelivery(null);
+            setTab("requests");
+            load();
+            refreshTodayEarnings();
+          }}
+        />
+      ) : null}
 
       {showIncomingOffer ? (
         <DeliveryCourierOffer
@@ -535,8 +597,11 @@ export default function DeliveryCourierDashboard() {
       {chatOpen && activeDelivery?.id ? (
         <DeliveryChatSheet
           deliveryId={activeDelivery.id}
+          deliveryStatus={activeDelivery.status}
           role="courier"
+          contactName={activeDelivery.customer_name || activeDelivery.recipient_name || "Customer"}
           onClose={() => setChatOpen(false)}
+          onUnreadChange={setChatUnread}
         />
       ) : null}
     </>

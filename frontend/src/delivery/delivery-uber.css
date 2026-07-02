@@ -1273,6 +1273,40 @@
   cursor: pointer;
 }
 
+.yala-login__legal-footer,
+.auth-register-legal-footer {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  max-width: 380px;
+  margin-top: 18px;
+}
+
+.yala-login__legal-footer button,
+.auth-register-legal-footer button {
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.yala-login--delivery-uber .yala-login__legal-footer button {
+  color: #9ca3af;
+}
+
+.ccf-profile-section-title {
+  margin: 18px 0 10px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #9ca3af;
+}
+
 @media (max-width: 480px) {
   .yala-login--delivery-uber {
     padding: max(18px, env(safe-area-inset-top)) 16px calc(20px + env(safe-area-inset-bottom)) !important;

@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { languageOptions, normalizeLanguageCode } from "../i18n";
 import { MARKET } from "../marketConfig";
+import LegalCenter from "../legal/LegalCenter";
 
 const LOGO_SRC = "/yala-logo.png";
 
@@ -69,7 +70,7 @@ function SettingsPage({ onLogout, riderMode = false }) {
       title: t("settings.privacy"),
       description: t("settings.privacyDescription"),
       value: t("settings.viewPolicy"),
-      action: () => window.open("https://yalataxi.live/privacy-policy", "_blank", "noopener,noreferrer"),
+      action: () => { window.location.href = "/privacy"; },
     },
     {
       title: "Delete account",
@@ -190,6 +191,12 @@ function SettingsPage({ onLogout, riderMode = false }) {
               <em>{item.value}</em>
             </button>
           ))}
+
+          {riderMode ? (
+            <div style={{ marginTop: 16 }}>
+              <LegalCenter app="rider" />
+            </div>
+          ) : null}
         </article>
       </section>
 

@@ -16,6 +16,7 @@ import DeliveryOptionsScreen from "./customer/DeliveryOptionsScreen";
 import DeliveryRequestScreen from "./customer/DeliveryRequestScreen";
 import DeliverySearchingScreen from "./customer/DeliverySearchingScreen";
 import DeliveryCustomerShell from "./DeliveryCustomerShell";
+import { useDeliveryChatUnread } from "./useDeliveryChatUnread";
 import DeliveryCustomerVerification from "../security/DeliveryCustomerVerification";
 import { getDeliveryCityCenter } from "./deliveryCities";
 import {
@@ -32,9 +33,20 @@ import { haversineKm } from "./deliveryPricing";
 import useDeliveryTrackingRealtime from "./useDeliveryTrackingRealtime";
 import useSmoothCourierPosition from "./hooks/useSmoothCourierPosition";
 import { apiRequest } from "./DeliveryShared";
+import {
+  fetchCustomerDeliveryTermsStatus,
+  readCustomerTermsSessionFlag,
+} from "./deliveryTermsApi";
 import { STORE_CATEGORY_MAP } from "../merchant/merchantApi";
+import { emptyInstructions } from "./deliveryInstructionUtils";
 import "./delivery-uber.css";
+import "./delivery-instructions.css";
 import "./delivery-live-tracking.css";
+import "./DeliveryCustomerTermsPage.css";
+
+function isCustomerDeliveryLegalOnRecord(data = {}) {
+  return Boolean(data.delivery_terms_accepted && data.privacy_policy_accepted);
+}
 
 const SCREENS = {
   HOME: "home",
@@ -62,6 +74,12 @@ const initialForm = {
   distance_km: "5",
   is_fragile: false,
   customer_notes: "",
+  pickup_instructions: emptyInstructions(),
+  dropoff_instructions: emptyInstructions(),
+  recipient_alt_phone: "",
+  save_address: false,
+  save_instructions: false,
+  address_label: "Home",
   restaurant_name: "",
   food_items: "",
   preparation_time_minutes: "",
@@ -124,7 +142,15 @@ export default function DeliveryCustomerApp() {
   const [selectedStore, setSelectedStore] = useState(null);
   const [placedOrder, setPlacedOrder] = useState(null);
   const [chatOpen, setChatOpen] = useState(false);
+  const { unread: chatUnread, setUnread: setChatUnread } = useDeliveryChatUnread(
+    activeDelivery?.id,
+    activeDelivery?.status,
+    { enabled: Boolean(activeDelivery), chatOpen }
+  );
   const [paymentDraft, setPaymentDraft] = useState({ paymentMethod: "cash", tip: 0 });
+  const [customerTermsOnRecord, setCustomerTermsOnRecord] = useState(false);
+  const [customerTermsChecked, setCustomerTermsChecked] = useState(false);
+  const [customerPrivacyChecked, setCustomerPrivacyChecked] = useState(false);
   const pollRef = useRef(null);
 
   const rawCourierPosition = useMemo(() => {
@@ -198,6 +224,24 @@ export default function DeliveryCustomerApp() {
 
   useEffect(() => {
     setSheetState(SHEET_STATE_BY_SCREEN[screen] || "half");
+  }, [screen]);
+
+  useEffect(() => {
+    if (!localStorage.getItem("access")) return;
+    fetchCustomerDeliveryTermsStatus()
+      .then((data) => {
+        const onRecord = isCustomerDeliveryLegalOnRecord(data);
+        setCustomerTermsOnRecord(onRecord);
+        setCustomerTermsChecked(Boolean(data.delivery_terms_accepted));
+        setCustomerPrivacyChecked(Boolean(data.privacy_policy_accepted));
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (readCustomerTermsSessionFlag()) {
+      setCustomerTermsChecked(true);
+    }
   }, [screen]);
 
   useEffect(() => {
@@ -286,19 +330,37 @@ export default function DeliveryCustomerApp() {
   };
 
   const confirmDelivery = async () => {
+    const needsTerms = !customerTermsOnRecord;
+    if (needsTerms && (!customerTermsChecked || !customerPrivacyChecked)) {
+      setError("Please accept the Terms & Conditions and Privacy Policy before placing your order.");
+      return;
+    }
     setSubmitting(true);
     setError("");
     try {
       const apiCategory = mapCategoryToApi(category);
       const hasFile = form.prescription_photo instanceof File;
+      const payload = buildDeliveryPayload(form, apiCategory, distanceKm, selectedOption);
+      if (needsTerms) {
+        payload.delivery_terms_accepted = true;
+        payload.privacy_accepted = true;
+      }
       const body = hasFile
         ? buildDeliveryFormData(form, apiCategory, distanceKm, selectedOption)
-        : JSON.stringify(buildDeliveryPayload(form, apiCategory, distanceKm, selectedOption));
+        : JSON.stringify(payload);
+
+      if (hasFile && needsTerms) {
+        body.append("delivery_terms_accepted", "true");
+        body.append("privacy_accepted", "true");
+      }
 
       const delivery = await apiRequest(`${API_URL}/deliveries/request/`, {
         method: "POST",
         body,
       });
+      if (needsTerms) {
+        setCustomerTermsOnRecord(true);
+      }
       setRecipientCode(delivery.recipient_code || "");
       setPickupPin(delivery.pickup_pin || "");
       setDropoffPin(delivery.dropoff_pin || "");
@@ -494,8 +556,16 @@ export default function DeliveryCustomerApp() {
           store={selectedStore}
           deliveryAddress={form.destination || "Nouakchott"}
           distanceKm={distanceKm}
+          showTermsAcceptance={!customerTermsOnRecord}
+          termsChecked={customerTermsChecked}
+          privacyChecked={customerPrivacyChecked}
+          onTermsCheckedChange={setCustomerTermsChecked}
+          onPrivacyCheckedChange={setCustomerPrivacyChecked}
           onBack={() => setScreen(SCREENS.STORE)}
           onOrdered={(order) => {
+            if (!customerTermsOnRecord) {
+              setCustomerTermsOnRecord(true);
+            }
             setPlacedOrder(order);
             setScreen(SCREENS.ORDER_PLACED);
           }}
@@ -557,6 +627,11 @@ export default function DeliveryCustomerApp() {
           onConfirm={confirmDelivery}
           onBack={() => setScreen(SCREENS.REQUEST)}
           busy={submitting}
+          showTermsAcceptance={!customerTermsOnRecord}
+          termsChecked={customerTermsChecked}
+          privacyChecked={customerPrivacyChecked}
+          onTermsCheckedChange={setCustomerTermsChecked}
+          onPrivacyCheckedChange={setCustomerPrivacyChecked}
         />
       );
     }
@@ -577,6 +652,7 @@ export default function DeliveryCustomerApp() {
           dropoffPin={dropoffPin || activeDelivery.dropoff_pin}
           onCall={handleMaskedCall}
           onChat={() => setChatOpen(true)}
+          chatUnread={chatUnread}
           onReportIssue={handleReportIssue}
         />
       );
@@ -639,7 +715,7 @@ export default function DeliveryCustomerApp() {
         ) : null
       }
       onMenu={() => {
-        window.location.href = "/settings";
+        window.location.href = "/delivery/customer/settings";
       }}
       onProfile={() => {
         if (!localStorage.getItem("access")) {
@@ -673,8 +749,11 @@ export default function DeliveryCustomerApp() {
       {chatOpen && activeDelivery?.id ? (
         <DeliveryChatSheet
           deliveryId={activeDelivery.id}
+          deliveryStatus={activeDelivery.status}
           role="customer"
+          contactName={activeDelivery.driver_name || "Courier"}
           onClose={() => setChatOpen(false)}
+          onUnreadChange={setChatUnread}
         />
       ) : null}
     </DeliveryCustomerShell>

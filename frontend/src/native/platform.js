@@ -6,6 +6,7 @@
 export const NATIVE_APP_IDS = {
   "com.yala.rider.mr": "rider",
   "com.yala.driver.mr": "driver",
+  "com.yala.delivery.mr": "delivery",
   "com.yala.admin.mr": "admin",
 };
 
@@ -91,7 +92,7 @@ export async function initNativeAppType() {
 }
 
 /**
- * Returns the app type: 'rider', 'driver', 'admin', or 'web'.
+ * Returns the app type: 'rider', 'driver', 'delivery', 'admin', or 'web'.
  * Native apps prefer the stamped/package identity over build-time env.
  */
 export function getAppType() {
@@ -116,6 +117,137 @@ export function shouldShowInstallButton() {
   return !isNative();
 }
 
+export const YALA_COURIER_SESSION_KEY = "yala_delivery_courier";
+
+const DELIVERY_COURIER_ROUTE_PREFIXES = [
+  "/delivery/courier",
+  "/delivery/account",
+  "/delivery/bank",
+  "/delivery/profile-setup",
+  "/delivery/profile",
+  "/delivery/vehicle-setup",
+  "/delivery/earnings",
+  "/delivery/documents",
+  "/delivery/support",
+  "/delivery/settings",
+  "/delivery/courier/terms",
+  "/delivery/courier/sign",
+  "/delivery/customer/terms",
+  "/delivery/customer/settings",
+];
+
+export function normalizeRoutePath(value) {
+  if (!value) return "";
+  const raw = String(value).trim();
+  try {
+    const decoded = decodeURIComponent(raw);
+    if (decoded.startsWith("http://") || decoded.startsWith("https://")) {
+      return new URL(decoded).pathname.replace(/\/+$/, "") || "/";
+    }
+    return decoded.replace(/\/+$/, "") || "/";
+  } catch {
+    return raw.replace(/\/+$/, "") || "/";
+  }
+}
+
+export function isDeliveryCourierPath(path) {
+  const normalized = normalizeRoutePath(path);
+  if (!normalized || normalized === "/delivery") return false;
+  return DELIVERY_COURIER_ROUTE_PREFIXES.some(
+    (prefix) => normalized === prefix || normalized.startsWith(`${prefix}/`),
+  );
+}
+
+export function markDeliveryCourierSession() {
+  if (typeof window !== "undefined") {
+    localStorage.setItem(YALA_COURIER_SESSION_KEY, "1");
+  }
+}
+
+export function clearDeliveryCourierSession() {
+  if (typeof window !== "undefined") {
+    localStorage.removeItem(YALA_COURIER_SESSION_KEY);
+  }
+}
+
+export function hasDeliveryCourierSession() {
+  return (
+    typeof window !== "undefined" &&
+    localStorage.getItem(YALA_COURIER_SESSION_KEY) === "1"
+  );
+}
+
+function getNextRouteFromWindow() {
+  if (typeof window === "undefined") return "";
+  const params = new URLSearchParams(window.location.search || "");
+  return params.get("next") || localStorage.getItem("sx_login_redirect") || "";
+}
+
+/**
+ * True when the user is in the Yala Delivery courier app (native build or web courier flow).
+ * Keeps courier UI separate from Yala Driver (taxi).
+ */
+export function isDeliveryCourierApp() {
+  if (getAppType() === "delivery") return true;
+  if (typeof window === "undefined") return false;
+  if (hasDeliveryCourierSession()) return true;
+
+  const path = window.location.pathname || "";
+  if (isDeliveryCourierPath(path)) return true;
+
+  return isDeliveryCourierPath(getNextRouteFromWindow());
+}
+
+/**
+ * Native package id resolves to Yala Delivery (courier), regardless of build env.
+ */
+export function isNativeDeliveryPackage() {
+  return resolveAppTypeFromPackageId(readNativePackageIdFromCapacitorConfig()) === "delivery";
+}
+
+/**
+ * Yala Delivery native install (APK/IPA), identified by build stamp or package id.
+ */
+export function isDeliveryNativeApp() {
+  return getAppType() === "delivery" || isNativeDeliveryPackage();
+}
+
+/**
+ * True when this install must never show Yala Driver (taxi) UI.
+ */
+export function isDeliveryAppInstall() {
+  return isDeliveryNativeApp() || isDeliveryCourierApp();
+}
+
+/**
+ * Default home route for the current app install.
+ */
+export function getAppHomePath() {
+  if (isDeliveryNativeApp()) return "/delivery/courier";
+  const appType = getAppType();
+  if (appType === "driver") return "/driver";
+  if (appType === "rider") return "/rider-dashboard";
+  if (appType === "admin") return "/admin";
+  return "/";
+}
+
+/**
+ * True only for the Yala Driver (taxi) app — not Yala Delivery couriers.
+ */
+export function isTaxiDriverContext() {
+  if (isDeliveryAppInstall()) return false;
+  if (getAppType() === "driver") return true;
+  if (typeof window === "undefined") return false;
+
+  const path = normalizeRoutePath(window.location.pathname);
+  return (
+    path === "/driver" ||
+    path.startsWith("/driver/") ||
+    path === "/driver-vehicle-setup" ||
+    path === "/driver-profile"
+  );
+}
+
 const RIDER_LYFT_ROUTES = [
   "/rider",
   "/rider-dashboard",
@@ -127,6 +259,8 @@ const RIDER_LYFT_ROUTES = [
   "/rider-payments",
   "/ride/share",
   "/delivery",
+  "/merchant",
+  "/merchant/register",
   "/payment-setup",
   "/settings",
   "/support",
@@ -151,6 +285,22 @@ export function isRiderLyftUI() {
   );
 }
 
+/**
+ * True for native delivery app and web courier screens.
+ */
+export function isDeliveryLyftUI() {
+  return isDeliveryCourierApp();
+}
+
+/**
+ * Uber-style delivery courier UI (map shell, bottom sheet, minimal chrome).
+ * Native Yala Delivery always uses the courier dashboard — never taxi driver UI.
+ */
+export function isDeliveryUberUI() {
+  if (isDeliveryNativeApp()) return true;
+  return isDeliveryCourierApp();
+}
+
 const DRIVER_LYFT_ROUTES = [
   "/driver",
   "/driver/profile",
@@ -163,7 +313,6 @@ const DRIVER_LYFT_ROUTES = [
   "/driver/achievements",
   "/driver/hall-of-fame",
   "/driver/history",
-  "/driver/deliveries",
   "/driver-vehicle-setup",
   "/driver-profile",
   "/login",
@@ -175,6 +324,10 @@ const DRIVER_LYFT_ROUTES = [
  * True for native driver app and web driver account screens (Lyft-style UI).
  */
 export function isDriverLyftUI() {
+  if (isDeliveryCourierApp()) {
+    return false;
+  }
+
   if (getAppType() === "driver") {
     return true;
   }

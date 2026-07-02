@@ -6,6 +6,8 @@ import { MARKET, isPointInServiceArea } from "../marketConfig";
 import { subscribeRideUpdates } from "../socket";
 import { preloadNotificationSound, unlockRideRequestSound, playRideRequestAlert } from "../native/sound";
 import { getDriverApprovalNotice } from "./utils/documentReview";
+import { fetchLegalStatus } from "../legal/legalApi";
+import { redirectIfLegalResignRequired } from "../legal/legalVersionGate";
 import { isDeliveryAppInstall, isDriverLyftUI } from "../native/platform";
 
 import DriverMapView from "./components/DriverMapView";
@@ -28,6 +30,26 @@ export default function DriverDashboardNew() {
     if (isDeliveryAppInstall()) {
       window.location.replace("/delivery/courier");
     }
+  }, []);
+
+  useEffect(() => {
+    if (!localStorage.getItem("access")) return undefined;
+    fetchLegalStatus()
+      .then((data) => {
+        if (redirectIfLegalResignRequired(data, 'driver', '/driver')) {
+          return;
+        }
+        const driver = data?.driver;
+        if (
+          driver
+          && (!driver.signature_complete || driver.requires_resign)
+          && window.location.pathname !== "/driver/sign"
+        ) {
+          window.location.href = "/driver/sign?return=/driver";
+        }
+      })
+      .catch(() => {});
+    return undefined;
   }, []);
 
   const lyftUI = isDriverLyftUI();
@@ -243,7 +265,12 @@ export default function DriverDashboardNew() {
     } catch (error) {
       console.log("Toggle availability error:", error.response?.data || error);
       if (isAuthError(error)) { sendToLogin(); return; }
-      setDriverNotice(error.response?.data?.detail || error.response?.data?.error || "Could not toggle availability.");
+      const detail = error.response?.data?.detail || error.response?.data?.error || "";
+      if (error.response?.data?.driver_terms_required || String(detail).toLowerCase().includes("driver agreement")) {
+        window.location.href = "/driver/sign?return=/driver";
+        return;
+      }
+      setDriverNotice(detail || "Could not toggle availability.");
     } finally {
       setToggleLoading(false);
     }

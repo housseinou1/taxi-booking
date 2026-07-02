@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { API_URL } from "../apiConfig";
 import { languageOptions, normalizeLanguageCode } from "../i18n";
+import { getAppType, isDeliveryCourierApp } from "../native/platform";
 import { useDriverContext } from "./context/DriverContext";
 import { getDriverColors, isDriverLyftUI } from "./lyftColors";
 import {
@@ -45,8 +46,9 @@ const NOTIFICATION_SOUND_OPTIONS = [
 ];
 
 // ─── Main Component ─────────────────────────────────────────────────────────
-export default function DriverSettings() {
-  const lyftUI = isDriverLyftUI();
+export default function DriverSettings({ deliveryOnly = false } = {}) {
+  const isDeliveryCourier = deliveryOnly || isDeliveryCourierApp();
+  const lyftUI = isDeliveryCourier ? false : isDriverLyftUI();
   const themeColors = getDriverColors();
   const token = localStorage.getItem("access");
   const { t, i18n } = useTranslation();
@@ -225,21 +227,32 @@ export default function DriverSettings() {
   return (
     <div
       className={lyftUI ? "driver-page--lyft" : undefined}
-      style={{
-        ...containerStyle,
-        ...(lyftUI ? { backgroundColor: themeColors.darkNavy, minHeight: "auto", paddingTop: 12, paddingBottom: 24 } : null),
-      }}
+      style={
+        deliveryOnly
+          ? { padding: 0, background: "transparent", minHeight: "auto" }
+          : {
+              ...containerStyle,
+              ...(lyftUI
+                ? {
+                    backgroundColor: themeColors.darkNavy,
+                    minHeight: "auto",
+                    paddingTop: 12,
+                    paddingBottom: 24,
+                  }
+                : null),
+            }
+      }
     >
-      {/* Mauritania accent bar */}
-      {!lyftUI && <div style={mauritaniaAccentBarStyle} aria-hidden="true" />}
+      {!lyftUI && !deliveryOnly ? <div style={mauritaniaAccentBarStyle} aria-hidden="true" /> : null}
 
-      {/* Header */}
-      {!lyftUI && (
+      {!lyftUI && !deliveryOnly ? (
       <div style={headerStyle}>
         <h1 style={titleStyle}>⚙️ Settings</h1>
-        <p style={subtitleStyle}>Customize your app experience</p>
+        <p style={subtitleStyle}>
+          {isDeliveryCourier ? "Yala Delivery courier preferences" : "Customize your app experience"}
+        </p>
       </div>
-      )}
+      ) : null}
 
       {/* Language Section */}
       <SettingsSection title="🌐 Language" description="Choose your preferred language">
@@ -276,11 +289,21 @@ export default function DriverSettings() {
         description="Manage your notification preferences"
       >
         <ToggleRow
-          label="Ride Requests"
-          description="New ride request alerts"
+          label={isDeliveryCourier ? "Delivery requests" : "Ride Requests"}
+          description={
+            isDeliveryCourier ? "New delivery offer alerts" : "New ride request alerts"
+          }
           checked={settings?.notifications_rides ?? true}
           onChange={() => handleToggle("notifications_rides")}
         />
+        {isDeliveryCourier ? (
+          <ToggleRow
+            label="Delivery updates"
+            description="Cancellation and payout alerts"
+            checked={settings?.notifications_delivery_updates ?? true}
+            onChange={() => handleToggle("notifications_delivery_updates")}
+          />
+        ) : null}
         <ToggleRow
           label="Promotions"
           description="Bonus and incentive offers"
@@ -297,7 +320,11 @@ export default function DriverSettings() {
 
       <SettingsSection
         title="🎵 Notification Sound"
-        description="Choose ride request alert style for this device"
+        description={
+          isDeliveryCourier
+            ? "Choose delivery request alert style for this device"
+            : "Choose ride request alert style for this device"
+        }
       >
         <div style={soundStyleGridStyle}>
           {NOTIFICATION_SOUND_OPTIONS.map((option) => (
@@ -391,23 +418,31 @@ export default function DriverSettings() {
       {/* Privacy Section */}
       <SettingsSection
         title="👁️ Privacy"
-        description="Control what riders can see"
+        description={isDeliveryCourier ? "Control what customers can see" : "Control what riders can see"}
       >
         <ToggleRow
           label="Show Name"
-          description="Display your name to riders"
+          description={isDeliveryCourier ? "Display your name to customers" : "Display your name to riders"}
           checked={settings?.privacy_show_name ?? true}
           onChange={() => handleToggle("privacy_show_name")}
         />
         <ToggleRow
           label="Show Photo"
-          description="Display your profile photo to riders"
+          description={
+            isDeliveryCourier
+              ? "Display your profile photo to customers"
+              : "Display your profile photo to riders"
+          }
           checked={settings?.privacy_show_photo ?? true}
           onChange={() => handleToggle("privacy_show_photo")}
         />
         <ToggleRow
           label="Show Vehicle"
-          description="Display vehicle details to riders"
+          description={
+            isDeliveryCourier
+              ? "Display vehicle details to customers"
+              : "Display vehicle details to riders"
+          }
           checked={settings?.privacy_show_vehicle ?? true}
           onChange={() => handleToggle("privacy_show_vehicle")}
         />

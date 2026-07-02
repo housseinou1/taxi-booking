@@ -5,6 +5,11 @@
 firebase-service-account.json
 **/firebase-service-account.json
 
+# Android keystores and signing credentials — NEVER commit these
+*.jks
+*.keystore
+*.p12
+
 # Virtual environments
 venv/
 env/
