@@ -116,6 +116,20 @@ export function shouldShowInstallButton() {
   return !isNative();
 }
 
+const DELIVERY_NATIVE_APP_ID = "com.yala.delivery.mr";
+
+/**
+ * True when the current native install is the dedicated delivery/courier app.
+ * Used to route the driver dashboard straight to the courier experience.
+ * Returns false for all rider/driver/admin/web builds (behaviour-preserving).
+ */
+export function isDeliveryAppInstall() {
+  if (typeof window !== "undefined" && window.__YALA_APP_TYPE__ === "delivery") {
+    return true;
+  }
+  return readNativePackageIdFromCapacitorConfig() === DELIVERY_NATIVE_APP_ID;
+}
+
 const RIDER_LYFT_ROUTES = [
   "/rider",
   "/rider-dashboard",

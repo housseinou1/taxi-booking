@@ -8,11 +8,11 @@ import DeliveryAdminPanel from "../delivery/DeliveryAdminPanel";
 
 const MARKET_OWNER_PERCENT = MARKET.ownerCommissionPercent;
 const logoSrc = "/yala-admin-logo.png";
-const ADMIN_BLUE = "#00A651";
-const ADMIN_BLUE_PANEL = "rgba(15, 33, 25, 0.82)";
-const ADMIN_BLUE_PANEL_DARK = "rgba(12, 25, 20, 0.9)";
-const ADMIN_BLUE_SOFT = "rgba(110, 231, 183, 0.14)";
-const ADMIN_BLUE_BORDER = "rgba(110, 231, 183, 0.26)";
+const ADMIN_BLUE = "#2563EB";
+const ADMIN_BLUE_PANEL = "rgba(17, 27, 47, 0.82)";
+const ADMIN_BLUE_PANEL_DARK = "rgba(11, 18, 32, 0.92)";
+const ADMIN_BLUE_SOFT = "rgba(37, 99, 235, 0.16)";
+const ADMIN_BLUE_BORDER = "rgba(96, 165, 250, 0.26)";
 const ADMIN_TEXT_PRIMARY = "#f8fafc";
 const ADMIN_TEXT_SECONDARY = "#cbd5e1";
 const ADMIN_SUCCESS_BG = "#ecfdf3";
@@ -291,6 +291,7 @@ function AdminDashboard() {
   const [users, setUsers] = useState([]);
   const [rides, setRides] = useState([]);
   const [withdrawals, setWithdrawals] = useState([]);
+  const [deliveryStats, setDeliveryStats] = useState(null);
   const [cities, setCities] = useState([]);
   const [regions, setRegions] = useState([]);
   const [cityAnalytics, setCityAnalytics] = useState({ summary: {}, cities: [] });
@@ -465,6 +466,23 @@ function AdminDashboard() {
     }
   }, [authHeaders]);
 
+  const fetchDeliveryStats = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_URL}/deliveries/admin/analytics/`, {
+        headers: authHeaders(),
+      });
+      if (!response.ok) {
+        setDeliveryStats(null);
+        return;
+      }
+      const data = await response.json();
+      setDeliveryStats(data && typeof data === "object" ? data : null);
+    } catch (error) {
+      console.error("Delivery stats fetch error:", error);
+      setDeliveryStats(null);
+    }
+  }, [authHeaders]);
+
   const fetchOwnerPayout = useCallback(async () => {
     try {
       const response = await fetch(`${API_URL}/payments/owner-payout/`, {
@@ -497,8 +515,10 @@ function AdminDashboard() {
     fetchUsers();
     fetchRides();
     fetchWithdrawals();
+    fetchDeliveryStats();
     fetchOwnerPayout();
   }, [
+    fetchDeliveryStats,
     fetchDriverPerformance,
     fetchDrivers,
     fetchLocations,
@@ -977,6 +997,26 @@ function AdminDashboard() {
     rides.length > 0 ? Math.round((cancelledRides.length / rides.length) * 100) : 0;
   const averageFare =
     rides.length > 0 ? Math.round(totalRevenue / rides.length) : 0;
+
+  const isSameDay = (value) => {
+    if (!value) return false;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return false;
+    const now = new Date();
+    return (
+      date.getFullYear() === now.getFullYear() &&
+      date.getMonth() === now.getMonth() &&
+      date.getDate() === now.getDate()
+    );
+  };
+  const todaysRides = rides.filter(
+    (ride) => isSameDay(ride.created_at) || isSameDay(ride.requested_at) || isSameDay(ride.created)
+  );
+  const dailyRevenue = todaysRides.reduce(
+    (total, ride) => total + Number(ride.fare || 0),
+    0
+  );
+  const pendingApprovals = pendingDrivers.length + pendingRiders.length;
   const emergencyWatchList = [
     ...activeRides.slice(0, 5).map((ride) => ({
       id: `ride-${ride.id}`,
@@ -1090,6 +1130,10 @@ function AdminDashboard() {
 
   return (
     <div style={{ ...pageStyle, ...(isCompactLayout ? pageStyleCompact : {}) }}>
+      <style>{`
+        .yala-kpi-card { transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease; }
+        .yala-kpi-card:hover { transform: translateY(-3px); box-shadow: 0 18px 38px rgba(0,0,0,0.38); border-color: rgba(96,165,250,0.55); }
+      `}</style>
       {/* Mobile hamburger button */}
       {isCompactLayout && (
         <button
@@ -1227,11 +1271,54 @@ function AdminDashboard() {
           </div>
 
           <div style={opsStatsGridStyle}>
-            <StatCard title="Drivers" value={drivers.length} />
-            <StatCard title="Riders" value={riders.length} />
-            <StatCard title="Online" value={onlineDrivers.length} />
-            <StatCard title="Active rides" value={activeRides.length} />
-            <StatCard title="Revenue" value={formatMoney(totalRevenue)} />
+            <StatCard
+              title="Total Revenue"
+              value={formatMoney(totalRevenue)}
+              tone="green"
+              sub="All-time gross"
+            />
+            <StatCard
+              title="Daily Revenue"
+              value={formatMoney(dailyRevenue)}
+              tone="teal"
+              sub="Today"
+            />
+            <StatCard
+              title="Total Rides"
+              value={rides.length}
+              tone="blue"
+              sub={`${activeRides.length} active now`}
+            />
+            <StatCard
+              title="Total Deliveries"
+              value={deliveryStats ? deliveryStats.total : "\u2014"}
+              tone="violet"
+              sub={deliveryStats ? `${deliveryStats.active} active` : "No data"}
+            />
+            <StatCard
+              title="Active Drivers"
+              value={onlineDrivers.length}
+              tone="blue"
+              sub={`${platformDrivers.length} total`}
+            />
+            <StatCard
+              title="Active Couriers"
+              value={deliveryStats ? deliveryStats.active : "\u2014"}
+              tone="teal"
+              sub="On active delivery"
+            />
+            <StatCard
+              title="Active Riders"
+              value={approvedRiders.length}
+              tone="green"
+              sub={`${riders.length} total`}
+            />
+            <StatCard
+              title="Pending Approvals"
+              value={pendingApprovals}
+              tone="amber"
+              sub={`${pendingDrivers.length} drivers / ${pendingRiders.length} riders`}
+            />
           </div>
         </section>
 
@@ -2907,11 +2994,25 @@ function DriverInfoCard({
   );
 }
 
-function StatCard({ title, value }) {
+function StatCard({ title, value, tone = "blue", sub, trend }) {
+  const accent = statCardToneAccents[tone] || statCardToneAccents.blue;
   return (
-    <div style={statCard}>
+    <div className="yala-kpi-card" style={{ ...statCard, borderLeft: `3px solid ${accent}` }}>
+      <div style={statCardTopStyle}>
+        <p style={statCardLabelStyle}>{title}</p>
+        {trend ? (
+          <span
+            style={{
+              ...statTrendStyle,
+              ...(trend.dir === "down" ? statTrendDownStyle : statTrendUpStyle),
+            }}
+          >
+            {trend.dir === "down" ? "\u25BC" : "\u25B2"} {trend.value}
+          </span>
+        ) : null}
+      </div>
       <h2 style={statCardValueStyle}>{value}</h2>
-      <p style={statCardLabelStyle}>{title}</p>
+      {sub ? <p style={statCardSubStyle}>{sub}</p> : null}
     </div>
   );
 }
@@ -3478,7 +3579,7 @@ const pageStyle = {
   display: "grid",
   gridTemplateColumns: "300px minmax(0, 1fr)",
   minHeight: "100vh",
-  backgroundImage: "radial-gradient(circle at top right, rgba(0, 166, 81, 0.16), transparent 44%), linear-gradient(135deg, #08130f 0%, #0b1814 45%, #112019 100%)",
+  backgroundImage: "radial-gradient(circle at top right, rgba(37, 99, 235, 0.20), transparent 46%), linear-gradient(135deg, #0B1220 0%, #0d1730 48%, #0f1b3a 100%)",
   backgroundSize: "cover",
   backgroundPosition: "center",
   backgroundRepeat: "no-repeat",
@@ -3491,7 +3592,7 @@ const sidebar = {
   position: "sticky",
   top: 0,
   height: "100vh",
-  background: "linear-gradient(180deg, rgba(6, 16, 12, 0.98) 0%, rgba(11, 24, 18, 0.98) 100%)",
+  background: "linear-gradient(180deg, rgba(9, 15, 28, 0.98) 0%, rgba(11, 18, 32, 0.98) 100%)",
   color: "white",
   padding: "24px 20px",
   borderRight: "1px solid rgba(148, 163, 184, 0.2)",
@@ -3513,7 +3614,7 @@ const brandLogoStyle = {
   height: "56px",
   borderRadius: "14px",
   objectFit: "cover",
-  boxShadow: "0 4px 16px rgba(16,185,129,0.28)",
+  boxShadow: "0 4px 16px rgba(37, 99, 235, 0.32)",
 };
 
 const sidebarTitle = {
@@ -3541,11 +3642,11 @@ const adminUserAvatarStyle = {
   width: 40,
   height: 40,
   borderRadius: "50%",
-  background: "linear-gradient(135deg, #34d399, #10b981)",
+  background: "linear-gradient(135deg, #3b82f6, #2563EB)",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  color: "#052e1d",
+  color: "#ffffff",
   fontWeight: 900,
   fontSize: 14,
   flexShrink: 0,
@@ -3589,7 +3690,7 @@ const menuCountStyle = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
-  background: "rgba(110, 231, 183, 0.22)",
+  background: "rgba(37, 99, 235, 0.24)",
   fontSize: "0.76rem",
   fontWeight: 950,
 };
@@ -3658,10 +3759,10 @@ const adminShortcutButtonStyle = {
 };
 
 const adminShortcutButtonActiveStyle = {
-  background: "linear-gradient(135deg, rgba(52, 211, 153, 0.28), rgba(16, 185, 129, 0.2))",
+  background: "linear-gradient(135deg, rgba(37, 99, 235, 0.32), rgba(59, 130, 246, 0.22))",
   color: "#ffffff",
-  borderColor: "rgba(52, 211, 153, 0.55)",
-  boxShadow: "inset 0 0 0 1px rgba(52, 211, 153, 0.2)",
+  borderColor: "rgba(96, 165, 250, 0.6)",
+  boxShadow: "inset 0 0 0 1px rgba(96, 165, 250, 0.22)",
 };
 
 const topBarKickerStyle = {
@@ -3716,8 +3817,8 @@ const refreshButtonStyle = {
   minHeight: "44px",
   border: "none",
   borderRadius: "12px",
-  background: "linear-gradient(135deg, #34d399, #10b981)",
-  color: "#052e1d",
+  background: "linear-gradient(135deg, #3b82f6, #2563EB)",
+  color: "#ffffff",
   padding: "0 16px",
   cursor: "pointer",
   fontWeight: 900,
@@ -3726,12 +3827,12 @@ const refreshButtonStyle = {
 const opsHeroStyle = {
   background: `linear-gradient(135deg, ${ADMIN_BLUE_PANEL} 0%, ${ADMIN_BLUE_PANEL_DARK} 100%)`,
   color: "white",
-  borderRadius: "22px",
+  borderRadius: "18px",
   padding: "28px",
   display: "grid",
-  gridTemplateColumns: "minmax(260px, 0.8fr) minmax(300px, 1.2fr)",
-  gap: "20px",
-  alignItems: "center",
+  gridTemplateColumns: "minmax(0, 1fr)",
+  gap: "22px",
+  alignItems: "stretch",
   marginBottom: "22px",
   border: `1px solid ${ADMIN_BLUE_BORDER}`,
   boxShadow: "0 16px 32px rgba(0, 0, 0, 0.2)",
@@ -3765,14 +3866,14 @@ const opsSubtitleStyle = {
 
 const opsStatsGridStyle = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
-  gap: "12px",
+  gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
+  gap: "14px",
 };
 
 const card = {
   background: ADMIN_BLUE_PANEL,
   padding: "30px",
-  borderRadius: "22px",
+  borderRadius: "18px",
   border: `1px solid ${ADMIN_BLUE_BORDER}`,
   boxShadow: "0 18px 36px rgba(0, 0, 0, 0.2)",
   backdropFilter: "blur(12px)",
@@ -3806,13 +3907,60 @@ const statsGrid = {
 };
 
 const statCard = {
-  background: "linear-gradient(135deg, rgba(5, 42, 24, 0.96), rgba(8, 31, 20, 0.92))",
-  padding: "20px",
-  borderRadius: "16px",
+  background: "linear-gradient(135deg, rgba(17, 27, 47, 0.96), rgba(11, 18, 32, 0.94))",
+  padding: "18px",
+  borderRadius: "18px",
   border: `1px solid ${ADMIN_BLUE_BORDER}`,
-  minHeight: "96px",
-  boxShadow: "0 12px 24px rgba(0,0,0,0.18)",
-  transition: "transform 0.2s, box-shadow 0.2s",
+  borderLeft: "3px solid #2563EB",
+  minHeight: "104px",
+  boxShadow: "0 12px 24px rgba(0,0,0,0.28)",
+  transition: "transform 0.2s ease, box-shadow 0.2s ease",
+  display: "grid",
+  gap: "6px",
+  alignContent: "start",
+};
+
+const statCardToneAccents = {
+  blue: "#2563EB",
+  green: "#22C55E",
+  amber: "#F59E0B",
+  red: "#EF4444",
+  violet: "#8B5CF6",
+  teal: "#14B8A6",
+};
+
+const statCardTopStyle = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "8px",
+};
+
+const statCardSubStyle = {
+  margin: 0,
+  color: "#94a3b8",
+  fontSize: "0.74rem",
+  fontWeight: 700,
+};
+
+const statTrendStyle = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: "3px",
+  padding: "2px 8px",
+  borderRadius: "999px",
+  fontSize: "0.7rem",
+  fontWeight: 900,
+};
+
+const statTrendUpStyle = {
+  color: "#bbf7d0",
+  background: "rgba(34, 197, 94, 0.16)",
+};
+
+const statTrendDownStyle = {
+  color: "#fecaca",
+  background: "rgba(239, 68, 68, 0.16)",
 };
 
 const statCardValueStyle = {
