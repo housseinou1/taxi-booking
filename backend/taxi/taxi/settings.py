@@ -125,7 +125,7 @@ if DATABASE_URL:
         DATABASES["default"] = dj_database_url.parse(
             DATABASE_URL,
             conn_max_age=600,
-            ssl_require=env_bool("DATABASE_SSL_REQUIRE", not DEBUG),
+            ssl_require=env_bool("DATABASE_SSL_REQUIRE", False),
         )
     except ImportError:
         pass
