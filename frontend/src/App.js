@@ -204,6 +204,15 @@ function App() {
   const [sessionChecked, setSessionChecked] = useState(hasStoredAuthSession());
   const [isAuthenticated, setIsAuthenticated] = useState(hasStoredAuthSession());
   const sessionCheckStarted = useRef(false);
+  const [, forceUpdate] = useState(0);
+  const [navCounter, setNavCounter] = useState(0);
+
+  // Listen for pushState-based navigation (SPA tab switches)
+  useEffect(() => {
+    const handlePopState = () => setNavCounter((n) => n + 1);
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   useEffect(() => {
     if (!isDeliveryCourierApp()) return;
@@ -391,9 +400,15 @@ function App() {
 
     let isMounted = true;
     const sessionTimeout = window.setTimeout(() => {
-      clearAuthSession();
-      if (isMounted) {
-        setIsAuthenticated(false);
+      // Only clear if no token exists (don't force logout on slow networks)
+      if (!localStorage.getItem("access") && !localStorage.getItem("refresh")) {
+        clearAuthSession();
+        if (isMounted) {
+          setIsAuthenticated(false);
+          setSessionChecked(true);
+        }
+      } else if (isMounted) {
+        // Token exists but server is slow — keep session alive
         setSessionChecked(true);
       }
     }, 15000);
@@ -424,10 +439,21 @@ function App() {
           setSessionChecked(true);
         }
       } catch (error) {
-        clearAuthSession();
-        if (isMounted) {
-          setIsAuthenticated(false);
-          setSessionChecked(true);
+        // Only logout if server explicitly rejects the token (401/403)
+        // Network errors or timeouts should NOT clear the session
+        const status = error?.response?.status;
+        if (status === 401 || status === 403) {
+          clearAuthSession();
+          if (isMounted) {
+            setIsAuthenticated(false);
+            setSessionChecked(true);
+          }
+        } else {
+          // Network error / timeout — keep session alive
+          if (isMounted) {
+            setIsAuthenticated(true);
+            setSessionChecked(true);
+          }
         }
       } finally {
         window.clearTimeout(sessionTimeout);

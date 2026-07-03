@@ -13,11 +13,39 @@ LOCATION_MODELS = (
     "CityPricing",
 )
 
+HIERARCHY_MODELS = ("Department", "Commune", "Locality")
+BASE_LOCATION_MODELS = ("Region", "City", "CityPricing")
+
+
+def _table_columns(connection, table_name):
+    with connection.cursor() as cursor:
+        return {
+            column.name
+            for column in connection.introspection.get_table_description(
+                cursor, table_name
+            )
+        }
+
+
+def _ensure_city_commune_column(apps, schema_editor):
+    """Add commune_id when an older locations_city table survived without 0003."""
+    City = apps.get_model("locations", "City")
+    table_name = City._meta.db_table
+    existing_tables = set(schema_editor.connection.introspection.table_names())
+    if table_name not in existing_tables:
+        return False
+    if "commune_id" in _table_columns(schema_editor.connection, table_name):
+        return False
+
+    commune_field = City._meta.get_field("commune")
+    schema_editor.add_field(City, commune_field)
+    return True
+
 
 def repair_missing_location_tables(apps, schema_editor):
     """Repair databases where location migrations were recorded but tables were not created."""
     existing_tables = set(schema_editor.connection.introspection.table_names())
-    repaired_missing_tables = False
+    repaired_tables = set()
 
     for model_name in LOCATION_MODELS:
         model = apps.get_model("locations", model_name)
@@ -29,15 +57,20 @@ def repair_missing_location_tables(apps, schema_editor):
                 schema_editor.execute(f"DROP TYPE IF EXISTS {table_name} CASCADE")
             schema_editor.create_model(model)
             existing_tables.add(model._meta.db_table)
-            repaired_missing_tables = True
+            repaired_tables.add(model_name)
 
-    if repaired_missing_tables:
-        initial = importlib.import_module("locations.migrations.0001_initial")
+    _ensure_city_commune_column(apps, schema_editor)
+
+    if repaired_tables:
         hierarchy = importlib.import_module(
             "locations.migrations.0003_administrative_hierarchy"
         )
-        initial.seed_locations(apps, schema_editor)
-        hierarchy.seed_administrative_hierarchy(apps, schema_editor)
+        if repaired_tables.intersection(BASE_LOCATION_MODELS):
+            initial = importlib.import_module("locations.migrations.0001_initial")
+            initial.seed_locations(apps, schema_editor)
+            hierarchy.seed_administrative_hierarchy(apps, schema_editor)
+        elif repaired_tables.intersection(HIERARCHY_MODELS):
+            hierarchy.seed_administrative_hierarchy(apps, schema_editor)
 
     Region = apps.get_model("locations", "Region")
     Commune = apps.get_model("locations", "Commune")

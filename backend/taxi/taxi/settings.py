@@ -45,7 +45,7 @@ INSTALLED_APPS = [
     "drf_spectacular",
     "channels",
     "taxi.drivers",
-    "payments",
+    "payments.apps.PaymentsConfig",
     "notifications",
     "chat",
     "promotions",
