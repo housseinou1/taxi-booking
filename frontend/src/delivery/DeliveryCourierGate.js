@@ -85,7 +85,12 @@ function ResignRequiredBanner({ onNavigate }) {
 
 export default function DeliveryCourierGate() {
   const [loading, setLoading] = useState(true);
-  const [onboarding, setOnboarding] = useState(null);
+  const [onboarding, setOnboarding] = useState(() => {
+    try {
+      const cached = sessionStorage.getItem("yala_courier_onboarding");
+      return cached ? JSON.parse(cached) : null;
+    } catch { return null; }
+  });
   const [error, setError] = useState("");
 
   const loadOnboarding = useCallback(async () => {
@@ -94,9 +99,17 @@ export default function DeliveryCourierGate() {
     try {
       const state = await apiRequest(`${API_URL}/deliveries/courier/onboarding/`);
       setOnboarding(state);
+      // Cache for instant return navigation
+      try { sessionStorage.setItem("yala_courier_onboarding", JSON.stringify(state)); } catch {}
     } catch (err) {
       setError(err.message || "Could not load courier profile.");
-      setOnboarding(null);
+      // Try to use cached state
+      if (!onboarding) {
+        try {
+          const cached = sessionStorage.getItem("yala_courier_onboarding");
+          if (cached) setOnboarding(JSON.parse(cached));
+        } catch {}
+      }
     } finally {
       setLoading(false);
     }
@@ -116,7 +129,8 @@ export default function DeliveryCourierGate() {
     );
   }
 
-  if (error) {
+  if (error && !onboarding) {
+    // Only show error screen if we have no cached data at all
     return (
       <div className={isDeliveryUberUI() ? "delivery-uber-page" : "delivery-onboarding delivery-onboarding--error"}>
         <div className="delivery-uber-page__content" style={{ textAlign: "center", paddingTop: 48 }}>

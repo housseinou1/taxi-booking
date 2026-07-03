@@ -77,7 +77,7 @@ export default function DeliveryCourierDashboard() {
   const [deliveryVehicleType, setDeliveryVehicleType] = useState("motorcycle");
   const [deliveryCities, setDeliveryCities] = useState([DEFAULT_DELIVERY_CITY]);
   const [citiesSaving, setCitiesSaving] = useState(false);
-  const [modeLoading, setModeLoading] = useState(true);
+  const [modeLoading, setModeLoading] = useState(false);
   const [vehicleSaving, setVehicleSaving] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
@@ -137,10 +137,9 @@ export default function DeliveryCourierDashboard() {
       setMine(mineData);
       setError("");
     } catch (err) {
-      // Only show error if we have no data at all
-      if (available.length === 0 && mine.length === 0) {
+      // Only show error if we have no data at all and past initial load
+      if (available.length === 0 && mine.length === 0 && !loading) {
         setError(err.message);
-        // Auto-dismiss after 5s
         setTimeout(() => setError(""), 5000);
       }
     } finally {
@@ -222,6 +221,7 @@ export default function DeliveryCourierDashboard() {
     if (alertedOfferIdRef.current === incomingOffer.id) return;
 
     alertedOfferIdRef.current = incomingOffer.id;
+    setSheetState("collapsed");
     startDeliveryOfferAlertLoop({
       title: "New Delivery Request",
       body: `${incomingOffer.pickup || "Pickup"} → ${incomingOffer.destination || "Dropoff"} · ${incomingOffer.fare || "0"} MRU`,
@@ -367,15 +367,11 @@ export default function DeliveryCourierDashboard() {
   };
 
   const toggleMode = async () => {
-    if (!deliveryMode && expiredDocAlerts.length > 0) {
-      setError("Document expired. Please update your documents before going online.");
-      return;
-    }
     try {
       setError("");
       const newValue = !deliveryMode;
       if (newValue) {
-        await unlockRideRequestSound();
+        unlockRideRequestSound().catch(() => {});
         offersBaselineReadyRef.current = false;
       } else {
         stopDeliveryOfferAlert();
@@ -394,7 +390,7 @@ export default function DeliveryCourierDashboard() {
       }
       showNotice(newValue ? "You're online for deliveries" : "You're offline");
     } catch (err) {
-      setError(err.message);
+      setError(err.message || "Could not toggle online status");
     }
   };
 
@@ -527,8 +523,9 @@ export default function DeliveryCourierDashboard() {
         onRefresh={load}
         onToggleOnline={toggleMode}
         onlineToggleLoading={modeLoading}
-        onlineToggleDisabled={!deliveryMode && expiredDocAlerts.length > 0}
+        onlineToggleDisabled={false}
         activeDelivery={activeDelivery}
+        incomingOfferActive={showIncomingOffer}
         todayEarnings={todayEarnings}
         earningsLabel={todayEarnings ? `${todayEarnings.amount} MRU` : "0 MRU"}
         onlineTimeLabel={formatOnlineDuration(liveOnlineMs)}
@@ -567,7 +564,12 @@ export default function DeliveryCourierDashboard() {
             modeLoading={modeLoading}
             onVehicleChange={saveVehicleType}
             onAccept={(delivery) => act(delivery, "accept")}
+            onDecline={handleDeclineOffer}
             showInlineRequests={!showIncomingOffer}
+            todayEarnings={todayEarnings}
+            onlineTimeLabel={formatOnlineDuration(liveOnlineMs)}
+            sheetState={sheetState}
+            onSheetStateChange={setSheetState}
           />
         )}
       </DeliveryCourierShell>

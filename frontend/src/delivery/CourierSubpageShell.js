@@ -1,28 +1,24 @@
 import React from "react";
 
+import CourierBottomNav from "./components/CourierBottomNav";
 import "./delivery-courier-flow.css";
-
-const NAV_ITEMS = [
-  { key: "home", label: "Home", icon: "⌂", href: "/delivery/courier" },
-  { key: "orders", label: "Orders", icon: "☰", href: "/delivery/history" },
-  { key: "earnings", label: "Earnings", icon: "$", href: "/delivery/earnings" },
-  { key: "wallet", label: "Wallet", icon: "👛", href: "/delivery/wallet" },
-  { key: "profile", label: "Profile", icon: "☺", href: "/delivery/account" },
-];
 
 /**
  * DoorDash-style subpage shell with consistent bottom navigation.
  */
 export default function CourierSubpageShell({ title, activeNav, children, headerRight = null }) {
+  const navigate = (path) => {
+    window.history.pushState(null, "", path);
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  };
+
   return (
     <div className="ccf-subpage">
       <header className="ccf-subpage__header">
         <button
           type="button"
           className="ccf-subpage__back"
-          onClick={() => {
-            window.location.href = "/delivery/courier";
-          }}
+          onClick={() => navigate("/delivery/courier")}
           aria-label="Back to home"
         >
           ←
@@ -33,21 +29,12 @@ export default function CourierSubpageShell({ title, activeNav, children, header
 
       <main className="ccf-subpage__body">{children}</main>
 
-      <nav className="ccf-subpage__nav" aria-label="Courier navigation">
-        {NAV_ITEMS.map((item) => (
-          <button
-            key={item.key}
-            type="button"
-            className={activeNav === item.key ? "is-active" : ""}
-            onClick={() => {
-              window.location.href = item.href;
-            }}
-          >
-            <span>{item.icon}</span>
-            <small>{item.label}</small>
-          </button>
-        ))}
-      </nav>
+      <CourierBottomNav
+        activeNav={activeNav}
+        navClassName="ccf-subpage__nav"
+        buttonClassName=""
+        ariaLabel="Courier navigation"
+      />
     </div>
   );
 }

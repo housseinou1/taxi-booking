@@ -1,8 +1,10 @@
 import React from "react";
 
-import { DeliveryJobCard } from "../DeliveryShared";
+import DeliveryCourierActiveCard from "./DeliveryCourierActiveCard";
+import DeliveryCourierRequestCard from "./DeliveryCourierRequestCard";
 import DeliveryCourierTypePicker from "./DeliveryCourierTypePicker";
-import { CourierActionButton } from "./CourierActionButton";
+import DeliveryCourierTodayPeek from "./DeliveryCourierTodayPeek";
+import DeliveryCourierHomeIdle from "./DeliveryCourierHomeIdle";
 
 export default function DeliveryCourierHomeSheet({
   deliveryMode,
@@ -18,10 +20,24 @@ export default function DeliveryCourierHomeSheet({
   modeLoading,
   onVehicleChange,
   onAccept,
+  onDecline,
   showInlineRequests,
+  todayEarnings,
+  onlineTimeLabel,
+  sheetState = "half",
+  onSheetStateChange,
 }) {
   return (
     <div className="cce-home">
+      <DeliveryCourierTodayPeek
+        todayEarnings={todayEarnings}
+        onlineTimeLabel={onlineTimeLabel}
+        statusOnline={deliveryMode}
+        sheetState={sheetState}
+        onExpand={onSheetStateChange}
+      />
+
+      <div className="cce-home-body">
       {expiredDocAlerts.length > 0 ? (
         <div className="ccf-alert" role="alert">
           {expiredDocAlerts.map((alert) => (
@@ -42,10 +58,34 @@ export default function DeliveryCourierHomeSheet({
         compact
       />
 
-      <div className="cce-home-tabs" role="tablist">
+      <section className="cce-summary-grid" aria-label="Today summary">
+        <div>
+          <strong>{todayEarnings?.count || 0}</strong>
+          <span>Deliveries</span>
+        </div>
+        <div>
+          <strong>{todayEarnings?.amount || "0"} MRU</strong>
+          <span>Earnings</span>
+        </div>
+        <div>
+          <strong>{onlineTimeLabel || "0h 0m"}</strong>
+          <span>Online</span>
+        </div>
+        <div>
+          <strong>5.0</strong>
+          <span>Rating</span>
+        </div>
+        <div>
+          <strong>100%</strong>
+          <span>Accept rate</span>
+        </div>
+      </section>
+
+      <div className="cce-home-tabs" role="tablist" aria-label="Delivery tabs">
         <button
           type="button"
           role="tab"
+          aria-selected={tab === "requests"}
           className={tab === "requests" ? "is-active" : ""}
           onClick={() => onTabChange("requests")}
         >
@@ -55,6 +95,7 @@ export default function DeliveryCourierHomeSheet({
         <button
           type="button"
           role="tab"
+          aria-selected={tab === "active"}
           className={tab === "active" ? "is-active" : ""}
           onClick={() => onTabChange("active")}
         >
@@ -63,39 +104,26 @@ export default function DeliveryCourierHomeSheet({
         </button>
       </div>
 
-      {loading ? <p className="cce-empty">Loading…</p> : null}
+      {loading ? <p className="cce-empty cce-empty--loading">Loading deliveries…</p> : null}
 
       {!loading && tab === "requests" ? (
         <>
-          {!deliveryMode ? (
-            <div className="cce-empty">
-              <span className="ccf-empty-state__icon" aria-hidden="true">📍</span>
-              <strong>You're offline</strong>
-              <p>Go online to receive delivery requests near you.</p>
-            </div>
-          ) : null}
           {deliveryMode && available.length === 0 ? (
-            <div className="cce-empty">
-              <strong>No requests yet</strong>
-              <p>Stay online — new deliveries appear here automatically.</p>
-            </div>
+            <DeliveryCourierHomeIdle statusOnline={deliveryMode} tab="requests" />
+          ) : null}
+          {!deliveryMode && available.length === 0 ? (
+            <DeliveryCourierHomeIdle statusOnline={false} tab="requests" />
           ) : null}
           {deliveryMode && showInlineRequests
             ? available.map((delivery) => (
-                <DeliveryJobCard key={delivery.id} delivery={delivery} highlight>
-                  <div className="ccf-home-accept">
-                    <CourierActionButton
-                      variant="accept"
-                      iconName="check"
-                      fullWidth
-                      loading={actionBusy}
-                      disabled={active.length > 0}
-                      onClick={() => onAccept(delivery)}
-                    >
-                      Accept · {delivery.fare} MRU
-                    </CourierActionButton>
-                  </div>
-                </DeliveryJobCard>
+                <DeliveryCourierRequestCard
+                  key={delivery.id}
+                  delivery={delivery}
+                  busy={actionBusy}
+                  disabled={active.length > 0}
+                  onAccept={onAccept}
+                  onDecline={onDecline}
+                />
               ))
             : null}
         </>
@@ -104,22 +132,13 @@ export default function DeliveryCourierHomeSheet({
       {!loading && tab === "active" ? (
         <>
           {active.length === 0 ? (
-            <div className="cce-empty">
-              <strong>No active deliveries</strong>
-              <p>Accepted jobs show up here while you're on a trip.</p>
-            </div>
+            <DeliveryCourierHomeIdle statusOnline={deliveryMode} tab="active" />
           ) : (
-            active.map((delivery) => (
-              <DeliveryJobCard key={delivery.id} delivery={delivery}>
-                <p className="ccf-home-contact">
-                  {delivery.recipient_name || delivery.customer_name || "Customer"}
-                  {delivery.recipient_phone ? ` · ${delivery.recipient_phone}` : ""}
-                </p>
-              </DeliveryJobCard>
-            ))
+            active.map((delivery) => <DeliveryCourierActiveCard key={delivery.id} delivery={delivery} />)
           )}
         </>
       ) : null}
+      </div>
     </div>
   );
 }

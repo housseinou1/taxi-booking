@@ -95,9 +95,10 @@
   cursor: pointer;
 }
 
-.ccf-subpage__nav button span {
-  font-size: 18px;
-  line-height: 1;
+.courier-nav__icon {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
 }
 
 .ccf-subpage__nav button.is-active {

@@ -16,11 +16,15 @@
   --yala-glass: rgba(11, 18, 32, 0.72);
   --yala-glass-border: rgba(255, 255, 255, 0.1);
   --bottom-sheet-peek: 168px;
-  --bottom-sheet-half: 56vh;
+  --bottom-sheet-half: 32vh;
   --bottom-sheet-full: min(92dvh, 820px);
   --surface-sheet: #111827;
   --radius-glass: 20px;
   --cce-nav-height: calc(72px + env(safe-area-inset-bottom, 0px));
+  --cce-topbar-gap: 18px;
+  --cce-topbar-pad-x: 20px;
+  --cce-topbar-pad-y: 12px;
+  --cce-offer-float-offset: calc(var(--cce-nav-height) + 16px);
   font-family: "Plus Jakarta Sans", Inter, system-ui, sans-serif;
   background: var(--yala-bg);
   min-height: 100dvh;
@@ -63,10 +67,10 @@
   right: 0;
   z-index: 30;
   display: grid;
-  grid-template-columns: 48px 1fr 48px;
+  grid-template-columns: auto minmax(120px, 1fr) auto;
   align-items: center;
-  gap: 10px;
-  padding: calc(10px + env(safe-area-inset-top, 0px)) 14px 10px;
+  gap: var(--cce-topbar-gap);
+  padding: calc(14px + env(safe-area-inset-top, 0px)) var(--cce-topbar-pad-x) var(--cce-topbar-pad-y);
   pointer-events: none;
 }
 
@@ -75,67 +79,154 @@
 }
 
 .cce-glass-btn {
-  width: 48px;
-  height: 48px;
-  border: 1px solid var(--yala-glass-border);
-  border-radius: var(--radius-glass);
-  background: var(--yala-glass);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  color: #fff;
-  font-size: 20px;
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
-}
-
-.cce-online-pill {
-  justify-self: center;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 48px;
+  min-width: 42px;
+  min-height: 42px;
+  height: 42px;
   padding: 0 18px;
   border: 1px solid var(--yala-glass-border);
   border-radius: 999px;
   background: var(--yala-glass);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
   color: #fff;
-  font-size: 15px;
-  font-weight: 800;
+  font-size: 18px;
+  display: inline-grid;
+  place-items: center;
   cursor: pointer;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
 }
 
-.cce-online-pill:disabled {
-  opacity: 0.55;
+.cce-online-toggle {
+  justify-self: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cce-online-toggle:active:not(:disabled) .cce-online-toggle__shell {
+  transform: scale(0.98);
+}
+
+.cce-online-toggle:disabled {
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
-.cce-online-pill__dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: #6b7280;
-  box-shadow: 0 0 0 3px rgba(107, 114, 128, 0.25);
+.cce-online-toggle__shell {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  min-width: 156px;
+  min-height: 48px;
+  padding: 4px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(30, 41, 59, 0.72);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.32);
+  overflow: hidden;
+  transition:
+    transform 250ms cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 250ms ease,
+    box-shadow 250ms ease,
+    background 250ms ease;
 }
 
-.cce-online-pill.is-online .cce-online-pill__dot {
-  background: var(--yala-success);
-  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.28);
+.cce-online-toggle__slider {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: calc(50% - 4px);
+  height: calc(100% - 8px);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #7b8494 0%, #4b5563 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  transform: translateX(0);
+  transition:
+    transform 250ms cubic-bezier(0.4, 0, 0.2, 1),
+    background 250ms ease,
+    box-shadow 250ms ease;
 }
 
-.cce-online-pill__chevron {
-  font-size: 11px;
-  opacity: 0.7;
-  margin-left: 2px;
+.cce-online-toggle__option {
+  position: relative;
+  z-index: 1;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.48);
+  transition: color 250ms ease;
+  user-select: none;
+}
+
+.cce-online-toggle__loading {
+  grid-column: 1 / -1;
+  position: relative;
+  z-index: 1;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.cce-online-toggle.is-offline .cce-online-toggle__option:first-child {
+  color: #f9fafb;
+}
+
+.cce-online-toggle.is-online .cce-online-toggle__shell {
+  border-color: rgba(34, 197, 94, 0.42);
+  background: rgba(8, 24, 16, 0.84);
+  box-shadow:
+    0 0 22px rgba(34, 197, 94, 0.24),
+    0 12px 30px rgba(0, 0, 0, 0.34);
+}
+
+.cce-online-toggle.is-online .cce-online-toggle__slider {
+  transform: translateX(calc(100% + 0px));
+  background: linear-gradient(180deg, #4ade80 0%, #16a34a 100%);
+  box-shadow:
+    0 0 18px rgba(34, 197, 94, 0.58),
+    0 0 34px rgba(34, 197, 94, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+.cce-online-toggle.is-online .cce-online-toggle__option:last-child {
+  color: #ecfdf5;
+}
+
+.cce-online-toggle.is-loading .cce-online-toggle__slider {
+  opacity: 0.35;
 }
 
 .cce-topbar__notify {
-  justify-self: end;
-  position: relative;
+  position: fixed;
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  left: 18px;
+  z-index: 34;
+  width: 0;
+  height: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.cce-topbar__notify--menu-anchor .sx-notification-center {
+  position: static;
+}
+
+.cce-topbar__notify--menu-anchor .sx-notification-panel {
+  pointer-events: auto;
+  top: 56px;
+  left: 0;
+  right: auto;
 }
 
 .delivery-uber--eats .cce-topbar__notify .sx-notification-center {
@@ -146,16 +237,16 @@
 }
 
 .delivery-uber--eats .cce-topbar__notify .sx-notification-trigger {
-  width: 48px;
-  height: 48px;
-  border-radius: var(--radius-glass);
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
   background: var(--yala-glass);
   border: 1px solid var(--yala-glass-border);
-  backdrop-filter: blur(16px);
+  backdrop-filter: blur(18px);
 }
 
 .delivery-uber--eats .cce-topbar__notify .sx-notification-panel {
-  top: calc(100% + 10px);
+  top: calc(100% + 12px);
   right: 0;
   left: auto;
   bottom: auto;
@@ -223,14 +314,266 @@
   padding: 0 16px 0 !important;
 }
 
-/* ── Today peek (collapsed home) ── */
-.cce-today-peek {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  padding: 4px 0 8px;
+.cce-sheet__content--peek {
+  padding-top: 0 !important;
 }
 
+.cce-home-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-top: 2px;
+}
+
+.cce-home-idle {
+  position: relative;
+  overflow: hidden;
+  padding: 22px 18px;
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    radial-gradient(circle at top, rgba(255, 107, 0, 0.08), transparent 42%),
+    rgba(7, 17, 22, 0.72);
+  text-align: center;
+}
+
+.cce-home-idle strong {
+  display: block;
+  color: #fff;
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.cce-home-idle p {
+  margin: 8px 0 0;
+  color: rgba(226, 232, 240, 0.68);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.cce-home-idle__icon {
+  display: inline-grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  margin-bottom: 12px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 24px;
+}
+
+.cce-home-idle__icon--live {
+  background: rgba(34, 197, 94, 0.14);
+}
+
+.cce-home-idle__pulse {
+  position: absolute;
+  inset: auto 50% 58% auto;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: rgba(34, 197, 94, 0.12);
+  transform: translateX(-50%);
+  animation: cce-idle-pulse 2.4s ease-out infinite;
+  pointer-events: none;
+}
+
+.cce-home-idle__tips {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  text-align: left;
+}
+
+.cce-home-idle__tips li {
+  position: relative;
+  padding-left: 18px;
+  color: rgba(226, 232, 240, 0.72);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.cce-home-idle__tips li::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: var(--yala-primary);
+}
+
+.cce-home-idle__chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.cce-home-idle__chips span {
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(226, 232, 240, 0.78);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.cce-home-idle--offline {
+  background:
+    radial-gradient(circle at top, rgba(107, 114, 128, 0.12), transparent 42%),
+    rgba(7, 17, 22, 0.72);
+}
+
+.cce-home-idle--online {
+  border-color: rgba(34, 197, 94, 0.16);
+}
+
+@keyframes cce-idle-pulse {
+  0% {
+    opacity: 0.7;
+    transform: translateX(-50%) scale(0.7);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) scale(1.35);
+  }
+}
+
+/* ── Today peek (collapsed home) — Uber driver style ── */
+.cce-today-peek {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0;
+  margin: 0 -2px 2px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.cce-today-peek.is-collapsed {
+  cursor: pointer;
+}
+
+.cce-today-peek__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 12px 16px 8px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cce-today-peek__header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 800;
+  color: #fff;
+}
+
+.cce-today-peek__chevron {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.cce-today-peek__status {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(107, 114, 128, 0.24);
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.cce-today-peek__status.is-online {
+  background: rgba(34, 197, 94, 0.18);
+  color: #86efac;
+  box-shadow: 0 0 14px rgba(34, 197, 94, 0.18);
+}
+
+.cce-today-peek__header-left svg {
+  width: 16px;
+  height: 16px;
+}
+
+.cce-today-peek__header-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.cce-today-peek__rating {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #fbbf24;
+}
+
+.cce-today-peek__ar {
+  color: var(--yala-success);
+}
+
+.cce-today-peek__stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 4px 16px 10px;
+}
+
+.cce-today-peek__stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cce-today-peek__stat-value {
+  font-size: 20px;
+  font-weight: 800;
+  color: #fff;
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+}
+
+.cce-today-peek__hint {
+  margin: 0;
+  padding: 0 16px 12px;
+  color: rgba(226, 232, 240, 0.58);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.cce-today-peek__stat-value .cce-currency {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--yala-muted);
+}
+
+.cce-today-peek__stat-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--yala-muted);
+  text-transform: none;
+}
+
+/* Legacy grid items — keep for backwards compat */
 .cce-today-peek__item {
   text-align: center;
   padding: 10px 8px;
@@ -260,7 +603,56 @@
   color: var(--yala-primary);
 }
 
-/* ── Offer card ── */
+/* ── Floating incoming request (Uber-style) ── */
+.cce-offer-float {
+  position: fixed;
+  inset: 0;
+  z-index: 36;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 12px 12px var(--cce-offer-float-offset);
+  pointer-events: none;
+}
+
+.cce-offer-float__scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(11, 18, 32, 0.38);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  pointer-events: auto;
+  animation: cce-offer-scrim-in 220ms ease;
+}
+
+.cce-offer-float__card {
+  position: relative;
+  width: 100%;
+  max-width: 520px;
+  max-height: min(72dvh, 640px);
+  overflow-y: auto;
+  pointer-events: auto;
+  box-shadow:
+    0 28px 64px rgba(0, 0, 0, 0.52),
+    0 0 0 1px rgba(255, 255, 255, 0.08);
+  animation: cce-card-rise 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes cce-offer-scrim-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.delivery-uber--offer-active .cce-map-controls {
+  bottom: calc(var(--cce-offer-float-offset) + 280px);
+  opacity: 0.72;
+}
+
+/* Legacy full-sheet offer markup (unused by floating card) */
 .cce-offer-overlay {
   position: fixed;
   inset: 0;
@@ -1074,9 +1466,10 @@
   cursor: pointer;
 }
 
-.cce-nav__btn span:first-child {
-  font-size: 18px;
-  line-height: 1;
+.courier-nav__icon {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
 }
 
 .cce-nav__btn.is-active {
@@ -1244,5 +1637,640 @@
 
   .cce-offer-actions {
     grid-template-columns: 1fr 1.2fr;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Yala Delivery courier dashboard refresh — Uber Eats dark UI.
+   UI-only overrides scoped to Delivery courier shell.
+   ────────────────────────────────────────────────────────────── */
+
+.delivery-uber--courier.delivery-uber--eats {
+  --yala-bg: #071116;
+  --yala-surface: #111821;
+  --yala-surface-elevated: #172331;
+  --yala-border-soft: rgba(255, 255, 255, 0.08);
+  --yala-orange-gradient: linear-gradient(135deg, #ff6b00 0%, #ff8a00 54%, #ffc107 100%);
+  background: #071116;
+  overflow: hidden;
+}
+
+.delivery-uber--courier.delivery-uber--eats .delivery-uber__map-layer {
+  background:
+    radial-gradient(circle at 50% 46%, rgba(56, 189, 248, 0.16), transparent 18%),
+    linear-gradient(135deg, #071116 0%, #0b1f27 48%, #061016 100%);
+}
+
+.delivery-uber--courier.delivery-uber--eats .delivery-uber__map-layer .leaflet-container {
+  filter: saturate(0.55) brightness(0.48) contrast(1.18) hue-rotate(155deg);
+}
+
+.delivery-uber--courier.delivery-uber--eats .delivery-uber__map-layer::before {
+  z-index: 2;
+  background:
+    linear-gradient(180deg, rgba(7, 17, 22, 0.72) 0%, rgba(7, 17, 22, 0.18) 22%, transparent 42%),
+    linear-gradient(0deg, rgba(7, 17, 22, 0.96) 0%, rgba(7, 17, 22, 0.5) 24%, transparent 48%);
+}
+
+.delivery-uber--courier.delivery-uber--eats:not(.delivery-uber--trip-active)::after {
+  content: "";
+  position: fixed;
+  left: 50%;
+  top: 43%;
+  z-index: 4;
+  width: 74px;
+  height: 74px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  background:
+    radial-gradient(circle, #fff 0 45%, transparent 46%),
+    radial-gradient(circle, rgba(255, 107, 0, 0.32) 0 64%, transparent 65%);
+  border-radius: 999px;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.35);
+}
+
+.delivery-uber--courier.delivery-uber--eats:not(.delivery-uber--trip-active)::before {
+  content: "▲";
+  position: fixed;
+  left: 50%;
+  top: 43%;
+  z-index: 5;
+  transform: translate(-50%, -53%);
+  pointer-events: none;
+  color: #1296db;
+  font-size: 30px;
+  text-shadow: 0 2px 8px rgba(18, 150, 219, 0.28);
+}
+
+.delivery-uber--courier.delivery-uber--eats .cce-topbar {
+  grid-template-columns: auto minmax(120px, 1fr) auto;
+  gap: var(--cce-topbar-gap);
+  padding: calc(14px + env(safe-area-inset-top, 0px)) var(--cce-topbar-pad-x) var(--cce-topbar-pad-y);
+}
+
+.delivery-uber--courier.delivery-uber--eats .cce-glass-btn {
+  min-width: 51px;
+  min-height: 51px;
+  height: 51px;
+  padding: 0 20px;
+  border-radius: 999px;
+  background: rgba(16, 24, 35, 0.82);
+  color: #fff;
+  font-size: 22px;
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.34);
+}
+
+.cce-menu-btn {
+  position: relative;
+}
+
+.cce-menu-btn__badge {
+  position: absolute;
+  top: 4px;
+  right: 2px;
+  display: grid;
+  min-width: 18px;
+  height: 18px;
+  place-items: center;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
+  border: 2px solid rgba(11, 18, 32, 0.92);
+}
+
+.delivery-uber--courier.delivery-uber--eats .cce-online-toggle__shell {
+  min-width: 164px;
+  min-height: 51px;
+  padding: 5px;
+}
+
+.delivery-uber--courier.delivery-uber--eats .cce-online-toggle__slider {
+  top: 5px;
+  left: 5px;
+  width: calc(50% - 5px);
+  height: calc(100% - 10px);
+}
+
+.delivery-uber--courier.delivery-uber--eats .cce-online-toggle__option,
+.delivery-uber--courier.delivery-uber--eats .cce-online-toggle__loading {
+  font-size: 11px;
+}
+
+.cce-topbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.delivery-uber--courier.delivery-uber--eats .cce-refresh-btn {
+  min-width: 48px;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  font-size: 21px;
+}
+
+.cce-auto-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(16, 24, 35, 0.58);
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.22);
+}
+
+.cce-auto-btn span {
+  white-space: nowrap;
+}
+
+.cce-auto-btn i {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.28);
+}
+
+.delivery-uber--courier.delivery-uber--eats .cce-topbar__notify {
+  display: block;
+}
+
+.cce-auto-btn--secondary {
+  opacity: 0.92;
+}
+
+.cce-auto-btn.is-on {
+  border-color: rgba(255, 107, 0, 0.45);
+  background: rgba(255, 107, 0, 0.12);
+  color: #ffb36b;
+}
+
+.cce-auto-btn.is-on i {
+  background: #ff6b00;
+  border-color: #ff6b00;
+  box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.92);
+}
+
+.cce-map-controls {
+  position: fixed;
+  right: 16px;
+  bottom: calc(var(--cce-nav-height) + var(--bottom-sheet-peek) + 18px);
+  z-index: 12;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.cce-map-controls__btn {
+  pointer-events: auto;
+  font-size: 22px;
+}
+
+.delivery-uber--courier.delivery-uber--eats.delivery-uber--trip-active .cce-map-controls {
+  bottom: calc(var(--cce-nav-height) + 120px);
+}
+
+.cce-request-card,
+.cce-active-card {
+  border-radius: 24px;
+  background: rgba(10, 18, 28, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.32);
+  animation: cce-card-rise 0.35s ease;
+}
+
+@keyframes cce-card-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.cce-request-card {
+  padding: 16px;
+}
+
+.cce-request-card__head,
+.cce-active-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cce-request-card__label {
+  margin: 0 0 4px;
+  color: #ffb36b;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.cce-request-card__fare,
+.cce-active-card__fare {
+  margin: 0;
+  color: #fff;
+  font-size: clamp(34px, 9vw, 48px);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.cce-request-card__fare span,
+.cce-active-card__fare span {
+  font-size: 16px;
+  font-weight: 700;
+  color: rgba(226, 232, 240, 0.72);
+}
+
+.cce-request-card__timer {
+  position: relative;
+  min-width: 56px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font-size: 18px;
+  font-weight: 900;
+  text-align: center;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(255, 107, 0, 0.12);
+}
+
+.cce-request-card__timer span {
+  display: block;
+  line-height: 1;
+}
+
+.cce-offer-float__card .cce-request-card__timer {
+  background:
+    radial-gradient(circle at center, rgba(255, 107, 0, 0.14), rgba(255, 255, 255, 0.06));
+  border-color: rgba(255, 107, 0, 0.28);
+}
+
+.cce-request-card__meta,
+.cce-active-card__meta {
+  margin: 8px 0 14px;
+  color: rgba(226, 232, 240, 0.66);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.cce-request-card__route {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.cce-request-card__stop {
+  display: grid;
+  grid-template-columns: 12px 1fr;
+  gap: 12px;
+  align-items: start;
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.cce-request-card__dot {
+  width: 10px;
+  height: 10px;
+  margin-top: 5px;
+  border-radius: 50%;
+}
+
+.cce-request-card__dot--pickup {
+  background: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.24);
+}
+
+.cce-request-card__dot--dropoff {
+  background: #ff6b00;
+  box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.24);
+}
+
+.cce-request-card__stop small,
+.cce-active-card__route small {
+  display: block;
+  color: rgba(226, 232, 240, 0.56);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.cce-request-card__stop strong,
+.cce-active-card__route strong {
+  display: block;
+  margin-top: 3px;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.cce-active-card {
+  padding: 16px;
+}
+
+.cce-active-card__route {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.cce-active-card__route > div {
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.cce-active-card__status {
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(255, 107, 0, 0.16);
+  color: #ffb36b;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.cce-request-card__details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.cce-request-card__actions.cce-action-bar {
+  margin: 0;
+  padding: 0;
+  border-top: 0;
+  background: transparent;
+  position: static;
+}
+
+.cce-empty--loading {
+  min-height: 96px;
+}
+
+.delivery-uber--courier.delivery-uber--eats .bottom-sheet {
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  background: #122c38 !important;
+  color: #f8fafc;
+  border-radius: 30px 30px 0 0 !important;
+  box-shadow: 0 -18px 50px rgba(0, 0, 0, 0.58) !important;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-bottom: 0;
+}
+
+.delivery-uber--courier.delivery-uber--eats .bottom-sheet__handle {
+  padding-top: 10px;
+}
+
+.delivery-uber--courier.delivery-uber--eats .bottom-sheet__handle-bar {
+  width: 64px;
+  height: 7px;
+  background: rgba(226, 232, 240, 0.44);
+}
+
+.delivery-uber--courier.delivery-uber--eats .cce-home {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 2px 2px 10px;
+}
+
+.delivery-uber--courier.delivery-uber--eats .delivery-courier-type-picker {
+  margin: 0;
+  padding: 10px;
+  border-radius: 22px;
+  background: rgba(7, 17, 22, 0.38);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.cce-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(82px, 1fr));
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px 2px 8px;
+  scrollbar-width: none;
+}
+
+.cce-summary-grid::-webkit-scrollbar {
+  display: none;
+}
+
+.cce-summary-grid div {
+  min-width: 88px;
+  padding: 12px 10px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.cce-summary-grid strong {
+  display: block;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.cce-summary-grid span {
+  display: block;
+  margin-top: 5px;
+  color: rgba(226, 232, 240, 0.64);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.delivery-uber--courier.delivery-uber--eats .cce-home-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 5px;
+  border-radius: 18px;
+  background: rgba(7, 17, 22, 0.52);
+}
+
+.delivery-uber--courier.delivery-uber--eats .cce-home-tabs button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.62);
+  font-weight: 900;
+}
+
+.delivery-uber--courier.delivery-uber--eats .cce-home-tabs button.is-active {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.delivery-uber--courier.delivery-uber--eats .cce-home-tabs em {
+  background: #ff6b00;
+  color: #fff;
+}
+
+.delivery-uber--courier.delivery-uber--eats .cce-empty {
+  min-height: 152px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  padding: 26px 18px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #fff;
+  text-align: center;
+}
+
+.delivery-uber--courier.delivery-uber--eats .cce-empty strong {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.delivery-uber--courier.delivery-uber--eats .cce-empty p {
+  margin: 0;
+  color: rgba(226, 232, 240, 0.66);
+  font-size: 14px;
+}
+
+.delivery-uber--courier.delivery-uber--eats .ccf-empty-state__icon {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(34, 197, 94, 0.16);
+  color: #43e27d;
+  font-size: 24px;
+}
+
+.delivery-uber--courier.delivery-uber--eats .ccf-job-card,
+.delivery-uber--courier.delivery-uber--eats .delivery-job-card {
+  background: rgba(10, 18, 28, 0.92);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 24px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.28);
+}
+
+.delivery-uber--courier.delivery-uber--eats .ccf-home-accept {
+  margin-top: 14px;
+}
+
+.delivery-uber--courier.delivery-uber--eats .cce-offer-float__card {
+  background: rgba(10, 18, 28, 0.98);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.delivery-uber--courier.delivery-uber--eats .cce-offer-sheet {
+  background: #101820;
+  color: #fff;
+  border-radius: 30px 30px 0 0;
+  box-shadow: 0 -22px 56px rgba(0, 0, 0, 0.6);
+}
+
+.delivery-uber--courier.delivery-uber--eats .cce-offer-sheet__badge {
+  background: rgba(255, 107, 0, 0.16);
+  color: #ffb36b;
+}
+
+.delivery-uber--courier.delivery-uber--eats .cce-offer-sheet__fare {
+  color: #fff;
+  font-size: clamp(42px, 11vw, 64px);
+}
+
+.delivery-uber--courier.delivery-uber--eats .cce-offer-sheet__fare span {
+  font-size: 18px;
+  font-weight: 700;
+  color: rgba(226, 232, 240, 0.72);
+}
+
+.delivery-uber--courier.delivery-uber--eats .cce-offer-sheet__meta,
+.delivery-uber--courier.delivery-uber--eats .cce-offer-route p {
+  color: rgba(226, 232, 240, 0.64);
+}
+
+.delivery-uber--courier.delivery-uber--eats .cce-offer-route__row,
+.delivery-uber--courier.delivery-uber--eats .cce-pill {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.delivery-uber--courier.delivery-uber--eats .cce-nav {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  max-width: none;
+  border-radius: 0;
+  background: rgba(12, 18, 28, 0.98);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 -10px 34px rgba(0, 0, 0, 0.34);
+}
+
+.delivery-uber--courier.delivery-uber--eats .cce-nav__btn {
+  color: rgba(226, 232, 240, 0.56);
+}
+
+.delivery-uber--courier.delivery-uber--eats .cce-nav__btn.is-active {
+  color: #ff7a00;
+}
+
+@media (max-width: 520px) {
+  .delivery-uber--courier.delivery-uber--eats .cce-topbar {
+    grid-template-columns: auto minmax(118px, 1fr) auto;
+    gap: 14px;
+    padding-left: 16px;
+    padding-right: 14px;
+  }
+
+  .delivery-uber--courier.delivery-uber--eats .cce-auto-btn {
+    padding: 8px 14px;
+    font-size: 10px;
+  }
+
+  .delivery-uber--courier.delivery-uber--eats .cce-sheet-panel {
+    width: 100%;
+  }
+
+  .delivery-uber--courier.delivery-uber--eats .bottom-sheet {
+    max-height: min(56vh, 520px);
+  }
+
+  .cce-active-card__route {
+    grid-template-columns: 1fr;
   }
 }

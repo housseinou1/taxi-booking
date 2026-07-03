@@ -15,6 +15,67 @@ export const STATUS_ORDER = [
   "delivered",
 ];
 
+let refreshPromise = null;
+
+async function refreshAccessToken() {
+  if (refreshPromise) return refreshPromise;
+
+  const refresh = localStorage.getItem("refresh");
+  if (!refresh || refresh === "null" || refresh === "undefined") {
+    throw new Error("Your session expired. Please log in again.");
+  }
+
+  refreshPromise = fetch(`${API_URL}/auth/token/refresh/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refresh }),
+  })
+    .then(async (response) => {
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.detail || "Session expired");
+      }
+      localStorage.setItem("access", data.access);
+      if (data.refresh) {
+        localStorage.setItem("refresh", data.refresh);
+      }
+      return data.access;
+    })
+    .finally(() => {
+      refreshPromise = null;
+    });
+
+  return refreshPromise;
+}
+
+async function fetchWithAuth(url, options = {}, allowRefresh = true) {
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      ...authHeaders(options.body instanceof FormData ? false : true),
+      ...(options.headers || {}),
+    },
+  });
+
+  if (response.status !== 401 || !allowRefresh) {
+    return response;
+  }
+
+  try {
+    await refreshAccessToken();
+  } catch (error) {
+    return response;
+  }
+
+  return fetch(url, {
+    ...options,
+    headers: {
+      ...authHeaders(options.body instanceof FormData ? false : true),
+      ...(options.headers || {}),
+    },
+  });
+}
+
 export const authHeaders = (json = true) => {
   const headers = {
     Authorization: `Bearer ${localStorage.getItem("access")}`,
@@ -26,13 +87,7 @@ export const authHeaders = (json = true) => {
 export async function apiRequest(url, options = {}) {
   let response;
   try {
-    response = await fetch(url, {
-      ...options,
-      headers: {
-        ...authHeaders(options.body instanceof FormData ? false : true),
-        ...(options.headers || {}),
-      },
-    });
+    response = await fetchWithAuth(url, options);
   } catch (error) {
     throw new Error(
       "Connection error. Check your internet and try again."

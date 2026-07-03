@@ -42,6 +42,10 @@ function getLoginErrorMessage(error, t, context = "web") {
 
   if (error?.request) {
     if (context === "delivery") {
+      const apiUrl = process.env.REACT_APP_API_URL || "";
+      if (apiUrl.includes("api.yalataxi.live")) {
+        return "Cannot reach the Yala Delivery server. Check your internet connection and try again.";
+      }
       return "Cannot reach the Yala Delivery server. Connect your phone to the same Wi-Fi as this PC, keep the backend running, then retry login.";
     }
     return "Connection error. Check your internet and try again.";

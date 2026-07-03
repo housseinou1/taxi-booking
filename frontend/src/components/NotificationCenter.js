@@ -7,18 +7,39 @@ const READ_KEY = "sx_read_notifications";
 const PUSH_KEY = "sx_push_notifications";
 const POLL_INTERVAL_MS = 6000;
 
-function NotificationCenter({ mode = "ride", variant = "floating" }) {
-  const [open, setOpen] = useState(false);
+function NotificationCenter({
+  mode = "ride",
+  variant = "floating",
+  hideTrigger = false,
+  open: controlledOpen,
+  onOpenChange,
+  onUnreadCountChange,
+}) {
+  const [internalOpen, setInternalOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [readIds, setReadIds] = useState(() => loadReadIds());
   const [pushEnabled, setPushEnabled] = useState(
     localStorage.getItem(PUSH_KEY) === "on"
   );
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = (next) => {
+    const value = typeof next === "function" ? next(open) : next;
+    if (isControlled) {
+      onOpenChange?.(value);
+      return;
+    }
+    setInternalOpen(value);
+  };
 
   const unreadCount = useMemo(
     () => notifications.filter((item) => !readIds.includes(item.id)).length,
     [notifications, readIds]
   );
+
+  useEffect(() => {
+    onUnreadCountChange?.(unreadCount);
+  }, [unreadCount, onUnreadCountChange]);
 
   useEffect(() => {
     let cancelled = false;
@@ -113,15 +134,17 @@ function NotificationCenter({ mode = "ride", variant = "floating" }) {
     <div className={rootClass}>
       <NotificationCenterStyles />
 
-      <button
-        className="sx-notification-trigger"
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        aria-label="Open notifications"
-      >
-        <span className="sx-bell-shape" />
-        {unreadCount > 0 && <strong>{unreadCount > 9 ? "9+" : unreadCount}</strong>}
-      </button>
+      {!hideTrigger ? (
+        <button
+          className="sx-notification-trigger"
+          type="button"
+          onClick={() => setOpen((value) => !value)}
+          aria-label="Open notifications"
+        >
+          <span className="sx-bell-shape" />
+          {unreadCount > 0 && <strong>{unreadCount > 9 ? "9+" : unreadCount}</strong>}
+        </button>
+      ) : null}
 
       {open && (
         <section className="sx-notification-panel">

@@ -20,6 +20,7 @@ const MENU_ITEMS = [
   { icon: "⚙️", label: "Settings", path: "/delivery/settings" },
   { icon: "💬", label: "Help & Support", path: "/delivery/support" },
   { icon: "🆘", label: "Safety / SOS", path: "/delivery/support" },
+  { icon: "🔔", label: "Notifications", action: "notifications" },
 ];
 
 function courierLogout() {
@@ -29,7 +30,12 @@ function courierLogout() {
   window.location.href = "/login?next=/delivery/courier";
 }
 
-export default function DeliveryCourierMenu({ open, onClose }) {
+export default function DeliveryCourierMenu({
+  open,
+  onClose,
+  onOpenNotifications,
+  notificationCount = 0,
+}) {
   const { profile, documentAlertCount, loading } = useCourierMenuData(open);
   const currentPath = (window.location.pathname || "").replace(/\/+$/, "") || "/";
 
@@ -37,7 +43,16 @@ export default function DeliveryCourierMenu({ open, onClose }) {
 
   const navigate = (path) => {
     onClose();
-    window.location.href = path;
+    window.history.pushState(null, "", path);
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  };
+
+  const handleItemClick = (item) => {
+    if (item.action === "notifications") {
+      onOpenNotifications?.();
+      return;
+    }
+    navigate(item.path);
   };
 
   const initials = (profile?.fullName || "C")
@@ -89,17 +104,23 @@ export default function DeliveryCourierMenu({ open, onClose }) {
         <nav className="delivery-uber__menu-nav">
           <span className="delivery-uber__menu-subtitle">Menu</span>
           {MENU_ITEMS.map((item) => {
-            const badgeCount = item.badgeKey === "documents" ? documentAlertCount : 0;
+            const badgeCount =
+              item.action === "notifications"
+                ? notificationCount
+                : item.badgeKey === "documents"
+                  ? documentAlertCount
+                  : 0;
             const isActive =
-              currentPath === item.path ||
-              (item.path.startsWith("/delivery/account") && currentPath === "/delivery/account");
+              item.path &&
+              (currentPath === item.path ||
+                (item.path.startsWith("/delivery/account") && currentPath === "/delivery/account"));
 
             return (
               <button
-                key={`${item.label}-${item.path}`}
+                key={`${item.label}-${item.path || item.action || "item"}`}
                 type="button"
                 className={`delivery-uber__menu-item ${isActive ? "is-active" : ""}`}
-                onClick={() => navigate(item.path)}
+                onClick={() => handleItemClick(item)}
               >
                 <span className="delivery-uber__menu-item-icon">{item.icon}</span>
                 <span className="delivery-uber__menu-item-label">{item.label}</span>

@@ -7,6 +7,7 @@ $apkLatest = Join-Path $apkDir "app-debug-latest.apk"
 $apkBase = Join-Path $apkDir "app-debug.apk"
 $assetsRoot = Join-Path $root "android\app\src\main\assets"
 $assetsSrc = Join-Path $assetsRoot "public"
+$androidRes = Join-Path $root "android\app\src\main\res"
 $package = "com.yala.delivery.mr"
 
 if (-not (Test-Path $adb)) {
@@ -14,7 +15,7 @@ if (-not (Test-Path $adb)) {
 }
 
 if (-not (Test-Path $assetsSrc)) {
-  Write-Error "Web assets missing. Run: npm run build:local; npx cap sync android"
+  Write-Error "Web assets missing. Run: npm run build; npx cap sync android"
 }
 
 Write-Host "Waiting for Android device (USB debugging ON)..."
@@ -57,6 +58,7 @@ import zipfile, os, shutil, subprocess, sys
 apk_src = sys.argv[1]
 assets_root = sys.argv[2]
 signed = sys.argv[3]
+android_res = sys.argv[4] if len(sys.argv) > 4 else ""
 bt = os.path.join(os.environ["LOCALAPPDATA"], "Android", "Sdk", "build-tools", "34.0.0")
 ks = os.path.join(os.environ["USERPROFILE"], ".android", "debug.keystore")
 work = os.path.join(os.path.dirname(signed), "patch-work")
@@ -93,6 +95,25 @@ if os.path.isfile(plugins_path):
     with open(plugins_path, "w", encoding="utf-8") as handle:
         json.dump(filtered, handle, indent="\t")
         handle.write("\n")
+if android_res and os.path.isdir(android_res):
+    density_map = {
+        "mipmap-mdpi": "mipmap-mdpi-v4",
+        "mipmap-hdpi": "mipmap-hdpi-v4",
+        "mipmap-xhdpi": "mipmap-xhdpi-v4",
+        "mipmap-xxhdpi": "mipmap-xxhdpi-v4",
+        "mipmap-xxxhdpi": "mipmap-xxxhdpi-v4",
+    }
+    icon_names = ("ic_launcher.png", "ic_launcher_round.png", "ic_launcher_foreground.png")
+    for src_folder, dst_folder in density_map.items():
+        src_dir = os.path.join(android_res, src_folder)
+        dst_dir = os.path.join(extracted, "res", dst_folder)
+        if not os.path.isdir(src_dir) or not os.path.isdir(dst_dir):
+            continue
+        for icon_name in icon_names:
+            src = os.path.join(src_dir, icon_name)
+            dst = os.path.join(dst_dir, icon_name)
+            if os.path.isfile(src):
+                shutil.copy2(src, dst)
 with zipfile.ZipFile(unsigned, "w") as out:
     for root, _, files in os.walk(extracted):
         for name in files:
@@ -112,7 +133,7 @@ subprocess.check_call([
 print("SIGNED", signed)
 '@ | Set-Content -Path $patchFile -Encoding UTF8
 
-python $patchFile $apkBase $assetsRoot $apkLatest
+python $patchFile $apkBase $assetsRoot $apkLatest $androidRes
 
 Write-Host "Installing to $serial ..."
 & $adb -s $serial install -r $apkLatest 2>&1

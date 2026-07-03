@@ -5,7 +5,7 @@ import DeliveryMapView from "./DeliveryMapView";
 import { fetchDrivingRoute } from "./deliveryRouting";
 import { buildRoutePoints } from "./deliveryTrip";
 
-export default function DeliveryMapBackdrop({ activeDelivery = null }) {
+export default function DeliveryMapBackdrop({ activeDelivery = null, recenterToken = 0 }) {
   const mapSessionKey = useId();
   const [courierPosition, setCourierPosition] = useState(MARKET.center);
   const [routePath, setRoutePath] = useState([]);
@@ -23,6 +23,17 @@ export default function DeliveryMapBackdrop({ activeDelivery = null }) {
 
     return () => navigator.geolocation.clearWatch(watchId);
   }, []);
+
+  useEffect(() => {
+    if (!recenterToken || !navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setCourierPosition([position.coords.latitude, position.coords.longitude]);
+      },
+      () => {},
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+    );
+  }, [recenterToken]);
 
   useEffect(() => {
     let cancelled = false;

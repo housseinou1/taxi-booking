@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import NotificationCenter from "../components/NotificationCenter";
 import DeliveryCourierMenu from "./DeliveryCourierMenu";
 import DeliveryMapBackdrop from "./DeliveryMapBackdrop";
+import CourierBottomNav from "./components/CourierBottomNav";
 import CourierBottomSheet from "./components/CourierBottomSheet";
 import { isDeliveryUberUI } from "../native/platform";
 import "./delivery-uber.css";
@@ -40,6 +41,7 @@ export function DeliveryCourierShell({
   error,
   onRefresh,
   activeDelivery = null,
+  incomingOfferActive = false,
   earningsLabel = "",
   todayEarnings = null,
   onToggleOnline = null,
@@ -53,7 +55,11 @@ export function DeliveryCourierShell({
   onSheetStateChange,
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [notifyOpen, setNotifyOpen] = useState(false);
+  const [notifyCount, setNotifyCount] = useState(0);
   const [internalSheet, setInternalSheet] = useState(sheetState);
+  const [autoAccept, setAutoAccept] = useState(false);
+  const [mapRecenterToken, setMapRecenterToken] = useState(0);
 
   useEffect(() => {
     setInternalSheet(sheetState);
@@ -70,30 +76,88 @@ export function DeliveryCourierShell({
     <main
       className={`delivery-uber delivery-uber--courier delivery-uber--dark delivery-uber--eats${
         activeDelivery ? " delivery-uber--trip-active" : ""
-      }`}
+      }${incomingOfferActive ? " delivery-uber--offer-active" : ""}`}
     >
-      <DeliveryMapBackdrop activeDelivery={activeDelivery} />
-      <DeliveryCourierMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
+      <DeliveryMapBackdrop activeDelivery={activeDelivery} recenterToken={mapRecenterToken} />
+      <DeliveryCourierMenu
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        onOpenNotifications={() => {
+          setMenuOpen(false);
+          setNotifyOpen(true);
+        }}
+        notificationCount={notifyCount}
+      />
+
+      <div className="cce-map-controls" aria-label="Map controls">
+        <button
+          type="button"
+          className="cce-glass-btn cce-map-controls__btn"
+          aria-label="Recenter map on your location"
+          onClick={() => setMapRecenterToken((value) => value + 1)}
+        >
+          ⌖
+        </button>
+      </div>
 
       <header className="cce-topbar">
-        <button type="button" className="cce-glass-btn" onClick={() => setMenuOpen(true)} aria-label="Menu">
+        <button type="button" className="cce-glass-btn cce-menu-btn" onClick={() => setMenuOpen(true)} aria-label="Menu">
           ☰
+          {notifyCount > 0 ? (
+            <span className="cce-menu-btn__badge" aria-label={`${notifyCount} unread notifications`}>
+              {notifyCount > 9 ? "9+" : notifyCount}
+            </span>
+          ) : null}
         </button>
+
+        <div className="cce-topbar__notify cce-topbar__notify--menu-anchor">
+          <NotificationCenter
+            mode="delivery"
+            variant="inline"
+            hideTrigger
+            open={notifyOpen}
+            onOpenChange={setNotifyOpen}
+            onUnreadCountChange={setNotifyCount}
+          />
+        </div>
 
         <button
           type="button"
-          className={`cce-online-pill ${statusOnline ? "is-online" : ""}`}
+          className={`cce-online-toggle ${statusOnline ? "is-online" : "is-offline"}${
+            onlineToggleLoading ? " is-loading" : ""
+          }`}
           disabled={onlineToggleLoading || onlineToggleDisabled}
           onClick={onToggleOnline}
           aria-label={statusOnline ? "Go offline" : "Go online"}
+          aria-pressed={statusOnline}
         >
-          <span className="cce-online-pill__dot" aria-hidden />
-          <span>{onlineToggleLoading ? "…" : statusOnline ? "Online" : "Offline"}</span>
-          <span className="cce-online-pill__chevron" aria-hidden>▾</span>
+          <span className="cce-online-toggle__shell">
+            <span className="cce-online-toggle__slider" aria-hidden="true" />
+            {onlineToggleLoading ? (
+              <span className="cce-online-toggle__loading">Updating…</span>
+            ) : (
+              <>
+                <span className="cce-online-toggle__option">Offline</span>
+                <span className="cce-online-toggle__option">Online</span>
+              </>
+            )}
+          </span>
         </button>
 
-        <div className="cce-topbar__notify">
-          <NotificationCenter mode="delivery" variant="inline" />
+        <div className="cce-topbar__actions">
+          <button type="button" className="cce-glass-btn cce-refresh-btn" onClick={onRefresh} aria-label="Refresh delivery dashboard">
+            ↻
+          </button>
+          <button
+            type="button"
+            className={`cce-auto-btn cce-auto-btn--secondary ${autoAccept ? "is-on" : ""}`}
+            aria-pressed={autoAccept}
+            aria-label={autoAccept ? "Auto accept enabled" : "Auto accept disabled"}
+            onClick={() => setAutoAccept((value) => !value)}
+          >
+            <span>Auto Accept</span>
+            <i aria-hidden />
+          </button>
         </div>
       </header>
 
@@ -110,100 +174,16 @@ export function DeliveryCourierShell({
           </div>
         </div>
       ) : (
-        <CourierBottomSheet state={resolvedSheet} onStateChange={handleSheetChange}>
-          {resolvedSheet === "collapsed" ? (
-            <div className="cce-today-peek">
-              <div className="cce-today-peek__item">
-                <strong>{todayEarnings?.count || 0}</strong>
-                <small>Deliveries</small>
-              </div>
-              <div className="cce-today-peek__item is-accent">
-                <strong>{earningsLabel || "0 MRU"}</strong>
-                <small>Earnings</small>
-              </div>
-              <div className="cce-today-peek__item">
-                <strong>{onlineTimeLabel}</strong>
-                <small>Online</small>
-              </div>
-            </div>
-          ) : (
-            children
-          )}
+        <CourierBottomSheet
+          state={resolvedSheet}
+          onStateChange={handleSheetChange}
+          contentClassName={resolvedSheet === "collapsed" ? "cce-sheet__content--peek" : ""}
+        >
+          {children}
         </CourierBottomSheet>
       )}
 
-      {showNav ? (
-        <nav className="cce-nav" aria-label="Delivery navigation">
-          <button
-            type="button"
-            className={`cce-nav__btn ${activeNav === "home" ? "is-active" : ""}`}
-            onClick={() => {
-              window.location.href = "/delivery/courier";
-            }}
-          >
-            <span>⌂</span>
-            <span>Home</span>
-          </button>
-          <button
-            type="button"
-            className={`cce-nav__btn ${activeNav === "orders" ? "is-active" : ""}`}
-            onClick={() => {
-              window.location.href = "/delivery/history";
-            }}
-          >
-            <span>☰</span>
-            <span>Orders</span>
-          </button>
-          <button
-            type="button"
-            className={`cce-nav__btn ${activeNav === "earnings" ? "is-active" : ""}`}
-            onClick={() => {
-              window.location.href = "/delivery/earnings";
-            }}
-          >
-            <span>$</span>
-            <span>Earnings</span>
-          </button>
-          <button
-            type="button"
-            className={`cce-nav__btn ${activeNav === "wallet" ? "is-active" : ""}`}
-            onClick={() => {
-              window.location.href = "/delivery/wallet";
-            }}
-          >
-            <span>👛</span>
-            <span>Wallet</span>
-          </button>
-          <button
-            type="button"
-            className={`cce-nav__btn ${activeNav === "profile" ? "is-active" : ""}`}
-            onClick={() => {
-              window.location.href = "/delivery/account";
-            }}
-          >
-            <span>☺</span>
-            <span>Profile</span>
-          </button>
-        </nav>
-      ) : null}
-
-      <button
-        type="button"
-        className="cce-glass-btn"
-        style={{
-          position: "fixed",
-          right: 14,
-          bottom: "calc(var(--cce-nav-height) + 12px)",
-          zIndex: 17,
-          width: 44,
-          height: 44,
-          fontSize: 18,
-        }}
-        onClick={onRefresh}
-        aria-label="Refresh"
-      >
-        ↻
-      </button>
+      {showNav ? <CourierBottomNav activeNav={activeNav} /> : null}
     </main>
   );
 }
