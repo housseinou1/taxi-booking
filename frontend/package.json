@@ -59,6 +59,7 @@
     ]
   },
   "devDependencies": {
+    "@capacitor/cli": "^6.2.1",
     "fast-check": "^3.23.2"
   }
 }

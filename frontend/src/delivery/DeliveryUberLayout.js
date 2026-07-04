@@ -166,7 +166,7 @@ export function DeliveryCourierShell({
 
       {activeDelivery ? (
         <div className="cce-sheet-panel cce-sheet-panel--trip">
-          <div className="bottom-sheet bottom-sheet--half">
+          <div className="bottom-sheet bottom-sheet--half bottom-sheet--trip-active">
             <div className="bottom-sheet__handle" aria-hidden>
               <div className="bottom-sheet__handle-bar" />
             </div>

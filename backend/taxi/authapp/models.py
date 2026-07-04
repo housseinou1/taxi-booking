@@ -176,3 +176,43 @@ class PhoneVerificationCode(models.Model):
             and self.expires_at > timezone.now()
             and self.attempts < 5
         )
+
+
+class PasswordResetCode(models.Model):
+    IDENTIFIER_CHOICES = (
+        ("phone", "Phone"),
+        ("email", "Email"),
+    )
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="password_reset_codes",
+    )
+    identifier_type = models.CharField(max_length=10, choices=IDENTIFIER_CHOICES)
+    identifier = models.CharField(max_length=255, db_index=True)
+    code_hash = models.CharField(max_length=255)
+    expires_at = models.DateTimeField()
+    attempts = models.PositiveSmallIntegerField(default=0)
+    verified_at = models.DateTimeField(null=True, blank=True)
+    consumed_at = models.DateTimeField(null=True, blank=True)
+    requested_ip_address = models.GenericIPAddressField(null=True, blank=True)
+    requested_device_info = models.TextField(blank=True, default="")
+    reset_ip_address = models.GenericIPAddressField(null=True, blank=True)
+    reset_device_info = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["identifier", "-created_at"]),
+            models.Index(fields=["user", "-created_at"]),
+        ]
+
+    @property
+    def is_active(self):
+        return (
+            self.consumed_at is None
+            and self.expires_at > timezone.now()
+            and self.attempts < 5
+        )

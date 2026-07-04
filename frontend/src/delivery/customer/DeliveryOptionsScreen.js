@@ -1,8 +1,8 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 import DeliveryCustomerTermsAcceptance from "../components/DeliveryCustomerTermsAcceptance";
 import { DELIVERY_VEHICLE_TYPES } from "../deliveryVehicleTypes";
-import { estimateCourierTypeFares } from "../deliveryPricing";
+import { fetchServerCourierFares } from "../deliveryPricing";
 import { getDefaultCourierType } from "../deliveryCourierRouting";
 import { mapCategoryToApi } from "../deliveryCustomerCategories";
 
@@ -22,19 +22,29 @@ export default function DeliveryOptionsScreen({
   onPrivacyCheckedChange,
 }) {
   const packageType = form.package_type || "small";
+  const [fareOptions, setFareOptions] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchServerCourierFares({
+      serviceCategory: mapCategoryToApi(category),
+      packageType,
+      distanceKm,
+      fragile: form.is_fragile,
+      urgent: form.is_urgent,
+      weightKg: form.weight_kg || null,
+      promoCode: form.promo_code || "",
+    }).then((options) => {
+      if (!cancelled) setFareOptions(options);
+    }).catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [category, packageType, distanceKm, form.is_fragile, form.is_urgent, form.weight_kg, form.promo_code]);
 
   const localOptions = useMemo(
-    () =>
-      estimateCourierTypeFares({
-        serviceCategory: mapCategoryToApi(category),
-        packageType,
-        distanceKm,
-        fragile: form.is_fragile,
-        urgent: form.is_urgent,
-        weightKg: form.weight_kg || null,
-        discountAmount: 0,
-      }),
-    [category, packageType, distanceKm, form.is_fragile, form.is_urgent, form.weight_kg]
+    () => fareOptions,
+    [fareOptions]
   );
 
   const selectedFare = localOptions.find((item) => item.key === selectedOption) || localOptions[0];

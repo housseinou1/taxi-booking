@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { MARKET } from "../marketConfig";
 
 /**
@@ -7,6 +7,18 @@ import { MARKET } from "../marketConfig";
  * Used both in-app and as a publicly accessible page for app store compliance.
  */
 function PrivacyPolicy() {
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const next = params.get("return") || "";
+    if (next.startsWith("/delivery")) {
+      try {
+        sessionStorage.setItem("yala_delivery_customer_privacy_read", "1");
+      } catch {
+        // ignore
+      }
+    }
+  }, []);
+
   return (
     <main style={pageStyle}>
       <section style={cardStyle}>

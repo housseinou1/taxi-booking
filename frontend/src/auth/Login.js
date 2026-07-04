@@ -16,6 +16,24 @@ function getLoginApiCandidates() {
   return getApiCandidates("/auth/login/");
 }
 
+function getAuthApiCandidates(path) {
+  return getApiCandidates(path);
+}
+
+function getApiErrorMessage(error, fallback) {
+  if (error?.response?.data) {
+    const data = error.response.data;
+    if (typeof data === "string" && data.trim()) return data.trim();
+    if (data.error) return data.error;
+    if (data.detail) return data.detail;
+    if (data.message) return data.message;
+  }
+  if (error?.request) {
+    return "Cannot reach the Yala server. Check your internet connection and try again.";
+  }
+  return fallback;
+}
+
 function getLoginErrorMessage(error, t, context = "web") {
   if (error?.response) {
     const data = error.response.data;
@@ -180,6 +198,13 @@ export default function Login({ onLogin }) {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [resetStep, setResetStep] = useState("login");
+  const [resetIdentifier, setResetIdentifier] = useState("");
+  const [resetCode, setResetCode] = useState("");
+  const [resetNewPassword, setResetNewPassword] = useState("");
+  const [resetConfirmPassword, setResetConfirmPassword] = useState("");
+  const [resetMessage, setResetMessage] = useState("");
+  const [resetLoading, setResetLoading] = useState(false);
 
   useEffect(() => {
     // Don't redirect here — let App.js handle routing for authenticated users
@@ -288,6 +313,123 @@ export default function Login({ onLogin }) {
     window.location.href = "/register";
   };
 
+  const buildResetPayload = () => {
+    const value = resetIdentifier.trim();
+    if (value.includes("@")) {
+      return { email: value.toLowerCase() };
+    }
+    return { phone: value };
+  };
+
+  const postToFirstAuthEndpoint = async (path, payload) => {
+    let response = null;
+    let lastError = null;
+
+    for (const endpoint of getAuthApiCandidates(path)) {
+      try {
+        response = await axios.post(endpoint, payload);
+        break;
+      } catch (error) {
+        lastError = error;
+        if (error?.response) break;
+      }
+    }
+
+    if (!response) {
+      throw lastError || new Error("Request failed");
+    }
+    return response;
+  };
+
+  const startReset = () => {
+    setErrorMessage("");
+    setResetMessage("");
+    setResetCode("");
+    setResetNewPassword("");
+    setResetConfirmPassword("");
+    setResetStep("request");
+  };
+
+  const backToLogin = () => {
+    setErrorMessage("");
+    setResetMessage("");
+    setResetStep("login");
+  };
+
+  const requestResetCode = async (event) => {
+    event.preventDefault();
+    setErrorMessage("");
+    setResetMessage("");
+
+    if (!resetIdentifier.trim()) {
+      setErrorMessage("Enter your phone number or email.");
+      return;
+    }
+
+    try {
+      setResetLoading(true);
+      const response = await postToFirstAuthEndpoint("/auth/forgot-password/", buildResetPayload());
+      setResetMessage(response.data?.message || "Reset code sent.");
+      setResetStep("verify");
+    } catch (error) {
+      setErrorMessage(getApiErrorMessage(error, "Could not request password reset."));
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  const verifyResetCode = async (event) => {
+    event.preventDefault();
+    setErrorMessage("");
+    setResetMessage("");
+
+    if (resetCode.trim().length !== 6) {
+      setErrorMessage("Enter the six-digit reset code.");
+      return;
+    }
+
+    try {
+      setResetLoading(true);
+      await postToFirstAuthEndpoint("/auth/verify-reset-code/", {
+        ...buildResetPayload(),
+        code: resetCode.trim(),
+      });
+      setResetMessage("Code verified. Choose a new password.");
+      setResetStep("reset");
+    } catch (error) {
+      setErrorMessage(getApiErrorMessage(error, "Could not verify reset code."));
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  const submitNewPassword = async (event) => {
+    event.preventDefault();
+    setErrorMessage("");
+    setResetMessage("");
+
+    if (!resetNewPassword || resetNewPassword !== resetConfirmPassword) {
+      setErrorMessage("New password and confirmation must match.");
+      return;
+    }
+
+    try {
+      setResetLoading(true);
+      const response = await postToFirstAuthEndpoint("/auth/reset-password/", {
+        ...buildResetPayload(),
+        code: resetCode.trim(),
+        new_password: resetNewPassword,
+      });
+      setPassword("");
+      setResetMessage(response.data?.message || "Password reset successfully. You can now log in.");
+      setResetStep("login");
+    } catch (error) {
+      setErrorMessage(getApiErrorMessage(error, "Could not reset password."));
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
   const loginContext = getLoginContext();
   const isDeliveryLogin = loginContext === "delivery" || getAppType() === "delivery";
   const useSharedLyftLogin = ["rider", "driver"].includes(loginContext);
@@ -316,69 +458,185 @@ export default function Login({ onLogin }) {
         <p className="yala-login__tagline">{getLoginSubtitle() || t("auth.loginSubtitle")}</p>
       </div>
 
-      <form onSubmit={handleLogin} className="yala-login__form" autoComplete={isDeliveryLogin ? "off" : "on"}>
+      <form
+        onSubmit={
+          resetStep === "request"
+            ? requestResetCode
+            : resetStep === "verify"
+              ? verifyResetCode
+              : resetStep === "reset"
+                ? submitNewPassword
+                : handleLogin
+        }
+        className="yala-login__form"
+        autoComplete={isDeliveryLogin ? "off" : "on"}
+      >
         {errorMessage && (
           <div className="yala-login__error">{errorMessage}</div>
         )}
 
-        <label className="yala-login__label">
-          {t("auth.email")}
-          <input
-            type="email"
-            name={isDeliveryLogin ? "delivery-courier-email" : "email"}
-            placeholder={isDeliveryLogin ? "Enter your email" : "you@example.com"}
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            className="yala-login__input"
-            autoComplete={isDeliveryLogin ? "off" : "email"}
-            autoCorrect="off"
-            autoCapitalize="none"
-            spellCheck={false}
-            readOnly={blockAutofill}
-            onFocus={(event) => {
-              if (blockAutofill) {
-                setBlockAutofill(false);
-                event.target.readOnly = false;
-              }
-            }}
-          />
-        </label>
+        {resetMessage && (
+          <div className="yala-login__success">{resetMessage}</div>
+        )}
 
-        <label className="yala-login__label">
-          {t("auth.password")}
-          <input
-            type="password"
-            name={isDeliveryLogin ? "delivery-courier-password" : "password"}
-            placeholder={isDeliveryLogin ? "Enter your password" : "••••••••"}
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            className="yala-login__input"
-            autoComplete={isDeliveryLogin ? "new-password" : "current-password"}
-            readOnly={blockAutofill}
-            onFocus={(event) => {
-              if (blockAutofill) {
-                setBlockAutofill(false);
-                event.target.readOnly = false;
-              }
-            }}
-          />
-        </label>
+        {resetStep === "login" ? (
+          <>
+            <label className="yala-login__label">
+              {t("auth.email")}
+              <input
+                type="email"
+                name={isDeliveryLogin ? "delivery-courier-email" : "email"}
+                placeholder={isDeliveryLogin ? "Enter your email" : "you@example.com"}
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                className="yala-login__input"
+                autoComplete={isDeliveryLogin ? "off" : "email"}
+                autoCorrect="off"
+                autoCapitalize="none"
+                spellCheck={false}
+                readOnly={blockAutofill}
+                onFocus={(event) => {
+                  if (blockAutofill) {
+                    setBlockAutofill(false);
+                    event.target.readOnly = false;
+                  }
+                }}
+              />
+            </label>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="yala-login__btn-primary"
-        >
-          {loading ? t("auth.signingIn") : t("auth.loginTitle")}
-        </button>
+            <label className="yala-login__label">
+              {t("auth.password")}
+              <input
+                type="password"
+                name={isDeliveryLogin ? "delivery-courier-password" : "password"}
+                placeholder={isDeliveryLogin ? "Enter your password" : "••••••••"}
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                className="yala-login__input"
+                autoComplete={isDeliveryLogin ? "new-password" : "current-password"}
+                readOnly={blockAutofill}
+                onFocus={(event) => {
+                  if (blockAutofill) {
+                    setBlockAutofill(false);
+                    event.target.readOnly = false;
+                  }
+                }}
+              />
+            </label>
 
-        <button
-          type="button"
-          onClick={navigateToRegister}
-          className="yala-login__btn-secondary"
-        >
-          {t("auth.createAccount")}
-        </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="yala-login__btn-primary"
+            >
+              {loading ? t("auth.signingIn") : t("auth.loginTitle")}
+            </button>
+
+            <button
+              type="button"
+              onClick={startReset}
+              className="yala-login__forgot-link"
+            >
+              Forgot password?
+            </button>
+
+            <button
+              type="button"
+              onClick={navigateToRegister}
+              className="yala-login__btn-secondary"
+            >
+              {t("auth.createAccount")}
+            </button>
+          </>
+        ) : (
+          <>
+            <h2 className="yala-login__reset-title">Reset password</h2>
+            {resetStep === "request" && (
+              <>
+                <p className="yala-login__reset-copy">
+                  Enter your Mauritania phone number or email. We will send a six-digit code.
+                </p>
+                <label className="yala-login__label">
+                  Phone or email
+                  <input
+                    type="text"
+                    name="reset-identifier"
+                    placeholder="+22236123456 or you@example.com"
+                    value={resetIdentifier}
+                    onChange={(event) => setResetIdentifier(event.target.value)}
+                    className="yala-login__input"
+                    autoComplete="username"
+                    autoCorrect="off"
+                    autoCapitalize="none"
+                    spellCheck={false}
+                  />
+                </label>
+              </>
+            )}
+            {resetStep === "verify" && (
+              <label className="yala-login__label">
+                Six-digit code
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength="6"
+                  name="reset-code"
+                  placeholder="123456"
+                  value={resetCode}
+                  onChange={(event) => setResetCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+                  className="yala-login__input"
+                  autoComplete="one-time-code"
+                />
+              </label>
+            )}
+            {resetStep === "reset" && (
+              <>
+                <label className="yala-login__label">
+                  New password
+                  <input
+                    type="password"
+                    name="new-password"
+                    value={resetNewPassword}
+                    onChange={(event) => setResetNewPassword(event.target.value)}
+                    className="yala-login__input"
+                    autoComplete="new-password"
+                  />
+                </label>
+                <label className="yala-login__label">
+                  Confirm password
+                  <input
+                    type="password"
+                    name="confirm-password"
+                    value={resetConfirmPassword}
+                    onChange={(event) => setResetConfirmPassword(event.target.value)}
+                    className="yala-login__input"
+                    autoComplete="new-password"
+                  />
+                </label>
+              </>
+            )}
+            <button
+              type="submit"
+              disabled={resetLoading}
+              className="yala-login__btn-primary"
+            >
+              {resetLoading
+                ? "Please wait..."
+                : resetStep === "request"
+                  ? "Send code"
+                  : resetStep === "verify"
+                    ? "Verify code"
+                    : "Reset password"}
+            </button>
+            <button
+              type="button"
+              onClick={backToLogin}
+              className="yala-login__btn-secondary"
+            >
+              Back to login
+            </button>
+          </>
+        )}
       </form>
 
       {!isDeliveryLogin && (
@@ -494,6 +752,32 @@ function LoginStyles() {
         line-height: 1.4;
       }
 
+      .yala-login__success {
+        margin-bottom: 16px;
+        padding: 12px 14px;
+        border-radius: 12px;
+        background: rgba(34, 197, 94, 0.16);
+        border: 1px solid rgba(34, 197, 94, 0.35);
+        color: #86efac;
+        font-size: 13px;
+        font-weight: 700;
+        line-height: 1.4;
+      }
+
+      .yala-login__reset-title {
+        margin: 0 0 8px;
+        color: #fff;
+        font-size: 22px;
+        font-weight: 800;
+      }
+
+      .yala-login__reset-copy {
+        margin: 0 0 18px;
+        color: rgba(255, 255, 255, 0.65);
+        font-size: 14px;
+        line-height: 1.45;
+      }
+
       .yala-login__label {
         display: flex;
         flex-direction: column;
@@ -551,6 +835,19 @@ function LoginStyles() {
         opacity: 0.6;
         cursor: not-allowed;
         transform: none;
+      }
+
+      .yala-login__forgot-link {
+        width: 100%;
+        margin: 12px 0 2px;
+        border: none;
+        background: transparent;
+        color: rgba(255, 255, 255, 0.75);
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+        text-decoration: underline;
+        text-underline-offset: 4px;
       }
 
       .yala-login__btn-secondary {

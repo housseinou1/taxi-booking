@@ -46,12 +46,15 @@ export default function useDeliveryCourierRealtime({
   setAvailable,
   setDismissedOfferId,
   setHighlightedOfferId,
+  onReconnect,
 }) {
   const loadRef = useRef(load);
   const setAvailableRef = useRef(setAvailable);
   const setDismissedOfferIdRef = useRef(setDismissedOfferId);
   const setHighlightedOfferIdRef = useRef(setHighlightedOfferId);
+  const onReconnectRef = useRef(onReconnect);
   const retryRef = useRef(1000);
+  const hadConnectedRef = useRef(false);
 
   useEffect(() => {
     loadRef.current = load;
@@ -68,6 +71,10 @@ export default function useDeliveryCourierRealtime({
   useEffect(() => {
     setHighlightedOfferIdRef.current = setHighlightedOfferId;
   }, [setHighlightedOfferId]);
+
+  useEffect(() => {
+    onReconnectRef.current = onReconnect;
+  }, [onReconnect]);
 
   useEffect(() => {
     preloadNotificationSound();
@@ -115,6 +122,7 @@ export default function useDeliveryCourierRealtime({
     let cancelled = false;
     let retryTimer = null;
     let ws = null;
+    hadConnectedRef.current = false;
 
     const handleRealtimeMessage = (message) => {
       if (!message?.type) return;
@@ -143,7 +151,12 @@ export default function useDeliveryCourierRealtime({
       ws = new WebSocket(wsUrl);
 
       ws.onopen = () => {
+        const wasReconnect = hadConnectedRef.current;
+        hadConnectedRef.current = true;
         retryRef.current = 1000;
+        if (wasReconnect) {
+          onReconnectRef.current?.();
+        }
       };
 
       ws.onmessage = (event) => {

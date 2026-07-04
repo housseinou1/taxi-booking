@@ -22,7 +22,7 @@ export default function DeliveryLiveTracking({
   const showPickupPin =
     pickupPin && ["accepted", "courier_arriving"].includes(delivery.status) && delivery.requires_pickup_verification;
   const showDropoffPin =
-    dropoffPin && ["accepted", "courier_arriving", "picked_up", "in_transit", "delivering"].includes(delivery.status);
+    dropoffPin && ["requested", "accepted", "courier_arriving", "picked_up", "in_transit", "delivering"].includes(delivery.status);
   const photoUrl = delivery.driver_photo || delivery.courier_photo;
   const plate = delivery.plate_number || delivery.vehicle_plate || "";
   const showPlate = shouldShowPlate(courierType) && plate && plate !== "TEMP-PLATE";

@@ -169,6 +169,63 @@ export function estimateCourierTypeFares({
   });
 }
 
+export async function fetchServerCourierFares({
+  serviceCategory,
+  packageType,
+  distanceKm,
+  fragile = false,
+  urgent = false,
+  weightKg = null,
+  promoCode = "",
+}) {
+  const localOptions = estimateCourierTypeFares({
+    serviceCategory,
+    packageType,
+    distanceKm,
+    fragile,
+    urgent,
+    weightKg,
+  });
+
+  if (!localStorage.getItem("access")) {
+    return localOptions;
+  }
+
+  try {
+    const { API_URL } = await import("../apiConfig");
+    const { apiRequest } = await import("./DeliveryShared");
+    const merged = await Promise.all(
+      localOptions.map(async (option) => {
+        try {
+          const data = await apiRequest(`${API_URL}/deliveries/estimate/`, {
+            method: "POST",
+            body: JSON.stringify({
+              service_category: serviceCategory,
+              package_type: packageType,
+              distance_km: distanceKm,
+              courier_type: option.key,
+              is_fragile: fragile,
+              is_urgent: urgent,
+              weight_kg: weightKg || null,
+              promo_code: promoCode || "",
+            }),
+          });
+          return {
+            ...option,
+            total: Math.round(Number(data.total_fare || option.total)),
+            serverEstimate: true,
+          };
+        } catch {
+          return option;
+        }
+      })
+    );
+    return merged;
+  } catch {
+    return localOptions;
+  }
+}
+
 export function buildFareBreakdownLines(fare) {
   const lines = [
     { key: "base", label: "Base fare", amount: fare.baseFee, show: fare.baseFee > 0 },

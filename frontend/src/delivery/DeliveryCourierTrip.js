@@ -68,7 +68,7 @@ export default function DeliveryCourierTrip({
   const showDropoffProof =
     stage === TRIP_STAGES.DROPOFF && (dropoffArrived || delivery.status === "delivering");
 
-  const showPickupProof = stage === TRIP_STAGES.ARRIVING;
+  const showPickupProof = delivery.status === "courier_arriving";
   const hideTripActionBar =
     showDropoffProof || showPickupProof || delivery.status === "delivery_exception";
 
@@ -190,8 +190,17 @@ export default function DeliveryCourierTrip({
     return null;
   };
 
+  const proofMode = showPickupProof || showDropoffProof;
+
+  useEffect(() => {
+    if (!proofMode) return undefined;
+    const sheet = document.querySelector(".cce-sheet__content--trip");
+    if (sheet) sheet.scrollTop = 0;
+    return undefined;
+  }, [proofMode, delivery?.id, delivery?.status]);
+
   return (
-    <div className="cce-trip">
+    <div className={`cce-trip${proofMode ? " cce-trip--proof" : ""}`}>
       <div className="cce-trip__body">
         <header className="cce-trip__eta">
           <div className="cce-trip__eta-item">
@@ -212,58 +221,23 @@ export default function DeliveryCourierTrip({
           <span className="cce-trip__badge">{getCourierTripHeadline(delivery, timelineStep)}</span>
         </div>
 
-        <CourierTripTimeline
-          delivery={delivery}
-          dropoffArrived={dropoffArrived}
-          showPickupProof={showPickupProof}
-          showDropoffProof={showDropoffProof}
-        />
-
-        <CourierLocationCards
-          pickup={delivery.pickup}
-          pickupName={pickupContact.name}
-          pickupPhone={pickupContact.phone}
-          pickupInstructions={pickupInstructions}
-          dropoff={dropoffAddress}
-          dropoffName={dropoffContact.name}
-          dropoffPhone={dropoffContact.phone}
-          dropoffAltPhone={delivery.recipient_alt_phone}
-          dropoffInstructions={dropoffInstructions}
-          activeLeg={activeLeg}
-          onCallPickup={() => onCall?.(pickupContact.phone)}
-          onCallDropoff={() => onCall?.(dropoffContact.phone || delivery.recipient_alt_phone)}
-          onChat={onChat}
-          onNavigatePickup={() =>
-            openExternalNavigation({
-              lat: delivery.pickup_lat,
-              lng: delivery.pickup_lng,
-              label: delivery.pickup,
-            })
-          }
-          onNavigateDropoff={() =>
-            openExternalNavigation({
-              lat: activeStop?.latitude || delivery.destination_lat,
-              lng: activeStop?.longitude || delivery.destination_lng,
-              label: dropoffAddress,
-            })
-          }
-        />
-
-        <div className="cce-pill-row">
-          <span className="cce-pill">{formatCategory(delivery.service_category)}</span>
-          <span className="cce-pill">{(delivery.package_type || "small").toUpperCase()}</span>
-          {delivery.weight_kg ? <span className="cce-pill">{delivery.weight_kg} kg</span> : null}
-        </div>
-
-        {delivery.status === "delivery_exception" ? (
-          <div className="cce-location-card">
-            <strong>Sent to Yala support</strong>
-            <p style={{ margin: "6px 0 0" }}>This delivery is waiting for admin review.</p>
-          </div>
-        ) : null}
-
         {showPickupProof ? (
           <DeliveryPickupProof delivery={delivery} busy={busy} onSubmit={(payload) => onPickup(delivery, payload)} />
+        ) : null}
+
+        {stage === TRIP_STAGES.DROPOFF && !delivery.stops?.length && showDropoffProof ? (
+          <DeliveryDropoffProof
+            recipientName={delivery.recipient_name}
+            recipientPhone={delivery.recipient_phone}
+            busy={busy}
+            requiresPhoto={Boolean(delivery.requires_proof_photo)}
+            onSubmit={({ pin, proofFile }) => onConfirm(delivery, pin, proofFile)}
+            onException={(payload) => onDeliveryException?.(delivery, payload)}
+            onCall={onCall}
+            onChat={onChat}
+            onResendPin={onResendPin}
+            onAdminSupport={onAdminSupport}
+          />
         ) : null}
 
         {stage === TRIP_STAGES.DROPOFF && delivery.stops?.length && showDropoffProof ? (
@@ -296,19 +270,58 @@ export default function DeliveryCourierTrip({
           </div>
         ) : null}
 
-        {stage === TRIP_STAGES.DROPOFF && !delivery.stops?.length && showDropoffProof ? (
-          <DeliveryDropoffProof
-            recipientName={delivery.recipient_name}
-            recipientPhone={delivery.recipient_phone}
-            busy={busy}
-            requiresPhoto={Boolean(delivery.requires_proof_photo)}
-            onSubmit={({ pin, proofFile }) => onConfirm(delivery, pin, proofFile)}
-            onException={(payload) => onDeliveryException?.(delivery, payload)}
-            onCall={onCall}
-            onChat={onChat}
-            onResendPin={onResendPin}
-            onAdminSupport={onAdminSupport}
-          />
+        {!showPickupProof && !showDropoffProof ? (
+          <>
+            <CourierTripTimeline
+              delivery={delivery}
+              dropoffArrived={dropoffArrived}
+              showPickupProof={showPickupProof}
+              showDropoffProof={showDropoffProof}
+            />
+
+            <CourierLocationCards
+              pickup={delivery.pickup}
+              pickupName={pickupContact.name}
+              pickupPhone={pickupContact.phone}
+              pickupInstructions={pickupInstructions}
+              dropoff={dropoffAddress}
+              dropoffName={dropoffContact.name}
+              dropoffPhone={dropoffContact.phone}
+              dropoffAltPhone={delivery.recipient_alt_phone}
+              dropoffInstructions={dropoffInstructions}
+              activeLeg={activeLeg}
+              onCallPickup={() => onCall?.(pickupContact.phone)}
+              onCallDropoff={() => onCall?.(dropoffContact.phone || delivery.recipient_alt_phone)}
+              onChat={onChat}
+              onNavigatePickup={() =>
+                openExternalNavigation({
+                  lat: delivery.pickup_lat,
+                  lng: delivery.pickup_lng,
+                  label: delivery.pickup,
+                })
+              }
+              onNavigateDropoff={() =>
+                openExternalNavigation({
+                  lat: activeStop?.latitude || delivery.destination_lat,
+                  lng: activeStop?.longitude || delivery.destination_lng,
+                  label: dropoffAddress,
+                })
+              }
+            />
+
+            <div className="cce-pill-row">
+              <span className="cce-pill">{formatCategory(delivery.service_category)}</span>
+              <span className="cce-pill">{(delivery.package_type || "small").toUpperCase()}</span>
+              {delivery.weight_kg ? <span className="cce-pill">{delivery.weight_kg} kg</span> : null}
+            </div>
+          </>
+        ) : null}
+
+        {delivery.status === "delivery_exception" ? (
+          <div className="cce-location-card">
+            <strong>Sent to Yala support</strong>
+            <p style={{ margin: "6px 0 0" }}>This delivery is waiting for admin review.</p>
+          </div>
         ) : null}
 
         {onCancel && ["accepted", "courier_arriving"].includes(delivery.status) ? (

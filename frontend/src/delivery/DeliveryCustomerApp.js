@@ -36,8 +36,10 @@ import { apiRequest } from "./DeliveryShared";
 import {
   fetchCustomerDeliveryTermsStatus,
   readCustomerTermsSessionFlag,
+  readCustomerPrivacySessionFlag,
+  acceptCustomerDeliveryTerms,
 } from "./deliveryTermsApi";
-import { STORE_CATEGORY_MAP } from "../merchant/merchantApi";
+import { applyDeliveryAreaToForm } from "./deliveryLocationUtils";
 import { emptyInstructions } from "./deliveryInstructionUtils";
 import "./delivery-uber.css";
 import "./delivery-instructions.css";
@@ -207,11 +209,14 @@ export default function DeliveryCustomerApp() {
         return;
       }
       setActiveDelivery(active);
+      setRecipientCode(active.recipient_code || "");
+      setPickupPin(active.pickup_pin || "");
+      setDropoffPin(active.dropoff_pin || "");
       if (active.status === "requested") setScreen(SCREENS.SEARCHING);
       else if (["accepted", "courier_arriving", "picked_up", "in_transit", "delivering", "delivery_exception"].includes(active.status)) setScreen(SCREENS.TRACKING);
       else if (active.status === "delivered") setScreen(SCREENS.COMPLETE);
     } catch (err) {
-      setError(err.message);
+      // Silently ignore load errors — this is a background poll, not a user action
     }
   }, [screen]);
 
@@ -242,6 +247,9 @@ export default function DeliveryCustomerApp() {
     if (readCustomerTermsSessionFlag()) {
       setCustomerTermsChecked(true);
     }
+    if (readCustomerPrivacySessionFlag()) {
+      setCustomerPrivacyChecked(true);
+    }
   }, [screen]);
 
   useEffect(() => {
@@ -266,6 +274,9 @@ export default function DeliveryCustomerApp() {
           courier_vehicle_label: tracking.courier_vehicle_label || data.courier_vehicle_label,
           plate_number: tracking.plate_number || data.plate_number,
         });
+        if (data.recipient_code) setRecipientCode(data.recipient_code);
+        if (data.pickup_pin) setPickupPin(data.pickup_pin);
+        if (data.dropoff_pin) setDropoffPin(data.dropoff_pin);
         if (tracking.eta_minutes) setEtaMinutes(tracking.eta_minutes);
         if (tracking.driver_lat && tracking.driver_lng) {
           setCourierPosition([tracking.driver_lat, tracking.driver_lng]);
@@ -297,12 +308,6 @@ export default function DeliveryCustomerApp() {
   };
 
   const startCategory = (categoryKey) => {
-    if (STORE_CATEGORY_MAP[categoryKey]) {
-      setCategory(categoryKey);
-      setSelectedStore(null);
-      setScreen(SCREENS.STORES);
-      return;
-    }
     const defaults = getCategoryFormDefaults(categoryKey);
     setCategory(categoryKey);
     setForm({
@@ -330,6 +335,11 @@ export default function DeliveryCustomerApp() {
   };
 
   const confirmDelivery = async () => {
+    if (!localStorage.getItem("access")) {
+      window.location.href = "/register?role=rider&next=/delivery";
+      return;
+    }
+
     const needsTerms = !customerTermsOnRecord;
     if (needsTerms && (!customerTermsChecked || !customerPrivacyChecked)) {
       setError("Please accept the Terms & Conditions and Privacy Policy before placing your order.");
@@ -338,6 +348,9 @@ export default function DeliveryCustomerApp() {
     setSubmitting(true);
     setError("");
     try {
+      if (needsTerms) {
+        await acceptCustomerDeliveryTerms();
+      }
       const apiCategory = mapCategoryToApi(category);
       const hasFile = form.prescription_photo instanceof File;
       const payload = buildDeliveryPayload(form, apiCategory, distanceKm, selectedOption);
@@ -603,8 +616,18 @@ export default function DeliveryCustomerApp() {
           form={form}
           category={category}
           onChange={(next) => {
-            if (next.service_city !== form.service_city) applyCityCenter(next.service_city);
-            setForm(next);
+            let updated = next;
+            if (next.service_city !== form.service_city) {
+              applyCityCenter(next.service_city);
+              return;
+            }
+            if (next.pickup !== form.pickup && next.pickup) {
+              updated = applyDeliveryAreaToForm(updated, "pickup", next.pickup);
+            }
+            if (next.destination !== form.destination && next.destination) {
+              updated = applyDeliveryAreaToForm(updated, "destination", next.destination);
+            }
+            setForm(updated);
           }}
           onCategoryChange={(categoryKey) => {
             const defaults = getCategoryFormDefaults(categoryKey);
@@ -729,20 +752,22 @@ export default function DeliveryCustomerApp() {
     >
       {error ? <div className="delivery-uber__toast is-error">{error}</div> : null}
       {submitting ? <div className="delivery-uber__toast">Creating your delivery...</div> : null}
-      {recipientCode ? (
-        <div className="delivery-uber__pin-banner">
-          Drop-off PIN: <strong>{recipientCode}</strong>
-        </div>
-      ) : null}
-      {dropoffPin && ["accepted", "courier_arriving", "picked_up", "in_transit", "delivering"].includes(activeDelivery?.status) ? (
+      {(recipientCode || activeDelivery?.recipient_code || dropoffPin || activeDelivery?.dropoff_pin) &&
+      [SCREENS.SEARCHING, SCREENS.TRACKING].includes(screen) ? (
         <div className="delivery-uber__pin-banner delivery-uber__pin-banner--dropoff">
-          📦 Recipient PIN: <strong>{dropoffPin}</strong>
-          <small> — Share with recipient</small>
+          Recipient PIN:{" "}
+          <strong>
+            {dropoffPin ||
+              activeDelivery?.dropoff_pin ||
+              recipientCode ||
+              activeDelivery?.recipient_code}
+          </strong>
+          <small> — Share with recipient for courier handoff</small>
         </div>
       ) : null}
-      {pickupPin && ["accepted", "courier_arriving"].includes(activeDelivery?.status) ? (
+      {(pickupPin || activeDelivery?.pickup_pin) && ["accepted", "courier_arriving"].includes(activeDelivery?.status) ? (
         <div className="delivery-uber__pin-banner delivery-uber__pin-banner--pickup">
-          Pickup PIN: <strong>{pickupPin}</strong>
+          Pickup PIN: <strong>{pickupPin || activeDelivery?.pickup_pin}</strong>
         </div>
       ) : null}
       {renderBody()}

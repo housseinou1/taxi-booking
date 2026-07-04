@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from "react";
 
 import DeliveryInstructionFields from "../components/DeliveryInstructionFields";
 import { getCategoryFormFields } from "../deliveryCategoryFields";
+import { applyDeliveryAreaToForm } from "../deliveryLocationUtils";
 import { DEFAULT_DELIVERY_CITY, MAURITANIA_WILAYAS } from "../deliveryCities";
 import { HOME_DELIVERY_CATEGORIES, getCustomerCategory } from "../deliveryCustomerCategories";
 import { emptyInstructions, instructionsFromDefaults } from "../deliveryInstructionUtils";
@@ -144,6 +145,10 @@ export default function DeliveryRequestScreen({
   }, []);
 
   const update = (field, value) => {
+    if (field === "pickup" || field === "destination") {
+      onChange(applyDeliveryAreaToForm(form, field, value));
+      return;
+    }
     onChange({ ...form, [field]: value });
   };
 
@@ -258,6 +263,19 @@ export default function DeliveryRequestScreen({
           </div>
         </>
       ) : null}
+
+      <p className="delivery-dash__section-label">Additional notes (optional)</p>
+      <div className="delivery-dash__card">
+        <label>
+          <span className="delivery-dash__field-label">Notes / instructions</span>
+          <textarea
+            value={form.customer_notes || ""}
+            onChange={(e) => update("customer_notes", e.target.value)}
+            placeholder="Anything the courier should know about this delivery"
+            rows={3}
+          />
+        </label>
+      </div>
 
       <p className="delivery-dash__section-label">Dropoff instructions</p>
       <div className="delivery-dash__card delivery-dash__card--flush">
