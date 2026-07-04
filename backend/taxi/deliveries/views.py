@@ -479,16 +479,22 @@ def get_assigned_delivery(request, delivery_id, allowed_statuses):
 @permission_classes([IsAuthenticated])
 def arrive_pickup(request, delivery_id):
     """Courier marks arrival at pickup location."""
-    delivery, error_response = get_assigned_delivery(request, delivery_id, ["accepted"])
+    delivery, error_response = get_assigned_delivery(
+        request, delivery_id, ["accepted", "courier_arriving", "picked_up", "in_transit", "delivering"]
+    )
     if error_response:
         return error_response
+
+    serializer_context = {"request": request}
+    if delivery.status in {"courier_arriving", "picked_up", "in_transit", "delivering"}:
+        return Response(DeliverySerializer(delivery, context=serializer_context).data)
 
     try:
         delivery = delivery_service.transition_status(delivery, "courier_arriving")
     except DeliveryServiceError as e:
         return Response({"detail": e.message}, status=status.HTTP_400_BAD_REQUEST)
 
-    return Response(DeliverySerializer(delivery, context={"request": request}).data)
+    return Response(DeliverySerializer(delivery, context=serializer_context).data)
 
 
 @api_view(["POST"])
@@ -496,10 +502,16 @@ def arrive_pickup(request, delivery_id):
 def pickup_delivery(request, delivery_id):
     """Driver confirms package pickup."""
     delivery, error_response = get_assigned_delivery(
-        request, delivery_id, ["accepted", "courier_arriving"]
+        request,
+        delivery_id,
+        ["accepted", "courier_arriving", "picked_up", "in_transit", "delivering"],
     )
     if error_response:
         return error_response
+
+    serializer_context = {"request": request}
+    if delivery.status in {"picked_up", "in_transit", "delivering"}:
+        return Response(DeliverySerializer(delivery, context=serializer_context).data)
 
     try:
         delivery_service.verify_pickup(
@@ -513,23 +525,29 @@ def pickup_delivery(request, delivery_id):
     except DeliveryServiceError as e:
         return Response({"detail": e.message, "code": e.code}, status=status.HTTP_400_BAD_REQUEST)
 
-    return Response(DeliverySerializer(delivery, context={"request": request}).data)
+    return Response(DeliverySerializer(delivery, context=serializer_context).data)
 
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def start_delivery(request, delivery_id):
     """Driver starts delivering (en route to destination)."""
-    delivery, error_response = get_assigned_delivery(request, delivery_id, ["picked_up"])
+    delivery, error_response = get_assigned_delivery(
+        request, delivery_id, ["picked_up", "in_transit", "delivering"]
+    )
     if error_response:
         return error_response
+
+    serializer_context = {"request": request}
+    if delivery.status in {"in_transit", "delivering"}:
+        return Response(DeliverySerializer(delivery, context=serializer_context).data)
 
     try:
         delivery = delivery_service.transition_status(delivery, "in_transit")
     except DeliveryServiceError as e:
         return Response({"detail": e.message}, status=status.HTTP_400_BAD_REQUEST)
 
-    return Response(DeliverySerializer(delivery, context={"request": request}).data)
+    return Response(DeliverySerializer(delivery, context=serializer_context).data)
 
 
 @api_view(["POST"])
@@ -537,10 +555,14 @@ def start_delivery(request, delivery_id):
 def confirm_delivery(request, delivery_id):
     """Driver confirms delivery with dropoff PIN and optional proof."""
     delivery, error_response = get_assigned_delivery(
-        request, delivery_id, ["picked_up", "in_transit", "delivering"]
+        request, delivery_id, ["picked_up", "in_transit", "delivering", "delivered"]
     )
     if error_response:
         return error_response
+
+    serializer_context = {"request": request}
+    if delivery.status == "delivered":
+        return Response(DeliverySerializer(delivery, context=serializer_context).data)
 
     # Accept either 'recipient_code' (legacy) or 'dropoff_pin' (new)
     code = str(request.data.get("dropoff_pin") or request.data.get("recipient_code", "")).strip()

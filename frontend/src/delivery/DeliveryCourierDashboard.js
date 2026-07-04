@@ -12,9 +12,13 @@ import DeliveryChatSheet from "./DeliveryChatSheet";
 import DeliveryCourierHomeSheet from "./components/DeliveryCourierHomeSheet";
 import {
   apiRequest,
+  CONNECTION_ERROR_MESSAGE,
   confirmDeliveryWithProof,
   confirmStopWithProof,
+  isConnectionError,
+  isDeliveryStateMismatch,
   reportDeliveryException,
+  STATUS_ORDER,
 } from "./DeliveryShared";
 import { DeliveryCourierShell } from "./DeliveryUberLayout";
 import { getDeliveryVehicleLabel } from "./deliveryVehicleTypes";
@@ -65,6 +69,26 @@ function formatOnlineDuration(ms) {
   return `${hours}h ${minutes}m`;
 }
 
+function getStatusRank(status) {
+  const index = STATUS_ORDER.indexOf(status);
+  return index === -1 ? -1 : index;
+}
+
+function mergeDeliveryLists(current, incoming) {
+  if (!Array.isArray(incoming)) return current;
+  const terminalStatuses = new Set(["delivered", "cancelled", "delivery_exception"]);
+  const currentById = new Map((current || []).map((item) => [item.id, item]));
+  return incoming.map((remote) => {
+    const local = currentById.get(remote.id);
+    if (!local) return remote;
+    if (terminalStatuses.has(remote.status)) {
+      return { ...local, ...remote };
+    }
+    const keepLocalStatus = getStatusRank(local.status) > getStatusRank(remote.status);
+    return keepLocalStatus ? { ...remote, ...local, status: local.status } : { ...local, ...remote };
+  });
+}
+
 /**
  * Yala Delivery courier dashboard — map-first, orange branding, delivery-only UI.
  * Not shared with Yala Driver (taxi).
@@ -78,9 +102,29 @@ export default function DeliveryCourierDashboard() {
   const [deliveryCities, setDeliveryCities] = useState([DEFAULT_DELIVERY_CITY]);
   const [citiesSaving, setCitiesSaving] = useState(false);
   const [modeLoading, setModeLoading] = useState(false);
+  const [toggleBusy, setToggleBusy] = useState(false);
   const [vehicleSaving, setVehicleSaving] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const noticeTimerRef = useRef(null);
+  const showNotice = (message) => {
+    setNotice(message);
+    if (noticeTimerRef.current) window.clearTimeout(noticeTimerRef.current);
+    noticeTimerRef.current = window.setTimeout(() => setNotice(""), 3200);
+  };
+  const showError = (msg) => {
+    if (!msg) return;
+    if (isConnectionError(msg)) {
+      if (typeof navigator !== "undefined" && navigator.onLine === false) {
+        setError(CONNECTION_ERROR_MESSAGE);
+      } else {
+        showNotice("Reconnecting...");
+      }
+      return;
+    }
+    setError(msg);
+    setTimeout(() => setError(""), 4000);
+  };
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("requests");
   const [sheetState, setSheetState] = useState("half");
@@ -92,17 +136,11 @@ export default function DeliveryCourierDashboard() {
   const [expiredDocAlerts, setExpiredDocAlerts] = useState([]);
   const [completedDelivery, setCompletedDelivery] = useState(null);
   const [onlineTimeMs, setOnlineTimeMs] = useState(readStoredOnlineMs);
-  const noticeTimerRef = useRef(null);
+  const actionLockRef = useRef(false);
   const seenOfferIdsRef = useRef(new Set());
   const offersBaselineReadyRef = useRef(false);
   const alertedOfferIdRef = useRef(null);
   const onlineSinceRef = useRef(null);
-
-  const showNotice = (message) => {
-    setNotice(message);
-    if (noticeTimerRef.current) window.clearTimeout(noticeTimerRef.current);
-    noticeTimerRef.current = window.setTimeout(() => setNotice(""), 3200);
-  };
 
   const loadSettings = useCallback(async () => {
     try {
@@ -126,6 +164,11 @@ export default function DeliveryCourierDashboard() {
     }
   }, []);
 
+  const mergeDeliveryUpdate = useCallback((updated) => {
+    if (!updated?.id) return;
+    setMine((current) => current.map((item) => (item.id === updated.id ? { ...item, ...updated } : item)));
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -134,18 +177,26 @@ export default function DeliveryCourierDashboard() {
         apiRequest(`${API_URL}/deliveries/mine/`),
       ]);
       setAvailable(availableData);
-      setMine(mineData);
+      setMine((current) => mergeDeliveryLists(current, mineData));
       setError("");
     } catch (err) {
-      // Only show error if we have no data at all and past initial load
-      if (available.length === 0 && mine.length === 0 && !loading) {
-        setError(err.message);
-        setTimeout(() => setError(""), 5000);
+      if (typeof navigator !== "undefined" && navigator.onLine === false) {
+        setError(CONNECTION_ERROR_MESSAGE);
+      } else if (isConnectionError(err?.message)) {
+        setError("");
       }
     } finally {
       setLoading(false);
     }
   }, []);
+
+  const refreshDeliveries = useCallback(async () => {
+    try {
+      await load();
+    } catch {
+      // Keep local delivery state when refresh fails transiently.
+    }
+  }, [load]);
 
   useEffect(() => {
     loadSettings();
@@ -178,6 +229,16 @@ export default function DeliveryCourierDashboard() {
     };
   }, [loadSettings, load]);
 
+  useEffect(() => {
+    const handleOnline = () => {
+      setError("");
+      showNotice("Connection restored");
+      refreshDeliveries();
+    };
+    window.addEventListener("online", handleOnline);
+    return () => window.removeEventListener("online", handleOnline);
+  }, [refreshDeliveries]);
+
   const active = mine.filter((d) => !["delivered", "cancelled", "delivery_exception"].includes(d.status));
   const activeDelivery = active[0] || null;
   const { unread: chatUnread, setUnread: setChatUnread } = useDeliveryChatUnread(
@@ -200,7 +261,7 @@ export default function DeliveryCourierDashboard() {
         window.location.href = `tel:${session.dial_number}`;
       }
     } catch (err) {
-      setError(err.message || "Could not start call.");
+      showError(err.message || "Could not start call.");
     }
   }, [activeDelivery?.id]);
 
@@ -235,6 +296,11 @@ export default function DeliveryCourierDashboard() {
     setAvailable,
     setDismissedOfferId,
     setHighlightedOfferId,
+    onReconnect: () => {
+      setError("");
+      showNotice("Connection restored");
+      refreshDeliveries();
+    },
   });
 
   useCourierLocationReporter({ enabled: Boolean(activeDelivery) });
@@ -342,7 +408,7 @@ export default function DeliveryCourierDashboard() {
       showNotice("Work cities updated");
       await load();
     } catch (err) {
-      setError(err.message);
+      showError(err.message);
     } finally {
       setCitiesSaving(false);
     }
@@ -360,58 +426,137 @@ export default function DeliveryCourierDashboard() {
       showNotice(`Working as ${getDeliveryVehicleLabel(settings.delivery_vehicle_type || vehicleType)}`);
       await load();
     } catch (err) {
-      setError(err.message);
+      showError(err.message);
     } finally {
       setVehicleSaving(false);
     }
   };
 
   const toggleMode = async () => {
+    if (toggleBusy || modeLoading) return;
+
+    const previousValue = deliveryMode;
+    const newValue = !deliveryMode;
+
+    setToggleBusy(true);
+    setError("");
+
+    if (newValue) {
+      unlockRideRequestSound().catch(() => {});
+      offersBaselineReadyRef.current = false;
+    } else {
+      stopDeliveryOfferAlert();
+      offersBaselineReadyRef.current = false;
+      seenOfferIdsRef.current.clear();
+    }
+
+    setDeliveryMode(newValue);
+    setDismissedOfferId(null);
+    setHighlightedOfferId(null);
+
     try {
-      setError("");
-      const newValue = !deliveryMode;
-      if (newValue) {
-        unlockRideRequestSound().catch(() => {});
-        offersBaselineReadyRef.current = false;
-      } else {
-        stopDeliveryOfferAlert();
-        offersBaselineReadyRef.current = false;
-        seenOfferIdsRef.current.clear();
-      }
       await apiRequest(`${API_URL}/deliveries/driver/mode/`, {
         method: "PATCH",
         body: JSON.stringify({ delivery_mode_enabled: newValue }),
       });
-      setDeliveryMode(newValue);
-      setDismissedOfferId(null);
-      setHighlightedOfferId(null);
-      if (newValue) {
-        await load();
-      }
       showNotice(newValue ? "You're online for deliveries" : "You're offline");
+      load().catch(() => {});
     } catch (err) {
-      setError(err.message || "Could not toggle online status");
+      setDeliveryMode(previousValue);
+      const msg = err.message || "Could not update online status";
+      if (isConnectionError(msg)) {
+        setError("Network issue — could not update online status");
+        setTimeout(() => setError(""), 4000);
+      } else {
+        showError(msg);
+      }
+    } finally {
+      setToggleBusy(false);
     }
   };
 
-  const act = async (delivery, action, body) => {
+  const postDeliveryAction = async (deliveryId, action, body) =>
+    apiRequest(`${API_URL}/deliveries/${deliveryId}/${action}/`, {
+      method: "POST",
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+  const act = async (delivery, action, body, { chainStart = false, noticeMessage } = {}) => {
+    if (actionBusy || actionLockRef.current) return null;
+    actionLockRef.current = true;
     try {
       setActionBusy(true);
       setError("");
       stopDeliveryOfferAlert();
       alertedOfferIdRef.current = null;
-      await apiRequest(`${API_URL}/deliveries/${delivery.id}/${action}/`, {
-        method: "POST",
-        body: body ? JSON.stringify(body) : undefined,
-      });
-      showNotice(`Delivery #${delivery.id} updated`);
+
+      if (action === "arrive") {
+        mergeDeliveryUpdate({ id: delivery.id, status: "courier_arriving" });
+      }
+
+      let updated = await postDeliveryAction(delivery.id, action, body);
+      mergeDeliveryUpdate(updated);
+      setError("");
+      showNotice(noticeMessage || `Delivery #${delivery.id} updated`);
       setDismissedOfferId(null);
       setTab("active");
-      await load();
+
+      if (chainStart && updated?.status === "picked_up") {
+        try {
+          updated = await postDeliveryAction(delivery.id, "start");
+          mergeDeliveryUpdate(updated);
+          setError("");
+          showNotice("Delivery in transit");
+        } catch (startErr) {
+          const startMsg = startErr.message || "";
+          if (isDeliveryStateMismatch(startMsg)) {
+            await refreshDeliveries();
+            showNotice("Delivery in transit");
+          } else if (!isConnectionError(startMsg)) {
+            showError(startMsg);
+          }
+        }
+      }
+
+      await refreshDeliveries();
+      return updated;
     } catch (err) {
-      setError(err.message);
+      const msg = err.message || "";
+      if (isDeliveryStateMismatch(msg)) {
+        if (action === "arrive") {
+          mergeDeliveryUpdate({ id: delivery.id, status: "courier_arriving" });
+        }
+        if (["arrive", "pickup"].includes(action) && msg.includes("'picked_up'")) {
+          try {
+            const updated = await postDeliveryAction(delivery.id, "start");
+            mergeDeliveryUpdate(updated);
+            setError("");
+            showNotice("Delivery in transit");
+            await refreshDeliveries();
+            return updated;
+          } catch (startErr) {
+            const startMsg = startErr.message || "";
+            if (!isDeliveryStateMismatch(startMsg) && !isConnectionError(startMsg)) {
+              showError(startMsg);
+            }
+          }
+        }
+        if (msg.includes("'in_transit'") || msg.includes("'delivering'")) {
+          await refreshDeliveries();
+          setError("");
+          showNotice("Delivery in transit");
+          return null;
+        }
+        await refreshDeliveries();
+        setError("");
+        showNotice("Delivery state updated");
+        return null;
+      }
+      showError(msg);
+      return null;
     } finally {
       setActionBusy(false);
+      actionLockRef.current = false;
     }
   };
 
@@ -442,10 +587,30 @@ export default function DeliveryCourierDashboard() {
   };
 
   const handlePickup = async (delivery, { pickupPin, pickupConfirmed }) => {
-    await act(delivery, "pickup", {
-      pickup_pin: pickupPin || "",
-      pickup_confirmed: Boolean(pickupConfirmed),
-    });
+    await act(
+      delivery,
+      "pickup",
+      {
+        pickup_pin: pickupPin || "",
+        pickup_confirmed: Boolean(pickupConfirmed),
+      },
+      { chainStart: true, noticeMessage: "Package picked up" }
+    );
+  };
+
+  const finishDeliveredDelivery = async (delivery, noticeMessage = "Delivery completed") => {
+    setMine((current) =>
+      current.map((item) =>
+        item.id === delivery.id ? { ...item, ...delivery, status: "delivered" } : item
+      )
+    );
+    setChatOpen(false);
+    setSheetState("half");
+    setCompletedDelivery({ ...delivery, status: "delivered" });
+    setError("");
+    showNotice(noticeMessage);
+    refreshTodayEarnings().catch(() => {});
+    load().catch(() => {});
   };
 
   const handleConfirm = async (delivery, pin, proofFile) => {
@@ -454,11 +619,14 @@ export default function DeliveryCourierDashboard() {
       setError("");
       stopDeliveryOfferAlert();
       await confirmDeliveryWithProof(delivery.id, pin, proofFile);
-      setCompletedDelivery({ ...delivery, status: "delivered" });
-      await load();
-      await refreshTodayEarnings();
+      await finishDeliveredDelivery(delivery);
     } catch (err) {
-      setError(err.message);
+      const msg = err.message || "";
+      if (isDeliveryStateMismatch(msg) && msg.includes("'delivered'")) {
+        await finishDeliveredDelivery(delivery);
+      } else {
+        showError(msg);
+      }
     } finally {
       setActionBusy(false);
     }
@@ -471,14 +639,19 @@ export default function DeliveryCourierDashboard() {
       stopDeliveryOfferAlert();
       const res = await confirmStopWithProof(delivery.id, stopId, pin, proofFile);
       if (res.all_stops_completed) {
-        setCompletedDelivery({ ...delivery, status: "delivered" });
+        await finishDeliveredDelivery(delivery);
       } else {
         showNotice("Stop confirmed");
+        await load();
+        await refreshTodayEarnings();
       }
-      await load();
-      await refreshTodayEarnings();
     } catch (err) {
-      setError(err.message);
+      const msg = err.message || "";
+      if (isDeliveryStateMismatch(msg) && msg.includes("'delivered'")) {
+        await finishDeliveredDelivery(delivery);
+      } else {
+        showError(msg);
+      }
     } finally {
       setActionBusy(false);
     }
@@ -493,7 +666,7 @@ export default function DeliveryCourierDashboard() {
       await load();
       setTab("requests");
     } catch (err) {
-      setError(err.message);
+      showError(err.message);
     } finally {
       setActionBusy(false);
     }
@@ -508,7 +681,7 @@ export default function DeliveryCourierDashboard() {
       await load();
       setTab("requests");
     } catch (err) {
-      setError(err.message);
+      showError(err.message);
     } finally {
       setActionBusy(false);
     }
@@ -522,8 +695,8 @@ export default function DeliveryCourierDashboard() {
         error={error}
         onRefresh={load}
         onToggleOnline={toggleMode}
-        onlineToggleLoading={modeLoading}
-        onlineToggleDisabled={false}
+        onlineToggleLoading={toggleBusy || modeLoading}
+        onlineToggleDisabled={toggleBusy || modeLoading}
         activeDelivery={activeDelivery}
         incomingOfferActive={showIncomingOffer}
         todayEarnings={todayEarnings}

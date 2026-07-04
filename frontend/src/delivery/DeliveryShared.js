@@ -84,14 +84,30 @@ export const authHeaders = (json = true) => {
   return headers;
 };
 
+export const CONNECTION_ERROR_MESSAGE =
+  "Connection error. Check your internet and try again.";
+
+export function isConnectionError(message = "") {
+  const text = String(message || "");
+  return (
+    text.includes("Connection error") ||
+    text.includes("Check your internet") ||
+    text.includes("Failed to fetch") ||
+    text.includes("NetworkError")
+  );
+}
+
+export function isDeliveryStateMismatch(message = "") {
+  const text = String(message || "");
+  return text.includes("cannot be updated from status") || text.includes("Delivery cannot be");
+}
+
 export async function apiRequest(url, options = {}) {
   let response;
   try {
     response = await fetchWithAuth(url, options);
   } catch (error) {
-    throw new Error(
-      "Connection error. Check your internet and try again."
-    );
+    throw new Error(CONNECTION_ERROR_MESSAGE);
   }
 
   const data = await response.json().catch(() => ({}));

@@ -9,6 +9,7 @@ from authapp.models import User
 from cities.models import City, Region
 from payments.models import DriverPayoutMethod
 from taxi.drivers.models import DriverDocument, DriverProfile
+from legal.constants import COURIER_TERMS_VERSION, CUSTOMER_DELIVERY_TERMS_VERSION, CUSTOMER_PRIVACY_VERSION
 
 from .models import Delivery, DriverDeliverySettings
 
@@ -34,6 +35,22 @@ class DeliveryFlowTests(APITestCase):
             national_id_number="8765432190",
             rider_status="approved",
         )
+        self.customer.delivery_terms_accepted = True
+        self.customer.delivery_terms_accepted_at = timezone.now()
+        self.customer.delivery_terms_version = CUSTOMER_DELIVERY_TERMS_VERSION
+        self.customer.privacy_policy_accepted = True
+        self.customer.privacy_policy_accepted_at = timezone.now()
+        self.customer.privacy_policy_version = CUSTOMER_PRIVACY_VERSION
+        self.customer.save(
+            update_fields=[
+                "delivery_terms_accepted",
+                "delivery_terms_accepted_at",
+                "delivery_terms_version",
+                "privacy_policy_accepted",
+                "privacy_policy_accepted_at",
+                "privacy_policy_version",
+            ]
+        )
         self.driver = User.objects.create_user(
             email="delivery-driver@example.com",
             password="StrongPass123",
@@ -54,6 +71,14 @@ class DeliveryFlowTests(APITestCase):
             plate_number="AB-1234",
             vehicle_plate="AB-1234",
             terms_accepted=True,
+            terms_accepted_at=timezone.now(),
+            terms_version=COURIER_TERMS_VERSION,
+            signature_image="legal/courier_signatures/test.png",
+            signed_full_name="Delivery Driver",
+            signed_ip_address="127.0.0.1",
+            signed_device_info="test client",
+            legal_declaration_accepted=True,
+            terms_scrolled_to_bottom=True,
         )
         DriverDeliverySettings.objects.create(
             driver=self.driver,
@@ -140,6 +165,33 @@ class DeliveryFlowTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["status"], "delivered")
         self.assertIsNotNone(Delivery.objects.get(id=delivery_id).delivered_at)
+
+        repeat = self.client.post(
+            f"/deliveries/{delivery_id}/confirm/",
+            {"recipient_code": recipient_code},
+            format="json",
+        )
+        self.assertEqual(repeat.status_code, 200)
+        self.assertEqual(repeat.data["status"], "delivered")
+
+    def test_late_arrive_call_is_idempotent_after_pickup(self):
+        delivery = Delivery.objects.create(
+            customer=self.customer,
+            driver=self.driver,
+            pickup="Tevragh Zeina",
+            destination="Nouakchott Airport",
+            recipient_name="Moussa Ahmed",
+            recipient_phone="+22222334455",
+            recipient_code_hash="unused",
+            status="picked_up",
+            picked_up_at=timezone.now(),
+        )
+
+        self.client.force_authenticate(self.driver)
+        response = self.client.post(f"/deliveries/{delivery.id}/arrive/", {}, format="json")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["status"], "picked_up")
 
     def test_unapproved_driver_cannot_accept_delivery(self):
         pending = User.objects.create_user(

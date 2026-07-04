@@ -1,6 +1,6 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
-import { CourierActionButton, CourierStickyActionBar } from "./components/CourierActionButton";
+import { CourierActionButton } from "./components/CourierActionButton";
 import { takePhoto } from "../native/camera";
 import { dataUrlToFile } from "./DeliveryShared";
 
@@ -25,6 +25,7 @@ export default function DeliveryDropoffProof({
   const [exceptionNote, setExceptionNote] = useState("");
   const [courierConfirmed, setCourierConfirmed] = useState(false);
   const [localError, setLocalError] = useState("");
+  const [submitted, setSubmitted] = useState(false);
   const pinInputRef = useRef(null);
 
   const canComplete = useMemo(() => {
@@ -32,6 +33,17 @@ export default function DeliveryDropoffProof({
     const photoOk = !requiresPhoto || Boolean(photo?.dataUrl);
     return pinOk && photoOk;
   }, [pin, photo, requiresPhoto]);
+
+  useEffect(() => {
+    setSubmitted(false);
+    setLocalError("");
+  }, [recipientName, recipientPhone]);
+
+  useEffect(() => {
+    if (!busy && submitted) {
+      setSubmitted(false);
+    }
+  }, [busy, submitted]);
 
   const capturePhoto = async () => {
     setLocalError("");
@@ -42,6 +54,7 @@ export default function DeliveryDropoffProof({
   };
 
   const handleSubmit = async () => {
+    if (submitted || busy) return;
     setLocalError("");
     if (pin.trim().length !== 4) {
       setLocalError("Enter the 4-digit delivery PIN from the recipient.");
@@ -52,8 +65,13 @@ export default function DeliveryDropoffProof({
       return;
     }
 
-    const file = photo?.dataUrl ? dataUrlToFile(photo.dataUrl, "delivery-proof.jpg") : null;
-    await onSubmit({ pin: pin.trim(), proofFile: file });
+    setSubmitted(true);
+    try {
+      const file = photo?.dataUrl ? dataUrlToFile(photo.dataUrl, "delivery-proof.jpg") : null;
+      await onSubmit({ pin: pin.trim(), proofFile: file });
+    } catch (_) {
+      setSubmitted(false);
+    }
   };
 
   const handleExceptionSubmit = async () => {
@@ -89,6 +107,7 @@ export default function DeliveryDropoffProof({
   return (
     <div className="cce-pin-sheet delivery-uber-proof">
       <div className="cce-pin-sheet__body">
+        <p className="cce-pin-sheet__label">Enter delivery PIN</p>
         <h3>{title}</h3>
         <p>{subtitle}</p>
 
@@ -117,11 +136,12 @@ export default function DeliveryDropoffProof({
         >
           <input
             ref={pinInputRef}
-            className="cce-pin-hidden"
+            style={{ display: "block", width: "100%", height: 52, marginTop: 4, marginBottom: 8, fontSize: 24, textAlign: "center", letterSpacing: "0.3em", border: "2px solid #e5e7eb", borderRadius: 12, background: "#f9fafb", color: "#111827" }}
             inputMode="numeric"
             pattern="[0-9]*"
             maxLength={4}
             value={pin}
+            placeholder="0000"
             aria-label="4-digit delivery PIN"
             onChange={(event) => {
               setLocalError("");
@@ -223,21 +243,21 @@ export default function DeliveryDropoffProof({
             </CourierActionButton>
           </div>
         ) : null}
-      </div>
 
-      <CourierStickyActionBar>
-        <CourierActionButton
-          variant="finish"
-          iconName="check"
-          fullWidth
-          loading={busy}
-          disabled={!canComplete}
-          onClick={handleSubmit}
-          ariaLabel={canComplete ? "Complete delivery" : "Confirm delivery PIN"}
-        >
-          {canComplete ? "Complete Delivery" : "Confirm PIN"}
-        </CourierActionButton>
-      </CourierStickyActionBar>
+        <div className="cce-pin-sheet__actions">
+          <CourierActionButton
+            variant="finish"
+            iconName="check"
+            fullWidth
+            loading={busy || submitted}
+            disabled={!canComplete || submitted}
+            onClick={handleSubmit}
+            ariaLabel={canComplete ? "Complete delivery" : "Confirm delivery PIN"}
+          >
+            {busy || submitted ? "Completing..." : canComplete ? "Complete Delivery" : "Confirm PIN"}
+          </CourierActionButton>
+        </div>
+      </div>
     </div>
   );
 }
