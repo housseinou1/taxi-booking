@@ -352,3 +352,37 @@ class TestDriverProfileView:
         response = c.get(PROFILE_URL)
         assert response.status_code == 200
         assert response.data["level"]["current_level"] == "gold"
+
+    def test_profile_auto_creates_missing_driver_profile(self):
+        payload, token = _register_driver()
+        from authapp.models import User
+
+        user = User.objects.get(email=payload["email"])
+        DriverProfile.objects.filter(user=user).delete()
+
+        c = _get_authenticated_client(token)
+        response = c.get(PROFILE_URL)
+        assert response.status_code == 200
+        assert DriverProfile.objects.filter(user=user).exists()
+        assert response.data["status"] == "pending"
+
+    def test_rider_without_profile_gets_403(self):
+        from authapp.models import User
+
+        user = User.objects.create_user(
+            email=faker.email(),
+            password="Test@1234Ab",
+            first_name=faker.first_name(),
+            last_name=faker.last_name(),
+            user_type="rider",
+        )
+        login = client.post(LOGIN_URL, {
+            "email": user.email,
+            "password": "Test@1234Ab",
+        })
+        assert login.status_code == 200, login.data
+
+        c = _get_authenticated_client(login.data["access"])
+        response = c.get(PROFILE_URL)
+        assert response.status_code == 403
+        assert response.data["code"] == "not_driver_account"

@@ -21,20 +21,7 @@ from legal.constants import DRIVER_AGREEMENT_VERSION
 from legal.services import driver_has_complete_signature, driver_requires_terms_resign, serialize_driver_signature
 
 
-def get_or_create_driver_profile(user):
-    profile, _ = DriverProfile.objects.get_or_create(
-        user=user,
-        defaults={
-            "plate_number": "TEMP-PLATE",
-            "vehicle_plate": "TEMP-PLATE",
-            "vehicle_make": "TEMP",
-            "vehicle_model": "TEMP",
-            "vehicle_color": "TEMP",
-        },
-    )
-    return profile
-
-
+from .driver_access import get_or_create_driver_profile, resolve_driver_profile
 def duplicate_driver_identity(profile, phone_number, plate_number):
     profiles = DriverProfile.objects.exclude(pk=profile.pk)
     if phone_number and profiles.filter(phone_number=phone_number).exists():
@@ -213,7 +200,11 @@ def serialize_driver(profile, request):
         "phone_number": profile.phone_number,
         "city": profile.user.city_id,
         "city_name": profile.user.city.name if profile.user.city else "",
-        "region_name": profile.user.city.region.name if profile.user.city else "",
+        "region_name": (
+            profile.user.city.region.name
+            if profile.user.city and getattr(profile.user.city, "region", None)
+            else ""
+        ),
         "national_id_number": profile.user.national_id_number or "",
         "national_id_document": file_url(request, profile.user.national_id_document),
         "has_national_id_document": bool(profile.user.national_id_document),
@@ -285,15 +276,9 @@ def serialize_public_driver(profile, request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def driver_me(request):
-    # Only create a profile if user is actually a driver (has existing profile or user_type=driver)
-    profile = DriverProfile.objects.filter(user=request.user).first()
-    if not profile:
-        if getattr(request.user, "user_type", "rider") != "driver":
-            return Response(
-                {"error": "This account is not a driver account."},
-                status=403,
-            )
-        profile = get_or_create_driver_profile(request.user)
+    profile, error = resolve_driver_profile(request.user, auto_create=True)
+    if error:
+        return Response(error["data"], status=error["status"])
     enforce_document_expiration(profile)
     return Response(serialize_driver(profile, request))
 

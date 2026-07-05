@@ -15,7 +15,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import DriverProfile
+from .driver_access import resolve_driver_profile
 from .services.level_service import DriverLevelService
 from .services.earnings_service import EarningsService
 
@@ -33,13 +33,9 @@ class DriverLevelView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        try:
-            driver_profile = request.user.driver_profile
-        except DriverProfile.DoesNotExist:
-            return Response(
-                {"error": "Driver profile not found."},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+        driver_profile, error = resolve_driver_profile(request.user, auto_create=True)
+        if error:
+            return Response(error["data"], status=error["status"])
 
         level_service = DriverLevelService()
 
@@ -136,13 +132,9 @@ class DriverStatsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        try:
-            driver_profile = request.user.driver_profile
-        except DriverProfile.DoesNotExist:
-            return Response(
-                {"error": "Driver profile not found."},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+        driver_profile, error = resolve_driver_profile(request.user, auto_create=True)
+        if error:
+            return Response(error["data"], status=error["status"])
 
         total_received = driver_profile.total_rides_received
         total_accepted = driver_profile.total_rides_accepted
@@ -211,13 +203,9 @@ class DriverProfileView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        try:
-            driver_profile = request.user.driver_profile
-        except DriverProfile.DoesNotExist:
-            return Response(
-                {"error": "Driver profile not found."},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+        driver_profile, error = resolve_driver_profile(request.user, auto_create=True)
+        if error:
+            return Response(error["data"], status=error["status"])
 
         level_service = DriverLevelService()
         earnings_service = EarningsService()

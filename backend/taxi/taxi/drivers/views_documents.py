@@ -18,6 +18,7 @@ from rest_framework.views import APIView
 
 from django.shortcuts import get_object_or_404
 
+from .driver_access import resolve_driver_profile
 from .api.serializers import DriverDocumentSerializer
 from .models import DriverDocument, DriverProfile
 from .services.document_service import DocumentService
@@ -40,12 +41,9 @@ class DriverDocumentListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        profile = DriverProfile.objects.filter(user=request.user).first()
-        if not profile:
-            return Response(
-                {"error": "Driver profile not found."},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+        profile, error = resolve_driver_profile(request.user, auto_create=True)
+        if error:
+            return Response(error["data"], status=error["status"])
 
         documents = DriverDocument.objects.filter(driver=profile).order_by(
             "document_type", "-uploaded_at"
@@ -111,12 +109,9 @@ class DriverDocumentUploadView(APIView):
     parser_classes = [MultiPartParser, FormParser]
 
     def post(self, request):
-        profile = DriverProfile.objects.filter(user=request.user).first()
-        if not profile:
-            return Response(
-                {"error": "Driver profile not found."},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+        profile, error = resolve_driver_profile(request.user, auto_create=True)
+        if error:
+            return Response(error["data"], status=error["status"])
 
         document_type = request.data.get("document_type")
         file = request.FILES.get("file")
