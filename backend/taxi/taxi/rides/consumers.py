@@ -66,6 +66,7 @@ class RideConsumer(AsyncWebsocketConsumer):
         self.delivery_groups = set()
         self.delivery_chat_groups = set()
         self.merchant_groups = set()
+        self.joined_admin_group = False
         # Timestamp of last location broadcast to session groups (throttle)
         self._last_session_location_broadcast = 0.0
 
@@ -80,8 +81,10 @@ class RideConsumer(AsyncWebsocketConsumer):
             await self.close(code=4001)
             return
 
-        # Always join the shared rides group for backward compatibility
-        await self.channel_layer.group_add(RIDES_GROUP, self.channel_name)
+        # Only staff may monitor the shared rides feed.
+        if self.user.is_staff:
+            await self.channel_layer.group_add(RIDES_GROUP, self.channel_name)
+            self.joined_admin_group = True
 
         # Join user-specific groups
         self.driver_group = f"driver_{self.user.id}"
@@ -112,8 +115,8 @@ class RideConsumer(AsyncWebsocketConsumer):
         await self.accept()
 
     async def disconnect(self, close_code):
-        # Leave the shared rides group
-        await self.channel_layer.group_discard(RIDES_GROUP, self.channel_name)
+        if self.joined_admin_group:
+            await self.channel_layer.group_discard(RIDES_GROUP, self.channel_name)
 
         # Leave driver-specific group
         if self.driver_group:
@@ -202,8 +205,8 @@ class RideConsumer(AsyncWebsocketConsumer):
             await self._handle_join_merchant(data)
         elif msg_type == "leave_merchant":
             await self._handle_leave_merchant(data)
-        else:
-            # Backward compatibility: broadcast to shared rides group
+        elif self.user.is_staff:
+            # Backward compatibility: admin monitoring on the shared rides group
             await self.channel_layer.group_send(
                 RIDES_GROUP,
                 {
@@ -211,6 +214,8 @@ class RideConsumer(AsyncWebsocketConsumer):
                     "message": data,
                 },
             )
+        else:
+            await self.send(text_data=json.dumps({"error": "Unknown message type"}))
 
     # ─── Inbound message handlers ────────────────────────────────────────
 
@@ -294,6 +299,11 @@ class RideConsumer(AsyncWebsocketConsumer):
             )
             return
 
+        allowed = await self._user_can_access_ride(ride_id)
+        if not allowed:
+            await self.send(text_data=json.dumps({"error": "Not authorized for this ride"}))
+            return
+
         ride_group = f"ride_{ride_id}"
 
         # Broadcast chat message to the ride group
@@ -324,6 +334,11 @@ class RideConsumer(AsyncWebsocketConsumer):
                     {"error": "join_ride requires 'ride_id'"}
                 )
             )
+            return
+
+        allowed = await self._user_can_access_ride(ride_id)
+        if not allowed:
+            await self.send(text_data=json.dumps({"error": "Not authorized for this ride"}))
             return
 
         ride_group = f"ride_{ride_id}"
@@ -380,6 +395,11 @@ class RideConsumer(AsyncWebsocketConsumer):
             )
             return
 
+        allowed = await self._user_can_access_session(session_id)
+        if not allowed:
+            await self.send(text_data=json.dumps({"error": "Not authorized for this session"}))
+            return
+
         session_group = f"session_{session_id}"
         await self.channel_layer.group_add(session_group, self.channel_name)
         self.session_groups.add(session_group)
@@ -432,6 +452,11 @@ class RideConsumer(AsyncWebsocketConsumer):
                     {"error": "join_delivery requires 'delivery_id'"}
                 )
             )
+            return
+
+        allowed = await self._user_can_access_delivery(delivery_id)
+        if not allowed:
+            await self.send(text_data=json.dumps({"error": "Not authorized for this delivery"}))
             return
 
         delivery_group = f"delivery_{delivery_id}"
@@ -860,6 +885,44 @@ class RideConsumer(AsyncWebsocketConsumer):
         from merchants.models import Merchant
 
         return Merchant.objects.filter(owner_id=self.user.id).exists()
+
+    @database_sync_to_async
+    def _user_can_access_ride(self, ride_id):
+        from taxi.rides.models import Ride
+
+        try:
+            ride = Ride.objects.only("rider_id", "driver_id").get(id=ride_id)
+        except Ride.DoesNotExist:
+            return False
+        if self.user.is_staff:
+            return True
+        return self.user.id in {ride.rider_id, ride.driver_id}
+
+    @database_sync_to_async
+    def _user_can_access_session(self, session_id):
+        from taxi.rides.models.share_session import ShareRideSession
+
+        try:
+            session = ShareRideSession.objects.only("driver_id").get(id=session_id)
+        except ShareRideSession.DoesNotExist:
+            return False
+        if self.user.is_staff:
+            return True
+        if session.driver_id == self.user.id:
+            return True
+        return session.rides.filter(rider_id=self.user.id).exists()
+
+    @database_sync_to_async
+    def _user_can_access_delivery(self, delivery_id):
+        from deliveries.models import Delivery
+
+        try:
+            delivery = Delivery.objects.only("customer_id", "driver_id").get(id=delivery_id)
+        except Delivery.DoesNotExist:
+            return False
+        if self.user.is_staff:
+            return True
+        return self.user.id in {delivery.customer_id, delivery.driver_id}
 
     @database_sync_to_async
     def _user_can_access_delivery_chat(self, delivery_id):

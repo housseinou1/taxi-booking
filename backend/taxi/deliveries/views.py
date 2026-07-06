@@ -67,6 +67,18 @@ from .notifications import broadcast_new_delivery_request
 from .services.delivery_service import DeliveryServiceError
 from .services.dispute_service import DisputeServiceError
 from payments.settlement_service import courier_balance_summary
+from taxi.security.abuse import rate_limit
+from taxi.security.upload_validation import validate_image_upload
+
+
+def _validated_delivery_image(file, label="Image"):
+    result = validate_image_upload(file)
+    if not result.valid:
+        return Response(
+            {"detail": result.error, "code": "invalid_upload"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    return None
 
 
 ACTIVE_CUSTOMER_STATUSES = [
@@ -202,6 +214,14 @@ def estimate_delivery_fare(request):
 @permission_classes([IsAuthenticated])
 def request_delivery(request):
     """Create a new delivery request with full category, stop, and scheduling support."""
+    retry_after = rate_limit(request, "request-delivery", limit=5, window_seconds=600)
+    if retry_after:
+        return Response(
+            {"detail": "Too many delivery requests. Please wait and try again."},
+            status=status.HTTP_429_TOO_MANY_REQUESTS,
+            headers={"Retry-After": str(retry_after)},
+        )
+
     if getattr(request.user, "rider_status", "approved") != "approved":
         return Response(
             {"detail": "Your account must be approved before requesting a delivery."},
@@ -607,9 +627,21 @@ def confirm_delivery(request, delivery_id):
         )
 
     if request.FILES.get("proof_of_delivery"):
+        upload_error = _validated_delivery_image(
+            request.FILES["proof_of_delivery"],
+            label="Proof photo",
+        )
+        if upload_error:
+            return upload_error
         delivery.proof_of_delivery = request.FILES["proof_of_delivery"]
         log_verification_event(delivery, "proof_uploaded", actor=request.user)
     if request.FILES.get("recipient_signature"):
+        upload_error = _validated_delivery_image(
+            request.FILES["recipient_signature"],
+            label="Signature image",
+        )
+        if upload_error:
+            return upload_error
         delivery.recipient_signature = request.FILES["recipient_signature"]
         log_verification_event(delivery, "signature_uploaded", actor=request.user)
 
@@ -666,6 +698,10 @@ def report_delivery_exception(request, delivery_id):
             },
             status=status.HTTP_400_BAD_REQUEST,
         )
+
+    upload_error = _validated_delivery_image(proof, label="Proof photo")
+    if upload_error:
+        return upload_error
 
     if str(request.data.get("courier_confirmed", "")).lower() not in {"1", "true", "yes"}:
         return Response(
@@ -793,6 +829,10 @@ def confirm_stop(request, delivery_id, stop_id):
             },
             status=status.HTTP_400_BAD_REQUEST,
         )
+
+    upload_error = _validated_delivery_image(proof_photo, label="Proof photo")
+    if upload_error:
+        return upload_error
 
     try:
         stop, all_done = delivery_service.complete_stop(

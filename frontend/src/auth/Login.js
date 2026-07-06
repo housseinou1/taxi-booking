@@ -3,6 +3,7 @@ import axios from "axios";
 import { useTranslation } from "react-i18next";
 import { getApiCandidates } from "../apiConfig";
 import { getSafeRedirectPath, getUserRole } from "./roleRouting";
+import { persistAuthTokens } from "./session";
 import { getAppType, isDeliveryCourierPath } from "../native/platform";
 import "../delivery/delivery-uber.css";
 
@@ -276,9 +277,11 @@ export default function Login({ onLogin }) {
         return;
       }
 
-      localStorage.setItem("access", response.data.access);
-      localStorage.setItem("refresh", response.data.refresh);
-      localStorage.setItem("user", JSON.stringify(response.data));
+      persistAuthTokens({
+        access: response.data.access,
+        refresh: response.data.refresh,
+        user: response.data,
+      });
 
       if (onLogin) {
         onLogin(response.data);

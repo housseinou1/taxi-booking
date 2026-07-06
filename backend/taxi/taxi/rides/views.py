@@ -25,7 +25,7 @@ from payments.services import (
 )
 from promotions.services import PromoCodeService
 from taxi.drivers.models import DriverProfile
-from taxi.security.abuse import rate_limit, validate_coordinates
+from taxi.security.abuse import rate_limit, pin_lockout_retry, record_pin_failure
 from locations.services import calculate_city_fare, resolve_city
 from legal.ride_terms import ensure_ride_legal_acceptance
 
@@ -285,6 +285,14 @@ def request_ride(request):
 @permission_classes([IsAuthenticated])
 def schedule_ride(request):
     """Schedule a ride for a future time."""
+    retry_after = rate_limit(request, "schedule-ride", limit=5, window_seconds=600)
+    if retry_after:
+        return Response(
+            {"detail": "Too many scheduled ride requests. Please wait and try again."},
+            status=status.HTTP_429_TOO_MANY_REQUESTS,
+            headers={"Retry-After": str(retry_after)},
+        )
+
     if getattr(request.user, "rider_status", "approved") != "approved":
         return Response(
             {"detail": "Rider account must be approved before scheduling a ride."},
@@ -647,9 +655,27 @@ def start_ride(request, ride_id):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    if not secrets.compare_digest(submitted_pin, ride.pickup_pin):
+    pin_identity = f"ride:{ride_id}:user:{request.user.id}"
+    lockout = pin_lockout_retry("ride-pickup-pin", pin_identity)
+    if lockout:
         return Response(
-            {"detail": "Incorrect pickup PIN. Ask the rider to confirm the PIN."},
+            {"detail": "Too many incorrect PIN attempts. Try again later."},
+            status=status.HTTP_429_TOO_MANY_REQUESTS,
+            headers={"Retry-After": str(lockout)},
+        )
+
+    if not secrets.compare_digest(submitted_pin, ride.pickup_pin):
+        retry = record_pin_failure("ride-pickup-pin", pin_identity)
+        detail = "Incorrect pickup PIN. Ask the rider to confirm the PIN."
+        if retry:
+            detail = "Too many incorrect PIN attempts. Try again later."
+            return Response(
+                {"detail": detail},
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+                headers={"Retry-After": str(retry)},
+            )
+        return Response(
+            {"detail": detail},
             status=status.HTTP_400_BAD_REQUEST,
         )
 

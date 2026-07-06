@@ -13,6 +13,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from authapp.views import build_user_response
 from deliveries.customer_terms import ensure_customer_delivery_terms
 from deliveries.geo import haversine_km
+from taxi.security.abuse import rate_limit
 
 from .models import Cart, CartItem, Merchant, MerchantOrder, MerchantPayout, MerchantPromotion, Product
 from .permissions import IsApprovedMerchant, IsMerchantOwner
@@ -108,6 +109,14 @@ def merchant_register(request):
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def merchant_login(request):
+    retry_after = rate_limit(request, "merchant-login", limit=10, window_seconds=900)
+    if retry_after:
+        return Response(
+            {"error": "Too many login attempts. Please wait and try again."},
+            status=status.HTTP_429_TOO_MANY_REQUESTS,
+            headers={"Retry-After": str(retry_after)},
+        )
+
     email = request.data.get("email", "").strip().lower()
     password = request.data.get("password", "")
 

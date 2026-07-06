@@ -8,12 +8,16 @@ from django.conf import settings
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 
+
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 
+from taxi.security.abuse import rate_limit
+
 from .tokens import email_verification_token
+from .password_reset_views import _blacklist_user_refresh_tokens
 
 User = get_user_model()
 
@@ -85,6 +89,14 @@ def verify_email(request):
 @permission_classes([AllowAny])
 def request_password_reset(request):
     """Send password reset link to the provided email."""
+    retry_after = rate_limit(request, "password-reset-email", limit=5, window_seconds=900)
+    if retry_after:
+        return Response(
+            {"error": "Too many reset requests. Please wait and try again."},
+            status=status.HTTP_429_TOO_MANY_REQUESTS,
+            headers={"Retry-After": str(retry_after)},
+        )
+
     email = request.data.get("email", "").strip().lower()
 
     if not email:
@@ -118,6 +130,14 @@ def request_password_reset(request):
 @permission_classes([AllowAny])
 def confirm_password_reset(request):
     """Reset password with uid + token + new_password."""
+    retry_after = rate_limit(request, "password-reset-confirm", limit=10, window_seconds=900)
+    if retry_after:
+        return Response(
+            {"error": "Too many reset attempts. Please wait and try again."},
+            status=status.HTTP_429_TOO_MANY_REQUESTS,
+            headers={"Retry-After": str(retry_after)},
+        )
+
     uid = request.data.get("uid", "")
     token = request.data.get("token", "")
     new_password = request.data.get("new_password", "")
@@ -151,5 +171,6 @@ def confirm_password_reset(request):
 
     user.set_password(new_password)
     user.save()
+    _blacklist_user_refresh_tokens(user)
 
     return Response({"message": "Password reset successfully. You can now log in."})

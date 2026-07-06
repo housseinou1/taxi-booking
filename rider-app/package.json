@@ -4,7 +4,7 @@
   "description": "Yala Rider - Book a Ride in Mauritania",
   "private": true,
   "scripts": {
-    "build": "powershell -NoProfile -Command \"Copy-Item ../frontend/.env.rider ../frontend/.env.local -Force; Remove-Item -LiteralPath ../frontend/build -Recurse -Force -ErrorAction SilentlyContinue; Push-Location ../frontend; npm run build; Pop-Location; Remove-Item -LiteralPath ./www -Recurse -Force -ErrorAction SilentlyContinue; Copy-Item ../frontend/build ./www -Recurse -Force; node ../frontend/scripts/stamp-native-app-type.js rider ./www\"",
+    "build": "powershell -NoProfile -Command \"Copy-Item ../frontend/.env.rider ../frontend/.env.local -Force; Remove-Item -LiteralPath ../frontend/build -Recurse -Force -ErrorAction SilentlyContinue; Push-Location ../frontend; $env:GENERATE_SOURCEMAP='false'; npm run build; Pop-Location; Remove-Item -LiteralPath ./www -Recurse -Force -ErrorAction SilentlyContinue; Copy-Item ../frontend/build ./www -Recurse -Force; node ../frontend/scripts/stamp-native-app-type.js rider ./www\"",
     "build:local": "powershell -NoProfile -Command \"Copy-Item ../frontend/.env.rider.localtest ../frontend/.env.local -Force; Remove-Item -LiteralPath ../frontend/build -Recurse -Force -ErrorAction SilentlyContinue; Push-Location ../frontend; npm run build; Pop-Location; Remove-Item -LiteralPath ./www -Recurse -Force -ErrorAction SilentlyContinue; Copy-Item ../frontend/build ./www -Recurse -Force; node ../frontend/scripts/stamp-native-app-type.js rider ./www\"",
     "sync": "powershell -NoProfile -Command \"Remove-Item -LiteralPath ./android/app/src/main/assets/public -Recurse -Force -ErrorAction SilentlyContinue; npx cap sync\"",
     "open:ios": "npx cap open ios",

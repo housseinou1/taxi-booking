@@ -93,6 +93,7 @@ class DeliveryService:
         actor=None,
     ) -> None:
         from security.services.fraud_service import log_verification_event
+        from taxi.security.abuse import pin_lockout_retry, record_pin_failure
 
         if not self.requires_pickup_verification(delivery):
             return
@@ -102,8 +103,16 @@ class DeliveryService:
                 delivery, "pickup_confirmed", actor=actor, success=True
             )
             return
+        pin_identity = f"delivery:{delivery.id}:user:{getattr(actor, 'id', 'unknown')}"
+        lockout = pin_lockout_retry("delivery-pickup-pin", pin_identity)
+        if lockout:
+            raise DeliveryServiceError(
+                "Too many incorrect PIN attempts. Try again later.",
+                code="pin_locked",
+            )
         submitted = str(pickup_pin or "").strip()
         if not submitted or not secrets.compare_digest(submitted, delivery.pickup_pin):
+            retry = record_pin_failure("delivery-pickup-pin", pin_identity)
             log_verification_event(
                 delivery,
                 "pickup_pin_fail",
@@ -111,6 +120,11 @@ class DeliveryService:
                 success=False,
                 metadata={"attempted": bool(submitted)},
             )
+            if retry:
+                raise DeliveryServiceError(
+                    "Too many incorrect PIN attempts. Try again later.",
+                    code="pin_locked",
+                )
             raise DeliveryServiceError(
                 "Pickup PIN is incorrect.",
                 code="invalid_pickup_pin",
@@ -586,9 +600,18 @@ class DeliveryService:
     ) -> None:
         """Verify the 4-digit dropoff PIN provided by the recipient to the courier."""
         from security.services.fraud_service import log_verification_event
+        from taxi.security.abuse import pin_lockout_retry, record_pin_failure
 
+        pin_identity = f"delivery:{delivery.id}:user:{getattr(actor, 'id', 'unknown')}"
+        lockout = pin_lockout_retry("delivery-dropoff-pin", pin_identity)
+        if lockout:
+            raise DeliveryServiceError(
+                "Too many incorrect PIN attempts. Try again later.",
+                code="pin_locked",
+            )
         submitted = str(dropoff_pin or "").strip()
         if not submitted or not secrets.compare_digest(submitted, delivery.dropoff_pin):
+            retry = record_pin_failure("delivery-dropoff-pin", pin_identity)
             log_verification_event(
                 delivery,
                 "dropoff_pin_fail",
@@ -596,6 +619,11 @@ class DeliveryService:
                 success=False,
                 metadata={"attempted": bool(submitted)},
             )
+            if retry:
+                raise DeliveryServiceError(
+                    "Too many incorrect PIN attempts. Try again later.",
+                    code="pin_locked",
+                )
             raise DeliveryServiceError(
                 "Delivery PIN is incorrect.",
                 code="invalid_dropoff_pin",

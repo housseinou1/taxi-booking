@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { API_URL } from "../apiConfig";
+import { persistAuthTokens } from "./session";
 
 function AuthPage({ onLogin }) {
   const [mode, setMode] = useState("login");
@@ -77,8 +78,10 @@ function AuthPage({ onLogin }) {
       const data = await res.json();
 
       if (res.ok) {
-        localStorage.setItem("access", data.access);
-        localStorage.setItem("refresh", data.refresh);
+        persistAuthTokens({
+          access: data.access,
+          refresh: data.refresh,
+        });
         localStorage.setItem("userType", userType);
 
         onLogin(userType);

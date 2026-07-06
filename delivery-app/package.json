@@ -4,7 +4,7 @@
   "description": "Yala Delivery - Courier packages across Mauritania",
   "private": true,
   "scripts": {
-    "build": "powershell -NoProfile -Command \"Copy-Item ../frontend/.env.delivery ../frontend/.env.local -Force; Push-Location ../frontend; npm run build; Pop-Location; Remove-Item ./www -Recurse -Force -ErrorAction SilentlyContinue; New-Item -ItemType Directory -Path ./www -Force | Out-Null; Copy-Item ../frontend/build/* ./www -Recurse -Force; node ../frontend/scripts/stamp-native-app-type.js delivery ./www\"",
+    "build": "powershell -NoProfile -Command \"Copy-Item ../frontend/.env.delivery ../frontend/.env.local -Force; Push-Location ../frontend; $env:GENERATE_SOURCEMAP='false'; npm run build; Pop-Location; Remove-Item ./www -Recurse -Force -ErrorAction SilentlyContinue; New-Item -ItemType Directory -Path ./www -Force | Out-Null; Copy-Item ../frontend/build/* ./www -Recurse -Force; node ../frontend/scripts/stamp-native-app-type.js delivery ./www\"",
     "build:local": "powershell -NoProfile -Command \"Copy-Item ../frontend/.env.delivery.localtest ../frontend/.env.local -Force; Push-Location ../frontend; npm run build; Pop-Location; Remove-Item ./www -Recurse -Force -ErrorAction SilentlyContinue; New-Item -ItemType Directory -Path ./www -Force | Out-Null; Copy-Item ../frontend/build/* ./www -Recurse -Force; node ../frontend/scripts/stamp-native-app-type.js delivery ./www\"",
     "sync": "npx cap sync",
     "open:ios": "npx cap open ios",

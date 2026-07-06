@@ -46,6 +46,57 @@ def rate_limit(request, scope, limit, window_seconds, identity=None):
     return retry_after
 
 
+def increment_abuse_counter(scope, identity, limit, window_seconds):
+    """Increment a counter and return retry-after seconds when limit is exceeded."""
+    digest = hashlib.sha256(str(identity).encode("utf-8")).hexdigest()[:24]
+    bucket = int(time.time() // window_seconds)
+    key = f"abuse:{scope}:{digest}:{bucket}"
+
+    if cache.add(key, 1, timeout=window_seconds + 5):
+        count = 1
+    else:
+        try:
+            count = cache.incr(key)
+        except ValueError:
+            cache.set(key, 1, timeout=window_seconds + 5)
+            count = 1
+
+    if count <= limit:
+        return 0
+
+    retry_after = max(1, window_seconds - int(time.time() % window_seconds))
+    logger.warning("Abuse counter exceeded: scope=%s identity=%s", scope, digest)
+    return retry_after
+
+
+def is_abuse_locked(scope, identity, limit, window_seconds):
+    """Return retry-after seconds when the abuse counter is at or above limit."""
+    digest = hashlib.sha256(str(identity).encode("utf-8")).hexdigest()[:24]
+    bucket = int(time.time() // window_seconds)
+    key = f"abuse:{scope}:{digest}:{bucket}"
+    count = cache.get(key, 0) or 0
+    if count < limit:
+        return 0
+    return max(1, window_seconds - int(time.time() % window_seconds))
+
+
+PIN_ATTEMPT_LIMIT = 5
+PIN_ATTEMPT_WINDOW_SECONDS = 600
+
+
+def pin_lockout_retry(scope, identity):
+    return is_abuse_locked(scope, identity, PIN_ATTEMPT_LIMIT, PIN_ATTEMPT_WINDOW_SECONDS)
+
+
+def record_pin_failure(scope, identity):
+    return increment_abuse_counter(
+        scope,
+        identity,
+        PIN_ATTEMPT_LIMIT,
+        PIN_ATTEMPT_WINDOW_SECONDS,
+    )
+
+
 def _haversine_km(lat1, lng1, lat2, lng2):
     radius_km = 6371.0
     phi1, phi2 = math.radians(lat1), math.radians(lat2)

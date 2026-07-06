@@ -1,6 +1,7 @@
 import React from "react";
 
 import { API_URL } from "../apiConfig";
+import { persistAuthTokens } from "../auth/session";
 import { getDeliveryCategoryIcon, getDeliveryCategoryLabel } from "./deliveryCategories";
 import { isDeliveryUberUI } from "../native/platform";
 
@@ -35,10 +36,10 @@ async function refreshAccessToken() {
       if (!response.ok) {
         throw new Error(data.detail || "Session expired");
       }
-      localStorage.setItem("access", data.access);
-      if (data.refresh) {
-        localStorage.setItem("refresh", data.refresh);
-      }
+      persistAuthTokens({
+        access: data.access,
+        refresh: data.refresh,
+      });
       return data.access;
     })
     .finally(() => {

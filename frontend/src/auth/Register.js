@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useTranslation } from "react-i18next";
 import { API_URL, getApiCandidates } from "../apiConfig";
+import { persistAuthTokens } from "./session";
 import {
   clearDeliveryCourierSession,
   getAppType,
@@ -254,9 +255,11 @@ function Register() {
         password: formData.password,
       });
 
-      localStorage.setItem("access", loginResponse.data.access);
-      localStorage.setItem("refresh", loginResponse.data.refresh);
-      localStorage.setItem("user", JSON.stringify(loginResponse.data));
+      persistAuthTokens({
+        access: loginResponse.data.access,
+        refresh: loginResponse.data.refresh,
+        user: loginResponse.data,
+      });
 
       const params = new URLSearchParams(window.location.search);
       const nextRoute = params.get("next") || localStorage.getItem("sx_login_redirect") || "";
