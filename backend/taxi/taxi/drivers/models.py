@@ -99,6 +99,15 @@ class DriverProfile(models.Model):
     total_rides_accepted = models.IntegerField(default=0)
     total_rides_received = models.IntegerField(default=0)
     total_rides_cancelled = models.IntegerField(default=0)
+    total_rides_missed = models.IntegerField(default=0)
+    total_rides_declined = models.IntegerField(default=0)
+    performance_points = models.IntegerField(default=100)
+    acceptance_rate_points = models.IntegerField(default=100)
+    cancellations_today_count = models.IntegerField(default=0)
+    cancellations_today_date = models.DateField(null=True, blank=True)
+    account_risk_flag = models.BooleanField(default=False)
+    account_under_review = models.BooleanField(default=False)
+    account_risk_reason = models.TextField(blank=True, default="")
     average_rating = models.DecimalField(
         max_digits=3, decimal_places=2, default=0.00
     )

@@ -46,6 +46,8 @@ def calculate_driver_performance(profile):
     cancelled_count = cancelled_rides.count()
     received_count = max(profile.total_rides_received or 0, assigned_count)
     accepted_count = max(profile.total_rides_accepted or 0, assigned_count)
+    missed_count = profile.total_rides_missed or 0
+    declined_count = profile.total_rides_declined or 0
 
     rating_average = completed_rides.filter(rating__isnull=False).aggregate(
         average=Avg("rating")
@@ -63,7 +65,7 @@ def calculate_driver_performance(profile):
             ):
                 on_time_count += 1
 
-    acceptance_rate = (accepted_count / received_count * 100) if received_count else 0
+    acceptance_rate = profile.acceptance_rate_points if profile.acceptance_rate_points is not None else 100
     cancellation_rate = (cancelled_count / accepted_count * 100) if accepted_count else 0
     completion_volume_score = min(completed_count / 100 * 100, 100)
     rating_score = min(float(rating_average) / 5 * 100, 100) if rating_average else 0
@@ -89,6 +91,8 @@ def calculate_driver_performance(profile):
         "status": profile.status,
         "driver_category": profile.driver_category,
         "driver_level": profile.driver_level,
+        "performance_points": profile.performance_points or 100,
+        "acceptance_rate_points": profile.acceptance_rate_points or 100,
         "score": score,
         "score_band": score_band(score),
         "acceptance_rate": float(percent(acceptance_rate)),
@@ -97,7 +101,12 @@ def calculate_driver_performance(profile):
         "completed_rides": completed_count,
         "accepted_rides": accepted_count,
         "received_rides": received_count,
+        "missed_rides": missed_count,
+        "declined_rides": declined_count,
         "cancelled_rides": cancelled_count,
+        "account_risk_flag": profile.account_risk_flag,
+        "account_under_review": profile.account_under_review,
+        "account_risk_reason": profile.account_risk_reason or "",
         "on_time_rate": float(percent(on_time_rate)),
         "on_time_arrivals": on_time_count,
         "arrival_samples": arrival_count,

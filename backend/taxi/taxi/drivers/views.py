@@ -165,11 +165,13 @@ def serialize_driver(profile, request):
 
     from .services.driver_points_service import DriverPointsService
     from .services.document_service import DocumentService
+    from .services.ride_performance_service import get_driver_performance_snapshot
 
     points_service = DriverPointsService()
     points_progress = points_service.get_progress(profile)
     points_service.sync_driver_level(profile)
     review_state = DocumentService().get_documents_review_state(profile)
+    performance_snapshot = get_driver_performance_snapshot(profile)
 
     if (not profile.user.is_active or profile.status != "approved") and profile.is_available:
         profile.is_available = False
@@ -242,6 +244,7 @@ def serialize_driver(profile, request):
         "level_progress_percentage": points_progress["progress_percentage"],
         "points_rule": points_progress["points_rule"],
         **review_state,
+        **performance_snapshot,
     }
 
 
@@ -350,16 +353,50 @@ def driver_location(request, driver_id):
     })
 
 
+def _desired_driver_availability(request, profile):
+    """Resolve whether the client wants the driver online after this request."""
+    requested = request.data.get("is_available", request.data.get("available", None))
+    if requested is None:
+        return not profile.is_available
+    if isinstance(requested, bool):
+        return requested
+    normalized = str(requested).strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    return not profile.is_available
+
+
+def _availability_toggle_response(profile, *, unchanged=False):
+    payload = {
+        "is_available": profile.is_available,
+        "status": profile.status,
+    }
+    if unchanged:
+        payload["unchanged"] = True
+    return Response(payload)
+
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def toggle_availability(request):
     profile = get_or_create_driver_profile(request.user)
     expired_documents = enforce_document_expiration(profile)
 
+    going_online = _desired_driver_availability(request, profile)
+
+    # Idempotent: already in the requested state (same pattern as confirm_delivery).
+    if profile.is_available == going_online:
+        return _availability_toggle_response(profile, unchanged=True)
+
     if not request.user.is_active:
         if profile.is_available:
             profile.is_available = False
             profile.save(update_fields=["is_available"])
+
+        if not going_online:
+            return _availability_toggle_response(profile)
 
         return Response(
             {
@@ -370,7 +407,17 @@ def toggle_availability(request):
             status=403,
         )
 
+    if not going_online:
+        if profile.is_available:
+            profile.is_available = False
+            profile.save(update_fields=["is_available"])
+
+        return _availability_toggle_response(profile)
+
     if expired_documents:
+        if profile.is_available:
+            profile.is_available = False
+            profile.save(update_fields=["is_available"])
         return Response(
             {
                 "error": f"Driver account rejected because expired documents were found: {', '.join(expired_documents)}",
@@ -382,6 +429,9 @@ def toggle_availability(request):
         )
 
     if profile.status != "approved":
+        if profile.is_available:
+            profile.is_available = False
+            profile.save(update_fields=["is_available"])
         return Response(
             {
                 "error": "Driver must be approved before going online",
@@ -391,17 +441,12 @@ def toggle_availability(request):
             status=400,
         )
 
-    requested_availability = request.data.get(
-        "is_available",
-        request.data.get("available", None),
-    )
-
-    going_online = (
-        requested_availability is None and not profile.is_available
-    ) or str(requested_availability).lower() in ["1", "true", "yes", "on"]
-    if going_online and (
+    if (
         not driver_has_complete_signature(profile) or driver_requires_terms_resign(profile)
     ):
+        if profile.is_available:
+            profile.is_available = False
+            profile.save(update_fields=["is_available"])
         return Response(
             {
                 "error": "You must sign the current Yala Driver Agreement before going online.",
@@ -413,21 +458,10 @@ def toggle_availability(request):
             status=400,
         )
 
-    if requested_availability is None:
-        profile.is_available = not profile.is_available
-    else:
-        profile.is_available = str(requested_availability).lower() in [
-            "1",
-            "true",
-            "yes",
-            "on",
-        ]
+    profile.is_available = True
+    profile.save(update_fields=["is_available"])
 
-    profile.save()
-
-    return Response({
-        "is_available": profile.is_available,
-    })
+    return _availability_toggle_response(profile)
 
 
 @api_view(["POST"])

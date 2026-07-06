@@ -5,6 +5,10 @@ from django.conf import settings
 from django.db import models
 
 
+def default_declined_driver_ids():
+    return []
+
+
 def generate_pickup_pin():
     return f"{secrets.randbelow(10000):04d}"
 
@@ -49,6 +53,19 @@ class Ride(models.Model):
         null=True,
         blank=True,
         related_name="driver_rides",
+    )
+
+    offered_driver = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="offered_rides",
+    )
+    offer_sent_at = models.DateTimeField(null=True, blank=True)
+    declined_driver_ids = models.JSONField(
+        default=default_declined_driver_ids,
+        blank=True,
     )
 
     city = models.ForeignKey(
@@ -203,6 +220,11 @@ class Ride(models.Model):
         blank=True,
         default="",
         help_text="Reason provided for the cancellation.",
+    )
+    cancellation_reason_details = models.TextField(
+        blank=True,
+        default="",
+        help_text="Additional details when the cancellation reason is Other.",
     )
     cancellation_fee = models.DecimalField(
         max_digits=10,

@@ -58,6 +58,8 @@ class CompleteRideFlowTests(APITestCase):
                 "destination": "Nouakchott Airport",
                 "distance_km": 12,
                 "fare": "250.00",
+                "ride_terms_accepted": True,
+                "privacy_accepted": True,
             },
             format="json",
         )

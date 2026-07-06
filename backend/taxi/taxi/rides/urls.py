@@ -14,6 +14,7 @@ from .views import (
     start_ride,
     complete_ride,
     cancel_ride,
+    decline_ride,
     rate_ride,
     rate_rider,
     driver_earnings_summary,
@@ -65,6 +66,7 @@ urlpatterns = [
     path("maintenance/<int:reminder_id>/complete/", complete_maintenance),
 
     path("accept/<int:ride_id>/", accept_ride),
+    path("decline/<int:ride_id>/", decline_ride),
     path("arrived/<int:ride_id>/", arrived_ride),
     path("start/<int:ride_id>/", start_ride),
     path("complete/<int:ride_id>/", complete_ride),

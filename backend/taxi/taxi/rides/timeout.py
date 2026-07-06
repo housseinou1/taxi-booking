@@ -121,21 +121,17 @@ def _handle_timeout(ride_id: int, driver_user_id: Optional[int]) -> None:
         close_old_connections()
         return
 
-    # Store the expired driver before clearing
-    expired_driver_user_id = driver_user_id or ride.driver_id
+    expired_driver_user_id = driver_user_id or ride.offered_driver_id
 
-    # Remove the current driver assignment and keep as requested for reassignment
-    ride.driver = None
-    ride.save(update_fields=["driver"])
+    try:
+        from taxi.rides.services.ride_assignment_service import handle_missed_offer
 
-    logger.info("Ride %d expired for driver %s", ride_id, expired_driver_user_id)
+        handle_missed_offer(ride_id, expired_driver_user_id)
+    except Exception as exc:
+        logger.error("Failed to handle missed offer for ride %d: %s", ride_id, exc)
 
-    # Broadcast expiration to the driver via WebSocket
     if expired_driver_user_id:
         _broadcast_ride_expired(ride_id, expired_driver_user_id)
-
-    # Attempt to reassign to another available driver
-    _attempt_reassignment(ride, excluded_driver_user_id=expired_driver_user_id)
 
     close_old_connections()
 

@@ -272,16 +272,10 @@ def request_ride(request):
 
     authorize_ride_payment(ride, discount_amount=discount_amount)
     broadcast_ride_update(ride)
-    broadcast_ride_request_to_available_drivers(ride)
 
-    # Start the 30-second timeout countdown for ride acceptance
-    start_ride_request_timeout(ride.id, driver_user_id=None)
+    from taxi.rides.services.ride_assignment_service import offer_ride_to_next_driver
 
-    # Push notification to all available drivers
-    try:
-        notify_new_ride_request_to_drivers(ride)
-    except Exception:
-        pass
+    offer_ride_to_next_driver(ride)
 
     serializer = RideSerializer(ride, context={"request": request})
     return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -401,6 +395,7 @@ def available_rides(request):
     rides = Ride.objects.filter(
         status="requested",
         driver__isnull=True,
+        offered_driver=request.user,
     )
     if request.user.city_id:
         rides = rides.filter(city_id=request.user.city_id)
@@ -506,6 +501,12 @@ def accept_ride(request, ride_id):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
+    if ride.offered_driver_id and ride.offered_driver_id != request.user.id:
+        return Response(
+            {"detail": "This ride offer was assigned to another driver."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
     active_driver_ride = (
         Ride.objects.filter(driver=request.user, status__in=DRIVER_ACTIVE_STATUSES)
         .exclude(id=ride.id)
@@ -526,7 +527,14 @@ def accept_ride(request, ride_id):
 
     ride.driver = request.user
     ride.status = "driver_arriving"
+    ride.offered_driver = None
+    ride.offer_sent_at = None
     ride.save()
+
+    if profile:
+        from taxi.drivers.services.ride_performance_service import record_ride_accepted
+
+        record_ride_accepted(profile)
 
     # Cancel the timeout since the driver accepted
     cancel_ride_request_timeout(ride.id)
@@ -541,6 +549,50 @@ def accept_ride(request, ride_id):
 
     serializer = RideSerializer(ride, context={"request": request})
     return Response(serializer.data)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def decline_ride(request, ride_id):
+    error = approved_driver_error(request.user)
+    if error:
+        return Response({"detail": error}, status=status.HTTP_403_FORBIDDEN)
+
+    ride = get_object_or_404(Ride, id=ride_id)
+
+    if ride.status != "requested":
+        return Response(
+            {"detail": "This ride is no longer available."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if ride.offered_driver_id and ride.offered_driver_id != request.user.id:
+        return Response(
+            {"detail": "This ride offer was assigned to another driver."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    from taxi.rides.services.ride_assignment_service import handle_driver_decline
+
+    reassigned = handle_driver_decline(ride, request.user)
+
+    profile = DriverProfile.objects.filter(user=request.user).first()
+    penalty = None
+    if profile:
+        from taxi.drivers.services.ride_performance_service import (
+            get_driver_performance_snapshot,
+        )
+
+        penalty = get_driver_performance_snapshot(profile)
+
+    return Response(
+        {
+            "detail": "Ride offer declined.",
+            "ride_id": ride.id,
+            "reassigned": reassigned,
+            "performance": penalty,
+        }
+    )
 
 
 @api_view(["POST"])
@@ -738,13 +790,21 @@ def cancel_ride(request, ride_id):
         )
 
     cancellation_reason = str(request.data.get("reason", "")).strip()
+    cancellation_reason_details = str(request.data.get("reason_details", "")).strip()
     if not cancellation_reason:
         return Response(
             {"detail": "Cancellation reason is required."},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
+    if cancellation_reason.lower() == "other" and len(cancellation_reason_details) < 10:
+        return Response(
+            {"detail": "Please provide at least 10 characters when selecting Other."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
     # Determine who is cancelling
+    penalty = None
     if request.user.is_staff:
         cancelled_by = "admin"
     elif ride.rider_id == request.user.id:
@@ -769,14 +829,24 @@ def cancel_ride(request, ride_id):
     ride.cancelled_at = now()
     ride.cancelled_by = cancelled_by
     ride.cancellation_reason = cancellation_reason
+    ride.cancellation_reason_details = cancellation_reason_details
     ride.cancellation_fee = cancellation_fee
     ride.save(update_fields=[
         "status", "cancelled_at", "cancelled_by",
-        "cancellation_reason", "cancellation_fee",
+        "cancellation_reason", "cancellation_reason_details", "cancellation_fee",
     ])
 
     if cancelled_by == "driver":
         DriverProfile.objects.filter(user=request.user).update(is_available=True)
+        driver_profile = DriverProfile.objects.filter(user=request.user).first()
+        if driver_profile:
+            from taxi.drivers.services.ride_performance_service import (
+                apply_driver_cancellation_penalty,
+            )
+
+            penalty = apply_driver_cancellation_penalty(driver_profile)
+    else:
+        penalty = None
 
     # Cancel any active timeout timer for this ride
     cancel_ride_request_timeout(ride.id)
@@ -793,9 +863,12 @@ def cancel_ride(request, ride_id):
     serializer = RideSerializer(ride, context={"request": request})
     data = serializer.data
     data["cancellation_reason"] = cancellation_reason
+    data["cancellation_reason_details"] = cancellation_reason_details
     data["cancelled_by"] = cancelled_by
     data["cancellation_fee"] = str(cancellation_fee)
     data["refund_status"] = "Authorization released" if cancellation_fee == 0 else f"Cancellation fee: {cancellation_fee} MRU"
+    if penalty:
+        data["driver_performance"] = penalty
     return Response(data)
 
 

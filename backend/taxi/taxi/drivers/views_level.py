@@ -140,13 +140,11 @@ class DriverStatsView(APIView):
         total_accepted = driver_profile.total_rides_accepted
         total_completed = driver_profile.total_rides_completed
         total_cancelled = driver_profile.total_rides_cancelled
+        total_missed = driver_profile.total_rides_missed
+        total_declined = driver_profile.total_rides_declined
 
         # Calculate rates
-        acceptance_rate = (
-            round((total_accepted / total_received) * 100, 1)
-            if total_received > 0
-            else 0
-        )
+        acceptance_rate = driver_profile.acceptance_rate_points or 0
         completion_rate = (
             round((total_completed / total_accepted) * 100, 1)
             if total_accepted > 0
@@ -176,6 +174,16 @@ class DriverStatsView(APIView):
                 "total_rides_accepted": total_accepted,
                 "total_rides_received": total_received,
                 "total_rides_cancelled": total_cancelled,
+                "total_rides_missed": total_missed,
+                "total_rides_declined": total_declined,
+                "performance_points": driver_profile.performance_points or 100,
+                "account_risk_flag": driver_profile.account_risk_flag,
+                "account_under_review": driver_profile.account_under_review,
+                "cancellation_warning": (
+                    driver_profile.account_risk_reason
+                    if driver_profile.account_risk_flag
+                    else ""
+                ),
                 "average_rating": float(driver_profile.average_rating),
                 "acceptance_rate": acceptance_rate,
                 "completion_rate": completion_rate,
