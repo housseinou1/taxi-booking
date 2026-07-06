@@ -31,7 +31,7 @@ This guide covers deploying the Yala taxi-booking platform to various cloud prov
 1. **Domain**: `yala.mr` (or your domain) with DNS configured
 2. **Docker & Docker Compose** installed locally for testing
 3. **Frontend build**: Run `cd frontend && npm run build` before deploying
-4. **Environment variables**: Copy `.env.production` and fill in real values
+4. **Environment variables**: Copy `backend/taxi/.env.production.template` to `backend/taxi/.env.production` and fill in real values
 5. **Generate a secret key**:
    ```bash
    python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
@@ -44,6 +44,9 @@ This guide covers deploying the Yala taxi-booking platform to various cloud prov
 ```bash
 # Build the frontend
 cd frontend && npm install && npm run build && cd ..
+
+# Copy production env template (edit secrets before first deploy)
+cp backend/taxi/.env.production.template backend/taxi/.env.production
 
 # Start all services
 docker-compose up --build -d
@@ -60,6 +63,17 @@ docker-compose exec django python manage.py createsuperuser
 # Stop services
 docker-compose down
 ```
+
+### Database SSL (`DATABASE_SSL_REQUIRE`)
+
+Yala's default Docker Compose stack runs PostgreSQL in the `postgres` service on the internal Docker network. That database **does not enable SSL**.
+
+| Deployment | `DATABASE_URL` host | `DATABASE_SSL_REQUIRE` |
+|------------|---------------------|-------------------------|
+| Docker Compose (default) | `postgres` | `False` |
+| External managed DB (RDS, Cloud SQL, etc.) | provider hostname | `True` |
+
+`docker-compose.yml` pins `DATABASE_SSL_REQUIRE=False` for `django`, `celery-worker`, and `celery-beat` so container rebuilds stay healthy even if `.env.production` still says `True`. When you move to an external database, update `DATABASE_URL` to the provider endpoint, set `DATABASE_SSL_REQUIRE=True` in `.env.production`, and remove or override the compose `DATABASE_SSL_REQUIRE` entries.
 
 ---
 
@@ -90,8 +104,8 @@ docker-compose down
 
 4. **Configure environment**:
    ```bash
-   cp backend/taxi/.env.production backend/taxi/.env
-   nano backend/taxi/.env  # Fill in real values
+   cp backend/taxi/.env.production.template backend/taxi/.env.production
+   nano backend/taxi/.env.production  # Fill in real values (keep DATABASE_SSL_REQUIRE=False for Docker Postgres)
    ```
 
 5. **Build frontend**:

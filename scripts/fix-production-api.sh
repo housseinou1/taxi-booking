@@ -13,6 +13,15 @@ echo "=== DJANGO_DEBUG ==="
 grep DJANGO_DEBUG /opt/yala/backend/taxi/.env.production 2>/dev/null \
   || grep DJANGO_DEBUG /home/yala/app/backend/taxi/.env.production
 
+echo "=== DATABASE_SSL_REQUIRE (.env file) ==="
+grep DATABASE_SSL_REQUIRE /opt/yala/backend/taxi/.env.production 2>/dev/null \
+  || grep DATABASE_SSL_REQUIRE /home/yala/app/backend/taxi/.env.production \
+  || echo "DATABASE_SSL_REQUIRE not set in .env.production"
+
+echo "=== DATABASE_SSL_REQUIRE (django container) ==="
+docker compose -p yala exec -T django printenv DATABASE_SSL_REQUIRE 2>/dev/null \
+  || echo "django container not running"
+
 ACTIVE_DIR=/opt/yala
 if [ ! -f "$ACTIVE_DIR/docker-compose.yml" ]; then
   ACTIVE_DIR=/home/yala/app

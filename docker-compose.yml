@@ -30,6 +30,10 @@ services:
       - ./backend/taxi/.env.production
     environment:
       DATABASE_URL: postgres://yala_user:${POSTGRES_PASSWORD}@postgres:5432/yala_db
+      # Internal Docker PostgreSQL does not use SSL. Compose pins this so rebuilds
+      # do not depend on a correct value in .env.production. Use True only with
+      # an external managed DATABASE_URL (see backend/taxi/.env.production.template).
+      DATABASE_SSL_REQUIRE: "False"
     depends_on:
       postgres:
         condition: service_healthy
@@ -86,6 +90,7 @@ services:
       - ./backend/taxi/.env.production
     environment:
       DATABASE_URL: postgres://yala_user:${POSTGRES_PASSWORD}@postgres:5432/yala_db
+      DATABASE_SSL_REQUIRE: "False"
     depends_on:
       postgres:
         condition: service_healthy
@@ -102,6 +107,7 @@ services:
       - ./backend/taxi/.env.production
     environment:
       DATABASE_URL: postgres://yala_user:${POSTGRES_PASSWORD}@postgres:5432/yala_db
+      DATABASE_SSL_REQUIRE: "False"
     depends_on:
       postgres:
         condition: service_healthy
