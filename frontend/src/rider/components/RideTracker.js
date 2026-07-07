@@ -56,6 +56,37 @@ const DRIVER_ASSIGNED_STATUSES = new Set([
   'completed',
 ]);
 
+const PRE_ASSIGNMENT_STATUSES = new Set(['requested', 'pending']);
+
+/**
+ * True once a driver has accepted / is en route.
+ * Must not depend on driver_name alone — WS/API updates often omit it briefly.
+ */
+export function isDriverAssignedToRide(
+  ride,
+  { eta = null, driverPosition = null, driverName = '' } = {}
+) {
+  if (!ride) return false;
+
+  const hasDriverIdentity = Boolean(
+    ride.driver ||
+    ride.driver_id ||
+    driverName ||
+    ride.driver_first_name ||
+    ride.driver_last_name ||
+    ride.driver_phone ||
+    ride.private_call_number ||
+    ride.driver_code
+  );
+
+  if (!PRE_ASSIGNMENT_STATUSES.has(ride.status)) {
+    return DRIVER_ASSIGNED_STATUSES.has(ride.status);
+  }
+
+  // Stale "requested" state while driver is already matched and moving.
+  return Boolean(driverPosition || hasDriverIdentity) && eta != null;
+}
+
 function estimateEtaMinutes(from, to) {
   if (!Array.isArray(from) || !Array.isArray(to)) return null;
 
@@ -99,6 +130,7 @@ function RideTracker({ ride, driverPosition, city = 'Nouakchott', onAddStop, onC
   const [eta, setEta] = useState(ride.eta_minutes);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
+  const [cancelOtherText, setCancelOtherText] = useState('');
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState(null);
   const [showAddStop, setShowAddStop] = useState(false);
@@ -204,11 +236,15 @@ function RideTracker({ ride, driverPosition, city = 'Nouakchott', onAddStop, onC
   const pinCode = ride.pickup_pin || ride.pin_code;
   const callNumber = ride.driver_phone || ride.driver?.phone_number || ride.private_call_number;
   const plateNumber = ride.plate_number || ride.vehicle_plate || ride.driver_vehicle_plate;
-  const driverAssigned = DRIVER_ASSIGNED_STATUSES.has(ride.status) && Boolean(rawDriverName);
   const effectiveDriverPosition =
     driverPosition ||
     getCoordinatePair(ride.driver_current_lat, ride.driver_current_lng) ||
     getCoordinatePair(ride.driver_lat, ride.driver_lng);
+  const driverAssigned = isDriverAssignedToRide(ride, {
+    eta,
+    driverPosition: effectiveDriverPosition,
+    driverName: rawDriverName,
+  });
   const nextPendingStop =
     ride.status === 'in_progress' ? getNextPendingStop(ride.stops || []) : null;
   const targetPosition =
@@ -267,13 +303,24 @@ function RideTracker({ ride, driverPosition, city = 'Nouakchott', onAddStop, onC
   const handleConfirmCancel = async () => {
     if (!cancelReason) return;
 
+    // If "Other" is selected, require at least 10 characters of explanation
+    const isOther = cancelReason === 'Other';
+    const effectiveReason = isOther ? cancelOtherText.trim() : cancelReason;
+
+    if (isOther && effectiveReason.length < 10) {
+      setCancelError('Please explain your reason (minimum 10 characters).');
+      return;
+    }
+
     setCancelling(true);
     setCancelError(null);
 
     try {
-      const result = await cancelRide(ride.id, cancelReason);
+      wsService.leaveRideGroup(ride.id);
+      const result = await cancelRide(ride.id, effectiveReason);
       setShowCancelModal(false);
       setCancelReason('');
+      setCancelOtherText('');
       if (onCancelSuccess) {
         onCancelSuccess(result);
       }
@@ -287,6 +334,7 @@ function RideTracker({ ride, driverPosition, city = 'Nouakchott', onAddStop, onC
   const handleDismissModal = () => {
     setShowCancelModal(false);
     setCancelReason('');
+    setCancelOtherText('');
     setCancelError(null);
   };
 
@@ -583,7 +631,7 @@ function RideTracker({ ride, driverPosition, city = 'Nouakchott', onAddStop, onC
                   <button
                     key={reason}
                     className={`ride-tracker__reason-option${isSelected ? ' ride-tracker__reason-option--selected' : ''}`}
-                    onClick={() => setCancelReason(reason)}
+                    onClick={() => { setCancelReason(reason); setCancelError(null); }}
                     role="radio"
                     aria-checked={isSelected}
                     type="button"
@@ -594,6 +642,26 @@ function RideTracker({ ride, driverPosition, city = 'Nouakchott', onAddStop, onC
                 );
               })}
             </div>
+
+            {cancelReason === 'Other' && (
+              <div className="ride-tracker__other-reason">
+                <label htmlFor="cancel-other-text" className="ride-tracker__other-label">
+                  Please explain your reason, minimum 10 characters.
+                </label>
+                <textarea
+                  id="cancel-other-text"
+                  className="ride-tracker__other-textarea"
+                  value={cancelOtherText}
+                  onChange={(e) => { setCancelOtherText(e.target.value); setCancelError(null); }}
+                  placeholder="Family emergency, Wrong destination, Changed plans"
+                  rows={3}
+                  maxLength={500}
+                />
+                <span className="ride-tracker__other-count">
+                  {cancelOtherText.trim().length}/10 min
+                </span>
+              </div>
+            )}
 
             {cancelError && (
               <div className="ride-tracker__error" role="alert">
@@ -612,7 +680,7 @@ function RideTracker({ ride, driverPosition, city = 'Nouakchott', onAddStop, onC
               <button
                 className="ride-tracker__modal-btn ride-tracker__modal-btn--confirm"
                 onClick={handleConfirmCancel}
-                disabled={!cancelReason || cancelling}
+                disabled={!cancelReason || cancelling || (cancelReason === 'Other' && cancelOtherText.trim().length < 10)}
                 type="button"
               >
                 {cancelling ? 'Cancelling...' : 'Confirm Cancel'}

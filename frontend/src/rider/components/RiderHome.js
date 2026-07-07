@@ -10,9 +10,11 @@ import RideTypeSelector from './RideTypeSelector';
 import BookingConfirmation from './BookingConfirmation';
 import RideTracker from './RideTracker';
 import RideChat from '../../components/RideChat';
+import PostRidePayRate from './PostRidePayRate';
 import SafetyEmergencyPanel from '../../safety/SafetyEmergencyPanel';
 import RiderHamburgerMenu from './RiderHamburgerMenu';
-import wsService from '../services/wsService';
+import wsService, { resetWsConnection } from '../services/wsService';
+import { resetAuthRedirectFlag } from '../../auth/authenticatedApi';
 import routeService from '../services/routeService';
 import apiService from '../services/apiService';
 import { calculateFare } from '../utils/fareCalculator';
@@ -109,6 +111,7 @@ function RiderHome() {
   const [showChat, setShowChat] = useState(false);
   const [showSafety, setShowSafety] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [rideStatusMessage, setRideStatusMessage] = useState('');
   const [legalCompliant, setLegalCompliant] = useState(false);
   const [requiresResign, setRequiresResign] = useState(false);
   const {
@@ -200,6 +203,22 @@ function RiderHome() {
   const fitBounds = markers.length >= 2;
   currentRideIdRef.current = currentRide?.id || null;
 
+  const clearActiveRideTracking = useCallback((rideId = null) => {
+    const resolvedRideId = rideId ?? currentRideIdRef.current;
+    if (resolvedRideId) {
+      wsService.leaveRideGroup(resolvedRideId);
+    }
+    currentRideIdRef.current = null;
+    localStorage.removeItem('selectedRideId');
+  }, []);
+
+  const notifyRideCancelled = useCallback(() => {
+    setRideStatusMessage('Ride cancelled');
+    window.setTimeout(() => {
+      setRideStatusMessage((current) => (current === 'Ride cancelled' ? '' : current));
+    }, 5000);
+  }, []);
+
   const refreshActiveRide = useCallback(
     async (rideId = null) => {
       try {
@@ -217,6 +236,40 @@ function RiderHome() {
         }
 
         if (!activeRide) {
+          if (targetRideId || currentRideIdRef.current) {
+            const endedId = targetRideId ?? currentRideIdRef.current;
+            try {
+              const endedRide = await apiService.getRideById(endedId);
+              if (endedRide.status === 'cancelled') {
+                clearActiveRideTracking(endedId);
+                notifyRideCancelled();
+                dispatch({ type: 'RIDE_CANCELLED' });
+                return;
+              }
+              if (endedRide.status === 'completed') {
+                clearActiveRideTracking(endedId);
+                dispatch({ type: 'RIDE_COMPLETED', payload: endedRide });
+                return;
+              }
+            } catch (_) {
+              clearActiveRideTracking(endedId);
+              dispatch({ type: 'RESET_RIDE' });
+            }
+          }
+          return;
+        }
+
+        // If the ride was cancelled or completed, dispatch the appropriate action
+        // instead of putting the user back in tracking mode.
+        if (activeRide.status === 'cancelled') {
+          clearActiveRideTracking(activeRide.id);
+          notifyRideCancelled();
+          dispatch({ type: 'RIDE_CANCELLED' });
+          return;
+        }
+        if (activeRide.status === 'completed') {
+          clearActiveRideTracking(activeRide.id);
+          dispatch({ type: 'RIDE_COMPLETED', payload: activeRide });
           return;
         }
 
@@ -231,7 +284,7 @@ function RiderHome() {
         // Keep the last known ride state if refresh fails.
       }
     },
-    [dispatch]
+    [clearActiveRideTracking, dispatch, notifyRideCancelled]
   );
   const trackingRoutePath = useMemo(() => {
     if (bookingStep !== 'tracking' || !currentRide || !driverPosition) {
@@ -301,6 +354,8 @@ function RiderHome() {
       }
 
       if (data.status === 'cancelled') {
+        clearActiveRideTracking(data.ride_id);
+        notifyRideCancelled();
         dispatch({ type: 'RIDE_CANCELLED' });
         return;
       }
@@ -330,7 +385,7 @@ function RiderHome() {
     });
 
     return unsubRide;
-  }, [dispatch, refreshActiveRide]);
+  }, [clearActiveRideTracking, dispatch, notifyRideCancelled, refreshActiveRide]);
 
   useEffect(() => {
     if (bookingStep !== 'tracking' || !currentRide?.id) {
@@ -378,6 +433,35 @@ function RiderHome() {
   // ─── Check for active ride on mount ────────────────────────────────
   useEffect(() => {
     refreshActiveRide();
+  }, [refreshActiveRide]);
+
+  // Refresh active ride when app returns to foreground.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        refreshActiveRide();
+      }
+    };
+
+    document.addEventListener('visibilitychange', onVisible);
+
+    let appListener;
+    const capacitorApp = window.Capacitor?.Plugins?.App;
+    if (capacitorApp?.addListener) {
+      capacitorApp
+        .addListener('appStateChange', ({ isActive }) => {
+          if (isActive) refreshActiveRide();
+        })
+        .then((listener) => {
+          appListener = listener;
+        })
+        .catch(() => {});
+    }
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      appListener?.remove?.();
+    };
   }, [refreshActiveRide]);
 
   // ─── Fetch route when pickup and destination are set ───────────────
@@ -430,6 +514,8 @@ function RiderHome() {
         return 'full';
       case 'tracking':
         return 'half';
+      case 'completed':
+        return 'full';
       default:
         return 'collapsed';
     }
@@ -440,7 +526,10 @@ function RiderHome() {
     window.location.href = path;
   }, []);
 
-  const handleLogout = useCallback(() => {
+  const handleLogout = useCallback(async () => {
+    resetAuthRedirectFlag();
+    resetWsConnection();
+    // Clear all session data from localStorage
     [
       "access",
       "refresh",
@@ -451,6 +540,11 @@ function RiderHome() {
       "sx_login_redirect",
       "yala_next_place",
     ].forEach((key) => localStorage.removeItem(key));
+    // Clear secure storage tokens (fire-and-forget for native apps)
+    import('../../native/storage').then(({ removeToken }) => {
+      removeToken("access").catch(() => {});
+      removeToken("refresh").catch(() => {});
+    }).catch(() => {});
 
     window.location.replace(`/login?logout=${Date.now()}`);
   }, []);
@@ -730,8 +824,10 @@ function RiderHome() {
   );
 
   const handleCancelSuccess = useCallback(() => {
+    clearActiveRideTracking();
+    notifyRideCancelled();
     dispatch({ type: 'RIDE_CANCELLED' });
-  }, [dispatch]);
+  }, [clearActiveRideTracking, dispatch, notifyRideCancelled]);
 
   const handleAddStopToActiveRide = useCallback(
     async (location) => {
@@ -1001,6 +1097,14 @@ function RiderHome() {
           />
         ) : null;
 
+      case 'completed':
+        return currentRide ? (
+          <PostRidePayRate
+            ride={currentRide}
+            onDone={() => dispatch({ type: 'RESET_RIDE' })}
+          />
+        ) : null;
+
       default:
         return null;
     }
@@ -1028,6 +1132,11 @@ function RiderHome() {
           }}
         >
           Updated Yala Ride terms require your acceptance before you can request a ride.
+        </div>
+      ) : null}
+      {rideStatusMessage ? (
+        <div className="rider-home__status-toast" role="status" aria-live="polite">
+          {rideStatusMessage}
         </div>
       ) : null}
       {/* Map background — always visible */}
