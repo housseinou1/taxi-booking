@@ -39,6 +39,7 @@ const AVAILABILITY_TOGGLE_WATCHDOG_MS = 5500;
 const ONLINE_NOTICE_MESSAGE = "You're online — receiving ride requests.";
 const ONLINE_NOTICE_DURATION_MS = 2500;
 const ACTIVE_RIDE_STATUSES = ["driver_arriving", "accepted", "driver_arrived", "in_progress"];
+const DRIVER_CANCEL_RIDE_STATUSES = ["accepted", "driver_arriving", "driver_arrived"];
 const formatMRU = (v) => `${Number(v || 0).toLocaleString()} MRU`;
 
 function heatmapZoneToBusyArea(zone) {
@@ -798,10 +799,18 @@ function DriverDashboardContent() {
   const activeRideStatusLabel = useMemo(() => {
     if (!activeRide) return "";
     if (activeRide.status === "driver_arriving") return "Heading to pickup";
-    if (activeRide.status === "driver_arrived") return "Arrived at pickup";
+    if (activeRide.status === "driver_arrived") {
+      return activeRide.pickup_pin_verified
+        ? "PIN verified — ready to start"
+        : "Arrived at pickup";
+    }
     if (activeRide.status === "in_progress") return "Ride in progress";
     return "Active ride";
   }, [activeRide]);
+
+  const canCancelActiveRide = Boolean(
+    activeRide && DRIVER_CANCEL_RIDE_STATUSES.includes(activeRide.status)
+  );
 
   // Auto-accept incoming rides when enabled
   useEffect(() => {
@@ -1002,7 +1011,7 @@ function DriverDashboardContent() {
                 onStatusChange={handleRideStatusChange}
               />
             </div>
-            {["driver_arriving", "driver_arrived"].includes(activeRide.status) ? (
+            {canCancelActiveRide ? (
               <button
                 type="button"
                 className="driver-nav-sheet__cancel"
