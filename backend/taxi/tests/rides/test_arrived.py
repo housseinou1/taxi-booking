@@ -100,8 +100,74 @@ def test_arrived_wrong_driver_blocked():
 
 
 @pytest.mark.django_db
+def test_verify_pin_keeps_driver_arrived():
+    """PIN verification must not start the trip."""
+    driver = _create_driver("d7@test.com")
+    rider = _create_rider("r6@test.com")
+    ride = Ride.objects.create(
+        rider=rider, driver=driver, pickup="A", destination="B",
+        status="driver_arrived", fare=300,
+    )
+    token = _login(driver.email)
+    client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
+    response = client.post(
+        f"/rides/verify-pin/{ride.id}/",
+        {"pickup_pin": ride.pickup_pin},
+        format="json",
+    )
+    assert response.status_code == 200
+    assert response.data["status"] == "driver_arrived"
+    assert response.data["pickup_pin_verified"] is True
+    client.credentials()
+
+
+@pytest.mark.django_db
+def test_start_requires_verified_pin():
+    """Start ride should fail until PIN is verified."""
+    driver = _create_driver("d8@test.com")
+    rider = _create_rider("r7@test.com")
+    ride = Ride.objects.create(
+        rider=rider, driver=driver, pickup="A", destination="B",
+        status="driver_arrived", fare=300,
+    )
+    token = _login(driver.email)
+    client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
+    response = client.post(f"/rides/start/{ride.id}/", {}, format="json")
+    assert response.status_code == 400
+    assert "verify" in response.data["detail"].lower()
+    client.credentials()
+
+
+@pytest.mark.django_db
+def test_driver_can_cancel_after_pin_verified():
+    """Driver may cancel after PIN verification but before trip starts."""
+    driver = _create_driver("d9@test.com")
+    rider = _create_rider("r8@test.com")
+    ride = Ride.objects.create(
+        rider=rider, driver=driver, pickup="A", destination="B",
+        status="driver_arrived", fare=300,
+    )
+    token = _login(driver.email)
+    client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
+    verify = client.post(
+        f"/rides/verify-pin/{ride.id}/",
+        {"pickup_pin": ride.pickup_pin},
+        format="json",
+    )
+    assert verify.status_code == 200
+    cancel = client.post(
+        f"/rides/cancel/{ride.id}/",
+        {"reason": "Vehicle issue"},
+        format="json",
+    )
+    assert cancel.status_code == 200
+    assert cancel.data["status"] == "cancelled"
+    client.credentials()
+
+
+@pytest.mark.django_db
 def test_start_after_arrived():
-    """driver_arrived → in_progress should succeed."""
+    """driver_arrived → in_progress should succeed after PIN verification."""
     driver = _create_driver("d6@test.com")
     rider = _create_rider("r5@test.com")
     ride = Ride.objects.create(
@@ -110,9 +176,15 @@ def test_start_after_arrived():
     )
     token = _login(driver.email)
     client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
+    verify = client.post(
+        f"/rides/verify-pin/{ride.id}/",
+        {"pickup_pin": ride.pickup_pin},
+        format="json",
+    )
+    assert verify.status_code == 200
     response = client.post(
         f"/rides/start/{ride.id}/",
-        {"pickup_pin": ride.pickup_pin},
+        {},
         format="json",
     )
     assert response.status_code == 200

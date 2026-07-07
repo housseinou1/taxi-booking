@@ -93,9 +93,15 @@ def test_start_ride_applies_waiting_fee_without_cap():
 
     token = _login(driver.email)
     client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
+    verify = client.post(
+        f"/rides/verify-pin/{ride.id}/",
+        {"pickup_pin": ride.pickup_pin},
+        format="json",
+    )
+    assert verify.status_code == 200
     response = client.post(
         f"/rides/start/{ride.id}/",
-        {"pickup_pin": ride.pickup_pin},
+        {},
         format="json",
     )
 

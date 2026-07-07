@@ -74,6 +74,7 @@ export default function ActionPanel({ onRideAction, onError }) {
   const [isActioning, setIsActioning] = useState(false);
   const [error, setError] = useState(null);
   const [pickupPin, setPickupPin] = useState("");
+  const pinVerified = Boolean(activeRide?.pickup_pin_verified);
 
   const token = localStorage.getItem("access");
   const authHeaders = { headers: { Authorization: `Bearer ${token}` } };
@@ -114,10 +115,44 @@ export default function ActionPanel({ onRideAction, onError }) {
     }
   }, [isOnline, activeRide, setOnline, addNotification, onError, authHeaders]);
 
+  const handleVerifyPin = useCallback(async () => {
+    if (!activeRide || pickupPin.length !== 4) return;
+
+    setIsActioning(true);
+    setError(null);
+
+    try {
+      const response = await axios.post(
+        `${API_URL}/rides/verify-pin/${activeRide.id || activeRide.ride_id}/`,
+        { pickup_pin: pickupPin },
+        authHeaders
+      );
+      if (onRideAction) onRideAction(response.data);
+    } catch (err) {
+      const errorMsg =
+        err.response?.data?.error ||
+        err.response?.data?.detail ||
+        "Failed to verify pickup PIN. Please try again.";
+      setError(errorMsg);
+      addNotification({ type: "error", message: errorMsg, timestamp: Date.now() });
+      if (onError) onError(errorMsg);
+    } finally {
+      setIsActioning(false);
+    }
+  }, [activeRide, addNotification, onRideAction, onError, authHeaders, pickupPin]);
+
   // ─── Contextual Ride Action Handler ─────────────────────────────────────
   const handleRideAction = useCallback(async () => {
     const action = getActionForRideStatus(activeRide?.status);
     if (!action || !activeRide) return;
+
+    if (action.endpoint === "start" && !pinVerified) {
+      const msg = "Verify the rider pickup PIN before starting the ride.";
+      setError(msg);
+      addNotification({ type: "error", message: msg, timestamp: Date.now() });
+      if (onError) onError(msg);
+      return;
+    }
 
     setIsActioning(true);
     setError(null);
@@ -125,7 +160,7 @@ export default function ActionPanel({ onRideAction, onError }) {
     try {
       const response = await axios.post(
         `${API_URL}/rides/${action.endpoint}/${activeRide.id || activeRide.ride_id}/`,
-        action.endpoint === "start" ? { pickup_pin: pickupPin } : {},
+        {},
         authHeaders
       );
 
@@ -142,7 +177,7 @@ export default function ActionPanel({ onRideAction, onError }) {
     } finally {
       setIsActioning(false);
     }
-  }, [activeRide, addNotification, onRideAction, onError, authHeaders, pickupPin]);
+  }, [activeRide, addNotification, onRideAction, onError, authHeaders, pinVerified]);
 
   // ─── Determine contextual action ───────────────────────────────────────
   const rideAction = getActionForRideStatus(activeRide?.status);
@@ -157,7 +192,7 @@ export default function ActionPanel({ onRideAction, onError }) {
         </div>
       )}
 
-      {activeRide?.status === "driver_arrived" && (
+      {activeRide?.status === "driver_arrived" && !pinVerified && (
         <div style={pickupPinCardStyle}>
           <label htmlFor="driver-pickup-pin" style={pickupPinLabelStyle}>
             Rider pickup PIN
@@ -176,7 +211,24 @@ export default function ActionPanel({ onRideAction, onError }) {
           <span style={pickupPinHelpStyle}>
             Ask the rider for the PIN after checking that they are at the pickup point.
           </span>
+          <button
+            type="button"
+            onClick={handleVerifyPin}
+            disabled={isActioning || pickupPin.length !== 4}
+            style={{
+              ...actionButtonStyle,
+              backgroundColor: "#F97316",
+              width: "100%",
+              opacity: isActioning || pickupPin.length !== 4 ? 0.7 : 1,
+            }}
+          >
+            {isActioning ? "Verifying..." : "Verify PIN"}
+          </button>
         </div>
+      )}
+
+      {activeRide?.status === "driver_arrived" && pinVerified && (
+        <div style={pickupPinHelpStyle}>PIN verified — tap Start Ride when ready.</div>
       )}
 
       <div style={panelContentStyle}>
@@ -207,12 +259,12 @@ export default function ActionPanel({ onRideAction, onError }) {
         {rideAction && (
           <button
             onClick={handleRideAction}
-            disabled={isActioning || (rideAction.endpoint === "start" && pickupPin.length !== 4)}
+            disabled={isActioning || (rideAction.endpoint === "start" && !pinVerified)}
             style={{
               ...actionButtonStyle,
               backgroundColor: rideAction.color,
-              opacity: isActioning || (rideAction.endpoint === "start" && pickupPin.length !== 4) ? 0.7 : 1,
-              cursor: isActioning || (rideAction.endpoint === "start" && pickupPin.length !== 4) ? "not-allowed" : "pointer",
+              opacity: isActioning || (rideAction.endpoint === "start" && !pinVerified) ? 0.7 : 1,
+              cursor: isActioning || (rideAction.endpoint === "start" && !pinVerified) ? "not-allowed" : "pointer",
             }}
             aria-label={rideAction.label}
           >

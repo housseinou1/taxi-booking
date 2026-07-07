@@ -5,6 +5,8 @@ import WaitingFeeBanner from "./components/WaitingFeeBanner";
 function RideStatusButtons({ ride, onStatusChange, distanceToNextKm }) {
   const [workingAction, setWorkingAction] = useState("");
   const [pickupPin, setPickupPin] = useState("");
+  const pinVerified = Boolean(ride.pickup_pin_verified);
+  const startRideButtonRef = useRef(null);
   const [navigationStarted, setNavigationStarted] = useState(() =>
     localStorage.getItem(`ride_${ride.id}_navigation_started`) === "true"
   );
@@ -34,31 +36,58 @@ function RideStatusButtons({ ride, onStatusChange, distanceToNextKm }) {
     }
   }, [markNavigationStarted, navigationStarted, ride.status]);
 
+  useEffect(() => {
+    setPickupPin("");
+  }, [ride.id]);
+
+  useEffect(() => {
+    if (!pinVerified || !startRideButtonRef.current) return;
+    startRideButtonRef.current.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+  }, [pinVerified]);
+
+  const postRideAction = async (endpoint, body = {}) => {
+    const response = await fetch(`${API_URL}/rides/${endpoint}/${ride.id}/`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("access")}`,
+      },
+      body: JSON.stringify(body),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.detail || data.error || "Action failed");
+    }
+    return data;
+  };
+
   const updateRideStatus = async (endpoint) => {
     try {
       setWorkingAction(endpoint);
-
-      const response = await fetch(`${API_URL}/rides/${endpoint}/${ride.id}/`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("access")}`,
-        },
-        body: JSON.stringify(endpoint === "start" ? { pickup_pin: pickupPin } : {}),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        alert(data.detail || data.error || "Action failed");
-        return;
+      const data = await postRideAction(endpoint);
+      if (endpoint === "start") {
+        setPickupPin("");
       }
-
-      if (endpoint === "start") setPickupPin("");
       if (onStatusChange) onStatusChange(data);
     } catch (error) {
       console.error(error);
-      alert("Server error updating ride");
+      alert(error.message || "Server error updating ride");
+    } finally {
+      setWorkingAction("");
+    }
+  };
+
+  const verifyPickupPin = async () => {
+    if (pickupPin.length !== 4) return;
+
+    try {
+      setWorkingAction("verify-pin");
+      const data = await postRideAction("verify-pin", { pickup_pin: pickupPin });
+      if (onStatusChange) onStatusChange(data);
+    } catch (error) {
+      console.error(error);
+      alert(error.message || "Could not verify pickup PIN");
     } finally {
       setWorkingAction("");
     }
@@ -138,35 +167,61 @@ function RideStatusButtons({ ride, onStatusChange, distanceToNextKm }) {
       {ride.status === "driver_arrived" && (
         <>
           <WaitingFeeBanner ride={ride} audience="driver" />
-          <div style={pickupPinCardStyle}>
-            <label htmlFor={`pickup-pin-${ride.id}`} style={pickupPinLabelStyle}>
-              Rider pickup PIN
-            </label>
-            <input
-              id={`pickup-pin-${ride.id}`}
-              value={pickupPin}
-              onChange={(event) =>
-                setPickupPin(event.target.value.replace(/\D/g, "").slice(0, 4))
-              }
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              maxLength={4}
-              placeholder="4-digit PIN"
-              style={pickupPinInputStyle}
-            />
-            <span style={pickupPinHelpStyle}>
-              Ask the rider for the PIN after confirming their identity.
-            </span>
-          </div>
-          <SlideRideAction
-            label="Slide Right to Start Ride"
-            completeLabel="Verifying PIN..."
-            color="#2563EB"
-            disabled={Boolean(workingAction) || pickupPin.length !== 4}
-            isWorking={workingAction === "start"}
-            onComplete={() => updateRideStatus("start")}
-            onDisabledAttempt={() => alert("Enter the rider's 4-digit pickup PIN first.")}
-          />
+          {!pinVerified ? (
+            <div style={pickupPinCardStyle}>
+              <label htmlFor={`pickup-pin-${ride.id}`} style={pickupPinLabelStyle}>
+                Rider pickup PIN
+              </label>
+              <input
+                id={`pickup-pin-${ride.id}`}
+                value={pickupPin}
+                onChange={(event) =>
+                  setPickupPin(event.target.value.replace(/\D/g, "").slice(0, 4))
+                }
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={4}
+                placeholder="4-digit PIN"
+                style={pickupPinInputStyle}
+              />
+              <span style={pickupPinHelpStyle}>
+                Ask the rider for the PIN after confirming their identity.
+              </span>
+              <button
+                type="button"
+                onClick={verifyPickupPin}
+                disabled={Boolean(workingAction) || pickupPin.length !== 4}
+                style={{
+                  ...primaryButtonStyle,
+                  background: "#F97316",
+                  opacity: workingAction || pickupPin.length !== 4 ? 0.72 : 1,
+                  cursor: workingAction || pickupPin.length !== 4 ? "wait" : "pointer",
+                }}
+                aria-label="Verify PIN"
+              >
+                {workingAction === "verify-pin" ? "Verifying PIN..." : "Verify PIN"}
+              </button>
+            </div>
+          ) : (
+            <>
+              <div style={pinVerifiedStyle}>PIN verified — you can still cancel if needed.</div>
+              <button
+                ref={startRideButtonRef}
+                type="button"
+                onClick={() => updateRideStatus("start")}
+                disabled={Boolean(workingAction)}
+                style={{
+                  ...primaryButtonStyle,
+                  background: "#2563EB",
+                  opacity: workingAction ? 0.72 : 1,
+                  cursor: workingAction ? "wait" : "pointer",
+                }}
+                aria-label="Start Ride"
+              >
+                {workingAction === "start" ? "Starting ride..." : "Start Ride"}
+              </button>
+            </>
+          )}
         </>
       )}
 
@@ -367,9 +422,10 @@ function SlideRideAction({
   const finishDrag = () => {
     if (!dragging) return;
 
+    const completed = progress >= 0.95 && !disabled;
     setDragging(false);
 
-    if (progress >= 0.95 && !disabled) {
+    if (completed) {
       setProgress(1);
       onComplete();
       return;
@@ -475,6 +531,17 @@ const pickupPinHelpStyle = {
   fontSize: "0.8rem",
   fontWeight: 750,
   lineHeight: 1.4,
+};
+
+const pinVerifiedStyle = {
+  padding: "12px 14px",
+  borderRadius: "14px",
+  background: "rgba(37, 99, 235, 0.12)",
+  border: "1px solid rgba(37, 99, 235, 0.28)",
+  color: "#1d4ed8",
+  fontSize: "0.9rem",
+  fontWeight: 800,
+  textAlign: "center",
 };
 
 const baseButtonStyle = {

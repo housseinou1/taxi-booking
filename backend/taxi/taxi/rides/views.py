@@ -25,7 +25,7 @@ from payments.services import (
 )
 from promotions.services import PromoCodeService
 from taxi.drivers.models import DriverProfile
-from taxi.security.abuse import rate_limit, pin_lockout_retry, record_pin_failure
+from taxi.security.abuse import rate_limit, pin_lockout_retry, record_pin_failure, validate_coordinates
 from locations.services import calculate_city_fare, resolve_city
 from legal.ride_terms import ensure_ride_legal_acceptance
 
@@ -633,35 +633,21 @@ def arrived_ride(request, ride_id):
     return Response(serializer.data)
 
 
-@api_view(["POST"])
-@permission_classes([IsAuthenticated])
-def start_ride(request, ride_id):
-    ride = get_object_or_404(
-        Ride,
-        id=ride_id,
-        driver=request.user,
-    )
-
-    if ride.status != "driver_arrived":
-        return Response(
-            {"detail": "Ride can only be started after driver arrives."},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-
-    submitted_pin = str(request.data.get("pickup_pin", "")).strip()
-    if not submitted_pin:
-        return Response(
-            {"detail": "Enter the rider's 4-digit pickup PIN before starting the ride."},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-
-    pin_identity = f"ride:{ride_id}:user:{request.user.id}"
+def _check_ride_pickup_pin(ride, ride_id, user, submitted_pin):
+    """Validate pickup PIN and return an error Response, or None if valid."""
+    pin_identity = f"ride:{ride_id}:user:{user.id}"
     lockout = pin_lockout_retry("ride-pickup-pin", pin_identity)
     if lockout:
         return Response(
             {"detail": "Too many incorrect PIN attempts. Try again later."},
             status=status.HTTP_429_TOO_MANY_REQUESTS,
             headers={"Retry-After": str(lockout)},
+        )
+
+    if not submitted_pin:
+        return Response(
+            {"detail": "Enter the rider's 4-digit pickup PIN."},
+            status=status.HTTP_400_BAD_REQUEST,
         )
 
     if not secrets.compare_digest(submitted_pin, ride.pickup_pin):
@@ -678,9 +664,64 @@ def start_ride(request, ride_id):
             {"detail": detail},
             status=status.HTTP_400_BAD_REQUEST,
         )
+    return None
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def verify_pickup_pin(request, ride_id):
+    """Verify rider pickup PIN without starting the trip."""
+    ride = get_object_or_404(
+        Ride,
+        id=ride_id,
+        driver=request.user,
+    )
+
+    if ride.status != "driver_arrived":
+        return Response(
+            {"detail": "PIN can only be verified after the driver arrives."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if ride.pickup_pin_verified_at:
+        serializer = RideSerializer(ride, context={"request": request})
+        return Response(serializer.data)
+
+    submitted_pin = str(request.data.get("pickup_pin", "")).strip()
+    pin_error = _check_ride_pickup_pin(ride, ride_id, request.user, submitted_pin)
+    if pin_error:
+        return pin_error
+
+    ride.pickup_pin_verified_at = now()
+    ride.save(update_fields=["pickup_pin_verified_at"])
+    broadcast_ride_update(ride)
+
+    serializer = RideSerializer(ride, context={"request": request})
+    return Response(serializer.data)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def start_ride(request, ride_id):
+    ride = get_object_or_404(
+        Ride,
+        id=ride_id,
+        driver=request.user,
+    )
+
+    if ride.status != "driver_arrived":
+        return Response(
+            {"detail": "Ride can only be started after driver arrives."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if not ride.pickup_pin_verified_at:
+        return Response(
+            {"detail": "Verify the rider pickup PIN before starting the ride."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     ride.status = "in_progress"
-    ride.pickup_pin_verified_at = now()
 
     waiting_fee = Decimal("0")
     if ride.driver_arrived_at:
@@ -693,7 +734,7 @@ def start_ride(request, ride_id):
         ride.app_fee = calculate_app_fee(ride.fare)
         ride.driver_earning = ride.fare - ride.app_fee
 
-    ride.save(update_fields=["status", "pickup_pin_verified_at", "waiting_fee", "fare", "app_fee", "driver_earning"])
+    ride.save(update_fields=["status", "waiting_fee", "fare", "app_fee", "driver_earning"])
     broadcast_ride_update(ride)
 
     # Push notification to rider

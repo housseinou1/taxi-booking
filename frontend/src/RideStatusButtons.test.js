@@ -20,10 +20,23 @@ describe("RideStatusButtons core driver actions", () => {
     expect(screen.getByRole("button", { name: "Slide Right to Arrive" })).toBeInTheDocument();
   });
 
-  it("shows Start Ride after the driver arrives", () => {
+  it("shows Verify PIN after the driver arrives", () => {
     render(<RideStatusButtons ride={makeRide("driver_arrived")} />);
 
-    expect(screen.getByRole("button", { name: "Slide Right to Start Ride" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Rider pickup PIN")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Verify PIN" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Start Ride" })).not.toBeInTheDocument();
+  });
+
+  it("shows Start Ride after PIN is verified", () => {
+    render(
+      <RideStatusButtons
+        ride={{ ...makeRide("driver_arrived"), pickup_pin_verified: true }}
+      />
+    );
+
+    expect(screen.getByRole("button", { name: "Start Ride" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Verify PIN" })).not.toBeInTheDocument();
   });
 
   it("shows Finish Ride while the ride is in progress", () => {

@@ -100,15 +100,24 @@ class CompleteRideFlowTests(APITestCase):
 
         self.client.force_authenticate(self.driver)
         response = self.client.post(
-            f"/rides/start/{ride_id}/",
+            f"/rides/verify-pin/{ride_id}/",
             {"pickup_pin": "99999"},
             format="json",
         )
         self.assertEqual(response.status_code, 400)
 
         response = self.client.post(
-            f"/rides/start/{ride_id}/",
+            f"/rides/verify-pin/{ride_id}/",
             {"pickup_pin": pickup_pin},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["status"], "driver_arrived")
+        self.assertTrue(response.data["pickup_pin_verified"])
+
+        response = self.client.post(
+            f"/rides/start/{ride_id}/",
+            {},
             format="json",
         )
         self.assertEqual(response.status_code, 200)
