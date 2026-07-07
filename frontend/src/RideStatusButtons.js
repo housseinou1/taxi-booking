@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { API_URL } from "./apiConfig";
+import authenticatedApi from "./auth/authenticatedApi";
 import WaitingFeeBanner from "./components/WaitingFeeBanner";
 
 function RideStatusButtons({ ride, onStatusChange, distanceToNextKm }) {
@@ -23,7 +24,7 @@ function RideStatusButtons({ ride, onStatusChange, distanceToNextKm }) {
   const hasReliablePickupDistance =
     isApproachingPickup && Number.isFinite(Number(distanceToNextKm));
   const isNearPickup =
-    !hasReliablePickupDistance || Number(distanceToNextKm) <= 0.35;
+    hasReliablePickupDistance && Number(distanceToNextKm) <= 0.35;
 
   const markNavigationStarted = useCallback(() => {
     localStorage.setItem(`ride_${ride.id}_navigation_started`, "true");
@@ -46,20 +47,11 @@ function RideStatusButtons({ ride, onStatusChange, distanceToNextKm }) {
   }, [pinVerified]);
 
   const postRideAction = async (endpoint, body = {}) => {
-    const response = await fetch(`${API_URL}/rides/${endpoint}/${ride.id}/`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("access")}`,
-      },
-      body: JSON.stringify(body),
-    });
-
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.detail || data.error || "Action failed");
-    }
-    return data;
+    const response = await authenticatedApi.post(
+      `${API_URL}/rides/${endpoint}/${ride.id}/`,
+      body
+    );
+    return response.data;
   };
 
   const updateRideStatus = async (endpoint) => {
@@ -99,25 +91,17 @@ function RideStatusButtons({ ride, onStatusChange, distanceToNextKm }) {
     try {
       setWorkingAction(`${endpoint}-${stop.id}`);
 
-      const response = await fetch(`${API_URL}/rides/${ride.id}/stops/${stop.id}/${endpoint}/`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("access")}`,
-        },
-      });
+      const response = await authenticatedApi.post(
+        `${API_URL}/rides/${ride.id}/stops/${stop.id}/${endpoint}/`,
+        {}
+      );
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        alert(data.detail || data.error || "Stop action failed");
-        return;
-      }
+      const data = response.data;
 
       if (onStatusChange) onStatusChange(data);
     } catch (error) {
       console.error(error);
-      alert("Server error updating stop");
+      alert(error.response?.data?.detail || error.response?.data?.error || "Server error updating stop");
     } finally {
       setWorkingAction("");
     }

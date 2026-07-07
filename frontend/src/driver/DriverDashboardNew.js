@@ -21,6 +21,8 @@ import {
 } from "./utils/driverLegalGate";
 import { formatAvailabilityApiError } from "./utils/availabilityErrors";
 import { isDeliveryAppInstall, isDriverLyftUI } from "../native/platform";
+import { unregisterPushNotifications } from "../native/push";
+import { haversineKm } from "../delivery/deliveryPricing";
 
 import DriverMapView from "./components/DriverMapView";
 import { getNavigationDestination } from "./components/MultiStopProgress";
@@ -141,6 +143,8 @@ function DriverDashboardContent() {
   const [driverNotice, setDriverNotice] = useState("");
   const [statusLoadError, setStatusLoadError] = useState("");
   const [toggleError, setToggleError] = useState("");
+  const [gpsUnavailable, setGpsUnavailable] = useState(false);
+  const [acceptingRideId, setAcceptingRideId] = useState(null);
 
   const alertedRideIdsRef = useRef(new Set());
   const isOnlineRef = useRef(isOnline);
@@ -150,6 +154,8 @@ function DriverDashboardContent() {
   const toggleRequestIdRef = useRef(0);
   const activeRideSnapshotRef = useRef(null);
   const onlineNoticeTimeoutRef = useRef(null);
+  const acceptingRideIdRef = useRef(null);
+  const autoAcceptedRideIdRef = useRef(null);
 
   useEffect(() => {
     isOnlineRef.current = isOnline;
@@ -344,13 +350,6 @@ function DriverDashboardContent() {
       const response = await authenticatedApi.get(`${API_URL}/rides/driver-rides/`);
       const rides = Array.isArray(response.data) ? response.data : [];
       setDriverRides((prev) => {
-        if (
-          rides.length === 0
-          && prev.some((ride) => ACTIVE_RIDE_STATUSES.includes(ride.status))
-        ) {
-          return prev;
-        }
-
         const activeRideId = activeRideSnapshotRef.current?.id;
         if (activeRideId) {
           const updatedActive = rides.find((ride) => String(ride.id) === String(activeRideId));
@@ -359,6 +358,8 @@ function DriverDashboardContent() {
           } else if (!rides.some((ride) => ACTIVE_RIDE_STATUSES.includes(ride.status))) {
             activeRideSnapshotRef.current = null;
           }
+        } else if (!rides.some((ride) => ACTIVE_RIDE_STATUSES.includes(ride.status))) {
+          activeRideSnapshotRef.current = null;
         }
 
         return rides;
@@ -389,8 +390,15 @@ function DriverDashboardContent() {
   const handleRideStatusChange = useCallback((data) => {
     const updated = data?.ride || data;
     if (updated?.id) {
-      activeRideSnapshotRef.current = updated;
+      if (["cancelled", "completed"].includes(updated.status)) {
+        activeRideSnapshotRef.current = null;
+      } else {
+        activeRideSnapshotRef.current = updated;
+      }
       setDriverRides((prev) => {
+        if (["cancelled", "completed"].includes(updated.status)) {
+          return prev.filter((ride) => String(ride.id) !== String(updated.id));
+        }
         const others = prev.filter((ride) => String(ride.id) !== String(updated.id));
         return [updated, ...others];
       });
@@ -398,7 +406,8 @@ function DriverDashboardContent() {
       fetchDriverRides();
     }
     fetchDriverStats();
-  }, [fetchDriverRides, fetchDriverStats]);
+    fetchDriverStatus();
+  }, [fetchDriverRides, fetchDriverStats, fetchDriverStatus]);
 
   const fetchHeatmap = useCallback(async () => {
     try {
@@ -428,6 +437,19 @@ function DriverDashboardContent() {
     };
 
     try {
+      if (targetOnline) {
+        const agreementOk = await ensureDriverAgreementBeforeOnline("/driver");
+        if (!agreementOk) {
+          finishToggle();
+          return;
+        }
+        if (driverProfile?.status && driverProfile.status !== "approved") {
+          setToggleError(getDriverApprovalNotice(driverProfile));
+          finishToggle();
+          return;
+        }
+      }
+
       const requestId = toggleRequestIdRef.current + 1;
       toggleRequestIdRef.current = requestId;
 
@@ -504,6 +526,7 @@ function DriverDashboardContent() {
       setToggleError("Could not verify driver status. Try again.");
     }
   }, [
+    driverProfile,
     fetchAvailableRides,
     fetchDriverStats,
     fetchDriverStatus,
@@ -545,10 +568,16 @@ function DriverDashboardContent() {
   // ─── Ride Request Handling ──────────────────────────────────────────────────
 
   const acceptRide = useCallback(async (rideId) => {
+    if (!rideId || acceptingRideIdRef.current === rideId) return;
+
+    acceptingRideIdRef.current = rideId;
+    setAcceptingRideId(rideId);
+    setAvailableRides((prev) => prev.filter((ride) => String(ride.id || ride.ride_id) !== String(rideId)));
+
     try {
       const response = await authenticatedApi.post(`${API_URL}/rides/accept/${rideId}/`, {});
       const acceptedRide = response.data?.ride || response.data || {};
-      const requestRide = availableRides.find((ride) => ride.id === rideId) || {};
+      const requestRide = availableRides.find((ride) => String(ride.id || ride.ride_id) === String(rideId)) || {};
       const hydratedRide = {
         ...requestRide,
         ...acceptedRide,
@@ -557,17 +586,22 @@ function DriverDashboardContent() {
       activeRideSnapshotRef.current = hydratedRide;
       setDriverRides((prev) => {
         const nonActive = prev.filter(
-          (ride) => ride.id !== rideId && !ACTIVE_RIDE_STATUSES.includes(ride.status)
+          (ride) => String(ride.id) !== String(rideId) && !ACTIVE_RIDE_STATUSES.includes(ride.status)
         );
         return [hydratedRide, ...nonActive];
       });
-      setAvailableRides((prev) => prev.filter((ride) => ride.id !== rideId));
       fetchAvailableRides();
       fetchDriverRides();
     } catch (error) {
       console.log("Accept ride error:", error.response?.data || error);
       if (isAuthError(error)) { sendToLogin(); return; }
       setDriverNotice(error.response?.data?.detail || error.response?.data?.error || "Could not accept ride.");
+      fetchAvailableRides();
+    } finally {
+      if (acceptingRideIdRef.current === rideId) {
+        acceptingRideIdRef.current = null;
+      }
+      setAcceptingRideId((current) => (current === rideId ? null : current));
     }
   }, [availableRides, fetchAvailableRides, fetchDriverRides, isAuthError, sendToLogin]);
 
@@ -593,9 +627,8 @@ function DriverDashboardContent() {
   }, [dismissRideOffer, fetchDriverStatus, isAuthError, sendToLogin]);
 
   const handleOfferExpired = useCallback((rideId) => {
-    dismissRideOffer(rideId);
-    fetchDriverStatus();
-  }, [dismissRideOffer, fetchDriverStatus]);
+    declineRide(rideId);
+  }, [declineRide]);
 
   // Cancel active ride (driver side)
   const [driverCancelOpen, setDriverCancelOpen] = useState(false);
@@ -613,6 +646,7 @@ function DriverDashboardContent() {
         cancelled_by: "driver",
       });
       setDriverCancelOpen(false);
+      activeRideSnapshotRef.current = null;
       fetchDriverRides();
       fetchDriverStatus();
     } catch (error) {
@@ -633,7 +667,12 @@ function DriverDashboardContent() {
 
   // ─── Navigation / Logout ────────────────────────────────────────────────────
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    try {
+      await unregisterPushNotifications(API_URL);
+    } catch (error) {
+      console.log("Push unregister error:", error);
+    }
     clearAuthSession();
     redirectToLogin("/driver");
   }, []);
@@ -712,9 +751,13 @@ function DriverDashboardContent() {
 
   // Geolocation: watch driver position
   useEffect(() => {
-    if (!navigator.geolocation) return;
+    if (!navigator.geolocation) {
+      setGpsUnavailable(true);
+      return undefined;
+    }
     const watchId = navigator.geolocation.watchPosition(
       (position) => {
+        setGpsUnavailable(false);
         const newPos = [position.coords.latitude, position.coords.longitude];
         if (isPointInServiceArea(newPos)) {
           setDriverPosition(newPos);
@@ -723,11 +766,51 @@ function DriverDashboardContent() {
           setDriverPosition(MARKET.defaultPickup.position);
         }
       },
-      () => { setDriverPosition(MARKET.defaultPickup.position); },
+      () => {
+        setGpsUnavailable(true);
+        setDriverPosition(MARKET.defaultPickup.position);
+      },
       { enableHighAccuracy: true, maximumAge: 5000, timeout: 12000 }
     );
     return () => navigator.geolocation.clearWatch(watchId);
   }, [updateDriverLocation]);
+
+  // Refresh ride state when app returns to foreground
+  useEffect(() => {
+    const refreshDashboard = () => {
+      fetchDriverStatus();
+      fetchDriverRides();
+      if (!activeRideSnapshotRef.current) {
+        fetchAvailableRides();
+      }
+    };
+
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        refreshDashboard();
+      }
+    };
+
+    document.addEventListener("visibilitychange", onVisible);
+
+    let appListener;
+    const capacitorApp = window.Capacitor?.Plugins?.App;
+    if (capacitorApp?.addListener) {
+      capacitorApp
+        .addListener("appStateChange", ({ isActive }) => {
+          if (isActive) refreshDashboard();
+        })
+        .then((listener) => {
+          appListener = listener;
+        })
+        .catch(() => {});
+    }
+
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      appListener?.remove?.();
+    };
+  }, [fetchAvailableRides, fetchDriverRides, fetchDriverStatus]);
 
   // Sound alert when new rides appear
   useEffect(() => {
@@ -812,11 +895,47 @@ function DriverDashboardContent() {
     activeRide && DRIVER_CANCEL_RIDE_STATUSES.includes(activeRide.status)
   );
 
+  const distanceToNextKm = useMemo(() => {
+    if (!activeRide || !driverPosition) return null;
+
+    const driverLat = Number(driverPosition[0]);
+    const driverLng = Number(driverPosition[1]);
+    if (!Number.isFinite(driverLat) || !Number.isFinite(driverLng)) return null;
+
+    let targetLat = null;
+    let targetLng = null;
+
+    if (["accepted", "driver_arriving"].includes(activeRide.status)) {
+      targetLat = Number(activeRide.pickup_lat);
+      targetLng = Number(activeRide.pickup_lng);
+    } else if (activeRide.status === "in_progress") {
+      const sortedStops = Array.isArray(activeRide.stops)
+        ? [...activeRide.stops].sort(
+            (left, right) => Number(left.stop_order || 0) - Number(right.stop_order || 0)
+          )
+        : [];
+      const nextStop = getNavigationDestination(sortedStops, "in_progress");
+      if (nextStop) {
+        targetLat = Number(nextStop.latitude);
+        targetLng = Number(nextStop.longitude);
+      } else {
+        targetLat = Number(activeRide.destination_lat);
+        targetLng = Number(activeRide.destination_lng);
+      }
+    }
+
+    if (!Number.isFinite(targetLat) || !Number.isFinite(targetLng)) return null;
+    return haversineKm(driverLat, driverLng, targetLat, targetLng);
+  }, [activeRide, driverPosition]);
+
   // Auto-accept incoming rides when enabled
   useEffect(() => {
     if (autoAccept && isOnline && incomingRide && !activeRide) {
       const rideId = incomingRide?.id || incomingRide?.ride_id;
-      if (rideId) acceptRide(rideId);
+      if (rideId && autoAcceptedRideIdRef.current !== rideId && !acceptingRideIdRef.current) {
+        autoAcceptedRideIdRef.current = rideId;
+        acceptRide(rideId);
+      }
     }
   }, [autoAccept, isOnline, incomingRide, activeRide, acceptRide]);
 
@@ -857,6 +976,20 @@ function DriverDashboardContent() {
       {(statusLoadError || toggleError || (driverNotice && !activeRide)) && (
         <div className="driver-dashboard-new__notice" style={noticeBannerStyle}>
           {statusLoadError || toggleError || driverNotice}
+        </div>
+      )}
+
+      {gpsUnavailable && (
+        <div
+          className="driver-dashboard-new__notice"
+          style={{
+            top: cancellationWarning && !activeRide ? 88 : 12,
+            background: "rgba(239,68,68,0.92)",
+            color: "#fff",
+          }}
+          role="alert"
+        >
+          Location unavailable. Enable GPS to navigate and mark arrival accurately.
         </div>
       )}
 
@@ -1008,6 +1141,7 @@ function DriverDashboardContent() {
             <div className="driver-nav-sheet__actions">
               <RideStatusButtons
                 ride={activeRide}
+                distanceToNextKm={distanceToNextKm}
                 onStatusChange={handleRideStatusChange}
               />
             </div>
@@ -1029,6 +1163,7 @@ function DriverDashboardContent() {
         <RideRequestCard
           ride={incomingRide}
           enableSound
+          accepting={Boolean(acceptingRideId)}
           onAccept={() => incomingRideId && acceptRide(incomingRideId)}
           onDecline={() => incomingRideId && declineRide(incomingRideId)}
           onExpired={() => incomingRideId && handleOfferExpired(incomingRideId)}

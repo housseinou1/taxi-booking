@@ -33,6 +33,7 @@ export default function RideRequestCard({
   onDecline,
   onExpired,
   enableSound = true,
+  accepting = false,
 }) {
   const totalSeconds = ride?.countdown || COUNTDOWN_SECONDS;
   const [countdown, setCountdown] = useState(totalSeconds);
@@ -47,8 +48,12 @@ export default function RideRequestCard({
     setExpired(true);
     if (onExpired) {
       onExpired();
+      return;
     }
-  }, [onExpired]);
+    if (onDecline) {
+      onDecline();
+    }
+  }, [onDecline, onExpired]);
 
   useEffect(() => {
     if (expired) return undefined;
@@ -68,14 +73,6 @@ export default function RideRequestCard({
       if (countdownRef.current) clearInterval(countdownRef.current);
     };
   }, [expired, handleExpired]);
-
-  useEffect(() => {
-    if (!expired) return undefined;
-    const timeout = setTimeout(() => {
-      if (onDecline) onDecline();
-    }, 2500);
-    return () => clearTimeout(timeout);
-  }, [expired, onDecline]);
 
   useEffect(() => {
     if (!enableSound || expired || !getRideId(ride)) {
@@ -185,14 +182,16 @@ export default function RideRequestCard({
             type="button"
             className="ride-request-sheet__accept"
             onClick={onAccept}
+            disabled={accepting}
             aria-label="Accept ride request"
           >
-            Accept
+            {accepting ? "Accepting..." : "Accept"}
           </button>
           <button
             type="button"
             className="ride-request-sheet__decline"
             onClick={onDecline}
+            disabled={accepting}
             aria-label="Decline ride request"
           >
             Decline
