@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { API_URL } from "../apiConfig";
 import { formatMoney } from "../marketConfig";
+import authenticatedApi from "../auth/authenticatedApi";
 
 const READ_KEY = "sx_read_notifications";
 const PUSH_KEY = "sx_push_notifications";
@@ -177,7 +178,10 @@ function NotificationCenter({
           </div>
 
           <div className="sx-notification-list">
-            {notifications.map((item) => {
+            {notifications.length === 0 ? (
+              <div className="sx-notification-empty">No notifications yet.</div>
+            ) : (
+              notifications.map((item) => {
               const isUnread = !readIds.includes(item.id);
 
               return (
@@ -195,7 +199,8 @@ function NotificationCenter({
                   </span>
                 </button>
               );
-            })}
+            })
+            )}
           </div>
         </section>
       )}
@@ -208,14 +213,8 @@ async function buildNotifications(mode = "ride") {
   const items = [];
 
   if (token) {
-    const headers = {
-      Authorization: `Bearer ${token}`,
-    };
-
     try {
-      const historyResponse = await axios.get(`${API_URL}/notifications/history/`, {
-        headers,
-      });
+      const historyResponse = await authenticatedApi.get(`${API_URL}/notifications/history/`);
       const history = Array.isArray(historyResponse.data) ? historyResponse.data : [];
 
       if (history.length) {
@@ -227,8 +226,8 @@ async function buildNotifications(mode = "ride") {
 
     try {
       const [ridesResponse, paymentsResponse] = await Promise.allSettled([
-        axios.get(`${API_URL}/rides/history/`, { headers }),
-        axios.get(`${API_URL}/payments/my-payments/`, { headers }),
+        authenticatedApi.get(`${API_URL}/rides/history/`),
+        authenticatedApi.get(`${API_URL}/payments/my-payments/`),
       ]);
 
       if (ridesResponse.status === "fulfilled") {
@@ -255,6 +254,10 @@ async function buildNotifications(mode = "ride") {
     } catch (error) {
       console.log("Notification load error:", error.response?.data || error);
     }
+
+    return items
+      .sort((first, second) => Number(second.rank || 0) - Number(first.rank || 0))
+      .slice(0, 12);
   }
 
   const baseline =
@@ -291,7 +294,7 @@ async function buildNotifications(mode = "ride") {
           },
         ];
 
-  return [...items, ...baseline]
+  return baseline
     .sort((first, second) => Number(second.rank || 0) - Number(first.rank || 0))
     .slice(0, 12);
 }
@@ -674,6 +677,15 @@ function NotificationCenterStyles() {
       .sx-notification-list {
         display: grid;
         gap: 10px;
+      }
+
+      .sx-notification-empty {
+        border: 1px dashed rgba(255, 255, 255, 0.16);
+        border-radius: 8px;
+        color: #cbd5e1;
+        font-size: 13px;
+        padding: 18px 14px;
+        text-align: center;
       }
 
       .sx-notification-item {

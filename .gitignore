@@ -1,11 +1,15 @@
 # Environment files
 .env
-.env.local
-.env.production
+.env.*
+!.env.example
+!.env.*.example
+!.env.production.template
+!.env.production.example
 firebase-service-account.json
 **/firebase-service-account.json
 
 # Android keystores and signing credentials — NEVER commit these
+signing/
 *.jks
 *.keystore
 *.p12

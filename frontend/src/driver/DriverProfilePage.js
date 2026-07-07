@@ -7,6 +7,7 @@ import DocumentsUnderReviewBanner from "./components/DocumentsUnderReviewBanner"
 import DriverPayoutPanel from "./components/DriverPayoutPanel";
 import {
   DOCUMENTS_UNDER_REVIEW_MESSAGE,
+  getDriverApprovalNotice,
   shouldShowDocumentsUnderReview,
 } from "./utils/documentReview";
 import "./DriverProfilePage.css";
@@ -28,6 +29,37 @@ const titleCase = (value = "") =>
   String(value)
     .replace(/_/g, " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
+
+const getRequestFailure = (reason) => {
+  const response = reason?.response;
+  const data = response?.data || {};
+  return {
+    status: response?.status,
+    message: data.detail || data.error || reason?.message || "Request failed",
+    code: data.code,
+  };
+};
+
+const getProfileLoadError = (failures = []) => {
+  const primary =
+    failures.find((item) => item.key === "base")
+    || failures.find((item) => item.key === "profile")
+    || failures[0];
+
+  if (!primary) {
+    return "We could not load your driver profile. Please try again.";
+  }
+  if (primary.status === 401) {
+    return { redirectToLogin: true };
+  }
+  if (primary.code === "not_driver_account" || primary.status === 403) {
+    return "This account is not linked to a driver profile. Complete driver registration or log in with a driver account.";
+  }
+  if (primary.code === "driver_profile_missing") {
+    return "Your driver profile is still being set up. Tap Try again or finish vehicle setup first.";
+  }
+  return primary.message || "We could not load your driver profile. Please try again.";
+};
 
 const getDocumentStatus = (document) => {
   if (!document?.file) return "missing";
@@ -112,10 +144,14 @@ export default function DriverProfilePage({ onBack }) {
       reviews: [],
       achievements: [],
     };
+    const failures = [];
 
     responses.forEach((response, index) => {
-      if (response.status !== "fulfilled") return;
       const [key] = endpoints[index];
+      if (response.status !== "fulfilled") {
+        failures.push({ key, ...getRequestFailure(response.reason) });
+        return;
+      }
       const payload = response.value.data;
       if (key === "documents") {
         next.documents = payload.documents || payload.results || [];
@@ -124,8 +160,14 @@ export default function DriverProfilePage({ onBack }) {
       else next[key] = payload;
     });
 
-    if (!next.base && !next.profile) {
-      setError("We could not load your driver profile. Please try again.");
+    const hasCoreProfile = Boolean(next.base || next.profile);
+    if (!hasCoreProfile) {
+      const loadError = getProfileLoadError(failures);
+      if (loadError?.redirectToLogin) {
+        window.location.href = "/login";
+        return;
+      }
+      setError(loadError);
     } else {
       setData(next);
       const documentsPayload = responses[endpoints.findIndex(([key]) => key === "documents")];
@@ -139,6 +181,10 @@ export default function DriverProfilePage({ onBack }) {
           allRequiredDocumentsUploaded: documentsResponse?.all_required_documents_uploaded,
         })
       );
+      const nonCoreFailure = failures.find((item) => !["base", "profile"].includes(item.key));
+      if (nonCoreFailure) {
+        console.warn("Driver profile partial load:", failures);
+      }
     }
     setLoading(false);
   }, [authHeaders, token]);
@@ -251,6 +297,15 @@ export default function DriverProfilePage({ onBack }) {
         <button type="button" className="dp-retry-btn" onClick={loadProfile}>
           Try again
         </button>
+        {String(error).toLowerCase().includes("not linked") && (
+          <button
+            type="button"
+            className="dp-retry-btn"
+            onClick={() => { window.location.href = "/driver-vehicle-setup"; }}
+          >
+            Complete driver setup
+          </button>
+        )}
       </main>
     );
   }
@@ -304,6 +359,12 @@ export default function DriverProfilePage({ onBack }) {
     document: findDocumentByType(data.documents, item.type),
   }));
 
+  const approvalStatus = getValue(enhanced.status, base.status, "pending");
+  const approvalNotice = getDriverApprovalNotice(
+    { ...base, ...enhanced, status: approvalStatus },
+    data.documents
+  );
+
   const statusBadgeLabel = (status) => {
     const map = {
       approved: "Valid",
@@ -353,6 +414,12 @@ export default function DriverProfilePage({ onBack }) {
       <div className="dp-content">
         {error && <div className="dp-alert">{error}</div>}
         {successMessage && <div className="dp-success">{successMessage}</div>}
+        {approvalStatus !== "approved" && (
+          <div className="dp-alert" role="status">
+            <strong>Approval status: {titleCase(approvalStatus)}</strong>
+            <span>{approvalNotice}</span>
+          </div>
+        )}
 
         {/* Hero Section */}
         <section className="dp-hero">

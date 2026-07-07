@@ -1,0 +1,12 @@
+What's new in Yala Delivery 1.0.1
+
+• Improved courier dashboard with earnings summary and analytics
+• More reliable delivery completion and status updates
+• Pickup and drop-off PIN verification improvements
+• Proof-of-delivery flow with clearer handoff steps
+• Faster online/offline toggle and connection handling
+• Password reset support for courier accounts
+• Updated app icon, splash screen, and notification support
+• Performance improvements and bug fixes across the delivery flow
+
+Thank you for delivering with Yala — Fast delivery • Live tracking • Secure handoff.

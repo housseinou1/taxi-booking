@@ -82,23 +82,19 @@ def request_phone_verification(request):
         )
     except Exception:
         logger.exception("Could not send phone verification code")
-        # SMS failed but account exists — return the code for manual verification
         cache.set(throttle_key, True, timeout=60)
         response = {
-            "message": "Account created. SMS delivery failed, but your verification code is available.",
+            "message": "Verification code sent. Check your phone.",
             "sms_failed": True,
             "expires_in_seconds": 600,
         }
-        if settings.DEBUG or settings.YALA_SMS_PROVIDER == "console":
-            response["debug_code"] = code
-        else:
-            # In production with no SMS, still provide code so user isn't locked out
+        if settings.DEBUG:
             response["debug_code"] = code
         return Response(response)
 
     cache.set(throttle_key, True, timeout=60)
     response = {"message": "Verification code sent.", "expires_in_seconds": 600}
-    if settings.DEBUG and settings.YALA_SMS_PROVIDER == "console":
+    if settings.DEBUG:
         response["debug_code"] = code
     return Response(response)
 

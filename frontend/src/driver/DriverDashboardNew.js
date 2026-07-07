@@ -1,31 +1,75 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import axios from "axios";
 
 import { API_URL } from "../apiConfig";
+import authenticatedApi from "../auth/authenticatedApi";
+import {
+  clearAuthSession,
+  isDriverAccount,
+  redirectToLogin,
+  restoreAuthSession,
+} from "../auth/session";
 import { MARKET, isPointInServiceArea } from "../marketConfig";
 import { subscribeRideUpdates } from "../socket";
 import { preloadNotificationSound, unlockRideRequestSound, playRideRequestAlert } from "../native/sound";
 import { getDriverApprovalNotice } from "./utils/documentReview";
-import { fetchLegalStatus } from "../legal/legalApi";
-import { redirectIfLegalResignRequired } from "../legal/legalVersionGate";
+import {
+  ensureDriverAgreementBeforeOnline,
+  isDriverTermsError,
+  loadDriverLegalGate,
+  redirectIfDriverAgreementRequired,
+  redirectToDriverAgreement,
+} from "./utils/driverLegalGate";
+import { formatAvailabilityApiError } from "./utils/availabilityErrors";
 import { isDeliveryAppInstall, isDriverLyftUI } from "../native/platform";
 
 import DriverMapView from "./components/DriverMapView";
 import { getNavigationDestination } from "./components/MultiStopProgress";
 import HamburgerMenu from "./components/HamburgerMenu";
-import DriverStatusPanel from "./components/DriverStatusPanel";
 import RideRequestCard from "./components/RideRequestCard";
 import DriverProfilePage from "./DriverProfilePage";
 import RideStatusButtons from "../RideStatusButtons";
+import RideCancellationModal from "../components/RideCancellationModal";
 import "./driver-tokens.css";
 import "./lyft-driver.css";
 
 const DRIVER_SOUND_ENABLED_KEY = "driver_ride_sound_enabled";
+const HEATMAP_REFRESH_INTERVAL = 60000;
+const AVAILABILITY_TOGGLE_TIMEOUT_MS = 5000;
+const AVAILABILITY_TOGGLE_WATCHDOG_MS = 5500;
+const ONLINE_NOTICE_MESSAGE = "You're online — receiving ride requests.";
+const ONLINE_NOTICE_DURATION_MS = 2500;
+const ACTIVE_RIDE_STATUSES = ["driver_arriving", "accepted", "driver_arrived", "in_progress"];
 const formatMRU = (v) => `${Number(v || 0).toLocaleString()} MRU`;
+
+function heatmapZoneToBusyArea(zone) {
+  const lat = Number(zone.center_lat);
+  const lng = Number(zone.center_lng);
+  const radiusKm = Number(zone.radius_km) || 1;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+
+  const points = 10;
+  const coordinates = [];
+  for (let i = 0; i < points; i += 1) {
+    const angle = (i / points) * 2 * Math.PI;
+    const dLat = (radiusKm / 111) * Math.cos(angle);
+    const dLng = (radiusKm / (111 * Math.cos((lat * Math.PI) / 180))) * Math.sin(angle);
+    coordinates.push([lat + dLat, lng + dLng]);
+  }
+
+  const intensity = Number(zone.intensity) || 0.5;
+  return {
+    coordinates,
+    color: "#00A651",
+    fillColor: "#00A651",
+    fillOpacity: 0.08 + intensity * 0.18,
+  };
+}
 
 // ─── Main Container ─────────────────────────────────────────────────────────
 
 export default function DriverDashboardNew() {
+  const [authReady, setAuthReady] = useState(false);
+
   useEffect(() => {
     if (isDeliveryAppInstall()) {
       window.location.replace("/delivery/courier");
@@ -33,31 +77,55 @@ export default function DriverDashboardNew() {
   }, []);
 
   useEffect(() => {
-    if (!localStorage.getItem("access")) return undefined;
-    fetchLegalStatus()
-      .then((data) => {
-        if (redirectIfLegalResignRequired(data, 'driver', '/driver')) {
-          return;
-        }
-        const driver = data?.driver;
-        if (
-          driver
-          && (!driver.signature_complete || driver.requires_resign)
-          && window.location.pathname !== "/driver/sign"
-        ) {
-          window.location.href = "/driver/sign?return=/driver";
-        }
-      })
-      .catch(() => {});
-    return undefined;
+    let cancelled = false;
+
+    const verifyDriverSession = async () => {
+      const result = await restoreAuthSession({ requiredRole: "driver" });
+      if (cancelled) return;
+
+      if (!result.authenticated || !isDriverAccount(result.user)) {
+        clearAuthSession();
+        redirectToLogin("/driver");
+        return;
+      }
+
+      setAuthReady(true);
+    };
+
+    verifyDriverSession();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const lyftUI = isDriverLyftUI();
+  useEffect(() => {
+    if (!authReady) return undefined;
+    let cancelled = false;
+    loadDriverLegalGate()
+      .then((gate) => {
+        if (cancelled) return;
+        redirectIfDriverAgreementRequired(gate.driver, "/driver");
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [authReady]);
 
-  // ─── State ──────────────────────────────────────────────────────────────────
+  if (!authReady) {
+    return <div className="driver-shell-loading">Checking your driver session...</div>;
+  }
+
+  return <DriverDashboardContent />;
+}
+
+function DriverDashboardContent() {
+  const lyftUI = isDriverLyftUI();
   const [isOnline, setIsOnline] = useState(false);
   const [toggleLoading, setToggleLoading] = useState(false);
   const [driverProfile, setDriverProfile] = useState(null);
+  const [heatmapZones, setHeatmapZones] = useState([]);
   const [driverPosition, setDriverPosition] = useState(null);
   const [earningsByPeriod, setEarningsByPeriod] = useState({
     today: 0, week: 0, month: 0, year: 0,
@@ -70,29 +138,67 @@ export default function DriverDashboardNew() {
   const [currentView, setCurrentView] = useState("dashboard");
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [driverNotice, setDriverNotice] = useState("");
+  const [statusLoadError, setStatusLoadError] = useState("");
+  const [toggleError, setToggleError] = useState("");
 
   const alertedRideIdsRef = useRef(new Set());
   const isOnlineRef = useRef(isOnline);
+  const hasLoadedStatusRef = useRef(false);
+  const statusFetchInFlightRef = useRef(false);
+  const availabilityMutationRef = useRef(false);
+  const toggleRequestIdRef = useRef(0);
+  const activeRideSnapshotRef = useRef(null);
+  const onlineNoticeTimeoutRef = useRef(null);
 
   useEffect(() => {
     isOnlineRef.current = isOnline;
   }, [isOnline]);
 
-  const token = localStorage.getItem("access");
+  useEffect(() => {
+    if (!toggleError) return undefined;
+    const timeout = window.setTimeout(() => setToggleError(""), 8000);
+    return () => window.clearTimeout(timeout);
+  }, [toggleError]);
 
-  const authHeaders = useMemo(
-    () => ({ headers: { Authorization: `Bearer ${token}` } }),
-    [token]
-  );
+  // Derive active ride from driver rides (sticky snapshot prevents idle UI flash).
+  const activeRide = useMemo(() => {
+    const fromList = driverRides.find((ride) =>
+      ACTIVE_RIDE_STATUSES.includes(ride.status)
+    );
+    if (fromList) {
+      activeRideSnapshotRef.current = fromList;
+      return fromList;
+    }
 
-  // Derive active ride from driver rides
-  const activeRide = useMemo(
-    () =>
-      driverRides.find((ride) =>
-        ["driver_arriving", "accepted", "driver_arrived", "in_progress"].includes(ride.status)
-      ) || null,
-    [driverRides]
-  );
+    const snapshot = activeRideSnapshotRef.current;
+    if (snapshot && ACTIVE_RIDE_STATUSES.includes(snapshot.status)) {
+      return snapshot;
+    }
+
+    activeRideSnapshotRef.current = null;
+    return null;
+  }, [driverRides]);
+
+  useEffect(() => {
+    activeRideSnapshotRef.current = activeRide;
+  }, [activeRide]);
+
+  const showOnlineNotice = useCallback(() => {
+    if (onlineNoticeTimeoutRef.current) {
+      window.clearTimeout(onlineNoticeTimeoutRef.current);
+    }
+    setDriverNotice(ONLINE_NOTICE_MESSAGE);
+    onlineNoticeTimeoutRef.current = window.setTimeout(() => {
+      setDriverNotice((current) => (current === ONLINE_NOTICE_MESSAGE ? "" : current));
+      onlineNoticeTimeoutRef.current = null;
+    }, ONLINE_NOTICE_DURATION_MS);
+  }, []);
+
+  useEffect(() => () => {
+    if (onlineNoticeTimeoutRef.current) {
+      window.clearTimeout(onlineNoticeTimeoutRef.current);
+    }
+  }, []);
 
   // Build a route preview path for DriverMapView, including intermediate stops.
   useEffect(() => {
@@ -155,15 +261,14 @@ export default function DriverDashboardNew() {
     (error) =>
       error.response?.status === 401 ||
       error.response?.data?.code === "token_not_valid" ||
-      String(error.response?.data?.detail || "").toLowerCase().includes("token"),
+      String(error.response?.data?.detail || "").toLowerCase().includes("token") ||
+      String(error.response?.data?.detail || "").toLowerCase().includes("credentials"),
     []
   );
 
   const sendToLogin = useCallback(() => {
-    localStorage.removeItem("access");
-    localStorage.removeItem("refresh");
-    localStorage.removeItem("user");
-    window.location.href = "/login";
+    clearAuthSession();
+    redirectToLogin("/driver");
   }, []);
 
   const sendToStoredRoleDashboard = useCallback(() => {
@@ -184,11 +289,18 @@ export default function DriverDashboardNew() {
   // ─── API Hooks ──────────────────────────────────────────────────────────────
 
   const fetchDriverStatus = useCallback(async () => {
+    if (statusFetchInFlightRef.current) return;
+    statusFetchInFlightRef.current = true;
+
     try {
-      const response = await axios.get(`${API_URL}/drivers/me/`, authHeaders);
+      const response = await authenticatedApi.get(`${API_URL}/drivers/me/`);
+      hasLoadedStatusRef.current = true;
+      setStatusLoadError("");
       setDriverProfile(response.data);
       const online = Boolean(response.data.is_available);
-      setIsOnline(online);
+      if (!availabilityMutationRef.current) {
+        setIsOnline(online);
+      }
       if (online && localStorage.getItem(DRIVER_SOUND_ENABLED_KEY) === "1") {
         setSoundEnabled(true);
       }
@@ -198,42 +310,67 @@ export default function DriverDashboardNew() {
     } catch (error) {
       console.log("Driver status error:", error.response?.data || error);
       if (isAuthError(error)) { sendToLogin(); return; }
-      if ([403, 404].includes(error.response?.status)) {
+      if ([404].includes(error.response?.status)) {
         setDriverNotice("This account is not a driver. Opening the correct dashboard...");
         window.setTimeout(sendToStoredRoleDashboard, 700);
         return;
       }
-      setDriverNotice(
-        error.response?.data?.detail || error.response?.data?.error || "Please log in as a driver to go online."
-      );
+      const message =
+        error.response?.data?.detail ||
+        error.response?.data?.error ||
+        "Could not load driver status.";
+      if (!hasLoadedStatusRef.current) {
+        setStatusLoadError(message);
+      }
+    } finally {
+      statusFetchInFlightRef.current = false;
     }
-  }, [authHeaders, isAuthError, sendToLogin, sendToStoredRoleDashboard]);
+  }, [isAuthError, sendToLogin, sendToStoredRoleDashboard]);
 
   const fetchAvailableRides = useCallback(async () => {
     try {
-      const response = await axios.get(`${API_URL}/rides/available/`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("access")}` },
-      });
+      const response = await authenticatedApi.get(`${API_URL}/rides/available/`);
       setAvailableRides(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.log("Available rides error:", error.response?.data || error);
+      if (isAuthError(error)) { sendToLogin(); return; }
       setAvailableRides([]);
     }
-  }, []);
+  }, [isAuthError, sendToLogin]);
 
   const fetchDriverRides = useCallback(async () => {
     try {
-      const response = await axios.get(`${API_URL}/rides/driver-rides/`, authHeaders);
-      setDriverRides(Array.isArray(response.data) ? response.data : []);
+      const response = await authenticatedApi.get(`${API_URL}/rides/driver-rides/`);
+      const rides = Array.isArray(response.data) ? response.data : [];
+      setDriverRides((prev) => {
+        if (
+          rides.length === 0
+          && prev.some((ride) => ACTIVE_RIDE_STATUSES.includes(ride.status))
+        ) {
+          return prev;
+        }
+
+        const activeRideId = activeRideSnapshotRef.current?.id;
+        if (activeRideId) {
+          const updatedActive = rides.find((ride) => String(ride.id) === String(activeRideId));
+          if (updatedActive) {
+            activeRideSnapshotRef.current = updatedActive;
+          } else if (!rides.some((ride) => ACTIVE_RIDE_STATUSES.includes(ride.status))) {
+            activeRideSnapshotRef.current = null;
+          }
+        }
+
+        return rides;
+      });
     } catch (error) {
       console.log("Driver rides error:", error.response?.data || error);
-      setDriverRides([]);
+      if (isAuthError(error)) { sendToLogin(); return; }
     }
-  }, [authHeaders]);
+  }, [isAuthError, sendToLogin]);
 
   const fetchDriverStats = useCallback(async () => {
     try {
-      const response = await axios.get(`${API_URL}/rides/driver/earnings/`, authHeaders);
+      const response = await authenticatedApi.get(`${API_URL}/rides/driver/earnings/`);
       const data = response.data || {};
       setEarningsByPeriod({
         today: data.today_earnings || 0,
@@ -244,37 +381,136 @@ export default function DriverDashboardNew() {
       setEarningsDate(data.earnings_date || null);
     } catch (error) {
       console.log("Driver stats error:", error.response?.data || error);
+      if (isAuthError(error)) { sendToLogin(); return; }
     }
-  }, [authHeaders]);
+  }, [isAuthError, sendToLogin]);
+
+  const handleRideStatusChange = useCallback((data) => {
+    const updated = data?.ride || data;
+    if (updated?.id) {
+      activeRideSnapshotRef.current = updated;
+      setDriverRides((prev) => {
+        const others = prev.filter((ride) => String(ride.id) !== String(updated.id));
+        return [updated, ...others];
+      });
+    } else {
+      fetchDriverRides();
+    }
+    fetchDriverStats();
+  }, [fetchDriverRides, fetchDriverStats]);
+
+  const fetchHeatmap = useCallback(async () => {
+    try {
+      const response = await authenticatedApi.get(`${API_URL}/drivers/heatmap/`);
+      setHeatmapZones(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      console.log("Heatmap load error:", error.response?.data || error);
+      if (isAuthError(error)) { sendToLogin(); return; }
+      setHeatmapZones([]);
+    }
+  }, [isAuthError, sendToLogin]);
 
   const toggleAvailability = useCallback(async () => {
+    if (availabilityMutationRef.current) return;
+
+    const previousOnline = isOnlineRef.current;
+    const targetOnline = !previousOnline;
+
+    availabilityMutationRef.current = true;
     setToggleLoading(true);
+    setStatusLoadError("");
+    setToggleError("");
+
+    const finishToggle = () => {
+      availabilityMutationRef.current = false;
+      setToggleLoading(false);
+    };
+
     try {
-      const response = await axios.post(`${API_URL}/drivers/availability/toggle/`, {}, authHeaders);
-      const goingOnline = Boolean(response.data.is_available);
-      setIsOnline(goingOnline);
-      if (goingOnline) {
-        await unlockRideRequestSound();
-        setSoundEnabled(true);
-        localStorage.setItem(DRIVER_SOUND_ENABLED_KEY, "1");
-        setDriverNotice("Sound alerts enabled for new ride requests.");
-      } else {
-        setSoundEnabled(false);
-        localStorage.removeItem(DRIVER_SOUND_ENABLED_KEY);
+      const requestId = toggleRequestIdRef.current + 1;
+      toggleRequestIdRef.current = requestId;
+
+      let watchdogId;
+      watchdogId = window.setTimeout(() => {
+        if (toggleRequestIdRef.current !== requestId) return;
+        toggleRequestIdRef.current += 1;
+        finishToggle();
+        setIsOnline(previousOnline);
+        setToggleError("Request timed out. Check your connection and try again.");
+      }, AVAILABILITY_TOGGLE_WATCHDOG_MS);
+
+      try {
+        const response = await authenticatedApi.post(
+          `${API_URL}/drivers/availability/toggle/`,
+          { is_available: targetOnline },
+          { timeout: AVAILABILITY_TOGGLE_TIMEOUT_MS }
+        );
+
+        if (toggleRequestIdRef.current !== requestId) return;
+
+        const goingOnline = Boolean(response.data.is_available);
+        setIsOnline(goingOnline);
+        setToggleError("");
+
+        if (goingOnline) {
+          unlockRideRequestSound().catch(() => {});
+          setSoundEnabled(true);
+          localStorage.setItem(DRIVER_SOUND_ENABLED_KEY, "1");
+          showOnlineNotice();
+          fetchHeatmap();
+          fetchAvailableRides();
+        } else {
+          setSoundEnabled(false);
+          localStorage.removeItem(DRIVER_SOUND_ENABLED_KEY);
+          setDriverNotice("");
+        }
+
+        fetchDriverStats();
+      } catch (error) {
+        if (toggleRequestIdRef.current !== requestId) return;
+
+        console.log(
+          "Toggle availability error:",
+          error.response?.status,
+          error.response?.data || error
+        );
+        if (targetOnline) {
+          if (isAuthError(error)) {
+            sendToLogin();
+            return;
+          }
+          if (isDriverTermsError(error)) {
+            redirectToDriverAgreement("/driver");
+            return;
+          }
+        } else if (isAuthError(error)) {
+          sendToLogin();
+          return;
+        }
+
+        setIsOnline(previousOnline);
+        setToggleError(formatAvailabilityApiError(error));
+        fetchDriverStatus();
+      } finally {
+        window.clearTimeout(watchdogId);
+        if (toggleRequestIdRef.current === requestId) {
+          toggleRequestIdRef.current += 1;
+          finishToggle();
+        }
       }
     } catch (error) {
-      console.log("Toggle availability error:", error.response?.data || error);
-      if (isAuthError(error)) { sendToLogin(); return; }
-      const detail = error.response?.data?.detail || error.response?.data?.error || "";
-      if (error.response?.data?.driver_terms_required || String(detail).toLowerCase().includes("driver agreement")) {
-        window.location.href = "/driver/sign?return=/driver";
-        return;
-      }
-      setDriverNotice(detail || "Could not toggle availability.");
-    } finally {
-      setToggleLoading(false);
+      console.log("Toggle availability prep error:", error);
+      setToggleError("Could not verify driver status. Try again.");
     }
-  }, [authHeaders, isAuthError, sendToLogin]);
+  }, [
+    fetchAvailableRides,
+    fetchDriverStats,
+    fetchDriverStatus,
+    fetchHeatmap,
+    isAuthError,
+    sendToLogin,
+    showOnlineNotice,
+  ]);
 
   const mergeIncomingRideRequest = useCallback((message) => {
     const rideId = message?.ride_id || message?.id;
@@ -295,22 +531,33 @@ export default function DriverDashboardNew() {
 
   const updateDriverLocation = useCallback(async (location) => {
     try {
-      await axios.post(`${API_URL}/drivers/location/update/`, { current_lat: location[0], current_lng: location[1] }, authHeaders);
+      await authenticatedApi.post(`${API_URL}/drivers/location/update/`, {
+        current_lat: location[0],
+        current_lng: location[1],
+      });
     } catch (error) {
       console.log("Location update error:", error.response?.data || error);
+      if (isAuthError(error)) { sendToLogin(); }
     }
-  }, [authHeaders]);
+  }, [isAuthError, sendToLogin]);
 
   // ─── Ride Request Handling ──────────────────────────────────────────────────
 
   const acceptRide = useCallback(async (rideId) => {
     try {
-      const response = await axios.post(`${API_URL}/rides/accept/${rideId}/`, {}, authHeaders);
+      const response = await authenticatedApi.post(`${API_URL}/rides/accept/${rideId}/`, {});
       const acceptedRide = response.data?.ride || response.data || {};
       const requestRide = availableRides.find((ride) => ride.id === rideId) || {};
-      const hydratedRide = { ...requestRide, ...acceptedRide, status: acceptedRide.status || requestRide.status || "accepted" };
+      const hydratedRide = {
+        ...requestRide,
+        ...acceptedRide,
+        status: acceptedRide.status || requestRide.status || "accepted",
+      };
+      activeRideSnapshotRef.current = hydratedRide;
       setDriverRides((prev) => {
-        const nonActive = prev.filter((ride) => ride.id !== rideId && !["driver_arriving", "accepted", "driver_arrived", "in_progress"].includes(ride.status));
+        const nonActive = prev.filter(
+          (ride) => ride.id !== rideId && !ACTIVE_RIDE_STATUSES.includes(ride.status)
+        );
         return [hydratedRide, ...nonActive];
       });
       setAvailableRides((prev) => prev.filter((ride) => ride.id !== rideId));
@@ -321,42 +568,73 @@ export default function DriverDashboardNew() {
       if (isAuthError(error)) { sendToLogin(); return; }
       setDriverNotice(error.response?.data?.detail || error.response?.data?.error || "Could not accept ride.");
     }
-  }, [authHeaders, availableRides, fetchAvailableRides, fetchDriverRides, isAuthError, sendToLogin]);
+  }, [availableRides, fetchAvailableRides, fetchDriverRides, isAuthError, sendToLogin]);
 
-  const declineRide = useCallback((rideId) => {
-    setAvailableRides((prev) => prev.filter((r) => r.id !== rideId));
+  const dismissRideOffer = useCallback((rideId) => {
+    setAvailableRides((prev) =>
+      prev.filter((ride) => ride.id !== rideId && ride.ride_id !== rideId)
+    );
     alertedRideIdsRef.current.delete(rideId);
   }, []);
 
+  const declineRide = useCallback(async (rideId) => {
+    try {
+      await authenticatedApi.post(`${API_URL}/rides/decline/${rideId}/`, {});
+      fetchDriverStatus();
+    } catch (error) {
+      console.log("Decline ride error:", error.response?.data || error);
+      if (isAuthError(error)) {
+        sendToLogin();
+        return;
+      }
+    }
+    dismissRideOffer(rideId);
+  }, [dismissRideOffer, fetchDriverStatus, isAuthError, sendToLogin]);
+
+  const handleOfferExpired = useCallback((rideId) => {
+    dismissRideOffer(rideId);
+    fetchDriverStatus();
+  }, [dismissRideOffer, fetchDriverStatus]);
+
   // Cancel active ride (driver side)
   const [driverCancelOpen, setDriverCancelOpen] = useState(false);
-  const [driverCancelReason, setDriverCancelReason] = useState("");
+  const [driverCancelError, setDriverCancelError] = useState("");
   const [driverCancelling, setDriverCancelling] = useState(false);
 
-  const cancelActiveRide = async () => {
-    if (!activeRide || !driverCancelReason.trim()) return;
+  const cancelActiveRide = async ({ reason, reason_details: reasonDetails = "" }) => {
+    if (!activeRide || !reason?.trim()) return;
     try {
       setDriverCancelling(true);
-      await axios.post(`${API_URL}/rides/cancel/${activeRide.id}/`, {
-        reason: driverCancelReason.trim(), cancelled_by: "driver",
-      }, { headers: { Authorization: `Bearer ${localStorage.getItem("access")}` } });
+      setDriverCancelError("");
+      await authenticatedApi.post(`${API_URL}/rides/cancel/${activeRide.id}/`, {
+        reason: reason.trim(),
+        reason_details: reasonDetails.trim(),
+        cancelled_by: "driver",
+      });
       setDriverCancelOpen(false);
-      setDriverCancelReason("");
       fetchDriverRides();
+      fetchDriverStatus();
     } catch (error) {
-      console.log("Cancel error:", error.response?.data || error);
+      setDriverCancelError(
+        error.response?.data?.detail ||
+          error.response?.data?.error ||
+          "Could not cancel this ride."
+      );
     } finally {
       setDriverCancelling(false);
     }
   };
 
+  const closeDriverCancelModal = useCallback(() => {
+    setDriverCancelOpen(false);
+    setDriverCancelError("");
+  }, []);
+
   // ─── Navigation / Logout ────────────────────────────────────────────────────
 
   const logout = useCallback(() => {
-    localStorage.removeItem("access");
-    localStorage.removeItem("refresh");
-    localStorage.removeItem("user");
-    window.location.href = "/login";
+    clearAuthSession();
+    redirectToLogin("/driver");
   }, []);
 
   // ─── Effects ────────────────────────────────────────────────────────────────
@@ -367,6 +645,17 @@ export default function DriverDashboardNew() {
     fetchDriverStats();
     preloadNotificationSound();
   }, [fetchDriverStatus, fetchAvailableRides, fetchDriverStats]);
+
+  useEffect(() => {
+    if (!isOnline) {
+      setHeatmapZones([]);
+      return undefined;
+    }
+
+    fetchHeatmap();
+    const interval = setInterval(fetchHeatmap, HEATMAP_REFRESH_INTERVAL);
+    return () => clearInterval(interval);
+  }, [isOnline, fetchHeatmap]);
 
   // Refetch earnings when the calendar day rolls over
   useEffect(() => {
@@ -386,14 +675,19 @@ export default function DriverDashboardNew() {
     return () => clearInterval(interval);
   }, [earningsDate, fetchDriverStats, fetchDriverStatus]);
 
-  // Poll every 3s
+  // Poll rides every 5s; skip available-ride poll while on an active trip.
   useEffect(() => {
-    const interval = setInterval(() => {
-      fetchDriverStatus();
-      fetchAvailableRides();
+    const statusInterval = setInterval(fetchDriverStatus, 10000);
+    const ridesInterval = setInterval(() => {
       fetchDriverRides();
-    }, 3000);
-    return () => clearInterval(interval);
+      if (!activeRideSnapshotRef.current) {
+        fetchAvailableRides();
+      }
+    }, 5000);
+    return () => {
+      clearInterval(statusInterval);
+      clearInterval(ridesInterval);
+    };
   }, [fetchDriverStatus, fetchAvailableRides, fetchDriverRides]);
 
   // WebSocket subscription
@@ -405,9 +699,11 @@ export default function DriverDashboardNew() {
         playRideRequestAlert({ force: true });
       }
       if (msg.type === "ride_request" || msg.type === "ride_request_expired" || msg.type === "ride_update" || msg.type === "ride_status_update" || msg.status || msg.ride_id) {
-        fetchAvailableRides();
         fetchDriverRides();
         fetchDriverStats();
+        if (!activeRideSnapshotRef.current) {
+          fetchAvailableRides();
+        }
       }
     });
     return () => unsub();
@@ -455,9 +751,57 @@ export default function DriverDashboardNew() {
   const vehicleMake = driverProfile?.vehicle?.make || driverProfile?.vehicle_make || driverProfile?.car_make || "";
   const vehicleModel = driverProfile?.vehicle?.model || driverProfile?.vehicle_model || driverProfile?.car_model || "";
   const vehiclePlate = driverProfile?.vehicle?.plate_number || driverProfile?.vehicle_plate || driverProfile?.plate_number || "";
-  const acceptanceRate = driverProfile?.acceptance_rate || 92;
-  // ─── Auto-accept state ──────────────────────────────────────────────────────
+  const acceptanceRate = Math.round(
+    Number(driverProfile?.acceptance_rate ?? driverProfile?.acceptance_rate_points ?? 100)
+  );
+  const missedRides = driverProfile?.total_rides_missed ?? 0;
+  const cancellationWarning =
+    driverProfile?.cancellation_warning || driverProfile?.account_risk_reason || "";
+  const documentsAlert = useMemo(
+    () =>
+      Boolean(
+        driverProfile?.missing_document_types?.length ||
+          driverProfile?.expired_document_types?.length ||
+          driverProfile?.expired_documents?.length ||
+          driverProfile?.documents_under_review
+      ),
+    [driverProfile]
+  );
+  const todayTripsCount = useMemo(
+    () => driverRides.filter((ride) => ride.status === "completed").length,
+    [driverRides]
+  );
+  const todayEarnings = useMemo(
+    () => Number(earningsByPeriod.today || 0).toFixed(2),
+    [earningsByPeriod.today]
+  );
+  const busyAreas = useMemo(
+    () =>
+      heatmapZones
+        .filter((zone) => zone.active !== false)
+        .map(heatmapZoneToBusyArea)
+        .filter(Boolean),
+    [heatmapZones]
+  );
+  const displayRating = driverRating > 0 ? driverRating.toFixed(1) : "5.0";
   const [autoAccept, setAutoAccept] = useState(false);
+  const [navSheetExpanded, setNavSheetExpanded] = useState(true);
+
+  useEffect(() => {
+    if (!activeRide) {
+      setNavSheetExpanded(false);
+      return;
+    }
+    setNavSheetExpanded(true);
+  }, [activeRide?.id, activeRide?.status]);
+
+  const activeRideStatusLabel = useMemo(() => {
+    if (!activeRide) return "";
+    if (activeRide.status === "driver_arriving") return "Heading to pickup";
+    if (activeRide.status === "driver_arrived") return "Arrived at pickup";
+    if (activeRide.status === "in_progress") return "Ride in progress";
+    return "Active ride";
+  }, [activeRide]);
 
   // Auto-accept incoming rides when enabled
   useEffect(() => {
@@ -477,54 +821,81 @@ export default function DriverDashboardNew() {
   }
 
   return (
-    <main style={mapFirstShell}>
+    <main
+      className={[
+        "driver-dashboard-new",
+        "driver-dashboard-v2",
+        lyftUI ? "driver-dashboard-new--lyft" : "",
+        isOnline ? "driver-dashboard-new--online" : "",
+        activeRide ? "driver-dashboard-new--navigating" : "",
+        incomingRide && !activeRide ? "driver-dashboard-new--incoming" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      style={mapFirstShell}
+    >
       {/* ─── Fullscreen Map ──────────────────────────────────── */}
       <div style={mapFullscreen}>
         <DriverMapView
           driverPosition={driverPosition}
           activeRide={activeRide}
+          busyAreas={isOnline ? busyAreas : []}
           routePath={routePath}
         />
       </div>
 
       {/* ─── Notice Banner ──────────────────────────────────── */}
-      {driverNotice && !activeRide && (
-        <div style={noticeBannerStyle}>{driverNotice}</div>
+      {(statusLoadError || toggleError || (driverNotice && !activeRide)) && (
+        <div className="driver-dashboard-new__notice" style={noticeBannerStyle}>
+          {statusLoadError || toggleError || driverNotice}
+        </div>
       )}
 
-      {/* ─── Top Bar ─────────────────────────────────────────── */}
-      <div style={topBar}>
-        {/* Hamburger + notification dot */}
-        <button type="button" style={menuBtn} onClick={() => setMenuOpen(true)} aria-label="Open menu">
-          ☰
-          <span style={notifDot} />
-        </button>
-
-        {/* ON / OFF toggle pill — matches reference exactly */}
-        <button
-          type="button"
-          style={{ ...onOffPill, borderColor: isOnline ? "#00A651" : "#4a5568" }}
-          onClick={toggleAvailability}
-          disabled={toggleLoading}
-          aria-pressed={isOnline}
-          aria-label={isOnline ? "Go Offline" : "Go Online"}
+      {cancellationWarning && !activeRide && (
+        <div
+          className="driver-dashboard-new__notice driver-dashboard-new__notice--warning"
+          style={{
+            ...noticeBannerStyle,
+            top: statusLoadError || toggleError || driverNotice ? 140 : 88,
+            background: "rgba(245,158,11,0.95)",
+          }}
         >
-          <span style={{ ...powerIcon, color: isOnline ? "#00A651" : "#9ca3af" }}>⏻</span>
-          <span style={{ color: isOnline ? "#fff" : "#9ca3af", fontWeight: 700, fontSize: 13, letterSpacing: 1 }}>
-            {toggleLoading ? "..." : isOnline ? "ON" : "OFF"}
-          </span>
-          {/* Toggle slider */}
-          <span style={toggleTrack(isOnline)}>
-            <span style={toggleThumb(isOnline)} />
-          </span>
-        </button>
+          {cancellationWarning}
+        </div>
+      )}
 
-        {/* Auto Accept */}
+      {/* ─── Top Bar (menu · status · auto-accept) ───────────── */}
+      <header className="driver-dashboard-new__topbar">
         <button
           type="button"
+          className="driver-dashboard-new__menu-btn"
+          onClick={() => setMenuOpen(true)}
+          aria-label="Open menu"
+        >
+          <span className="driver-dashboard-new__menu-btn-icon" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </span>
+          {documentsAlert ? <span className="driver-dashboard-new__menu-btn-dot" aria-label="Documents need attention" /> : null}
+        </button>
+
+        <div className="driver-dashboard-new__topbar-center">
+          {isOnline ? (
+            <span className="driver-online-badge" aria-live="polite">
+              <span className="driver-online-badge__dot" aria-hidden="true" />
+              Online
+            </span>
+          ) : null}
+        </div>
+
+        <button
+          type="button"
+          className={`driver-dashboard-new__auto-accept${autoAccept ? " is-active" : ""}`}
           style={{ ...autoAcceptBtn, borderColor: autoAccept ? "#00A651" : "#4a5568" }}
-          onClick={() => setAutoAccept((v) => !v)}
+          onClick={() => setAutoAccept((value) => !value)}
           aria-pressed={autoAccept}
+          aria-label="Auto accept ride requests"
         >
           <span style={{ fontSize: 10, color: "#ccc", lineHeight: 1 }}>Auto</span>
           <span style={{ fontSize: 10, color: "#ccc", lineHeight: 1 }}>Accept</span>
@@ -532,81 +903,117 @@ export default function DriverDashboardNew() {
             <span style={toggleThumb(autoAccept, true)} />
           </span>
         </button>
-      </div>
+      </header>
 
-      {/* ─── Active Ride Panel ───────────────────────────────── */}
-      {activeRide && (
-        <div style={activeRidePanel}>
-          <div style={activeRideRow}>
-            <span style={activeRideLabel}>
-              {activeRide.status === "driver_arriving" ? "Heading to pickup" :
-               activeRide.status === "driver_arrived" ? "Arrived at pickup" :
-               activeRide.status === "in_progress" ? "Ride in progress" : "Active ride"}
-            </span>
-            <span style={activeRideFare}>{activeRide.fare ? `${activeRide.fare} MRU` : ""}</span>
-          </div>
-          <div style={activeRideRoute}>
-            <span>📍 {activeRide.pickup || "Pickup"}</span>
-            <span style={{ color: "#aaa", margin: "0 6px" }}>→</span>
-            <span>🏁 {activeRide.destination || "Destination"}</span>
-          </div>
-          <div style={{ width: "100%" }}>
-            <RideStatusButtons
-              ride={activeRide}
-              onStatusChange={() => { fetchDriverRides(); fetchDriverStats(); }}
-            />
-          </div>
-          <button type="button" style={cancelRideBtn} onClick={() => setDriverCancelOpen(true)}>
-            Cancel ride
-          </button>
-        </div>
-      )}
-
-      {/* ─── Left float button ────────────────────────────────── */}
-      <button type="button" style={floatBtnLeft} onClick={() => setMenuOpen(true)} aria-label="Filters">
-        ⚙
+      <button type="button" className="driver-earnings-chip" aria-label={`Today's earnings: ${todayEarnings} MRU`}>
+        <span className="driver-earnings-chip__label">Today</span>
+        <span className="driver-earnings-chip__divider" aria-hidden="true">•</span>
+        <span className="driver-earnings-chip__amount">{todayEarnings} MRU</span>
       </button>
 
-      {/* ─── Right float button ──────────────────────────────────*/}
-      <button type="button" style={floatBtnRight} aria-label="Settings">
+      {/* ─── Map recenter ───────────────────────────────────── */}
+      <button type="button" className="driver-dashboard-new__recenter" aria-label="Re-center map">
         ◎
       </button>
 
-      {/* ─── Bottom Panel ────────────────────────────────────────*/}
-      <div style={bottomPanel}>
-        {/* Row 1: Today label + rating + AR */}
-        <div style={bottomRow1}>
-          <button type="button" style={todayBtn} onClick={() => setMenuOpen(true)}>
-            <span style={{ fontSize: 13, color: "#fff", marginRight: 2 }}>▾</span>
-            <span style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>Today</span>
-          </button>
-          <div style={ratingAR}>
-            <span style={{ color: "#f59e0b", fontSize: 14 }}>★</span>
-            <span style={{ color: "#fff", fontWeight: 700, fontSize: 14, marginLeft: 3 }}>
-              {driverRating > 0 ? driverRating.toFixed(1) : "5.0"}
+      {/* ─── Bottom action dock ─────────────────────────────── */}
+      {!activeRide && !incomingRide && (
+        <section className="driver-action-dock" aria-label="Driver availability">
+          <div className="driver-summary-card">
+            <div className="driver-summary-card__header">
+              <span className="driver-summary-card__title">Today</span>
+            </div>
+            <div className="driver-summary-card__stats driver-summary-card__stats--four">
+              <div className="driver-summary-card__stat">
+                <strong>{todayTripsCount}</strong>
+                <span>Trips</span>
+              </div>
+              <div className="driver-summary-card__stat">
+                <strong>{todayEarnings}</strong>
+                <span>Earnings (MRU)</span>
+              </div>
+              <div className="driver-summary-card__stat">
+                <strong>{acceptanceRate}%</strong>
+                <span>Acceptance</span>
+              </div>
+              <div className="driver-summary-card__stat">
+                <strong>{missedRides}</strong>
+                <span>Missed</span>
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className={[
+              "driver-go-btn",
+              isOnline ? "driver-go-btn--offline" : "driver-go-btn--online",
+              toggleLoading ? "is-loading" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            onClick={toggleAvailability}
+            disabled={toggleLoading}
+            aria-label={isOnline ? "Go offline" : "Go online"}
+          >
+            <span className="driver-go-btn__icon" aria-hidden="true">
+              {isOnline ? "⏻" : "⏻"}
             </span>
-            <span style={arDivider} />
-            <span style={{ color: "#00A651", fontWeight: 700, fontSize: 14 }}>AR {acceptanceRate}%</span>
-          </div>
-        </div>
-        {/* Row 2: Trips + Earned */}
-        <div style={bottomRow2}>
-          <div style={statBlock}>
-            <div style={statBigVal}>
-              {driverRides.filter(r => r.status === "completed").length}
-              <span style={statArrow}> ›</span>
+            <span className="driver-go-btn__label">
+              {toggleLoading ? "Updating..." : isOnline ? "Go Offline" : "Go Online"}
+            </span>
+          </button>
+        </section>
+      )}
+
+      {/* ─── Navigation sheet (collapsed during active ride) ─── */}
+      {activeRide && (
+        <section
+          className={`driver-nav-sheet${navSheetExpanded ? " is-expanded" : " is-collapsed"}`}
+          aria-label="Active ride navigation"
+        >
+          <button
+            type="button"
+            className="driver-nav-sheet__header"
+            onClick={() => setNavSheetExpanded((value) => !value)}
+            aria-expanded={navSheetExpanded}
+          >
+            <span className="driver-nav-sheet__grip" aria-hidden="true" />
+            <div className="driver-nav-sheet__summary">
+              <span className="driver-nav-sheet__status">{activeRideStatusLabel}</span>
+              <span className="driver-nav-sheet__fare">
+                {activeRide.fare ? `${activeRide.fare} MRU` : ""}
+              </span>
             </div>
-            <div style={statSmallLabel}>Trip(s) completed</div>
-          </div>
-          <div style={statBlock}>
-            <div style={statBigVal}>
-              {Number(earningsByPeriod.today || 0).toFixed(2)} MRU
-              <span style={statArrow}> ›</span>
+            <span className="driver-nav-sheet__chevron" aria-hidden="true">
+              {navSheetExpanded ? "▾" : "▴"}
+            </span>
+          </button>
+
+          <div className="driver-nav-sheet__body">
+            <div className="driver-nav-sheet__route">
+              <span>📍 {activeRide.pickup || "Pickup"}</span>
+              <span className="driver-nav-sheet__route-arrow">→</span>
+              <span>🏁 {activeRide.destination || "Destination"}</span>
             </div>
-            <div style={statSmallLabel}>Earned</div>
+            <div className="driver-nav-sheet__actions">
+              <RideStatusButtons
+                ride={activeRide}
+                onStatusChange={handleRideStatusChange}
+              />
+            </div>
+            {["driver_arriving", "driver_arrived"].includes(activeRide.status) ? (
+              <button
+                type="button"
+                className="driver-nav-sheet__cancel"
+                onClick={() => setDriverCancelOpen(true)}
+              >
+                Cancel ride
+              </button>
+            ) : null}
           </div>
-        </div>
-      </div>
+        </section>
+      )}
 
       {/* ─── Ride Request Overlay ────────────────────────────── */}
       {isOnline && incomingRide && !activeRide && (
@@ -615,27 +1022,21 @@ export default function DriverDashboardNew() {
           enableSound
           onAccept={() => incomingRideId && acceptRide(incomingRideId)}
           onDecline={() => incomingRideId && declineRide(incomingRideId)}
-          onExpired={() => incomingRideId && declineRide(incomingRideId)}
+          onExpired={() => incomingRideId && handleOfferExpired(incomingRideId)}
         />
       )}
 
       {/* ─── Driver Cancel Modal ─────────────────────────────── */}
-      {driverCancelOpen && (
-        <div className="dd-cancel-modal">
-          <h3>Cancel this ride?</h3>
-          <p>Select a reason:</p>
-          {["Rider not available", "Emergency", "Waited too long", "Wrong pickup location", "Vehicle issue", "Other"].map((reason) => (
-            <button key={reason} type="button" className={`dd-cancel-reason${driverCancelReason === reason ? " active" : ""}`} onClick={() => setDriverCancelReason(reason)}>
-              {reason}
-            </button>
-          ))}
-          <div className="dd-cancel-actions">
-            <button type="button" className="dd-cancel-keep" onClick={() => setDriverCancelOpen(false)}>Keep Ride</button>
-            <button type="button" className="dd-cancel-confirm" onClick={cancelActiveRide} disabled={!driverCancelReason || driverCancelling}>
-              {driverCancelling ? "Cancelling..." : "Confirm Cancel"}
-            </button>
-          </div>
-        </div>
+      {driverCancelOpen && activeRide && (
+        <RideCancellationModal
+          key={`driver-cancel-${activeRide.id}`}
+          role="driver"
+          ride={activeRide}
+          saving={driverCancelling}
+          error={driverCancelError}
+          onCancel={cancelActiveRide}
+          onClose={closeDriverCancelModal}
+        />
       )}
 
       {/* ─── Hamburger Menu ──────────────────────────────────── */}
@@ -649,6 +1050,8 @@ export default function DriverDashboardNew() {
           level: driverProfile?.driver_level || "bronze",
           points: driverProfile?.level_points || 0,
           nextLevelPoints: driverProfile?.next_level_points || 3000,
+          is_online: isOnline,
+          documents_alert: documentsAlert,
         }}
         onNavigate={(path) => {
           if (path === "/driver/account" || path === "/driver/profile") { setCurrentView("profile"); setMenuOpen(false); }
@@ -679,71 +1082,18 @@ const mapFullscreen = {
 
 const noticeBannerStyle = {
   position: "absolute",
-  top: 72,
+  top: 88,
   left: 12,
   right: 12,
   zIndex: 30,
   background: "rgba(239,68,68,0.92)",
   color: "#fff",
   borderRadius: 10,
-  padding: "8px 14px",
+  padding: "10px 14px",
   fontSize: 13,
-  fontWeight: 500,
+  fontWeight: 600,
+  textAlign: "center",
 };
-
-// Top bar — dark strip matching reference
-const topBar = {
-  position: "absolute",
-  top: 0,
-  left: 0,
-  right: 0,
-  zIndex: 20,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  background: "rgba(18,24,38,0.96)",
-  padding: "38px 14px 10px",
-  gap: 8,
-};
-
-const menuBtn = {
-  background: "none",
-  border: "none",
-  color: "#fff",
-  fontSize: 22,
-  cursor: "pointer",
-  position: "relative",
-  padding: "4px 8px",
-  lineHeight: 1,
-};
-
-const notifDot = {
-  position: "absolute",
-  top: 2,
-  right: 2,
-  width: 9,
-  height: 9,
-  borderRadius: "50%",
-  background: "#ef4444",
-  border: "2px solid rgba(18,24,38,0.96)",
-};
-
-// ON/OFF pill — dark rounded pill with power icon + text + mini toggle
-const onOffPill = {
-  display: "flex",
-  alignItems: "center",
-  gap: 7,
-  background: "rgba(30,36,50,0.98)",
-  border: "1.5px solid",
-  borderRadius: 24,
-  padding: "7px 14px",
-  cursor: "pointer",
-  flex: 1,
-  justifyContent: "center",
-  maxWidth: 140,
-};
-
-const powerIcon = { fontSize: 15, lineHeight: 1 };
 
 const toggleTrack = (active, small = false) => ({
   width: small ? 28 : 32,
@@ -779,157 +1129,3 @@ const autoAcceptBtn = {
   cursor: "pointer",
   minWidth: 54,
 };
-
-// Active ride panel
-const activeRidePanel = {
-  position: "absolute",
-  bottom: 140,
-  left: 12,
-  right: 12,
-  zIndex: 20,
-  background: "rgba(13,17,23,0.97)",
-  borderRadius: 16,
-  padding: "14px 16px 24px",
-  border: "1px solid rgba(0,166,81,0.3)",
-  boxShadow: "0 4px 24px rgba(0,0,0,0.5)",
-  maxHeight: "calc(100vh - 280px)",
-  overflowY: "auto",
-  WebkitOverflowScrolling: "touch",
-};
-
-const activeRideRow = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  marginBottom: 6,
-};
-
-const activeRideLabel = { color: "#00A651", fontWeight: 700, fontSize: 13 };
-const activeRideFare = { color: "#fff", fontWeight: 700, fontSize: 15 };
-
-const activeRideRoute = {
-  color: "#ccc",
-  fontSize: 12,
-  marginBottom: 10,
-  display: "flex",
-  flexWrap: "wrap",
-  gap: 2,
-};
-
-const rideActionsRow = { display: "flex", gap: 8, alignItems: "center" };
-
-const cancelRideBtn = {
-  width: "100%",
-  marginTop: 10,
-  background: "rgba(239,68,68,0.15)",
-  border: "1px solid rgba(239,68,68,0.4)",
-  color: "#ef4444",
-  borderRadius: 10,
-  padding: "12px 16px",
-  fontSize: 14,
-  fontWeight: 700,
-  cursor: "pointer",
-  textAlign: "center",
-};
-
-// Floating side buttons
-const floatBtnLeft = {
-  position: "absolute",
-  left: 14,
-  bottom: 145,
-  zIndex: 20,
-  width: 44,
-  height: 44,
-  borderRadius: "50%",
-  background: "#2563eb",
-  border: "none",
-  color: "#fff",
-  fontSize: 18,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  cursor: "pointer",
-  boxShadow: "0 2px 12px rgba(37,99,235,0.5)",
-};
-
-const floatBtnRight = {
-  position: "absolute",
-  right: 14,
-  bottom: 145,
-  zIndex: 20,
-  width: 44,
-  height: 44,
-  borderRadius: "50%",
-  background: "rgba(30,36,50,0.96)",
-  border: "1px solid rgba(255,255,255,0.12)",
-  color: "#fff",
-  fontSize: 18,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  cursor: "pointer",
-  boxShadow: "0 2px 12px rgba(0,0,0,0.4)",
-};
-
-// Bottom panel — matches reference exactly
-const bottomPanel = {
-  position: "absolute",
-  bottom: 0,
-  left: 0,
-  right: 0,
-  zIndex: 20,
-  background: "rgba(18,24,38,0.98)",
-  borderTopLeftRadius: 18,
-  borderTopRightRadius: 18,
-  padding: "14px 20px 28px",
-};
-
-const bottomRow1 = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  marginBottom: 14,
-};
-
-const todayBtn = {
-  background: "none",
-  border: "none",
-  display: "flex",
-  alignItems: "center",
-  gap: 2,
-  cursor: "pointer",
-  padding: 0,
-};
-
-const ratingAR = {
-  display: "flex",
-  alignItems: "center",
-  gap: 6,
-};
-
-const arDivider = {
-  width: 1,
-  height: 16,
-  background: "rgba(255,255,255,0.2)",
-  margin: "0 4px",
-};
-
-const bottomRow2 = {
-  display: "flex",
-  gap: 0,
-};
-
-const statBlock = {
-  flex: 1,
-};
-
-const statBigVal = {
-  color: "#fff",
-  fontWeight: 700,
-  fontSize: 17,
-  display: "flex",
-  alignItems: "center",
-};
-
-const statArrow = { color: "#9ca3af", fontSize: 14, marginLeft: 2 };
-const statSmallLabel = { color: "#9ca3af", fontSize: 12, marginTop: 2 };

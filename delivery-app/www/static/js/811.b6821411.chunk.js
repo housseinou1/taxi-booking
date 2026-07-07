@@ -1,2 +1,0 @@
-"use strict";(globalThis.webpackChunkfrontend=globalThis.webpackChunkfrontend||[]).push([[811],{6811(e,n,t){t.d(n,{SecureStoragePlugin:()=>u});const u=(0,t(5403).F3)("SecureStoragePlugin",{web:()=>t.e(321).then(t.bind(t,6321)).then(e=>new e.SecureStoragePluginWeb)})}}]);
-//# sourceMappingURL=811.b6821411.chunk.js.map

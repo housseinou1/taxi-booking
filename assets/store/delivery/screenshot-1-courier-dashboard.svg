@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1920" width="1080" height="1920">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FF6B00"/>
+      <stop offset="100%" style="stop-color:#C2410C"/>
+    </linearGradient>
+  </defs>
+  <rect width="1080" height="1920" fill="url(#bg)"/>
+  <text x="540" y="120" font-family="Arial, Helvetica, sans-serif" font-size="52" fill="#FFFFFF" text-anchor="middle" font-weight="700">Yala Delivery</text>
+  <text x="540" y="175" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#FFFFFF" text-anchor="middle" opacity="0.92">Courier dashboard</text>
+  <rect x="80" y="230" width="920" height="1320" rx="36" fill="#0B1220"/>
+  <rect x="120" y="280" width="840" height="120" rx="20" fill="#111827"/>
+  <text x="150" y="330" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="#F9FAFB" font-weight="700">Today earnings</text>
+  <text x="150" y="370" font-family="Arial, Helvetica, sans-serif" font-size="40" fill="#FF6B00" font-weight="700">1,420 MRU</text>
+  <text x="720" y="360" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#22C55E" font-weight="700">6 deliveries</text>
+  <rect x="120" y="430" width="840" height="70" rx="35" fill="#22C55E"/>
+  <text x="540" y="475" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#FFFFFF" text-anchor="middle" font-weight="700">ONLINE - Accepting deliveries</text>
+  <rect x="120" y="530" width="840" height="180" rx="20" fill="#1F2937"/>
+  <text x="150" y="580" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="#FF6B00" font-weight="700">New delivery request</text>
+  <text x="150" y="620" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#E5E7EB">Parcel - Arafat to Tevragh Zeina</text>
+  <text x="150" y="660" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#FFFFFF" font-weight="700">280 MRU - 3.8 km - 12 min</text>
+  <rect x="120" y="740" width="840" height="280" rx="20" fill="#111827"/>
+  <text x="150" y="790" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="#F9FAFB" font-weight="700">Analytics snapshot</text>
+  <rect x="150" y="820" width="240" height="90" rx="14" fill="#1F2937"/>
+  <text x="170" y="855" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#9CA3AF">Acceptance</text>
+  <text x="170" y="890" font-family="Arial, Helvetica, sans-serif" font-size="28" fill="#22C55E" font-weight="700">94%</text>
+  <rect x="420" y="820" width="240" height="90" rx="14" fill="#1F2937"/>
+  <text x="440" y="855" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#9CA3AF">Rating</text>
+  <text x="440" y="890" font-family="Arial, Helvetica, sans-serif" font-size="28" fill="#FF6B00" font-weight="700">4.9</text>
+  <rect x="690" y="820" width="240" height="90" rx="14" fill="#1F2937"/>
+  <text x="710" y="855" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#9CA3AF">Completed</text>
+  <text x="710" y="890" font-family="Arial, Helvetica, sans-serif" font-size="28" fill="#FFFFFF" font-weight="700">6</text>
+  <rect x="120" y="1060" width="840" height="64" rx="32" fill="#FF6B00"/>
+  <text x="540" y="1102" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="#FFFFFF" text-anchor="middle" font-weight="700">Accept delivery</text>
+  <text x="540" y="1820" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#FFFFFF" text-anchor="middle" opacity="0.85">Fast delivery across Mauritania</text>
+</svg>

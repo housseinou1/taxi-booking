@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1920" width="1080" height="1920">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FF6B00"/>
+      <stop offset="100%" style="stop-color:#C2410C"/>
+    </linearGradient>
+  </defs>
+  <rect width="1080" height="1920" fill="url(#bg)"/>
+  <text x="540" y="120" font-family="Arial, Helvetica, sans-serif" font-size="52" fill="#FFFFFF" text-anchor="middle" font-weight="700">Yala Delivery</text>
+  <text x="540" y="175" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#FFFFFF" text-anchor="middle" opacity="0.92">Parcel delivery requests</text>
+  <rect x="80" y="230" width="920" height="1320" rx="36" fill="#FFFFFF"/>
+  <text x="120" y="310" font-family="Arial, Helvetica, sans-serif" font-size="34" fill="#111827" font-weight="700">Accept parcel deliveries</text>
+  <text x="120" y="355" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#64748B">Packages, documents, food, and essentials</text>
+  <rect x="120" y="400" width="840" height="220" rx="20" fill="#FFF7ED" stroke="#FF6B00" stroke-width="2"/>
+  <text x="150" y="450" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="#C2410C" font-weight="700">Parcel delivery</text>
+  <text x="150" y="490" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#374151">Pickup: Pharmacie Arafat</text>
+  <text x="150" y="525" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#374151">Drop-off: Tevragh Zeina, Block C</text>
+  <text x="150" y="575" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#111827" font-weight="700">280 MRU - 3.8 km</text>
+  <rect x="120" y="650" width="840" height="220" rx="20" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="2"/>
+  <text x="150" y="700" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="#111827" font-weight="700">Food delivery</text>
+  <text x="150" y="740" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#374151">Restaurant to customer</text>
+  <text x="150" y="775" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#374151">Keep hot items moving fast</text>
+  <text x="150" y="825" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#FF6B00" font-weight="700">190 MRU - 2.1 km</text>
+  <rect x="120" y="900" width="840" height="220" rx="20" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="2"/>
+  <text x="150" y="950" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="#111827" font-weight="700">Document courier</text>
+  <text x="150" y="990" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#374151">Office pickup to secure drop-off</text>
+  <text x="150" y="1075" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#111827" font-weight="700">150 MRU - 1.6 km</text>
+  <rect x="120" y="1160" width="840" height="64" rx="32" fill="#FF6B00"/>
+  <text x="540" y="1202" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="#FFFFFF" text-anchor="middle" font-weight="700">Accept delivery</text>
+  <text x="540" y="1820" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#FFFFFF" text-anchor="middle" opacity="0.85">Earn on every delivery</text>
+</svg>

@@ -1,47 +1,50 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 500" width="1024" height="500">
-  <!-- Yala Rider Feature Graphic — Google Play Store (1024x500) -->
-
-  <!-- Green gradient background -->
   <defs>
-    <linearGradient id="riderGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#00A651"/>
-      <stop offset="100%" style="stop-color:#008040"/>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#7C3AED"/>
+      <stop offset="55%" style="stop-color:#5B21B6"/>
+      <stop offset="100%" style="stop-color:#312E81"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#FBBF24"/>
+      <stop offset="100%" style="stop-color:#F59E0B"/>
     </linearGradient>
   </defs>
-  <rect width="1024" height="500" fill="url(#riderGrad)"/>
 
-  <!-- Decorative circles -->
-  <circle cx="850" cy="100" r="200" fill="#00B85C" opacity="0.2"/>
-  <circle cx="150" cy="400" r="150" fill="#00B85C" opacity="0.15"/>
+  <rect width="1024" height="500" fill="url(#bg)"/>
+  <circle cx="900" cy="90" r="180" fill="#FFFFFF" opacity="0.06"/>
+  <circle cx="120" cy="420" r="140" fill="#FFFFFF" opacity="0.05"/>
+  <rect x="0" y="430" width="1024" height="70" fill="#000000" opacity="0.12"/>
 
-  <!-- Yala "Y" logo (left side) -->
-  <path d="M100 140 L170 260 L240 140 L268 140 L182 285 L182 360 L158 360 L158 285 L72 140 Z" fill="#FFFFFF" opacity="0.9"/>
+  <!-- Yala Y mark -->
+  <path d="M88 118 L158 238 L228 118 L256 118 L170 263 L170 338 L146 338 L146 263 L60 118 Z" fill="#FFFFFF" opacity="0.95"/>
 
-  <!-- App name -->
-  <text x="310" y="220" font-family="Arial, Helvetica, sans-serif" font-size="72" font-weight="bold" fill="#FFFFFF">Yala Rider</text>
+  <!-- Brand -->
+  <text x="290" y="188" font-family="Arial, Helvetica, sans-serif" font-size="68" font-weight="700" fill="#FFFFFF">Yala Rider</text>
+  <text x="290" y="236" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="600" fill="#FBBF24">Fast • Safe • Reliable</text>
+  <text x="290" y="278" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="#FFFFFF" opacity="0.92">Mauritania mobility app</text>
 
-  <!-- Tagline -->
-  <text x="310" y="280" font-family="Arial, Helvetica, sans-serif" font-size="28" fill="#FFFFFF" opacity="0.9">Ride Anywhere in Mauritania</text>
+  <!-- Pill highlights -->
+  <rect x="290" y="308" width="168" height="34" rx="17" fill="#FFFFFF" opacity="0.14"/>
+  <text x="374" y="331" font-family="Arial, Helvetica, sans-serif" font-size="15" fill="#FFFFFF" text-anchor="middle">Book in seconds</text>
+  <rect x="470" y="308" width="188" height="34" rx="17" fill="#FFFFFF" opacity="0.14"/>
+  <text x="564" y="331" font-family="Arial, Helvetica, sans-serif" font-size="15" fill="#FFFFFF" text-anchor="middle">Live driver tracking</text>
+  <rect x="290" y="354" width="176" height="34" rx="17" fill="#FFFFFF" opacity="0.14"/>
+  <text x="378" y="377" font-family="Arial, Helvetica, sans-serif" font-size="15" fill="#FFFFFF" text-anchor="middle">Pickup PIN safety</text>
+  <rect x="482" y="354" width="196" height="34" rx="17" fill="#FFFFFF" opacity="0.14"/>
+  <text x="580" y="377" font-family="Arial, Helvetica, sans-serif" font-size="15" fill="#FFFFFF" text-anchor="middle">Cash, card, or wallet</text>
 
-  <!-- Feature bullets -->
-  <text x="310" y="340" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#FFFFFF" opacity="0.8">🚗 Book rides instantly</text>
-  <text x="310" y="375" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#FFFFFF" opacity="0.8">📍 Real-time tracking</text>
-  <text x="310" y="410" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#FFFFFF" opacity="0.8">🛡️ Safe &amp; verified drivers</text>
-  <text x="310" y="445" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#FFFFFF" opacity="0.8">🇲🇷 All Mauritania cities</text>
-
-  <!-- Phone mockup (right side) -->
-  <rect x="720" y="60" width="220" height="380" rx="24" fill="#FFFFFF" opacity="0.95"/>
-  <rect x="732" y="80" width="196" height="340" rx="8" fill="#0B1220"/>
-  <!-- Map area inside phone -->
-  <rect x="732" y="80" width="196" height="200" fill="#1a3a2a"/>
-  <!-- Map pin -->
-  <circle cx="830" cy="160" r="8" fill="#00A651"/>
-  <path d="M830 168 L830 180" stroke="#00A651" stroke-width="2"/>
-  <!-- Bottom panel inside phone -->
-  <rect x="740" y="290" width="180" height="50" rx="8" fill="#00A651"/>
-  <text x="830" y="320" font-family="Arial, sans-serif" font-size="14" fill="#FFFFFF" text-anchor="middle" font-weight="bold">Book a Ride</text>
-  <!-- Fare card -->
-  <rect x="740" y="350" width="180" height="40" rx="6" fill="#1A2B3C"/>
-  <text x="750" y="374" font-family="Arial, sans-serif" font-size="11" fill="#AAA">Estimated fare</text>
-  <text x="890" y="374" font-family="Arial, sans-serif" font-size="13" fill="#00A651" text-anchor="end" font-weight="bold">350 MRU</text>
+  <!-- Phone mockup -->
+  <rect x="730" y="52" width="230" height="396" rx="28" fill="#FFFFFF" opacity="0.96"/>
+  <rect x="744" y="74" width="202" height="352" rx="12" fill="#0F172A"/>
+  <rect x="744" y="74" width="202" height="190" fill="#1E293B"/>
+  <path d="M744 220 Q845 170 946 210" stroke="#7C3AED" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <circle cx="770" cy="232" r="7" fill="#FBBF24"/>
+  <circle cx="930" cy="206" r="7" fill="#22C55E"/>
+  <rect x="756" y="276" width="178" height="54" rx="10" fill="url(#accent)"/>
+  <text x="845" y="309" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#111827" text-anchor="middle" font-weight="700">Book a Ride</text>
+  <rect x="756" y="340" width="178" height="38" rx="8" fill="#1F2937"/>
+  <text x="768" y="364" font-family="Arial, Helvetica, sans-serif" font-size="11" fill="#94A3B8">Estimated fare</text>
+  <text x="922" y="364" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#FBBF24" text-anchor="end" font-weight="700">350 MRU</text>
+  <rect x="812" y="58" width="66" height="8" rx="4" fill="#CBD5E1"/>
 </svg>

@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1920" width="1080" height="1920">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FF6B00"/>
+      <stop offset="100%" style="stop-color:#C2410C"/>
+    </linearGradient>
+  </defs>
+  <rect width="1080" height="1920" fill="url(#bg)"/>
+  <text x="540" y="120" font-family="Arial, Helvetica, sans-serif" font-size="52" fill="#FFFFFF" text-anchor="middle" font-weight="700">Yala Delivery</text>
+  <text x="540" y="175" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#FFFFFF" text-anchor="middle" opacity="0.92">Live tracking on every route</text>
+  <rect x="80" y="230" width="920" height="760" rx="36" fill="#1E293B"/>
+  <path d="M160 760 Q420 520 680 640 T920 500" stroke="#FF6B00" stroke-width="8" fill="none" stroke-linecap="round"/>
+  <circle cx="180" cy="780" r="14" fill="#22C55E"/>
+  <circle cx="900" cy="500" r="14" fill="#FF6B00"/>
+  <rect x="620" y="420" width="220" height="90" rx="16" fill="#0B1220" opacity="0.92"/>
+  <text x="640" y="455" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#F9FAFB" font-weight="700">Courier en route</text>
+  <text x="640" y="485" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#9CA3AF">ETA 8 min</text>
+  <rect x="80" y="1020" width="920" height="530" rx="36" fill="#FFFFFF"/>
+  <text x="120" y="1090" font-family="Arial, Helvetica, sans-serif" font-size="32" fill="#111827" font-weight="700">Delivery in progress</text>
+  <text x="120" y="1135" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#64748B">Status: In transit to drop-off</text>
+  <rect x="120" y="1170" width="840" height="110" rx="16" fill="#ECFDF5"/>
+  <text x="150" y="1215" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#065F46" font-weight="700">Pickup complete</text>
+  <text x="150" y="1248" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#047857">PIN verified at pickup</text>
+  <rect x="120" y="1300" width="840" height="110" rx="16" fill="#FFF7ED"/>
+  <text x="150" y="1345" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#C2410C" font-weight="700">Heading to customer</text>
+  <text x="150" y="1378" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#EA580C">Live map updates for sender and receiver</text>
+  <rect x="120" y="1430" width="840" height="64" rx="32" fill="#111827"/>
+  <text x="540" y="1472" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#FFFFFF" text-anchor="middle" font-weight="700">Navigate to drop-off</text>
+  <text x="540" y="1820" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#FFFFFF" text-anchor="middle" opacity="0.85">Customers see your route in real time</text>
+</svg>

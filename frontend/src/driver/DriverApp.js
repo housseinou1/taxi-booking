@@ -11,7 +11,11 @@ import RideStatusButtons from "../RideStatusButtons";
 import AnalyticsDashboard from "../admin/AnalyticsDashboard";
 import RideChat from "../components/RideChat";
 import RideCancellationModal from "../components/RideCancellationModal";
-import { fetchLegalStatus } from "../legal/legalApi";
+import {
+  ensureDriverAgreementBeforeOnline,
+  isDriverTermsError,
+  redirectToDriverAgreement,
+} from "./utils/driverLegalGate";
 import {
   joinRideUpdates,
   leaveRideUpdates,
@@ -285,10 +289,6 @@ export default function DriverApp() {
 
   const activeRide = activeRides[0];
   const waitMinutes = isOnline ? Math.max(1, Math.min(9, availableRides.length + 1)) : 1;
-
-  const redirectToDriverAgreement = useCallback(() => {
-    window.location.href = "/driver/sign?return=/driver";
-  }, []);
 
   useEffect(() => {
     notificationAudioRef.current = new Audio("/notification.wav");
@@ -748,13 +748,8 @@ export default function DriverApp() {
       setDriverNotice("");
 
       if (nextAvailability) {
-        const legalStatus = await fetchLegalStatus().catch(() => null);
-        const driverLegal = legalStatus?.driver;
-        if (driverLegal && (!driverLegal.signature_complete || driverLegal.requires_resign)) {
-          setDriverNotice("Please sign the Yala Driver Agreement before going online.");
-          redirectToDriverAgreement();
-          return;
-        }
+        const canGoOnline = await ensureDriverAgreementBeforeOnline("/driver");
+        if (!canGoOnline) return;
       }
 
       await unlockNotificationSound();
@@ -777,13 +772,8 @@ export default function DriverApp() {
         return;
       }
       const detail = error.response?.data?.detail || error.response?.data?.error || "";
-      if (
-        error.response?.data?.code === "driver_terms_required" ||
-        error.response?.data?.driver_terms_required ||
-        String(detail).toLowerCase().includes("driver agreement")
-      ) {
-        setDriverNotice("Please sign the Yala Driver Agreement before going online.");
-        redirectToDriverAgreement();
+      if (isDriverTermsError(error)) {
+        redirectToDriverAgreement("/driver");
         return;
       }
       setDriverNotice(
@@ -792,7 +782,7 @@ export default function DriverApp() {
     }
   };
 
-  const cancelActiveRide = async (reason) => {
+  const cancelActiveRide = async ({ reason, reason_details: reasonDetails = "" }) => {
     if (!activeRide || activeRide.status === "in_progress") return;
 
     try {
@@ -800,7 +790,10 @@ export default function DriverApp() {
       setCancellationError("");
       const response = await axios.post(
         `${API_URL}/rides/cancel/${activeRide.id}/`,
-        { reason },
+        {
+          reason,
+          reason_details: reasonDetails,
+        },
         authHeaders
       );
       setShowCancellation(false);
@@ -1215,6 +1208,15 @@ export default function DriverApp() {
                 : "Go online to start receiving nearby ride requests"}
             </p>
             {driverNotice && <p style={noticeStyle}>{driverNotice}</p>}
+            {driverNotice && driverNotice.includes("Agreement") && (
+              <button
+                type="button"
+                style={{ marginTop: 8, padding: "10px 20px", border: "none", borderRadius: 8, background: "#00A651", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer" }}
+                onClick={() => { window.location.href = "/driver/sign?return=/driver"; }}
+              >
+                Sign Agreement →
+              </button>
+            )}
           </div>
           <span
             style={{

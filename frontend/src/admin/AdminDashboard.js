@@ -2187,10 +2187,21 @@ function DriverPerformancePanel({ performance }) {
 
               <div style={performanceMetricsStyle}>
                 <DetailItem label="Acceptance" value={`${driver.acceptance_rate}%`} />
+                <DetailItem label="Perf. points" value={driver.performance_points ?? "—"} />
+                <DetailItem label="Missed" value={driver.missed_rides ?? 0} />
+                <DetailItem label="Cancelled" value={driver.cancelled_rides ?? 0} />
                 <DetailItem label="Cancellation" value={`${driver.cancellation_rate}%`} />
                 <DetailItem label="Rating" value={`${driver.rating_average}/5`} />
                 <DetailItem label="Completed" value={driver.completed_rides} />
                 <DetailItem label="On time" value={`${driver.on_time_rate}%`} />
+                <DetailItem
+                  label="Risk"
+                  value={
+                    driver.account_risk_flag || driver.account_under_review
+                      ? "At risk"
+                      : "OK"
+                  }
+                />
               </div>
             </article>
           ))}

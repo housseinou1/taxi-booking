@@ -1,0 +1,10 @@
+What's new in Yala Rider 1.2.2
+
+• Improved delivery request flow from the rider app
+• Password reset — recover your account securely by email
+• More reliable trip completion and status updates
+• Better connection handling and faster online/offline response
+• Updated app icon, splash screen, and notification support
+• Performance improvements and bug fixes across booking and tracking
+
+Thank you for riding with Yala — Fast • Safe • Reliable.

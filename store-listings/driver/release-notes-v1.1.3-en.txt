@@ -1,0 +1,12 @@
+What's new in Yala Driver 1.1.3
+
+• Improved earnings dashboard and daily analytics
+• Faster trip and delivery request alerts
+• More reliable online/offline toggle and connection handling
+• Delivery mode improvements with clearer pickup and drop-off flow
+• Document upload and approval status updates
+• Password reset support for driver accounts
+• Updated app icon, splash screen, and notification support
+• Performance improvements and bug fixes
+
+Thank you for driving with Yala — Earn more • Drive smart • Deliver safely.

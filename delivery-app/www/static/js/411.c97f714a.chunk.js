@@ -1,0 +1,1 @@
+"use strict";(globalThis.webpackChunkfrontend=globalThis.webpackChunkfrontend||[]).push([[411],{792(e,n,t){t.d(n,{SecureStoragePlugin:()=>u});const u=(0,t(9344).F3)("SecureStoragePlugin",{web:()=>t.e(754).then(t.bind(t,1754)).then(e=>new e.SecureStoragePluginWeb)})}}]);

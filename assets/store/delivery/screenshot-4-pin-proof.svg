@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1920" width="1080" height="1920">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FF6B00"/>
+      <stop offset="100%" style="stop-color:#C2410C"/>
+    </linearGradient>
+  </defs>
+  <rect width="1080" height="1920" fill="url(#bg)"/>
+  <text x="540" y="120" font-family="Arial, Helvetica, sans-serif" font-size="52" fill="#FFFFFF" text-anchor="middle" font-weight="700">Yala Delivery</text>
+  <text x="540" y="175" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#FFFFFF" text-anchor="middle" opacity="0.92">Secure handoff at every stop</text>
+  <rect x="80" y="230" width="920" height="1320" rx="36" fill="#FFFFFF"/>
+  <text x="120" y="310" font-family="Arial, Helvetica, sans-serif" font-size="34" fill="#111827" font-weight="700">Complete delivery</text>
+  <text x="120" y="355" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#64748B">PIN verification and proof of delivery</text>
+  <rect x="120" y="400" width="840" height="250" rx="20" fill="#FFF7ED"/>
+  <text x="150" y="450" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="#C2410C" font-weight="700">Enter drop-off PIN</text>
+  <text x="150" y="490" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#374151">Ask the recipient for their 4-digit code</text>
+  <rect x="150" y="520" width="90" height="90" rx="12" fill="#FFFFFF" stroke="#FF6B00" stroke-width="2"/>
+  <rect x="260" y="520" width="90" height="90" rx="12" fill="#FFFFFF" stroke="#FF6B00" stroke-width="2"/>
+  <rect x="370" y="520" width="90" height="90" rx="12" fill="#FFFFFF" stroke="#FF6B00" stroke-width="2"/>
+  <rect x="480" y="520" width="90" height="90" rx="12" fill="#FFFFFF" stroke="#FF6B00" stroke-width="2"/>
+  <text x="195" y="578" font-family="Arial, Helvetica, sans-serif" font-size="36" fill="#111827" text-anchor="middle" font-weight="700">4</text>
+  <text x="305" y="578" font-family="Arial, Helvetica, sans-serif" font-size="36" fill="#111827" text-anchor="middle" font-weight="700">8</text>
+  <text x="415" y="578" font-family="Arial, Helvetica, sans-serif" font-size="36" fill="#111827" text-anchor="middle" font-weight="700">2</text>
+  <text x="525" y="578" font-family="Arial, Helvetica, sans-serif" font-size="36" fill="#111827" text-anchor="middle" font-weight="700">1</text>
+  <rect x="120" y="680" width="840" height="280" rx="20" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="2"/>
+  <text x="150" y="730" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="#111827" font-weight="700">Proof of delivery</text>
+  <text x="150" y="770" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#64748B">Photo confirmation at the door</text>
+  <rect x="150" y="790" width="760" height="140" rx="16" fill="#E2E8F0"/>
+  <text x="530" y="870" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#64748B" text-anchor="middle">Parcel delivered photo</text>
+  <rect x="120" y="990" width="840" height="64" rx="32" fill="#22C55E"/>
+  <text x="540" y="1032" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="#FFFFFF" text-anchor="middle" font-weight="700">Complete delivery</text>
+  <rect x="120" y="1090" width="840" height="120" rx="16" fill="#ECFDF5"/>
+  <text x="150" y="1140" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#065F46" font-weight="700">Secure handoff confirmed</text>
+  <text x="150" y="1175" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#047857">Sender and receiver notified instantly</text>
+  <text x="540" y="1820" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#FFFFFF" text-anchor="middle" opacity="0.85">Fast delivery | Live tracking | Secure handoff</text>
+</svg>

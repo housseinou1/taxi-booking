@@ -5,6 +5,14 @@ import { useTranslation } from "react-i18next";
 import Login from "./auth/Login";
 import Register from "./auth/Register";
 import { canAccessPage, getDashboardPath, getSafeRedirectPath, getUserRole, isPublicPage } from "./auth/roleRouting";
+import {
+  clearAuthSession,
+  getRequiredRoleForApp,
+  getStoredUser,
+  hasStoredAuthCredentials,
+  isDriverAccount,
+  restoreAuthSession,
+} from "./auth/session";
 
 import RiderApp from "./rider/RiderApp";
 import RiderReviews from "./rider/RiderReviews";
@@ -195,14 +203,13 @@ function wrapDriverSecondaryPage(title, node, { backTo = "/driver", withProvider
 
 function App() {
   const currentPath = (window.location.pathname || "/").replace(/\/+$/, "") || "/";
-  const hasAuthSession = hasStoredAuthSession();
 
   const [page, setPage] = useState("home");
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [refreshCards, setRefreshCards] = useState(0);
   const [selectedRide, setSelectedRide] = useState(null);
-  const [sessionChecked, setSessionChecked] = useState(hasStoredAuthSession());
-  const [isAuthenticated, setIsAuthenticated] = useState(hasStoredAuthSession());
+  const [sessionChecked, setSessionChecked] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const sessionCheckStarted = useRef(false);
   const [, forceUpdate] = useState(0);
   const [navCounter, setNavCounter] = useState(0);
@@ -399,72 +406,30 @@ function App() {
     sessionCheckStarted.current = true;
 
     let isMounted = true;
-    const sessionTimeout = window.setTimeout(() => {
-      // Only clear if no token exists (don't force logout on slow networks)
-      if (!localStorage.getItem("access") && !localStorage.getItem("refresh")) {
-        clearAuthSession();
-        if (isMounted) {
-          setIsAuthenticated(false);
-          setSessionChecked(true);
-        }
-      } else if (isMounted) {
-        // Token exists but server is slow — keep session alive
-        setSessionChecked(true);
-      }
-    }, 15000);
 
     const restoreSession = async () => {
-      const access = localStorage.getItem("access");
-
-      if (!access && !localStorage.getItem("refresh")) {
+      if (!hasStoredAuthCredentials()) {
         clearAuthSession();
         if (isMounted) {
           setIsAuthenticated(false);
           setSessionChecked(true);
         }
-        window.clearTimeout(sessionTimeout);
         return;
       }
 
-      try {
-        const access = localStorage.getItem("access");
-        const response = await axios.get(`${API_URL}/auth/me/`, {
-          headers: { Authorization: `Bearer ${access}` },
-          timeout: 10000,
-        });
-        localStorage.setItem("user", JSON.stringify(response.data));
+      const result = await restoreAuthSession({
+        requiredRole: getRequiredRoleForApp(),
+      });
 
-        if (isMounted) {
-          setIsAuthenticated(true);
-          setSessionChecked(true);
-        }
-      } catch (error) {
-        // Only logout if server explicitly rejects the token (401/403)
-        // Network errors or timeouts should NOT clear the session
-        const status = error?.response?.status;
-        if (status === 401 || status === 403) {
-          clearAuthSession();
-          if (isMounted) {
-            setIsAuthenticated(false);
-            setSessionChecked(true);
-          }
-        } else {
-          // Network error / timeout — keep session alive
-          if (isMounted) {
-            setIsAuthenticated(true);
-            setSessionChecked(true);
-          }
-        }
-      } finally {
-        window.clearTimeout(sessionTimeout);
-      }
+      if (!isMounted) return;
+      setIsAuthenticated(result.authenticated);
+      setSessionChecked(true);
     };
 
     restoreSession();
 
     return () => {
       isMounted = false;
-      window.clearTimeout(sessionTimeout);
     };
   }, []);
 
@@ -610,12 +575,19 @@ function App() {
       return withInstall(<AuthLoadingScreen />);
     }
 
-    if (!isAuthenticated || !hasAuthSession) {
+    if (!isAuthenticated) {
       return withInstall(<LoginRequiredRedirect path={currentPath} />);
     }
 
     const user = getStoredUser();
-    if (getAppType() === 'web' && !canAccessPage(user, page)) {
+    const appType = getAppType();
+    if ((appType === "driver" || appType === "delivery") && !isDriverAccount(user)) {
+      return withInstall(<LoginRequiredRedirect path={currentPath} />);
+    }
+    if (appType === "rider" && getUserRole(user) !== "rider") {
+      return withInstall(<LoginRequiredRedirect path={currentPath} />);
+    }
+    if (appType === "web" && !canAccessPage(user, page)) {
       return withInstall(<RoleAccessRedirect user={user} />);
     }
   }
@@ -858,7 +830,8 @@ function App() {
     return withInstall(
       <Suspense fallback={<div style={{ minHeight: "100vh", background: "#0B1220" }} />}>
         <LazyDriverDashboardNew />
-      </Suspense>
+      </Suspense>,
+      { showNotifications: false }
     );
   }
 
@@ -1004,6 +977,10 @@ function App() {
 
   // Native apps: show login if not authenticated, show appropriate app if authenticated
   if (getAppType() !== 'web') {
+    if (!sessionChecked) {
+      return withInstall(<AuthLoadingScreen />);
+    }
+
     const nativeMarketplacePages = new Set(["delivery-customer", "merchant", "merchant-register", "merchant-legal-sign"]);
     if (nativeMarketplacePages.has(page)) {
       if (page === "delivery-customer") {
@@ -1019,25 +996,27 @@ function App() {
       }
     }
 
-    if (isAuthenticated) {
-      if (isDeliveryNativeApp()) {
-        markDeliveryCourierSession();
-        return withInstall(<DeliveryDashboard />);
-      }
-      if (getAppType() === 'driver' && isTaxiDriverContext()) {
-        const LazyDriverDashboardNew = React.lazy(() => import("./driver/DriverDashboardNew"));
-        return withInstall(
-          <Suspense fallback={<div style={{ minHeight: "100vh", background: "#0B1220" }} />}>
-            <LazyDriverDashboardNew />
-          </Suspense>
-        );
-      }
-      if (getAppType() === 'rider') {
-        return withInstall(<RiderApp />);
-      }
+    if (!isAuthenticated) {
+      return withInstall(<Login onLogin={handleLoginSuccess} />, { showNotifications: false });
+    }
+
+    if (isDeliveryNativeApp()) {
+      markDeliveryCourierSession();
+      return withInstall(<DeliveryDashboard />);
+    }
+    if (getAppType() === 'driver' && isTaxiDriverContext()) {
+      const LazyDriverDashboardNew = React.lazy(() => import("./driver/DriverDashboardNew"));
+      return withInstall(
+        <Suspense fallback={<div style={{ minHeight: "100vh", background: "#0B1220" }} />}>
+          <LazyDriverDashboardNew />
+        </Suspense>,
+        { showNotifications: false }
+      );
+    }
+    if (getAppType() === 'rider') {
       return withInstall(<RiderApp />);
     }
-    return withInstall(<Login onLogin={handleLoginSuccess} />, { showNotifications: false });
+    return withInstall(<RiderApp />);
   }
 
   return withInstall(<LandingPage />);
@@ -1102,42 +1081,9 @@ function isProtectedPage(page) {
   ].includes(page);
 }
 
-function hasValidAccessToken() {
-  return isJwtUsable(localStorage.getItem("access"));
-}
-
-function hasStoredAuthSession() {
-  return hasValidAccessToken() || Boolean(localStorage.getItem("refresh"));
-}
-
-function isJwtUsable(token) {
-  if (!token) return false;
-
-  try {
-    const [, payload] = token.split(".");
-    if (!payload) return true;
-
-    const decoded = JSON.parse(window.atob(payload.replace(/-/g, "+").replace(/_/g, "/")));
-    if (!decoded.exp) return true;
-
-    return decoded.exp * 1000 > Date.now() + 30000;
-  } catch (error) {
-    return Boolean(token);
-  }
-}
-
-function clearAuthSession() {
-  localStorage.removeItem("access");
-  localStorage.removeItem("refresh");
-  localStorage.removeItem("user");
-  localStorage.removeItem("selectedRideId");
-  localStorage.removeItem("needs_payment_setup");
-  localStorage.removeItem("needs_vehicle_setup");
-}
-
 function LoginRequiredRedirect({ path }) {
   useEffect(() => {
-    const redirectPath = path && path !== "/login" ? path : "/rider-dashboard";
+    const redirectPath = path && path !== "/login" ? path : getAppHomePath();
     localStorage.setItem("sx_login_redirect", redirectPath);
     window.location.replace(`/login?next=${encodeURIComponent(redirectPath)}`);
   }, [path]);
@@ -1145,7 +1091,7 @@ function LoginRequiredRedirect({ path }) {
   return (
     <AuthLoadingScreen
       message="Your session expired. Opening secure login..."
-      actionHref={`/login?next=${encodeURIComponent(path || "/rider-dashboard")}`}
+      actionHref={`/login?next=${encodeURIComponent(path || getAppHomePath())}`}
       actionLabel="Open login"
     />
   );
@@ -2936,14 +2882,6 @@ function SettingsPage({ logout }) {
       </section>
     </main>
   );
-}
-
-function getStoredUser() {
-  try {
-    return JSON.parse(localStorage.getItem("user") || "{}");
-  } catch (error) {
-    return {};
-  }
 }
 
 function SettingsStyles() {

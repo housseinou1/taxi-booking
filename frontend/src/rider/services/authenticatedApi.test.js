@@ -36,7 +36,7 @@ describe("authenticatedApi", () => {
     expect(axios.post).toHaveBeenCalledWith(
       "http://localhost:8000/auth/token/refresh/",
       { refresh: "valid-refresh" },
-      { timeout: 10000 }
+      { timeout: 15000 }
     );
     expect(axios.get).toHaveBeenLastCalledWith(
       "http://localhost:8000/auth/me/",

@@ -132,6 +132,7 @@ export default function DeliveryCourierDashboard() {
   const [dismissedOfferId, setDismissedOfferId] = useState(null);
   const [highlightedOfferId, setHighlightedOfferId] = useState(null);
   const [todayEarnings, setTodayEarnings] = useState(null);
+  const [courierStats, setCourierStats] = useState({ rating: "5.0", acceptanceRate: 100 });
   const [chatOpen, setChatOpen] = useState(false);
   const [expiredDocAlerts, setExpiredDocAlerts] = useState([]);
   const [completedDelivery, setCompletedDelivery] = useState(null);
@@ -146,19 +147,28 @@ export default function DeliveryCourierDashboard() {
     try {
       setModeLoading(true);
       const settings = await apiRequest(`${API_URL}/deliveries/driver/mode/`);
-      setDeliveryMode(settings.delivery_mode_enabled);
-      if (settings.delivery_mode_enabled) {
-        onlineSinceRef.current = onlineSinceRef.current || Date.now();
-        setOnlineTimeMs(readStoredOnlineMs());
-      }
       setDeliveryVehicleType(settings.delivery_vehicle_type || "motorcycle");
       setDeliveryCities(
         Array.isArray(settings.delivery_cities) && settings.delivery_cities.length
           ? settings.delivery_cities
           : [DEFAULT_DELIVERY_CITY]
       );
+
+      setDeliveryMode(false);
+      onlineSinceRef.current = null;
+      if (settings.delivery_mode_enabled) {
+        try {
+          await apiRequest(`${API_URL}/deliveries/driver/mode/`, {
+            method: "PATCH",
+            body: JSON.stringify({ delivery_mode_enabled: false }),
+          });
+        } catch (_) {
+          // Keep local offline state even if sync fails.
+        }
+      }
     } catch (_) {
-      // Settings might not exist yet
+      setDeliveryMode(false);
+      onlineSinceRef.current = null;
     } finally {
       setModeLoading(false);
     }
@@ -199,11 +209,29 @@ export default function DeliveryCourierDashboard() {
   }, [load]);
 
   useEffect(() => {
-    loadSettings();
-    load();
+    let cancelled = false;
+
+    const bootstrap = async () => {
+      await loadSettings();
+      if (!cancelled) {
+        await load();
+      }
+    };
+
+    bootstrap().catch(() => {});
+
     apiRequest(`${API_URL}/deliveries/courier/account/`)
-      .then((data) => setCourierProfile(data))
-      .catch(() => setCourierProfile(null));
+      .then((data) => {
+        setCourierProfile(data);
+        setCourierStats({
+          rating: String(data?.rating || data?.lifetime?.rating || "5.0"),
+          acceptanceRate: Number(data?.lifetime?.acceptance_rate ?? 100),
+        });
+      })
+      .catch(() => {
+        setCourierProfile(null);
+        setCourierStats({ rating: "5.0", acceptanceRate: 100 });
+      });
     apiRequest(`${API_URL}/deliveries/courier/earnings/`)
       .then((data) => {
         const today = data?.today || {};
@@ -225,6 +253,7 @@ export default function DeliveryCourierDashboard() {
       })
       .catch(() => setExpiredDocAlerts([]));
     return () => {
+      cancelled = true;
       if (noticeTimerRef.current) window.clearTimeout(noticeTimerRef.current);
     };
   }, [loadSettings, load]);
@@ -448,6 +477,7 @@ export default function DeliveryCourierDashboard() {
       stopDeliveryOfferAlert();
       offersBaselineReadyRef.current = false;
       seenOfferIdsRef.current.clear();
+      setAvailable([]);
     }
 
     setDeliveryMode(newValue);
@@ -700,6 +730,7 @@ export default function DeliveryCourierDashboard() {
         activeDelivery={activeDelivery}
         incomingOfferActive={showIncomingOffer}
         todayEarnings={todayEarnings}
+        courierStats={courierStats}
         earningsLabel={todayEarnings ? `${todayEarnings.amount} MRU` : "0 MRU"}
         onlineTimeLabel={formatOnlineDuration(liveOnlineMs)}
         sheetState={sheetState}
