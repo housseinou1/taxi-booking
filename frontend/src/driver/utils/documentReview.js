@@ -216,6 +216,25 @@ export function shouldShowDocumentsUnderReview({
   return areAllRequiredDocumentsUploaded(documents);
 }
 
+/**
+ * True when the driver menu should show a documents alert dot
+ * (missing, rejected, or expired — not merely "under review").
+ */
+export function driverNeedsDocumentAlert(profile = {}) {
+  if (!profile) return false;
+
+  if (Array.isArray(profile.documents) && profile.documents.length > 0) {
+    return getExpiredOrMissingDocuments(profile.documents).length > 0;
+  }
+
+  const missing = profile.missing_document_types;
+  const expired = profile.expired_document_types;
+  return (
+    (Array.isArray(missing) && missing.length > 0) ||
+    (Array.isArray(expired) && expired.length > 0)
+  );
+}
+
 export function getDriverApprovalNotice(profile = {}, documents = []) {
   const status = profile?.status || "pending";
 
