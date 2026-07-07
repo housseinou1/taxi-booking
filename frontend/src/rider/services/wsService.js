@@ -24,6 +24,21 @@ function buildWsUrl() {
   return `${WS_URL}${separator}token=${encodeURIComponent(token)}`;
 }
 
+export function resetWsConnection() {
+  if (ws) {
+    ws.onclose = null;
+    ws.onerror = null;
+    ws.close();
+    ws = null;
+  }
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+  reconnectDelay = 1000;
+  joinedRideIds.clear();
+}
+
 function connect() {
   if (
     ws &&
@@ -98,8 +113,11 @@ function leaveRideGroup(rideId) {
   send({ type: "leave_ride", ride_id: rideId });
 }
 
+const LOCATION_TYPES = new Set(["location_update", "driver_location"]);
+
 function subscribeRideUpdates(callback) {
   const handler = (data) => {
+    if (LOCATION_TYPES.has(data.type)) return;
     const isRideUpdate =
       data.type === "ride_status_update" ||
       data.type === "ride_update" ||
