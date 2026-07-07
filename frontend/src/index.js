@@ -72,10 +72,21 @@ async function bootstrap() {
 
   // Only register service worker in browser/PWA mode, not local development or Capacitor native apps.
   if ("serviceWorker" in navigator && !isNative() && !isLocalhost) {
-    window.addEventListener("load", () => {
-      navigator.serviceWorker
-        .register("/sw.js")
-        .catch((error) => console.log("Service worker registration failed:", error));
+    window.addEventListener("load", async () => {
+      try {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(
+          registrations
+            .filter((registration) => {
+              const scriptUrl = registration.active?.scriptURL || "";
+              return scriptUrl.includes("/sw.js") && !scriptUrl.includes("v4");
+            })
+            .map((registration) => registration.unregister())
+        );
+        await navigator.serviceWorker.register("/sw.js?v=4");
+      } catch (error) {
+        console.log("Service worker registration failed:", error);
+      }
     });
   } else if ("serviceWorker" in navigator) {
     // Unregister stale service workers in native and local development contexts.

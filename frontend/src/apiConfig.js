@@ -8,42 +8,50 @@ const browserProtocol =
     ? "https"
     : "http";
 
-function getProductionApiUrlFromHostname() {
-  if (typeof window === "undefined") {
-    return "";
+function isProductionWebHost(host) {
+  const normalized = String(host || "").toLowerCase();
+  return normalized === "yalataxi.live" || normalized === "www.yalataxi.live";
+}
+
+function resolveApiUrl() {
+  if (typeof window !== "undefined" && isProductionWebHost(window.location.hostname)) {
+    // Same-origin API on production web (nginx proxies /auth/, /rides/, etc.).
+    return window.location.origin;
   }
 
-  const host = window.location.hostname.toLowerCase();
-  if (host === "yalataxi.live" || host === "www.yalataxi.live") {
-    return "https://api.yalataxi.live";
+  if (process.env.REACT_APP_API_URL) {
+    return process.env.REACT_APP_API_URL;
   }
 
   return "";
 }
 
-function getProductionWsUrlFromHostname(pathSuffix) {
-  if (typeof window === "undefined") {
-    return "";
+function resolveWsUrl(pathSuffix) {
+  if (typeof window !== "undefined" && isProductionWebHost(window.location.hostname)) {
+    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+    return `${protocol}://${window.location.host}/ws/${pathSuffix}/`;
   }
 
-  const host = window.location.hostname.toLowerCase();
-  if (host === "yalataxi.live" || host === "www.yalataxi.live") {
-    return `wss://api.yalataxi.live/ws/${pathSuffix}/`;
+  if (pathSuffix === "rides" && process.env.REACT_APP_WS_URL) {
+    return process.env.REACT_APP_WS_URL;
+  }
+
+  if (pathSuffix === "deliveries") {
+    return (
+      process.env.REACT_APP_DELIVERY_WS_URL ||
+      process.env.REACT_APP_WS_URL ||
+      ""
+    );
   }
 
   return "";
 }
 
-const configuredApiUrl =
-  process.env.REACT_APP_API_URL || getProductionApiUrlFromHostname();
+const configuredApiUrl = resolveApiUrl();
 
-const configuredWsUrl =
-  process.env.REACT_APP_WS_URL || getProductionWsUrlFromHostname("rides");
+const configuredWsUrl = resolveWsUrl("rides");
 
-const configuredDeliveryWsUrl =
-  process.env.REACT_APP_DELIVERY_WS_URL ||
-  process.env.REACT_APP_WS_URL ||
-  getProductionWsUrlFromHostname("deliveries");
+const configuredDeliveryWsUrl = resolveWsUrl("deliveries");
 
 const isBrowserLocalDev =
   typeof window !== "undefined" &&
@@ -73,7 +81,6 @@ export function isLocalNetworkApiUrl(url) {
 export const isRemoteApiConfigured =
   Boolean(configuredApiUrl) && !isLocalNetworkApiUrl(configuredApiUrl);
 
-// Only auto-point at :8000 in dev when no remote API URL is configured.
 const preferLocalDevApi = isBrowserLocalDev && !isRemoteApiConfigured;
 
 const localDevApiUrl = `${browserProtocol}://${browserHost}:8000`;
