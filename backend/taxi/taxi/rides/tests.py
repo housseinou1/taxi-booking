@@ -314,3 +314,72 @@ class RideCancellationFlowTests(APITestCase):
             format="json",
         )
         self.assertEqual(response.status_code, 400)
+
+
+class CompleteRideStatusGuardTests(APITestCase):
+    """complete_ride must reject any status that is not in_progress."""
+
+    def setUp(self):
+        self.rider = User.objects.create_user(
+            email="guard-rider@example.com",
+            password="StrongPass123",
+            first_name="Guard",
+            last_name="Rider",
+        )
+        self.driver = User.objects.create_user(
+            email="guard-driver@example.com",
+            password="StrongPass123",
+            first_name="Guard",
+            last_name="Driver",
+            user_type="driver",
+        )
+        DriverProfile.objects.create(
+            user=self.driver,
+            status="approved",
+            driver_code="880001",
+            qr_code_uuid="00000000-0000-4000-8000-000000008801",
+            is_available=False,
+        )
+
+    def _make_ride(self, ride_status):
+        return Ride.objects.create(
+            rider=self.rider,
+            driver=self.driver,
+            pickup="A",
+            destination="B",
+            status=ride_status,
+            fare="300.00",
+        )
+
+    @patch("taxi.rides.views.broadcast_ride_update")
+    def test_complete_from_in_progress_succeeds(self, _broadcast):
+        ride = self._make_ride("in_progress")
+        self.client.force_authenticate(self.driver)
+        response = self.client.post(f"/rides/complete/{ride.id}/", {}, format="json")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["status"], "completed")
+
+    def test_complete_from_driver_arrived_is_blocked(self):
+        ride = self._make_ride("driver_arrived")
+        self.client.force_authenticate(self.driver)
+        response = self.client.post(f"/rides/complete/{ride.id}/", {}, format="json")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("in progress", response.data["detail"])
+
+    def test_complete_from_driver_arriving_is_blocked(self):
+        ride = self._make_ride("driver_arriving")
+        self.client.force_authenticate(self.driver)
+        response = self.client.post(f"/rides/complete/{ride.id}/", {}, format="json")
+        self.assertEqual(response.status_code, 400)
+
+    def test_complete_from_requested_is_blocked(self):
+        ride = self._make_ride("requested")
+        self.client.force_authenticate(self.driver)
+        response = self.client.post(f"/rides/complete/{ride.id}/", {}, format="json")
+        self.assertEqual(response.status_code, 400)
+
+    def test_complete_already_completed_is_blocked(self):
+        ride = self._make_ride("completed")
+        self.client.force_authenticate(self.driver)
+        response = self.client.post(f"/rides/complete/{ride.id}/", {}, format="json")
+        self.assertEqual(response.status_code, 400)
