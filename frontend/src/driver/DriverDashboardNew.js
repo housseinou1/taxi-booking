@@ -1015,9 +1015,10 @@ function DriverDashboardContent() {
         if (onlineNotice && !activeRide) {
           banners.push({ msg: onlineNotice, bg: "rgba(0,166,81,0.92)" });
         }
-        const primaryMsg = statusLoadError || toggleError || (driverNotice && !activeRide ? driverNotice : "");
-        if (primaryMsg) banners.push({ msg: primaryMsg, bg: "rgba(239,68,68,0.92)" });
-        if (acceptError) banners.push({ msg: acceptError, bg: "rgba(239,68,68,0.92)" });
+        const errorMsg = statusLoadError || toggleError;
+        if (errorMsg) banners.push({ msg: errorMsg, bg: "rgba(239,68,68,0.92)", alert: true });
+        if (driverNotice && !activeRide) banners.push({ msg: driverNotice, bg: "rgba(30,58,138,0.92)" });
+        if (acceptError) banners.push({ msg: acceptError, bg: "rgba(239,68,68,0.92)", alert: true });
         if (gpsUnavailable) banners.push({ msg: "Location unavailable. Enable GPS to navigate.", bg: "rgba(239,68,68,0.92)", alert: true });
         if (cancellationWarning && !activeRide) banners.push({ msg: cancellationWarning, bg: "rgba(245,158,11,0.95)" });
         if (banners.length === 0) return null;
