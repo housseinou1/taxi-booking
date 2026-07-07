@@ -116,6 +116,7 @@ function isRoleAllowedForAppType(role, appType) {
   if (appType === "rider") return role === "rider";
   if (appType === "driver") return role === "driver";
   if (appType === "delivery") return role === "driver";
+  if (appType === "admin") return role === "admin";
   return true;
 }
 
@@ -136,7 +137,7 @@ function normalizeRouteContext(value) {
 function getRouteAppType() {
   if (isDeliveryNativeApp()) return "delivery";
   const builtAppType = getAppType();
-  if (builtAppType === "rider" || builtAppType === "driver" || builtAppType === "delivery") {
+  if (builtAppType === "rider" || builtAppType === "driver" || builtAppType === "delivery" || builtAppType === "admin") {
     return builtAppType;
   }
 
@@ -919,17 +920,7 @@ function App() {
   }
 
   if (page === "admin") {
-    return withInstall(
-      <div>
-        <TopBar
-          title={`${MARKET.brandName} Admin`}
-          goHome={goHome}
-          logout={logout}
-          minimalActions
-        />
-        <AdminDashboard />
-      </div>
-    );
+    return withInstall(<AdminDashboard />);
   }
 
   if (page === "settings") {
@@ -1015,6 +1006,9 @@ function App() {
     }
     if (getAppType() === 'rider') {
       return withInstall(<RiderApp />);
+    }
+    if (getAppType() === 'admin') {
+      return withInstall(<AdminDashboard />, { showNotifications: false });
     }
     return withInstall(<RiderApp />);
   }

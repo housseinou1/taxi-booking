@@ -27,6 +27,10 @@ const clearSessionAndRedirect = () => {
   }
 };
 
+export function resetAuthRedirectFlag() {
+  redirectStarted = false;
+}
+
 const getRefreshAccessToken = async () => {
   if (refreshPromise) return refreshPromise;
 

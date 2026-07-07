@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 
-import { API_URL, getApiCandidates } from "../apiConfig";
+import { API_URL, getApiCandidates, isRemoteApiConfigured } from "../apiConfig";
 import { isRiderLyftUI } from "../native/platform";
 import riderApi from "../rider/services/authenticatedApi";
 import "./LaunchServices.css";
@@ -105,7 +105,11 @@ async function requestFirst(paths, { method = "get", data, headers } = {}) {
     }
   }
 
-  if (process.env.NODE_ENV === "development" && typeof window !== "undefined") {
+  if (
+    process.env.NODE_ENV === "development" &&
+    typeof window !== "undefined" &&
+    !isRemoteApiConfigured
+  ) {
     for (const path of paths) {
       const localUrl = `${window.location.protocol}//${window.location.hostname}:8000${path}`;
       try {
@@ -164,7 +168,11 @@ async function authenticatedRequestFirst(paths, { method = "get", data } = {}) {
     }
   }
 
-  if (process.env.NODE_ENV === "development" && typeof window !== "undefined") {
+  if (
+    process.env.NODE_ENV === "development" &&
+    typeof window !== "undefined" &&
+    !isRemoteApiConfigured
+  ) {
     for (const path of paths) {
       const localUrl = `${window.location.protocol}//${window.location.hostname}:8000${path}`;
       try {

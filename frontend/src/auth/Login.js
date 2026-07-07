@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useTranslation } from "react-i18next";
-import { getApiCandidates } from "../apiConfig";
+import { API_URL, getApiCandidates } from "../apiConfig";
 import { getSafeRedirectPath, getUserRole } from "./roleRouting";
 import { persistAuthTokens } from "./session";
 import { getAppType, isDeliveryCourierPath } from "../native/platform";
@@ -60,14 +60,25 @@ function getLoginErrorMessage(error, t, context = "web") {
   }
 
   if (error?.request) {
+    const apiTarget = API_URL || process.env.REACT_APP_API_URL || "the API server";
+    const code = String(error?.code || "");
+    if (code === "ECONNABORTED") {
+      return `Request timed out reaching ${apiTarget}. Check your connection and try again.`;
+    }
+    if (context === "admin") {
+      return `Cannot reach Yala Admin API at ${apiTarget}. Confirm you are on https://yalataxi.live/admin or run npm run start:admin, then retry. If antivirus or firewall blocks HTTPS, allow api.yalataxi.live.`;
+    }
     if (context === "delivery") {
-      const apiUrl = process.env.REACT_APP_API_URL || "";
-      if (apiUrl.includes("api.yalataxi.live")) {
+      if (apiTarget.includes("api.yalataxi.live")) {
         return "Cannot reach the Yala Delivery server. Check your internet connection and try again.";
       }
       return "Cannot reach the Yala Delivery server. Connect your phone to the same Wi-Fi as this PC, keep the backend running, then retry login.";
     }
-    return "Connection error. Check your internet and try again.";
+    return `Cannot reach ${apiTarget}. Check your internet connection and try again.`;
+  }
+
+  if (error?.message) {
+    return error.message;
   }
 
   return t("auth.loginFailed");
@@ -187,6 +198,9 @@ function getAppHint() {
 
 function getLoginSubtitle() {
   const context = getLoginContext();
+  if (context === "admin") {
+    return "Sign in to manage drivers, riders, deliveries, and payments.";
+  }
   if (context === "delivery") {
     return "Sign in to continue as a Yala Delivery courier.";
   }
@@ -229,10 +243,14 @@ export default function Login({ onLogin }) {
 
       for (const endpoint of getLoginApiCandidates()) {
         try {
-          response = await axios.post(endpoint, {
-            email: email.trim().toLowerCase(),
-            password,
-          });
+          response = await axios.post(
+            endpoint,
+            {
+              email: email.trim().toLowerCase(),
+              password,
+            },
+            { timeout: 15000 }
+          );
           break;
         } catch (error) {
           lastError = error;
@@ -251,7 +269,7 @@ export default function Login({ onLogin }) {
       const userRole = getUserRole(response.data);
       const expectedAppRole =
         loginContext === "admin"
-          ? "web"
+          ? "admin"
           : loginContext === "driver" || loginContext === "rider" || loginContext === "delivery"
           ? loginContext === "delivery"
             ? "driver"
@@ -263,16 +281,20 @@ export default function Login({ onLogin }) {
         expectedAppRole === "rider" && userRole !== "rider";
       const driverAppMismatch =
         expectedAppRole === "driver" && userRole !== "driver";
+      const adminAppMismatch =
+        expectedAppRole === "admin" && userRole !== "admin";
 
-      if (riderAppMismatch || driverAppMismatch) {
+      if (riderAppMismatch || driverAppMismatch || adminAppMismatch) {
         const expected =
-          appType === "delivery" || loginContext === "delivery"
+          expectedAppRole === "admin"
+            ? "Admin"
+            : appType === "delivery" || loginContext === "delivery"
             ? "Yala Delivery courier"
             : appType === "driver" || loginContext === "driver"
               ? "Driver"
               : "Rider";
         setErrorMessage(
-          `This account is not a ${expected} account. Please create a ${expected} account to use this app.`
+          `This account is not a ${expected} account. Please sign in with an authorized ${expected} account.`
         );
         return;
       }
@@ -434,6 +456,7 @@ export default function Login({ onLogin }) {
   };
 
   const loginContext = getLoginContext();
+  const isAdminLogin = loginContext === "admin";
   const isDeliveryLogin = loginContext === "delivery" || getAppType() === "delivery";
   const useSharedLyftLogin = ["rider", "driver"].includes(loginContext);
   const [blockAutofill, setBlockAutofill] = useState(isDeliveryLogin);
@@ -447,7 +470,11 @@ export default function Login({ onLogin }) {
   }, [isDeliveryLogin]);
 
   return (
-    <main className={`yala-login ${useSharedLyftLogin ? "yala-login--lyft" : ""}${isDeliveryLogin ? " yala-login--delivery-uber" : ""}`}>
+    <main
+      className={`yala-login ${useSharedLyftLogin ? "yala-login--lyft" : ""}${
+        isDeliveryLogin ? " yala-login--delivery-uber" : ""
+      }${isAdminLogin ? " yala-login--admin" : ""}`}
+    >
       <LoginStyles />
 
       <div className="yala-login__logo-area">
@@ -642,7 +669,7 @@ export default function Login({ onLogin }) {
         )}
       </form>
 
-      {!isDeliveryLogin && (
+      {!isDeliveryLogin && !isAdminLogin && (
         <button
           type="button"
           onClick={navigateToRegister}
@@ -883,6 +910,26 @@ function LoginStyles() {
         cursor: pointer;
         text-decoration: underline;
         text-underline-offset: 3px;
+      }
+
+      @media (min-width: 900px) {
+        .yala-login--admin {
+          padding: 40px 24px;
+        }
+
+        .yala-login--admin .yala-login__form {
+          max-width: 440px;
+          padding: 32px 36px;
+        }
+
+        .yala-login--admin .yala-login__brand {
+          font-size: 32px;
+        }
+
+        .yala-login--admin .yala-login__tagline {
+          max-width: 420px;
+          font-size: 15px;
+        }
       }
 
       @media (max-width: 480px) {

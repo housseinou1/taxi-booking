@@ -1,5 +1,7 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { API_URL } from "../apiConfig";
+import authenticatedApi from "../auth/authenticatedApi";
+import { clearAuthSession } from "../auth/session";
 import { MARKET, formatMoney } from "../marketConfig";
 import AnalyticsDashboard from "./AnalyticsDashboard";
 import SafetyAdminPanel from "./SafetyAdminPanel";
@@ -149,42 +151,20 @@ const getApiMessage = (data, fallback) =>
   flattenApiMessage(data?.message) ||
   fallback;
 
-const getApiCandidates = (path) => {
-  const candidates = [`${API_URL}${path}`];
-  if (typeof window !== "undefined") {
-    const localFallback = `${window.location.protocol}//${window.location.hostname}:8000${path}`;
-    if (!candidates.includes(localFallback)) {
-      candidates.push(localFallback);
-    }
-  }
-  return candidates;
-};
-
 const callAdminApi = async (path, options = {}) => {
-  const {
-    method = "GET",
-    headers = {},
-    body,
-  } = options;
-
-  const endpointCandidates = getApiCandidates(path);
-  let lastNetworkError = null;
-
-  for (const endpoint of endpointCandidates) {
-    try {
-      const response = await fetch(endpoint, {
-        method,
-        headers,
-        body,
-      });
-      const data = await readJsonSafe(response);
-      return { response, data };
-    } catch (error) {
-      lastNetworkError = error;
-    }
+  const { method = "GET", body } = options;
+  const methodLower = method.toLowerCase();
+  try {
+    let res;
+    if (methodLower === "delete") res = await authenticatedApi.delete(`${API_URL}${path}`);
+    else if (methodLower === "post") res = await authenticatedApi.post(`${API_URL}${path}`, body ? JSON.parse(body) : undefined);
+    else if (methodLower === "patch") res = await authenticatedApi.patch(`${API_URL}${path}`, body ? JSON.parse(body) : undefined);
+    else res = await authenticatedApi.get(`${API_URL}${path}`);
+    return { response: { ok: true, status: res.status }, data: res.data };
+  } catch (error) {
+    const status = error?.response?.status || 500;
+    return { response: { ok: false, status }, data: error?.response?.data || {} };
   }
-
-  throw lastNetworkError || new Error("Network request failed");
 };
 
 const FAKE_VALUE_SET = new Set([
@@ -248,6 +228,12 @@ const getDriverApprovalMissingItems = (driver, relatedUser = null) => {
     { label: "Carte Grise", ok: Boolean(driver?.vehicle_registration) },
     { label: "Insurance document", ok: Boolean(driver?.insurance_document) },
     { label: "Vignette", ok: Boolean(driver?.vignette_document) },
+    {
+      label: "Driver agreement signed",
+      ok: Boolean(
+        driver?.legal_signature?.signature_complete || driver?.driver_terms_accepted
+      ),
+    },
   ];
 
   return checks.filter((item) => !item.ok).map((item) => item.label);
@@ -344,108 +330,68 @@ function AdminDashboard() {
     return () => window.removeEventListener("resize", updateLayout);
   }, []);
 
-  const getToken = () => {
-    return localStorage.getItem("access");
-  };
-
-  const authHeaders = useCallback(() => ({
-    Authorization: `Bearer ${getToken()}`,
-  }), []);
-
   const fetchDrivers = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/drivers/list/`, {
-        headers: authHeaders(),
-      });
-      const data = await response.json();
-      setDrivers(Array.isArray(data) ? data : []);
+      const res = await authenticatedApi.get(`${API_URL}/drivers/list/`);
+      setDrivers(Array.isArray(res.data) ? res.data : []);
     } catch (error) {
       console.error("Error fetching drivers:", error);
       setDrivers([]);
     }
-  }, [authHeaders]);
+  }, []);
 
   const fetchUsers = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/auth/users/`, {
-        headers: authHeaders(),
-      });
-      const data = await response.json();
-      setUsers(Array.isArray(data) ? data : []);
+      const res = await authenticatedApi.get(`${API_URL}/auth/users/`);
+      setUsers(Array.isArray(res.data) ? res.data : []);
     } catch (error) {
       console.error("Error fetching users:", error);
       setUsers([]);
     }
-  }, [authHeaders]);
+  }, []);
 
   const fetchRides = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/rides/history/`, {
-        headers: authHeaders(),
-      });
-      const data = await response.json();
-      setRides(Array.isArray(data) ? data : []);
+      const res = await authenticatedApi.get(`${API_URL}/rides/history/`);
+      setRides(Array.isArray(res.data) ? res.data : []);
     } catch (error) {
       console.error("Error fetching rides:", error);
       setRides([]);
     }
-  }, [authHeaders]);
+  }, []);
 
   const fetchWithdrawals = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/payments/withdrawals/`, {
-        headers: authHeaders(),
-      });
-      const data = await response.json();
-      setWithdrawals(Array.isArray(data) ? data : []);
+      const res = await authenticatedApi.get(`${API_URL}/payments/withdrawals/`);
+      setWithdrawals(Array.isArray(res.data) ? res.data : []);
     } catch (error) {
       console.error("Withdrawal fetch error:", error);
       setWithdrawals([]);
     }
-  }, [authHeaders]);
+  }, []);
 
   const fetchLocations = useCallback(async () => {
     try {
-      const [citiesResponse, regionsResponse, analyticsResponse] = await Promise.all([
-        fetch(`${API_URL}/locations/cities/`, { headers: authHeaders() }),
-        fetch(`${API_URL}/locations/regions/`, { headers: authHeaders() }),
-        fetch(`${API_URL}/locations/analytics/`, { headers: authHeaders() }),
+      const [citiesRes, regionsRes, analyticsRes] = await Promise.all([
+        authenticatedApi.get(`${API_URL}/locations/cities/`),
+        authenticatedApi.get(`${API_URL}/locations/regions/`),
+        authenticatedApi.get(`${API_URL}/locations/analytics/`),
       ]);
-      const citiesData = await citiesResponse.json();
-      const regionsData = await regionsResponse.json();
-      const analyticsData = await analyticsResponse.json();
-
-      setCities(Array.isArray(citiesData) ? citiesData : []);
-      setRegions(Array.isArray(regionsData) ? regionsData : []);
-      setCityAnalytics(
-        analyticsData && analyticsResponse.ok ? analyticsData : { summary: {}, cities: [] }
-      );
+      setCities(Array.isArray(citiesRes.data) ? citiesRes.data : []);
+      setRegions(Array.isArray(regionsRes.data) ? regionsRes.data : []);
+      setCityAnalytics(analyticsRes.data || { summary: {}, cities: [] });
     } catch (error) {
       console.error("Locations fetch error:", error);
       setCities([]);
       setRegions([]);
       setCityAnalytics({ summary: {}, cities: [] });
     }
-  }, [authHeaders]);
+  }, []);
 
   const fetchDriverPerformance = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/drivers/performance/`, {
-        headers: authHeaders(),
-      });
-      const data = await response.json();
-
-      if (!response.ok) {
-        setDriverPerformance({
-          average_score: 0,
-          excellent_count: 0,
-          watch_count: 0,
-          driver_count: 0,
-          drivers: [],
-        });
-        return;
-      }
-
+      const res = await authenticatedApi.get(`${API_URL}/drivers/performance/`);
+      const data = res.data || {};
       setDriverPerformance({
         average_score: data.average_score || 0,
         excellent_count: data.excellent_count || 0,
@@ -455,31 +401,14 @@ function AdminDashboard() {
       });
     } catch (error) {
       console.error("Driver performance fetch error:", error);
-      setDriverPerformance({
-        average_score: 0,
-        excellent_count: 0,
-        watch_count: 0,
-        driver_count: 0,
-        drivers: [],
-      });
+      setDriverPerformance({ average_score: 0, excellent_count: 0, watch_count: 0, driver_count: 0, drivers: [] });
     }
-  }, [authHeaders]);
+  }, []);
 
   const fetchOwnerPayout = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/payments/owner-payout/`, {
-        headers: authHeaders(),
-      });
-      const data = await response.json();
-
-      if (!response.ok) {
-        setOwnerPayoutSummary((current) => ({
-          ...current,
-          methods: [],
-        }));
-        return;
-      }
-
+      const res = await authenticatedApi.get(`${API_URL}/payments/owner-payout/`);
+      const data = res.data || {};
       setOwnerPayoutSummary({
         owner_commission_percent: data.owner_commission_percent || MARKET_OWNER_PERCENT,
         owner_commission_balance: data.owner_commission_balance || 0,
@@ -488,7 +417,7 @@ function AdminDashboard() {
     } catch (error) {
       console.error("Owner payout fetch error:", error);
     }
-  }, [authHeaders]);
+  }, []);
 
   useEffect(() => {
     fetchDrivers();
@@ -510,85 +439,60 @@ function AdminDashboard() {
 
   const approveDriver = async (id) => {
     if (!id) {
-      alert("Could not approve driver: missing driver id");
+      showToast("Could not approve driver: missing driver id", "error");
       return;
     }
-
     try {
-      const { response, data } = await callAdminApi(`/drivers/approve/${id}/`, {
-        method: "POST",
-        headers: {
-          ...authHeaders(),
-        },
-      });
-
+      const { response, data } = await callAdminApi(`/drivers/approve/${id}/`, { method: "POST" });
       if (response.ok) {
-        alert(getApiMessage(data, "Driver approved ✅"));
+        showToast(getApiMessage(data, "Driver approved"), "success");
         fetchDrivers();
         fetchUsers();
         return;
       }
-
-      alert(getApiMessage(data, `Could not approve driver (HTTP ${response.status})`));
+      showToast(getApiMessage(data, `Could not approve driver (HTTP ${response.status})`), "error");
     } catch (error) {
       console.error("Approve driver network error:", error);
-      alert(
-        `Server error approving driver: ${error.message || "Network request failed"}`
-      );
+      showToast(`Server error approving driver: ${error.message || "Network request failed"}`, "error");
     }
   };
 
   const rejectDriver = async (id) => {
-    const reason = window.prompt("Why is this driver application being rejected?");
+    const reason = await showPrompt("Why is this driver application being rejected?");
     if (!reason || reason.trim().length < 5) return;
-
     try {
       const { response, data } = await callAdminApi(`/drivers/reject/${id}/`, {
         method: "POST",
-        headers: {
-          ...authHeaders(),
-          "Content-Type": "application/json",
-        },
         body: JSON.stringify({ reason: reason.trim() }),
       });
-
       if (response.ok) {
-        alert(getApiMessage(data, "Driver rejected ❌"));
+        showToast(getApiMessage(data, "Driver rejected"), "error");
         fetchDrivers();
         fetchUsers();
       } else {
-        alert(getApiMessage(data, `Could not reject driver (HTTP ${response.status})`));
+        showToast(getApiMessage(data, `Could not reject driver (HTTP ${response.status})`), "error");
       }
     } catch (error) {
       console.error(error);
-      alert("Server error rejecting driver");
+      showToast("Server error rejecting driver", "error");
     }
   };
 
   const deleteDriver = async (id) => {
-    const confirmed = window.confirm(
-      "⚠️ Are you sure you want to PERMANENTLY DELETE this driver?\n\nThis action cannot be undone. The driver's account, profile, documents, and all associated data will be removed."
-    );
+    const confirmed = await showConfirm("Permanently delete this driver? This cannot be undone.");
     if (!confirmed) return;
-
     try {
-      const { response, data } = await callAdminApi(`/drivers/delete/${id}/`, {
-        method: "DELETE",
-        headers: {
-          ...authHeaders(),
-        },
-      });
-
+      const { response, data } = await callAdminApi(`/drivers/delete/${id}/`, { method: "DELETE" });
       if (response.ok) {
-        alert(getApiMessage(data, "Driver permanently deleted ✅"));
+        showToast(getApiMessage(data, "Driver permanently deleted"), "success");
         fetchDrivers();
         fetchUsers();
       } else {
-        alert(getApiMessage(data, `Could not delete driver (HTTP ${response.status})`));
+        showToast(getApiMessage(data, `Could not delete driver (HTTP ${response.status})`), "error");
       }
     } catch (error) {
       console.error(error);
-      alert("Server error deleting driver");
+      showToast("Server error deleting driver", "error");
     }
   };
 
@@ -596,195 +500,120 @@ function AdminDashboard() {
     try {
       const { response, data } = await callAdminApi(`/drivers/reintegrate/${id}/`, {
         method: "POST",
-        headers: {
-          ...authHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          status: "approved",
-        }),
+        body: JSON.stringify({ status: "approved" }),
       });
-
       if (!response.ok) {
-        alert(getApiMessage(data, `Could not reintegrate driver (HTTP ${response.status})`));
+        showToast(getApiMessage(data, `Could not reintegrate driver (HTTP ${response.status})`), "error");
         return;
       }
-
-      alert(getApiMessage(data, "Driver reintegrated"));
+      showToast(getApiMessage(data, "Driver reintegrated"), "success");
       fetchDrivers();
       fetchUsers();
     } catch (error) {
       console.error(error);
-      alert("Server error reintegrating driver");
+      showToast("Server error reintegrating driver", "error");
     }
   };
 
   const setUserBlocked = async (userId, shouldBlock) => {
     try {
       const endpoint = shouldBlock ? "block" : "unblock";
-      const { response, data } = await callAdminApi(`/auth/users/${userId}/${endpoint}/`, {
-        method: "POST",
-        headers: {
-          ...authHeaders(),
-        },
-      });
-
+      const { response, data } = await callAdminApi(`/auth/users/${userId}/${endpoint}/`, { method: "POST" });
       if (!response.ok) {
-        alert(getApiMessage(data, `Could not update user (HTTP ${response.status})`));
+        showToast(getApiMessage(data, `Could not update user (HTTP ${response.status})`), "error");
         return;
       }
-
-      alert(getApiMessage(data, "User updated"));
+      showToast(getApiMessage(data, "User updated"), "success");
       fetchUsers();
       fetchDrivers();
     } catch (error) {
       console.error(error);
-      alert("Server error updating user");
+      showToast("Server error updating user", "error");
     }
   };
 
   const updateRiderApproval = async (userId, action) => {
-    const reason =
-      action === "reject"
-        ? window.prompt("Why is this rider application being rejected?")
-        : "";
-    if (action === "reject" && (!reason || reason.trim().length < 5)) return;
-
+    let reason = "";
+    if (action === "reject") {
+      reason = await showPrompt("Why is this rider application being rejected?");
+      if (!reason || reason.trim().length < 5) return;
+    }
     try {
       const { response, data } = await callAdminApi(`/auth/users/${userId}/${action}-rider/`, {
         method: "POST",
-        headers: {
-          ...authHeaders(),
-          "Content-Type": "application/json",
-        },
         body: JSON.stringify(action === "reject" ? { reason: reason.trim() } : {}),
       });
-
       if (!response.ok) {
-        alert(getApiMessage(data, `Could not update rider application (HTTP ${response.status})`));
+        showToast(getApiMessage(data, `Could not update rider application (HTTP ${response.status})`), "error");
         return;
       }
-
-      alert(getApiMessage(data, "Rider application updated"));
+      showToast(getApiMessage(data, "Rider application updated"), "success");
       fetchUsers();
       fetchDrivers();
     } catch (error) {
       console.error(error);
-      alert("Server error updating rider application");
+      showToast("Server error updating rider application", "error");
     }
   };
 
   const deleteRider = async (user) => {
     const riderName = user?.full_name || user?.email || "this rider";
-    const confirmed = window.confirm(
-      `Delete rider account for ${riderName}?\n\nThis action cannot be undone and will permanently remove the rider account.`
-    );
+    const confirmed = await showConfirm(`Delete rider account for ${riderName}? This cannot be undone.`);
     if (!confirmed) return;
-
     try {
-      const { response, data } = await callAdminApi(`/auth/users/${user.id}/delete-rider/`, {
-        method: "DELETE",
-        headers: {
-          ...authHeaders(),
-        },
-      });
-
+      const { response, data } = await callAdminApi(`/auth/users/${user.id}/delete-rider/`, { method: "DELETE" });
       if (!response.ok) {
-        alert(getApiMessage(data, `Could not delete rider (HTTP ${response.status})`));
+        showToast(getApiMessage(data, `Could not delete rider (HTTP ${response.status})`), "error");
         return;
       }
-
-      alert(getApiMessage(data, "Rider deleted"));
+      showToast(getApiMessage(data, "Rider deleted"), "success");
       fetchUsers();
       fetchRides();
       fetchWithdrawals();
     } catch (error) {
       console.error(error);
-      alert("Server error deleting rider");
+      showToast("Server error deleting rider", "error");
     }
   };
 
   const updateDriverCategory = async (driverId, driverCategory) => {
     try {
-      const token = getToken();
-
-      if (!token) {
-        alert("Please log in as admin before changing driver category.");
-        window.location.href = "/login";
-        return;
-      }
-
       const { response, data } = await callAdminApi(`/drivers/category/${driverId}/`, {
         method: "POST",
-        headers: {
-          ...authHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          driver_category: driverCategory,
-        }),
+        body: JSON.stringify({ driver_category: driverCategory }),
       });
-
       if (!response.ok) {
-        alert(getApiMessage(data, `Could not update driver category (HTTP ${response.status})`));
-
-        if (response.status === 401 || response.status === 403) {
-          window.location.href = "/login";
-        }
-
+        showToast(getApiMessage(data, `Could not update driver category (HTTP ${response.status})`), "error");
         return;
       }
-
-      alert(getApiMessage(data, "Driver category updated"));
+      showToast(getApiMessage(data, "Driver category updated"), "success");
       fetchDrivers();
       fetchUsers();
     } catch (error) {
       console.error(error);
-      alert("Server error updating driver category");
+      showToast("Server error updating driver category", "error");
     }
   };
 
   const approveWithdrawal = async (id) => {
     try {
-      const response = await fetch(
-        `${API_URL}/payments/withdrawals/${id}/approve/`,
-        {
-          method: "POST",
-          headers: authHeaders(),
-        }
-      );
-
-      if (response.ok) {
-        alert("Withdrawal approved ✅");
-        fetchWithdrawals();
-      } else {
-        alert("Could not approve withdrawal");
-      }
+      await authenticatedApi.post(`${API_URL}/payments/withdrawals/${id}/approve/`);
+      showToast("Withdrawal approved", "success");
+      fetchWithdrawals();
     } catch (error) {
       console.error(error);
-      alert("Server error approving withdrawal");
+      showToast(error?.response?.data?.detail || "Could not approve withdrawal", "error");
     }
   };
 
   const rejectWithdrawal = async (id) => {
     try {
-      const response = await fetch(
-        `${API_URL}/payments/withdrawals/${id}/reject/`,
-        {
-          method: "POST",
-          headers: authHeaders(),
-        }
-      );
-
-      if (response.ok) {
-        alert("Withdrawal rejected ❌");
-        fetchWithdrawals();
-      } else {
-        alert("Could not reject withdrawal");
-      }
+      await authenticatedApi.post(`${API_URL}/payments/withdrawals/${id}/reject/`);
+      showToast("Withdrawal rejected", "error");
+      fetchWithdrawals();
     } catch (error) {
       console.error(error);
-      alert("Server error rejecting withdrawal");
+      showToast(error?.response?.data?.detail || "Could not reject withdrawal", "error");
     }
   };
 
@@ -797,37 +626,20 @@ function AdminDashboard() {
 
   const saveOwnerPayoutMethod = async (event) => {
     event.preventDefault();
-
     try {
       setOwnerPayoutSaving(true);
       setOwnerPayoutMessage("");
-
-      const response = await fetch(`${API_URL}/payments/owner-payout/save/`, {
-        method: "POST",
-        headers: {
-          ...authHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(ownerPayoutForm),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setOwnerPayoutMessage(
-          data.error ||
-            data.detail ||
-            (Array.isArray(data.non_field_errors) ? data.non_field_errors.join(" ") : "") ||
-            "Could not save owner payout method."
-        );
-        return;
-      }
-
+      await authenticatedApi.post(`${API_URL}/payments/owner-payout/save/`, ownerPayoutForm);
       setOwnerPayoutMessage("Owner payout method saved successfully.");
       fetchOwnerPayout();
     } catch (error) {
       console.error("Owner payout save error:", error);
-      setOwnerPayoutMessage("Server error saving owner payout method.");
+      const data = error?.response?.data || {};
+      setOwnerPayoutMessage(
+        data.error || data.detail ||
+        (Array.isArray(data.non_field_errors) ? data.non_field_errors.join(" ") : "") ||
+        "Could not save owner payout method."
+      );
     } finally {
       setOwnerPayoutSaving(false);
     }
@@ -836,28 +648,14 @@ function AdminDashboard() {
   const createCity = async (event) => {
     event.preventDefault();
     if (!cityForm.name || !cityForm.region) return;
-
     try {
-      const response = await fetch(`${API_URL}/locations/cities/`, {
-        method: "POST",
-        headers: {
-          ...authHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(cityForm),
-      });
-      const data = await response.json();
-
-      if (!response.ok) {
-        alert(data.detail || data.name || "Could not create city");
-        return;
-      }
-
+      await authenticatedApi.post(`${API_URL}/locations/cities/`, cityForm);
       setCityForm({ name: "", region: "", is_active: true });
       fetchLocations();
     } catch (error) {
       console.error("City create error:", error);
-      alert("Server error creating city");
+      const data = error?.response?.data || {};
+      showToast(data.detail || data.name || "Could not create city", "error");
     }
   };
 
@@ -1088,6 +886,30 @@ function AdminDashboard() {
 
   const [sidebarOpen, setSidebarOpen] = useState(!isCompactLayout);
 
+  const [toast, setToast] = useState(null);
+  const toastTimerRef = useRef(null);
+  const showToast = useCallback((message, type = "success") => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast({ message, type });
+    toastTimerRef.current = setTimeout(() => setToast(null), 4000);
+  }, []);
+
+  const [confirmDialog, setConfirmDialog] = useState(null);
+  const confirmResolveRef = useRef(null);
+  const showConfirm = useCallback((message) => new Promise((resolve) => {
+    confirmResolveRef.current = resolve;
+    setConfirmDialog(message);
+  }), []);
+
+  const [promptDialog, setPromptDialog] = useState(null);
+  const promptResolveRef = useRef(null);
+  const [promptValue, setPromptValue] = useState("");
+  const showPrompt = useCallback((message) => new Promise((resolve) => {
+    promptResolveRef.current = resolve;
+    setPromptValue("");
+    setPromptDialog(message);
+  }), []);
+
   return (
     <div style={{ ...pageStyle, ...(isCompactLayout ? pageStyleCompact : {}) }}>
       {/* Mobile hamburger button */}
@@ -1175,6 +997,23 @@ function AdminDashboard() {
             <span style={menuCountStyle}>{menuCounts[item.key] || 0}</span>
           </button>
         ))}
+
+        <button
+          type="button"
+          onClick={() => {
+            clearAuthSession();
+            window.location.replace("/login");
+          }}
+          style={{
+            ...menuButton,
+            marginTop: "auto",
+            color: "#fca5a5",
+            borderColor: "rgba(239,68,68,0.22)",
+            background: "rgba(239,68,68,0.08)",
+          }}
+        >
+          <span>Log out</span>
+        </button>
       </div>
 
       <div style={{ ...content, ...(isCompactLayout ? contentCompact : {}) }}>
@@ -1899,7 +1738,7 @@ function AdminDashboard() {
         )}
 
         {page === "analytics" && (
-          <AnalyticsDashboard mode="admin" token={getToken()} />
+          <AnalyticsDashboard mode="admin" />
         )}
 
         {page === "reports" && (
@@ -1930,6 +1769,65 @@ function AdminDashboard() {
           </div>
         )}
       </div>
+
+      {/* ── Toast notification ─────────────────────────────────────────── */}
+      {toast && (
+        <div style={{
+          position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
+          zIndex: 9999, padding: "12px 22px", borderRadius: 10,
+          background: toast.type === "error" ? "#991b1b" : "#14532d",
+          color: "#fff", fontWeight: 700, fontSize: 14,
+          boxShadow: "0 8px 32px rgba(0,0,0,0.45)",
+          maxWidth: "90vw", textAlign: "center",
+        }}>
+          {toast.message}
+        </div>
+      )}
+
+      {/* ── Confirm dialog ─────────────────────────────────────────────── */}
+      {confirmDialog && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 10000, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.65)" }}>
+          <div style={{ background: "#1e293b", border: "1px solid rgba(148,163,184,0.2)", borderRadius: 14, padding: "28px 24px", maxWidth: 400, width: "90vw", display: "grid", gap: 18 }}>
+            <p style={{ color: "#e2e8f0", fontSize: 15, fontWeight: 600, margin: 0 }}>{confirmDialog}</p>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button type="button" style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "none", background: "#ef4444", color: "#fff", fontWeight: 700, cursor: "pointer" }}
+                onClick={() => { setConfirmDialog(null); if (confirmResolveRef.current) { confirmResolveRef.current(true); confirmResolveRef.current = null; } }}>
+                Confirm
+              </button>
+              <button type="button" style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "1px solid rgba(148,163,184,0.3)", background: "transparent", color: "#cbd5e1", fontWeight: 700, cursor: "pointer" }}
+                onClick={() => { setConfirmDialog(null); if (confirmResolveRef.current) { confirmResolveRef.current(false); confirmResolveRef.current = null; } }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Prompt dialog ──────────────────────────────────────────────── */}
+      {promptDialog && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 10000, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.65)" }}>
+          <div style={{ background: "#1e293b", border: "1px solid rgba(148,163,184,0.2)", borderRadius: 14, padding: "28px 24px", maxWidth: 420, width: "90vw", display: "grid", gap: 16 }}>
+            <p style={{ color: "#e2e8f0", fontSize: 15, fontWeight: 600, margin: 0 }}>{promptDialog}</p>
+            <textarea
+              autoFocus
+              value={promptValue}
+              onChange={(e) => setPromptValue(e.target.value)}
+              rows={3}
+              style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(148,163,184,0.3)", background: "#0f172a", color: "#e2e8f0", fontSize: 14, resize: "vertical", boxSizing: "border-box" }}
+            />
+            <div style={{ display: "flex", gap: 10 }}>
+              <button type="button" style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "none", background: "#2563eb", color: "#fff", fontWeight: 700, cursor: "pointer" }}
+                onClick={() => { const v = promptValue; setPromptDialog(null); setPromptValue(""); if (promptResolveRef.current) { promptResolveRef.current(v); promptResolveRef.current = null; } }}>
+                Submit
+              </button>
+              <button type="button" style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "1px solid rgba(148,163,184,0.3)", background: "transparent", color: "#cbd5e1", fontWeight: 700, cursor: "pointer" }}
+                onClick={() => { setPromptDialog(null); setPromptValue(""); if (promptResolveRef.current) { promptResolveRef.current(null); promptResolveRef.current = null; } }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -2837,7 +2735,25 @@ function DriverInfoCard({
             />
             <DetailItem label="Plate" value={driver.vehicle_plate || "N/A"} />
             <DetailItem label="Documents" value={`${uploadedDriverDocs}/4 uploaded`} />
+            <DetailItem
+              label="Driver agreement"
+              value={
+                driver.legal_signature?.signature_complete || driver.driver_terms_accepted
+                  ? `Signed${driver.legal_signature?.driver_terms_accepted_at ? ` · ${new Date(driver.legal_signature.driver_terms_accepted_at).toLocaleDateString()}` : ""}`
+                  : "Not signed"
+              }
+            />
           </div>
+          {driver.legal_signature?.signature_image_url ? (
+            <div style={{ marginTop: 12 }}>
+              <span style={sectionKickerStyle}>Agreement signature</span>
+              <img
+                src={driver.legal_signature.signature_image_url}
+                alt="Driver agreement signature"
+                style={{ display: "block", maxHeight: 72, marginTop: 8, background: "#fff", borderRadius: 8 }}
+              />
+            </div>
+          ) : null}
           {driver.application_rejection_reason && (
             <p style={accessMetaStyle}>
               Rejection reason: {driver.application_rejection_reason}
