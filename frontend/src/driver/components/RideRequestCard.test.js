@@ -113,30 +113,25 @@ describe("RideRequestCard", () => {
     expect(screen.getByText("Request expired")).toBeInTheDocument();
   });
 
-  it("auto-dismisses expired message after 3 seconds by calling onDecline", () => {
+  it("calls onExpired (not onDecline) when countdown expires", () => {
+    const onExpired = jest.fn();
     const onDecline = jest.fn();
     render(
       <RideRequestCard
         ride={{ ...mockRide, countdown: 2 }}
         onAccept={jest.fn()}
         onDecline={onDecline}
-        onExpired={jest.fn()}
+        onExpired={onExpired}
       />
     );
 
-    // Let countdown expire
     act(() => {
       jest.advanceTimersByTime(2000);
     });
 
     expect(screen.getByText("Request expired")).toBeInTheDocument();
-
-    // Wait for auto-dismiss
-    act(() => {
-      jest.advanceTimersByTime(3000);
-    });
-
-    expect(onDecline).toHaveBeenCalled();
+    expect(onExpired).toHaveBeenCalled();
+    expect(onDecline).not.toHaveBeenCalled();
   });
 
   it("calls onAccept when Accept button is clicked", () => {

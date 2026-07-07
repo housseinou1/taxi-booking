@@ -25,7 +25,7 @@ export function computeWaitingStatus(driverArrivedAt, nowMs = Date.now()) {
     chargeableMinutes,
     perMinuteFee,
     estimatedFee,
-    currency: MARKET.currency,
+    currency: MARKET.currency || "MRU",
   };
 }
 
@@ -57,7 +57,8 @@ export function useLiveWaitingStatus(ride) {
 export function getWaitingFeeMessage(waitingStatus, { audience = "rider" } = {}) {
   if (!waitingStatus) return "";
 
-  const { freeMinutes, perMinuteFee, currency } = MARKET.waiting;
+  const { freeMinutes, perMinuteFee } = MARKET.waiting;
+  const currency = MARKET.currency || "MRU";
   const feeLabel = formatMoney(waitingStatus.estimatedFee);
 
   if (!waitingStatus.billingStarted) {

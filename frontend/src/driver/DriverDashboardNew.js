@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { API_URL } from "../apiConfig";
-import authenticatedApi from "../auth/authenticatedApi";
+import authenticatedApi, { resetAuthRedirectFlag } from "../auth/authenticatedApi";
 import {
   clearAuthSession,
   isDriverAccount,
@@ -22,6 +22,7 @@ import {
 import { formatAvailabilityApiError } from "./utils/availabilityErrors";
 import { isDeliveryAppInstall, isDriverLyftUI } from "../native/platform";
 import { unregisterPushNotifications } from "../native/push";
+import { stopBackgroundLocationTracking } from "../native/location";
 import { haversineKm } from "../delivery/deliveryPricing";
 
 import DriverMapView from "./components/DriverMapView";
@@ -141,12 +142,14 @@ function DriverDashboardContent() {
   const [currentView, setCurrentView] = useState("dashboard");
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [driverNotice, setDriverNotice] = useState("");
+  const [acceptError, setAcceptError] = useState("");
   const [statusLoadError, setStatusLoadError] = useState("");
   const [toggleError, setToggleError] = useState("");
   const [gpsUnavailable, setGpsUnavailable] = useState(false);
   const [acceptingRideId, setAcceptingRideId] = useState(null);
 
   const alertedRideIdsRef = useRef(new Set());
+  const availableRidesRef = useRef([]);
   const isOnlineRef = useRef(isOnline);
   const hasLoadedStatusRef = useRef(false);
   const statusFetchInFlightRef = useRef(false);
@@ -162,10 +165,20 @@ function DriverDashboardContent() {
   }, [isOnline]);
 
   useEffect(() => {
+    availableRidesRef.current = availableRides;
+  }, [availableRides]);
+
+  useEffect(() => {
     if (!toggleError) return undefined;
     const timeout = window.setTimeout(() => setToggleError(""), 8000);
     return () => window.clearTimeout(timeout);
   }, [toggleError]);
+
+  useEffect(() => {
+    if (!acceptError) return undefined;
+    const timeout = window.setTimeout(() => setAcceptError(""), 6000);
+    return () => window.clearTimeout(timeout);
+  }, [acceptError]);
 
   // Derive active ride from driver rides (sticky snapshot prevents idle UI flash).
   const activeRide = useMemo(() => {
@@ -390,18 +403,22 @@ function DriverDashboardContent() {
   const handleRideStatusChange = useCallback((data) => {
     const updated = data?.ride || data;
     if (updated?.id) {
-      if (["cancelled", "completed"].includes(updated.status)) {
-        activeRideSnapshotRef.current = null;
-      } else {
+      const isTerminal = ["cancelled", "completed"].includes(updated.status);
+      if (!isTerminal) {
         activeRideSnapshotRef.current = updated;
       }
       setDriverRides((prev) => {
-        if (["cancelled", "completed"].includes(updated.status)) {
+        if (isTerminal) {
           return prev.filter((ride) => String(ride.id) !== String(updated.id));
         }
         const others = prev.filter((ride) => String(ride.id) !== String(updated.id));
         return [updated, ...others];
       });
+      if (isTerminal) {
+        window.setTimeout(() => {
+          activeRideSnapshotRef.current = null;
+        }, 1200);
+      }
     } else {
       fetchDriverRides();
     }
@@ -438,8 +455,13 @@ function DriverDashboardContent() {
 
     try {
       if (targetOnline) {
-        const agreementOk = await ensureDriverAgreementBeforeOnline("/driver");
-        if (!agreementOk) {
+        const agreementResult = await ensureDriverAgreementBeforeOnline("/driver");
+        if (!agreementResult || agreementResult === false) {
+          finishToggle();
+          return;
+        }
+        if (agreementResult && typeof agreementResult === "object" && agreementResult.ok === false) {
+          setToggleError(agreementResult.error || "Could not verify driver agreement.");
           finishToggle();
           return;
         }
@@ -572,12 +594,12 @@ function DriverDashboardContent() {
 
     acceptingRideIdRef.current = rideId;
     setAcceptingRideId(rideId);
+    const requestRide = availableRidesRef.current.find((ride) => String(ride.id || ride.ride_id) === String(rideId)) || {};
     setAvailableRides((prev) => prev.filter((ride) => String(ride.id || ride.ride_id) !== String(rideId)));
 
     try {
       const response = await authenticatedApi.post(`${API_URL}/rides/accept/${rideId}/`, {});
       const acceptedRide = response.data?.ride || response.data || {};
-      const requestRide = availableRides.find((ride) => String(ride.id || ride.ride_id) === String(rideId)) || {};
       const hydratedRide = {
         ...requestRide,
         ...acceptedRide,
@@ -595,7 +617,7 @@ function DriverDashboardContent() {
     } catch (error) {
       console.log("Accept ride error:", error.response?.data || error);
       if (isAuthError(error)) { sendToLogin(); return; }
-      setDriverNotice(error.response?.data?.detail || error.response?.data?.error || "Could not accept ride.");
+      setAcceptError(error.response?.data?.detail || error.response?.data?.error || "Could not accept ride. Please try again.");
       fetchAvailableRides();
     } finally {
       if (acceptingRideIdRef.current === rideId) {
@@ -603,7 +625,7 @@ function DriverDashboardContent() {
       }
       setAcceptingRideId((current) => (current === rideId ? null : current));
     }
-  }, [availableRides, fetchAvailableRides, fetchDriverRides, isAuthError, sendToLogin]);
+  }, [fetchAvailableRides, fetchDriverRides, isAuthError, sendToLogin]);
 
   const dismissRideOffer = useCallback((rideId) => {
     setAvailableRides((prev) =>
@@ -627,8 +649,10 @@ function DriverDashboardContent() {
   }, [dismissRideOffer, fetchDriverStatus, isAuthError, sendToLogin]);
 
   const handleOfferExpired = useCallback((rideId) => {
-    declineRide(rideId);
-  }, [declineRide]);
+    // Let the server 30s timeout record a missed offer; declining would
+    // cancel that timer and apply the wrong penalty bucket.
+    dismissRideOffer(rideId);
+  }, [dismissRideOffer]);
 
   // Cancel active ride (driver side)
   const [driverCancelOpen, setDriverCancelOpen] = useState(false);
@@ -668,12 +692,12 @@ function DriverDashboardContent() {
   // ─── Navigation / Logout ────────────────────────────────────────────────────
 
   const logout = useCallback(async () => {
-    try {
-      await unregisterPushNotifications(API_URL);
-    } catch (error) {
-      console.log("Push unregister error:", error);
-    }
+    // Clear session and redirect immediately — don't block on network calls
+    resetAuthRedirectFlag();
     clearAuthSession();
+    // Fire-and-forget: cleanup background services
+    stopBackgroundLocationTracking().catch(() => {});
+    unregisterPushNotifications(API_URL).catch(() => {});
     redirectToLogin("/driver");
   }, []);
 
@@ -738,6 +762,10 @@ function DriverDashboardContent() {
         mergeIncomingRideRequest(msg);
         playRideRequestAlert({ force: true });
       }
+      if (msg.type === "document_status") {
+        fetchDriverStatus();
+        return;
+      }
       if (msg.type === "ride_request" || msg.type === "ride_request_expired" || msg.type === "ride_update" || msg.type === "ride_status_update" || msg.status || msg.ride_id) {
         fetchDriverRides();
         fetchDriverStats();
@@ -747,7 +775,7 @@ function DriverDashboardContent() {
       }
     });
     return () => unsub();
-  }, [fetchAvailableRides, fetchDriverRides, fetchDriverStats, mergeIncomingRideRequest]);
+  }, [fetchAvailableRides, fetchDriverRides, fetchDriverStats, fetchDriverStatus, mergeIncomingRideRequest]);
 
   // Geolocation: watch driver position
   useEffect(() => {
@@ -774,6 +802,13 @@ function DriverDashboardContent() {
     );
     return () => navigator.geolocation.clearWatch(watchId);
   }, [updateDriverLocation]);
+
+  // Refresh badge immediately when a document is uploaded from DriverDocuments page
+  useEffect(() => {
+    const onDocsChanged = () => fetchDriverStatus();
+    window.addEventListener("yala:documents-changed", onDocsChanged);
+    return () => window.removeEventListener("yala:documents-changed", onDocsChanged);
+  }, [fetchDriverStatus]);
 
   // Refresh ride state when app returns to foreground
   useEffect(() => {
@@ -841,16 +876,13 @@ function DriverDashboardContent() {
   const missedRides = driverProfile?.total_rides_missed ?? 0;
   const cancellationWarning =
     driverProfile?.cancellation_warning || driverProfile?.account_risk_reason || "";
-  const documentsAlert = useMemo(
-    () =>
-      Boolean(
-        driverProfile?.missing_document_types?.length ||
-          driverProfile?.expired_document_types?.length ||
-          driverProfile?.expired_documents?.length ||
-          driverProfile?.documents_under_review
-      ),
-    [driverProfile]
-  );
+  const documentsAlert = useMemo(() => {
+    if (!driverProfile) return false;
+    // Show badge only when backend reports missing (not uploaded) or rejected documents.
+    // Do NOT include expired_document_types — Yala does not manage expiration dates.
+    const missingTypes = driverProfile.missing_document_types;
+    return Array.isArray(missingTypes) && missingTypes.length > 0;
+  }, [driverProfile]);
   const todayTripsCount = useMemo(
     () => driverRides.filter((ride) => ride.status === "completed").length,
     [driverRides]
@@ -973,38 +1005,29 @@ function DriverDashboardContent() {
       </div>
 
       {/* ─── Notice Banner ──────────────────────────────────── */}
-      {(statusLoadError || toggleError || (driverNotice && !activeRide)) && (
-        <div className="driver-dashboard-new__notice" style={noticeBannerStyle}>
-          {statusLoadError || toggleError || driverNotice}
-        </div>
-      )}
-
-      {gpsUnavailable && (
-        <div
-          className="driver-dashboard-new__notice"
-          style={{
-            top: cancellationWarning && !activeRide ? 88 : 12,
-            background: "rgba(239,68,68,0.92)",
-            color: "#fff",
-          }}
-          role="alert"
-        >
-          Location unavailable. Enable GPS to navigate and mark arrival accurately.
-        </div>
-      )}
-
-      {cancellationWarning && !activeRide && (
-        <div
-          className="driver-dashboard-new__notice driver-dashboard-new__notice--warning"
-          style={{
-            ...noticeBannerStyle,
-            top: statusLoadError || toggleError || driverNotice ? 140 : 88,
-            background: "rgba(245,158,11,0.95)",
-          }}
-        >
-          {cancellationWarning}
-        </div>
-      )}
+      {(() => {
+        const banners = [];
+        const primaryMsg = statusLoadError || toggleError || (driverNotice && !activeRide ? driverNotice : "");
+        if (primaryMsg) banners.push({ msg: primaryMsg, bg: "rgba(239,68,68,0.92)" });
+        if (acceptError) banners.push({ msg: acceptError, bg: "rgba(239,68,68,0.92)" });
+        if (gpsUnavailable) banners.push({ msg: "Location unavailable. Enable GPS to navigate.", bg: "rgba(239,68,68,0.92)", alert: true });
+        if (cancellationWarning && !activeRide) banners.push({ msg: cancellationWarning, bg: "rgba(245,158,11,0.95)" });
+        if (banners.length === 0) return null;
+        return (
+          <div style={noticeBannerStackStyle}>
+            {banners.map((b, i) => (
+              <div
+                key={i}
+                className="driver-dashboard-new__notice"
+                style={{ ...noticeBannerStyle, position: "relative", top: 0, background: b.bg }}
+                role={b.alert ? "alert" : undefined}
+              >
+                {b.msg}
+              </div>
+            ))}
+          </div>
+        );
+      })()}
 
       {/* ─── Top Bar (menu · status · auto-accept) ───────────── */}
       <header className="driver-dashboard-new__topbar">
@@ -1054,7 +1077,16 @@ function DriverDashboardContent() {
       </button>
 
       {/* ─── Map recenter ───────────────────────────────────── */}
-      <button type="button" className="driver-dashboard-new__recenter" aria-label="Re-center map">
+      <button
+        type="button"
+        className="driver-dashboard-new__recenter"
+        aria-label="Re-center map"
+        onClick={() => {
+          if (driverPosition) {
+            setDriverPosition([...driverPosition]);
+          }
+        }}
+      >
         ◎
       </button>
 
@@ -1161,6 +1193,7 @@ function DriverDashboardContent() {
       {/* ─── Ride Request Overlay ────────────────────────────── */}
       {isOnline && incomingRide && !activeRide && (
         <RideRequestCard
+          key={incomingRideId}
           ride={incomingRide}
           enableSound
           accepting={Boolean(acceptingRideId)}
@@ -1224,13 +1257,18 @@ const mapFullscreen = {
   zIndex: 0,
 };
 
-const noticeBannerStyle = {
+const noticeBannerStackStyle = {
   position: "absolute",
   top: 88,
   left: 12,
   right: 12,
   zIndex: 30,
-  background: "rgba(239,68,68,0.92)",
+  display: "flex",
+  flexDirection: "column",
+  gap: 6,
+};
+
+const noticeBannerStyle = {
   color: "#fff",
   borderRadius: 10,
   padding: "10px 14px",

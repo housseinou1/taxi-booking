@@ -48,12 +48,8 @@ export default function RideRequestCard({
     setExpired(true);
     if (onExpired) {
       onExpired();
-      return;
     }
-    if (onDecline) {
-      onDecline();
-    }
-  }, [onDecline, onExpired]);
+  }, [onExpired]);
 
   useEffect(() => {
     if (expired) return undefined;

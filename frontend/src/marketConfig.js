@@ -288,5 +288,5 @@ export function formatMoney(amount) {
   return `${value.toLocaleString("en-US", {
     minimumFractionDigits: value % 1 === 0 ? 0 : 2,
     maximumFractionDigits: 2,
-  })} ${MARKET.currency}`;
+  })} ${MARKET.currency || "MRU"}`;
 }
