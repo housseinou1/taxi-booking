@@ -34,6 +34,7 @@ from .models import Ride, RideStop
 from .serializers import RideSerializer
 from .broadcast import broadcast_ride_update
 from .services.waiting_service import calculate_waiting_fee
+from .services.no_show_service import no_show_waiver_eligible
 from .timeout import (
     cancel_ride_request_timeout,
     start_ride_request_timeout,
@@ -891,6 +892,47 @@ def complete_ride(request, ride_id):
     return Response(serializer.data)
 
 
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def record_rider_call_attempt(request, ride_id):
+    """Log an in-app Call Rider tap by the assigned driver."""
+    ride = get_object_or_404(Ride, id=ride_id)
+    if ride.driver_id != request.user.id:
+        return Response(
+            {"detail": "Only the assigned driver can log rider call attempts."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+    if ride.status not in ("driver_arriving", "driver_arrived"):
+        return Response(
+            {"detail": "Call attempts can only be logged while arriving or waiting at pickup."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    stamp = now()
+    attempts = list(ride.rider_call_attempts or [])
+    attempts.append({"at": stamp.isoformat(), "by_user_id": request.user.id})
+    attempts = attempts[-20:]
+    ride.rider_call_attempts = attempts
+    ride.rider_call_attempt_count = len(attempts)
+    ride.rider_call_last_at = stamp
+    ride.save(
+        update_fields=[
+            "rider_call_attempts",
+            "rider_call_attempt_count",
+            "rider_call_last_at",
+        ]
+    )
+    return Response(
+        {
+            "ride_id": ride.id,
+            "call_attempts": ride.rider_call_attempt_count,
+            "rider_call_last_at": stamp.isoformat(),
+            "status": ride.status,
+        }
+    )
+
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def cancel_ride(request, ride_id):
@@ -934,6 +976,8 @@ def cancel_ride(request, ride_id):
 
     # Determine who is cancelling
     penalty = None
+    penalty_waived = False
+    waiver_details = {}
     if request.user.is_staff:
         cancelled_by = "admin"
     elif ride.rider_id == request.user.id:
@@ -942,17 +986,18 @@ def cancel_ride(request, ride_id):
         cancelled_by = "driver"
 
     # Calculate cancellation fee
-    # Rider cancellation: fee applies if driver was already assigned and arriving/arrived
-    # Driver cancellation: fee applies if rider was already waiting
     cancellation_fee = Decimal("0")
 
     if cancelled_by == "rider" and ride.driver is not None:
-        # Rider cancels after driver accepted — charge rider
         if ride.status in ["driver_arriving", "driver_arrived"]:
-            cancellation_fee = Decimal("100")  # 100 MRU cancellation fee
+            cancellation_fee = Decimal("100")  # 100 MRU — rider cancels after driver arrived
     elif cancelled_by == "driver" and ride.status in ["driver_arriving", "driver_arrived"]:
-        # Driver cancels after accepting — charge driver
-        cancellation_fee = Decimal("150")  # 150 MRU penalty for driver
+        eligible, waiver_details = no_show_waiver_eligible(ride, cancellation_reason)
+        if eligible:
+            cancellation_fee = Decimal("0")
+            penalty_waived = True
+        else:
+            cancellation_fee = Decimal("150")  # 150 MRU penalty for driver
 
     ride.status = "cancelled"
     ride.cancelled_at = now()
@@ -968,14 +1013,29 @@ def cancel_ride(request, ride_id):
     if cancelled_by == "driver":
         DriverProfile.objects.filter(user=request.user).update(is_available=True)
         driver_profile = DriverProfile.objects.filter(user=request.user).first()
-        if driver_profile:
+        if driver_profile and not penalty_waived:
             from taxi.drivers.services.ride_performance_service import (
                 apply_driver_cancellation_penalty,
             )
-
             penalty = apply_driver_cancellation_penalty(driver_profile)
+        elif penalty_waived:
+            logger.info(
+                "Rider no-show cancel: driver=%s ride=%s — fee and penalty waived calls=%s waited=%s",
+                request.user.id,
+                ride.id,
+                waiver_details.get("call_attempts"),
+                waiver_details.get("waited_seconds"),
+            )
     else:
         penalty = None
+
+    if penalty_waived and ride.rider_id:
+        try:
+            from security.services.fraud_service import check_excessive_cancellations
+
+            check_excessive_cancellations(ride.rider)
+        except Exception:
+            logger.warning("Could not run rider fraud check after no-show cancel ride=%s", ride.id)
 
     # Cancel any active timeout timer for this ride
     cancel_ride_request_timeout(ride.id)
@@ -984,7 +1044,8 @@ def cancel_ride(request, ride_id):
     broadcast_ride_update(ride)
 
     # Cancellation abuse detection — flag riders/drivers with > 3 cancels/24h
-    if cancelled_by in ("rider", "driver"):
+    # Valid no-show cancellations by the driver are exempt
+    if cancelled_by in ("rider", "driver") and not penalty_waived:
         is_abuse = record_cancellation(request.user.id)
         if is_abuse:
             try:
@@ -1013,6 +1074,9 @@ def cancel_ride(request, ride_id):
     data["cancellation_reason_details"] = cancellation_reason_details
     data["cancelled_by"] = cancelled_by
     data["cancellation_fee"] = str(cancellation_fee)
+    data["penalty_waived"] = penalty_waived
+    data["call_attempts"] = int(getattr(ride, "rider_call_attempt_count", 0) or 0)
+    data["waited_seconds"] = waiver_details.get("waited_seconds") if waiver_details else None
     data["refund_status"] = "Authorization released" if cancellation_fee == 0 else f"Cancellation fee: {cancellation_fee} MRU"
     if penalty:
         data["driver_performance"] = penalty

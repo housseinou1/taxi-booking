@@ -398,18 +398,33 @@ function RideDashboard({ rides = [], availableRides = [], isOnline, fetchRides }
       )}
 
       {/* ── Cancel Modal ── */}
-      {cancelTarget && (
+      {cancelTarget && (() => {
+        const NO_SHOW_REASONS = ["Rider not responding", "Rider no-show", "Rider not at pickup"];
+        const isNoShow = cancelTarget.status === "driver_arrived" && NO_SHOW_REASONS.includes(cancelReason);
+        return (
         <div style={S.backdrop}>
           <div style={S.modal}>
             <h3 style={S.modalTitle}>Cancel trip #{cancelTarget.id}?</h3>
+            {cancelTarget.status === "driver_arrived" && (
+              <p style={{ fontSize: 12, color: "#94a3b8", margin: "0 0 10px" }}>
+                If the rider hasn't shown up, select a no-show reason — your fee and score will be protected.
+              </p>
+            )}
             <select value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} style={S.select}>
               <option value="">Select reason</option>
-              <option value="Rider not responding">Rider not responding</option>
+              <option value="Rider not responding">Rider not responding (no-show)</option>
+              <option value="Rider no-show">Rider no-show</option>
+              <option value="Rider not at pickup">Rider not at pickup location</option>
               <option value="Unsafe pickup">Unsafe pickup</option>
               <option value="Vehicle issue">Vehicle issue</option>
               <option value="Wrong location">Wrong location</option>
               <option value="Other">Other</option>
             </select>
+            {isNoShow && (
+              <p style={{ fontSize: 12, color: "#34d399", margin: "4px 0 8px", fontWeight: 700 }}>
+                ✓ No penalty — cancellation fee waived for rider no-show
+              </p>
+            )}
             {cancelNotice && <p style={{ ...S.notice, color: cancelNotice.type === "error" ? "#ef4444" : "#f59e0b" }}>{cancelNotice.text}</p>}
             <div style={S.modalActions}>
               <button onClick={() => setCancelTarget(null)} style={S.ghostBtn}>Keep trip</button>
@@ -419,7 +434,8 @@ function RideDashboard({ rides = [], availableRides = [], isOnline, fetchRides }
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {cancelNotice && !cancelTarget && (
         <div style={{ ...S.toast, borderColor: cancelNotice.type === "success" ? "#06c167" : "#ef4444" }}>
