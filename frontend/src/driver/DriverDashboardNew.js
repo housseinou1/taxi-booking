@@ -665,13 +665,16 @@ function DriverDashboardContent() {
     try {
       setDriverCancelling(true);
       setDriverCancelError("");
-      await authenticatedApi.post(`${API_URL}/rides/cancel/${activeRide.id}/`, {
+      const { data } = await authenticatedApi.post(`${API_URL}/rides/cancel/${activeRide.id}/`, {
         reason: reason.trim(),
         reason_details: reasonDetails.trim(),
         cancelled_by: "driver",
       });
       setDriverCancelOpen(false);
       activeRideSnapshotRef.current = null;
+      if (data?.penalty_waived) {
+        // Soft success path — no fee/points for valid no-show
+      }
       fetchDriverRides();
       fetchDriverStatus();
     } catch (error) {
@@ -684,6 +687,42 @@ function DriverDashboardContent() {
       setDriverCancelling(false);
     }
   };
+
+  const logAndCallRider = useCallback(
+    async (ride) => {
+      const target = ride || activeRideSnapshotRef.current;
+      if (!target?.id) return;
+      try {
+        const { data } = await authenticatedApi.post(
+          `${API_URL}/rides/call-attempt/${target.id}/`,
+          {}
+        );
+        const nextCount = Number(data?.call_attempts || 0);
+        const patch = {
+          rider_call_attempt_count: nextCount,
+          rider_call_last_at: data?.rider_call_last_at || null,
+        };
+        setDriverRides((prev) =>
+          prev.map((item) => (item.id === target.id ? { ...item, ...patch } : item))
+        );
+        if (activeRideSnapshotRef.current?.id === target.id) {
+          activeRideSnapshotRef.current = {
+            ...activeRideSnapshotRef.current,
+            ...patch,
+          };
+        }
+      } catch (error) {
+        // Non-blocking: still open dialer even if logging fails
+        console.warn("call-attempt log failed", error?.response?.status || error);
+      }
+      const phone =
+        target.private_call_number || target.rider_phone || target.rider?.phone_number || "";
+      if (phone) {
+        window.open(`tel:${phone}`, "_self");
+      }
+    },
+    []
+  );
 
   const closeDriverCancelModal = useCallback(() => {
     setDriverCancelOpen(false);
@@ -1186,6 +1225,18 @@ function DriverDashboardContent() {
                 onStatusChange={handleRideStatusChange}
               />
             </div>
+            {(activeRide.status === "driver_arriving" ||
+              activeRide.status === "driver_arrived") &&
+            (activeRide.private_call_number || activeRide.rider_phone) ? (
+              <button
+                type="button"
+                className="driver-nav-sheet__cancel"
+                style={{ marginTop: 8, background: "#0f766e", borderColor: "#0f766e" }}
+                onClick={() => logAndCallRider(activeRide)}
+              >
+                Call Rider
+              </button>
+            ) : null}
             {canCancelActiveRide ? (
               <button
                 type="button"
@@ -1222,6 +1273,7 @@ function DriverDashboardContent() {
           error={driverCancelError}
           onCancel={cancelActiveRide}
           onClose={closeDriverCancelModal}
+          onCallRider={logAndCallRider}
         />
       )}
 

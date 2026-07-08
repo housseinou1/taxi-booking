@@ -6,6 +6,7 @@ from .views import (
     my_scheduled_rides,
     cancel_scheduled_ride,
     available_rides,
+    active_ride,
     ride_history,
     ride_detail,
     driver_rides,
@@ -19,6 +20,7 @@ from .views import (
     rate_ride,
     rate_rider,
     driver_earnings_summary,
+    record_rider_call_attempt,
 )
 from .views_stops import (
     RideStopListCreateView,
@@ -48,6 +50,7 @@ urlpatterns = [
     path("scheduled/", my_scheduled_rides),
     path("scheduled/cancel/<int:ride_id>/", cancel_scheduled_ride),
     path("available/", available_rides),
+    path("active/", active_ride),
     path("history/", ride_history),
     path("<int:ride_id>/", ride_detail),
     path("driver-rides/", driver_rides),
@@ -73,6 +76,7 @@ urlpatterns = [
     path("start/<int:ride_id>/", start_ride),
     path("complete/<int:ride_id>/", complete_ride),
     path("cancel/<int:ride_id>/", cancel_ride),
+    path("call-attempt/<int:ride_id>/", record_rider_call_attempt),
     path("rate/<int:ride_id>/", rate_ride),
     path("rate-rider/<int:ride_id>/", rate_rider),
 

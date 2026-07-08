@@ -798,9 +798,13 @@ export default function DriverApp() {
       );
       setShowCancellation(false);
       setIsOnline(true);
-      setDriverNotice(
-        `Ride cancelled. ${response.data.cancellation_fee || 0} MRU cancellation fee recorded. You are back online.`
-      );
+      if (response.data?.penalty_waived) {
+        setDriverNotice("No-show cancel recorded. No fee and no points lost. You are back online.");
+      } else {
+        setDriverNotice(
+          `Ride cancelled. ${response.data.cancellation_fee || 0} MRU cancellation fee recorded. You are back online.`
+        );
+      }
       await fetchAllDriverData();
     } catch (error) {
       setCancellationError(
@@ -810,6 +814,35 @@ export default function DriverApp() {
       );
     } finally {
       setCancellationSaving(false);
+    }
+  };
+
+  const logAndCallRider = async (ride) => {
+    const target = ride || activeRide;
+    if (!target?.id) return;
+    try {
+      const response = await axios.post(
+        `${API_URL}/rides/call-attempt/${target.id}/`,
+        {},
+        authHeaders
+      );
+      const nextCount = Number(response.data?.call_attempts || 0);
+      setActiveRide((prev) =>
+        prev && prev.id === target.id
+          ? {
+              ...prev,
+              rider_call_attempt_count: nextCount,
+              rider_call_last_at: response.data?.rider_call_last_at || prev.rider_call_last_at,
+            }
+          : prev
+      );
+    } catch (error) {
+      console.warn("call-attempt log failed", error?.response?.status || error);
+    }
+    const phone =
+      target.private_call_number || target.rider_phone || activeRiderPhone || "";
+    if (phone) {
+      window.open(`tel:${phone}`, "_self");
     }
   };
 
@@ -1422,9 +1455,13 @@ export default function DriverApp() {
                 </p>
               </div>
               {activeRiderPhone && (
-                <a href={`tel:${activeRiderPhone}`} style={activeRiderCallStyle}>
+                <button
+                  type="button"
+                  onClick={() => logAndCallRider(activeRide)}
+                  style={{ ...activeRiderCallStyle, border: 0, cursor: "pointer" }}
+                >
                   Private call
-                </a>
+                </button>
               )}
               <button type="button" onClick={() => setShowChat(true)} style={{ ...activeRiderCallStyle, background: DRIVER_GREEN, textDecoration: "none", border: 0, cursor: "pointer" }}>
                 Chat
@@ -1496,6 +1533,7 @@ export default function DriverApp() {
           error={cancellationError}
           onCancel={cancelActiveRide}
           onClose={() => setShowCancellation(false)}
+          onCallRider={logAndCallRider}
         />
       )}
 

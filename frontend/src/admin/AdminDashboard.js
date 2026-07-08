@@ -1179,7 +1179,10 @@ function AdminDashboard() {
                 title="Live active rides"
                 subtitle="Trips that need operational visibility right now."
               />
-              <LiveRidesList rides={activeRides} />
+              <LiveRidesList
+                rides={activeRides}
+                onCancelRide={(rideId) => setCancelRide({ rideId, reason: "" })}
+              />
             </section>
 
             <section style={card}>
@@ -1381,63 +1384,12 @@ function AdminDashboard() {
             </div>
 
             <h2 style={subHeadingStyle}>Live active rides</h2>
-            <LiveRidesList rides={activeRides} />
+            <LiveRidesList
+              rides={activeRides}
+              onCancelRide={(rideId) => setCancelRide({ rideId, reason: "" })}
+            />
 
             <h2 style={subHeadingStyle}>All rides</h2>
-
-            {/* Admin cancel ride modal */}
-            {cancelRide && (
-              <div style={{
-                position: "fixed", inset: 0, zIndex: 9999,
-                background: "rgba(0,0,0,0.65)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-              }}>
-                <div style={{
-                  background: "#1e293b", borderRadius: "18px",
-                  padding: "32px", minWidth: "340px", maxWidth: "420px", width: "90%",
-                  boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
-                }}>
-                  <h3 style={{ color: "#f1f5f9", marginTop: 0 }}>Cancel Ride #{cancelRide.rideId}</h3>
-                  <p style={{ color: "#94a3b8", fontSize: "13px" }}>This action is irreversible. Provide a reason before confirming.</p>
-                  <textarea
-                    autoFocus
-                    rows={3}
-                    placeholder="Cancellation reason (required)"
-                    value={cancelRide.reason}
-                    onChange={(e) => setCancelRide((prev) => ({ ...prev, reason: e.target.value }))}
-                    style={{
-                      width: "100%", borderRadius: "10px", padding: "10px 12px",
-                      background: "#0f172a", border: "1.5px solid #334155",
-                      color: "#f1f5f9", fontSize: "14px", resize: "vertical", boxSizing: "border-box",
-                    }}
-                  />
-                  <div style={{ display: "flex", gap: "10px", marginTop: "16px" }}>
-                    <button
-                      type="button"
-                      disabled={cancelRideLoading || !cancelRide.reason.trim()}
-                      onClick={handleAdminCancelRide}
-                      style={{
-                        flex: 1, padding: "10px", borderRadius: "10px", border: "none",
-                        background: cancelRide.reason.trim() ? "#ef4444" : "#475569",
-                        color: "#fff", fontWeight: 700, cursor: cancelRide.reason.trim() ? "pointer" : "not-allowed",
-                      }}
-                    >
-                      {cancelRideLoading ? "Cancelling…" : "Confirm Cancel"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setCancelRide(null)}
-                      style={{
-                        flex: 1, padding: "10px", borderRadius: "10px", border: "1.5px solid #334155",
-                        background: "transparent", color: "#94a3b8", fontWeight: 600, cursor: "pointer",
-                      }}
-                    >
-                      Keep Ride
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
 
             {filteredRides.length === 0 ? (
               <p>No rides found.</p>
@@ -1883,6 +1835,60 @@ function AdminDashboard() {
           </div>
         )}
       </div>
+
+      {/* ── Admin cancel ride modal (Overview + Rides live lists) ─────── */}
+      {cancelRide && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 9999,
+          background: "rgba(0,0,0,0.65)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
+          <div style={{
+            background: "#1e293b", borderRadius: "18px",
+            padding: "32px", minWidth: "340px", maxWidth: "420px", width: "90%",
+            boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+          }}>
+            <h3 style={{ color: "#f1f5f9", marginTop: 0 }}>Cancel Ride #{cancelRide.rideId}</h3>
+            <p style={{ color: "#94a3b8", fontSize: "13px" }}>This action is irreversible. Provide a reason before confirming.</p>
+            <textarea
+              autoFocus
+              rows={3}
+              placeholder="Cancellation reason (required)"
+              value={cancelRide.reason}
+              onChange={(e) => setCancelRide((prev) => ({ ...prev, reason: e.target.value }))}
+              style={{
+                width: "100%", borderRadius: "10px", padding: "10px 12px",
+                background: "#0f172a", border: "1.5px solid #334155",
+                color: "#f1f5f9", fontSize: "14px", resize: "vertical", boxSizing: "border-box",
+              }}
+            />
+            <div style={{ display: "flex", gap: "10px", marginTop: "16px" }}>
+              <button
+                type="button"
+                disabled={cancelRideLoading || !cancelRide.reason.trim()}
+                onClick={handleAdminCancelRide}
+                style={{
+                  flex: 1, padding: "10px", borderRadius: "10px", border: "none",
+                  background: cancelRide.reason.trim() ? "#ef4444" : "#475569",
+                  color: "#fff", fontWeight: 700, cursor: cancelRide.reason.trim() ? "pointer" : "not-allowed",
+                }}
+              >
+                {cancelRideLoading ? "Cancelling…" : "Confirm Cancel"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setCancelRide(null)}
+                style={{
+                  flex: 1, padding: "10px", borderRadius: "10px", border: "1.5px solid #334155",
+                  background: "transparent", color: "#94a3b8", fontWeight: 600, cursor: "pointer",
+                }}
+              >
+                Keep Ride
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Toast notification ─────────────────────────────────────────── */}
       {toast && (
@@ -2331,7 +2337,7 @@ function RevenueAnalyticsPanel({
   );
 }
 
-function LiveRidesList({ rides }) {
+function LiveRidesList({ rides, onCancelRide }) {
   if (rides.length === 0) {
     return (
       <div style={emptyStateStyle}>
@@ -2343,29 +2349,53 @@ function LiveRidesList({ rides }) {
 
   return (
     <div style={liveRideGridStyle}>
-      {rides.slice(0, 8).map((ride) => (
-        <article key={ride.id} style={liveRideCardStyle}>
-          <div style={liveRideHeaderStyle}>
-            <div>
-              <span style={sectionKickerStyle}>Ride #{ride.id}</span>
-              <h3 style={liveRideTitleStyle}>{ride.status}</h3>
+      {rides.slice(0, 8).map((ride) => {
+        const cancellable = !["cancelled", "completed", "in_progress"].includes(ride.status);
+        return (
+          <article key={ride.id} style={liveRideCardStyle}>
+            <div style={liveRideHeaderStyle}>
+              <div>
+                <span style={sectionKickerStyle}>Ride #{ride.id}</span>
+                <h3 style={liveRideTitleStyle}>{ride.status}</h3>
+              </div>
+              <StatusBadge label={ride.payment_status || "payment"} />
             </div>
-            <StatusBadge label={ride.payment_status || "payment"} />
-          </div>
 
-          <div style={detailGridStyle}>
-            <DetailItem label="Pickup" value={ride.pickup || "N/A"} />
-            <DetailItem label="Destination" value={ride.destination || "N/A"} />
-            <DetailItem label="Fare" value={formatMoney(ride.fare)} />
-            <DetailItem label="Distance" value={`${ride.distance_km || 0} KM`} />
-          </div>
+            <div style={detailGridStyle}>
+              <DetailItem label="Pickup" value={ride.pickup || "N/A"} />
+              <DetailItem label="Destination" value={ride.destination || "N/A"} />
+              <DetailItem label="Fare" value={formatMoney(ride.fare)} />
+              <DetailItem label="Distance" value={`${ride.distance_km || 0} KM`} />
+            </div>
 
-          <p style={accessMetaStyle}>
-            Rider: {ride.rider_name || ride.rider_email || "N/A"} · Driver:{" "}
-            {ride.driver_name || ride.driver_email || "Unassigned"}
-          </p>
-        </article>
-      ))}
+            <p style={accessMetaStyle}>
+              Rider: {ride.rider_name || ride.rider_email || "N/A"} · Driver:{" "}
+              {ride.driver_name || ride.driver_email || "Unassigned"}
+            </p>
+
+            {cancellable && typeof onCancelRide === "function" ? (
+              <button
+                type="button"
+                onClick={() => onCancelRide(ride.id)}
+                style={{
+                  marginTop: "12px",
+                  width: "100%",
+                  padding: "8px 12px",
+                  borderRadius: "10px",
+                  border: "1.5px solid #ef4444",
+                  background: "rgba(239,68,68,0.12)",
+                  color: "#f87171",
+                  fontWeight: 700,
+                  fontSize: "12px",
+                  cursor: "pointer",
+                }}
+              >
+                Cancel Ride
+              </button>
+            ) : null}
+          </article>
+        );
+      })}
     </div>
   );
 }

@@ -232,6 +232,20 @@ class Ride(models.Model):
         default=0,
         help_text="Fee charged to the cancelling party.",
     )
+    rider_call_attempt_count = models.PositiveSmallIntegerField(
+        default=0,
+        help_text="Number of in-app Call Rider taps recorded by the assigned driver.",
+    )
+    rider_call_last_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp of the most recent Call Rider attempt.",
+    )
+    rider_call_attempts = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="List of {at, by_user_id} call attempt records.",
+    )
 
     class Meta:
         indexes = [
