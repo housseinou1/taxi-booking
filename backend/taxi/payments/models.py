@@ -291,6 +291,7 @@ class WalletTransaction(models.Model):
         ("refund", "Refund"),
         ("referral", "Referral Reward"),
         ("bonus", "Bonus"),
+        ("no_show", "Rider No-Show Compensation"),
         ("adjustment", "Admin Adjustment"),
     ]
     wallet = models.ForeignKey(WalletAccount, on_delete=models.CASCADE, related_name="transactions")

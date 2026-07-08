@@ -41,6 +41,11 @@ function WaitingFeeBanner({ ride, audience = "rider" }) {
           Current estimate: {formatMoney(waitingStatus.estimatedFee)}
         </p>
       )}
+      {audience === "driver" && waitingStatus.noShowUnlocked && (
+        <p className="waiting-fee-banner__fee">
+          Max wait ended — Rider no-show is available near pickup.
+        </p>
+      )}
     </section>
   );
 }

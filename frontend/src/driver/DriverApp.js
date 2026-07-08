@@ -10,7 +10,9 @@ import { MARKET, formatMoney, isPointInServiceArea } from "../marketConfig";
 import RideStatusButtons from "../RideStatusButtons";
 import AnalyticsDashboard from "../admin/AnalyticsDashboard";
 import RideChat from "../components/RideChat";
-import RideCancellationModal from "../components/RideCancellationModal";
+import RideCancellationModal, {
+  isDriverNoShowReason,
+} from "../components/RideCancellationModal";
 import {
   ensureDriverAgreementBeforeOnline,
   isDriverTermsError,
@@ -24,6 +26,8 @@ import {
 } from "../socket";
 import { EmergencySupportButton } from "./DriverSupport";
 import { isNative } from "../native/platform";
+import { getStableDeviceId } from "../native/deviceId";
+import { haversineKm } from "../delivery/deliveryPricing";
 import {
   getRideAlertSoundStyle,
   preloadNotificationSound,
@@ -788,18 +792,37 @@ export default function DriverApp() {
     try {
       setCancellationSaving(true);
       setCancellationError("");
+      const payload = {
+        reason,
+        reason_details: reasonDetails,
+      };
+      if (isDriverNoShowReason(reason)) {
+        const lat = Number(driverLocation?.current_lat);
+        const lng = Number(driverLocation?.current_lng);
+        if (Number.isFinite(lat) && Number.isFinite(lng)) {
+          payload.lat = lat;
+          payload.lng = lng;
+        }
+        try {
+          payload.device_id = await getStableDeviceId();
+        } catch {
+          payload.device_id = "";
+        }
+      }
       const response = await axios.post(
         `${API_URL}/rides/cancel/${activeRide.id}/`,
-        {
-          reason,
-          reason_details: reasonDetails,
-        },
+        payload,
         authHeaders
       );
       setShowCancellation(false);
       setIsOnline(true);
-      if (response.data?.penalty_waived) {
-        setDriverNotice("No-show cancel recorded. No fee and no points lost. You are back online.");
+      if (response.data?.is_rider_no_show || response.data?.penalty_waived) {
+        const comp = response.data?.no_show_driver_compensation || 0;
+        setDriverNotice(
+          `Rider no-show recorded. No points lost${
+            Number(comp) > 0 ? `; ${comp} MRU compensation credited` : ""
+          }. You are back online.`
+        );
       } else {
         setDriverNotice(
           `Ride cancelled. ${response.data.cancellation_fee || 0} MRU cancellation fee recorded. You are back online.`
@@ -1534,6 +1557,14 @@ export default function DriverApp() {
           onCancel={cancelActiveRide}
           onClose={() => setShowCancellation(false)}
           onCallRider={logAndCallRider}
+          distanceToPickupM={(() => {
+            const lat = Number(driverLocation?.current_lat);
+            const lng = Number(driverLocation?.current_lng);
+            const pLat = Number(activeRide?.pickup_lat);
+            const pLng = Number(activeRide?.pickup_lng);
+            if (![lat, lng, pLat, pLng].every(Number.isFinite)) return null;
+            return haversineKm(lat, lng, pLat, pLng) * 1000;
+          })()}
         />
       )}
 

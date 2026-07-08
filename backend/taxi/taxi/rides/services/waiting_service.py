@@ -28,6 +28,8 @@ def get_waiting_status(ride, at=None):
     policy = get_waiting_policy()
     free_minutes = int(policy["free_minutes"])
     free_seconds = free_minutes * 60
+    max_wait_minutes = int(policy.get("max_wait_minutes", free_minutes))
+    max_wait_seconds = max_wait_minutes * 60
     per_minute_fee = Decimal(str(policy["per_minute_fee"]))
 
     active = ride.status == "driver_arrived" and bool(ride.driver_arrived_at)
@@ -38,6 +40,10 @@ def get_waiting_status(ride, at=None):
             "waited_seconds": 0,
             "free_minutes": free_minutes,
             "free_seconds_remaining": free_seconds,
+            "max_wait_minutes": max_wait_minutes,
+            "max_wait_seconds": max_wait_seconds,
+            "max_wait_seconds_remaining": max_wait_seconds,
+            "no_show_unlocked": False,
             "billing_started": False,
             "chargeable_minutes": 0,
             "per_minute_fee": str(per_minute_fee),
@@ -53,6 +59,7 @@ def get_waiting_status(ride, at=None):
     )
     billing_started = waited_seconds > free_seconds
     free_seconds_remaining = max(0, free_seconds - waited_seconds)
+    max_wait_seconds_remaining = max(0, max_wait_seconds - waited_seconds)
     chargeable_seconds = max(0, waited_seconds - free_seconds) if billing_started else 0
     chargeable_minutes = math.ceil(chargeable_seconds / 60) if billing_started else 0
     estimated_fee = calculate_waiting_fee(waited_seconds)
@@ -63,6 +70,10 @@ def get_waiting_status(ride, at=None):
         "waited_seconds": waited_seconds,
         "free_minutes": free_minutes,
         "free_seconds_remaining": free_seconds_remaining,
+        "max_wait_minutes": max_wait_minutes,
+        "max_wait_seconds": max_wait_seconds,
+        "max_wait_seconds_remaining": max_wait_seconds_remaining,
+        "no_show_unlocked": waited_seconds >= max_wait_seconds,
         "billing_started": billing_started,
         "chargeable_minutes": chargeable_minutes,
         "per_minute_fee": str(per_minute_fee),

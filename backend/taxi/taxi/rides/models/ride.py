@@ -32,6 +32,7 @@ class Ride(models.Model):
         ("in_progress", "In Progress"),
         ("completed", "Completed"),
         ("cancelled", "Cancelled"),
+        ("rider_no_show", "Rider No-Show"),
     ]
 
     RIDE_TYPES = [
@@ -245,6 +246,27 @@ class Ride(models.Model):
         default=list,
         blank=True,
         help_text="List of {at, by_user_id} call attempt records.",
+    )
+    is_rider_no_show = models.BooleanField(
+        default=False,
+        help_text="True when the ride ended as a verified rider no-show.",
+    )
+    no_show_fee = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text="Fee charged to the rider for a verified no-show.",
+    )
+    no_show_driver_compensation = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text="Compensation credited to the driver for a verified rider no-show.",
+    )
+    no_show_evidence = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Anti-abuse evidence: GPS, wait time, device, timestamps.",
     )
 
     class Meta:

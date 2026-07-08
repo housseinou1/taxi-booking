@@ -5,6 +5,7 @@ import WaitingFeeBanner from "./components/WaitingFeeBanner";
 
 function RideStatusButtons({ ride, onStatusChange, distanceToNextKm }) {
   const [workingAction, setWorkingAction] = useState("");
+  const [actionError, setActionError] = useState("");
   const [pickupPin, setPickupPin] = useState("");
   const pinVerified = Boolean(ride.pickup_pin_verified);
   const startRideButtonRef = useRef(null);
@@ -54,17 +55,42 @@ function RideStatusButtons({ ride, onStatusChange, distanceToNextKm }) {
     return response.data;
   };
 
+  const extractApiError = (error, fallback) =>
+    error.response?.data?.detail ||
+    error.response?.data?.error ||
+    error.response?.data?.message ||
+    fallback;
+
   const updateRideStatus = async (endpoint) => {
+    setActionError("");
     try {
       setWorkingAction(endpoint);
-      const data = await postRideAction(endpoint);
+      let body = {};
+      if (endpoint === "arrived" && navigator.geolocation) {
+        try {
+          const position = await new Promise((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+              enableHighAccuracy: true,
+              maximumAge: 10000,
+              timeout: 8000,
+            });
+          });
+          body = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          };
+        } catch {
+          // Fallback: UI already gates proximity; backend accepts missing GPS.
+        }
+      }
+      const data = await postRideAction(endpoint, body);
       if (endpoint === "start") {
         setPickupPin("");
       }
       if (onStatusChange) onStatusChange(data);
     } catch (error) {
       console.error(error);
-      alert(error.message || "Server error updating ride");
+      setActionError(extractApiError(error, "Server error. Please try again."));
     } finally {
       setWorkingAction("");
     }
@@ -72,14 +98,14 @@ function RideStatusButtons({ ride, onStatusChange, distanceToNextKm }) {
 
   const verifyPickupPin = async () => {
     if (pickupPin.length !== 4) return;
-
+    setActionError("");
     try {
       setWorkingAction("verify-pin");
       const data = await postRideAction("verify-pin", { pickup_pin: pickupPin });
       if (onStatusChange) onStatusChange(data);
     } catch (error) {
       console.error(error);
-      alert(error.message || "Could not verify pickup PIN");
+      setActionError(extractApiError(error, "Could not verify pickup PIN. Check the code and try again."));
     } finally {
       setWorkingAction("");
     }
@@ -87,7 +113,7 @@ function RideStatusButtons({ ride, onStatusChange, distanceToNextKm }) {
 
   const markStop = async (stop, endpoint) => {
     if (!stop) return;
-
+    setActionError("");
     try {
       setWorkingAction(`${endpoint}-${stop.id}`);
 
@@ -101,7 +127,9 @@ function RideStatusButtons({ ride, onStatusChange, distanceToNextKm }) {
       if (onStatusChange) onStatusChange(data);
     } catch (error) {
       console.error(error);
-      alert(error.response?.data?.detail || error.response?.data?.error || "Server error updating stop");
+      setActionError(
+        error.response?.data?.detail || error.response?.data?.error || "Server error updating stop."
+      );
     } finally {
       setWorkingAction("");
     }
@@ -109,6 +137,11 @@ function RideStatusButtons({ ride, onStatusChange, distanceToNextKm }) {
 
   return (
     <div style={actionRowStyle}>
+      {actionError ? (
+        <div style={actionErrorStyle} role="alert">
+          {actionError}
+        </div>
+      ) : null}
       {ride.status === "requested" && (
         <button
           onClick={() => updateRideStatus("accept")}
@@ -134,7 +167,9 @@ function RideStatusButtons({ ride, onStatusChange, distanceToNextKm }) {
             label={
               isNearPickup
                 ? "Slide Right to Arrive"
-                : `Pickup is ${Number(distanceToNextKm).toFixed(1)} km away`
+                : hasReliablePickupDistance
+                ? `Pickup is ${Number(distanceToNextKm).toFixed(1)} km away`
+                : "Locating pickup..."
             }
             completeLabel="Marking arrived..."
             color="#0F8F4D"
@@ -142,7 +177,7 @@ function RideStatusButtons({ ride, onStatusChange, distanceToNextKm }) {
             isWorking={workingAction === "arrived"}
             onComplete={() => updateRideStatus("arrived")}
             onDisabledAttempt={() =>
-              alert("Move closer to the rider pickup before marking arrived.")
+              setActionError("Move closer to the pickup point before marking arrived.")
             }
           />
         </>
@@ -159,9 +194,10 @@ function RideStatusButtons({ ride, onStatusChange, distanceToNextKm }) {
               <input
                 id={`pickup-pin-${ride.id}`}
                 value={pickupPin}
-                onChange={(event) =>
-                  setPickupPin(event.target.value.replace(/\D/g, "").slice(0, 4))
-                }
+                onChange={(event) => {
+                  setActionError("");
+                  setPickupPin(event.target.value.replace(/\D/g, "").slice(0, 4));
+                }}
                 inputMode="numeric"
                 autoComplete="one-time-code"
                 maxLength={4}
@@ -680,6 +716,17 @@ const stateTextStyle = {
   background: "rgba(255, 255, 255, 0.08)",
   color: "#d1d5db",
   fontWeight: 900,
+};
+
+const actionErrorStyle = {
+  padding: "10px 14px",
+  borderRadius: "12px",
+  background: "rgba(239, 68, 68, 0.12)",
+  border: "1px solid rgba(239, 68, 68, 0.4)",
+  color: "#ef4444",
+  fontSize: "0.85rem",
+  fontWeight: 700,
+  textAlign: "center",
 };
 
 export default RideStatusButtons;

@@ -24,6 +24,10 @@ import { isDeliveryAppInstall, isDriverLyftUI } from "../native/platform";
 import { unregisterPushNotifications } from "../native/push";
 import { stopBackgroundLocationTracking } from "../native/location";
 import { haversineKm } from "../delivery/deliveryPricing";
+import { getStableDeviceId } from "../native/deviceId";
+import RideCancellationModal, {
+  isDriverNoShowReason,
+} from "../components/RideCancellationModal";
 
 import DriverMapView from "./components/DriverMapView";
 import { getNavigationDestination } from "./components/MultiStopProgress";
@@ -31,7 +35,6 @@ import HamburgerMenu from "./components/HamburgerMenu";
 import RideRequestCard from "./components/RideRequestCard";
 import DriverProfilePage from "./DriverProfilePage";
 import RideStatusButtons from "../RideStatusButtons";
-import RideCancellationModal from "../components/RideCancellationModal";
 import "./driver-tokens.css";
 import "./lyft-driver.css";
 
@@ -665,15 +668,28 @@ function DriverDashboardContent() {
     try {
       setDriverCancelling(true);
       setDriverCancelError("");
-      const { data } = await authenticatedApi.post(`${API_URL}/rides/cancel/${activeRide.id}/`, {
+      const payload = {
         reason: reason.trim(),
         reason_details: reasonDetails.trim(),
         cancelled_by: "driver",
-      });
+      };
+      if (isDriverNoShowReason(reason.trim()) && driverPosition) {
+        payload.lat = Number(driverPosition[0]);
+        payload.lng = Number(driverPosition[1]);
+        try {
+          payload.device_id = await getStableDeviceId();
+        } catch {
+          payload.device_id = "";
+        }
+      }
+      const { data } = await authenticatedApi.post(
+        `${API_URL}/rides/cancel/${activeRide.id}/`,
+        payload
+      );
       setDriverCancelOpen(false);
       activeRideSnapshotRef.current = null;
-      if (data?.penalty_waived) {
-        // Soft success path — no fee/points for valid no-show
+      if (data?.is_rider_no_show || data?.penalty_waived) {
+        // Soft success — rider no-show: no driver penalty, compensation applied server-side
       }
       fetchDriverRides();
       fetchDriverStatus();
@@ -806,7 +822,11 @@ function DriverDashboardContent() {
         fetchDriverStatus();
         return;
       }
-      if (msg.status === "cancelled" || msg.status === "completed") {
+      if (
+        msg.status === "cancelled" ||
+        msg.status === "completed" ||
+        msg.status === "rider_no_show"
+      ) {
         handleRideStatusChange(msg);
         if (!activeRideSnapshotRef.current) {
           fetchAvailableRides();
@@ -1274,6 +1294,11 @@ function DriverDashboardContent() {
           onCancel={cancelActiveRide}
           onClose={closeDriverCancelModal}
           onCallRider={logAndCallRider}
+          distanceToPickupM={
+            distanceToNextKm != null && Number.isFinite(Number(distanceToNextKm))
+              ? Number(distanceToNextKm) * 1000
+              : null
+          }
         />
       )}
 

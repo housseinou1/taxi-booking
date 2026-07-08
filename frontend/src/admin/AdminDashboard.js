@@ -742,7 +742,12 @@ function AdminDashboard() {
   const paidRides = rides.filter((ride) => ride.payment_status === "paid");
   const unpaidRides = rides.filter((ride) => ride.payment_status !== "paid");
   const completedRides = rides.filter((ride) => ride.status === "completed");
-  const cancelledRides = rides.filter((ride) => ride.status === "cancelled");
+  const cancelledRides = rides.filter(
+    (ride) => ride.status === "cancelled" || ride.status === "rider_no_show"
+  );
+  const riderNoShowRides = rides.filter(
+    (ride) => ride.status === "rider_no_show" || ride.is_rider_no_show
+  );
   const activeRideStatuses = [
     "requested",
     "pending",
@@ -1395,7 +1400,7 @@ function AdminDashboard() {
               <p>No rides found.</p>
             ) : (
               filteredRides.map((ride) => {
-                const cancellable = !["cancelled", "completed", "in_progress"].includes(ride.status);
+                const cancellable = !["cancelled", "completed", "in_progress", "rider_no_show"].includes(ride.status);
                 return (
                   <div key={ride.id} style={{ ...listCard, position: "relative" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "8px" }}>
@@ -1404,8 +1409,8 @@ function AdminDashboard() {
                           <span style={{
                             fontSize: "11px", fontWeight: 700, padding: "2px 8px",
                             borderRadius: "999px",
-                            background: ride.status === "in_progress" ? "#166534" : ride.status === "completed" ? "#1e3a5f" : ride.status === "cancelled" ? "#450a0a" : "#713f12",
-                            color: ride.status === "in_progress" ? "#86efac" : ride.status === "completed" ? "#93c5fd" : ride.status === "cancelled" ? "#fca5a5" : "#fde68a",
+                            background: ride.status === "in_progress" ? "#166534" : ride.status === "completed" ? "#1e3a5f" : ride.status === "cancelled" ? "#450a0a" : ride.status === "rider_no_show" ? "#7c2d12" : "#713f12",
+                            color: ride.status === "in_progress" ? "#86efac" : ride.status === "completed" ? "#93c5fd" : ride.status === "cancelled" ? "#fca5a5" : ride.status === "rider_no_show" ? "#fdba74" : "#fde68a",
                           }}>{ride.status}</span>
                         </p>
                         <p style={{ margin: "2px 0", fontSize: "13px", color: "#94a3b8" }}>
@@ -1822,6 +1827,7 @@ function AdminDashboard() {
               activeRides={activeRides}
               completedRides={completedRides}
               cancelledRides={cancelledRides}
+              riderNoShowRides={riderNoShowRides}
               blockedUsers={blockedUsers}
               paidRides={paidRides}
               unpaidRides={unpaidRides}
@@ -2350,7 +2356,7 @@ function LiveRidesList({ rides, onCancelRide }) {
   return (
     <div style={liveRideGridStyle}>
       {rides.slice(0, 8).map((ride) => {
-        const cancellable = !["cancelled", "completed", "in_progress"].includes(ride.status);
+        const cancellable = !["cancelled", "completed", "in_progress", "rider_no_show"].includes(ride.status);
         return (
           <article key={ride.id} style={liveRideCardStyle}>
             <div style={liveRideHeaderStyle}>
@@ -2454,6 +2460,7 @@ function ReportsSection({
   activeRides,
   completedRides,
   cancelledRides,
+  riderNoShowRides = [],
   blockedUsers,
   paidRides,
   unpaidRides,
@@ -2502,6 +2509,7 @@ function ReportsSection({
         ["Paid rides", paidRides.length],
         ["Unpaid rides", unpaidRides.length],
         ["Cancelled rides", cancelledRides.length],
+        ["Rider no-shows", riderNoShowRides.length],
         ["Payment risk", unpaidRides.length + cancelledRides.length],
       ],
     },
@@ -2560,6 +2568,63 @@ function ReportsSection({
         </button>
       </div>
 
+      {/* Rider no-show records */}
+      {riderNoShowRides.length > 0 && (
+        <div style={{ marginTop: "28px" }}>
+          <h3 style={reportTitleStyle}>Rider no-show records</h3>
+          <div style={{ display: "grid", gap: "10px", marginTop: "14px" }}>
+            {riderNoShowRides.slice(0, 15).map((ride) => {
+              const evidence = ride.no_show_evidence || {};
+              return (
+                <div key={`noshow-${ride.id}`} style={{ ...reportCardStyle, padding: "14px 18px", borderLeft: "3px solid #f59e0b" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+                    <div>
+                      <strong style={{ color: ADMIN_TEXT_PRIMARY, fontSize: "14px" }}>Ride #{ride.id}</strong>
+                      <span style={{ color: ADMIN_TEXT_SECONDARY, fontSize: "12px", marginLeft: "10px" }}>
+                        {ride.pickup} → {ride.destination}
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+                      <span
+                        style={{
+                          background: "#451a03",
+                          color: "#fdba74",
+                          padding: "4px 10px",
+                          borderRadius: "999px",
+                          fontSize: "11px",
+                          fontWeight: 700,
+                        }}
+                      >
+                        rider_no_show
+                      </span>
+                      {Number(ride.no_show_fee) > 0 && (
+                        <span style={{ background: ADMIN_DANGER_BG, color: "#991b1b", padding: "4px 10px", borderRadius: "999px", fontSize: "11px", fontWeight: 700 }}>
+                          Rider fee {ride.no_show_fee} MRU
+                        </span>
+                      )}
+                      {Number(ride.no_show_driver_compensation) > 0 && (
+                        <span style={{ background: "#052e16", color: "#86efac", padding: "4px 10px", borderRadius: "999px", fontSize: "11px", fontWeight: 700 }}>
+                          Driver +{ride.no_show_driver_compensation} MRU
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <p style={{ margin: "8px 0 0", color: "#cbd5e1", fontSize: "13px" }}>
+                    Rider: {ride.rider_name || ride.rider_email || "N/A"} · Driver: {ride.driver_name || ride.driver_email || "N/A"}
+                  </p>
+                  <p style={{ margin: "4px 0 0", color: "#94a3b8", fontSize: "12px" }}>
+                    Waited {evidence.waited_seconds != null ? `${evidence.waited_seconds}s` : "—"}
+                    {evidence.distance_to_pickup_m != null ? ` · ${evidence.distance_to_pickup_m}m from pickup` : ""}
+                    {evidence.device_id ? ` · device ${String(evidence.device_id).slice(0, 12)}` : ""}
+                    {ride.cancelled_at ? ` · ${new Date(ride.cancelled_at).toLocaleString()}` : ""}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Cancellation Details */}
       {cancelledRides.length > 0 && (
         <div style={{ marginTop: "28px" }}>
@@ -2575,6 +2640,20 @@ function ReportsSection({
                     </span>
                   </div>
                   <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                    {(ride.is_rider_no_show || ride.status === "rider_no_show") && (
+                      <span
+                        style={{
+                          background: "#451a03",
+                          color: "#fdba74",
+                          padding: "4px 10px",
+                          borderRadius: "999px",
+                          fontSize: "11px",
+                          fontWeight: 700,
+                        }}
+                      >
+                        no-show
+                      </span>
+                    )}
                     {ride.cancelled_by && (
                       <span
                         style={{

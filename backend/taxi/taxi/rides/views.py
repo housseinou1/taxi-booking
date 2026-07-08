@@ -34,7 +34,14 @@ from .models import Ride, RideStop
 from .serializers import RideSerializer
 from .broadcast import broadcast_ride_update
 from .services.waiting_service import calculate_waiting_fee
-from .services.no_show_service import no_show_waiver_eligible
+from .services.no_show_service import (
+    arrive_max_distance_m,
+    CANONICAL_NO_SHOW_REASON,
+    distance_to_pickup_m,
+    evaluate_no_show_eligibility,
+    get_no_show_fee_policy,
+    is_no_show_reason,
+)
 from .timeout import (
     cancel_ride_request_timeout,
     start_ride_request_timeout,
@@ -672,6 +679,33 @@ def arrived_ride(request, ride_id):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
+    # Optional but preferred GPS check — reject when coords prove driver is far.
+    raw_lat = request.data.get("lat", request.data.get("driver_lat"))
+    raw_lng = request.data.get("lng", request.data.get("driver_lng"))
+    if raw_lat is not None and raw_lng is not None:
+        try:
+            lat = float(raw_lat)
+            lng = float(raw_lng)
+        except (TypeError, ValueError):
+            return Response(
+                {"detail": "Invalid driver GPS coordinates."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        distance_m = distance_to_pickup_m(ride, lat, lng)
+        max_m = arrive_max_distance_m()
+        if distance_m > max_m:
+            return Response(
+                {
+                    "detail": (
+                        f"Move closer to the pickup point before tapping Arrived "
+                        f"({int(distance_m)}m away, max {int(max_m)}m)."
+                    ),
+                    "distance_m": round(distance_m, 1),
+                    "max_distance_m": max_m,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
     ride.status = "driver_arrived"
     ride.driver_arrived_at = now()
     ride.save(update_fields=["status", "driver_arrived_at"])
@@ -933,6 +967,15 @@ def record_rider_call_attempt(request, ride_id):
     )
 
 
+def _parse_optional_float(value):
+    if value is None or value == "":
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def cancel_ride(request, ride_id):
@@ -948,7 +991,7 @@ def cancel_ride(request, ride_id):
             status=status.HTTP_403_FORBIDDEN,
         )
 
-    if ride.status == "cancelled":
+    if ride.status in ("cancelled", "rider_no_show"):
         return Response(
             {"detail": "This ride has already been cancelled."},
             status=status.HTTP_400_BAD_REQUEST,
@@ -977,7 +1020,10 @@ def cancel_ride(request, ride_id):
     # Determine who is cancelling
     penalty = None
     penalty_waived = False
+    is_rider_no_show = False
     waiver_details = {}
+    no_show_fee = Decimal("0")
+    driver_compensation = Decimal("0")
     if request.user.is_staff:
         cancelled_by = "admin"
     elif ride.rider_id == request.user.id:
@@ -985,34 +1031,107 @@ def cancel_ride(request, ride_id):
     else:
         cancelled_by = "driver"
 
-    # Calculate cancellation fee
+    driver_lat = _parse_optional_float(
+        request.data.get("lat", request.data.get("driver_lat"))
+    )
+    driver_lng = _parse_optional_float(
+        request.data.get("lng", request.data.get("driver_lng"))
+    )
+    device_id = str(request.data.get("device_id") or "").strip()[:120]
+
+    # Calculate cancellation fee / Lyft-style rider no-show
     cancellation_fee = Decimal("0")
 
     if cancelled_by == "rider" and ride.driver is not None:
         if ride.status in ["driver_arriving", "driver_arrived"]:
-            cancellation_fee = Decimal("100")  # 100 MRU — rider cancels after driver arrived
+            cancellation_fee = Decimal("100")  # 100 MRU — rider cancels after driver assigned
     elif cancelled_by == "driver" and ride.status in ["driver_arriving", "driver_arrived"]:
-        eligible, waiver_details = no_show_waiver_eligible(ride, cancellation_reason)
-        if eligible:
-            cancellation_fee = Decimal("0")
+        wants_no_show = is_no_show_reason(cancellation_reason)
+        if wants_no_show:
+            eligible, waiver_details = evaluate_no_show_eligibility(
+                ride,
+                cancellation_reason,
+                driver_lat=driver_lat,
+                driver_lng=driver_lng,
+            )
+            if not eligible:
+                block = waiver_details.get("block_reason")
+                messages = {
+                    "must_arrive_first": "Tap Arrived at pickup before marking rider no-show.",
+                    "max_wait_not_reached": (
+                        "Rider no-show unlocks only after the max wait timer ends."
+                    ),
+                    "gps_required": "Send your current GPS location to confirm you are at pickup.",
+                    "too_far_from_pickup": (
+                        "You must be near the pickup point to mark rider no-show."
+                    ),
+                }
+                return Response(
+                    {
+                        "detail": messages.get(block, "Rider no-show is not allowed yet."),
+                        "block_reason": block,
+                        "no_show": waiver_details,
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            fee_policy = get_no_show_fee_policy()
+            no_show_fee = fee_policy["rider_fee"]
+            driver_compensation = fee_policy["driver_compensation"]
+            cancellation_fee = no_show_fee  # charged to rider, not driver
             penalty_waived = True
+            is_rider_no_show = True
+            cancellation_reason = CANONICAL_NO_SHOW_REASON
         else:
-            cancellation_fee = Decimal("150")  # 150 MRU penalty for driver
+            cancellation_fee = Decimal("150")  # driver-side cancel penalty
 
-    ride.status = "cancelled"
-    ride.cancelled_at = now()
+    stamp = now()
+    ride.status = "rider_no_show" if is_rider_no_show else "cancelled"
+    ride.cancelled_at = stamp
+    # Keep cancelled_by as the actor who submitted; no-show is flagged via status/is_rider_no_show.
     ride.cancelled_by = cancelled_by
     ride.cancellation_reason = cancellation_reason
     ride.cancellation_reason_details = cancellation_reason_details
     ride.cancellation_fee = cancellation_fee
-    ride.save(update_fields=[
-        "status", "cancelled_at", "cancelled_by",
-        "cancellation_reason", "cancellation_reason_details", "cancellation_fee",
-    ])
+    ride.is_rider_no_show = is_rider_no_show
+    ride.no_show_fee = no_show_fee
+    ride.no_show_driver_compensation = driver_compensation
+    update_fields = [
+        "status",
+        "cancelled_at",
+        "cancelled_by",
+        "cancellation_reason",
+        "cancellation_reason_details",
+        "cancellation_fee",
+        "is_rider_no_show",
+        "no_show_fee",
+        "no_show_driver_compensation",
+        "no_show_evidence",
+    ]
+    if is_rider_no_show:
+        ride.driver_earning = driver_compensation
+        ride.no_show_evidence = {
+            "at": stamp.isoformat(),
+            "driver_user_id": request.user.id,
+            "device_id": device_id,
+            "driver_lat": driver_lat,
+            "driver_lng": driver_lng,
+            "pickup_lat": ride.pickup_lat,
+            "pickup_lng": ride.pickup_lng,
+            "distance_to_pickup_m": waiver_details.get("distance_to_pickup_m"),
+            "waited_seconds": waiver_details.get("waited_seconds"),
+            "max_wait_seconds": waiver_details.get("max_wait_seconds"),
+            "free_wait_seconds": waiver_details.get("free_wait_seconds"),
+            "call_attempts": waiver_details.get("call_attempts"),
+            "user_agent": str(request.META.get("HTTP_USER_AGENT", ""))[:255],
+        }
+        update_fields.append("driver_earning")
+    ride.save(update_fields=update_fields)
 
-    if cancelled_by == "driver":
-        DriverProfile.objects.filter(user=request.user).update(is_available=True)
-        driver_profile = DriverProfile.objects.filter(user=request.user).first()
+    if cancelled_by == "driver" or is_rider_no_show:
+        DriverProfile.objects.filter(user=ride.driver or request.user).update(is_available=True)
+        driver_profile = DriverProfile.objects.filter(
+            user=ride.driver or request.user
+        ).first()
         if driver_profile and not penalty_waived:
             from taxi.drivers.services.ride_performance_service import (
                 apply_driver_cancellation_penalty,
@@ -1020,16 +1139,40 @@ def cancel_ride(request, ride_id):
             penalty = apply_driver_cancellation_penalty(driver_profile)
         elif penalty_waived:
             logger.info(
-                "Rider no-show cancel: driver=%s ride=%s — fee and penalty waived calls=%s waited=%s",
+                "Rider no-show: driver=%s ride=%s waited=%s distance_m=%s fee=%s comp=%s",
                 request.user.id,
                 ride.id,
-                waiver_details.get("call_attempts"),
                 waiver_details.get("waited_seconds"),
+                waiver_details.get("distance_to_pickup_m"),
+                no_show_fee,
+                driver_compensation,
             )
+            if driver_compensation > 0 and ride.driver_id:
+                try:
+                    from payments.wallet_ledger import (
+                        apply_wallet_transaction,
+                        get_or_create_wallet,
+                    )
+
+                    wallet = get_or_create_wallet(ride.driver)
+                    apply_wallet_transaction(
+                        wallet,
+                        driver_compensation,
+                        is_credit=True,
+                        transaction_type="no_show",
+                        reference=f"ride:{ride.id}:no_show",
+                        note=f"Rider no-show compensation for ride #{ride.id}",
+                    )
+                except Exception:
+                    logger.exception(
+                        "Failed to credit no-show compensation ride=%s driver=%s",
+                        ride.id,
+                        ride.driver_id,
+                    )
     else:
         penalty = None
 
-    if penalty_waived and ride.rider_id:
+    if is_rider_no_show and ride.rider_id:
         try:
             from security.services.fraud_service import check_excessive_cancellations
 
@@ -1044,7 +1187,7 @@ def cancel_ride(request, ride_id):
     broadcast_ride_update(ride)
 
     # Cancellation abuse detection — flag riders/drivers with > 3 cancels/24h
-    # Valid no-show cancellations by the driver are exempt
+    # Valid rider no-show completions by the driver are exempt from driver abuse.
     if cancelled_by in ("rider", "driver") and not penalty_waived:
         is_abuse = record_cancellation(request.user.id)
         if is_abuse:
@@ -1072,12 +1215,25 @@ def cancel_ride(request, ride_id):
     data = serializer.data
     data["cancellation_reason"] = cancellation_reason
     data["cancellation_reason_details"] = cancellation_reason_details
-    data["cancelled_by"] = cancelled_by
+    data["cancelled_by"] = ride.cancelled_by
     data["cancellation_fee"] = str(cancellation_fee)
     data["penalty_waived"] = penalty_waived
+    data["is_rider_no_show"] = is_rider_no_show
+    data["no_show_fee"] = str(no_show_fee)
+    data["no_show_driver_compensation"] = str(driver_compensation)
     data["call_attempts"] = int(getattr(ride, "rider_call_attempt_count", 0) or 0)
     data["waited_seconds"] = waiver_details.get("waited_seconds") if waiver_details else None
-    data["refund_status"] = "Authorization released" if cancellation_fee == 0 else f"Cancellation fee: {cancellation_fee} MRU"
+    if is_rider_no_show:
+        data["refund_status"] = (
+            f"Rider no-show fee: {no_show_fee} MRU; "
+            f"driver compensation: {driver_compensation} MRU"
+        )
+    else:
+        data["refund_status"] = (
+            "Authorization released"
+            if cancellation_fee == 0
+            else f"Cancellation fee: {cancellation_fee} MRU"
+        )
     if penalty:
         data["driver_performance"] = penalty
     return Response(data)

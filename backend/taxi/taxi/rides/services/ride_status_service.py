@@ -261,4 +261,4 @@ class RideStatusService:
         Returns:
             bool: True if the status is 'completed' or 'cancelled'.
         """
-        return status in ("completed", "cancelled")
+        return status in ("completed", "cancelled", "rider_no_show")

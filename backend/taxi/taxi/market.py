@@ -35,6 +35,17 @@ MARKET = {
     "waiting": {
         "free_minutes": 3,
         "per_minute_fee": Decimal("50"),
+        # Total wait from driver_arrived_at before Rider no-show unlocks.
+        "max_wait_minutes": 5,
+        # GPS radius for arrive / no-show anti-abuse.
+        "arrive_max_distance_m": 350,
+        "no_show_max_distance_m": 150,
+    },
+    "no_show": {
+        # Fee charged to the rider when the driver completes a valid no-show cancel.
+        "rider_fee": Decimal("100"),
+        # Driver compensation credited on a valid rider no-show.
+        "driver_compensation": Decimal("100"),
     },
 }
 

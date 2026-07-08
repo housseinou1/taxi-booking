@@ -225,6 +225,13 @@ export const MARKET = {
   waiting: {
     freeMinutes: 3,
     perMinuteFee: 50,
+    maxWaitMinutes: 5,
+    arriveMaxDistanceM: 350,
+    noShowMaxDistanceM: 150,
+  },
+  noShow: {
+    riderFee: 100,
+    driverCompensation: 100,
   },
 };
 

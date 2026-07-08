@@ -24,13 +24,8 @@ export const DRIVER_STANDARD_CANCELLATION_REASONS = [
   "Other",
 ];
 
-/** No-show family — penalty-free only after free wait + 2 logged calls. */
-export const DRIVER_NO_SHOW_CANCELLATION_REASONS = [
-  "Rider no-show",
-  "Rider not answering calls",
-  "Wrong pickup / cannot locate rider",
-  "Rider refused to board",
-];
+/** Lyft-style rider no-show — unlocked only after Arrived + max wait + near pickup. */
+export const DRIVER_NO_SHOW_CANCELLATION_REASONS = ["Rider no-show"];
 
 export const DRIVER_CANCELLATION_REASONS = [
   ...DRIVER_NO_SHOW_CANCELLATION_REASONS,
@@ -41,14 +36,19 @@ export const DRIVER_CANCELLATION_REASONS = [
 export const CANCELLATION_REASONS = RIDER_CANCELLATION_REASONS;
 
 const OTHER_MIN_LENGTH = 10;
-const MIN_CALLS_FOR_NO_SHOW = 2;
 
 function freeWaitSeconds() {
   return Number(MARKET?.waiting?.freeMinutes || 3) * 60;
 }
 
-function computeNoShowGate(ride) {
+function maxWaitSeconds() {
+  return Number(MARKET?.waiting?.maxWaitMinutes || 5) * 60;
+}
+
+export function computeNoShowGate(ride, { distanceToPickupM = null } = {}) {
   const freeSecs = freeWaitSeconds();
+  const maxSecs = maxWaitSeconds();
+  const maxDist = Number(MARKET?.waiting?.noShowMaxDistanceM || 150);
   const arrivedAt = ride?.driver_arrived_at ? new Date(ride.driver_arrived_at).getTime() : null;
   const nowMs = Date.now();
   const waitedSeconds =
@@ -59,18 +59,28 @@ function computeNoShowGate(ride) {
     ride?.rider_call_attempt_count ?? ride?.call_attempts ?? 0
   );
   const statusOk = ride?.status === "driver_arrived";
-  const waitOk = waitedSeconds >= freeSecs;
-  const callsOk = callAttempts >= MIN_CALLS_FOR_NO_SHOW;
+  const freeWaitEnded = waitedSeconds >= freeSecs;
+  const waitOk = waitedSeconds >= maxSecs;
+  const billingStarted = waitedSeconds > freeSecs;
+  const hasDistance = distanceToPickupM != null && Number.isFinite(Number(distanceToPickupM));
+  const gpsOk = hasDistance && Number(distanceToPickupM) <= maxDist;
   return {
     statusOk,
+    freeWaitEnded,
     waitOk,
-    callsOk,
-    unlocked: statusOk && waitOk && callsOk,
+    billingStarted,
+    gpsOk,
+    unlocked: statusOk && waitOk && gpsOk,
     waitedSeconds,
     freeSeconds: freeSecs,
     freeSecondsRemaining: Math.max(0, freeSecs - waitedSeconds),
+    maxWaitSeconds: maxSecs,
+    maxWaitSecondsRemaining: Math.max(0, maxSecs - waitedSeconds),
     callAttempts,
-    minCalls: MIN_CALLS_FOR_NO_SHOW,
+    distanceToPickupM: hasDistance ? Number(distanceToPickupM) : null,
+    maxDistanceM: maxDist,
+    riderFee: Number(MARKET?.noShow?.riderFee || 100),
+    driverCompensation: Number(MARKET?.noShow?.driverCompensation || 100),
   };
 }
 
@@ -86,6 +96,7 @@ export default function RideCancellationModal({
   onCancel,
   onClose,
   onCallRider,
+  distanceToPickupM = null,
 }) {
   const [reason, setReason] = useState("");
   const [reasonDetails, setReasonDetails] = useState("");
@@ -99,8 +110,8 @@ export default function RideCancellationModal({
 
   const noShowGate = useMemo(() => {
     void tick;
-    return role === "driver" ? computeNoShowGate(ride) : null;
-  }, [role, ride, tick]);
+    return role === "driver" ? computeNoShowGate(ride, { distanceToPickupM }) : null;
+  }, [role, ride, tick, distanceToPickupM]);
 
   const reasons = role === "driver" ? DRIVER_CANCELLATION_REASONS : RIDER_CANCELLATION_REASONS;
   const isOther = reason === "Other";
@@ -118,10 +129,14 @@ export default function RideCancellationModal({
     }
     if (role === "driver") {
       if (selectedNoShow && noShowGate?.unlocked) {
-        return "No-show cancel unlocked: no fee and no performance points lost.";
+        return (
+          `Rider no-show: rider may be charged ${noShowGate.riderFee} MRU. ` +
+          `You receive ${noShowGate.driverCompensation} MRU compensation. ` +
+          "Your acceptance rate and points are not reduced."
+        );
       }
       if (selectedNoShow) {
-        return "No-show cancel unlocks after free wait ends and 2 Call Rider attempts.";
+        return "Rider no-show unlocks after Arrived, the max wait timer, and while you are near pickup.";
       }
       return "A 150 MRU driver cancellation penalty may apply. Your performance score may also be reduced.";
     }
@@ -168,20 +183,30 @@ export default function RideCancellationModal({
 
         {role === "driver" && noShowGate ? (
           <div className="ride-cancel-gate" aria-live="polite">
-            <div className="ride-cancel-gate__title">No-show checklist</div>
+            <div className="ride-cancel-gate__title">Rider no-show checklist</div>
             <ul className="ride-cancel-gate__list">
               <li className={noShowGate.statusOk ? "is-done" : ""}>
                 Arrived at pickup {noShowGate.statusOk ? "✓" : ""}
               </li>
-              <li className={noShowGate.waitOk ? "is-done" : ""}>
+              <li className={noShowGate.freeWaitEnded ? "is-done" : ""}>
                 Free wait ended
-                {!noShowGate.waitOk
+                {!noShowGate.freeWaitEnded
                   ? ` (${formatClock(noShowGate.freeSecondsRemaining)} left)`
                   : " ✓"}
               </li>
-              <li className={noShowGate.callsOk ? "is-done" : ""}>
-                Called rider {noShowGate.callAttempts}/{noShowGate.minCalls}
-                {noShowGate.callsOk ? " ✓" : ""}
+              <li className={noShowGate.billingStarted && !noShowGate.waitOk ? "is-done" : noShowGate.waitOk ? "is-done" : ""}>
+                {noShowGate.waitOk
+                  ? "Max wait ended ✓"
+                  : noShowGate.billingStarted
+                    ? `Waiting fee active · no-show in ${formatClock(noShowGate.maxWaitSecondsRemaining)}`
+                    : `Waiting timer · max wait ${formatClock(noShowGate.maxWaitSecondsRemaining)}`}
+              </li>
+              <li className={noShowGate.gpsOk ? "is-done" : ""}>
+                Near pickup
+                {noShowGate.distanceToPickupM != null
+                  ? ` (${Math.round(noShowGate.distanceToPickupM)}m / ${noShowGate.maxDistanceM}m)`
+                  : " (waiting for GPS)"}
+                {noShowGate.gpsOk ? " ✓" : ""}
               </li>
             </ul>
             {typeof onCallRider === "function" ? (
@@ -195,12 +220,12 @@ export default function RideCancellationModal({
             ) : null}
             {!noShowGate.unlocked ? (
               <p className="ride-cancel-gate__hint">
-                Complete the checklist to unlock no-show reasons without losing rate or points.
-                Other reasons remain available but may affect your score.
+                Complete Arrived, wait until the max timer ends, and stay near pickup to unlock Rider no-show
+                without losing rate or points. Driver-side reasons remain available but may affect your score.
               </p>
             ) : (
               <p className="ride-cancel-gate__hint is-ready">
-                No-show reasons are unlocked.
+                Rider no-show is unlocked.
               </p>
             )}
           </div>

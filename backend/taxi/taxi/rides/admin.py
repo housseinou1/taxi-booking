@@ -15,8 +15,16 @@ class RideAdmin(admin.ModelAdmin):
         "rider",
         "driver",
         "status",
+        "is_rider_no_show",
+        "no_show_fee",
+        "no_show_driver_compensation",
+        "cancelled_by",
+        "cancellation_fee",
         "created_at",
     )
+    list_filter = ("status", "is_rider_no_show", "cancelled_by")
+    search_fields = ("id", "pickup", "destination", "cancellation_reason")
+    readonly_fields = ("no_show_evidence", "rider_call_attempts", "created_at")
     inlines = [RideStopInline]
 
 

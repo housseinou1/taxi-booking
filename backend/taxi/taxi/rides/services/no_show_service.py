@@ -1,24 +1,27 @@
-"""Driver no-show cancellation helpers."""
+"""Lyft-style rider no-show cancellation helpers."""
 
 from __future__ import annotations
 
+import math
+from decimal import Decimal
+
 from django.utils import timezone
 
+from taxi.market import MARKET
 from taxi.rides.services.waiting_service import get_waiting_policy
 
-# Reasons that can qualify for fee/points waiver after wait + 2 calls.
+# Canonical reason for Lyft-style rider no-show (plus nearby legacy aliases).
 NO_SHOW_REASON_KEYS = {
     "rider no-show",
     "rider not answering calls",
     "wrong pickup / cannot locate rider",
     "rider refused to board",
-    # legacy / overlapped wording from existing modal
     "rider not available",
     "waited too long",
     "wrong pickup location",
 }
 
-MIN_CALL_ATTEMPTS_FOR_WAIVER = 2
+CANONICAL_NO_SHOW_REASON = "Rider no-show"
 
 
 def normalize_cancel_reason(reason: str) -> str:
@@ -40,25 +43,120 @@ def free_wait_seconds() -> int:
     return int(get_waiting_policy()["free_minutes"]) * 60
 
 
-def no_show_waiver_eligible(ride, reason: str, at=None) -> tuple[bool, dict]:
-    """Return (eligible, details) for penalty-free driver no-show cancel."""
+def max_wait_seconds() -> int:
+    policy = get_waiting_policy()
+    return int(policy.get("max_wait_minutes", policy["free_minutes"])) * 60
+
+
+def no_show_max_distance_m() -> float:
+    return float(get_waiting_policy().get("no_show_max_distance_m", 150))
+
+
+def arrive_max_distance_m() -> float:
+    return float(get_waiting_policy().get("arrive_max_distance_m", 350))
+
+
+def get_no_show_fee_policy() -> dict:
+    cfg = MARKET.get("no_show") or {}
+    return {
+        "rider_fee": Decimal(str(cfg.get("rider_fee", "100"))),
+        "driver_compensation": Decimal(str(cfg.get("driver_compensation", "100"))),
+    }
+
+
+def haversine_meters(lat1, lng1, lat2, lng2) -> float:
+    """Great-circle distance in meters."""
+    try:
+        lat1, lng1, lat2, lng2 = float(lat1), float(lng1), float(lat2), float(lng2)
+    except (TypeError, ValueError):
+        return float("inf")
+    radius_m = 6371000.0
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    d_phi = math.radians(lat2 - lat1)
+    d_lambda = math.radians(lng2 - lng1)
+    a = (
+        math.sin(d_phi / 2) ** 2
+        + math.cos(phi1) * math.cos(phi2) * math.sin(d_lambda / 2) ** 2
+    )
+    return 2 * radius_m * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+
+def distance_to_pickup_m(ride, lat, lng) -> float:
+    return haversine_meters(lat, lng, ride.pickup_lat, ride.pickup_lng)
+
+
+def evaluate_no_show_eligibility(
+    ride,
+    reason: str,
+    *,
+    driver_lat=None,
+    driver_lng=None,
+    at=None,
+) -> tuple[bool, dict]:
+    """Return (eligible, details) for a Lyft-style rider no-show cancel.
+
+    Requirements:
+    - Reason is a no-show reason
+    - Ride is driver_arrived with an arrival timestamp
+    - Max wait timer has expired (after free wait + billable window)
+    - Driver GPS is within no_show_max_distance_m of pickup
+    """
     waited = waited_seconds_after_arrival(ride, at=at)
     free_secs = free_wait_seconds()
+    max_secs = max_wait_seconds()
+    max_dist = no_show_max_distance_m()
     calls = int(getattr(ride, "rider_call_attempt_count", 0) or 0)
+
+    has_coords = driver_lat is not None and driver_lng is not None
+    distance_m = (
+        distance_to_pickup_m(ride, driver_lat, driver_lng) if has_coords else None
+    )
+    gps_ok = has_coords and distance_m is not None and distance_m <= max_dist
+
     details = {
         "is_no_show_reason": is_no_show_reason(reason),
         "status_ok": ride.status == "driver_arrived",
         "waited_seconds": waited,
         "free_wait_seconds": free_secs,
-        "wait_ok": waited >= free_secs,
+        "max_wait_seconds": max_secs,
+        "wait_ok": waited >= max_secs,
+        "billing_started": waited > free_secs,
         "call_attempts": calls,
-        "calls_ok": calls >= MIN_CALL_ATTEMPTS_FOR_WAIVER,
+        "driver_lat": driver_lat,
+        "driver_lng": driver_lng,
+        "distance_to_pickup_m": round(distance_m, 1) if distance_m is not None else None,
+        "max_distance_m": max_dist,
+        "gps_ok": gps_ok,
+        "gps_provided": has_coords,
     }
     eligible = (
         details["is_no_show_reason"]
         and details["status_ok"]
         and details["wait_ok"]
-        and details["calls_ok"]
+        and details["gps_ok"]
     )
     details["eligible"] = eligible
+    if not details["is_no_show_reason"]:
+        details["block_reason"] = "not_no_show_reason"
+    elif not details["status_ok"]:
+        details["block_reason"] = "must_arrive_first"
+    elif not details["wait_ok"]:
+        details["block_reason"] = "max_wait_not_reached"
+    elif not details["gps_provided"]:
+        details["block_reason"] = "gps_required"
+    elif not details["gps_ok"]:
+        details["block_reason"] = "too_far_from_pickup"
+    else:
+        details["block_reason"] = None
     return eligible, details
+
+
+# Back-compat alias used by older imports/tests.
+def no_show_waiver_eligible(ride, reason: str, at=None, **kwargs) -> tuple[bool, dict]:
+    return evaluate_no_show_eligibility(
+        ride,
+        reason,
+        driver_lat=kwargs.get("driver_lat"),
+        driver_lng=kwargs.get("driver_lng"),
+        at=at,
+    )
