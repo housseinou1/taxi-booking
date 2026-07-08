@@ -299,6 +299,9 @@ function AdminDashboard() {
   });
   const [ownerPayoutSaving, setOwnerPayoutSaving] = useState(false);
   const [ownerPayoutMessage, setOwnerPayoutMessage] = useState("");
+  const [driverTab, setDriverTab] = useState("taxi"); // 'taxi' | 'courier'
+  const [cancelRide, setCancelRide] = useState(null); // { rideId, reason }
+  const [cancelRideLoading, setCancelRideLoading] = useState(false);
   const [isCompactLayout, setIsCompactLayout] = useState(
     typeof window !== "undefined" ? window.innerWidth <= 1120 : false
   );
@@ -493,6 +496,28 @@ function AdminDashboard() {
     } catch (error) {
       console.error(error);
       showToast("Server error deleting driver", "error");
+    }
+  };
+
+  const handleAdminCancelRide = async () => {
+    if (!cancelRide?.rideId || !cancelRide?.reason?.trim()) return;
+    setCancelRideLoading(true);
+    try {
+      const { response, data } = await callAdminApi(`/rides/cancel/${cancelRide.rideId}/`, {
+        method: "POST",
+        body: JSON.stringify({ reason: cancelRide.reason.trim() }),
+      });
+      if (response.ok) {
+        showToast(`Ride #${cancelRide.rideId} cancelled`, "success");
+        setCancelRide(null);
+        fetchRides();
+      } else {
+        showToast(getApiMessage(data, `Could not cancel ride (HTTP ${response.status})`), "error");
+      }
+    } catch (error) {
+      showToast("Server error cancelling ride", "error");
+    } finally {
+      setCancelRideLoading(false);
     }
   };
 
@@ -1258,49 +1283,81 @@ function AdminDashboard() {
           </div>
         )}
 
-        {page === "drivers" && (
-          <div style={card}>
-            <SectionTitle
-              title="Drivers list"
-              subtitle="Manage driver accounts, driver quality scores, approval status, and access."
-            />
+        {page === "drivers" && (() => {
+          const taxiProfiles = filteredDriverProfiles.filter((d) => !d.is_courier);
+          const courierProfiles = filteredDriverProfiles.filter((d) => d.is_courier);
+          const shownProfiles = driverTab === "taxi" ? taxiProfiles : courierProfiles;
+          return (
+            <div style={card}>
+              <SectionTitle
+                title="Drivers"
+                subtitle="Manage driver accounts, approval status, and access. Switch tabs to separate taxi drivers from delivery couriers."
+              />
 
-            <div style={statsGrid}>
-              <StatCard title="Total Drivers" value={platformDrivers.length} />
-              <StatCard title="Showing" value={filteredPlatformDrivers.length} />
-              <StatCard title="Online Drivers" value={onlineDrivers.length} />
-              <StatCard
-                title="Blocked Drivers"
-                value={platformDrivers.filter((user) => !user.is_active).length}
-              />
-              <StatCard
-                title="Rated Drivers"
-                value={platformDrivers.filter((user) => Number(user.driver_rating_count || 0) > 0).length}
-              />
+              {/* Taxi / Courier tab switcher */}
+              <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
+                <button
+                  type="button"
+                  onClick={() => setDriverTab("taxi")}
+                  style={{
+                    ...refreshButtonStyle,
+                    background: driverTab === "taxi"
+                      ? "linear-gradient(135deg, #6366f1, #4f46e5)"
+                      : "rgba(99,102,241,0.15)",
+                    color: driverTab === "taxi" ? "#fff" : "#a5b4fc",
+                    border: "1.5px solid #6366f1",
+                  }}
+                >
+                  🚗 Taxi Drivers ({taxiProfiles.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDriverTab("courier")}
+                  style={{
+                    ...refreshButtonStyle,
+                    background: driverTab === "courier"
+                      ? "linear-gradient(135deg, #f59e0b, #d97706)"
+                      : "rgba(245,158,11,0.15)",
+                    color: driverTab === "courier" ? "#fff" : "#fcd34d",
+                    border: "1.5px solid #f59e0b",
+                  }}
+                >
+                  📦 Delivery Couriers ({courierProfiles.length})
+                </button>
+              </div>
+
+              <div style={statsGrid}>
+                <StatCard title={driverTab === "taxi" ? "Taxi Drivers" : "Delivery Couriers"} value={shownProfiles.length} />
+                <StatCard title="Online" value={shownProfiles.filter((d) => d.is_available).length} />
+                <StatCard title="Pending" value={shownProfiles.filter((d) => d.status === "pending").length} />
+                <StatCard title="Blocked" value={shownProfiles.filter((d) => !d.is_active).length} />
+              </div>
+
+              <h2 style={subHeadingStyle}>
+                {driverTab === "taxi" ? "Taxi Drivers" : "Delivery Couriers"}
+              </h2>
+              {shownProfiles.length === 0 ? (
+                <p style={{ color: "#94a3b8" }}>No {driverTab === "taxi" ? "taxi drivers" : "delivery couriers"} found.</p>
+              ) : (
+                shownProfiles.map((driver) => (
+                  <DriverInfoCard
+                    key={driver.id}
+                    driver={driver}
+                    relatedUser={usersById.get(Number(driver.user_id))}
+                    getFileUrl={getFileUrl}
+                    setUserBlocked={setUserBlocked}
+                    approveDriver={approveDriver}
+                    rejectDriver={rejectDriver}
+                    updateDriverCategory={updateDriverCategory}
+                    reintegrateDriver={reintegrateDriver}
+                    deleteDriver={deleteDriver}
+                    driverCategories={DRIVER_CATEGORIES}
+                  />
+                ))
+              )}
             </div>
-
-            <h2 style={subHeadingStyle}>All drivers</h2>
-            {filteredDriverProfiles.length === 0 ? (
-              <p>No driver profiles found.</p>
-            ) : (
-              filteredDriverProfiles.map((driver) => (
-                <DriverInfoCard
-                  key={driver.id}
-                  driver={driver}
-                  relatedUser={usersById.get(Number(driver.user_id))}
-                  getFileUrl={getFileUrl}
-                  setUserBlocked={setUserBlocked}
-                  approveDriver={approveDriver}
-                  rejectDriver={rejectDriver}
-                  updateDriverCategory={updateDriverCategory}
-                  reintegrateDriver={reintegrateDriver}
-                  deleteDriver={deleteDriver}
-                  driverCategories={DRIVER_CATEGORIES}
-                />
-              ))
-            )}
-          </div>
-        )}
+          );
+        })()}
 
         {page === "deliveries" && (
           <div style={card}>
@@ -1314,7 +1371,7 @@ function AdminDashboard() {
 
         {page === "rides" && (
           <div style={card}>
-            <SectionTitle title="Ride dispatch" subtitle="Watch active and historic trip activity." />
+            <SectionTitle title="Ride dispatch" subtitle="Watch active and historic trip activity. Use Cancel to force-cancel a pending ride." />
 
             <div style={liveOpsStripStyle}>
               <PremiumMetric title="Waiting requests" value={pendingRideRequests.length} tone="amber" />
@@ -1328,48 +1385,105 @@ function AdminDashboard() {
 
             <h2 style={subHeadingStyle}>All rides</h2>
 
+            {/* Admin cancel ride modal */}
+            {cancelRide && (
+              <div style={{
+                position: "fixed", inset: 0, zIndex: 9999,
+                background: "rgba(0,0,0,0.65)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+                <div style={{
+                  background: "#1e293b", borderRadius: "18px",
+                  padding: "32px", minWidth: "340px", maxWidth: "420px", width: "90%",
+                  boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+                }}>
+                  <h3 style={{ color: "#f1f5f9", marginTop: 0 }}>Cancel Ride #{cancelRide.rideId}</h3>
+                  <p style={{ color: "#94a3b8", fontSize: "13px" }}>This action is irreversible. Provide a reason before confirming.</p>
+                  <textarea
+                    autoFocus
+                    rows={3}
+                    placeholder="Cancellation reason (required)"
+                    value={cancelRide.reason}
+                    onChange={(e) => setCancelRide((prev) => ({ ...prev, reason: e.target.value }))}
+                    style={{
+                      width: "100%", borderRadius: "10px", padding: "10px 12px",
+                      background: "#0f172a", border: "1.5px solid #334155",
+                      color: "#f1f5f9", fontSize: "14px", resize: "vertical", boxSizing: "border-box",
+                    }}
+                  />
+                  <div style={{ display: "flex", gap: "10px", marginTop: "16px" }}>
+                    <button
+                      type="button"
+                      disabled={cancelRideLoading || !cancelRide.reason.trim()}
+                      onClick={handleAdminCancelRide}
+                      style={{
+                        flex: 1, padding: "10px", borderRadius: "10px", border: "none",
+                        background: cancelRide.reason.trim() ? "#ef4444" : "#475569",
+                        color: "#fff", fontWeight: 700, cursor: cancelRide.reason.trim() ? "pointer" : "not-allowed",
+                      }}
+                    >
+                      {cancelRideLoading ? "Cancelling…" : "Confirm Cancel"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCancelRide(null)}
+                      style={{
+                        flex: 1, padding: "10px", borderRadius: "10px", border: "1.5px solid #334155",
+                        background: "transparent", color: "#94a3b8", fontWeight: 600, cursor: "pointer",
+                      }}
+                    >
+                      Keep Ride
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {filteredRides.length === 0 ? (
               <p>No rides found.</p>
             ) : (
-              filteredRides.map((ride) => (
-                <div key={ride.id} style={listCard}>
-                  <p>
-                    <b>Ride ID:</b> {ride.id}
-                  </p>
-
-                  <p>
-                    <b>Status:</b> {ride.status}
-                  </p>
-
-                  <p>
-                    <b>Pickup:</b> {ride.pickup}
-                  </p>
-
-                  <p>
-                    <b>Destination:</b> {ride.destination}
-                  </p>
-
-                  <p>
-                    <b>Distance:</b> {ride.distance_km || 0} KM
-                  </p>
-
-                  <p>
-                    <b>Fare:</b> {formatMoney(ride.fare)}
-                  </p>
-
-                  <p>
-                    <b>App Fee:</b> {formatMoney(ride.app_fee)}
-                  </p>
-
-                  <p>
-                    <b>Tip:</b> {formatMoney(ride.payment_tip_amount)}
-                  </p>
-
-                  <p>
-                    <b>Driver Earning:</b> {formatMoney(ride.driver_earning)}
-                  </p>
-                </div>
-              ))
+              filteredRides.map((ride) => {
+                const cancellable = !["cancelled", "completed", "in_progress"].includes(ride.status);
+                return (
+                  <div key={ride.id} style={{ ...listCard, position: "relative" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "8px" }}>
+                      <div>
+                        <p style={{ margin: "0 0 4px" }}><b>Ride #{ride.id}</b> &nbsp;
+                          <span style={{
+                            fontSize: "11px", fontWeight: 700, padding: "2px 8px",
+                            borderRadius: "999px",
+                            background: ride.status === "in_progress" ? "#166534" : ride.status === "completed" ? "#1e3a5f" : ride.status === "cancelled" ? "#450a0a" : "#713f12",
+                            color: ride.status === "in_progress" ? "#86efac" : ride.status === "completed" ? "#93c5fd" : ride.status === "cancelled" ? "#fca5a5" : "#fde68a",
+                          }}>{ride.status}</span>
+                        </p>
+                        <p style={{ margin: "2px 0", fontSize: "13px", color: "#94a3b8" }}>
+                          {ride.pickup} → {ride.destination}
+                        </p>
+                      </div>
+                      {cancellable && (
+                        <button
+                          type="button"
+                          onClick={() => setCancelRide({ rideId: ride.id, reason: "" })}
+                          style={{
+                            padding: "6px 14px", borderRadius: "8px", border: "1.5px solid #ef4444",
+                            background: "rgba(239,68,68,0.1)", color: "#f87171",
+                            fontWeight: 700, fontSize: "12px", cursor: "pointer",
+                          }}
+                        >
+                          Cancel Ride
+                        </button>
+                      )}
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: "4px 12px", marginTop: "8px" }}>
+                      <p style={{ margin: 0, fontSize: "13px" }}><b>Distance:</b> {ride.distance_km || 0} km</p>
+                      <p style={{ margin: 0, fontSize: "13px" }}><b>Fare:</b> {formatMoney(ride.fare)}</p>
+                      <p style={{ margin: 0, fontSize: "13px" }}><b>App Fee:</b> {formatMoney(ride.app_fee)}</p>
+                      <p style={{ margin: 0, fontSize: "13px" }}><b>Tip:</b> {formatMoney(ride.payment_tip_amount)}</p>
+                      <p style={{ margin: 0, fontSize: "13px" }}><b>Driver Earning:</b> {formatMoney(ride.driver_earning)}</p>
+                    </div>
+                  </div>
+                );
+              })
             )}
           </div>
         )}

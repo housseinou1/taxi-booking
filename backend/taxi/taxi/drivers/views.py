@@ -237,12 +237,14 @@ def serialize_driver(profile, request):
         "terms_accepted": profile.terms_accepted,
         "terms_accepted_at": profile.terms_accepted_at,
         "terms_version": profile.terms_version,
+        "legal_signature": serialize_driver_signature(profile, request),
         "driver_level": points_progress["current_level"],
         "level_points": points_progress["points"],
         "next_level_points": points_progress["next_level_points"],
         "next_level": points_progress["next_level"],
         "level_progress_percentage": points_progress["progress_percentage"],
         "points_rule": points_progress["points_rule"],
+        "is_courier": _driver_is_courier(profile),
         **review_state,
         **performance_snapshot,
     }
@@ -286,10 +288,25 @@ def driver_me(request):
     return Response(serialize_driver(profile, request))
 
 
+def _driver_is_courier(profile) -> bool:
+    """Return True if this driver has registered as a delivery courier."""
+    from deliveries.models import DriverDeliverySettings
+    return DriverDeliverySettings.objects.filter(driver=profile.user).exists()
+
+
 @api_view(["GET"])
 @permission_classes([IsAdminUser])
 def driver_list(request):
-    drivers = DriverProfile.objects.all().order_by("-id")
+    drivers = DriverProfile.objects.select_related("user").order_by("-id")
+    driver_type = request.query_params.get("type", "all")  # taxi | courier | all
+    if driver_type == "courier":
+        from deliveries.models import DriverDeliverySettings
+        courier_user_ids = set(DriverDeliverySettings.objects.values_list("driver_id", flat=True))
+        drivers = drivers.filter(user_id__in=courier_user_ids)
+    elif driver_type == "taxi":
+        from deliveries.models import DriverDeliverySettings
+        courier_user_ids = set(DriverDeliverySettings.objects.values_list("driver_id", flat=True))
+        drivers = drivers.exclude(user_id__in=courier_user_ids)
     return Response([serialize_driver(driver, request) for driver in drivers])
 
 
