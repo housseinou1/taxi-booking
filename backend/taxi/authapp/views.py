@@ -1,4 +1,5 @@
 import logging
+import threading
 
 from django.contrib.auth import get_user_model
 from django.db.models import Avg
@@ -291,7 +292,18 @@ def login_view(request):
                 "New device login: user=%s device=%s ip=%s",
                 user.id, device_id[:16], ip,
             )
-            _send_new_device_login_alert(user, device_id=device_id, device_name=device_name, ip=ip, ua=ua)
+            # Never block login/JWT issuance on SMTP latency.
+            threading.Thread(
+                target=_send_new_device_login_alert,
+                kwargs={
+                    "user": user,
+                    "device_id": device_id,
+                    "device_name": device_name,
+                    "ip": ip,
+                    "ua": ua,
+                },
+                daemon=True,
+            ).start()
         else:
             update_fields = {
                 "ip_address": ip if ip != "unknown" else None,
