@@ -31,6 +31,8 @@ urlpatterns = [
     path("admin/", admin.site.urls),
 
     path("auth/", include("authapp.urls")),
+    path("auth/2fa/", include("admin_2fa.urls")),
+    path("auth/integrity/", include("admin_2fa.integrity_urls")),
 
     path("locations/", include("locations.urls")),
 

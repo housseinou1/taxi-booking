@@ -178,6 +178,33 @@ class PhoneVerificationCode(models.Model):
         )
 
 
+class DeviceSession(models.Model):
+    """Tracks authenticated devices per user for binding and new-device alerts."""
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="device_sessions",
+    )
+    device_id = models.CharField(max_length=128, db_index=True)
+    device_name = models.CharField(max_length=255, blank=True, default="")
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(blank=True, default="")
+    is_new_device = models.BooleanField(default=True)
+    last_seen_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-last_seen_at"]
+        unique_together = [("user", "device_id")]
+        indexes = [
+            models.Index(fields=["user", "-last_seen_at"], name="device_sess_user_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.user_id} — {self.device_id[:16]}"
+
+
 class PasswordResetCode(models.Model):
     IDENTIFIER_CHOICES = (
         ("phone", "Phone"),

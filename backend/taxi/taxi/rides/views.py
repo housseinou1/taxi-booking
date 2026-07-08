@@ -25,7 +25,7 @@ from payments.services import (
 )
 from promotions.services import PromoCodeService
 from taxi.drivers.models import DriverProfile
-from taxi.security.abuse import rate_limit, pin_lockout_retry, record_pin_failure, validate_coordinates
+from taxi.security.abuse import rate_limit, pin_lockout_retry, record_pin_failure, record_cancellation, validate_coordinates
 from locations.services import calculate_city_fare, resolve_city
 from legal.ride_terms import ensure_ride_legal_acceptance
 
@@ -969,6 +969,24 @@ def cancel_ride(request, ride_id):
 
     cancel_ride_payment(ride)
     broadcast_ride_update(ride)
+
+    # Cancellation abuse detection — flag riders/drivers with > 3 cancels/24h
+    if cancelled_by in ("rider", "driver"):
+        is_abuse = record_cancellation(request.user.id)
+        if is_abuse:
+            try:
+                from security.models import FraudFlag
+                FraudFlag.objects.get_or_create(
+                    user=request.user,
+                    reason="excessive_cancellations",
+                    status="open",
+                    defaults={
+                        "severity": "medium",
+                        "description": f"{cancelled_by.title()} exceeded 3 ride cancellations in 24 hours.",
+                    },
+                )
+            except Exception:
+                logger.warning("Could not create FraudFlag for excessive cancellations: user=%s", request.user.id)
 
     # Push notification to the other party
     try:

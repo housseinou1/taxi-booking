@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     "operations",
     "health",
     "django_celery_beat",
+    "admin_2fa",
 ]
 
 MIDDLEWARE = [

@@ -1,3 +1,5 @@
+import logging
+
 from django.contrib.auth import get_user_model
 from django.db.models import Avg
 from django.utils import timezone
@@ -8,7 +10,9 @@ from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
 
+from .models import DeviceSession
 from .serializers import (
     ALLOWED_ID_DOCUMENT_TYPES,
     ALLOWED_PROFILE_IMAGE_TYPES,
@@ -23,7 +27,8 @@ from .validators import (
     validate_person_name,
 )
 from taxi.drivers.models import DriverProfile
-from taxi.security.abuse import rate_limit
+from taxi.security.abuse import client_ip, rate_limit, record_device_account, check_device_multi_account
+from security.services.audit_service import log_from_request
 
 User = get_user_model()
 
@@ -198,7 +203,17 @@ class RegisterView(generics.CreateAPIView):
                 status=status.HTTP_429_TOO_MANY_REQUESTS,
                 headers={"Retry-After": str(retry_after)},
             )
+        device_id = str(request.data.get("device_id") or request.META.get("HTTP_X_DEVICE_ID") or "").strip()[:128]
+        if device_id and check_device_multi_account(device_id):
+            return Response(
+                {"error": "This device has been used to create too many accounts. Contact support."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         response = super().create(request, *args, **kwargs)
+
+        if response.status_code == 201 and device_id:
+            record_device_account(device_id)
 
         # Add redirect_to for delivery courier registrations
         app_type = request.META.get("HTTP_X_APP_TYPE", "").strip().lower()
@@ -244,9 +259,47 @@ def login_view(request):
 
     refresh = RefreshToken.for_user(user)
 
+    device_id = str(request.data.get("device_id") or request.META.get("HTTP_X_DEVICE_ID") or "").strip()[:128]
+    ip = client_ip(request)
+    ua = (request.META.get("HTTP_USER_AGENT") or "")[:500]
+    is_new = False
+    if device_id:
+        record_device_account(device_id)
+        session, created = DeviceSession.objects.get_or_create(
+            user=user,
+            device_id=device_id,
+            defaults={
+                "ip_address": ip if ip != "unknown" else None,
+                "user_agent": ua,
+                "is_new_device": True,
+            },
+        )
+        if created:
+            is_new = True
+            logging.getLogger("yala.security").warning(
+                "New device login: user=%s device=%s ip=%s",
+                user.id, device_id[:16], ip,
+            )
+        else:
+            DeviceSession.objects.filter(pk=session.pk).update(
+                ip_address=ip if ip != "unknown" else None,
+                user_agent=ua,
+                is_new_device=False,
+            )
+
+    log_from_request(
+        request,
+        action="status_change",
+        entity_type="customer",
+        entity_id=user.id,
+        summary=f"Login from {'new' if is_new else 'known'} device",
+        details={"device_id": device_id or None, "is_new_device": is_new},
+    )
+
     return Response({
         "access": str(refresh.access_token),
         "refresh": str(refresh),
+        "is_new_device": is_new,
         **build_user_response(user),
     })
 
@@ -383,6 +436,38 @@ def update_identity(request):
 
 
 @api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def logout_all_devices(request):
+    """Blacklist all outstanding refresh tokens for the current user."""
+    for token in OutstandingToken.objects.filter(user=request.user):
+        BlacklistedToken.objects.get_or_create(token=token)
+    DeviceSession.objects.filter(user=request.user).delete()
+    log_from_request(
+        request,
+        action="status_change",
+        entity_type="customer",
+        entity_id=request.user.id,
+        summary="Logged out from all devices",
+    )
+    return Response({"message": "Logged out from all devices."})
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def my_devices(request):
+    """List active device sessions for the current user."""
+    sessions = DeviceSession.objects.filter(user=request.user)
+    return Response([{
+        "device_id": s.device_id[:8] + "****",
+        "device_name": s.device_name,
+        "ip_address": s.ip_address,
+        "is_new_device": s.is_new_device,
+        "last_seen_at": s.last_seen_at,
+        "created_at": s.created_at,
+    } for s in sessions])
+
+
+@api_view(["POST"])
 @permission_classes([IsAdminUser])
 def block_user(request, user_id):
     try:
@@ -398,9 +483,16 @@ def block_user(request, user_id):
 
     user.is_active = False
     user.save(update_fields=["is_active"])
-
     DriverProfile.objects.filter(user=user).update(is_available=False)
-
+    for token in OutstandingToken.objects.filter(user=user):
+        BlacklistedToken.objects.get_or_create(token=token)
+    log_from_request(
+        request,
+        action="admin_action",
+        entity_type="customer",
+        entity_id=user.id,
+        summary=f"Admin blocked user {user.email}",
+    )
     return Response({
         "message": "User blocked",
         "user": serialize_user(user),
@@ -417,7 +509,13 @@ def unblock_user(request, user_id):
 
     user.is_active = True
     user.save(update_fields=["is_active"])
-
+    log_from_request(
+        request,
+        action="admin_action",
+        entity_type="customer",
+        entity_id=user.id,
+        summary=f"Admin unblocked user {user.email}",
+    )
     return Response({
         "message": "User unblocked",
         "user": serialize_user(user),
@@ -465,7 +563,13 @@ def approve_rider(request, user_id):
     user.rider_rejection_reason = ""
     user.is_active = True
     user.save(update_fields=["rider_status", "rider_rejection_reason", "is_active"])
-
+    log_from_request(
+        request,
+        action="admin_action",
+        entity_type="customer",
+        entity_id=user.id,
+        summary=f"Admin approved rider {user.email}",
+    )
     return Response({
         "message": "Rider approved",
         "user": serialize_user(user),
@@ -497,7 +601,13 @@ def reject_rider(request, user_id):
     user.rider_rejection_reason = reason
     user.is_active = False
     user.save(update_fields=["rider_status", "rider_rejection_reason", "is_active"])
-
+    log_from_request(
+        request,
+        action="admin_action",
+        entity_type="customer",
+        entity_id=user.id,
+        summary=f"Admin rejected rider {user.email}: {reason[:80]}",
+    )
     return Response({
         "message": "Rider rejected",
         "user": serialize_user(user),

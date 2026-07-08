@@ -9,6 +9,8 @@ from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 
+from taxi.security.abuse import rate_limit
+
 from taxi.rides.models import Ride
 from taxi.market import get_app_fee_percent_display
 from notifications.push import notify_courier_payout, notify_payment_completed, notify_payment_successful
@@ -76,6 +78,13 @@ def admin_wallet_adjustment(request):
 @permission_classes([IsAuthenticated])
 @transaction.atomic
 def wallet_pay_ride(request, ride_id):
+    retry_after = rate_limit(request, "payment", limit=10, window_seconds=600)
+    if retry_after:
+        return Response(
+            {"error": "Too many payment attempts. Please wait before trying again."},
+            status=status.HTTP_429_TOO_MANY_REQUESTS,
+            headers={"Retry-After": str(retry_after)},
+        )
     try:
         ride = Ride.objects.select_for_update().get(id=ride_id, rider=request.user)
     except Ride.DoesNotExist:
@@ -158,6 +167,13 @@ def my_payment_methods(request):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def create_payment(request):
+    retry_after = rate_limit(request, "payment", limit=10, window_seconds=600)
+    if retry_after:
+        return Response(
+            {"error": "Too many payment attempts. Please wait before trying again."},
+            status=status.HTTP_429_TOO_MANY_REQUESTS,
+            headers={"Retry-After": str(retry_after)},
+        )
     try:
         ride_id = request.data.get("ride_id")
         tip_percentage = Decimal(str(request.data.get("tip_percentage", 0)))

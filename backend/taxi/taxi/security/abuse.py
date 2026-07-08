@@ -83,6 +83,41 @@ def is_abuse_locked(scope, identity, limit, window_seconds):
 PIN_ATTEMPT_LIMIT = 5
 PIN_ATTEMPT_WINDOW_SECONDS = 600
 
+CANCEL_ABUSE_LIMIT = 3
+CANCEL_ABUSE_WINDOW_SECONDS = 86400  # 24 hours
+
+MULTI_ACCOUNT_DEVICE_LIMIT = 3
+
+
+def record_cancellation(user_id):
+    """Increment per-user ride/delivery cancellation counter. Returns True if abuse threshold exceeded."""
+    identity = f"user:{user_id}"
+    retry = increment_abuse_counter("cancellation", identity, CANCEL_ABUSE_LIMIT, CANCEL_ABUSE_WINDOW_SECONDS)
+    return retry > 0
+
+
+def check_device_multi_account(device_id):
+    """Return True if a single device_id has been used to register/login > MULTI_ACCOUNT_DEVICE_LIMIT accounts."""
+    if not device_id:
+        return False
+    digest = hashlib.sha256(str(device_id).encode()).hexdigest()[:24]
+    key = f"device-accounts:{digest}"
+    count = cache.get(key, 0) or 0
+    return count >= MULTI_ACCOUNT_DEVICE_LIMIT
+
+
+def record_device_account(device_id):
+    """Increment unique-accounts-per-device counter (TTL = 30 days)."""
+    if not device_id:
+        return
+    digest = hashlib.sha256(str(device_id).encode()).hexdigest()[:24]
+    key = f"device-accounts:{digest}"
+    if not cache.add(key, 1, timeout=2592000):
+        try:
+            cache.incr(key)
+        except ValueError:
+            cache.set(key, 1, timeout=2592000)
+
 
 def pin_lockout_retry(scope, identity):
     return is_abuse_locked(scope, identity, PIN_ATTEMPT_LIMIT, PIN_ATTEMPT_WINDOW_SECONDS)
