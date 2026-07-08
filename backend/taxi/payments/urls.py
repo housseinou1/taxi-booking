@@ -39,6 +39,7 @@ from .wallet_views import (
     wallet_history,
     wallet_top_up_view,
 )
+from .webhooks import stripe_webhook
 
 urlpatterns = [
     path("methods/save/", save_payment_method),
@@ -79,4 +80,5 @@ urlpatterns = [
     path("admin/refunds/<int:refund_id>/approve/", admin_approve_refund),
     path("admin/refunds/<int:refund_id>/reject/", admin_reject_refund),
     path("admin/merchant-payouts/<int:payout_id>/approve/", admin_approve_merchant_payout),
+    path("webhooks/stripe/", stripe_webhook),
 ]

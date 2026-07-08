@@ -106,6 +106,13 @@ class DeliveryService:
         pin_identity = f"delivery:{delivery.id}:user:{getattr(actor, 'id', 'unknown')}"
         lockout = pin_lockout_retry("delivery-pickup-pin", pin_identity)
         if lockout:
+            if actor is not None:
+                try:
+                    from security.services.fraud_service import flag_pin_bruteforce
+
+                    flag_pin_bruteforce(actor, "delivery-pickup-pin")
+                except Exception:
+                    pass
             raise DeliveryServiceError(
                 "Too many incorrect PIN attempts. Try again later.",
                 code="pin_locked",
@@ -121,6 +128,13 @@ class DeliveryService:
                 metadata={"attempted": bool(submitted)},
             )
             if retry:
+                if actor is not None:
+                    try:
+                        from security.services.fraud_service import flag_pin_bruteforce
+
+                        flag_pin_bruteforce(actor, "delivery-pickup-pin")
+                    except Exception:
+                        pass
                 raise DeliveryServiceError(
                     "Too many incorrect PIN attempts. Try again later.",
                     code="pin_locked",
@@ -605,6 +619,13 @@ class DeliveryService:
         pin_identity = f"delivery:{delivery.id}:user:{getattr(actor, 'id', 'unknown')}"
         lockout = pin_lockout_retry("delivery-dropoff-pin", pin_identity)
         if lockout:
+            if actor is not None:
+                try:
+                    from security.services.fraud_service import flag_pin_bruteforce
+
+                    flag_pin_bruteforce(actor, "delivery-dropoff-pin")
+                except Exception:
+                    pass
             raise DeliveryServiceError(
                 "Too many incorrect PIN attempts. Try again later.",
                 code="pin_locked",
@@ -620,6 +641,13 @@ class DeliveryService:
                 metadata={"attempted": bool(submitted)},
             )
             if retry:
+                if actor is not None:
+                    try:
+                        from security.services.fraud_service import flag_pin_bruteforce
+
+                        flag_pin_bruteforce(actor, "delivery-dropoff-pin")
+                    except Exception:
+                        pass
                 raise DeliveryServiceError(
                     "Too many incorrect PIN attempts. Try again later.",
                     code="pin_locked",

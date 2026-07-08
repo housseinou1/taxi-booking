@@ -39,13 +39,98 @@ def _get_or_create_flag(user, reason, description="", **kwargs):
     )
     log_audit(
         action="fraud_flag",
-        entity_type="customer" if user.user_type == "rider" else user.user_type,
+        entity_type="customer" if getattr(user, "user_type", "") == "rider" else getattr(user, "user_type", "customer"),
         entity_id=user.id,
         summary=f"Fraud flag: {reason}",
         actor=None,
         details={"flag_id": flag.id, "reason": reason},
     )
     return flag, True
+
+
+def flag_multi_account_device(user, device_id: str, count: int | None = None):
+    flag, _ = _get_or_create_flag(
+        user,
+        "multi_account_device",
+        description=f"Device {device_id[:12]}… used across multiple accounts.",
+        severity="high",
+        metadata={"device_id": device_id[:64], "count": count},
+    )
+    return flag
+
+
+def flag_pin_bruteforce(user, scope: str):
+    flag, _ = _get_or_create_flag(
+        user,
+        "pin_bruteforce",
+        description=f"Repeated failed PIN attempts ({scope}).",
+        severity="high",
+        metadata={"scope": scope},
+    )
+    return flag
+
+
+def flag_fake_location(user, *, speed_kmh: float, distance_km: float):
+    flag, _ = _get_or_create_flag(
+        user,
+        "fake_location",
+        description=f"Implausible GPS movement: {distance_km:.1f} km at {speed_kmh:.0f} km/h.",
+        severity="high",
+        metadata={"speed_kmh": round(speed_kmh, 1), "distance_km": round(distance_km, 2)},
+    )
+    return flag
+
+
+def flag_integrity_failure(user, reason: str = "integrity_fail"):
+    flag, _ = _get_or_create_flag(
+        user,
+        "integrity_fail",
+        description=f"Device integrity check failed: {reason}",
+        severity="critical",
+        metadata={"reason": reason},
+    )
+    return flag
+
+
+def check_ride_farming(user) -> FraudFlag | None:
+    """Flag unusually high completed rides in 24h (ride farming heuristic)."""
+    since = timezone.now() - timedelta(hours=24)
+    try:
+        from taxi.rides.models import Ride
+    except Exception:
+        return None
+    completed = Ride.objects.filter(rider=user, status="completed", created_at__gte=since).count()
+    threshold = 20
+    if completed < threshold:
+        return None
+    flag, _ = _get_or_create_flag(
+        user,
+        "ride_farming",
+        description=f"{completed} completed rides in 24 hours (threshold {threshold}).",
+        severity="high",
+        metadata={"completed_24h": completed, "threshold": threshold},
+    )
+    return flag
+
+
+def check_delivery_farming(user) -> FraudFlag | None:
+    since = timezone.now() - timedelta(hours=24)
+    completed = Delivery.objects.filter(
+        customer=user,
+        status="delivered",
+        created_at__gte=since,
+    ).count()
+    threshold = 20
+    if completed < threshold:
+        return None
+    flag, _ = _get_or_create_flag(
+        user,
+        "delivery_farming",
+        description=f"{completed} deliveries in 24 hours (threshold {threshold}).",
+        severity="high",
+        metadata={"delivered_24h": completed, "threshold": threshold},
+    )
+    return flag
 
 
 def check_excessive_cancellations(user) -> FraudFlag | None:
@@ -172,6 +257,8 @@ def run_user_fraud_checks(user) -> list[FraudFlag]:
         check_excessive_cancellations,
         check_repeated_refunds,
         check_failed_payments,
+        check_ride_farming,
+        check_delivery_farming,
     ):
         flag = checker(user)
         if flag:

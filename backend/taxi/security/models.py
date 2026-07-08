@@ -113,6 +113,11 @@ class FraudFlag(models.Model):
         ("fake_location", "Fake Location Movement"),
         ("failed_payments", "Multiple Failed Payments"),
         ("early_delivery", "Courier Marked Delivered Too Early"),
+        ("multi_account_device", "Multiple Accounts On One Device"),
+        ("pin_bruteforce", "PIN Brute-Force Attempts"),
+        ("ride_farming", "Suspected Ride Farming"),
+        ("delivery_farming", "Suspected Delivery Farming"),
+        ("integrity_fail", "Device Integrity Failure"),
         ("other", "Other"),
     ]
 
