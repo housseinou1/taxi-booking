@@ -68,11 +68,14 @@ const getRequestedRole = () => {
 
 const getInitialUserType = () => {
   const appType = getAppType();
-  if (appType === "delivery" || isDeliveryCourierApp()) {
+  if (appType === "rider") {
+    return "rider";
+  }
+  if (appType === "driver") {
     return "driver";
   }
-  if (appType === "driver" || appType === "rider") {
-    return appType;
+  if (appType === "delivery" || isDeliveryCourierApp()) {
+    return "driver";
   }
   const requestedRole = getRequestedRole();
   if (requestedRole === "admin") return "admin";
@@ -375,7 +378,7 @@ function Register() {
     }
   };
 
-  const isDeliveryCourierAppFlow = isDeliveryUberUI() || getAppType() === "delivery";
+  const isDeliveryCourierAppFlow = getAppType() !== "rider" && (isDeliveryUberUI() || getAppType() === "delivery");
   const isRiderLyft = isRiderLyftUI() || formData.user_type === "rider";
   const isDriverLyft =
     !isDeliveryCourierAppFlow && (isDriverLyftUI() || formData.user_type === "driver");
@@ -383,7 +386,9 @@ function Register() {
 
   const registerTitle = isDeliveryCourierAppFlow
     ? "Create courier account"
-    : t("auth.registerTitle");
+    : getAppType() === "rider"
+      ? t("auth.riderRegisterTitle")
+      : t("auth.registerTitle");
   const registerSubtitle = isDeliveryCourierAppFlow
     ? "Join Yala Delivery as a courier. Profile setup comes next."
     : t("auth.registerSubtitle");

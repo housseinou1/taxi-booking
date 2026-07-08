@@ -113,6 +113,7 @@
     "loginFailed": "Connexion echouee. Veuillez reessayer.",
     "join": "Rejoindre Yala",
     "registerTitle": "Creez votre compte mobilite.",
+    "riderRegisterTitle": "Creer un compte Yala Rider",
     "registerSubtitle": "Inscrivez-vous comme client ou chauffeur, gardez votre session active, puis continuez vers la configuration.",
     "riderAccount": "Compte client",
     "driverAccount": "Compte chauffeur",

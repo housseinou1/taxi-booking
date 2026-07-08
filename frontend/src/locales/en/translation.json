@@ -113,6 +113,7 @@
     "loginFailed": "Login failed. Please try again.",
     "join": "Join Yala",
     "registerTitle": "Create your mobility account.",
+    "riderRegisterTitle": "Create Yala Rider account",
     "registerSubtitle": "Register as a rider or driver, keep your session active, and continue directly to setup after your account is created.",
     "riderAccount": "Rider account",
     "driverAccount": "Driver account",
