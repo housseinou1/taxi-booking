@@ -108,6 +108,12 @@ def verify_integrity(request):
     logger.info("Integrity verdict: user=%s pass=%s reason=%s ip=%s", request.user.id, passed, reason, client_ip(request))
 
     if not passed:
+        try:
+            from security.services.fraud_service import flag_integrity_failure
+
+            flag_integrity_failure(request.user, reason=reason)
+        except Exception:
+            logger.exception("Failed to create integrity fraud flag for user=%s", request.user.id)
         return Response(
             {"pass": False, "reason": reason},
             status=status.HTTP_403_FORBIDDEN,

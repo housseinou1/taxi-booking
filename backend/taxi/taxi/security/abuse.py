@@ -191,6 +191,12 @@ def validate_driver_location(profile, lat, lng):
                 profile.user_id,
                 speed_kmh,
             )
+            try:
+                from security.services.fraud_service import flag_fake_location
+
+                flag_fake_location(profile.user, speed_kmh=speed_kmh, distance_km=distance_km)
+            except Exception:
+                logger.exception("Failed to create fake_location fraud flag for driver=%s", profile.user_id)
             raise ValueError("Location update was rejected because the movement is not plausible.")
 
     cache.set(key, {"lat": lat, "lng": lng, "time": now}, timeout=3600)

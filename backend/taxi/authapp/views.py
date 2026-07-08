@@ -28,6 +28,8 @@ from .validators import (
 )
 from taxi.drivers.models import DriverProfile
 from taxi.security.abuse import client_ip, rate_limit, record_device_account, check_device_multi_account
+from admin_2fa.models import AdminTOTP
+from admin_2fa.pending import issue_pending_token
 from security.services.audit_service import log_from_request
 
 User = get_user_model()
@@ -214,6 +216,15 @@ class RegisterView(generics.CreateAPIView):
 
         if response.status_code == 201 and device_id:
             record_device_account(device_id)
+            if check_device_multi_account(device_id):
+                try:
+                    from security.services.fraud_service import flag_multi_account_device
+                    user = User.objects.filter(email__iexact=request.data.get("email", "")).first()
+                    if user:
+                        flag_multi_account_device(user, device_id)
+                except Exception:
+                    logging.getLogger("yala.security").exception("multi-account fraud flag failed")
+
 
         # Add redirect_to for delivery courier registrations
         app_type = request.META.get("HTTP_X_APP_TYPE", "").strip().lower()
@@ -257,9 +268,8 @@ def login_view(request):
             status=status.HTTP_403_FORBIDDEN,
         )
 
-    refresh = RefreshToken.for_user(user)
-
     device_id = str(request.data.get("device_id") or request.META.get("HTTP_X_DEVICE_ID") or "").strip()[:128]
+    device_name = str(request.data.get("device_name") or "")[:255]
     ip = client_ip(request)
     ua = (request.META.get("HTTP_USER_AGENT") or "")[:500]
     is_new = False
@@ -269,6 +279,7 @@ def login_view(request):
             user=user,
             device_id=device_id,
             defaults={
+                "device_name": device_name,
                 "ip_address": ip if ip != "unknown" else None,
                 "user_agent": ua,
                 "is_new_device": True,
@@ -280,12 +291,46 @@ def login_view(request):
                 "New device login: user=%s device=%s ip=%s",
                 user.id, device_id[:16], ip,
             )
+            _send_new_device_login_alert(user, device_id=device_id, device_name=device_name, ip=ip, ua=ua)
         else:
-            DeviceSession.objects.filter(pk=session.pk).update(
-                ip_address=ip if ip != "unknown" else None,
-                user_agent=ua,
-                is_new_device=False,
+            update_fields = {
+                "ip_address": ip if ip != "unknown" else None,
+                "user_agent": ua,
+                "is_new_device": False,
+            }
+            if device_name:
+                update_fields["device_name"] = device_name
+            DeviceSession.objects.filter(pk=session.pk).update(**update_fields)
+
+        _enforce_concurrent_device_limit(user)
+
+    # Admin accounts with confirmed TOTP must complete a second factor before tokens are issued.
+    if user.is_staff:
+        totp_obj = AdminTOTP.objects.filter(user=user, is_confirmed=True).first()
+        if totp_obj:
+            pending = issue_pending_token(user.id)
+            log_from_request(
+                request,
+                action="status_change",
+                entity_type="customer",
+                entity_id=user.id,
+                summary="Admin login pending 2FA",
+                details={"device_id": device_id or None, "is_new_device": is_new},
             )
+            return Response({
+                "is_2fa_required": True,
+                "pending_token": pending,
+                "is_new_device": is_new,
+                "email": user.email,
+                "user_type": "admin",
+                "is_staff": True,
+                "is_superuser": bool(user.is_superuser),
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "message": "Enter your authenticator code to finish signing in.",
+            })
+
+    refresh = RefreshToken.for_user(user)
 
     log_from_request(
         request,
@@ -300,8 +345,60 @@ def login_view(request):
         "access": str(refresh.access_token),
         "refresh": str(refresh),
         "is_new_device": is_new,
+        "is_2fa_required": False,
         **build_user_response(user),
     })
+
+
+def _send_new_device_login_alert(user, *, device_id, device_name, ip, ua):
+    email = (getattr(user, "email", "") or "").strip()
+    if not email:
+        return
+    try:
+        from django.conf import settings
+        from django.core.mail import send_mail
+
+        subject = "Yala security alert — new device sign-in"
+        body = (
+            f"Hi {user.first_name or 'there'},\n\n"
+            f"Your Yala account signed in from a new device.\n\n"
+            f"Device: {device_name or 'Unknown'}\n"
+            f"Device id: {device_id[:12]}…\n"
+            f"IP: {ip}\n"
+            f"User agent: {ua[:160]}\n\n"
+            f"If this was you, no action is needed.\n"
+            f"If not, open Yala settings and tap “Log out all devices”, "
+            f"then change your password.\n\n"
+            f"— Yala Security"
+        )
+        send_mail(
+            subject,
+            body,
+            settings.DEFAULT_FROM_EMAIL,
+            [email],
+            fail_silently=True,
+        )
+    except Exception:
+        logging.getLogger("yala.security").exception(
+            "Failed to send new-device alert for user=%s", user.id
+        )
+
+
+def _enforce_concurrent_device_limit(user):
+    """Keep only the N newest device sessions when MAX_CONCURRENT_DEVICE_SESSIONS > 0."""
+    from django.conf import settings
+
+    limit = int(getattr(settings, "MAX_CONCURRENT_DEVICE_SESSIONS", 0) or 0)
+    if limit <= 0:
+        return
+    keep_ids = list(
+        DeviceSession.objects.filter(user=user)
+        .order_by("-last_seen_at", "-id")
+        .values_list("id", flat=True)[:limit]
+    )
+    if not keep_ids:
+        return
+    DeviceSession.objects.filter(user=user).exclude(id__in=keep_ids).delete()
 
 
 @api_view(["GET"])

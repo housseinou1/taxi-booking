@@ -16,7 +16,7 @@ import qrcode
 
 from django.utils import timezone
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAdminUser, IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 
@@ -90,9 +90,18 @@ def totp_confirm(request):
 
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def totp_verify(request):
-    """Verify a TOTP code after login (client must call this when is_2fa_required=True)."""
+    """Verify a TOTP code after admin password login.
+
+    Accepts either:
+      - pending_token from login (preferred, issues JWT on success), or
+      - Authorization Bearer with an authenticated admin user.
+    """
+    from rest_framework_simplejwt.tokens import RefreshToken
+    from django.contrib.auth import get_user_model
+    from .pending import consume_pending_token
+
     retry_after = rate_limit(request, "totp-verify", limit=5, window_seconds=300)
     if retry_after:
         return Response(
@@ -100,14 +109,56 @@ def totp_verify(request):
             status=status.HTTP_429_TOO_MANY_REQUESTS,
             headers={"Retry-After": str(retry_after)},
         )
-    totp_obj = AdminTOTP.objects.filter(user=request.user, is_confirmed=True).first()
+
+    code = str(request.data.get("code", "")).strip()
+    pending_token = str(request.data.get("pending_token", "")).strip()
+    User = get_user_model()
+    user = None
+
+    if pending_token:
+        user_id = consume_pending_token(pending_token)
+        if not user_id:
+            return Response(
+                {"error": "2FA session expired. Please sign in again."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+        user = User.objects.filter(pk=user_id, is_active=True, is_staff=True).first()
+        if not user:
+            return Response({"error": "Invalid admin session."}, status=status.HTTP_401_UNAUTHORIZED)
+    elif request.user and request.user.is_authenticated:
+        user = request.user
+    else:
+        return Response(
+            {"error": "pending_token or authenticated session required."},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+
+    totp_obj = AdminTOTP.objects.filter(user=user, is_confirmed=True).first()
     if not totp_obj:
         return Response({"error": "2FA is not set up for this account."}, status=status.HTTP_400_BAD_REQUEST)
 
-    code = str(request.data.get("code", "")).strip()
     if not totp_obj.verify(code):
-        logger.warning("TOTP verify failed: user=%s", request.user.id)
+        logger.warning("TOTP verify failed: user=%s", user.id)
         return Response({"error": "Invalid or expired code."}, status=status.HTTP_400_BAD_REQUEST)
+
+    if pending_token:
+        refresh = RefreshToken.for_user(user)
+        return Response({
+            "verified": True,
+            "access": str(refresh.access_token),
+            "refresh": str(refresh),
+            "is_2fa_required": False,
+            "email": user.email,
+            "user_type": getattr(user, "user_type", "admin"),
+            "is_staff": True,
+            "is_superuser": bool(user.is_superuser),
+            "is_driver": bool(getattr(user, "is_driver", False)),
+            "is_rider": bool(getattr(user, "is_rider", True)),
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "id": user.id,
+            "message": "2FA verified.",
+        })
 
     return Response({"verified": True, "message": "2FA verified."})
 

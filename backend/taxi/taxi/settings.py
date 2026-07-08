@@ -239,6 +239,8 @@ if not DEBUG:
 # ── Stripe ────────────────────────────────────────────────────────────────────
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
 STRIPE_PUBLIC_KEY = os.getenv("STRIPE_PUBLIC_KEY", "")
+STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY", STRIPE_PUBLIC_KEY)
+STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
 
 # ── Email ─────────────────────────────────────────────────────────────────────
 EMAIL_BACKEND = os.getenv(
@@ -392,6 +394,28 @@ SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
 
 # ── Suppress ImageField check when Pillow is not installed (dev/test) ─────────
 SILENCED_SYSTEM_CHECKS = ["fields.E210"]
+
+# ── Play Integrity / device attestation ──────────────────────────────────────
+PLAY_INTEGRITY_API_KEY = os.getenv("PLAY_INTEGRITY_API_KEY", "")
+PLAY_INTEGRITY_PACKAGE = os.getenv("PLAY_INTEGRITY_PACKAGE", "com.yala.rider.mr")
+PLAY_INTEGRITY_ENFORCE = os.getenv("PLAY_INTEGRITY_ENFORCE", "false").lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+
+# Admin 2FA is mandatory for staff once TOTP is confirmed (see authapp.login_view).
+ADMIN_2FA_ENABLED = os.getenv("ADMIN_2FA_ENABLED", "true").lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+
+# Limit concurrent authenticated devices per user (0 = unlimited).
+# Oldest DeviceSession rows are pruned on login when the limit is exceeded.
+MAX_CONCURRENT_DEVICE_SESSIONS = int(os.getenv("MAX_CONCURRENT_DEVICE_SESSIONS", "5"))
 
 # ── Sentry (error tracking & performance monitoring) ─────────────────────────
 SENTRY_DSN = os.getenv("SENTRY_DSN", "")

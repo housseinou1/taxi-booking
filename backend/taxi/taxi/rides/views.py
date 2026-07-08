@@ -26,6 +26,7 @@ from payments.services import (
 from promotions.services import PromoCodeService
 from taxi.drivers.models import DriverProfile
 from taxi.security.abuse import rate_limit, pin_lockout_retry, record_pin_failure, record_cancellation, validate_coordinates
+from admin_2fa.integrity import require_integrity
 from locations.services import calculate_city_fare, resolve_city
 from legal.ride_terms import ensure_ride_legal_acceptance
 
@@ -185,6 +186,15 @@ def request_ride(request):
             {"detail": "Too many ride requests. Please wait before trying again."},
             status=status.HTTP_429_TOO_MANY_REQUESTS,
             headers={"Retry-After": str(retry_after)},
+        )
+
+    if not require_integrity(request.user.id):
+        return Response(
+            {
+                "detail": "Device integrity check required. Update the app or use an official Play Store install.",
+                "code": "integrity_required",
+            },
+            status=status.HTTP_403_FORBIDDEN,
         )
 
     if getattr(request.user, "rider_status", "approved") != "approved":
@@ -695,16 +705,19 @@ def _check_ride_pickup_pin(ride, ride_id, user, submitted_pin):
 
     if not secrets.compare_digest(submitted_pin, ride.pickup_pin):
         retry = record_pin_failure("ride-pickup-pin", pin_identity)
-        detail = "Incorrect pickup PIN. Ask the rider to confirm the PIN."
         if retry:
-            detail = "Too many incorrect PIN attempts. Try again later."
+            try:
+                from security.services.fraud_service import flag_pin_bruteforce
+                flag_pin_bruteforce(user, "ride-pickup-pin")
+            except Exception:
+                logging.getLogger(__name__).exception("PIN bruteforce fraud flag failed")
             return Response(
-                {"detail": detail},
+                {"detail": "Too many incorrect PIN attempts. Try again later."},
                 status=status.HTTP_429_TOO_MANY_REQUESTS,
                 headers={"Retry-After": str(retry)},
             )
         return Response(
-            {"detail": detail},
+            {"detail": "Incorrect pickup PIN. Ask the rider to confirm the PIN."},
             status=status.HTTP_400_BAD_REQUEST,
         )
     return None
