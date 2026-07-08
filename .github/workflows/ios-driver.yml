@@ -1,0 +1,181 @@
+name: iOS – Yala Driver
+
+on:
+  push:
+    tags:
+      - 'driver-v*'        # e.g. driver-v1.2.0
+  workflow_dispatch:
+    inputs:
+      upload_testflight:
+        description: 'Upload to TestFlight after build?'
+        required: false
+        default: 'true'
+        type: boolean
+
+concurrency:
+  group: ios-driver-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build & Archive – Yala Driver
+    runs-on: macos-14          # Apple Silicon runner with Xcode 15+
+    timeout-minutes: 60
+
+    env:
+      APP_DIR: driver-app
+      BUNDLE_ID: com.yala.driver.mr
+      APP_NAME: Yala Driver
+      SCHEME: App
+      WORKSPACE: ios/App/App.xcworkspace
+      FASTLANE_DONT_STORE_PASSWORD: 1
+
+    steps:
+      # ── Checkout ────────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── Node & npm cache ────────────────────────────────────────────────────
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: ${{ env.APP_DIR }}/package-lock.json
+
+      - name: Install npm dependencies
+        working-directory: ${{ env.APP_DIR }}
+        run: npm ci --prefer-offline
+
+      # ── Build web assets ────────────────────────────────────────────────────
+      - name: Build web assets
+        working-directory: ${{ env.APP_DIR }}
+        run: npm run build
+
+      # ── Sync Capacitor → iOS ─────────────────────────────────────────────────
+      - name: Capacitor sync
+        working-directory: ${{ env.APP_DIR }}
+        run: npx cap sync ios
+
+      # ── Ruby & CocoaPods ─────────────────────────────────────────────────────
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+          working-directory: ${{ env.APP_DIR }}
+
+      - name: Cache CocoaPods
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.APP_DIR }}/ios/App/Pods
+          key: pods-driver-${{ hashFiles('driver-app/ios/App/Podfile.lock') }}
+          restore-keys: pods-driver-
+
+      - name: Install CocoaPods
+        working-directory: ${{ env.APP_DIR }}/ios/App
+        run: pod install --repo-update
+
+      # ── Code signing – Apple certificates via Secrets ───────────────────────
+      - name: Import signing certificate
+        env:
+          CERTIFICATE_BASE64: ${{ secrets.IOS_DISTRIBUTION_CERT_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.IOS_DISTRIBUTION_CERT_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.IOS_KEYCHAIN_PASSWORD }}
+        run: |
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          echo "$CERTIFICATE_BASE64" | base64 --decode -o "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" \
+            -k "$KEYCHAIN_PATH" \
+            -P "$CERTIFICATE_PASSWORD" \
+            -T /usr/bin/codesign
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+          security set-key-partition-list \
+            -S apple-tool:,apple:,codesign: \
+            -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+      - name: Install provisioning profile
+        env:
+          PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_DRIVER_PROVISIONING_PROFILE_BASE64 }}
+        run: |
+          PP_PATH=$RUNNER_TEMP/driver.mobileprovision
+          echo "$PROVISIONING_PROFILE_BASE64" | base64 --decode -o "$PP_PATH"
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          cp "$PP_PATH" ~/Library/MobileDevice/Provisioning\ Profiles/
+
+      # ── Archive & export IPA ────────────────────────────────────────────────
+      - name: Build & archive
+        working-directory: ${{ env.APP_DIR }}
+        run: |
+          xcodebuild \
+            -workspace "$WORKSPACE" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -destination generic/platform=iOS \
+            -archivePath "$RUNNER_TEMP/Driver.xcarchive" \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="iPhone Distribution" \
+            PROVISIONING_PROFILE_SPECIFIER="${{ secrets.IOS_DRIVER_PROFILE_NAME }}" \
+            DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}" \
+            MARKETING_VERSION="${{ github.ref_name }}" \
+            archive | xcpretty
+
+      - name: Prepare ExportOptions.plist
+        run: |
+          sed \
+            -e 's/$(APPLE_TEAM_ID)/${{ secrets.APPLE_TEAM_ID }}/g' \
+            -e 's/$(IOS_DRIVER_PROFILE_NAME)/${{ secrets.IOS_DRIVER_PROFILE_NAME }}/g' \
+            "$GITHUB_WORKSPACE/driver-app/ios/ExportOptions.plist" \
+            > "$RUNNER_TEMP/DriverExportOptions.plist"
+
+      - name: Export IPA
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/Driver.xcarchive" \
+            -exportPath "$RUNNER_TEMP/Driver-ipa" \
+            -exportOptionsPlist "$RUNNER_TEMP/DriverExportOptions.plist" \
+            | xcpretty
+
+      # ── Upload artifact ──────────────────────────────────────────────────────
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Yala-Driver-${{ github.ref_name }}.ipa
+          path: ${{ runner.temp }}/Driver-ipa/*.ipa
+          retention-days: 14
+
+      # ── Upload to TestFlight ─────────────────────────────────────────────────
+      - name: Upload to TestFlight
+        if: >
+          github.event_name == 'push' ||
+          (github.event_name == 'workflow_dispatch' && inputs.upload_testflight == 'true')
+        env:
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_BASE64: ${{ secrets.ASC_PRIVATE_KEY_BASE64 }}
+        run: |
+          mkdir -p ~/.private_keys
+          echo "$APP_STORE_CONNECT_API_KEY_BASE64" | base64 --decode \
+            -o ~/.private_keys/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8
+          xcrun altool --upload-app \
+            --type ios \
+            --file "$(ls $RUNNER_TEMP/Driver-ipa/*.ipa)" \
+            --apiKey "$APP_STORE_CONNECT_API_KEY_ID" \
+            --apiIssuer "$APP_STORE_CONNECT_API_ISSUER_ID" \
+            || true
+          # Prefer xcrun notarytool / pilot if altool is deprecated on runner
+          xcrun altool --validate-app \
+            --type ios \
+            --file "$(ls $RUNNER_TEMP/Driver-ipa/*.ipa)" \
+            --apiKey "$APP_STORE_CONNECT_API_KEY_ID" \
+            --apiIssuer "$APP_STORE_CONNECT_API_ISSUER_ID" \
+            || true
+
+      # ── Cleanup keychain ─────────────────────────────────────────────────────
+      - name: Cleanup keychain
+        if: always()
+        run: |
+          security delete-keychain $RUNNER_TEMP/app-signing.keychain-db || true
