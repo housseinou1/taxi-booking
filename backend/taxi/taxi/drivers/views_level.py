@@ -178,6 +178,10 @@ class DriverStatsView(APIView):
             round((no_show_count / total_accepted) * 100, 1) if total_accepted > 0 else 0
         )
 
+        from .services.ride_performance_service import get_driver_score_tier
+
+        score_tier = get_driver_score_tier(driver_profile.performance_points)
+
         return Response(
             {
                 "total_rides_completed": total_completed,
@@ -189,6 +193,9 @@ class DriverStatsView(APIView):
                 "total_rides_no_show": no_show_count,
                 "no_show_rate": no_show_rate,
                 "performance_points": driver_profile.performance_points or 100,
+                "driver_score": score_tier["score"],
+                "driver_score_tier": score_tier["tier"],
+                "driver_score_label": score_tier["label"],
                 "driver_level": driver_profile.driver_level,
                 "account_risk_flag": driver_profile.account_risk_flag,
                 "account_under_review": driver_profile.account_under_review,

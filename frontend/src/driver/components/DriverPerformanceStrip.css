@@ -28,6 +28,14 @@
   font-weight: 800;
   padding: 6px 10px;
   border-radius: 999px;
+}
+
+.driver-perf-strip__score-badge {
+  margin: -4px 0 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+}
   cursor: pointer;
 }
 

@@ -70,6 +70,8 @@ export default function DriverPerformanceStrip({
   const noShowRate        = Number(stats.no_show_rate      ?? 0);
   const noShowCount       = Number(stats.total_rides_no_show ?? 0);
   const rating            = Number(stats.average_rating    ?? stats.rating ?? 0);
+  const driverScore       = Number(stats.driver_score ?? stats.performance_points ?? 0);
+  const driverScoreLabel  = stats.driver_score_label || "";
   const streak            = Number(stats.streak            ?? 0);
   const ridesTotal        = Number(stats.rides_today       ?? stats.total_rides_today ?? 0);
   const onlineHours       = Number(stats.online_hours_today ?? 0);
@@ -97,6 +99,12 @@ export default function DriverPerformanceStrip({
           {formatMoney(todayEarnings)} today ›
         </button>
       </div>
+
+      {driverScoreLabel && (
+        <div className="driver-perf-strip__score-badge" aria-label="Driver score">
+          ⭐ {driverScore}/100 · {driverScoreLabel}
+        </div>
+      )}
 
       {/* Per-hour + rides hero row */}
       <div className="driver-perf-strip__hero">

@@ -708,6 +708,7 @@ function DriverDashboardContent() {
       }
       fetchDriverRides();
       fetchDriverStatus();
+      fetchDriverStats();
     } catch (error) {
       setDriverCancelError(
         error.response?.data?.detail ||

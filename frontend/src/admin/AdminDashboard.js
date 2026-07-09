@@ -292,6 +292,7 @@ function AdminDashboard() {
     driver_count: 0,
     drivers: [],
   });
+  const [performanceFilter, setPerformanceFilter] = useState("all");
   const [ownerPayoutSummary, setOwnerPayoutSummary] = useState({
     owner_commission_percent: MARKET_OWNER_PERCENT,
     owner_commission_balance: 0,
@@ -393,7 +394,11 @@ function AdminDashboard() {
 
   const fetchDriverPerformance = useCallback(async () => {
     try {
-      const res = await authenticatedApi.get(`${API_URL}/drivers/performance/`);
+      const url =
+        performanceFilter === "all"
+          ? `${API_URL}/drivers/performance/`
+          : `${API_URL}/drivers/performance/?${performanceFilter}=1`;
+      const res = await authenticatedApi.get(url);
       const data = res.data || {};
       setDriverPerformance({
         average_score: data.average_score || 0,
@@ -406,7 +411,7 @@ function AdminDashboard() {
       console.error("Driver performance fetch error:", error);
       setDriverPerformance({ average_score: 0, excellent_count: 0, watch_count: 0, driver_count: 0, drivers: [] });
     }
-  }, []);
+  }, [performanceFilter]);
 
   const fetchOwnerPayout = useCallback(async () => {
     try {
@@ -1799,7 +1804,11 @@ function AdminDashboard() {
         )}
 
         {page === "performance" && (
-          <DriverPerformancePanel performance={driverPerformance} />
+          <DriverPerformancePanel
+            performance={driverPerformance}
+            performanceFilter={performanceFilter}
+            onFilterChange={setPerformanceFilter}
+          />
         )}
 
         {page === "hall-of-fame" && (
@@ -2157,8 +2166,16 @@ function CityManagementPanel({
   );
 }
 
-function DriverPerformancePanel({ performance }) {
+function DriverPerformancePanel({ performance, performanceFilter, onFilterChange }) {
   const drivers = Array.isArray(performance.drivers) ? performance.drivers : [];
+  const filters = [
+    { id: "all", label: "All drivers" },
+    { id: "top", label: "Top drivers" },
+    { id: "under_review", label: "Under review" },
+    { id: "risk", label: "High cancellation" },
+    { id: "has_no_show", label: "No-show stats" },
+    { id: "fraud", label: "Fraud alerts" },
+  ];
   const bandColor = (band) => {
     if (band === "excellent") return "#22c55e";
     if (band === "strong") return "#38bdf8";
@@ -2178,6 +2195,28 @@ function DriverPerformancePanel({ performance }) {
           </p>
         </div>
         <StatusBadge label={`${performance.average_score || 0} avg score`} />
+      </div>
+
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
+        {filters.map((filter) => (
+          <button
+            key={filter.id}
+            type="button"
+            onClick={() => onFilterChange?.(filter.id)}
+            style={{
+              border: "1px solid",
+              borderColor: performanceFilter === filter.id ? "#00A651" : "rgba(148,163,184,0.35)",
+              background: performanceFilter === filter.id ? "rgba(0,166,81,0.12)" : "transparent",
+              color: performanceFilter === filter.id ? "#00A651" : "#cbd5e1",
+              borderRadius: 999,
+              padding: "6px 12px",
+              fontSize: 12,
+              cursor: "pointer",
+            }}
+          >
+            {filter.label}
+          </button>
+        ))}
       </div>
 
       <div style={premiumMetricGridStyle}>
@@ -2217,6 +2256,8 @@ function DriverPerformancePanel({ performance }) {
                 <DetailItem label="Cancellation" value={`${driver.cancellation_rate}%`} />
                 <DetailItem label="Rating" value={`${driver.rating_average}/5`} />
                 <DetailItem label="Completed" value={driver.completed_rides} />
+                <DetailItem label="No-shows" value={driver.total_rides_no_show ?? 0} />
+                <DetailItem label="Level" value={driver.driver_level || "—"} />
                 <DetailItem label="On time" value={`${driver.on_time_rate}%`} />
                 <DetailItem
                   label="Risk"

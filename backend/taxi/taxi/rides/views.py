@@ -1108,6 +1108,7 @@ def cancel_ride(request, ride_id):
             cancellation_fee = Decimal("150")  # driver-side cancel penalty
 
     stamp = now()
+    pre_cancel_status = ride.status
     ride.status = "rider_no_show" if is_rider_no_show else "cancelled"
     ride.cancelled_at = stamp
     # Keep cancelled_by as the actor who submitted; no-show is flagged via status/is_rider_no_show.
@@ -1157,7 +1158,13 @@ def cancel_ride(request, ride_id):
         driver_profile = DriverProfile.objects.filter(
             user=ride.driver or request.user
         ).first()
-        if driver_profile and not penalty_waived:
+        accepted_statuses = {"driver_arriving", "driver_arrived"}
+        ride_was_accepted = bool(
+            ride.driver_id
+            and ride.driver_id == request.user.id
+            and pre_cancel_status in accepted_statuses
+        )
+        if driver_profile and not penalty_waived and ride_was_accepted:
             from taxi.drivers.services.ride_performance_service import (
                 apply_driver_cancellation_penalty,
             )
