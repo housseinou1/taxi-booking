@@ -28,6 +28,7 @@
   font-weight: 800;
   padding: 6px 10px;
   border-radius: 999px;
+  cursor: pointer;
 }
 
 .driver-perf-strip__score-badge {
@@ -35,8 +36,6 @@
   font-size: 13px;
   font-weight: 700;
   color: #0f172a;
-}
-  cursor: pointer;
 }
 
 .driver-perf-strip__grid {
