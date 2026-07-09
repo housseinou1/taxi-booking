@@ -1,0 +1,16 @@
+[
+  {
+    "App": "Rider",
+    "VersionName": "1.2.7",
+    "VersionCode": "19",
+    "AAB": "C:\\Users\\Housseinou\\Projects\\Django\\taxi-booking\\release\\android\\yala-rider-1.2.7-19-20260708-230916.aab",
+    "APK": "C:\\Users\\Housseinou\\Projects\\Django\\taxi-booking\\release\\android\\yala-rider-1.2.7-19-20260708-230916.apk"
+  },
+  {
+    "App": "Driver",
+    "VersionName": "1.2.7",
+    "VersionCode": "22",
+    "AAB": "C:\\Users\\Housseinou\\Projects\\Django\\taxi-booking\\release\\android\\yala-driver-1.2.7-22-20260708-230916.aab",
+    "APK": "C:\\Users\\Housseinou\\Projects\\Django\\taxi-booking\\release\\android\\yala-driver-1.2.7-22-20260708-230916.apk"
+  }
+]

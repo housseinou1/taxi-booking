@@ -63,15 +63,17 @@ foreach ($app in $apps) {
     $env:YALA_ANDROID_KEY_PASSWORD   = $keyPass
 
     $androidDir = Join-Path $app.Dir "android"
-    Push-Location $androidDir
 
     # Sync Capacitor web assets before build
-    $capBin = Join-Path $app.Dir "node_modules\.bin\cap"
-    if (Test-Path $capBin) {
+    $capCmd = Join-Path $app.Dir "node_modules\.bin\cap.cmd"
+    if (Test-Path $capCmd) {
         Write-Host "  Syncing Capacitor assets..." -ForegroundColor Gray
-        & $capBin sync android 2>&1 | Out-Null
+        Push-Location $app.Dir
+        cmd /c "node_modules\.bin\cap.cmd sync android" | Out-Null
+        Pop-Location
     }
 
+    Push-Location $androidDir
     Write-Host "  Running Gradle bundleRelease + assembleRelease..." -ForegroundColor Gray
     & ".\gradlew.bat" bundleRelease assembleRelease --no-daemon
     if ($LASTEXITCODE -ne 0) {
