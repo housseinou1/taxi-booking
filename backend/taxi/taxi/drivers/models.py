@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
@@ -119,6 +121,18 @@ class DriverProfile(models.Model):
 
     # Rewards
     reward_points = models.IntegerField(default=0)
+    reward_tier = models.CharField(
+        max_length=20,
+        choices=[
+            ("bronze", "Bronze"),
+            ("silver", "Silver"),
+            ("gold", "Gold"),
+            ("platinum", "Platinum"),
+            ("diamond", "Diamond"),
+        ],
+        default="bronze",
+        db_index=True,
+    )
 
     # --- Vehicle details ---
     vehicle_make = models.CharField(
@@ -423,6 +437,177 @@ class DriverAchievement(models.Model):
 
     def __str__(self):
         return f"{self.driver} - {self.achievement.name}"
+
+
+class DriverPointTransaction(models.Model):
+    """Immutable ledger of reward points earned or deducted."""
+
+    CATEGORY_CHOICES = [
+        ("ride_complete", "Ride Completed"),
+        ("five_star_rating", "5-Star Rating"),
+        ("peak_hour_ride", "Peak-Hour Ride"),
+        ("airport_ride", "Airport Ride"),
+        ("long_distance_ride", "Long-Distance Ride"),
+        ("referral_completed", "Referral Completed"),
+        ("driver_cancellation", "Driver Cancellation"),
+        ("fraud_confirmed", "Fraud Confirmed"),
+        ("unsafe_driving_complaint", "Unsafe Driving Complaint"),
+        ("challenge_bonus", "Challenge Bonus"),
+        ("monthly_bonus", "Monthly Reward Bonus"),
+        ("manual_adjustment", "Manual Adjustment"),
+    ]
+
+    driver = models.ForeignKey(
+        DriverProfile,
+        on_delete=models.CASCADE,
+        related_name="point_transactions",
+    )
+    amount = models.IntegerField()
+    category = models.CharField(max_length=40, choices=CATEGORY_CHOICES)
+    description = models.CharField(max_length=255, blank=True, default="")
+    reference_ride = models.ForeignKey(
+        "rides.Ride",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="point_transactions",
+    )
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.driver_id}: {self.amount:+d} ({self.category})"
+
+
+class WeeklyChallenge(models.Model):
+    """Admin-configured weekly challenge template."""
+
+    TYPE_CHOICES = [
+        ("ride_count", "Complete X Rides"),
+        ("earnings_target", "Earn X MRU"),
+        ("acceptance_rate", "Maintain X% Acceptance Rate"),
+        ("zero_cancellations", "Zero Cancellations"),
+        ("airport_rides", "Complete X Airport Rides"),
+        ("weekend_rides", "Complete X Weekend Rides"),
+    ]
+
+    STATUS_CHOICES = [
+        ("active", "Active"),
+        ("paused", "Paused"),
+        ("archived", "Archived"),
+    ]
+
+    name = models.CharField(max_length=160)
+    description = models.TextField(blank=True, default="")
+    challenge_type = models.CharField(max_length=30, choices=TYPE_CHOICES)
+    target_value = models.PositiveIntegerField(default=10)
+    reward_points = models.PositiveIntegerField(default=0)
+    reward_amount = models.DecimalField(
+        max_digits=10, decimal_places=2, default=Decimal("0.00")
+    )
+    badge_icon = models.CharField(max_length=100, blank=True, default="")
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="active")
+    starts_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    ends_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-starts_at", "-created_at"]
+
+    def __str__(self):
+        return self.name
+
+    @property
+    def is_currently_active(self):
+        now = timezone.now()
+        if self.status != "active":
+            return False
+        if self.starts_at and now < self.starts_at:
+            return False
+        if self.ends_at and now > self.ends_at:
+            return False
+        return True
+
+
+class DriverChallengeProgress(models.Model):
+    """Tracks a driver's progress toward a weekly challenge."""
+
+    STATUS_CHOICES = [
+        ("in_progress", "In Progress"),
+        ("completed", "Completed"),
+        ("paid", "Paid"),
+    ]
+
+    driver = models.ForeignKey(
+        DriverProfile,
+        on_delete=models.CASCADE,
+        related_name="challenge_progress",
+    )
+    challenge = models.ForeignKey(
+        WeeklyChallenge,
+        on_delete=models.CASCADE,
+        related_name="progress",
+    )
+    current_value = models.PositiveIntegerField(default=0)
+    status = models.CharField(max_length=15, choices=STATUS_CHOICES, default="in_progress")
+    completed_at = models.DateTimeField(null=True, blank=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
+    bonus_paid = models.DecimalField(
+        max_digits=10, decimal_places=2, default=Decimal("0.00")
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ["driver", "challenge"]
+        ordering = ["-created_at"]
+
+    @property
+    def progress_percent(self):
+        if self.challenge.target_value == 0:
+            return 100
+        return min(100, int(self.current_value / self.challenge.target_value * 100))
+
+    def __str__(self):
+        return f"{self.driver_id} - {self.challenge.name}: {self.current_value}/{self.challenge.target_value}"
+
+
+class DriverMonthlyReward(models.Model):
+    """Record of top-driver / monthly reward recognition."""
+
+    REWARD_TYPE_CHOICES = [
+        ("top_driver", "Top Driver"),
+        ("top_earner", "Top Earner"),
+        ("most_improved", "Most Improved"),
+        ("highest_rated", "Highest Rated"),
+        ("featured_driver", "Featured Driver"),
+    ]
+
+    driver = models.ForeignKey(
+        DriverProfile,
+        on_delete=models.CASCADE,
+        related_name="monthly_rewards",
+    )
+    reward_type = models.CharField(max_length=30, choices=REWARD_TYPE_CHOICES)
+    year = models.PositiveSmallIntegerField()
+    month = models.PositiveSmallIntegerField()
+    bonus_amount = models.DecimalField(
+        max_digits=10, decimal_places=2, default=Decimal("0.00")
+    )
+    badge_icon = models.CharField(max_length=100, blank=True, default="")
+    priority_boost = models.PositiveSmallIntegerField(default=0)
+    featured = models.BooleanField(default=False)
+    awarded_at = models.DateTimeField(auto_now_add=True)
+    metadata = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        ordering = ["-year", "-month", "-awarded_at"]
+        unique_together = ["driver", "reward_type", "year", "month"]
+
+    def __str__(self):
+        return f"{self.driver_id} - {self.reward_type} {self.year}-{self.month}"
 
 
 class HallOfFameRecognition(models.Model):

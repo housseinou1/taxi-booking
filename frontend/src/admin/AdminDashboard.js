@@ -2209,10 +2209,10 @@ function DriverRewardsAdminPanel({ leaderboard }) {
   ];
   return (
     <div style={performanceLayoutStyle}>
-      <div style={opsHeaderStyle}>
+      <div style={reportsHeroStyle}>
         <div>
           <span style={opsKickerStyle}>Driver rewards</span>
-          <h2 style={opsTitleStyle}>Rewards & incentives</h2>
+          <h2 style={reportsHeroTitleStyle}>Rewards & incentives</h2>
         </div>
       </div>
       {sections.map((section) => (
