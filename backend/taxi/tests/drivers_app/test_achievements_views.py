@@ -284,6 +284,7 @@ class TestDriverRewardsView:
 
         assert "points_info" in response.data
         info = response.data["points_info"]
-        assert "per_completed_ride" in info
-        assert "per_high_rating" in info
-        assert "per_consecutive_online_hour" in info
+        assert info.get("ride_complete") == 10
+        assert info.get("five_star_rating") == 5
+        assert "reward_tier" in response.data
+        assert "progress_percent" in response.data

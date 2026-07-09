@@ -198,6 +198,25 @@ def handle_ride_completed(sender, instance, **kwargs):
                                 referral.pk,
                                 driver.pk,
                             )
+                            try:
+                                from taxi.drivers.models import DriverProfile
+                                from taxi.drivers.services.rewards_service import (
+                                    RewardsService,
+                                )
+
+                                referrer_profile = DriverProfile.objects.filter(
+                                    user=referral.referral_code.driver
+                                ).first()
+                                if referrer_profile:
+                                    RewardsService().on_referral_completed(
+                                        referrer_profile
+                                    )
+                            except Exception:
+                                logger.exception(
+                                    "Failed to award referral reward points "
+                                    "referral_id=%s",
+                                    referral.pk,
+                                )
     except Exception:
         logger.exception(
             "Failed to process driver referral ride count for completed ride "

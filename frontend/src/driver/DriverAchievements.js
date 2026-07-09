@@ -126,15 +126,23 @@ export default function DriverAchievements() {
   const token = localStorage.getItem("access");
   const [achievements, setAchievements] = useState([]);
   const [rewardPoints, setRewardPoints] = useState(0);
+  const [dashboard, setDashboard] = useState(null);
+  const [challenges, setChallenges] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const fetchAchievements = useCallback(async () => {
     try {
-      const [achievementsRes, rewardsRes] = await Promise.all([
+      const [achievementsRes, rewardsRes, dashboardRes, challengesRes] = await Promise.all([
         axios.get(`${API_URL}/drivers/me/achievements/`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
         axios.get(`${API_URL}/drivers/me/rewards/`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        axios.get(`${API_URL}/drivers/me/rewards/dashboard/`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        axios.get(`${API_URL}/drivers/me/challenges/`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ]);
@@ -144,6 +152,12 @@ export default function DriverAchievements() {
           : [],
       );
       setRewardPoints(rewardsRes.data?.points_balance || 0);
+      setDashboard(dashboardRes.data || null);
+      setChallenges(
+        Array.isArray(challengesRes.data?.challenges)
+          ? challengesRes.data.challenges
+          : [],
+      );
     } catch (error) {
       console.log("Achievements fetch error:", error.response?.data || error);
     } finally {
@@ -189,6 +203,62 @@ export default function DriverAchievements() {
           </div>
         </div>
       )}
+
+      )}
+
+      {dashboard && (
+        <section style={{ marginBottom: 20, background: styles.cardStyle.background, borderRadius: 14, padding: 16, border: styles.cardStyle.border }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <div>
+              <div style={{ color: styles.pointsLabelStyle.color, fontSize: 11, fontWeight: 700, textTransform: "uppercase" }}>Current Level</div>
+              <div style={{ color: styles.titleStyle.color, fontSize: 22, fontWeight: 900 }}>{dashboard.current_level}</div>
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <div style={{ color: styles.pointsLabelStyle.color, fontSize: 11 }}>Total Points</div>
+              <div style={{ color: styles.pointsValueStyle.color, fontSize: 20, fontWeight: 900 }}>{dashboard.total_points}</div>
+            </div>
+          </div>
+          <div style={{ height: 8, borderRadius: 999, background: "rgba(148,163,184,0.2)", overflow: "hidden", marginBottom: 8 }}>
+            <div style={{ width: `${dashboard.progress_percent || 0}%`, height: "100%", background: "linear-gradient(90deg,#00A651,#fbbf24)" }} />
+          </div>
+          <div style={{ color: styles.cardDateStyle.color, fontSize: 12, marginBottom: 12 }}>
+            {dashboard.points_to_next_level > 0
+              ? `${dashboard.points_to_next_level} points to ${dashboard.next_level || "next level"}`
+              : "Maximum tier reached"}
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, fontSize: 12 }}>
+            <div><strong>{dashboard.today_trips}</strong><br />Today trips</div>
+            <div><strong>{dashboard.weekly_trips}</strong><br />Week trips</div>
+            <div><strong>{dashboard.monthly_trips}</strong><br />Month trips</div>
+            <div><strong>{dashboard.today_earnings}</strong><br />Today MRU</div>
+            <div><strong>{dashboard.weekly_earnings}</strong><br />Week MRU</div>
+            <div><strong>{dashboard.monthly_earnings}</strong><br />Month MRU</div>
+          </div>
+        </section>
+      )}
+
+      {challenges.length > 0 && (
+        <section style={{ marginBottom: 20 }}>
+          <h2 style={{ ...styles.titleStyle, fontSize: 16, marginBottom: 10 }}>Weekly Challenges</h2>
+          {challenges.map((c) => (
+            <div key={c.id} style={{ ...styles.cardStyle, marginBottom: 8, textAlign: "left", padding: 14 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                <strong style={{ color: styles.cardTitleStyle.color }}>{c.name}</strong>
+                <span style={{ color: styles.cardDateStyle.color, fontSize: 11 }}>{c.status}</span>
+              </div>
+              <div style={{ color: styles.cardDateStyle.color, fontSize: 12, margin: "6px 0" }}>{c.description}</div>
+              <div style={{ height: 6, borderRadius: 999, background: "rgba(148,163,184,0.2)", overflow: "hidden" }}>
+                <div style={{ width: `${c.progress_percent || 0}%`, height: "100%", background: "#00A651" }} />
+              </div>
+              <div style={{ fontSize: 11, color: styles.cardDateStyle.color, marginTop: 4 }}>
+                {c.current_value}/{c.target_value} · +{c.reward_points} pts · {c.reward_amount} MRU
+              </div>
+            </div>
+          ))}
+        </section>
+      )}
+
+      <h2 style={{ ...styles.titleStyle, fontSize: 16, marginBottom: 10 }}>Achievement Badges</h2>
 
       {loading ? (
         <div style={styles.loadingStyle}>Loading achievements...</div>

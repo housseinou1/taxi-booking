@@ -9,11 +9,15 @@ Requirements: 14.1, 14.3, 14.4
 
 from datetime import timedelta
 
+import logging
+
 from django.db import IntegrityError
 from django.utils import timezone
 
 from taxi.drivers.models import Achievement, DriverAchievement, DriverProfile
 from taxi.rides.models import Ride
+
+logger = logging.getLogger(__name__)
 
 
 # Milestone definitions: code → (name, description, icon, check function name)
@@ -25,16 +29,52 @@ MILESTONE_DEFINITIONS = {
         "rides_threshold": 1,
     },
     "100_rides": {
-        "name": "Century Driver",
+        "name": "100 Trips",
         "description": "Completed 100 rides on the platform.",
         "icon": "trophy_100",
         "rides_threshold": 100,
     },
     "500_rides": {
-        "name": "Road Warrior",
+        "name": "500 Trips",
         "description": "Completed 500 rides on the platform.",
         "icon": "trophy_500",
         "rides_threshold": 500,
+    },
+    "1000_rides": {
+        "name": "1000 Trips",
+        "description": "Completed 1,000 rides on the platform.",
+        "icon": "trophy_1000",
+        "rides_threshold": 1000,
+    },
+    "excellent_rating": {
+        "name": "Excellent Rating",
+        "description": "Maintained a 4.8+ average rating with 50+ trips.",
+        "icon": "star_excellent",
+        "rides_threshold": None,
+    },
+    "safe_driver": {
+        "name": "Safe Driver",
+        "description": "Zero unsafe-driving complaints with 100+ completed trips.",
+        "icon": "shield_safe",
+        "rides_threshold": None,
+    },
+    "top_driver": {
+        "name": "Top Driver",
+        "description": "Reached Diamond reward tier.",
+        "icon": "crown_top",
+        "rides_threshold": None,
+    },
+    "airport_specialist": {
+        "name": "Airport Specialist",
+        "description": "Completed 25 airport rides.",
+        "icon": "plane_airport",
+        "rides_threshold": None,
+    },
+    "weekend_champion": {
+        "name": "Weekend Champion",
+        "description": "Completed 50 weekend rides.",
+        "icon": "weekend_star",
+        "rides_threshold": None,
     },
     "five_star_streak_10": {
         "name": "Perfect 10",
@@ -50,9 +90,9 @@ MILESTONE_DEFINITIONS = {
     },
 }
 
-# Reward points configuration
+# Reward points are managed by RewardsService; kept for backward-compatible tests.
 POINTS_PER_COMPLETED_RIDE = 10
-POINTS_PER_HIGH_RATING = 5  # For ratings of 4 stars or above
+POINTS_PER_HIGH_RATING = 5
 POINTS_PER_CONSECUTIVE_ONLINE_HOUR = 3
 
 
@@ -188,6 +228,55 @@ class AchievementService:
             driver_profile, "zero_cancellations_30_days"
         )
 
+    def check_excellent_rating(self, driver_profile):
+        if self._has_achievement(driver_profile, "excellent_rating"):
+            return None
+        if (driver_profile.total_rides_completed or 0) < 50:
+            return None
+        if float(driver_profile.average_rating or 0) >= 4.8:
+            return self._award_achievement(driver_profile, "excellent_rating")
+        return None
+
+    def check_top_driver_tier(self, driver_profile):
+        if self._has_achievement(driver_profile, "top_driver"):
+            return None
+        if driver_profile.reward_tier == "diamond":
+            return self._award_achievement(driver_profile, "top_driver")
+        return None
+
+    def check_airport_specialist(self, driver_profile):
+        if self._has_achievement(driver_profile, "airport_specialist"):
+            return None
+        from taxi.drivers.services.rewards_service import AIRPORT_KEYWORDS
+
+        airport_count = Ride.objects.filter(
+            driver=driver_profile.user,
+            status="completed",
+        ).extra(
+            where=["(LOWER(pickup) LIKE %s OR LOWER(destination) LIKE %s)"],
+            params=[f"%{AIRPORT_KEYWORDS[0]}%", f"%{AIRPORT_KEYWORDS[0]}%"],
+        ).count()
+        if airport_count >= 25:
+            return self._award_achievement(driver_profile, "airport_specialist")
+        return None
+
+    def check_weekend_champion(self, driver_profile):
+        if self._has_achievement(driver_profile, "weekend_champion"):
+            return None
+        completed = Ride.objects.filter(
+            driver=driver_profile.user,
+            status="completed",
+            completed_at__isnull=False,
+        )
+        weekend_count = sum(
+            1
+            for r in completed.only("completed_at")[:200]
+            if timezone.localtime(r.completed_at).weekday() >= 5
+        )
+        if weekend_count >= 50:
+            return self._award_achievement(driver_profile, "weekend_champion")
+        return None
+
     def evaluate_all_milestones(self, driver_profile):
         """
         Evaluate all achievement milestones for a driver.
@@ -216,6 +305,16 @@ class AchievementService:
         )
         if cancel_achievement is not None:
             newly_awarded.append(cancel_achievement)
+
+        for checker in (
+            self.check_excellent_rating,
+            self.check_top_driver_tier,
+            self.check_airport_specialist,
+            self.check_weekend_champion,
+        ):
+            badge = checker(driver_profile)
+            if badge is not None:
+                newly_awarded.append(badge)
 
         return newly_awarded
 
@@ -275,56 +374,22 @@ class AchievementService:
 
     def on_ride_completed(self, driver_profile):
         """
-        Trigger achievement check and reward points after a ride is completed.
-
-        This is the main entry point called after ride completion.
-        It:
-        1. Awards ride completion points
-        2. Evaluates all milestones
-        3. Returns newly unlocked achievements for WebSocket notification
-
-        Args:
-            driver_profile: DriverProfile instance
-
-        Returns:
-            Dict with:
-            - 'points_awarded': int - points earned for this ride
-            - 'new_achievements': list - newly unlocked Achievement instances
-            - 'total_points': int - driver's total reward points after update
+        Evaluate achievement milestones after ride completion.
+        Point awards are handled by RewardsService.
         """
-        # Award points for ride completion
-        points_awarded = self.award_ride_completion_points(driver_profile)
-
-        # Refresh profile to get updated state
         driver_profile.refresh_from_db()
-
-        # Evaluate all milestones
         new_achievements = self.evaluate_all_milestones(driver_profile)
-
+        self._notify_achievements(driver_profile, new_achievements)
         return {
-            "points_awarded": points_awarded,
+            "points_awarded": 0,
             "new_achievements": new_achievements,
             "total_points": driver_profile.reward_points,
         }
 
     def on_ride_rated(self, driver_profile, rating):
         """
-        Trigger achievement check and reward points after a ride receives a rating.
-
-        Args:
-            driver_profile: DriverProfile instance
-            rating: The rating value (integer 1-5)
-
-        Returns:
-            Dict with:
-            - 'points_awarded': int - points earned for this rating
-            - 'new_achievements': list - newly unlocked achievements (e.g., streak)
-            - 'total_points': int - driver's total reward points after update
+        Evaluate rating-based achievements. Five-star points via RewardsService.
         """
-        # Award points for high rating
-        points_awarded = self.award_high_rating_points(driver_profile, rating)
-
-        # Check 5-star streak after rating
         self.ensure_achievements_exist()
         new_achievements = []
 
@@ -333,8 +398,13 @@ class AchievementService:
             if streak_achievement is not None:
                 new_achievements.append(streak_achievement)
 
+        excellent = self.check_excellent_rating(driver_profile)
+        if excellent is not None:
+            new_achievements.append(excellent)
+
+        self._notify_achievements(driver_profile, new_achievements)
         return {
-            "points_awarded": points_awarded,
+            "points_awarded": 0,
             "new_achievements": new_achievements,
             "total_points": driver_profile.reward_points,
         }
@@ -375,6 +445,36 @@ class AchievementService:
             driver=driver_profile,
             achievement__code=achievement_code,
         ).exists()
+
+    def _notify_achievements(self, driver_profile, achievements):
+        if not achievements:
+            return
+        try:
+            from asgiref.sync import async_to_sync
+            from channels.layers import get_channel_layer
+            from notifications.push import send_push_to_user
+            from taxi.rides.consumers import send_achievement_unlocked
+
+            channel_layer = get_channel_layer()
+            for achievement in achievements:
+                send_push_to_user(
+                    driver_profile.user,
+                    "Achievement unlocked!",
+                    achievement.name,
+                    data={"type": "achievement_unlocked", "code": achievement.code},
+                )
+                if channel_layer:
+                    async_to_sync(send_achievement_unlocked)(
+                        channel_layer,
+                        driver_profile.user_id,
+                        achievement.id,
+                        achievement.name,
+                        achievement.icon,
+                    )
+        except Exception:
+            logger.exception(
+                "Failed to notify achievements for driver=%s", driver_profile.user_id
+            )
 
     def _award_achievement(self, driver_profile, achievement_code):
         """

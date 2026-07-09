@@ -934,6 +934,9 @@ def complete_ride(request, ride_id):
                     _dp.driver_level = _new_level
                     _dp.save(update_fields=["driver_level"])
                     _notify_level_up(_dp, _new_level)
+                from taxi.drivers.services.rewards_service import RewardsService
+
+                RewardsService().on_ride_completed(ride, _dp)
         except Exception:
             logger.exception("Failed to update driver performance counters ride=%s", ride.id)
 
@@ -1169,6 +1172,12 @@ def cancel_ride(request, ride_id):
                 apply_driver_cancellation_penalty,
             )
             penalty = apply_driver_cancellation_penalty(driver_profile)
+            try:
+                from taxi.drivers.services.rewards_service import RewardsService
+
+                RewardsService().on_driver_cancellation(driver_profile, ride)
+            except Exception:
+                logger.exception("Failed to deduct reward points on cancel ride=%s", ride.id)
         elif penalty_waived and driver_profile:
             from taxi.drivers.services.ride_performance_service import (
                 record_driver_no_show,
@@ -1298,6 +1307,17 @@ def rate_ride(request, ride_id):
     ride.rating = rating
     ride.review = review
     ride.save()
+
+    if ride.driver_id:
+        try:
+            from taxi.drivers.models import DriverProfile
+            from taxi.drivers.services.rewards_service import RewardsService
+
+            profile = DriverProfile.objects.filter(user_id=ride.driver_id).first()
+            if profile:
+                RewardsService().on_ride_rated(ride, profile, int(rating))
+        except Exception:
+            logger.exception("Failed to apply rating rewards ride=%s", ride.id)
 
     serializer = RideSerializer(ride, context={"request": request})
 

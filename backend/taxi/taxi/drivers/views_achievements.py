@@ -88,17 +88,26 @@ class DriverRewardsView(APIView):
             driver_profile
         )
 
+        from .views_rewards import enrich_rewards_response
+
+        tier_payload = enrich_rewards_response(driver_profile)
+
         # Redemption options based on points tiers
         redemption_options = self._get_redemption_options(points_balance)
 
         return Response(
             {
                 "points_balance": points_balance,
+                **tier_payload,
                 "redemption_options": redemption_options,
                 "points_info": {
-                    "per_completed_ride": 10,
-                    "per_high_rating": 5,
-                    "per_consecutive_online_hour": 3,
+                    "ride_complete": 10,
+                    "five_star_rating": 5,
+                    "peak_hour_ride": 3,
+                    "airport_ride": 5,
+                    "long_distance_ride": 5,
+                    "referral_completed": 50,
+                    "driver_cancellation": -3,
                 },
             },
             status=status.HTTP_200_OK,

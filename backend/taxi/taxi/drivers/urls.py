@@ -46,6 +46,12 @@ from .views_achievements import (
     DriverAchievementsView,
     DriverRewardsView,
 )
+from .views_rewards import (
+    AdminRewardsLeaderboardView,
+    DriverChallengesView,
+    DriverRewardHistoryView,
+    DriverRewardsDashboardView,
+)
 from .views_heatmap import (
     HeatmapView,
     DriverFavoriteAreaListView,
@@ -107,6 +113,10 @@ urlpatterns = [
     # Achievements and Rewards endpoints
     path("me/achievements/", DriverAchievementsView.as_view(), name="driver-achievements"),
     path("me/rewards/", DriverRewardsView.as_view(), name="driver-rewards"),
+    path("me/rewards/dashboard/", DriverRewardsDashboardView.as_view(), name="driver-rewards-dashboard"),
+    path("me/rewards/history/", DriverRewardHistoryView.as_view(), name="driver-rewards-history"),
+    path("me/challenges/", DriverChallengesView.as_view(), name="driver-challenges"),
+    path("rewards/admin/", AdminRewardsLeaderboardView.as_view(), name="admin-rewards-leaderboard"),
 
     # Heatmap endpoint
     path("heatmap/", HeatmapView.as_view(), name="driver-heatmap"),

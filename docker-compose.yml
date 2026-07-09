@@ -34,6 +34,9 @@ services:
       # do not depend on a correct value in .env.production. Use True only with
       # an external managed DATABASE_URL (see backend/taxi/.env.production.template).
       DATABASE_SSL_REQUIRE: "False"
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
     depends_on:
       postgres:
         condition: service_healthy
@@ -91,6 +94,9 @@ services:
     environment:
       DATABASE_URL: postgres://yala_user:${POSTGRES_PASSWORD}@postgres:5432/yala_db
       DATABASE_SSL_REQUIRE: "False"
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
     depends_on:
       postgres:
         condition: service_healthy
@@ -108,6 +114,9 @@ services:
     environment:
       DATABASE_URL: postgres://yala_user:${POSTGRES_PASSWORD}@postgres:5432/yala_db
       DATABASE_SSL_REQUIRE: "False"
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
     depends_on:
       postgres:
         condition: service_healthy

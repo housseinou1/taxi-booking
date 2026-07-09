@@ -250,6 +250,7 @@ const ADMIN_SECTION_KEYS = new Set([
   "vehicles",
   "cities",
   "performance",
+  "rewards",
   "hall-of-fame",
   "payments",
   "withdrawals",
@@ -293,6 +294,15 @@ function AdminDashboard() {
     drivers: [],
   });
   const [performanceFilter, setPerformanceFilter] = useState("all");
+  const [rewardsLeaderboard, setRewardsLeaderboard] = useState({
+    top_drivers: [],
+    top_earners: [],
+    highest_rated: [],
+    most_improved: [],
+    reward_history: [],
+    challenge_completions: [],
+    monthly_rewards: [],
+  });
   const [ownerPayoutSummary, setOwnerPayoutSummary] = useState({
     owner_commission_percent: MARKET_OWNER_PERCENT,
     owner_commission_balance: 0,
@@ -413,6 +423,23 @@ function AdminDashboard() {
     }
   }, [performanceFilter]);
 
+  const fetchRewardsLeaderboard = useCallback(async () => {
+    try {
+      const res = await authenticatedApi.get(`${API_URL}/drivers/rewards/admin/`);
+      setRewardsLeaderboard({
+        top_drivers: Array.isArray(res.data?.top_drivers) ? res.data.top_drivers : [],
+        top_earners: Array.isArray(res.data?.top_earners) ? res.data.top_earners : [],
+        highest_rated: Array.isArray(res.data?.highest_rated) ? res.data.highest_rated : [],
+        most_improved: Array.isArray(res.data?.most_improved) ? res.data.most_improved : [],
+        reward_history: Array.isArray(res.data?.reward_history) ? res.data.reward_history : [],
+        challenge_completions: Array.isArray(res.data?.challenge_completions) ? res.data.challenge_completions : [],
+        monthly_rewards: Array.isArray(res.data?.monthly_rewards) ? res.data.monthly_rewards : [],
+      });
+    } catch (error) {
+      console.error("Rewards leaderboard fetch error:", error);
+    }
+  }, []);
+
   const fetchOwnerPayout = useCallback(async () => {
     try {
       const res = await authenticatedApi.get(`${API_URL}/payments/owner-payout/`);
@@ -430,6 +457,7 @@ function AdminDashboard() {
   useEffect(() => {
     fetchDrivers();
     fetchDriverPerformance();
+    fetchRewardsLeaderboard();
     fetchLocations();
     fetchUsers();
     fetchRides();
@@ -437,6 +465,7 @@ function AdminDashboard() {
     fetchOwnerPayout();
   }, [
     fetchDriverPerformance,
+    fetchRewardsLeaderboard,
     fetchDrivers,
     fetchLocations,
     fetchOwnerPayout,
@@ -706,6 +735,7 @@ function AdminDashboard() {
     { key: "vehicles", label: "Vehicles" },
     { key: "cities", label: "Cities" },
     { key: "performance", label: "Performance" },
+    { key: "rewards", label: "Rewards" },
     { key: "hall-of-fame", label: "Hall of Fame" },
     { key: "payments", label: "Payments" },
     { key: "withdrawals", label: "Withdrawals" },
@@ -1811,6 +1841,10 @@ function AdminDashboard() {
           />
         )}
 
+        {page === "rewards" && (
+          <DriverRewardsAdminPanel leaderboard={rewardsLeaderboard} />
+        )}
+
         {page === "hall-of-fame" && (
           <div style={card}>
             <HallOfFameAdminPanel cities={cities} />
@@ -2161,6 +2195,59 @@ function CityManagementPanel({
             );
           })}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function DriverRewardsAdminPanel({ leaderboard }) {
+  const sections = [
+    { title: "Top Drivers (points)", rows: leaderboard.top_drivers, key: "driver_id" },
+    { title: "Top Earners (month)", rows: leaderboard.top_earners, key: "driver_id" },
+    { title: "Most Improved (30d)", rows: leaderboard.most_improved, key: "driver_id" },
+    { title: "Highest Rated", rows: leaderboard.highest_rated, key: "driver_id" },
+  ];
+  return (
+    <div style={performanceLayoutStyle}>
+      <div style={opsHeaderStyle}>
+        <div>
+          <span style={opsKickerStyle}>Driver rewards</span>
+          <h2 style={opsTitleStyle}>Rewards & incentives</h2>
+        </div>
+      </div>
+      {sections.map((section) => (
+        <div key={section.title} style={{ marginBottom: 20 }}>
+          <h3 style={{ color: "#e2e8f0", marginBottom: 8 }}>{section.title}</h3>
+          <div style={performanceTableStyle}>
+            {(section.rows || []).slice(0, 10).map((row) => (
+              <article key={row[section.key] || row.email} style={performanceRowStyle}>
+                <div style={performanceDriverStyle}>
+                  <strong>{row.name || row.email || `Driver #${row.driver_id}`}</strong>
+                  <div style={{ color: "#94a3b8", fontSize: 12 }}>
+                    {row.reward_tier && `${row.reward_tier} · `}
+                    {row.reward_points != null && `${row.reward_points} pts`}
+                    {row.monthly_earnings && `${row.monthly_earnings} MRU`}
+                    {row.points_gained != null && `${row.points_gained} pts gained`}
+                    {row.average_rating != null && ` · ${row.average_rating}★`}
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      ))}
+      <h3 style={{ color: "#e2e8f0", marginBottom: 8 }}>Reward history</h3>
+      <div style={performanceTableStyle}>
+        {(leaderboard.reward_history || []).slice(0, 15).map((row, idx) => (
+          <article key={`${row.driver_id}-${idx}`} style={performanceRowStyle}>
+            <div style={performanceDriverStyle}>
+              <strong>{row.category}</strong>
+              <div style={{ color: "#94a3b8", fontSize: 12 }}>
+                {row.amount > 0 ? "+" : ""}{row.amount} pts · driver #{row.driver_id}
+              </div>
+            </div>
+          </article>
+        ))}
       </div>
     </div>
   );

@@ -47,6 +47,37 @@ MARKET = {
         # Driver compensation credited on a valid rider no-show.
         "driver_compensation": Decimal("100"),
     },
+    "rewards": {
+        # Driver reward points (Uber Pro / Lyft Rewards style).
+        "points": {
+            "ride_complete": 10,
+            "five_star_rating": 5,
+            "peak_hour_ride": 3,
+            "airport_ride": 5,
+            "long_distance_ride": 5,
+            "referral_completed": 50,
+            "driver_cancellation": -3,
+            "fraud_confirmed": -20,
+            "unsafe_driving_complaint": -10,
+        },
+        # Local peak hours (Africa/Nouakchott) — morning and evening rush.
+        "peak_hours": [(7, 10), (17, 21)],
+        "long_distance_km": 15,
+        "airport_keywords": [
+            "airport",
+            "aeroport",
+            "aéroport",
+            "nouakchott airport",
+            "aeroport de nouakchott",
+        ],
+        "tiers": [
+            (0, "bronze", "Bronze"),
+            (1000, "silver", "Silver"),
+            (3000, "gold", "Gold"),
+            (7000, "platinum", "Platinum"),
+            (12000, "diamond", "Diamond"),
+        ],
+    },
 }
 
 
