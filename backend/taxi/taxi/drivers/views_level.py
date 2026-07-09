@@ -168,6 +168,16 @@ class DriverStatsView(APIView):
                 years_driving -= 1
             years_driving = max(years_driving, 0)
 
+        earnings_service = EarningsService()
+        today_earnings = earnings_service.get_period_earnings(driver_profile, "today")
+        week_earnings = earnings_service.get_period_earnings(driver_profile, "week")
+        month_earnings = earnings_service.get_period_earnings(driver_profile, "month")
+
+        no_show_count = driver_profile.total_rides_no_show or 0
+        no_show_rate = (
+            round((no_show_count / total_accepted) * 100, 1) if total_accepted > 0 else 0
+        )
+
         return Response(
             {
                 "total_rides_completed": total_completed,
@@ -176,12 +186,15 @@ class DriverStatsView(APIView):
                 "total_rides_cancelled": total_cancelled,
                 "total_rides_missed": total_missed,
                 "total_rides_declined": total_declined,
+                "total_rides_no_show": no_show_count,
+                "no_show_rate": no_show_rate,
                 "performance_points": driver_profile.performance_points or 100,
+                "driver_level": driver_profile.driver_level,
                 "account_risk_flag": driver_profile.account_risk_flag,
                 "account_under_review": driver_profile.account_under_review,
                 "cancellation_warning": (
                     driver_profile.account_risk_reason
-                    if driver_profile.account_risk_flag
+                    if driver_profile.account_risk_flag or driver_profile.account_under_review
                     else ""
                 ),
                 "average_rating": float(driver_profile.average_rating),
@@ -189,6 +202,12 @@ class DriverStatsView(APIView):
                 "completion_rate": completion_rate,
                 "cancellation_rate": cancellation_rate,
                 "years_driving": years_driving,
+                "earnings": {
+                    "today": today_earnings["total_earnings"],
+                    "week": week_earnings["total_earnings"],
+                    "month": month_earnings["total_earnings"],
+                    "currency": EarningsService.CURRENCY,
+                },
             },
             status=status.HTTP_200_OK,
         )

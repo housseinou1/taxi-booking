@@ -64,15 +64,18 @@ export default function DriverPerformanceStrip({
 }) {
   if (!stats) return null;
 
-  const acceptance   = Number(stats.acceptance_rate   ?? stats.acceptance_rate_points ?? 0);
-  const completion   = Number(stats.completion_rate   ?? 0);
-  const cancellation = Number(stats.cancellation_rate ?? 0);
-  const noShowRate   = Number(stats.no_show_rate      ?? 0);
-  const rating       = Number(stats.average_rating    ?? stats.rating ?? 0);
-  const streak       = Number(stats.streak            ?? 0);
-  const ridesTotal   = Number(stats.rides_today       ?? stats.total_rides_today ?? 0);
-  const onlineHours  = Number(stats.online_hours_today ?? 0);
-  const perHour      = onlineHours > 0 ? Math.round(todayEarnings / onlineHours) : null;
+  const acceptance        = Number(stats.acceptance_rate   ?? stats.acceptance_rate_points ?? 0);
+  const completion        = Number(stats.completion_rate   ?? 0);
+  const cancellation      = Number(stats.cancellation_rate ?? 0);
+  const noShowRate        = Number(stats.no_show_rate      ?? 0);
+  const noShowCount       = Number(stats.total_rides_no_show ?? 0);
+  const rating            = Number(stats.average_rating    ?? stats.rating ?? 0);
+  const streak            = Number(stats.streak            ?? 0);
+  const ridesTotal        = Number(stats.rides_today       ?? stats.total_rides_today ?? 0);
+  const onlineHours       = Number(stats.online_hours_today ?? 0);
+  const perHour           = onlineHours > 0 ? Math.round(todayEarnings / onlineHours) : null;
+  const cancellationWarn  = stats.cancellation_warning || "";
+  const underReview       = stats.account_under_review || false;
 
   const accColor  = acceptance  >= 80 ? "#047857" : acceptance  >= 60 ? "#b45309" : "#b91c1c";
   const compColor = completion  >= 90 ? "#0369a1" : completion  >= 75 ? "#b45309" : "#b91c1c";
@@ -80,6 +83,13 @@ export default function DriverPerformanceStrip({
 
   return (
     <section className="driver-perf-strip" aria-label="Driver performance">
+      {/* Cancellation / under-review warning */}
+      {cancellationWarn && (
+        <div className={`driver-perf-strip__warning${underReview ? " driver-perf-strip__warning--review" : ""}`}>
+          {underReview ? "⚠️ Account under review — " : "⚠️ "}{cancellationWarn}
+        </div>
+      )}
+
       {/* Header */}
       <div className="driver-perf-strip__header">
         <strong>Your performance</strong>
@@ -137,11 +147,12 @@ export default function DriverPerformanceStrip({
             value={`${Math.round(noShowRate)}%`}
             percent={100 - noShowRate}
             color={noShowRate <= 5 ? "#047857" : "#b45309"}
+            sub={noShowCount > 0 ? `${noShowCount} total` : undefined}
           />
         ) : (
           <PlainChip
             label="No-shows"
-            value="0%"
+            value={noShowCount > 0 ? `${noShowCount}` : "0"}
             icon="✓"
             color="#047857"
           />

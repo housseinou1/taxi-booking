@@ -1016,7 +1016,7 @@ function DriverDashboardContent() {
     let targetLat = null;
     let targetLng = null;
 
-    if (["accepted", "driver_arriving"].includes(activeRide.status)) {
+    if (["accepted", "driver_arriving", "driver_arrived"].includes(activeRide.status)) {
       targetLat = Number(activeRide.pickup_lat);
       targetLng = Number(activeRide.pickup_lng);
     } else if (activeRide.status === "in_progress") {

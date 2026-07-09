@@ -190,3 +190,22 @@
   text-align: center;
   margin-top: 1px;
 }
+
+/* ── Cancellation / review warning banner ──────────────────────────────── */
+.driver-perf-strip__warning {
+  margin: 0 0 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  color: #92400e;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.driver-perf-strip__warning--review {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #991b1b;
+}

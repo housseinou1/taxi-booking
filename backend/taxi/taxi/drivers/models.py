@@ -99,6 +99,7 @@ class DriverProfile(models.Model):
     total_rides_accepted = models.IntegerField(default=0)
     total_rides_received = models.IntegerField(default=0)
     total_rides_cancelled = models.IntegerField(default=0)
+    total_rides_no_show = models.IntegerField(default=0)
     total_rides_missed = models.IntegerField(default=0)
     total_rides_declined = models.IntegerField(default=0)
     performance_points = models.IntegerField(default=100)

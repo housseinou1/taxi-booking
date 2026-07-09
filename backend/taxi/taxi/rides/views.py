@@ -914,6 +914,29 @@ def complete_ride(request, ride_id):
 
     broadcast_ride_update(ride)
 
+    # Update driver performance counters and check for level-up
+    if ride.driver:
+        try:
+            from taxi.drivers.models import DriverProfile as _DP
+            from taxi.drivers.services.ride_performance_service import (
+                record_ride_completed as _rec_completed,
+                notify_driver_level_up as _notify_level_up,
+            )
+            from taxi.drivers.services.level_service import DriverLevelService as _LvlSvc
+
+            _dp = _DP.objects.filter(user=ride.driver).first()
+            if _dp:
+                _prev_level = _dp.driver_level
+                _rec_completed(_dp)
+                _dp.refresh_from_db(fields=["total_rides_completed"])
+                _new_level = _LvlSvc().evaluate_level(_dp)
+                if _new_level != _prev_level:
+                    _dp.driver_level = _new_level
+                    _dp.save(update_fields=["driver_level"])
+                    _notify_level_up(_dp, _new_level)
+        except Exception:
+            logger.exception("Failed to update driver performance counters ride=%s", ride.id)
+
     # Push notifications for ride completion
     try:
         notify_ride_completed(ride.rider, ride)
@@ -1139,7 +1162,12 @@ def cancel_ride(request, ride_id):
                 apply_driver_cancellation_penalty,
             )
             penalty = apply_driver_cancellation_penalty(driver_profile)
-        elif penalty_waived:
+        elif penalty_waived and driver_profile:
+            from taxi.drivers.services.ride_performance_service import (
+                record_driver_no_show,
+            )
+            record_driver_no_show(driver_profile)
+        if penalty_waived:
             logger.info(
                 "Rider no-show: driver=%s ride=%s waited=%s distance_m=%s fee=%s comp=%s",
                 request.user.id,
