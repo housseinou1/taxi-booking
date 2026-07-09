@@ -30,6 +30,11 @@ import RideCancellationModal, {
 } from "../components/RideCancellationModal";
 
 import DriverMapView from "./components/DriverMapView";
+import DriverLiveTripBar from "./components/DriverLiveTripBar";
+import DriverPerformanceStrip from "./components/DriverPerformanceStrip";
+import useRideLiveState from "./hooks/useRideLiveState";
+import { getAutoNavigationEnabled } from "./utils/driverNavigationPrefs";
+import { openExternalNavigation } from "./utils/externalNavigation";
 import { getNavigationDestination } from "./components/MultiStopProgress";
 import HamburgerMenu from "./components/HamburgerMenu";
 import RideRequestCard from "./components/RideRequestCard";
@@ -138,6 +143,7 @@ function DriverDashboardContent() {
     today: 0, week: 0, month: 0, year: 0,
   });
   const [earningsDate, setEarningsDate] = useState(null);
+  const [driverPerformance, setDriverPerformance] = useState(null);
   const [availableRides, setAvailableRides] = useState([]);
   const [driverRides, setDriverRides] = useState([]);
   const [routePath, setRoutePath] = useState([]);
@@ -389,8 +395,11 @@ function DriverDashboardContent() {
 
   const fetchDriverStats = useCallback(async () => {
     try {
-      const response = await authenticatedApi.get(`${API_URL}/rides/driver/earnings/`);
-      const data = response.data || {};
+      const [earningsRes, statsRes] = await Promise.all([
+        authenticatedApi.get(`${API_URL}/rides/driver/earnings/`),
+        authenticatedApi.get(`${API_URL}/drivers/me/stats/`).catch(() => ({ data: null })),
+      ]);
+      const data = earningsRes.data || {};
       setEarningsByPeriod({
         today: data.today_earnings || 0,
         week: data.week_earnings || 0,
@@ -398,6 +407,9 @@ function DriverDashboardContent() {
         year: data.year_earnings || 0,
       });
       setEarningsDate(data.earnings_date || null);
+      if (statsRes?.data) {
+        setDriverPerformance(statsRes.data);
+      }
     } catch (error) {
       console.log("Driver stats error:", error.response?.data || error);
       if (isAuthError(error)) { sendToLogin(); return; }
@@ -409,7 +421,7 @@ function DriverDashboardContent() {
     const rideId = updated?.id || updated?.ride_id;
     if (rideId) {
       const status = updated.status || data?.status;
-      const isTerminal = ["cancelled", "completed"].includes(status);
+      const isTerminal = ["cancelled", "completed", "rider_no_show"].includes(status);
       if (!isTerminal) {
         activeRideSnapshotRef.current = { ...updated, id: rideId, status };
       } else {
@@ -618,6 +630,9 @@ function DriverDashboardContent() {
       });
       fetchAvailableRides();
       fetchDriverRides();
+      if (getAutoNavigationEnabled()) {
+        openExternalNavigation(hydratedRide, "pickup");
+      }
     } catch (error) {
       console.log("Accept ride error:", error.response?.data || error);
       if (isAuthError(error)) { sendToLogin(); return; }
@@ -1024,6 +1039,10 @@ function DriverDashboardContent() {
     return haversineKm(driverLat, driverLng, targetLat, targetLng);
   }, [activeRide, driverPosition]);
 
+  const liveTripState = useRideLiveState(activeRide, driverPosition, {
+    distanceKm: distanceToNextKm,
+  });
+
   // Auto-accept incoming rides when enabled
   useEffect(() => {
     if (autoAccept && isOnline && incomingRide && !activeRide) {
@@ -1185,6 +1204,14 @@ function DriverDashboardContent() {
             </div>
           </div>
 
+          <DriverPerformanceStrip
+            stats={driverPerformance}
+            todayEarnings={earningsByPeriod.today}
+            onOpenEarnings={() => {
+              window.location.href = "/driver/earnings";
+            }}
+          />
+
           <button
             type="button"
             className={[
@@ -1233,6 +1260,12 @@ function DriverDashboardContent() {
           </button>
 
           <div className="driver-nav-sheet__body">
+            <DriverLiveTripBar
+              ride={activeRide}
+              liveState={liveTripState}
+              distanceKm={distanceToNextKm}
+              onNoShow={() => setDriverCancelOpen(true)}
+            />
             <div className="driver-nav-sheet__route">
               <span>📍 {activeRide.pickup || "Pickup"}</span>
               <span className="driver-nav-sheet__route-arrow">→</span>

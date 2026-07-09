@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
-import axios from "axios";
 
 import { API_URL } from "../apiConfig";
+import authenticatedApi from "../auth/authenticatedApi";
 import { formatMoney } from "../marketConfig";
 import { bindDriverTheme } from "./themeRefresh";
 
@@ -131,7 +131,6 @@ export default function DriverRideHistory() {
   const { lyftUI } = syncDriverTheme();
   const styles = driverTheme.styles;
   const COLORS = driverTheme.COLORS;
-  const token = localStorage.getItem("access");
   const [rides, setRides] = useState([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
@@ -148,9 +147,8 @@ export default function DriverRideHistory() {
       if (dateFrom) params.append("date_from", dateFrom);
       if (dateTo) params.append("date_to", dateTo);
 
-      const response = await axios.get(
-        `${API_URL}/drivers/me/rides/?${params.toString()}`,
-        { headers: { Authorization: `Bearer ${token}` } }
+      const response = await authenticatedApi.get(
+        `${API_URL}/drivers/me/rides/?${params.toString()}`
       );
 
       const data = response.data;
@@ -162,7 +160,7 @@ export default function DriverRideHistory() {
     } finally {
       setLoading(false);
     }
-  }, [token, page, statusFilter, dateFrom, dateTo]);
+  }, [page, statusFilter, dateFrom, dateTo]);
 
   useEffect(() => {
     fetchRides();

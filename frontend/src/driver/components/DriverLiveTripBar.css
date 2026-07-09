@@ -1,0 +1,188 @@
+.driver-live-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(30, 41, 59, 0.92));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  animation: driver-live-bar-in 0.35s ease;
+}
+
+@keyframes driver-live-bar-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.driver-live-bar--waiting.is-billing {
+  border-color: rgba(245, 158, 11, 0.35);
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.12);
+}
+
+.driver-live-ring {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  flex-shrink: 0;
+}
+
+.driver-live-ring svg {
+  width: 88px;
+  height: 88px;
+  transform: rotate(-90deg);
+}
+
+.driver-live-ring__track {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.12);
+  stroke-width: 6;
+}
+
+.driver-live-ring__fill {
+  fill: none;
+  stroke-width: 6;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.8s linear;
+}
+
+.driver-live-ring--green .driver-live-ring__fill {
+  stroke: #22c55e;
+}
+
+.driver-live-ring--amber .driver-live-ring__fill {
+  stroke: #f59e0b;
+}
+
+.driver-live-ring--blue .driver-live-ring__fill {
+  stroke: #38bdf8;
+}
+
+.driver-live-ring.is-pulse .driver-live-ring__fill {
+  animation: driver-live-ring-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes driver-live-ring-pulse {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 0 rgba(245, 158, 11, 0));
+  }
+  50% {
+    filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.65));
+  }
+}
+
+.driver-live-ring__center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: #f8fafc;
+  padding: 8px;
+}
+
+.driver-live-ring__center strong {
+  font-size: 15px;
+  line-height: 1.1;
+}
+
+.driver-live-ring__center span {
+  margin-top: 2px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(248, 250, 252, 0.72);
+}
+
+.driver-live-bar__copy {
+  flex: 1;
+  min-width: 0;
+  color: #e2e8f0;
+}
+
+.driver-live-bar__copy strong {
+  display: block;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.driver-live-bar__copy p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: rgba(226, 232, 240, 0.78);
+}
+
+.driver-live-bar__copy--row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+.driver-live-bar__nav-btn {
+  margin-top: 8px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: #00a651;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.driver-live-bar__copy--row .driver-live-bar__nav-btn {
+  margin-top: 0;
+  flex-shrink: 0;
+}
+
+.driver-live-bar__badge {
+  display: inline-flex;
+  margin-top: 8px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.driver-live-bar__badge--ready {
+  background: rgba(34, 197, 94, 0.18);
+  color: #86efac;
+}
+
+.driver-live-bar__badge--gps {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fcd34d;
+}
+
+.driver-live-bar__btn-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.driver-live-bar__nav-btn--call {
+  background: #0369a1;
+  text-decoration: none;
+  color: #fff;
+}
+
+.driver-live-bar__nav-btn--noshow {
+  background: rgba(239, 68, 68, 0.18);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  animation: driver-live-ring-pulse 1.2s ease-in-out infinite;
+}

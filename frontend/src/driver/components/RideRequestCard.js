@@ -4,6 +4,33 @@ import { formatMoney } from "../../marketConfig";
 import { playRideRequestAlert } from "../../native/sound";
 import "./RideRequestCard.css";
 
+const RIDE_TYPE_ICONS = {
+  Comfort:  "🚙",
+  XL:       "🚐",
+  Share:    "🤝",
+  Delivery: "📦",
+  Regular:  "🚗",
+};
+
+function getRideTypeIcon(rideType) {
+  return RIDE_TYPE_ICONS[rideType] || "🚗";
+}
+
+function formatEtaMinutes(seconds) {
+  if (seconds == null) return null;
+  const mins = Math.round(seconds / 60);
+  return mins <= 1 ? "< 1 min" : `${mins} min`;
+}
+
+function SurgeBadge({ multiplier }) {
+  if (!multiplier || multiplier <= 1) return null;
+  return (
+    <span className="ride-request-sheet__surge">
+      ⚡ {multiplier}x
+    </span>
+  );
+}
+
 const COUNTDOWN_SECONDS = 30;
 const RING_INTERVAL_MS = 2800;
 const TIMER_RADIUS = 23;
@@ -92,6 +119,10 @@ export default function RideRequestCard({
 
   const pickupLabel = ride?.pickup || ride?.pickup_address || "Pickup";
   const destinationLabel = ride?.destination || ride?.destination_address || "Destination";
+  const rideTypeIcon = getRideTypeIcon(ride?.ride_type);
+  const etaLabel = formatEtaMinutes(ride?.eta_to_pickup_seconds ?? ride?.driver_eta_seconds);
+  const surgeMultiplier = ride?.surge_multiplier || ride?.price_multiplier || null;
+  const driverEarning = ride?.driver_earning ?? ride?.driver_share ?? null;
 
   const content = expired ? (
     <div className="ride-request-overlay" role="alert" aria-live="assertive">
@@ -104,7 +135,7 @@ export default function RideRequestCard({
   ) : (
     <div className="ride-request-overlay" role="dialog" aria-modal="true" aria-label="New ride request">
       <div className="ride-request-overlay__backdrop" />
-      <section className="ride-request-sheet">
+      <section className={`ride-request-sheet${isUrgent ? " ride-request-sheet--urgent" : ""}`}>
         <div className="ride-request-sheet__handle" aria-hidden="true" />
 
         <div className="ride-request-sheet__header">
@@ -138,8 +169,17 @@ export default function RideRequestCard({
         </div>
 
         <div className="ride-request-sheet__fare-row">
-          <strong className="ride-request-sheet__fare">{formatMoney(ride?.fare)}</strong>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 26 }}>{rideTypeIcon}</span>
+            <strong className="ride-request-sheet__fare">{formatMoney(ride?.fare)}</strong>
+            <SurgeBadge multiplier={surgeMultiplier} />
+          </div>
           <div className="ride-request-sheet__meta">
+            {etaLabel && (
+              <span className="ride-request-sheet__pill ride-request-sheet__pill--eta">
+                📍 {etaLabel}
+              </span>
+            )}
             {ride?.distance_km != null && (
               <span className="ride-request-sheet__pill">{ride.distance_km} km</span>
             )}
@@ -150,6 +190,11 @@ export default function RideRequestCard({
             )}
           </div>
         </div>
+        {driverEarning != null && (
+          <p style={{ margin: "-6px 0 0", fontSize: 13, fontWeight: 700, color: "#059669" }}>
+            Votre gain estimé : <strong>{formatMoney(driverEarning)}</strong>
+          </p>
+        )}
 
         <div className="ride-request-sheet__route">
           <div className="ride-request-sheet__route-row">

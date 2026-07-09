@@ -14,6 +14,16 @@ import {
   RIDE_ALERT_SOUND_STYLE_LYFT,
   playRideRequestAlert,
 } from "../native/sound";
+import {
+  getAutoNavigationEnabled,
+  getPreferredNavApp,
+  getVoiceGuidanceEnabled,
+  NAV_APP_GOOGLE,
+  NAV_APP_WAZE,
+  setAutoNavigationEnabled,
+  setPreferredNavApp,
+  setVoiceGuidanceEnabled,
+} from "./utils/driverNavigationPrefs";
 
 // ─── Yala Branding Colors ───────────────────────────────────────────────────
 const COLORS = {
@@ -62,6 +72,9 @@ export default function DriverSettings({ deliveryOnly = false } = {}) {
   const [notificationSoundStyle, setNotificationSoundStyleState] = useState(
     RIDE_ALERT_SOUND_STYLE_LYFT
   );
+  const [autoNavigation, setAutoNavigation] = useState(true);
+  const [preferredNavApp, setPreferredNavAppState] = useState(NAV_APP_GOOGLE);
+  const [voiceGuidance, setVoiceGuidance] = useState(true);
 
   // PIN lock state
   const [showPinModal, setShowPinModal] = useState(false);
@@ -96,6 +109,9 @@ export default function DriverSettings({ deliveryOnly = false } = {}) {
 
   useEffect(() => {
     setNotificationSoundStyleState(getRideAlertSoundStyle());
+    setAutoNavigation(getAutoNavigationEnabled());
+    setPreferredNavAppState(getPreferredNavApp());
+    setVoiceGuidance(getVoiceGuidanceEnabled());
   }, []);
 
   // ─── Show Toast ─────────────────────────────────────────────────────────
@@ -346,6 +362,59 @@ export default function DriverSettings({ deliveryOnly = false } = {}) {
           ))}
         </div>
       </SettingsSection>
+
+      {!isDeliveryCourier ? (
+        <SettingsSection
+          title="🧭 Navigation & guidance"
+          description="Auto-launch maps and spoken trip updates"
+        >
+          <ToggleRow
+            label="Auto navigation"
+            description="Open your map app when you accept a ride"
+            checked={autoNavigation}
+            onChange={() => {
+              const next = !autoNavigation;
+              setAutoNavigation(next);
+              setAutoNavigationEnabled(next);
+              showToast(next ? "Auto navigation on" : "Auto navigation off");
+            }}
+          />
+          <ToggleRow
+            label="Voice guidance"
+            description="Spoken alerts for arrive, wait, and trip milestones"
+            checked={voiceGuidance}
+            onChange={() => {
+              const next = !voiceGuidance;
+              setVoiceGuidance(next);
+              setVoiceGuidanceEnabled(next);
+              showToast(next ? "Voice guidance on" : "Voice guidance off");
+            }}
+          />
+          <div style={gpsGridStyle}>
+            {[
+              { value: NAV_APP_GOOGLE, label: "Google Maps", icon: "🗺️" },
+              { value: NAV_APP_WAZE, label: "Waze", icon: "🚗" },
+            ].map((option) => (
+              <button
+                key={option.value}
+                style={{
+                  ...gpsButtonStyle,
+                  ...(preferredNavApp === option.value ? gpsButtonActiveStyle : {}),
+                }}
+                onClick={() => {
+                  setPreferredNavAppState(option.value);
+                  setPreferredNavApp(option.value);
+                  showToast(`Default map: ${option.label}`);
+                }}
+                aria-pressed={preferredNavApp === option.value}
+              >
+                <span style={gpsIconStyle}>{option.icon}</span>
+                <span style={gpsLabelStyle}>{option.label}</span>
+              </button>
+            ))}
+          </div>
+        </SettingsSection>
+      ) : null}
 
       {/* GPS Accuracy Section */}
       <SettingsSection

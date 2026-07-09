@@ -240,6 +240,43 @@
   cursor: pointer;
 }
 
+.ride-request-sheet__surge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  box-shadow: 0 2px 8px rgba(245,158,11,0.45);
+  animation: surge-glow 1.6s ease-in-out infinite;
+}
+
+@keyframes surge-glow {
+  0%,100% { box-shadow: 0 2px 8px rgba(245,158,11,0.45); }
+  50%      { box-shadow: 0 4px 18px rgba(245,158,11,0.75); }
+}
+
+.ride-request-sheet__pill--eta {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+@keyframes ride-request-urgent-shake {
+  0%,100% { transform: translateX(0); }
+  20%     { transform: translateX(-4px); }
+  40%     { transform: translateX(4px); }
+  60%     { transform: translateX(-3px); }
+  80%     { transform: translateX(3px); }
+}
+
+.ride-request-sheet--urgent {
+  animation: ride-request-slide-up 0.36s cubic-bezier(0.22,1,0.36,1),
+             ride-request-urgent-shake 0.5s ease 2s;
+}
+
 .ride-request-sheet--expired {
   text-align: center;
   padding-top: 24px;

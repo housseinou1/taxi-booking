@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import axios from "axios";
 
 import { API_URL } from "../apiConfig";
+import authenticatedApi from "../auth/authenticatedApi";
 import { getAppType, isDeliveryCourierApp } from "../native/platform";
 import DocumentsUnderReviewBanner from "./components/DocumentsUnderReviewBanner";
 import {
@@ -94,8 +94,6 @@ export { getExpiredOrMissingDocuments } from "./utils/documentReview";
 // ─── Main Component ─────────────────────────────────────────────────────────
 
 export default function DriverDocuments() {
-  const token = localStorage.getItem("access");
-
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -125,15 +123,9 @@ export default function DriverDocuments() {
   const fileInputRef = useRef(null);
   const selectedDocTypeRef = useRef(null);
 
-  const authHeaders = useMemo(
-    () => ({ headers: { Authorization: `Bearer ${token}` } }),
-    [token]
-  );
-
   // ─── Fetch Documents ────────────────────────────────────────────────────
 
   const fetchDocuments = useCallback(async () => {
-    if (!token) return;
     setLoading(true);
     setError(null);
 
@@ -141,7 +133,7 @@ export default function DriverDocuments() {
       const documentsUrl = isDeliveryCourier
         ? `${API_URL}/drivers/me/documents/?context=delivery`
         : `${API_URL}/drivers/me/documents/`;
-      const response = await axios.get(documentsUrl, authHeaders);
+      const response = await authenticatedApi.get(documentsUrl);
       // Backend returns { documents: [...], expiring_documents: [...], alerts: [...] }
       const data = response.data;
       const nextDocuments = data.documents || data.results || data || [];
@@ -162,7 +154,7 @@ export default function DriverDocuments() {
     } finally {
       setLoading(false);
     }
-  }, [authHeaders, isDeliveryCourier, token]);
+  }, [isDeliveryCourier]);
 
   useEffect(() => {
     fetchDocuments();
@@ -258,18 +250,14 @@ export default function DriverDocuments() {
         formData.append("file", file);
         formData.append("document_type", docTypeKey);
 
-        const uploadResponse = await axios.post(
+        const uploadResponse = await authenticatedApi.post(
           `${API_URL}/drivers/me/documents/upload/`,
           formData,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "multipart/form-data",
-            },
-          }
+          { headers: { "Content-Type": "multipart/form-data" } }
         );
 
         setPendingUpload(null);
+        window.dispatchEvent(new CustomEvent("yala:documents-changed"));
         if (uploadResponse?.data?.documents_under_review) {
           setUploadSuccess(DOCUMENTS_UNDER_REVIEW_MESSAGE);
         } else {
@@ -290,7 +278,7 @@ export default function DriverDocuments() {
         setUploadingType(null);
       }
     },
-    [token, fetchDocuments, pendingUpload, uploadDates]
+    [fetchDocuments, pendingUpload, uploadDates]
   );
 
   // ─── Computed Values ────────────────────────────────────────────────────

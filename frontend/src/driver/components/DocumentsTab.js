@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
 import { API_URL } from "../../apiConfig";
+import authenticatedApi from "../../auth/authenticatedApi";
 import DocumentCard from "./DocumentCard";
 
-export default function DocumentsTab() {
+export default function DocumentsTab({ onDocumentsChanged }) {
   const [documents, setDocuments] = useState([]);
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  const token = localStorage.getItem("access");
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
 
   useEffect(() => {
     fetchDocuments();
@@ -16,11 +16,11 @@ export default function DocumentsTab() {
 
   const fetchDocuments = async () => {
     try {
-      const response = await axios.get(`${API_URL}/drivers/me/documents/`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await authenticatedApi.get(`${API_URL}/drivers/me/documents/`);
       setDocuments(response.data.documents || []);
-      setAlerts(response.data.alerts || []);
+      setAlerts((response.data.alerts || []).filter(
+        (a) => a.status === "missing" || a.status === "rejected"
+      ));
     } catch (error) {
       console.log("Documents fetch error:", error.response?.data || error);
     } finally {
@@ -28,29 +28,34 @@ export default function DocumentsTab() {
     }
   };
 
-  const handleUpload = async (documentType) => {
-    // Create a file input and trigger it
+  const handleUpload = (documentType) => {
     const input = document.createElement("input");
     input.type = "file";
     input.accept = "image/jpeg,image/png,application/pdf";
     input.onchange = async (e) => {
       const file = e.target.files?.[0];
       if (!file) return;
-
+      setUploadError("");
+      setUploading(true);
       const formData = new FormData();
       formData.append("document_type", documentType);
       formData.append("file", file);
-
       try {
-        await axios.post(`${API_URL}/drivers/me/documents/upload/`, formData, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "multipart/form-data",
-          },
-        });
-        fetchDocuments(); // Refresh
+        await authenticatedApi.post(
+          `${API_URL}/drivers/me/documents/upload/`,
+          formData,
+          { headers: { "Content-Type": "multipart/form-data" } }
+        );
+        await fetchDocuments();
+        if (onDocumentsChanged) onDocumentsChanged();
       } catch (error) {
-        alert(error.response?.data?.error || "Upload failed");
+        setUploadError(
+          error.response?.data?.error ||
+          error.response?.data?.detail ||
+          "Upload failed. Please try again."
+        );
+      } finally {
+        setUploading(false);
       }
     };
     input.click();
@@ -86,6 +91,12 @@ export default function DocumentsTab() {
 
   return (
     <div style={styles.container}>
+      {uploading && (
+        <div style={styles.uploadingBanner}>Uploading document...</div>
+      )}
+      {uploadError ? (
+        <div style={styles.uploadErrorBanner} role="alert">{uploadError}</div>
+      ) : null}
       {/* Alerts */}
       {alerts.length > 0 && (
         <div style={styles.alertsSection}>
@@ -119,6 +130,28 @@ export default function DocumentsTab() {
 const styles = {
   container: {
     padding: "16px 0",
+  },
+  uploadingBanner: {
+    padding: "10px 14px",
+    borderRadius: 10,
+    background: "rgba(0, 166, 81, 0.1)",
+    border: "1px solid rgba(0, 166, 81, 0.3)",
+    color: "#00A651",
+    fontSize: 13,
+    fontWeight: 600,
+    marginBottom: 12,
+    textAlign: "center",
+  },
+  uploadErrorBanner: {
+    padding: "10px 14px",
+    borderRadius: 10,
+    background: "rgba(239, 68, 68, 0.1)",
+    border: "1px solid rgba(239, 68, 68, 0.3)",
+    color: "#ef4444",
+    fontSize: 13,
+    fontWeight: 700,
+    marginBottom: 12,
+    textAlign: "center",
   },
   loading: {
     padding: 24,

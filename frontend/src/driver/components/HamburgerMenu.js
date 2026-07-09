@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import DriverLevelBadge from "./DriverLevelBadge";
 import "./HamburgerMenu.css";
 
@@ -6,7 +6,7 @@ const MENU_ITEMS = [
   { icon: "👤", label: "Driver Profile", subtitle: "View and edit your profile", path: "/driver/profile" },
   { icon: "💰", label: "Earnings", subtitle: "Track your income", path: "/driver/earnings" },
   { icon: "🚕", label: "Ride History", subtitle: "View completed trips", path: "/driver/history" },
-  { icon: "📄", label: "Documents", subtitle: "License, insurance, registration", path: "/driver/documents", alert: true },
+  { icon: "📄", label: "Documents", subtitle: "License, insurance, registration", path: "/driver/documents" },
   { icon: "🆔", label: "Driver Code", subtitle: "Your unique driver QR code", path: "/driver/code" },
   { icon: "🏆", label: "Driver Level", subtitle: "Progress and rewards", path: "/driver/achievements" },
   { icon: "💳", label: "Payment / Withdrawals", subtitle: "Bank and payout settings", path: "/driver/earnings" },
@@ -64,19 +64,32 @@ export default function HamburgerMenu({
 
   // Determine which items should show alert badges
   const getItemAlert = (item) => {
-    if (item.label === "Documents") return documents_alert || item.alert;
+    if (item.label === "Documents") return documents_alert;
     if (item.label === "Payment / Withdrawals" || item.label === "Wallet") return payment_alert;
     if (item.label === "Driver Profile" || item.label === "Settings") return account_alert;
     return false;
   };
 
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
   const handleItemClick = (item) => {
     if (item.label === "Logout") {
-      onLogout && onLogout();
+      setShowLogoutConfirm(true);
+      return; // Don't close the menu yet — show confirmation first
     } else if (item.path) {
       onNavigate && onNavigate(item.path);
     }
     onClose && onClose();
+  };
+
+  const handleLogoutConfirm = () => {
+    setShowLogoutConfirm(false);
+    onClose && onClose();
+    onLogout && onLogout();
+  };
+
+  const handleLogoutCancel = () => {
+    setShowLogoutConfirm(false);
   };
 
   const handleItemKeyDown = (event, item) => {
@@ -153,6 +166,25 @@ export default function HamburgerMenu({
           ))}
         </ul>
       </nav>
+
+      {/* Logout Confirmation Dialog */}
+      {showLogoutConfirm && (
+        <div className="hm-logout-overlay" role="presentation">
+          <div className="hm-logout-backdrop" onClick={handleLogoutCancel} />
+          <div className="hm-logout-dialog" role="alertdialog" aria-modal="true" aria-labelledby="hm-logout-title">
+            <h3 id="hm-logout-title" className="hm-logout-title">Are you sure you want to logout?</h3>
+            <p className="hm-logout-desc">You will need to sign in again to go online and accept rides.</p>
+            <div className="hm-logout-actions">
+              <button type="button" className="hm-logout-btn hm-logout-btn--cancel" onClick={handleLogoutCancel}>
+                Cancel
+              </button>
+              <button type="button" className="hm-logout-btn hm-logout-btn--confirm" onClick={handleLogoutConfirm}>
+                Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

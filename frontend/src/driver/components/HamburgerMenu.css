@@ -455,3 +455,110 @@
     border-bottom-color: var(--hm-line);
   }
 }
+
+/* ─── Logout Confirmation Dialog ───────────────────────────────────────────── */
+
+.hm-logout-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.hm-logout-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.hm-logout-dialog {
+  position: relative;
+  width: 100%;
+  max-width: 320px;
+  padding: 28px 24px 20px;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.2);
+  text-align: center;
+}
+
+.hm-logout-title {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 900;
+  color: #111827;
+}
+
+.hm-logout-desc {
+  margin: 0 0 24px;
+  font-size: 14px;
+  color: #6b7280;
+  line-height: 1.4;
+}
+
+.hm-logout-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.hm-logout-btn {
+  min-height: 48px;
+  border: none;
+  border-radius: 14px;
+  font-size: 15px;
+  font-weight: 900;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: transform 0.1s, opacity 0.1s;
+}
+
+.hm-logout-btn:active {
+  transform: scale(0.96);
+}
+
+.hm-logout-btn--cancel {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.hm-logout-btn--cancel:hover {
+  background: #e5e7eb;
+}
+
+.hm-logout-btn--confirm {
+  background: #d7193f;
+  color: #fff;
+}
+
+.hm-logout-btn--confirm:hover {
+  background: #be1538;
+}
+
+@media (prefers-color-scheme: dark) {
+  .hm-logout-dialog {
+    background: #1f2937;
+    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.5);
+  }
+
+  .hm-logout-title {
+    color: #f9fafb;
+  }
+
+  .hm-logout-desc {
+    color: #9ca3af;
+  }
+
+  .hm-logout-btn--cancel {
+    background: #374151;
+    color: #e5e7eb;
+  }
+
+  .hm-logout-btn--cancel:hover {
+    background: #4b5563;
+  }
+}
