@@ -18,6 +18,7 @@ from rest_framework.views import APIView
 from .driver_access import resolve_driver_profile
 from .services.level_service import DriverLevelService
 from .services.earnings_service import EarningsService
+from .services.ride_performance_service import get_driver_score_tier
 
 
 class DriverLevelView(APIView):
@@ -177,8 +178,6 @@ class DriverStatsView(APIView):
         no_show_rate = (
             round((no_show_count / total_accepted) * 100, 1) if total_accepted > 0 else 0
         )
-
-        from .services.ride_performance_service import get_driver_score_tier
 
         score_tier = get_driver_score_tier(driver_profile.performance_points)
 
