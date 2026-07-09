@@ -29,6 +29,53 @@ WEEKLY_RISK_WARNING_MESSAGE = (
     "Your account is under review."
 )
 
+# Driver Score (0–100) tier labels shown in profile / performance UI.
+SCORE_TIER_THRESHOLDS = (
+    (95, "diamond", "Diamond"),
+    (90, "platinum", "Platinum"),
+    (80, "gold", "Gold"),
+    (70, "silver", "Silver"),
+)
+
+
+def get_driver_score_tier(performance_points: int | None) -> dict:
+    """Map performance_points (0–100) to Lyft-style tier badge."""
+    points = max(0, min(100, int(performance_points or 100)))
+    for minimum, tier, label in SCORE_TIER_THRESHOLDS:
+        if points >= minimum:
+            return {
+                "score": points,
+                "tier": tier,
+                "label": label,
+                "needs_improvement": False,
+            }
+    return {
+        "score": points,
+        "tier": "needs_improvement",
+        "label": "Needs Improvement",
+        "needs_improvement": True,
+    }
+
+
+def _flag_driver_cancellation_abuse(profile: DriverProfile, description: str) -> None:
+    try:
+        from security.models import FraudFlag
+
+        FraudFlag.objects.get_or_create(
+            user=profile.user,
+            reason="excessive_cancellations",
+            status="open",
+            defaults={
+                "severity": "medium",
+                "description": description,
+            },
+        )
+    except Exception:
+        logger.exception(
+            "Failed to create FraudFlag for driver cancellation abuse user=%s",
+            profile.user_id,
+        )
+
 
 def _today() -> date:
     return timezone.localdate()
@@ -51,12 +98,12 @@ def record_ride_accepted(profile: DriverProfile) -> None:
 
 
 def _apply_offer_penalty(profile: DriverProfile) -> None:
-    profile.performance_points = max(
-        0, (profile.performance_points or 100) - PERFORMANCE_PENALTY_POINTS
+    current_perf = profile.performance_points if profile.performance_points is not None else 100
+    current_accept = (
+        profile.acceptance_rate_points if profile.acceptance_rate_points is not None else 100
     )
-    profile.acceptance_rate_points = max(
-        0, (profile.acceptance_rate_points or 100) - ACCEPTANCE_RATE_PENALTY
-    )
+    profile.performance_points = max(0, current_perf - PERFORMANCE_PENALTY_POINTS)
+    profile.acceptance_rate_points = max(0, current_accept - ACCEPTANCE_RATE_PENALTY)
 
 
 def apply_missed_offer_penalty(profile: DriverProfile) -> None:
@@ -101,7 +148,7 @@ def _count_weekly_driver_cancellations(profile: DriverProfile) -> int:
     return Ride.objects.filter(
         driver=profile.user,
         cancelled_by="driver",
-        updated_at__gte=week_start,
+        cancelled_at__gte=week_start,
     ).count()
 
 
@@ -149,14 +196,41 @@ def apply_driver_cancellation_penalty(profile: DriverProfile) -> dict:
 
     if risk_triggered:
         _notify_risk_warning(profile, RISK_WARNING_MESSAGE)
+        _flag_driver_cancellation_abuse(
+            profile,
+            f"Driver exceeded {DAILY_DRIVER_CANCEL_RISK_THRESHOLD} cancellations today.",
+        )
     elif weekly_risk_triggered:
         _notify_risk_warning(profile, WEEKLY_RISK_WARNING_MESSAGE)
+        _flag_driver_cancellation_abuse(
+            profile,
+            f"Driver exceeded {WEEKLY_DRIVER_CANCEL_RISK_THRESHOLD} cancellations this week.",
+        )
+    else:
+        try:
+            from notifications.push import send_push_to_user
 
+            send_push_to_user(
+                profile.user,
+                "Cancellation recorded",
+                "Your cancellation rate increased. Acceptance -1%, Driver Score -3.",
+                data={"type": "driver_cancel_penalty"},
+                app_type="driver",
+            )
+        except Exception:
+            logger.exception(
+                "Failed to send cancel penalty notification driver=%s",
+                profile.user_id,
+            )
+
+    tier = get_driver_score_tier(profile.performance_points)
     return {
         "risk_triggered": risk_triggered or weekly_risk_triggered,
         "cancellations_today": profile.cancellations_today_count,
         "performance_points": profile.performance_points,
         "acceptance_rate_points": profile.acceptance_rate_points,
+        "driver_score_tier": tier["tier"],
+        "driver_score_label": tier["label"],
     }
 
 
@@ -237,8 +311,12 @@ def get_driver_performance_snapshot(profile: DriverProfile) -> dict:
     received = profile.total_rides_received or 0
     accepted = profile.total_rides_accepted or 0
     computed_rate = round((accepted / received) * 100, 1) if received else 0
+    tier = get_driver_score_tier(profile.performance_points)
     return {
         "performance_points": profile.performance_points or 100,
+        "driver_score": tier["score"],
+        "driver_score_tier": tier["tier"],
+        "driver_score_label": tier["label"],
         "acceptance_rate": profile.acceptance_rate_points or 100,
         "acceptance_rate_computed": computed_rate,
         "total_rides_received": received,
