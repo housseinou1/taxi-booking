@@ -138,6 +138,8 @@ class LyftNoShowCancelTests(TestCase):
         self.ride.refresh_from_db()
         self.assertEqual(self.ride.status, "rider_no_show")
         self.assertTrue(self.ride.is_rider_no_show)
+        self.assertIsNotNone(self.ride.no_show_at)
+        self.assertIsNotNone(response.data.get("no_show_at"))
         self.assertEqual(self.ride.cancelled_by, "driver")
         self.assertEqual(self.ride.cancellation_reason, "Rider no-show")
         self.assertEqual(self.ride.no_show_evidence.get("device_id"), "qa-device-1")

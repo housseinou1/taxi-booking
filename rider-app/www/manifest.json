@@ -1,10 +1,10 @@
 {
-  "short_name": "Yala Rider",
-  "name": "Yala Rider",
-  "description": "Book rides, compare ride types, track your driver, and manage trips.",
+  "short_name": "Yala",
+  "name": "Yala — Ride Anywhere",
+  "description": "Mauritania ride booking platform. Book rides, drive, earn, and manage operations.",
   "icons": [
     {
-      "src": "yala-rider-logo.png",
+      "src": "yala-logo.png",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "any maskable"
@@ -13,32 +13,46 @@
       "src": "favicon.ico",
       "sizes": "32x32",
       "type": "image/x-icon"
+    },
+    {
+      "src": "logo192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "logo512.png",
+      "type": "image/png",
+      "sizes": "512x512"
     }
   ],
-  "start_url": "/rider-dashboard",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "theme_color": "#7C3AED",
+  "theme_color": "#00A651",
   "background_color": "#08111F",
-  "categories": [
-    "travel",
-    "navigation",
-    "business"
-  ],
+  "categories": ["travel", "navigation", "business"],
   "shortcuts": [
     {
-      "name": "Yala Rider Dashboard",
+      "name": "Yala Rider",
       "short_name": "Rider",
-      "description": "Book and track a Yala ride",
+      "description": "Book and track rides",
       "url": "/rider-dashboard",
-      "icons": [
-        {
-          "src": "yala-rider-logo.png",
-          "type": "image/png",
-          "sizes": "512x512"
-        }
-      ]
+      "icons": [{ "src": "yala-rider-logo.png", "type": "image/png", "sizes": "512x512" }]
+    },
+    {
+      "name": "Yala Driver",
+      "short_name": "Driver",
+      "description": "Go online and earn",
+      "url": "/driver",
+      "icons": [{ "src": "yala-driver-logo.png", "type": "image/png", "sizes": "512x512" }]
+    },
+    {
+      "name": "Yala Admin",
+      "short_name": "Admin",
+      "description": "Manage platform operations",
+      "url": "/admin",
+      "icons": [{ "src": "yala-admin-logo.png", "type": "image/png", "sizes": "512x512" }]
     }
   ]
 }

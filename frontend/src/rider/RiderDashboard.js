@@ -282,6 +282,11 @@ export default function RiderDashboard() {
       "sx_login_redirect",
       "yala_next_place",
     ].forEach((key) => localStorage.removeItem(key));
+    // Clear secure storage tokens (fire-and-forget for native apps)
+    import("../native/storage").then(({ removeToken }) => {
+      removeToken("access").catch(() => {});
+      removeToken("refresh").catch(() => {});
+    }).catch(() => {});
 
     window.location.replace(`/login?logout=${Date.now()}`);
   };

@@ -134,84 +134,9 @@
   flex-shrink: 0;
 }
 
-.ride-cancel-fee.is-waived {
+.ride-cancel-gate--unlocked {
   background: #ecfdf5;
-  border-color: #a7f3d0;
-  color: #065f46;
-}
-
-.ride-cancel-gate {
-  margin-top: 12px;
-  padding: 12px;
-  border-radius: 10px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-}
-
-.ride-cancel-gate__title {
-  font-size: 12px;
-  font-weight: 800;
-  text-transform: uppercase;
-  color: #64748b;
-  margin-bottom: 8px;
-}
-
-.ride-cancel-gate__list {
-  margin: 0 0 10px;
-  padding-left: 18px;
-  color: #334155;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.ride-cancel-gate__list li.is-done {
-  color: #047857;
-}
-
-.ride-cancel-gate__hint {
-  margin: 0;
-  font-size: 12px;
-  color: #64748b;
-  line-height: 1.4;
-}
-
-.ride-cancel-gate__hint.is-ready {
-  color: #047857;
-  font-weight: 700;
-}
-
-.ride-cancel-call {
-  width: 100%;
-  margin-bottom: 10px;
-  min-height: 42px;
-  border: none;
-  border-radius: 10px;
-  background: #0f766e;
-  color: #fff;
-  font: inherit;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.ride-cancel-reason.is-locked {
-  opacity: 0.55;
-  cursor: not-allowed;
-  background: #f1f5f9;
-}
-
-.ride-cancel-reason.is-noshow .ride-cancel-reason__tag {
-  margin-left: 8px;
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-  color: #0f766e;
-  background: #ccfbf1;
-  border-radius: 999px;
-  padding: 2px 7px;
-}
-
-.ride-cancel-reason__lock {
-  flex-shrink: 0;
+  border-color: #6ee7b7;
 }
 
 .ride-cancel-reasons {

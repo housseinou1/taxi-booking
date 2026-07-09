@@ -15,6 +15,7 @@ import {
   getLocationByLabel,
 } from "../marketConfig";
 import { subscribeRideUpdates, sendRideUpdate } from "../socket";
+import WaitingFeeBanner from "../components/WaitingFeeBanner";
 
 // Fix Leaflet marker icons
 delete L.Icon.Default.prototype._getIconUrl;
@@ -323,8 +324,13 @@ export default function RiderDashboardNew() {
              currentRide.status === "driver_arrived" ? "Driver arrived — Share your PIN" :
              currentRide.status === "driver_arriving" ? "Driver on the way" :
              currentRide.status === "accepted" ? "Driver accepted your ride" :
+             currentRide.driver && currentRide.eta_minutes != null ? "Driver on the way" :
              "Looking for a nearby driver..."}
           </strong>
+
+          {currentRide.status === "driver_arrived" && (
+            <WaitingFeeBanner ride={currentRide} audience="rider" />
+          )}
 
           {/* Trip route info */}
           <div style={styles.tripRoute}>
@@ -346,7 +352,8 @@ export default function RiderDashboardNew() {
           </div>
 
           {/* Driver info card - shows after acceptance */}
-          {currentRide.driver && ["accepted", "driver_arriving", "driver_arrived", "in_progress"].includes(currentRide.status) && (
+          {["accepted", "driver_arriving", "driver_arrived", "in_progress"].includes(currentRide.status) ||
+          (currentRide.driver && currentRide.eta_minutes != null) ? (
             <div style={styles.driverCard}>
               <div style={styles.driverHeader}>
                 <div style={styles.driverAvatar}>
@@ -384,7 +391,7 @@ export default function RiderDashboardNew() {
                 </div>
               )}
             </div>
-          )}
+          ) : null}
 
           {/* Safety actions */}
           <div style={styles.safetyActions}>

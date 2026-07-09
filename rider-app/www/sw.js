@@ -1,4 +1,4 @@
-const CACHE_NAME = "yala-app-v4";
+const CACHE_NAME = "yala-app-v5";
 const APP_SHELL = [
   "/",
   "/login",
@@ -16,9 +16,7 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) =>
-        Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)))
-      )
+      .then((keys) => Promise.all(keys.map((key) => caches.delete(key))))
   );
   self.clients.claim();
 });

@@ -268,6 +268,11 @@ class Ride(models.Model):
         blank=True,
         help_text="Anti-abuse evidence: GPS, wait time, device, timestamps.",
     )
+    no_show_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the driver completed a verified rider no-show.",
+    )
 
     class Meta:
         indexes = [

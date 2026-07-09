@@ -1,10 +1,27 @@
 apply plugin: 'com.android.application'
 
-def releaseKeystore = System.getenv("YALA_ANDROID_KEYSTORE")
-def releaseStorePassword = System.getenv("YALA_ANDROID_STORE_PASSWORD")
-def releaseKeyAlias = System.getenv("YALA_ANDROID_KEY_ALIAS")
-def releaseKeyPassword = System.getenv("YALA_ANDROID_KEY_PASSWORD")
+def riderOriginalKeystore = rootProject.file("../../yala-release.keystore")
+def riderSigningPropsFile = rootProject.file("rider-signing.properties")
+def riderSigningProps = new Properties()
+if (riderSigningPropsFile.exists()) {
+    riderSigningProps.load(new FileInputStream(riderSigningPropsFile))
+}
+
+def releaseKeystore = riderSigningProps.getProperty("YALA_ANDROID_KEYSTORE", riderOriginalKeystore.absolutePath)
+def releaseStorePassword = riderSigningProps.getProperty("YALA_ANDROID_STORE_PASSWORD", System.getenv("YALA_ANDROID_STORE_PASSWORD"))
+def releaseKeyAlias = riderSigningProps.getProperty("YALA_ANDROID_KEY_ALIAS", "yala-key")
+def releaseKeyPassword = riderSigningProps.getProperty("YALA_ANDROID_KEY_PASSWORD", System.getenv("YALA_ANDROID_KEY_PASSWORD"))
 def releaseSigningReady = releaseKeystore && releaseStorePassword && releaseKeyAlias && releaseKeyPassword
+
+if (releaseSigningReady) {
+    def configuredKeystore = file(releaseKeystore).canonicalFile
+    def requiredKeystore = riderOriginalKeystore.canonicalFile
+    if (!configuredKeystore.equals(requiredKeystore)) {
+        throw new GradleException(
+            "Rider release builds must use the original Play upload keystore at ${requiredKeystore}, not ${configuredKeystore}."
+        )
+    }
+}
 
 android {
     namespace "com.yala.rider.mr"
@@ -13,8 +30,8 @@ android {
         applicationId "com.yala.rider.mr"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 15
-        versionName "1.2.3"
+        versionCode 18
+        versionName "1.2.6"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

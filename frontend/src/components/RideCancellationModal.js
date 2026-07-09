@@ -113,6 +113,13 @@ export default function RideCancellationModal({
     return role === "driver" ? computeNoShowGate(ride, { distanceToPickupM }) : null;
   }, [role, ride, tick, distanceToPickupM]);
 
+  // Auto-select "Rider no-show" once the gate fully unlocks
+  useEffect(() => {
+    if (noShowGate?.unlocked && !reason) {
+      setReason("Rider no-show");
+    }
+  }, [noShowGate?.unlocked, reason]);
+
   const reasons = role === "driver" ? DRIVER_CANCELLATION_REASONS : RIDER_CANCELLATION_REASONS;
   const isOther = reason === "Other";
   const otherLength = reasonDetails.trim().length;
@@ -182,7 +189,7 @@ export default function RideCancellationModal({
         </div>
 
         {role === "driver" && noShowGate ? (
-          <div className="ride-cancel-gate" aria-live="polite">
+          <div className={`ride-cancel-gate${noShowGate.unlocked ? " ride-cancel-gate--unlocked" : ""}`} aria-live="polite">
             <div className="ride-cancel-gate__title">Rider no-show checklist</div>
             <ul className="ride-cancel-gate__list">
               <li className={noShowGate.statusOk ? "is-done" : ""}>

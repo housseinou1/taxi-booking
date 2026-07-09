@@ -1106,8 +1106,10 @@ def cancel_ride(request, ride_id):
         "no_show_fee",
         "no_show_driver_compensation",
         "no_show_evidence",
+        "no_show_at",
     ]
     if is_rider_no_show:
+        ride.no_show_at = stamp
         ride.driver_earning = driver_compensation
         ride.no_show_evidence = {
             "at": stamp.isoformat(),
@@ -1221,6 +1223,7 @@ def cancel_ride(request, ride_id):
     data["is_rider_no_show"] = is_rider_no_show
     data["no_show_fee"] = str(no_show_fee)
     data["no_show_driver_compensation"] = str(driver_compensation)
+    data["no_show_at"] = ride.no_show_at.isoformat() if ride.no_show_at else None
     data["call_attempts"] = int(getattr(ride, "rider_call_attempt_count", 0) or 0)
     data["waited_seconds"] = waiver_details.get("waited_seconds") if waiver_details else None
     if is_rider_no_show:

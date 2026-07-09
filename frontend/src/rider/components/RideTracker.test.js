@@ -9,9 +9,11 @@ jest.mock('../services/wsService', () => {
     default: {
       subscribeRideUpdates: jest.fn(),
       subscribeDriverPosition: jest.fn(() => () => {}),
+      leaveRideGroup: jest.fn(),
     },
     subscribeRideUpdates: jest.fn(),
     subscribeDriverPosition: jest.fn(() => () => {}),
+    leaveRideGroup: jest.fn(),
   };
   return mock;
 });
@@ -224,7 +226,19 @@ describe('RideTracker component', () => {
 
   describe('Assignment state', () => {
     it('shows searching only before a driver is assigned', () => {
-      render(<RideTracker ride={makeRide({ status: 'requested', driver_name: '' })} />);
+      render(
+        <RideTracker
+          ride={makeRide({
+            status: 'requested',
+            driver_name: '',
+            driver_code: '',
+            driver: null,
+            eta_minutes: null,
+            pickup_pin: '',
+            pin_code: '',
+          })}
+        />
+      );
       expect(screen.getByText('Looking for a nearby driver')).toBeInTheDocument();
       expect(screen.queryByText('Verified by Yala')).not.toBeInTheDocument();
     });
@@ -233,6 +247,40 @@ describe('RideTracker component', () => {
       render(<RideTracker ride={makeRide({ status: 'driver_arriving' })} />);
       expect(screen.queryByText('Looking for a nearby driver')).not.toBeInTheDocument();
       expect(screen.getByText('Verified by Yala')).toBeInTheDocument();
+    });
+
+    it('removes searching message when driver accepted but name not yet loaded', () => {
+      render(
+        <RideTracker
+          ride={makeRide({
+            status: 'driver_arriving',
+            driver_name: '',
+            driver_first_name: '',
+            driver_last_name: '',
+            driver: 42,
+            eta_minutes: 8,
+          })}
+          driverPosition={[18.08, -15.96]}
+        />
+      );
+      expect(screen.queryByText('Looking for a nearby driver')).not.toBeInTheDocument();
+      expect(screen.getByText('Verified by Yala')).toBeInTheDocument();
+      expect(screen.getByLabelText('Driver and vehicle information')).toBeInTheDocument();
+    });
+
+    it('hides searching once ETA is available during stale requested status', () => {
+      render(
+        <RideTracker
+          ride={makeRide({
+            status: 'requested',
+            driver_name: '',
+            driver: 42,
+            eta_minutes: 8,
+          })}
+          driverPosition={[18.08, -15.96]}
+        />
+      );
+      expect(screen.queryByText('Looking for a nearby driver')).not.toBeInTheDocument();
     });
   });
 
