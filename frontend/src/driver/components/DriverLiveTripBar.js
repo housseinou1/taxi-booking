@@ -32,6 +32,7 @@ export default function DriverLiveTripBar({
   ride,
   liveState,
   distanceKm = null,
+  locationPending = false,
   onOpenNavigation,
   onNoShow,
 }) {
@@ -39,7 +40,9 @@ export default function DriverLiveTripBar({
 
   const status = ride.status;
   const distanceLabel =
-    distanceKm != null && Number.isFinite(Number(distanceKm))
+    locationPending
+      ? "Waiting for your location"
+      : distanceKm != null && Number.isFinite(Number(distanceKm)) && Number(distanceKm) > 0
       ? `${Number(distanceKm).toFixed(1)} km`
       : null;
   const riderName = ride.rider_name ||

@@ -673,26 +673,59 @@ def arrived_ride(request, ride_id):
         driver=request.user,
     )
 
-    if ride.status != "driver_arriving":
+    if ride.status not in ("driver_arriving", "accepted"):
         return Response(
             {"detail": "Ride can only be marked arrived when driver is arriving."},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
+    if ride.status == "accepted":
+        ride.status = "driver_arriving"
+        ride.save(update_fields=["status"])
+
     # Optional but preferred GPS check — reject when coords prove driver is far.
     raw_lat = request.data.get("lat", request.data.get("driver_lat"))
     raw_lng = request.data.get("lng", request.data.get("driver_lng"))
     if raw_lat is not None and raw_lng is not None:
-        try:
-            lat = float(raw_lat)
-            lng = float(raw_lng)
-        except (TypeError, ValueError):
+        from taxi.rides.services.no_show_service import _parse_geo_coord
+
+        driver = _parse_geo_coord(raw_lat, raw_lng)
+        if not driver:
             return Response(
                 {"detail": "Invalid driver GPS coordinates."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        lat, lng = driver
+
+        pickup = _parse_geo_coord(ride.pickup_lat, ride.pickup_lng)
+        if not pickup:
+            return Response(
+                {"detail": "Invalid pickup coordinates for ride."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         distance_m = distance_to_pickup_m(ride, lat, lng)
         max_m = arrive_max_distance_m()
+
+        logger = logging.getLogger(__name__)
+        logger.warning(
+            "ARRIVE_GEOFENCE_CHECK ride_id=%s driver_lat=%s driver_lng=%s "
+            "pickup_lat=%s pickup_lng=%s calculated_distance_m=%s max_allowed_m=%s",
+            ride.id,
+            lat,
+            lng,
+            pickup[0],
+            pickup[1],
+            distance_m,
+            max_m,
+        )
+
+        if distance_m is None:
+            return Response(
+                {"detail": "Unable to calculate distance to pickup. Please check your GPS and try again."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         if distance_m > max_m:
             return Response(
                 {

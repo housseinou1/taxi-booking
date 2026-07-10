@@ -1,9 +1,18 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState, memo } from "react";
 import { API_URL } from "./apiConfig";
 import authenticatedApi from "./auth/authenticatedApi";
 import WaitingFeeBanner from "./components/WaitingFeeBanner";
+import { isNative } from "./native/platform";
+import { ARRIVE_MAX_DISTANCE_M } from "./utils/rideGeo";
 
-function RideStatusButtons({ ride, onStatusChange, distanceToNextKm }) {
+function RideStatusButtons({
+  ride,
+  onStatusChange,
+  distanceToNextKm,
+  driverPosition = null,
+  arriveGate = null,
+  gpsUnavailable = false,
+}) {
   const [workingAction, setWorkingAction] = useState("");
   const [actionError, setActionError] = useState("");
   const [pickupPin, setPickupPin] = useState("");
@@ -21,12 +30,14 @@ function RideStatusButtons({ ride, onStatusChange, distanceToNextKm }) {
   const pickupNavigationUrls = getNavigationUrls(ride, "pickup");
   const stopNavigationUrls = nextStop ? getStopNavigationUrls(nextStop) : null;
   const finalNavigationUrls = getNavigationUrls(ride, "destination");
-  const isApproachingPickup = ["accepted", "driver_arriving"].includes(ride.status);
-  const hasReliablePickupDistance =
-    isApproachingPickup && Number.isFinite(Number(distanceToNextKm));
-  const isNearPickup =
-    hasReliablePickupDistance && Number(distanceToNextKm) <= 0.35;
-
+  const hasReliablePickupDistance = Boolean(arriveGate?.reliable);
+  const isNearPickup = Boolean(arriveGate?.near);
+  const pickupDistanceKm = arriveGate?.distanceKm ?? distanceToNextKm;
+  const pickupDistanceLabel = gpsUnavailable || !hasReliablePickupDistance
+    ? "Waiting for your location"
+    : Number.isFinite(Number(pickupDistanceKm))
+    ? `Pickup is ${Number(pickupDistanceKm).toFixed(1)} km away`
+    : "Locating pickup...";
   const markNavigationStarted = useCallback(() => {
     localStorage.setItem(`ride_${ride.id}_navigation_started`, "true");
     setNavigationStarted(true);
@@ -48,9 +59,11 @@ function RideStatusButtons({ ride, onStatusChange, distanceToNextKm }) {
   }, [pinVerified]);
 
   const postRideAction = async (endpoint, body = {}) => {
+    const rideId = ride.id || ride.ride_id;
     const response = await authenticatedApi.post(
-      `${API_URL}/rides/${endpoint}/${ride.id}/`,
-      body
+      `${API_URL}/rides/${endpoint}/${rideId}/`,
+      body,
+      { timeout: 45000 }
     );
     return response.data;
   };
@@ -59,6 +72,7 @@ function RideStatusButtons({ ride, onStatusChange, distanceToNextKm }) {
     error.response?.data?.detail ||
     error.response?.data?.error ||
     error.response?.data?.message ||
+    error.message ||
     fallback;
 
   const updateRideStatus = async (endpoint) => {
@@ -66,21 +80,12 @@ function RideStatusButtons({ ride, onStatusChange, distanceToNextKm }) {
     try {
       setWorkingAction(endpoint);
       let body = {};
-      if (endpoint === "arrived" && navigator.geolocation) {
-        try {
-          const position = await new Promise((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject, {
-              enableHighAccuracy: true,
-              maximumAge: 10000,
-              timeout: 8000,
-            });
-          });
-          body = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          };
-        } catch {
-          // Fallback: UI already gates proximity; backend accepts missing GPS.
+      if (endpoint === "arrived") {
+        if (arriveGate?.arriveBody) {
+          body = arriveGate.arriveBody;
+        } else {
+          setActionError("Waiting for your location. Please enable GPS and try again.");
+          return;
         }
       }
       const data = await postRideAction(endpoint, body);
@@ -167,18 +172,26 @@ function RideStatusButtons({ ride, onStatusChange, distanceToNextKm }) {
             label={
               isNearPickup
                 ? "Slide Right to Arrive"
-                : hasReliablePickupDistance
-                ? `Pickup is ${Number(distanceToNextKm).toFixed(1)} km away`
-                : "Locating pickup..."
+                : pickupDistanceLabel
             }
             completeLabel="Marking arrived..."
             color="#0F8F4D"
             disabled={Boolean(workingAction) || !isNearPickup}
             isWorking={workingAction === "arrived"}
             onComplete={() => updateRideStatus("arrived")}
-            onDisabledAttempt={() =>
-              setActionError("Move closer to the pickup point before marking arrived.")
-            }
+            onDisabledAttempt={() => {
+              if (!hasReliablePickupDistance) {
+                setActionError("Waiting for your location. Please enable GPS and try again.");
+                return;
+              }
+              if (!isNearPickup) {
+                setActionError(
+                  `Move closer to the pickup point before tapping Arrived (${Math.round(
+                    Number(arriveGate?.distanceM ?? pickupDistanceKm * 1000)
+                  )}m away, max ${Math.round(ARRIVE_MAX_DISTANCE_M)}m).`
+                );
+              }
+            }}
           />
         </>
       )}
@@ -413,6 +426,12 @@ function StopProgressCard({ stops }) {
   );
 }
 
+function nativeActionLabel(label) {
+  if (/arrive/i.test(label) && !/stop/i.test(label)) return "Mark Arrived";
+  if (/finish/i.test(label)) return "Complete Ride";
+  return label.replace(/^Slide:\s*/i, "").replace(/^Slide Right to\s*/i, "").trim() || label;
+}
+
 function SlideRideAction({
   label,
   completeLabel,
@@ -423,77 +442,160 @@ function SlideRideAction({
   onDisabledAttempt,
 }) {
   const trackRef = useRef(null);
+  const draggingRef = useRef(false);
+  const progressRef = useRef(0);
   const [dragging, setDragging] = useState(false);
   const [progress, setProgress] = useState(0);
 
-  const setProgressFromPointer = (clientX) => {
+  const setProgressFromClientX = useCallback((clientX) => {
     const track = trackRef.current;
-
-    if (!track) return;
+    if (!track || clientX == null) return;
 
     const rect = track.getBoundingClientRect();
     const knobSize = 52;
     const max = Math.max(1, rect.width - knobSize - 8);
     const nextProgress = Math.min(1, Math.max(0, (clientX - rect.left - knobSize / 2) / max));
-
+    progressRef.current = nextProgress;
     setProgress(nextProgress);
-  };
+  }, []);
 
-  const finishDrag = () => {
-    if (!dragging) return;
+  const finishDrag = useCallback(() => {
+    if (!draggingRef.current) return;
 
-    const completed = progress >= 0.95 && !disabled;
+    draggingRef.current = false;
     setDragging(false);
 
+    const completed = progressRef.current >= 0.88 && !disabled;
     if (completed) {
+      progressRef.current = 1;
       setProgress(1);
       onComplete();
       return;
     }
 
+    progressRef.current = 0;
     setProgress(0);
-  };
+  }, [disabled, onComplete]);
+
+  const startDrag = useCallback(
+    (clientX) => {
+      if (disabled || isWorking) {
+        onDisabledAttempt?.();
+        return;
+      }
+      draggingRef.current = true;
+      setDragging(true);
+      setProgressFromClientX(clientX);
+    },
+    [disabled, isWorking, onDisabledAttempt, setProgressFromClientX]
+  );
+
+  useEffect(() => {
+    if (!dragging) return undefined;
+
+    const onMove = (event) => {
+      if (!draggingRef.current || disabled) return;
+      const point = event.touches?.[0] || event;
+      setProgressFromClientX(point.clientX);
+    };
+
+    const onEnd = () => finishDrag();
+
+    window.addEventListener("pointermove", onMove, { passive: true });
+    window.addEventListener("pointerup", onEnd);
+    window.addEventListener("pointercancel", onEnd);
+    window.addEventListener("touchmove", onMove, { passive: false });
+    window.addEventListener("touchend", onEnd);
+    window.addEventListener("touchcancel", onEnd);
+
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onEnd);
+      window.removeEventListener("pointercancel", onEnd);
+      window.removeEventListener("touchmove", onMove);
+      window.removeEventListener("touchend", onEnd);
+      window.removeEventListener("touchcancel", onEnd);
+    };
+  }, [dragging, disabled, finishDrag, setProgressFromClientX]);
 
   const handlePointerDown = (event) => {
-    if (disabled) {
+    if (disabled || isWorking) {
+      event.preventDefault();
       onDisabledAttempt?.();
       return;
     }
 
-    event.currentTarget.setPointerCapture?.(event.pointerId);
-    setDragging(true);
-    setProgressFromPointer(event.clientX);
+    event.preventDefault();
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    } catch {
+      // Pointer capture is optional on some WebViews.
+    }
+    startDrag(event.clientX);
   };
 
-  const handlePointerMove = (event) => {
-    if (!dragging || disabled) return;
+  const handleTouchStart = (event) => {
+    if (disabled || isWorking) {
+      event.preventDefault();
+      onDisabledAttempt?.();
+      return;
+    }
 
-    setProgressFromPointer(event.clientX);
+    event.preventDefault();
+    startDrag(event.touches[0]?.clientX);
   };
 
   const knobLeft = `calc(4px + ${progress * 100}% - ${progress * 58}px)`;
+  const nativeTapLabel = nativeActionLabel(label);
+
+  if (isNative()) {
+    return (
+      <div style={nativeActionWrapStyle}>
+        <button
+          type="button"
+          onClick={() => {
+            if (disabled || isWorking) return;
+            onComplete();
+          }}
+          disabled={disabled || isWorking}
+          style={{
+            ...nativeActionButtonStyle,
+            background: isWorking ? "#d1d5db" : color,
+            opacity: disabled || isWorking ? 0.72 : 1,
+          }}
+          aria-label={nativeTapLabel}
+        >
+          {isWorking ? completeLabel : nativeTapLabel}
+        </button>
+        {disabled && !isWorking ? (
+          <span style={nativeActionHintStyle}>{label}</span>
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <div
       ref={trackRef}
       onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={finishDrag}
-      onPointerCancel={finishDrag}
+      onTouchStart={handleTouchStart}
       style={{
         ...slideTrackStyle,
         background: isWorking ? "#d1d5db" : "#f3f4f6",
-        cursor: disabled ? "wait" : "grab",
+        cursor: disabled ? "not-allowed" : "grab",
+        opacity: disabled ? 0.72 : 1,
       }}
       role="button"
       aria-label={label}
-      tabIndex={disabled ? -1 : 0}
+      aria-disabled={disabled || isWorking}
+      tabIndex={disabled || isWorking ? -1 : 0}
     >
       <div
         style={{
           ...slideFillStyle,
           width: `${Math.max(10, progress * 100)}%`,
           background: color,
+          transition: dragging ? "none" : slideFillStyle.transition,
         }}
       />
       <span style={slideLabelStyle}>{isWorking ? completeLabel : label}</span>
@@ -707,6 +809,30 @@ const slideKnobStyle = {
   pointerEvents: "none",
 };
 
+const nativeActionWrapStyle = {
+  display: "grid",
+  gap: "6px",
+};
+
+const nativeActionButtonStyle = {
+  width: "100%",
+  minHeight: "56px",
+  border: "none",
+  borderRadius: "14px",
+  color: "#fff",
+  fontWeight: 900,
+  fontSize: "1rem",
+  boxShadow: "0 10px 24px rgba(15, 23, 42, 0.2)",
+};
+
+const nativeActionHintStyle = {
+  color: "#9ca3af",
+  fontSize: "0.82rem",
+  fontWeight: 700,
+  textAlign: "center",
+  lineHeight: 1.35,
+};
+
 const stateTextStyle = {
   display: "inline-flex",
   alignItems: "center",
@@ -729,4 +855,14 @@ const actionErrorStyle = {
   textAlign: "center",
 };
 
-export default RideStatusButtons;
+export default memo(RideStatusButtons, (prev, next) => {
+  if (prev.gpsUnavailable !== next.gpsUnavailable) return false;
+  if (prev.arriveGate?.near !== next.arriveGate?.near) return false;
+  if (prev.arriveGate?.reliable !== next.arriveGate?.reliable) return false;
+  if (prev.arriveGate?.distanceM !== next.arriveGate?.distanceM) return false;
+  if (prev.ride?.id !== next.ride?.id) return false;
+  if (prev.ride?.status !== next.ride?.status) return false;
+  if (prev.ride?.pickup_pin_verified !== next.ride?.pickup_pin_verified) return false;
+  if (JSON.stringify(prev.ride?.stops) !== JSON.stringify(next.ride?.stops)) return false;
+  return true;
+});

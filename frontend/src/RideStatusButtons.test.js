@@ -15,7 +15,19 @@ const makeRide = (status) => ({
 
 describe("RideStatusButtons core driver actions", () => {
   it("shows Arrived while the driver is arriving", () => {
-    render(<RideStatusButtons ride={makeRide("driver_arriving")} distanceToNextKm={0.1} />);
+    render(
+      <RideStatusButtons
+        ride={makeRide("driver_arriving")}
+        distanceToNextKm={0.1}
+        arriveGate={{
+          reliable: true,
+          near: true,
+          distanceM: 100,
+          distanceKm: 0.1,
+          arriveBody: { lat: 18.1, lng: -15.9 },
+        }}
+      />
+    );
 
     expect(screen.getByRole("button", { name: "Slide Right to Arrive" })).toBeInTheDocument();
   });

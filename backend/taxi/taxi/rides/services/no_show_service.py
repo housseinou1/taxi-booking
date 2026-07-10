@@ -66,23 +66,51 @@ def get_no_show_fee_policy() -> dict:
 
 def haversine_meters(lat1, lng1, lat2, lng2) -> float:
     """Great-circle distance in meters."""
-    try:
-        lat1, lng1, lat2, lng2 = float(lat1), float(lng1), float(lat2), float(lng2)
-    except (TypeError, ValueError):
+    a = _parse_geo_coord(lat1, lng1)
+    b = _parse_geo_coord(lat2, lng2)
+    if not a or not b:
         return float("inf")
+    lat1, lng1 = a
+    lat2, lng2 = b
     radius_m = 6371000.0
     phi1, phi2 = math.radians(lat1), math.radians(lat2)
     d_phi = math.radians(lat2 - lat1)
     d_lambda = math.radians(lng2 - lng1)
-    a = (
+    a_val = (
         math.sin(d_phi / 2) ** 2
         + math.cos(phi1) * math.cos(phi2) * math.sin(d_lambda / 2) ** 2
     )
-    return 2 * radius_m * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return 2 * radius_m * math.atan2(math.sqrt(a_val), math.sqrt(1 - a_val))
 
 
-def distance_to_pickup_m(ride, lat, lng) -> float:
-    return haversine_meters(lat, lng, ride.pickup_lat, ride.pickup_lng)
+def _parse_geo_coord(lat, lng):
+    """Return (lat, lng) floats or None. Corrects common lat/lng swap."""
+    if lat is None or lng is None or lat == "" or lng == "":
+        return None
+    try:
+        lat_f = float(lat)
+        lng_f = float(lng)
+    except (TypeError, ValueError):
+        return None
+
+    if abs(lat_f) > 90 and abs(lng_f) <= 90:
+        lat_f, lng_f = lng_f, lat_f
+    elif lat_f < 0 and lat_f > -25 and lng_f > 0 and lng_f < 30 and abs(lat_f) < 25:
+        lat_f, lng_f = lng_f, lat_f
+
+    if abs(lat_f) > 90 or abs(lng_f) > 180:
+        return None
+    if lat_f == 0 and lng_f == 0:
+        return None
+    return lat_f, lng_f
+
+
+def distance_to_pickup_m(ride, lat, lng):
+    pickup = _parse_geo_coord(ride.pickup_lat, ride.pickup_lng)
+    driver = _parse_geo_coord(lat, lng)
+    if not pickup or not driver:
+        return None
+    return haversine_meters(driver[0], driver[1], pickup[0], pickup[1])
 
 
 def evaluate_no_show_eligibility(

@@ -261,7 +261,19 @@ function App() {
     if (!isAuthenticated) return;
     initPushNotifications((data) => {
       const route = getRouteFromNotification(data, getAppType());
-      if (route) window.location.href = route;
+      if (!route) return;
+      const currentPath = window.location.pathname;
+      if (
+        route === "/driver" &&
+        (currentPath === "/driver" || currentPath === "/")
+      ) {
+        window.dispatchEvent(
+          new CustomEvent("yala:driver-focus-ride", { detail: data })
+        );
+        return;
+      }
+      if (currentPath === route) return;
+      window.location.href = route;
     }, API_URL);
   }, [isAuthenticated]);
 
@@ -2873,6 +2885,28 @@ function SettingsPage({ logout }) {
           <span>Sign out from this device and return to the landing page.</span>
         </div>
         <button onClick={logout}>Log out</button>
+        <button
+          type="button"
+          onClick={async () => {
+            try {
+              const access = localStorage.getItem("access");
+              if (access) {
+                await fetch(`${API_URL}/auth/logout-all-devices/`, {
+                  method: "POST",
+                  headers: {
+                    Authorization: `Bearer ${access}`,
+                    "Content-Type": "application/json",
+                  },
+                });
+              }
+            } catch (error) {
+              // Still clear local session even if remote revoke fails.
+            }
+            logout();
+          }}
+        >
+          Log out all devices
+        </button>
       </section>
     </main>
   );

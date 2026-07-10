@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { formatMoney } from "../../marketConfig";
-import { playRideRequestAlert } from "../../native/sound";
+import { playRideRequestAlert, stopRideRequestAlert } from "../../native/sound";
 import "./RideRequestCard.css";
 
 const RIDE_TYPE_ICONS = {
@@ -114,6 +114,7 @@ export default function RideRequestCard({
     return () => {
       cancelled = true;
       window.clearInterval(intervalId);
+      stopRideRequestAlert();
     };
   }, [enableSound, expired, ride]);
 

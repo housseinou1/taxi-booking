@@ -530,6 +530,35 @@ export async function playRideRequestAlert({ force = false } = {}) {
   return chimePlayed;
 }
 
+/** Stop ride-request alert audio immediately (accept, decline, active trip). */
+export function stopRideRequestAlert() {
+  if (notificationAudio) {
+    try {
+      notificationAudio.pause();
+      notificationAudio.currentTime = 0;
+    } catch (error) {
+      // ignore
+    }
+  }
+
+  if (notificationAudioFallback) {
+    try {
+      notificationAudioFallback.pause();
+      notificationAudioFallback.currentTime = 0;
+    } catch (error) {
+      // ignore
+    }
+  }
+
+  if (isNative()) {
+    getNativeAudioPlugin().then((NativeAudio) => {
+      if (!NativeAudio?.stop) return;
+      NativeAudio.stop({ assetId: "delivery_request" }).catch(() => {});
+      NativeAudio.stop({ assetId: "notification" }).catch(() => {});
+    });
+  }
+}
+
 export async function playChatMessageSound() {
   try {
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
