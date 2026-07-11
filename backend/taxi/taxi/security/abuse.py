@@ -174,7 +174,7 @@ def validate_driver_location(profile, lat, lng):
     if profile.status != "approved":
         raise ValueError("Only approved drivers can update their location.")
 
-    lat, lng = validate_coordinates(lat, lng)
+    lat, lng = validate_coordinates(lat, lng, enforce_service_area=False)
     now = time.time()
     key = f"driver-location:{profile.user_id}"
     previous = cache.get(key)

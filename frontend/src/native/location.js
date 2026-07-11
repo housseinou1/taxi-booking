@@ -63,6 +63,117 @@ export async function requestLocationPermission(background = false) {
 }
 
 /**
+ * Watches the device foreground location and invokes the callback on every update.
+ * Prefers the Capacitor Geolocation plugin on native installs (more reliable on
+ * Android WebViews) and falls back to the browser navigator.geolocation API.
+ *
+ * @param {Object} options
+ * @param {(position: {lat: number, lng: number, accuracy?: number}) => void} options.onLocation - Called with each location update
+ * @param {(error: {code?: number, message: string}) => void} options.onError - Called on errors
+ * @param {boolean} [options.enableHighAccuracy=true]
+ * @param {number} [options.timeout=12000]
+ * @param {number} [options.maximumAge=5000]
+ * @returns {Promise<() => void>} Cleanup function that stops watching
+ */
+export async function watchForegroundLocation({
+  onLocation,
+  onError,
+  enableHighAccuracy = true,
+  timeout = 12000,
+  maximumAge = 5000,
+}) {
+  const handleError = (error) => {
+    const message = error?.message || "GPS unavailable";
+    const code = error?.code;
+    if (onError) onError({ code, message });
+  };
+
+  // Native Capacitor path: more reliable on Android, triggers system permission dialog
+  if (isNative() && Geolocation) {
+    try {
+      // Request permissions first so the user sees the system dialog if needed
+      const perm = await Geolocation.requestPermissions();
+      if (perm.location !== 'granted') {
+        handleError({ code: 1, message: "Location permission denied" });
+        return () => {};
+      }
+
+      // Get an immediate current position so the UI is not stuck waiting for watch events
+      try {
+        const current = await Geolocation.getCurrentPosition({
+          enableHighAccuracy,
+          timeout,
+          maximumAge,
+        });
+        if (onLocation) {
+          onLocation({
+            lat: current.coords.latitude,
+            lng: current.coords.longitude,
+            accuracy: current.coords.accuracy,
+          });
+        }
+      } catch (e) {
+        // getCurrentPosition may fail; the watcher below will keep retrying
+        handleError(e);
+      }
+
+      const watcher = await Geolocation.watchPosition(
+        {
+          enableHighAccuracy,
+          timeout,
+          maximumAge,
+        },
+        (position, error) => {
+          if (error) {
+            handleError(error);
+            return;
+          }
+          if (position?.coords && onLocation) {
+            onLocation({
+              lat: position.coords.latitude,
+              lng: position.coords.longitude,
+              accuracy: position.coords.accuracy,
+            });
+          }
+        }
+      );
+
+      return () => {
+        try {
+          Geolocation.clearWatch({ id: watcher });
+        } catch {
+          // Ignore cleanup errors
+        }
+      };
+    } catch (e) {
+      handleError(e);
+    }
+  }
+
+  // Browser / fallback path
+  if (!navigator.geolocation) {
+    handleError({ message: "GPS is not available on this device." });
+    return () => {};
+  }
+
+  const watchId = navigator.geolocation.watchPosition(
+    (position) => {
+      if (onLocation) {
+        onLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+        });
+      }
+    },
+    (error) => handleError(error),
+    { enableHighAccuracy, maximumAge, timeout }
+  );
+
+  return () => navigator.geolocation.clearWatch(watchId);
+}
+
+/**
  * Starts background location tracking. Sends location updates via the provided
  * WebSocket connection. Designed for driver apps.
  *

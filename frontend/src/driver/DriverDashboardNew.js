@@ -11,7 +11,7 @@ import {
 import { MARKET, isPointInServiceArea } from "../marketConfig";
 import { subscribeRideUpdates } from "../socket";
 import { preloadNotificationSound, unlockRideRequestSound, playRideRequestAlert, stopRideRequestAlert } from "../native/sound";
-import { driverNeedsDocumentAlert, getDriverApprovalNotice } from "./utils/documentReview";
+import { driverDocumentsBlockOnline, getDriverApprovalNotice, getDriverDocumentsAlertLevel } from "./utils/documentReview";
 import {
   ensureDriverAgreementBeforeOnline,
   isDriverTermsError,
@@ -22,7 +22,7 @@ import {
 import { formatAvailabilityApiError } from "./utils/availabilityErrors";
 import { isDeliveryAppInstall, isDriverLyftUI, isNative } from "../native/platform";
 import { unregisterPushNotifications } from "../native/push";
-import { requestLocationPermission, stopBackgroundLocationTracking } from "../native/location";
+import { requestLocationPermission, stopBackgroundLocationTracking, watchForegroundLocation } from "../native/location";
 import { haversineKm } from "../delivery/deliveryPricing";
 import { computeArriveGate, parseGeoCoord } from "../utils/rideGeo";
 import { getStableDeviceId } from "../native/deviceId";
@@ -36,11 +36,15 @@ import DriverPerformanceStrip from "./components/DriverPerformanceStrip";
 import useRideLiveState from "./hooks/useRideLiveState";
 import { getAutoNavigationEnabled } from "./utils/driverNavigationPrefs";
 import { openExternalNavigation } from "./utils/externalNavigation";
+import { driverTripDebug } from "./utils/driverTripDebug";
 import { getNavigationDestination } from "./components/MultiStopProgress";
 import HamburgerMenu from "./components/HamburgerMenu";
 import RideRequestCard from "./components/RideRequestCard";
 import DriverProfilePage from "./DriverProfilePage";
 import RideStatusButtons from "../RideStatusButtons";
+import SafetyEmergencyPanel from "../safety/SafetyEmergencyPanel";
+import TripSafetyPrompt from "../safety/TripSafetyPrompt";
+import useTripSafetyMonitor from "../safety/useTripSafetyMonitor";
 import "./driver-tokens.css";
 import "./lyft-driver.css";
 
@@ -75,7 +79,7 @@ function reconcileActiveRideSnapshot(rides, snapshotRef) {
   const match = rides.find((ride) => String(ride.id) === String(snapshotId));
   if (match && ACTIVE_RIDE_STATUSES.includes(match.status)) {
     snapshotRef.current = match;
-  } else {
+  } else if (match && TERMINAL_RIDE_STATUSES.includes(match.status)) {
     snapshotRef.current = null;
   }
 }
@@ -175,6 +179,7 @@ function DriverDashboardContent() {
   const [driverRides, setDriverRides] = useState([]);
   const [routePath, setRoutePath] = useState([]);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showSafety, setShowSafety] = useState(false);
   const [currentView, setCurrentView] = useState("dashboard");
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [driverNotice, setDriverNotice] = useState("");
@@ -183,6 +188,7 @@ function DriverDashboardContent() {
   const [statusLoadError, setStatusLoadError] = useState("");
   const [toggleError, setToggleError] = useState("");
   const [gpsUnavailable, setGpsUnavailable] = useState(false);
+  const [locationPermissionDenied, setLocationPermissionDenied] = useState(false);
   const [acceptingRideId, setAcceptingRideId] = useState(null);
 
   const alertedRideIdsRef = useRef(new Set());
@@ -198,6 +204,18 @@ function DriverDashboardContent() {
   const onlineNoticeTimeoutRef = useRef(null);
   const acceptingRideIdRef = useRef(null);
   const autoAcceptedRideIdRef = useRef(null);
+  const recentRideEventsRef = useRef(new Set());
+
+  const shouldProcessRideEvent = useCallback((message, source = "event") => {
+    const rideId = message?.ride_id || message?.id;
+    const type = message?.type || message?.status || source;
+    if (!rideId) return true;
+    const key = `${source}:${type}:${rideId}`;
+    if (recentRideEventsRef.current.has(key)) return false;
+    recentRideEventsRef.current.add(key);
+    window.setTimeout(() => recentRideEventsRef.current.delete(key), 4000);
+    return true;
+  }, []);
 
   useEffect(() => {
     availabilityMutationRef.current = false;
@@ -210,11 +228,30 @@ function DriverDashboardContent() {
   useEffect(() => {
     if (!isNative()) return undefined;
     let cancelled = false;
-    requestLocationPermission().then((result) => {
-      if (!cancelled && !result.granted) {
+    let attempts = 0;
+
+    const checkPermission = async () => {
+      attempts += 1;
+      const result = await requestLocationPermission();
+      if (cancelled) return;
+
+      console.log("[driver-location] permission check", { attempt: attempts, granted: result.granted, reason: result.reason });
+      driverTripDebug("gps-permission", { attempt: attempts, ...result });
+
+      if (!result.granted) {
+        setLocationPermissionDenied(true);
         setGpsUnavailable(true);
+        // Retry a few times in case the user is still responding to the system dialog.
+        if (attempts < 3) {
+          window.setTimeout(checkPermission, 2000);
+        }
+      } else {
+        setLocationPermissionDenied(false);
+        setGpsUnavailable(false);
       }
-    });
+    };
+
+    checkPermission();
     return () => {
       cancelled = true;
     };
@@ -241,6 +278,11 @@ function DriverDashboardContent() {
     () => getActiveRideFromList(driverRides) || activeRideSnapshotRef.current || null,
     [driverRides]
   );
+
+  const { openEvent: safetyEvent, respond: respondSafetyEvent } = useTripSafetyMonitor({
+    rideId: activeRide?.id,
+    enabled: Boolean(activeRide?.id),
+  });
 
   useEffect(() => {
     activeRideRef.current = activeRide;
@@ -442,6 +484,9 @@ function DriverDashboardContent() {
               : ride
           );
         }
+        if (prevActive && !nextActive) {
+          return [prevActive, ...rides.filter((ride) => String(ride.id) !== String(prevActive.id))];
+        }
         return rides;
       });
     } catch (error) {
@@ -490,7 +535,14 @@ function DriverDashboardContent() {
           return prev.filter((ride) => String(ride.id) !== String(rideId));
         }
         const others = prev.filter((ride) => String(ride.id) !== String(rideId));
-        return [{ ...updated, id: rideId, status }, ...others];
+        const merged = {
+          ...updated,
+          id: rideId,
+          status: status || updated.status,
+          pickup_pin_verified:
+            updated.pickup_pin_verified ?? Boolean(updated.pickup_pin_verified_at),
+        };
+        return [merged, ...others];
       });
     } else {
       fetchDriverRides();
@@ -540,6 +592,13 @@ function DriverDashboardContent() {
         }
         if (driverProfile?.status && driverProfile.status !== "approved") {
           setToggleError(getDriverApprovalNotice(driverProfile));
+          finishToggle();
+          return;
+        }
+        if (documentsBlockOnline) {
+          setToggleError(
+            "One or more required documents have expired. Upload renewed documents before going online."
+          );
           finishToggle();
           return;
         }
@@ -623,6 +682,7 @@ function DriverDashboardContent() {
       finishToggle();
     }
   }, [
+    documentsBlockOnline,
     driverProfile,
     fetchAvailableRides,
     fetchDriverStats,
@@ -673,8 +733,14 @@ function DriverDashboardContent() {
         current_lat: location[0],
         current_lng: location[1],
       });
+      console.log("[driver-location] backend update success", { lat: location[0], lng: location[1] });
+      driverTripDebug("location-update-ok", { lat: location[0], lng: location[1] });
     } catch (error) {
-      console.log("Location update error:", error.response?.data || error);
+      driverTripDebug("location-update-fail", {
+        status: error.response?.status,
+        detail: error.response?.data?.detail || error.response?.data?.error,
+      });
+      console.log("[driver-location] backend update error:", error.response?.data || error);
       if (isAuthError(error)) { sendToLogin(); }
     }
   }, [isAuthError, sendToLogin]);
@@ -713,6 +779,13 @@ function DriverDashboardContent() {
         return [hydratedRide, ...nonActive];
       });
       fetchDriverRides();
+      if (isNative()) {
+        requestLocationPermission().then((result) => {
+          driverTripDebug("gps-permission-on-accept", result);
+          setLocationPermissionDenied(!result.granted);
+          if (result.granted) setGpsUnavailable(false);
+        });
+      }
       if (getAutoNavigationEnabled()) {
         openExternalNavigation(hydratedRide, "pickup");
       }
@@ -925,33 +998,23 @@ function DriverDashboardContent() {
   useEffect(() => {
     const unsub = subscribeRideUpdates((msg) => {
       if (!msg) return;
+      if (!shouldProcessRideEvent(msg, "ws")) return;
+
+      const msgRideId = msg?.ride_id || msg?.id;
+      const active = activeRideRef.current;
+      const activeId = active ? String(active.id) : null;
+      const isSameActiveRide = Boolean(activeId && msgRideId && activeId === String(msgRideId));
+
       if (
         msg.type === "ride_request"
         && (isOnlineRef.current || serverOnlineRef.current)
-        && !activeRideRef.current
+        && !active
       ) {
-        const msgRideId = msg?.ride_id || msg?.id;
-        if (
-          activeRideRef.current &&
-          msgRideId &&
-          String(activeRideRef.current.id) === String(msgRideId)
-        ) {
-          return;
-        }
         mergeIncomingRideRequest(msg);
         playRideRequestAlert({ force: true });
         return;
       }
-      if (msg.type === "ride_request" && activeRideRef.current) {
-        const msgRideId = msg?.ride_id || msg?.id;
-        if (msgRideId && String(activeRideRef.current.id) === String(msgRideId)) {
-          return;
-        }
-      }
-      if (
-        (msg.type === "ride_update" || msg.type === "ride_status_update") &&
-        silentMergeActiveRide(msg)
-      ) {
+      if (msg.type === "ride_request" && active) {
         return;
       }
       if (msg.type === "document_status") {
@@ -969,24 +1032,50 @@ function DriverDashboardContent() {
         }
         return;
       }
-      if (msg.type === "ride_request" || msg.type === "ride_request_expired" || msg.type === "ride_update" || msg.type === "ride_status_update" || msg.status || msg.ride_id) {
+      if (
+        isSameActiveRide &&
+        (msg.type === "ride_update" || msg.type === "ride_status_update" || msg.status) &&
+        silentMergeActiveRide(msg)
+      ) {
+        return;
+      }
+      if (active) {
+        return;
+      }
+      if (
+        msg.type === "ride_request" ||
+        msg.type === "ride_request_expired" ||
+        msg.type === "ride_update" ||
+        msg.type === "ride_status_update" ||
+        msg.status ||
+        msg.ride_id
+      ) {
         fetchDriverRides();
         fetchDriverStats();
-        if (!activeRideRef.current) {
-          fetchAvailableRides();
-        }
+        fetchAvailableRides();
       }
     });
     return () => unsub();
-  }, [fetchAvailableRides, fetchDriverRides, fetchDriverStats, fetchDriverStatus, handleRideStatusChange, mergeIncomingRideRequest, silentMergeActiveRide]);
+  }, [fetchAvailableRides, fetchDriverRides, fetchDriverStats, fetchDriverStatus, handleRideStatusChange, mergeIncomingRideRequest, shouldProcessRideEvent, silentMergeActiveRide]);
 
   // Foreground push: refresh silently; never duplicate active ride UI.
   useEffect(() => {
     const onPushReceived = (event) => {
       const data = event?.detail?.data || event?.detail?.notification?.data || {};
+      if (!shouldProcessRideEvent(data, "push")) return;
+
       const type = data?.type;
       const rideId = data?.ride_id || data?.id;
       const active = activeRideRef.current;
+
+      if (
+        data.status === "cancelled" ||
+        data.status === "completed" ||
+        data.status === "rider_no_show"
+      ) {
+        handleRideStatusChange(data);
+        return;
+      }
 
       if (active && rideId && String(active.id) === String(rideId)) {
         if (type === "ride_request") return;
@@ -1009,7 +1098,9 @@ function DriverDashboardContent() {
       ) {
         return;
       }
-      fetchDriverRides();
+      if (!activeRideRef.current) {
+        fetchDriverRides();
+      }
     };
 
     window.addEventListener("yala:push-received", onPushReceived);
@@ -1018,36 +1109,73 @@ function DriverDashboardContent() {
       window.removeEventListener("yala:push-received", onPushReceived);
       window.removeEventListener("yala:driver-focus-ride", onFocusRide);
     };
-  }, [fetchDriverRides, mergeIncomingRideRequest, silentMergeActiveRide]);
+  }, [fetchDriverRides, handleRideStatusChange, mergeIncomingRideRequest, shouldProcessRideEvent, silentMergeActiveRide]);
 
-  // Geolocation: watch driver position (real GPS only — no pickup teleport)
+  // Geolocation: watch driver position with Capacitor plugin when native
   useEffect(() => {
-    if (!navigator.geolocation) {
-      setGpsUnavailable(true);
-      setDriverPosition(null);
-      return undefined;
-    }
-    const watchId = navigator.geolocation.watchPosition(
-      (position) => {
-        const realPos = [position.coords.latitude, position.coords.longitude];
-        const parsed = parseGeoCoord(realPos[0], realPos[1]);
-        if (parsed && isPointInServiceArea([parsed.lat, parsed.lng])) {
+    let cleanup = () => {};
+    let mounted = true;
+
+    const startWatch = async () => {
+      cleanup = await watchForegroundLocation({
+        onLocation: ({ lat, lng, accuracy }) => {
+          if (!mounted) return;
+
+          const parsed = parseGeoCoord(lat, lng);
+          if (!parsed) {
+            driverTripDebug("gps-parse-fail", { lat, lng, accuracy });
+            setGpsUnavailable(true);
+            return;
+          }
+
           setGpsUnavailable(false);
+          setLocationPermissionDenied(false);
           setDriverPosition([parsed.lat, parsed.lng]);
           updateDriverLocation([parsed.lat, parsed.lng]);
-        } else {
+
+          driverTripDebug("gps-fix", {
+            lat: parsed.lat,
+            lng: parsed.lng,
+            accuracy,
+            inServiceArea: isPointInServiceArea([parsed.lat, parsed.lng]),
+            onActiveRide: Boolean(activeRideRef.current),
+          });
+        },
+        onError: ({ code, message }) => {
+          if (!mounted) return;
+          driverTripDebug("gps-error", { code, message });
           setGpsUnavailable(true);
-          setDriverPosition(null);
-        }
-      },
-      () => {
-        setGpsUnavailable(true);
-        setDriverPosition(null);
-      },
-      { enableHighAccuracy: true, maximumAge: 5000, timeout: 12000 }
-    );
-    return () => navigator.geolocation.clearWatch(watchId);
+          if (!activeRideRef.current) {
+            setDriverPosition(null);
+          }
+        },
+        enableHighAccuracy: true,
+        maximumAge: 5000,
+        timeout: 12000,
+      });
+    };
+
+    startWatch();
+
+    return () => {
+      mounted = false;
+      cleanup();
+    };
   }, [updateDriverLocation]);
+
+  useEffect(() => {
+    if (!activeRide?.id || !isNative()) return undefined;
+    let cancelled = false;
+    requestLocationPermission().then((result) => {
+      if (cancelled) return;
+      driverTripDebug("gps-permission-on-ride", { rideId: activeRide.id, ...result });
+      setLocationPermissionDenied(!result.granted);
+      if (result.granted) setGpsUnavailable(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeRide?.id]);
 
   // Refresh badge immediately when a document is uploaded from DriverDocuments page
   useEffect(() => {
@@ -1060,10 +1188,11 @@ function DriverDashboardContent() {
   useEffect(() => {
     const refreshDashboard = () => {
       fetchDriverStatus();
-      fetchDriverRides();
-      if (!activeRideRef.current) {
-        fetchAvailableRides();
+      if (activeRideRef.current) {
+        return;
       }
+      fetchDriverRides();
+      fetchAvailableRides();
     };
 
     const onVisible = () => {
@@ -1122,8 +1251,13 @@ function DriverDashboardContent() {
   const missedRides = driverProfile?.total_rides_missed ?? 0;
   const cancellationWarning =
     driverProfile?.cancellation_warning || driverProfile?.account_risk_reason || "";
-  const documentsAlert = useMemo(
-    () => driverNeedsDocumentAlert(driverProfile),
+  const documentsAlertLevel = useMemo(
+    () => getDriverDocumentsAlertLevel(driverProfile),
+    [driverProfile]
+  );
+  const documentsAlert = documentsAlertLevel !== null;
+  const documentsBlockOnline = useMemo(
+    () => driverDocumentsBlockOnline(driverProfile),
     [driverProfile]
   );
   const todayTripsCount = useMemo(
@@ -1170,12 +1304,11 @@ function DriverDashboardContent() {
       driverPosition,
       pickupLat: activeRide.pickup_lat,
       pickupLng: activeRide.pickup_lng,
-      gpsReliable: !gpsUnavailable && Boolean(driverPosition),
     });
-  }, [activeRide, driverPosition, gpsUnavailable]);
+  }, [activeRide, driverPosition]);
 
   const distanceToNextKm = useMemo(() => {
-    if (!activeRide || gpsUnavailable || !driverPosition) return null;
+    if (!activeRide || !driverPosition) return null;
 
     if (["accepted", "driver_arriving", "driver_arrived"].includes(activeRide.status)) {
       return arriveGate?.distanceKm ?? null;
@@ -1211,11 +1344,44 @@ function DriverDashboardContent() {
       targetCoord.lat,
       targetCoord.lng
     );
-  }, [activeRide, arriveGate, driverPosition, gpsUnavailable]);
+  }, [activeRide, arriveGate, driverPosition]);
 
   const liveTripState = useRideLiveState(activeRide, driverPosition, {
     distanceKm: distanceToNextKm,
   });
+
+  useEffect(() => {
+    if (!activeRide) return;
+    const slideStatuses = ["accepted", "driver_arriving"];
+    driverTripDebug("trip-state", {
+      status: activeRide.status,
+      driverLat: driverPosition?.[0] ?? null,
+      driverLng: driverPosition?.[1] ?? null,
+      pickupLat: activeRide.pickup_lat,
+      pickupLng: activeRide.pickup_lng,
+      distanceKm: distanceToNextKm,
+      distanceM: arriveGate?.distanceM ?? null,
+      nearPickup: arriveGate?.near ?? false,
+      gpsUnavailable,
+      locationPermissionDenied,
+      slideVisible:
+        slideStatuses.includes(activeRide.status) && Boolean(arriveGate?.near),
+      slideReason: !driverPosition
+        ? "no_driver_coords"
+        : !arriveGate?.reliable
+        ? "distance_unknown"
+        : !arriveGate?.near
+        ? `too_far_${Math.round(arriveGate?.distanceM ?? 0)}m`
+        : "ready",
+    });
+  }, [
+    activeRide,
+    arriveGate,
+    distanceToNextKm,
+    driverPosition,
+    gpsUnavailable,
+    locationPermissionDenied,
+  ]);
 
   // Auto-accept incoming rides when enabled
   useEffect(() => {
@@ -1271,8 +1437,33 @@ function DriverDashboardContent() {
         if (errorMsg) banners.push({ msg: errorMsg, bg: "rgba(239,68,68,0.92)", alert: true });
         if (driverNotice && !activeRide) banners.push({ msg: driverNotice, bg: "rgba(30,58,138,0.92)" });
         if (acceptError) banners.push({ msg: acceptError, bg: "rgba(239,68,68,0.92)", alert: true });
-        if (gpsUnavailable) banners.push({ msg: "Location unavailable. Enable GPS to navigate.", bg: "rgba(239,68,68,0.92)", alert: true });
+        if (!driverPosition && (gpsUnavailable || locationPermissionDenied)) {
+          banners.push({
+            msg: locationPermissionDenied
+              ? "Location permission denied. Enable GPS in phone settings."
+              : "Location unavailable. Enable GPS to navigate.",
+            bg: "rgba(239,68,68,0.92)",
+            alert: true,
+          });
+        }
         if (cancellationWarning && !activeRide) banners.push({ msg: cancellationWarning, bg: "rgba(245,158,11,0.95)" });
+        if (documentsBlockOnline && !activeRide) {
+          banners.push({
+            msg: "Required documents have expired. Upload renewed documents before going online.",
+            bg: "rgba(239,68,68,0.92)",
+            alert: true,
+          });
+        } else if (documentsAlertLevel === "warning" && !activeRide) {
+          const soon = driverProfile?.expiring_soon_documents?.[0];
+          const days = soon?.days_remaining;
+          banners.push({
+            msg:
+              days !== undefined && days !== null
+                ? `A required document expires in ${days} day${days === 1 ? "" : "s"}. Open Documents to renew.`
+                : "A required document is expiring soon. Open Documents to renew.",
+            bg: "rgba(245,158,11,0.95)",
+          });
+        }
         if (banners.length === 0) return null;
         return (
           <div style={noticeBannerStackStyle}>
@@ -1303,7 +1494,16 @@ function DriverDashboardContent() {
             <span />
             <span />
           </span>
-          {documentsAlert ? <span className="driver-dashboard-new__menu-btn-dot" aria-label="Documents need attention" /> : null}
+          {documentsAlert ? (
+            <span
+              className={`driver-dashboard-new__menu-btn-dot driver-dashboard-new__menu-btn-dot--${documentsAlertLevel}`}
+              aria-label={
+                documentsAlertLevel === "warning"
+                  ? "Document expiring soon"
+                  : "Documents need attention"
+              }
+            />
+          ) : null}
         </button>
 
         <div className="driver-dashboard-new__topbar-center">
@@ -1398,8 +1598,9 @@ function DriverDashboardContent() {
               .filter(Boolean)
               .join(" ")}
             onClick={toggleAvailability}
-            disabled={toggleLoading}
+            disabled={toggleLoading || (!isOnline && documentsBlockOnline)}
             aria-label={isOnline ? "Go offline" : "Go online"}
+            aria-disabled={!isOnline && documentsBlockOnline}
             data-testid="driver-availability-toggle"
           >
             <span className="driver-go-btn__icon" aria-hidden="true">
@@ -1433,7 +1634,7 @@ function DriverDashboardContent() {
               ride={activeRide}
               liveState={liveTripState}
               distanceKm={distanceToNextKm}
-              locationPending={gpsUnavailable || distanceToNextKm == null}
+              locationPending={!driverPosition}
               onNoShow={() => setDriverCancelOpen(true)}
             />
             <div className="driver-nav-sheet__route">
@@ -1508,6 +1709,60 @@ function DriverDashboardContent() {
         />
       )}
 
+      {activeRide ? (
+        <button
+          type="button"
+          className="driver-dashboard-new__sos"
+          onClick={() => setShowSafety(true)}
+          aria-label="Open safety center"
+          style={{
+            position: "fixed",
+            right: 16,
+            bottom: activeRide ? 180 : 96,
+            zIndex: 900,
+            width: 56,
+            height: 56,
+            borderRadius: "999px",
+            border: 0,
+            background: "#dc2626",
+            color: "#fff",
+            fontWeight: 900,
+            boxShadow: "0 10px 30px rgba(220,38,38,.45)",
+          }}
+        >
+          SOS
+        </button>
+      ) : null}
+
+      {showSafety && activeRide ? (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 1100,
+            background: "rgba(0,0,0,.55)",
+            display: "grid",
+            placeItems: "center",
+            padding: 16,
+          }}
+        >
+          <SafetyEmergencyPanel
+            role="driver"
+            currentRide={activeRide}
+            onClose={() => setShowSafety(false)}
+          />
+        </div>
+      ) : null}
+
+      <TripSafetyPrompt
+        event={safetyEvent}
+        onSafe={() => respondSafetyEvent(true)}
+        onNeedHelp={() => {
+          respondSafetyEvent(false, "Driver requested help from safety prompt");
+          setShowSafety(true);
+        }}
+      />
+
       {/* ─── Hamburger Menu ──────────────────────────────────── */}
       <HamburgerMenu
         isOpen={menuOpen}
@@ -1521,11 +1776,24 @@ function DriverDashboardContent() {
           nextLevelPoints: driverProfile?.next_level_points || 3000,
           is_online: isOnline,
           documents_alert: documentsAlert,
+          documents_alert_level: documentsAlertLevel,
         }}
         onNavigate={(path) => {
-          if (path === "/driver/account" || path === "/driver/profile") { setCurrentView("profile"); setMenuOpen(false); }
-          else if (path === "/driver/documents") { setCurrentView("documents"); setMenuOpen(false); }
-          else { window.location.href = path; }
+          const basePath = String(path || "").split("?")[0];
+          if (basePath === "/driver/account" || basePath === "/driver/profile") {
+            if (path.includes("?")) {
+              window.history.replaceState(null, "", path);
+            }
+            setCurrentView("profile");
+            setMenuOpen(false);
+            return;
+          }
+          if (basePath === "/driver/documents") {
+            setCurrentView("documents");
+            setMenuOpen(false);
+            return;
+          }
+          window.location.href = path;
         }}
         onLogout={logout}
       />
