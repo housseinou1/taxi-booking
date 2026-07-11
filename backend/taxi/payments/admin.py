@@ -4,6 +4,7 @@ from .models import (
     MerchantWithdrawalRequest,
     Payment,
     PaymentRecord,
+    PlatformWithdrawalAccounts,
     RefundRequest,
     WalletAccount,
     WalletTransaction,
@@ -58,6 +59,11 @@ class CommissionConfigAdmin(admin.ModelAdmin):
 class MerchantWithdrawalRequestAdmin(admin.ModelAdmin):
     list_display = ("id", "merchant", "amount", "status", "created_at", "paid_at")
     list_filter = ("status",)
+
+
+@admin.register(PlatformWithdrawalAccounts)
+class PlatformWithdrawalAccountsAdmin(admin.ModelAdmin):
+    list_display = ("key", "bank_account", "bankily_number", "seddad_number", "updated_at", "updated_by")
 
 
 admin.site.register([WalletAccount, WalletTransaction])

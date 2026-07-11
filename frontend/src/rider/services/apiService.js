@@ -8,27 +8,6 @@ import riderApi from "./authenticatedApi";
  */
 
 /**
- * Retrieve the JWT access token from localStorage.
- * @returns {string|null} The token or null if not stored.
- */
-export function getToken() {
-  return localStorage.getItem("access");
-}
-
-/**
- * Build the Authorization header object for authenticated requests.
- * @returns {object} Headers object with Bearer token.
- * @throws {Error} If no token is available.
- */
-function authHeaders() {
-  const token = getToken();
-  if (!token) {
-    throw new ApiError("No authentication token found", 401, "auth_required");
-  }
-  return { Authorization: `Bearer ${token}` };
-}
-
-/**
  * Structured API error class for consistent error handling.
  */
 export class ApiError extends Error {
@@ -103,8 +82,6 @@ export async function requestRide(params) {
       terms_accepted: params.terms_accepted || undefined,
       privacy_accepted: params.privacy_accepted || undefined,
       privacy_policy_accepted: params.privacy_policy_accepted || undefined,
-    }, {
-      headers: authHeaders(),
     });
 
     return response.data?.ride || response.data;
@@ -126,9 +103,6 @@ export async function cancelRide(rideId, reason) {
       {
         reason,
         cancelled_by: "rider",
-      },
-      {
-        headers: authHeaders(),
       }
     );
 
@@ -148,10 +122,7 @@ export async function cancelRide(rideId, reason) {
  */
 export async function getRideHistory() {
   try {
-    const response = await riderApi.get(`${API_URL}/rides/history/`, {
-      headers: authHeaders(),
-    });
-
+    const response = await riderApi.get(`${API_URL}/rides/history/`);
     return Array.isArray(response.data) ? response.data : [];
   } catch (error) {
     throw handleError(error);
@@ -171,12 +142,8 @@ export async function validatePromo(code, estimatedFare) {
       {
         code,
         estimated_fare: estimatedFare,
-      },
-      {
-        headers: authHeaders(),
       }
     );
-
     return response.data;
   } catch (error) {
     throw handleError(error);
@@ -192,8 +159,7 @@ export async function addRideStop(rideId, stop) {
   try {
     const response = await riderApi.post(
       `${API_URL}/rides/${rideId}/stops/`,
-      stop,
-      { headers: authHeaders() }
+      stop
     );
     return response.data;
   } catch (error) {
@@ -208,10 +174,7 @@ export async function addRideStop(rideId, stop) {
  */
 export async function getRideById(rideId) {
   try {
-    const response = await riderApi.get(`${API_URL}/rides/${rideId}/`, {
-      headers: authHeaders(),
-    });
-
+    const response = await riderApi.get(`${API_URL}/rides/${rideId}/`);
     return response.data;
   } catch (error) {
     throw handleError(error);
@@ -220,7 +183,7 @@ export async function getRideById(rideId) {
 
 /**
  * Get the rider's currently active ride (if any).
- * Fetches ride history and returns the first ride with an active status.
+ * Tries GET /rides/active/ first, then falls back to a history scan.
  * @returns {Promise<object|null>} The active ride or null if none found.
  */
 export async function getActiveRide() {
@@ -234,19 +197,28 @@ export async function getActiveRide() {
   ]);
 
   try {
-    const rides = await getRideHistory();
-    const activeRide = rides.find((ride) => activeStatuses.has(ride.status));
-    if (!activeRide?.id) {
-      return activeRide || null;
+    const response = await riderApi.get(`${API_URL}/rides/active/`);
+    const data = response.data?.ride || response.data;
+    if (data?.id && activeStatuses.has(data.status)) {
+      return data;
     }
-
-    try {
-      return await getRideById(activeRide.id);
-    } catch (detailError) {
-      return activeRide;
+    return null;
+  } catch (primaryError) {
+    if (primaryError.response?.status !== 404) {
+      try {
+        const rides = await getRideHistory();
+        const activeRide = rides.find((ride) => activeStatuses.has(ride.status));
+        if (!activeRide?.id) return null;
+        try {
+          return await getRideById(activeRide.id);
+        } catch (_) {
+          return activeRide;
+        }
+      } catch (fallbackError) {
+        throw handleError(fallbackError);
+      }
     }
-  } catch (error) {
-    throw handleError(error);
+    return null;
   }
 }
 
@@ -256,10 +228,7 @@ export async function getActiveRide() {
  */
 export async function getRiderProfile() {
   try {
-    const response = await riderApi.get(`${API_URL}/auth/me/`, {
-      headers: authHeaders(),
-    });
-
+    const response = await riderApi.get(`${API_URL}/auth/me/`);
     return response.data;
   } catch (error) {
     throw handleError(error);
@@ -267,7 +236,6 @@ export async function getRiderProfile() {
 }
 
 const apiService = {
-  getToken,
   requestRide,
   addRideStop,
   cancelRide,

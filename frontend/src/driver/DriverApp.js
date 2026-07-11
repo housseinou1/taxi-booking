@@ -7,7 +7,6 @@ import RideDashboard from "./RideDashboard";
 import { API_URL } from "../apiConfig";
 import SafetyEmergencyPanel from "../safety/SafetyEmergencyPanel";
 import { MARKET, formatMoney, isPointInServiceArea } from "../marketConfig";
-import RideStatusButtons from "../RideStatusButtons";
 import AnalyticsDashboard from "../admin/AnalyticsDashboard";
 import RideChat from "../components/RideChat";
 import RideCancellationModal, {
@@ -22,7 +21,6 @@ import {
   joinRideUpdates,
   leaveRideUpdates,
   sendDriverLocation,
-  subscribeRideUpdates,
 } from "../socket";
 import { EmergencySupportButton } from "./DriverSupport";
 import { isNative } from "../native/platform";
@@ -651,14 +649,10 @@ export default function DriverApp() {
     fetchAllDriverData();
     const interval = setInterval(fetchAllDriverData, 3000);
 
-    // Real-time: refresh immediately when a ride update comes via WebSocket
-    const unsub = subscribeRideUpdates((msg) => {
-      if (msg && (msg.type === "ride_update" || msg.status || msg.ride_id)) {
-        fetchAllDriverData();
-      }
-    });
+    // Note: WebSocket updates are handled by DriverDashboardNew.js to prevent duplicates
+    // Only periodic polling is needed here
 
-    return () => { clearInterval(interval); unsub(); };
+    return () => { clearInterval(interval); };
   }, [fetchAllDriverData]);
 
   useEffect(() => {
@@ -1072,7 +1066,14 @@ export default function DriverApp() {
         return;
       }
 
-      await axios.post(`${API_URL}/payments/withdrawals/request/`, withdrawalForm, authHeaders);
+      await axios.post(
+        `${API_URL}/payments/withdrawals/request/`,
+        {
+          ...withdrawalForm,
+          payout_method: defaultPayoutMethod?.id,
+        },
+        authHeaders
+      );
       setWithdrawalForm({ amount: "", note: "" });
       setMenuMessage("Withdrawal request submitted for admin approval.");
       fetchPayoutData();
@@ -1507,11 +1508,6 @@ export default function DriverApp() {
           </div>
           {activeRide && (
             <div style={activeRideActionStyle}>
-              <RideStatusButtons
-                ride={activeRide}
-                onStatusChange={fetchAllDriverData}
-                distanceToNextKm={activeRouteSummary?.distanceKm}
-              />
               {activeRide.status !== "in_progress" && (
                 <button
                   type="button"

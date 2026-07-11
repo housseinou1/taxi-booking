@@ -550,9 +550,15 @@
   font-weight: 900;
 }
 
-.dp-doc-status--approved {
+.dp-doc-status--approved,
+.dp-doc-status--valid {
   background: #dff7e8;
   color: #0d713f;
+}
+
+.dp-doc-status--expiring_soon {
+  background: #fff0c9;
+  color: #b45309;
 }
 
 .dp-doc-status--expired,

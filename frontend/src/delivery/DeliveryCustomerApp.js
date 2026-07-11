@@ -140,7 +140,9 @@ export default function DeliveryCustomerApp() {
   const [dropoffPin, setDropoffPin] = useState("");
   const [etaMinutes, setEtaMinutes] = useState(null);
   const [error, setError] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const [busyAction, setBusyAction] = useState(null);
+  const [paymentMethod, setPaymentMethod] = useState("card");
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [selectedStore, setSelectedStore] = useState(null);
   const [placedOrder, setPlacedOrder] = useState(null);
   const [chatOpen, setChatOpen] = useState(false);
@@ -149,7 +151,10 @@ export default function DeliveryCustomerApp() {
     activeDelivery?.status,
     { enabled: Boolean(activeDelivery), chatOpen }
   );
-  const [paymentDraft, setPaymentDraft] = useState({ paymentMethod: "cash", tip: 0 });
+  const [reportIssueText, setReportIssueText] = useState("");
+  const [reportIssueOpen, setReportIssueOpen] = useState(false);
+  const [reportIssueSubmitting, setReportIssueSubmitting] = useState(false);
+  const [reportIssueError, setReportIssueError] = useState("");
   const [customerTermsOnRecord, setCustomerTermsOnRecord] = useState(false);
   const [customerTermsChecked, setCustomerTermsChecked] = useState(false);
   const [customerPrivacyChecked, setCustomerPrivacyChecked] = useState(false);
@@ -196,14 +201,20 @@ export default function DeliveryCustomerApp() {
     [form.destination_lat, form.destination_lng, form.destination]
   );
 
+  const screenRef = useRef(screen);
+  useEffect(() => { screenRef.current = screen; }, [screen]);
+
   const loadActiveDelivery = useCallback(async () => {
     try {
       const deliveries = await apiRequest(`${API_URL}/deliveries/mine/`);
       const active = deliveries.find((item) => !["delivered", "cancelled"].includes(item.status));
       if (!active) {
         const lastDelivered = deliveries.find((item) => item.status === "delivered");
-        if (lastDelivered && screen === SCREENS.TRACKING) {
+        if (lastDelivered && screenRef.current === SCREENS.TRACKING) {
           setActiveDelivery(lastDelivered);
+          setBusyAction(null);
+          setPaymentSuccess(false);
+          setError("");
           setScreen(SCREENS.COMPLETE);
         }
         return;
@@ -214,11 +225,16 @@ export default function DeliveryCustomerApp() {
       setDropoffPin(active.dropoff_pin || "");
       if (active.status === "requested") setScreen(SCREENS.SEARCHING);
       else if (["accepted", "courier_arriving", "picked_up", "in_transit", "delivering", "delivery_exception"].includes(active.status)) setScreen(SCREENS.TRACKING);
-      else if (active.status === "delivered") setScreen(SCREENS.COMPLETE);
+      else if (active.status === "delivered") {
+        setBusyAction(null);
+        setPaymentSuccess(false);
+        setError("");
+        setScreen(SCREENS.COMPLETE);
+      }
     } catch (err) {
       // Silently ignore load errors — this is a background poll, not a user action
     }
-  }, [screen]);
+  }, []);
 
   useEffect(() => {
     loadActiveDelivery();
@@ -281,7 +297,12 @@ export default function DeliveryCustomerApp() {
         if (tracking.driver_lat && tracking.driver_lng) {
           setCourierPosition([tracking.driver_lat, tracking.driver_lng]);
         }
-        if (data.status === "delivered") setScreen(SCREENS.COMPLETE);
+        if (data.status === "delivered") {
+          setBusyAction(null);
+          setPaymentSuccess(false);
+          setError("");
+          setScreen(SCREENS.COMPLETE);
+        }
       } catch (_) {
         // ignore polling errors
       }
@@ -345,7 +366,7 @@ export default function DeliveryCustomerApp() {
       setError("Please accept the Terms & Conditions and Privacy Policy before placing your order.");
       return;
     }
-    setSubmitting(true);
+    setBusyAction("payment");
     setError("");
     try {
       if (needsTerms) {
@@ -353,13 +374,13 @@ export default function DeliveryCustomerApp() {
       }
       const apiCategory = mapCategoryToApi(category);
       const hasFile = form.prescription_photo instanceof File;
-      const payload = buildDeliveryPayload(form, apiCategory, distanceKm, selectedOption);
+      const payload = buildDeliveryPayload(form, apiCategory, distanceKm, selectedOption, paymentMethod);
       if (needsTerms) {
         payload.delivery_terms_accepted = true;
         payload.privacy_accepted = true;
       }
       const body = hasFile
-        ? buildDeliveryFormData(form, apiCategory, distanceKm, selectedOption)
+        ? buildDeliveryFormData(form, apiCategory, distanceKm, selectedOption, paymentMethod)
         : JSON.stringify(payload);
 
       if (hasFile && needsTerms) {
@@ -379,11 +400,13 @@ export default function DeliveryCustomerApp() {
       setDropoffPin(delivery.dropoff_pin || "");
       setEtaMinutes(delivery.estimated_duration_minutes || 25);
       setActiveDelivery(delivery);
+      setPaymentSuccess(true);
       setScreen(SCREENS.SEARCHING);
     } catch (err) {
       setError(err.message);
+      setPaymentSuccess(false);
     } finally {
-      setSubmitting(false);
+      setBusyAction(null);
     }
   };
 
@@ -409,49 +432,45 @@ export default function DeliveryCustomerApp() {
     setCourierPosition(null);
     setSelectedStore(null);
     setPlacedOrder(null);
+    setPaymentSuccess(false);
     setForm(initialForm);
     setScreen(SCREENS.HOME);
   };
 
-  const handleReportIssue = useCallback(async () => {
+  const handleReportIssue = useCallback(() => {
+    setReportIssueText("");
+    setReportIssueError("");
+    setReportIssueOpen(true);
+  }, []);
+
+  const submitReportIssue = useCallback(async () => {
     if (!activeDelivery?.id) return;
-    const reason = window.prompt("Describe the issue with this delivery:") || "";
-    if (reason.trim().length < 5) return;
+    if (reportIssueText.trim().length < 5) {
+      setReportIssueError("Please describe the issue (at least 5 characters).");
+      return;
+    }
+    setReportIssueSubmitting(true);
+    setReportIssueError("");
     try {
       await apiRequest(`${API_URL}/deliveries/${activeDelivery.id}/dispute/`, {
         method: "POST",
-        body: JSON.stringify({ reason: reason.trim() }),
+        body: JSON.stringify({ reason: reportIssueText.trim() }),
       });
+      setReportIssueOpen(false);
       setError("");
-      window.alert("Issue reported. Our support team will review it.");
     } catch (err) {
-      setError(err.message || "Could not report issue.");
+      setReportIssueError(err.message || "Could not report issue.");
+    } finally {
+      setReportIssueSubmitting(false);
     }
-  }, [activeDelivery?.id]);
+  }, [activeDelivery?.id, reportIssueText]);
 
-  const handleCompleteContinue = async ({ paymentMethod, tip }) => {
+  const handleCompleteContinue = () => {
     if (!activeDelivery?.id) {
       resetFlow();
       return;
     }
-    setSubmitting(true);
-    setError("");
-    try {
-      await apiRequest(`${API_URL}/deliveries/${activeDelivery.id}/pay/`, {
-        method: "POST",
-        body: JSON.stringify({
-          payment_method: paymentMethod,
-          tip_amount: tip,
-        }),
-      });
-      setPaymentDraft({ paymentMethod, tip });
-      setActiveDelivery((prev) => (prev ? { ...prev, tip_amount: tip, payment_method: paymentMethod } : prev));
-      setScreen(SCREENS.RATING);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setSubmitting(false);
-    }
+    setScreen(SCREENS.RATING);
   };
 
   const handleRatingSubmit = async ({ courierRating, merchantRating, experienceRating, review }) => {
@@ -459,7 +478,7 @@ export default function DeliveryCustomerApp() {
       resetFlow();
       return;
     }
-    setSubmitting(true);
+    setBusyAction("rating");
     setError("");
     try {
       await apiRequest(`${API_URL}/deliveries/${activeDelivery.id}/rate/`, {
@@ -475,7 +494,7 @@ export default function DeliveryCustomerApp() {
     } catch (err) {
       setError(err.message);
     } finally {
-      setSubmitting(false);
+      setBusyAction(null);
     }
   };
 
@@ -485,6 +504,13 @@ export default function DeliveryCustomerApp() {
       try {
         const data = await apiRequest(`${API_URL}/deliveries/${activeDelivery.id}/`);
         setActiveDelivery(data);
+        if (data.status === "delivered") {
+          setBusyAction(null);
+          setPaymentSuccess(false);
+          setError("");
+          setScreen(SCREENS.COMPLETE);
+          return;
+        }
         if (data.driver || ["accepted", "courier_arriving", "picked_up", "in_transit", "delivering"].includes(data.status)) {
           setScreen(SCREENS.TRACKING);
         }
@@ -500,7 +526,12 @@ export default function DeliveryCustomerApp() {
     enabled: screen === SCREENS.TRACKING,
     onStatus: (status) => {
       setActiveDelivery((prev) => (prev ? { ...prev, status } : prev));
-      if (status === "delivered") setScreen(SCREENS.COMPLETE);
+      if (status === "delivered") {
+        setBusyAction(null);
+        setPaymentSuccess(false);
+        setError("");
+        setScreen(SCREENS.COMPLETE);
+      }
     },
     onLocation: (lat, lng, eta) => {
       setCourierPosition([lat, lng]);
@@ -647,9 +678,11 @@ export default function DeliveryCustomerApp() {
           distanceKm={distanceKm}
           selectedOption={selectedOption}
           onSelectOption={setSelectedOption}
+          paymentMethod={paymentMethod}
+          onPaymentMethodChange={setPaymentMethod}
           onConfirm={confirmDelivery}
           onBack={() => setScreen(SCREENS.REQUEST)}
-          busy={submitting}
+          busy={busyAction === "payment"}
           showTermsAcceptance={!customerTermsOnRecord}
           termsChecked={customerTermsChecked}
           privacyChecked={customerPrivacyChecked}
@@ -663,6 +696,7 @@ export default function DeliveryCustomerApp() {
         <DeliverySearchingScreen
           etaMinutes={activeDelivery?.estimated_duration_minutes || etaMinutes || 20}
           onCancel={cancelRequest}
+          paymentSuccess={paymentSuccess}
         />
       );
     }
@@ -683,12 +717,8 @@ export default function DeliveryCustomerApp() {
     if (screen === SCREENS.COMPLETE && activeDelivery) {
       return (
         <DeliveryCompleteScreen
-          delivery={{
-            ...activeDelivery,
-            tip_amount: paymentDraft.tip,
-            payment_method: paymentDraft.paymentMethod,
-          }}
-          busy={submitting}
+          delivery={activeDelivery}
+          busy={busyAction === "rating"}
           onContinue={handleCompleteContinue}
         />
       );
@@ -697,7 +727,7 @@ export default function DeliveryCustomerApp() {
       return (
         <DeliveryRatingScreen
           delivery={activeDelivery}
-          busy={submitting}
+          busy={busyAction === "rating"}
           onSubmit={handleRatingSubmit}
           onReportIssue={handleReportIssue}
         />
@@ -751,7 +781,6 @@ export default function DeliveryCustomerApp() {
       onLocate={() => applyCityCenter(form.service_city)}
     >
       {error ? <div className="delivery-uber__toast is-error">{error}</div> : null}
-      {submitting ? <div className="delivery-uber__toast">Creating your delivery...</div> : null}
       {(recipientCode || activeDelivery?.recipient_code || dropoffPin || activeDelivery?.dropoff_pin) &&
       [SCREENS.SEARCHING, SCREENS.TRACKING].includes(screen) ? (
         <div className="delivery-uber__pin-banner delivery-uber__pin-banner--dropoff">
@@ -780,6 +809,41 @@ export default function DeliveryCustomerApp() {
           onClose={() => setChatOpen(false)}
           onUnreadChange={setChatUnread}
         />
+      ) : null}
+      {reportIssueOpen ? (
+        <div className="delivery-uber__modal-overlay" role="dialog" aria-modal="true" aria-label="Report delivery issue">
+          <div className="delivery-uber__modal">
+            <h3>Report an issue</h3>
+            <p>Describe the problem with this delivery:</p>
+            <textarea
+              className="delivery-uber__textarea"
+              rows={4}
+              value={reportIssueText}
+              onChange={(e) => setReportIssueText(e.target.value)}
+              placeholder="e.g. Package not arrived, wrong address..."
+              autoFocus
+            />
+            {reportIssueError ? <p className="delivery-uber__toast is-error">{reportIssueError}</p> : null}
+            <div className="delivery-uber__modal-actions">
+              <button
+                type="button"
+                className="delivery-uber__btn delivery-uber__btn--secondary"
+                onClick={() => setReportIssueOpen(false)}
+                disabled={reportIssueSubmitting}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="delivery-uber__primary-btn"
+                onClick={submitReportIssue}
+                disabled={reportIssueSubmitting}
+              >
+                {reportIssueSubmitting ? "Submitting..." : "Submit"}
+              </button>
+            </div>
+          </div>
+        </div>
       ) : null}
     </DeliveryCustomerShell>
   );

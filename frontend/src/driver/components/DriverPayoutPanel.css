@@ -52,6 +52,10 @@
   margin-bottom: 14px;
 }
 
+.driver-payout-summary--wallet {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .driver-payout-summary article {
   padding: 10px 12px;
   border: 1px solid var(--line, #dfe8e2);
@@ -202,6 +206,59 @@
 .driver-payout-status.rejected {
   background: #ffe2e7;
   color: #a60f36;
+}
+
+.driver-payout-help {
+  margin: 0;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.driver-payout-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.driver-payout-secondary {
+  background: #eef3ef !important;
+  color: var(--ink, #15211b) !important;
+}
+
+.driver-payout-ledger {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line, #dfe8e2);
+}
+
+.driver-payout-ledger-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line, #dfe8e2);
+}
+
+.driver-payout-ledger-row strong {
+  display: block;
+  font-size: 13px;
+}
+
+.driver-payout-ledger-row small {
+  display: block;
+  color: var(--muted, #66746d);
+  font-size: 11px;
+}
+
+.driver-payout-ledger-row .is-credit {
+  color: #0d713f;
+  font-weight: 800;
+}
+
+.driver-payout-ledger-row .is-debit {
+  color: #a60f36;
+  font-weight: 800;
 }
 
 @media (max-width: 720px) {

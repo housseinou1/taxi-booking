@@ -26,6 +26,19 @@ from .models import (
     WalletAccount,
     WalletTransaction,
 )
+from .settlement_service import courier_balance_summary
+from .withdrawal_service import (
+    MIN_WITHDRAWAL_AMOUNT,
+    WithdrawalError,
+    approve_withdrawal_request,
+    build_driver_wallet_ledger,
+    create_withdrawal_request,
+    driver_wallet_summary,
+    mark_withdrawal_paid as mark_withdrawal_paid_service,
+    normalize_payout_type,
+    reject_withdrawal_request,
+    send_withdrawal_otp,
+)
 from .serializers import (
     DriverPayoutMethodSerializer,
     OwnerPayoutMethodSerializer,
@@ -38,10 +51,11 @@ from .serializers import (
 
 
 def driver_withdrawal_balance(driver):
-    from .settlement_service import courier_balance_summary
+    return Decimal(driver_wallet_summary(driver)["available_balance"])
 
-    summary = courier_balance_summary(driver)
-    return Decimal(summary["available_balance"])
+
+def driver_withdrawal_summary(driver):
+    return driver_wallet_summary(driver)
 
 
 @api_view(["GET"])
@@ -473,9 +487,11 @@ def withdrawal_requests(request):
         return Response(WithdrawalRequestSerializer(withdrawals, many=True).data)
 
     withdrawals = WithdrawalRequest.objects.filter(driver=request.user).order_by("-created_at")
+    summary = driver_wallet_summary(request.user)
 
     return Response({
-        "available_balance": str(driver_withdrawal_balance(request.user)),
+        **summary,
+        "ledger": build_driver_wallet_ledger(request.user),
         "withdrawals": WithdrawalRequestSerializer(withdrawals, many=True).data,
     })
 
@@ -493,11 +509,22 @@ def save_payout_method(request):
     if request.data.get("is_default", True):
         DriverPayoutMethod.objects.filter(driver=request.user).update(is_default=False)
 
-    serializer = DriverPayoutMethodSerializer(data=request.data)
+    payout_type = normalize_payout_type(request.data.get("payout_type", "bankily"))
+    data = request.data.copy()
+    data["payout_type"] = payout_type
+    existing = DriverPayoutMethod.objects.filter(
+        driver=request.user,
+        payout_type=payout_type,
+    ).first()
+
+    serializer = DriverPayoutMethodSerializer(existing, data=data, partial=bool(existing))
 
     if serializer.is_valid():
-        serializer.save(driver=request.user)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        payout_method = serializer.save(driver=request.user, is_default=True)
+        return Response(
+            DriverPayoutMethodSerializer(payout_method).data,
+            status=status.HTTP_200_OK if existing else status.HTTP_201_CREATED,
+        )
 
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -545,47 +572,39 @@ def save_owner_payout_method(request):
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
+def send_withdrawal_otp_view(request):
+    retry_after = rate_limit(request, "withdrawal-otp", limit=5, window_seconds=600)
+    if retry_after:
+        return Response(
+            {"error": "Too many OTP requests. Please wait before trying again."},
+            status=status.HTTP_429_TOO_MANY_REQUESTS,
+            headers={"Retry-After": str(retry_after)},
+        )
+    try:
+        payload = send_withdrawal_otp(request.user, request=request)
+    except WithdrawalError as exc:
+        return Response({"error": exc.message, "code": exc.code}, status=status.HTTP_400_BAD_REQUEST)
+    return Response(payload)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
 def request_withdrawal(request):
     amount = Decimal(str(request.data.get("amount", 0)))
-
-    if amount <= 0:
-        return Response({"error": "Withdrawal amount must be greater than zero"}, status=status.HTTP_400_BAD_REQUEST)
-
-    with transaction.atomic():
-        type(request.user).objects.select_for_update().get(pk=request.user.pk)
-        available_balance = driver_withdrawal_balance(request.user)
-
-        if amount > available_balance:
-            return Response(
-                {
-                    "error": f"Withdrawal amount is higher than available balance ({available_balance} MRU)",
-                    "available_balance": str(available_balance),
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        payout_method = DriverPayoutMethod.objects.filter(
-            driver=request.user,
-            id=request.data.get("payout_method"),
-        ).first()
-
-        if not payout_method:
-            payout_method = DriverPayoutMethod.objects.filter(
-                driver=request.user, is_default=True
-            ).first()
-
-        if not payout_method:
-            return Response(
-                {"error": "Please add a payout method first"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        withdrawal = WithdrawalRequest.objects.create(
-            driver=request.user,
-            payout_method=payout_method,
+    try:
+        withdrawal = create_withdrawal_request(
+            request.user,
             amount=amount,
+            payout_method_id=request.data.get("payout_method"),
             note=request.data.get("note", ""),
+            otp_code=request.data.get("otp_code", ""),
+            request=request,
         )
+    except WithdrawalError as exc:
+        status_code = status.HTTP_400_BAD_REQUEST
+        if exc.code == "otp_required":
+            status_code = status.HTTP_401_UNAUTHORIZED
+        return Response({"error": exc.message, "code": exc.code}, status=status_code)
 
     return Response(
         {
@@ -604,15 +623,16 @@ def approve_withdrawal(request, withdrawal_id):
     except WithdrawalRequest.DoesNotExist:
         return Response({"error": "Withdrawal not found"}, status=status.HTTP_404_NOT_FOUND)
 
-    if withdrawal.status != "pending":
-        return Response(
-            {"error": "Only pending withdrawals can be approved."},
-            status=status.HTTP_400_BAD_REQUEST,
+    try:
+        withdrawal = approve_withdrawal_request(
+            withdrawal,
+            request.user,
+            admin_note=request.data.get("admin_note", ""),
+            request=request,
         )
+    except WithdrawalError as exc:
+        return Response({"error": exc.message, "code": exc.code}, status=status.HTTP_400_BAD_REQUEST)
 
-    withdrawal.status = "approved"
-    withdrawal.admin_note = request.data.get("admin_note", withdrawal.admin_note)
-    withdrawal.save(update_fields=["status", "admin_note", "updated_at"])
     try:
         notify_courier_payout(withdrawal.driver, withdrawal)
     except Exception:
@@ -628,13 +648,35 @@ def reject_withdrawal(request, withdrawal_id):
     except WithdrawalRequest.DoesNotExist:
         return Response({"error": "Withdrawal not found"}, status=status.HTTP_404_NOT_FOUND)
 
-    if withdrawal.status != "pending":
-        return Response(
-            {"error": "Only pending withdrawals can be rejected."},
-            status=status.HTTP_400_BAD_REQUEST,
+    try:
+        withdrawal = reject_withdrawal_request(
+            withdrawal,
+            request.user,
+            admin_note=request.data.get("admin_note", ""),
+            request=request,
         )
+    except WithdrawalError as exc:
+        return Response({"error": exc.message, "code": exc.code}, status=status.HTTP_400_BAD_REQUEST)
 
-    withdrawal.status = "rejected"
-    withdrawal.admin_note = request.data.get("admin_note", withdrawal.admin_note)
-    withdrawal.save(update_fields=["status", "admin_note", "updated_at"])
     return Response({"message": "Withdrawal rejected", "withdrawal": WithdrawalRequestSerializer(withdrawal).data})
+
+
+@api_view(["POST"])
+@permission_classes([IsAdminUser])
+def mark_withdrawal_paid(request, withdrawal_id):
+    try:
+        withdrawal = WithdrawalRequest.objects.get(id=withdrawal_id)
+    except WithdrawalRequest.DoesNotExist:
+        return Response({"error": "Withdrawal not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    try:
+        withdrawal = mark_withdrawal_paid_service(
+            withdrawal,
+            request.user,
+            admin_note=request.data.get("admin_note", ""),
+            request=request,
+        )
+    except WithdrawalError as exc:
+        return Response({"error": exc.message, "code": exc.code}, status=status.HTTP_400_BAD_REQUEST)
+
+    return Response({"message": "Withdrawal marked paid", "withdrawal": WithdrawalRequestSerializer(withdrawal).data})

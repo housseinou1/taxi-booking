@@ -187,7 +187,7 @@ class DriverPayoutMethod(models.Model):
         on_delete=models.CASCADE,
         related_name="driver_payout_methods",
     )
-    payout_type = models.CharField(max_length=30, choices=PAYOUT_TYPES, default="bank_account")
+    payout_type = models.CharField(max_length=30, choices=PAYOUT_TYPES, default="bankily")
     account_holder_name = models.CharField(max_length=255, blank=True, default="")
     bank_name = models.CharField(max_length=100, blank=True, default="")
     account_reference = models.CharField(max_length=100, blank=True, default="")
@@ -243,6 +243,7 @@ class WithdrawalRequest(models.Model):
         ("pending", "Pending"),
         ("approved", "Approved"),
         ("rejected", "Rejected"),
+        ("paid", "Paid"),
     ]
 
     driver = models.ForeignKey(
@@ -261,11 +262,52 @@ class WithdrawalRequest(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
     note = models.TextField(blank=True, default="")
     admin_note = models.TextField(blank=True, default="")
+    approved_at = models.DateTimeField(null=True, blank=True)
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="approved_withdrawals",
+    )
+    paid_at = models.DateTimeField(null=True, blank=True)
+    paid_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="paid_withdrawals",
+    )
+    otp_verified_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=["driver", "status"], name="withdrawal_driver_status_idx"),
+        ]
+
     def __str__(self):
         return f"Withdrawal #{self.id} - {self.driver.email} - {self.amount} {self.currency}"
+
+
+class WithdrawalOTPCode(models.Model):
+    """One-time code for confirming driver withdrawal requests."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="withdrawal_otp_codes",
+    )
+    code_hash = models.CharField(max_length=128)
+    expires_at = models.DateTimeField()
+    consumed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["user", "-created_at"], name="withdrawal_otp_user_idx"),
+        ]
 
 
 class WalletAccount(models.Model):
@@ -283,11 +325,14 @@ class WalletTransaction(models.Model):
     TYPE_CHOICES = [
         ("top_up", "Top Up"),
         ("ride_payment", "Ride Payment"),
+        ("ride_earning", "Ride Earning"),
+        ("tip", "Tip"),
         ("delivery_payment", "Delivery Payment"),
         ("merchant_payment", "Merchant Order Payment"),
         ("courier_earning", "Courier Earning"),
         ("merchant_earning", "Merchant Earning"),
         ("payout", "Payout"),
+        ("withdrawal", "Withdrawal"),
         ("refund", "Refund"),
         ("referral", "Referral Reward"),
         ("bonus", "Bonus"),
@@ -513,3 +558,35 @@ class MerchantWithdrawalRequest(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+
+
+class PlatformWithdrawalAccounts(models.Model):
+    """Singleton platform payout destinations for driver/courier withdrawals."""
+
+    PLATFORM_KEY = "platform"
+
+    key = models.CharField(max_length=32, unique=True, default=PLATFORM_KEY)
+    bank_account = models.CharField(max_length=64, blank=True, default="")
+    bankily_number = models.CharField(max_length=32, blank=True, default="")
+    seddad_number = models.CharField(max_length=32, blank=True, default="")
+    masravi_number = models.CharField(max_length=32, blank=True, default="")
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="platform_withdrawal_account_updates",
+    )
+
+    class Meta:
+        verbose_name = "Platform withdrawal accounts"
+        verbose_name_plural = "Platform withdrawal accounts"
+
+    def __str__(self):
+        return "Yala platform withdrawal accounts"
+
+    @classmethod
+    def get_solo(cls):
+        obj, _ = cls.objects.get_or_create(key=cls.PLATFORM_KEY)
+        return obj

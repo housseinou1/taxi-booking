@@ -462,6 +462,9 @@ function RideTracker({ ride, driverPosition, city = 'Nouakchott', onAddStop, onC
               <p className="ride-tracker__driver-meta">
                 <strong>★ {driverRating}</strong>
                 {driverLevel && <span>{driverLevel}</span>}
+                {ride.completed_trips != null && (
+                  <span>{ride.completed_trips} rides</span>
+                )}
                 {ride.driver_code && <span>Code {ride.driver_code}</span>}
               </p>
               <p className="ride-tracker__driver-contact">📞 {callNumber || 'Phone unavailable'}</p>

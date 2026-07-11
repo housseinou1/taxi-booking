@@ -1,0 +1,219 @@
+--------- beginning of main
+07-08 09:36:59.230  5212  5212 D ConnectivityManager: StackLog: [android.net.ConnectivityManager.unregisterNetworkCallback(ConnectivityManager.java:5579)] [com.capacitorjs.plugins.network.Network.stopMonitoring(Network.java:152)] [com.capacitorjs.plugins.network.NetworkPlugin.handleOnPause(NetworkPlugin.java:86)] [com.getcapacitor.Bridge.onPause(Bridge.java:1321)] [com.getcapacitor.BridgeActivity.onPause(BridgeActivity.java:103)] [android.app.Activity.performPause(Activity.java:8778)] [android.app.Instrumentation.callActivityOnPause(Instrumentation.java:1585)] [android.app.ActivityThread.performPauseActivityIfNeeded(ActivityThread.java:5707)] [android.app.ActivityThread.performPauseActivity(ActivityThread.java:5668)] [android.app.ActivityThread.handlePauseActivity(ActivityThread.java:5620)] [android.app.servertransaction.TransactionExecutor.performLifecycleSequence(TransactionExecutor.java:229)] [android.app.servertransaction.TransactionExecutor.cycleToPath(TransactionExecutor.java:201)] [android.app.servertransaction.TransactionExecutor.cycleToPath(TransactionExecutor.java:183)] [android.app.servertransaction.TransactionExecutor.executeCallbacks(TransactionExecutor.java:132)] [android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:95)] [android.app.ActivityThread$H.handleMessage(ActivityThread.java:2574)]
+07-08 09:36:59.230  2947  2947 V Navbar.Store: handleEvent(0) OnRotationLockedChanged(rotationLocked=true) [Module] NavBarStoreImpl
+07-08 09:36:59.231  5212  5212 D Capacitor: App paused
+07-08 09:36:59.231  1526  2720 D ConnectivityService:  Removing from current network [100 CELLULAR], leaving 152 requests.
+07-08 09:36:59.231  5212  5212 I ViewRootImpl@c7aa1d[MainActivity]: stopped(false) old = false
+07-08 09:36:59.231  5212  5212 D Capacitor/AppPlugin: Firing change: true
+07-08 09:36:59.231  5212  5212 V Capacitor/AppPlugin: Notifying listeners for event appStateChange
+07-08 09:36:59.231  5212  5212 D Capacitor/AppPlugin: No listeners found for event appStateChange
+07-08 09:36:59.231  5212  5212 V Capacitor/AppPlugin: Notifying listeners for event resume
+07-08 09:36:59.231  5212  5212 D Capacitor/AppPlugin: No listeners found for event resume
+07-08 09:36:59.231  2947  3085 D Tile.RotationLockTile:  handleUpdateState: false orientation = true
+07-08 09:36:59.231  5212  5212 D ConnectivityManager: StackLog: [android.net.ConnectivityManager.sendRequestForNetwork(ConnectivityManager.java:4744)] [android.net.ConnectivityManager.registerDefaultNetworkCallbackForUid(ConnectivityManager.java:5469)] [android.net.ConnectivityManager.registerDefaultNetworkCallback(ConnectivityManager.java:5436)] [android.net.ConnectivityManager.registerDefaultNetworkCallback(ConnectivityManager.java:5410)] [com.capacitorjs.plugins.network.Network.startMonitoring(Network.java:138)] [com.capacitorjs.plugins.network.NetworkPlugin.handleOnResume(NetworkPlugin.java:60)] [com.getcapacitor.Bridge.onResume(Bridge.java:1308)] [com.getcapacitor.BridgeActivity.onResume(BridgeActivity.java:94)] [android.app.Instrumentation.callActivityOnResume(Instrumentation.java:1531)] [android.app.Activity.performResume(Activity.java:8734)] [android.app.ActivityThread.performResumeActivity(ActivityThread.java:5351)] [android.app.ActivityThread.handleResumeActivity(ActivityThread.java:5444)] [android.app.servertransaction.TransactionExecutor.performLifecycleSequence(TransactionExecutor.java:225)] [android.app.servertransaction.TransactionExecutor.cycleToPath(TransactionExecutor.java:201)] [android.app.servertransaction.TransactionExecutor.executeCallbacks(TransactionExecutor.java:146)] [android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:95)] [android.app.ActivityThread$H.handleMessage(ActivityThread.java:2574)]
+--------- beginning of system
+07-08 09:36:59.232  1526  3126 D SettingsProvider: isChangeAllowed() : name = accelerometer_rotation
+07-08 09:36:59.232  1526  3126 I GenerationRegistry: mBackingStore.isClosed() : false
+07-08 09:36:59.232  1526  3126 D SettingsProvider: isChangeAllowed() : name = user_rotation
+07-08 09:36:59.233  1526  3126 V WindowManager: rotationForOrientation(orient=SCREEN_ORIENTATION_UNSPECIFIED (-1), last=ROTATION_0 (0)); user=ROTATION_0 (0) USER_ROTATION_LOCKED
+07-08 09:36:59.233  1526  3126 D WindowManager: rotationForOrientation, orientationSource=ActivityRecord{5974676 u0 com.yala.rider.mr/.MainActivity} t25995}
+07-08 09:36:59.233  1526  6447 D ConnectivityService: requestNetwork for uid/pid:10805/5212 activeRequest: null callbackRequest: 3498 [NetworkRequest [ REQUEST id=3499, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10805 RequestorUid: 10805 RequestorPkg: com.yala.rider.mr UnderlyingNetworks: Null] ]] callback flags: 0 order: 2147483647 isUidTracked: false declaredMethods: AVAIL|LOST|NC
+07-08 09:36:59.233  3520  3520 I RecentsOrientedState: current RecentsOrientedState: [this=RecentsOrientedState@7869808 mOrientationHandler=PortraitPagedViewHandler@239694057 mDisplayRotation=0 mTouchRotation=0 mRecentsActivityRotation=0 mRecentsRotation=0 isRecentsActivityRotationAllowed=true mSystemRotation=true mStateId=38784 mFlags=303]
+07-08 09:36:59.233  1526  3126 V WindowManager: Computed rotation=ROTATION_0 (0) for display id=0 based on lastOrientation=SCREEN_ORIENTATION_UNSPECIFIED (-1) and oldRotation=ROTATION_0 (0), caller=com.android.server.wm.DisplayContent.updateRotationUnchecked:2410 com.android.server.wm.WindowManagerService.updateRotationUnchecked:4778 com.android.server.wm.WindowManagerService.thawDisplayRotation:4719 com.android.server.wm.WindowManagerService.thawRotation:4683 android.view.IWindowManager$Stub.onTransact:2536 com.android.server.wm.WindowManagerService.onTransact:1608 
+07-08 09:36:59.233  1526  2720 D ConnectivityService:    accepting network in place of null for NetworkRequest [ REQUEST id=3499, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10805 RequestorUid: 10805 RequestorPkg: com.yala.rider.mr UnderlyingNetworks: Null] ]
+07-08 09:36:59.234  3520  3520 I RecentsOrientedState: current RecentsOrientedState: [this=RecentsOrientedState@7869808 mOrientationHandler=PortraitPagedViewHandler@239694057 mDisplayRotation=0 mTouchRotation=0 mRecentsActivityRotation=0 mRecentsRotation=0 isRecentsActivityRotationAllowed=true mSystemRotation=true mStateId=38784 mFlags=303]
+07-08 09:36:59.234  5212  5212 D Capacitor: App resumed
+07-08 09:36:59.234  1526  1909 V WindowManager: rotationForOrientation(orient=SCREEN_ORIENTATION_UNSPECIFIED (-1), last=ROTATION_0 (0)); user=ROTATION_0 (0) 
+07-08 09:36:59.234  1526  1909 D WindowManager: rotationForOrientation, orientationSource=ActivityRecord{5974676 u0 com.yala.rider.mr/.MainActivity} t25995}
+07-08 09:36:59.234  1526  1909 V WindowManager: Computed rotation=ROTATION_0 (0) for display id=0 based on lastOrientation=SCREEN_ORIENTATION_UNSPECIFIED (-1) and oldRotation=ROTATION_0 (0), caller=com.android.server.wm.DisplayContent.updateRotationUnchecked:2410 com.android.server.wm.WindowManagerService.updateRotationUnchecked:4778 com.android.server.wm.WindowManagerService.updateRotation:4759 com.android.server.wm.DisplayRotation$SettingsObserver.onChange:1929 android.database.ContentObserver.onChange:154 android.database.ContentObserver.onChange:170 
+07-08 09:36:59.234  1526  1909 V WindowManager: updateDisplayAndOrientation: Change 494.27x496.425dpi to 370.70248x372.31873dpi, BaseDpi=494.27x496.425, DisplayRatio=0.75x0.75
+07-08 09:36:59.235  5212  5212 I DecorView: notifyKeepScreenOnChanged: keepScreenOn=false
+07-08 09:36:59.235  1526  1909 D TspStateManager: updateCustomValue customSetting=
+07-08 09:36:59.235  1526  1909 D TspStateManager: updateCustomValue customSetting=
+07-08 09:36:59.235  1526  1909 V WindowManager: updateDisplayAndOrientation: Change 494.27x496.425dpi to 370.70248x372.31873dpi, BaseDpi=494.27x496.425, DisplayRatio=0.75x0.75
+07-08 09:36:59.236  1526  1909 D TspStateManager: updateCustomValue customSetting=
+07-08 09:36:59.236  5212  5470 V Capacitor/NetworkPlugin: Notifying listeners for event networkStatusChange
+07-08 09:36:59.236  1526  2710 D WifiNetworkFactory: got request NetworkRequest [ REQUEST id=3499, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10805 RequestorUid: 10805 RequestorPkg: com.yala.rider.mr UnderlyingNetworks: Null] ]
+07-08 09:36:59.236  5212  5470 D Capacitor/NetworkPlugin: No listeners found for event networkStatusChange
+07-08 09:36:59.236  1526  2710 D UntrustedWifiNetworkFactory: got request NetworkRequest [ REQUEST id=3499, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10805 RequestorUid: 10805 RequestorPkg: com.yala.rider.mr UnderlyingNetworks: Null] ]
+07-08 09:36:59.237  1526  2710 D OemPaidWifiNetworkFactory: got request NetworkRequest [ REQUEST id=3499, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10805 RequestorUid: 10805 RequestorPkg: com.yala.rider.mr UnderlyingNetworks: Null] ]
+07-08 09:36:59.237  1526  2710 D MultiInternetWifiNetworkFactory: got request NetworkRequest [ REQUEST id=3499, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10805 RequestorUid: 10805 RequestorPkg: com.yala.rider.mr UnderlyingNetworks: Null] ]
+07-08 09:36:59.237  1526  2720 D ConnectivityService: Rematched networks [computed 1ms] [applied 1ms] [issued 2]
+07-08 09:36:59.237  1526  2720 D ConnectivityService: NetworkReassignment :
+07-08 09:36:59.237  1526  2720 D ConnectivityService:   3499 : null → 100
+07-08 09:36:59.237  5212  5212 I MSHandlerLifeCycle: removeMultiSplitHandler: no exist. decor=DecorView@2e2416e[MainActivity]
+07-08 09:36:59.237  7053  7053 I Monkey  : ## Network stats: elapsed time=18ms (0ms mobile, 0ms wifi, 18ms not connected)
+07-08 09:36:59.238  7053  7053 I app_process: System.exit called, status: 0
+07-08 09:36:59.238  7053  7053 I AndroidRuntime: VM exiting with result code 0.
+07-08 09:36:59.240  2947  2947 V Navbar.Store: handleEvent(0) OnRotationLockedChanged(rotationLocked=false) [Module] NavBarStoreImpl
+07-08 09:36:59.241  2947  2947 D SettingsHelper: onChange() COMPLETED elapsed= 0
+07-08 09:36:59.241  2947  2947 V SettingsHelper: *** broadcastChange for content://settings/system/accelerometer_rotation
+07-08 09:36:59.241  2947  2947 D Tile.RotationLockTile:  OnChangedCallback : 
+07-08 09:36:59.242  5212  5212 I ViewRootImpl@c7aa1d[MainActivity]: performTraversals params={(0,0)(fillxfill) sim={adjust=resize forwardNavigation} layoutInDisplayCutoutMode=shortEdges ty=BASE_APPLICATION wanim=0x1030309
+07-08 09:36:59.242  5212  5212 I ViewRootImpl@c7aa1d[MainActivity]:   fl=81810100
+07-08 09:36:59.242  5212  5212 I ViewRootImpl@c7aa1d[MainActivity]:   pfl=16020040
+07-08 09:36:59.242  5212  5212 I ViewRootImpl@c7aa1d[MainActivity]:   bhv=DEFAULT
+07-08 09:36:59.242  5212  5212 I ViewRootImpl@c7aa1d[MainActivity]:   fitSides= naviIconColor=0
+07-08 09:36:59.242  5212  5212 I ViewRootImpl@c7aa1d[MainActivity]:   sfl=100000}
+07-08 09:36:59.242  5212  5212 I ViewRootImpl@c7aa1d[MainActivity]: performTraversals mFirst=false windowShouldResize=false viewVisibilityChanged=false mForceNextWindowRelayout=false params={(0,0)(fillxfill) sim={adjust=resize forwardNavigation} layoutInDisplayCutoutMode=shortEdges ty=BASE_APPLICATION wanim=0x1030309
+07-08 09:36:59.242  5212  5212 I ViewRootImpl@c7aa1d[MainActivity]:   fl=81810100
+07-08 09:36:59.242  5212  5212 I ViewRootImpl@c7aa1d[MainActivity]:   pfl=16020040
+07-08 09:36:59.242  5212  5212 I ViewRootImpl@c7aa1d[MainActivity]:   bhv=DEFAULT
+07-08 09:36:59.242  5212  5212 I ViewRootImpl@c7aa1d[MainActivity]:   fitSides= naviIconColor=0
+07-08 09:36:59.242  5212  5212 I ViewRootImpl@c7aa1d[MainActivity]:   sfl=100000}
+07-08 09:36:59.242  2947  2947 I FaceWidgetPositionAlgorithm: getClockContainerHeight() supplier = 270, bottom margin = 0, real height = 333
+07-08 09:36:59.242  2947  2947 I FaceWidgetPositionAlgorithm: getClockContainerHeight() supplier = 270, bottom margin = 63, real height = 333
+07-08 09:36:59.242  2947  2947 I FaceWidgetPositionAlgorithm: getMediaContainerHeight() height = 0 container Visibility = 8, isValid = false, mIsDozing = false, fraction = 1.0, source = 0, target = 0
+07-08 09:36:59.242  1526  5661 V WindowManager: Relayout Window{e74700a u0 com.yala.rider.mr/com.yala.rider.mr.MainActivity}: viewVisibility=0 req=1080x2316 d0
+07-08 09:36:59.242  2947  2947 I FaceWidgetPositionAlgorithm: getMediaContainerHeight() supplier = 0
+07-08 09:36:59.243  2947  2947 V QsExpandAnimator: setQsExpansionPosition 0.0
+07-08 09:36:59.244  2947  3085 D Tile.RotationLockTile:  handleUpdateState: true orientation = true
+07-08 09:36:59.244  1526  5661 V WindowManager: Relayout hash=e74700a, pid=5212, syncId=-1: mAttrs={(0,0)(fillxfill) sim={adjust=resize forwardNavigation} layoutInDisplayCutoutMode=shortEdges ty=BASE_APPLICATION wanim=0x1030309
+07-08 09:36:59.244  1526  5661 V WindowManager:   fl=81810100
+07-08 09:36:59.244  1526  5661 V WindowManager:   pfl=16020040
+07-08 09:36:59.244  1526  5661 V WindowManager:   apr=LIGHT_NAVIGATION_BARS
+07-08 09:36:59.244  1526  5661 V WindowManager:   bhv=DEFAULT
+07-08 09:36:59.244  1526  5661 V WindowManager:   fitSides= naviIconColor=0
+07-08 09:36:59.244  1526  5661 V WindowManager:   sfl=100000}
+07-08 09:36:59.244  2947  2947 V QsExpandAnimator: updateAnimators
+07-08 09:36:59.244  2947  2947 V QsExpandAnimator: clearAnimationState 
+07-08 09:36:59.244  2947  2947 V QsExpandAnimator: updateViews
+07-08 09:36:59.245  5212  5212 I ViewRootImpl@c7aa1d[MainActivity]: updateBlastSurfaceIfNeeded mBlastBufferQueue=0xb400007332093970 isSameSurfaceControl=true
+07-08 09:36:59.245  5212  5212 I BLASTBufferQueue: update, w= 1080 h= 2316 mName = ViewRootImpl@c7aa1d[MainActivity] mNativeObject= 0xb400007332093970 sc.mNativeObject= 0xb4000072c20e8540 format= -1 caller= android.view.ViewRootImpl.updateBlastSurfaceIfNeeded:2898 android.view.ViewRootImpl.relayoutWindow:9847 android.view.ViewRootImpl.performTraversals:3884 android.view.ViewRootImpl.doTraversal:3116 android.view.ViewRootImpl$TraversalRunnable.run:10885 android.view.Choreographer$CallbackRecord.run:1301 
+07-08 09:36:59.245  5212  5212 I ViewRootImpl@c7aa1d[MainActivity]: Relayout returned: old=(0,0,1080,2316) new=(0,0,1080,2316) req=(1080,2316)0 dur=3 res=0x0 s={true 0xb4000073c2089a60} ch=false seqId=0
+07-08 09:36:59.245  2947  2947 V QsExpandAnimator: updateTileAnimator
+07-08 09:36:59.246  2947  2947 V QsExpandAnimator: updateHeaderAnimator
+07-08 09:36:59.246  2947  2947 V QsExpandAnimator: updateBarAnimator
+07-08 09:36:59.246  2947  2947 V QsExpandAnimator: setQsExpansionPosition 0.0
+07-08 09:36:59.246  2947  2947 V QsExpandAnimator: onAnimationAtStart
+07-08 09:36:59.250  1526  1914 I ActivityManager: Killing 17618:com.google.android.apps.turbo/u0a254 (adj 999): empty #33
+07-08 09:36:59.250  1526  1914 I ActivityManager: Killing 31583:com.sec.android.provider.badge/u0a60 (adj 999): empty #34
+07-08 09:36:59.255  1526  1943 I libprocessgroup: Successfully killed process cgroup uid 10254 pid 17618 in 5ms
+07-08 09:36:59.275  2947  2947 I FaceWidgetPositionAlgorithm: getClockContainerHeight() supplier = 270, bottom margin = 0, real height = 333
+07-08 09:36:59.275  2947  2947 I FaceWidgetPositionAlgorithm: getClockContainerHeight() supplier = 270, bottom margin = 63, real height = 333
+07-08 09:36:59.275  2947  2947 I FaceWidgetPositionAlgorithm: getMediaContainerHeight() height = 0 container Visibility = 8, isValid = false, mIsDozing = false, fraction = 1.0, source = 0, target = 0
+07-08 09:36:59.275  2947  2947 I FaceWidgetPositionAlgorithm: getMediaContainerHeight() supplier = 0
+07-08 09:36:59.276  1212  1212 I Zygote  : Process 31583 exited due to signal 9 (Killed)
+07-08 09:36:59.277  1212  1212 I Zygote  : Process 17618 exited due to signal 9 (Killed)
+07-08 09:36:59.280  2947  2947 V QsExpandAnimator: setQsExpansionPosition 0.0
+07-08 09:36:59.281  1526  1943 I libprocessgroup: Successfully killed process cgroup uid 10060 pid 31583 in 0ms
+07-08 09:36:59.281  2947  2947 V QsExpandAnimator: updateAnimators
+07-08 09:36:59.282  2947  2947 V QsExpandAnimator: clearAnimationState 
+07-08 09:36:59.282  2947  2947 V QsExpandAnimator: updateViews
+07-08 09:36:59.282  2947  2947 V QsExpandAnimator: updateTileAnimator
+07-08 09:36:59.283  2947  2947 V QsExpandAnimator: updateHeaderAnimator
+07-08 09:36:59.283  2947  2947 V QsExpandAnimator: updateBarAnimator
+07-08 09:36:59.283  2947  2947 V QsExpandAnimator: setQsExpansionPosition 0.0
+07-08 09:36:59.283  2947  2947 V QsExpandAnimator: onAnimationAtStart
+07-08 09:37:00.001  1526  1526 I EyeComfortSolutionService: action  :  android.intent.action.TIME_TICK
+07-08 09:37:00.002  2947  2947 D KeyguardUpdateMonitor: received broadcast android.intent.action.TIME_TICK
+07-08 09:37:00.002  2947  2947 D KeyguardUpdateMonitor: handleTimeUpdate
+07-08 09:37:00.002  2947  2947 D FaceWidgetPagesController: onTimeChanged()
+07-08 09:37:00.003  2947  3606 D QSClockBellTower: onReceive(android.intent.action.TIME_TICK) mTimeZoneString:null
+07-08 09:37:00.005  2947  2947 D QSClockBellTower: He is ready to ring the bell. (((QSClockBellSound - TimeText:9:37, TimeContentDescription:9:37 AM, DateText:Wed, July 8, ShortDateText:Wed, Jul 8, Demo:false, QuickStar-Second(false|12:34:56))))
+07-08 09:37:00.005  2947  2947 D QSClockIndicatorView: Home Indicator status_bar_clock 9:37 notifyTimeChanged(QSClockBellSound - TimeText:9:37, TimeContentDescription:9:37 AM, DateText:Wed, July 8, ShortDateText:Wed, Jul 8, Demo:false, QuickStar-Second(false|12:34:56)) ClockVisibleByPolicy:true, ClockVisibleByUser:true, visible?true, parent:android.widget.LinearLayout{f16eecb V.E...... ......ID 0,0-75,53 #7f0b04f0 app:id/left_clock_container}
+07-08 09:37:00.005  2947  2947 D QSClockBellTower: Everyone heard the bell. run(currentTime:1783517820005,   getTime():Wed Jul 08 09:37:00 EDT 2026,   getTimeZone():libcore.util.ZoneInfo[mDstSavings=3600000,mUseDst=true,mDelegate=[id="America/New_York",mRawOffset=-18000000,mEarliestRawOffset=-17762000,transitions=236]])
+07-08 09:37:00.009  2947  2947 I FaceWidgetPositionAlgorithm: getClockContainerHeight() supplier = 270, bottom margin = 0, real height = 333
+07-08 09:37:00.009  2947  2947 I FaceWidgetPositionAlgorithm: getClockContainerHeight() supplier = 270, bottom margin = 63, real height = 333
+07-08 09:37:00.009  2947  2947 I FaceWidgetPositionAlgorithm: getMediaContainerHeight() height = 0 container Visibility = 8, isValid = false, mIsDozing = false, fraction = 1.0, source = 0, target = 0
+07-08 09:37:00.009  2947  2947 I FaceWidgetPositionAlgorithm: getMediaContainerHeight() supplier = 0
+07-08 09:37:00.010  2947  2947 V QsExpandAnimator: setQsExpansionPosition 0.0
+07-08 09:37:00.011  2947  2947 V QsExpandAnimator: updateAnimators
+07-08 09:37:00.011  2947  2947 V QsExpandAnimator: clearAnimationState 
+07-08 09:37:00.011  2947  2947 V QsExpandAnimator: updateViews
+07-08 09:37:00.012  2947  2947 V QsExpandAnimator: updateTileAnimator
+07-08 09:37:00.012  2947  2947 V QsExpandAnimator: updateHeaderAnimator
+07-08 09:37:00.012  2947  2947 V QsExpandAnimator: updateBarAnimator
+07-08 09:37:00.012  2947  2947 V QsExpandAnimator: setQsExpansionPosition 0.0
+07-08 09:37:00.012  2947  2947 V QsExpandAnimator: onAnimationAtStart
+07-08 09:37:00.204  5412  5412 I SDHMS:LOAD: type: LoadsFreqs, value: 0:42:1:1766016:3091200:844800:1563647:2419200:710400:305:305:305
+07-08 09:37:00.230  1526  1932 I AppOps  : commitUidPendingStateLocked() :: UID - 10805, 200 > 200, 15 > 15
+07-08 09:37:00.257 24085 24085 D BoundBrokerSvc: onUnbind: Intent { act=com.google.android.gms.auth.blockstore.service.START dat=chimera-action:/... cmp=com.google.android.gms/.chimera.GmsApiService }
+07-08 09:37:00.336 31538 32127 I SCS@AiSearch user 0: (BaseCollector::GALLERY) doesDataKeepChanging: postpone count: 0 - source count: very first = 3425, previous = 3425, current = 3425
+07-08 09:37:00.336 31538 32127 I SCS@AiSearch user 0: (BaseCollector::GALLERY) [GALLERY-0] entering in collectChanges():  
+07-08 09:37:00.388 31538 32127 I SCS@AiSearch user 0: (BaseCollector::GALLERY) fetchInternal values : maxSyncId: 2147503384 indexCount: 3425 sourceCount: 3425
+07-08 09:37:00.435 31538 32127 I SCS@AiSearch user 0: (IndexManager) [GALLERY-0] entering in addIndex():  
+07-08 09:37:00.437 31538 32127 I SCS@AiSearch user 0: (BaseCollector::GALLERY) fetch: fetching took  78 ms
+07-08 09:37:00.437 31538 32127 I SCS@AiSearch user 0: (BaseCollector::GALLERY) fetchChanges: applied 0 items
+07-08 09:37:00.437 31538 32127 I SCS@AiSearch user 0: (BaseCollector::GALLERY) Collect finished. Result: true
+07-08 09:37:00.438 31538 32127 I SCS@AiSearch user 0: (BaseCollector::GALLERY) enqueue ObserverWorker name: com.google.android.providers.media, policy: APPEND_OR_REPLACE
+07-08 09:37:00.439 31538 31569 I WM-WorkerWrapper: Worker result SUCCESS for Work [ id=3c05be61-8be9-4c1f-886c-5abfdd79a4c6, tags={ com.google.android.providers.media, com.samsung.android.scs.ai.search.data.collector.ObserverWorker } ]
+07-08 09:37:00.450  1526  5661 I ActivityManager: Killing 1215:com.samsung.faceservice/5004 (adj 999): empty #33
+07-08 09:37:00.463  1526  5661 D PackageManager: setEnabledSetting : userId = 0 packageName = com.samsung.android.scs cmp = androidx.work.impl.background.systemalarm.RescheduleReceiver newState = 1 callingPackage = 10351/com.samsung.android.scs
+07-08 09:37:00.463  1526  5661 D ApplicationPolicy: getApplicationStateEnabled : pkg = com.samsung.android.scs userId : 0
+07-08 09:37:00.464  1526  5661 D ApplicationPolicy: getApplicationComponentState : pkg = com.samsung.android.scs userId : 0
+07-08 09:37:00.482  1212  1212 I Zygote  : Process 1215 exited due to signal 9 (Killed)
+07-08 09:37:00.486  1526  1943 I libprocessgroup: Successfully killed process cgroup uid 5004 pid 1215 in 36ms
+07-08 09:37:00.513  2947  3085 D MobileStatusTracker(0/2): onDataActivity: direction=0
+07-08 09:37:00.514  2947  3085 D MobileSignalController(0/2): notifyListener: enabled=true, connected=true, dataConnected=true, networkType=NR/NR_NSA is5gAvailable=false (5G_TMO), emergencyOnly=false, roaming=false, isDefault=true, dataActivity=, level=5, ca=false, mmWave=false, disabledDataIcon=false, simCard=ETC
+07-08 09:37:00.721  1526  3126 D SGM:GameManager: identifyForegroundApp. com.yala.rider.mr, mCurrentUserId: 0, callerUserId: 0
+07-08 09:37:00.721  1526  3126 D SGM:PkgDataHelper: getGamePkgData(). com.yala.rider.mr
+07-08 09:37:00.721 24472 24515 I PolicyManager: [#CMH#] Is foreground game app: false
+07-08 09:37:00.854  1297  1297 I android.hardware.health@2.1-service-samsung: updateLrpSysfs: write: 370
+07-08 09:37:00.902  1526  1555 W System  : A resource failed to call HardwareBuffer.close. 
+07-08 09:37:00.903  1526  1555 W System  : A resource failed to call close. 
+07-08 09:37:00.903  1526  1555 W System  : A resource failed to call close. 
+07-08 09:37:00.903  1526  1555 W System  : A resource failed to call close. 
+07-08 09:37:00.904  1526  1555 W System  : A resource failed to call HardwareBuffer.close. 
+07-08 09:37:00.904  1526  1555 W System  : A resource failed to call HardwareBuffer.close. 
+07-08 09:37:00.904  1526  1555 W System  : A resource failed to call release. 
+07-08 09:37:00.904  1526  1555 W System  : A resource failed to call HardwareBuffer.close. 
+07-08 09:37:00.951  1526  5617 E TaskPersister: File error accessing recents directory (directory doesn't exist?).
+07-08 09:37:00.991   708   708 D io_stats: !@   8,0 r 3817188 65232028 w 1337837 18686300 d 590371 28605980 f 0 0 iot 952788 0 th 0 0 0 pt 0 inp 0 0 69206.392
+07-08 09:37:01.225  1526  3747 I SemDvfsHyPerManager: acquire hyper - AMS_RESUME_TAIL/1526@19, type = -999
+07-08 09:37:01.225  1526  3747 I SemDvfsHyPerManager: acquire hyper - AMS_ACT_LAZY/1526@20, type = -999
+07-08 09:37:01.225  1526  3747 D ActivityManagerPerformance: AMP_acquire() TAIL
+07-08 09:37:01.225  1526  3747 D ActivityManagerPerformance: AMP_release() ACT_START
+07-08 09:37:01.225  1318  1352 I HYPER-HAL: [RequestManager.cpp]acquire(): Acquired ID : 1194304  [1526 / 19]    HINT : AMS_RESUME_TAIL    list : 
+07-08 09:37:01.227  1318  1352 I HYPER-HAL: [ResourceManager.cpp]updateResource(): [CPUMinFreq] UpdateResource Request ID : 1194304    Value : 1747200
+07-08 09:37:01.227  1318  1352 I HYPER-HAL: [RequestManager.cpp]acquire(): Acquired ID : 1195851  [1526 / 20]    HINT : AMS_ACT_LAZY    list : 
+07-08 09:37:01.228  1318  1352 I HYPER-HAL: [ResourceManager.cpp]removeResource(): [CPUMinFreq] RemoveResource Request ID : 1191213
+07-08 09:37:01.229  1318  1352 I HYPER-HAL: [RequestManager.cpp]releaseLocked(): Released ID : 1191213
+07-08 09:37:01.393  5420  5449 W System  : A resource failed to call close. 
+07-08 09:37:01.529  1318  7066 I HYPER-HAL: [ResourceManager.cpp]removeResource(): [CPUMinFreq] RemoveResource Request ID : 1194304
+07-08 09:37:01.529  1318  7066 I HYPER-HAL: [RequestManager.cpp]releaseLocked(): Released ID : 1194304
+07-08 09:37:01.609  1301  1301 I sensors-hal: set_config:67, sample_period_ns is adjusted to 200000000 based on min/max delay_ns
+07-08 09:37:01.609  1301  1301 I sensors-hal: batch:363, com.samsung.sensor.light_cct/1511, period=200000000, max_latency=0 request completed
+07-08 09:37:01.610  1301  1301 I sensors-hal: activate:279, com.samsung.sensor.light_cct/1511 en=1
+07-08 09:37:01.610  1301  1301 I sensors-hal: get_qmi_debug_flag:241, support_qmi_debug : false
+07-08 09:37:01.621  1301  1301 I sensors-hal: activate:297, com.samsung.sensor.light_cct/1511 en=1 completed
+07-08 09:37:01.621  1526  3374 D SensorManager: registerListener :: 1511, TMD4907 Light CCT  Non-wakeup, 200000, 0, com.samsung.android.displaysolution.EyeComfortSolutionService$2@b8e6d4c
+07-08 09:37:01.685  1301 26956 I sensors-hal: handle_sns_std_sensor_event:268, [SSC_LIGHT] P: 1(0),m:1,c:0,b:24,ch:0,r:0,bl:0,16:0
+07-08 09:37:01.686  1301  7068 I sensors-hal: handle_indication_realtime:466,  SCHED_FIFO(10) for qmi_cbk
+07-08 09:37:01.686  1301  7068 I sensors-hal: handle_sns_std_sensor_event:90, light_cct: ts = 125593608064794 ns; value = [0.000000, 1.000000, 121.000000, 118.000000, 0.000000, 24.000000, 2.000000, 0.000000, 0.000000, 12.000000]
+07-08 09:37:01.687  1526  3374 D SensorService: Calling activate off 1511
+07-08 09:37:01.687  1301  1301 I sensors-hal: activate:279, com.samsung.sensor.light_cct/1511 en=0
+07-08 09:37:01.689  1301  1301 I sensors-hal: deactivate:371, disconnect qmi to disable sensor
+07-08 09:37:01.690  1301  1301 I sensors-hal: activate:297, com.samsung.sensor.light_cct/1511 en=0 completed
+07-08 09:37:01.690  1526  3374 D SensorManager: unregisterListener :: com.samsung.android.displaysolution.EyeComfortSolutionService$2@b8e6d4c
+07-08 09:37:01.691 24085 24085 D BoundBrokerSvc: onUnbind: Intent { act=com.google.android.gms.chimera.container.moduleinstall.ModuleInstallService.START dat=chimera-action:/... cmp=com.google.android.gms/.chimera.GmsApiService }
+07-08 09:37:02.157  2947  3085 D MobileStatusTracker(0/2): onSignalStrengthsChanged level=4, vendorLevel=5
+07-08 09:37:02.160  2947  3085 D MobileSignalController(0/2): notifyListener: enabled=true, connected=true, dataConnected=true, networkType=NR/NR_NSA is5gAvailable=false (5G_TMO), emergencyOnly=false, roaming=false, isDefault=true, dataActivity=, level=5, ca=false, mmWave=false, disabledDataIcon=false, simCard=ETC
+07-08 09:37:02.168  2947  3085 D NetworkController: SignalStrength from intent slotId=0
+07-08 09:37:02.382  7991 23681 D DelayedNotifier: notify for scanItem.
+07-08 09:37:02.386  1526  3126 D SyncManager: userId - 0 auto - true
+07-08 09:37:02.387 24472 24527 I BaseThreadPoolExecutor: [#CMH#] Task o.e@d122fd2 is submitted
+07-08 09:37:02.427  1526  1965 E AppOps  : evalMode() Foreground mode : uid - 10830, op - 26, capability - 0
+07-08 09:37:02.427  1526  1965 E AppOps  : evalMode() Foreground mode : uid - 10830, op - 1, capability - 0
+07-08 09:37:02.428  3791  3918 I RequestManager_FLP: onOpChanged, op=0 / packageName=com.yala.delivery.mr
+07-08 09:37:02.457 24472  4366 I MediaContentSyncTask: [#CMH#] No of Row (SEC MP :  3425, Max Id : 2147503384) (CMH : 3425, Max Id : 2147503384) - Time :31
+07-08 09:37:02.491 24472  4366 I MediaContentSyncTask: [#CMH#] MP time stamp :  1783517817365, CMH time stamp : 1783517817365
+07-08 09:37:02.491 24472  4366 I MediaContentSyncTask: [#CMH#] Update ITEM :  0
+07-08 09:37:02.515 24472  4366 I BaseThreadPoolExecutor: [#CMH#] afterExecute FutureTask
+07-08 09:37:02.516 24472  4366 I ControllerEventHandler: [#CMH#] Alive Privacy Ignored Policy Called:  false
+07-08 09:37:02.523  2947  3085 D MobileStatusTracker(0/2): onDataActivity: direction=3
+07-08 09:37:02.525  2947  3085 D MobileSignalController(0/2): notifyListener: enabled=true, connected=true, dataConnected=true, networkType=NR/NR_NSA is5gAvailable=false (5G_TMO), emergencyOnly=false, roaming=false, isDefault=true, dataActivity=inout, level=5, ca=false, mmWave=false, disabledDataIcon=false, simCard=ETC
+07-08 09:37:02.549 24472 24514 I BaseThreadPoolExecutor: [#CMH#] Task f.k@587fdcc is submitted
+07-08 09:37:02.549 24472  6223 I POITask : [#CMH#] POITask started 
+07-08 09:37:02.549 24472  6223 I POITask : [#CMH#] Online statue:  true, Setting location extraction flag: false
+07-08 09:37:02.549 24472  6223 I BaseThreadPoolExecutor: [#CMH#] afterExecute FutureTask
+07-08 09:37:02.992   708   708 D io_stats: !@   8,0 r 3817188 65232028 w 1337898 18688132 d 590371 28605980 f 0 0 iot 952812 0 th 0 0 0 pt 0 inp 0 0 69208.393
+07-08 09:37:03.392  2947  3085 D MobileStatusTracker(0/2): onSignalStrengthsChanged level=4, vendorLevel=5
+07-08 09:37:03.396  2947  3085 D MobileSignalController(0/2): notifyListener: enabled=true, connected=true, dataConnected=true, networkType=NR/NR_NSA is5gAvailable=false (5G_TMO), emergencyOnly=false, roaming=false, isDefault=true, dataActivity=inout, level=5, ca=false, mmWave=false, disabledDataIcon=false, simCard=ETC
+07-08 09:37:03.403  2947  3085 D NetworkController: SignalStrength from intent slotId=0
+07-08 09:37:03.490   736  3580 I keystore2: keystore2::watchdog: Watchdog thread idle -> terminating. Have a great day.
+07-08 09:37:03.535  2947  3085 D MobileStatusTracker(0/2): onDataActivity: direction=0
+07-08 09:37:03.537  2947  3085 D MobileSignalController(0/2): notifyListener: enabled=true, connected=true, dataConnected=true, networkType=NR/NR_NSA is5gAvailable=false (5G_TMO), emergencyOnly=false, roaming=false, isDefault=true, dataActivity=, level=5, ca=false, mmWave=false, disabledDataIcon=false, simCard=ETC
+07-08 09:37:03.768  1526 10392 I AfterimageCompensationService: AfcThread mLuminance : 22 , AfpcPeriodCount : 2044 , rotation : 0 , AOD : false
+07-08 09:37:03.784  1526 10392 D system_server: mAFPC_Read - w = 1080, h = 2316, s = 8, f = 4, s_size = 10079232, luminance = 22, count = 2044, captureOrientation = 0
+07-08 09:37:04.322  1585  1585 I adbd    : adbd service requested 'shell,v2,TERM=dumb:export ANDROID_LOG_TAGS=''; exec logcat '-d' '-t' '200''

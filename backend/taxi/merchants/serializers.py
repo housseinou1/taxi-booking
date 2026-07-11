@@ -230,8 +230,12 @@ class CheckoutSerializer(serializers.Serializer):
     recipient_phone = serializers.CharField(max_length=30)
     distance_km = serializers.DecimalField(max_digits=7, decimal_places=2, default=Decimal("5"))
     payment_method = serializers.ChoiceField(
-        choices=[("cash", "Cash"), ("card", "Card"), ("wallet", "Wallet")],
-        default="cash",
+        choices=[
+            ("card", "Debit/Credit Card"),
+            ("bankily", "Bankily"),
+            ("sedad", "Sedad"),
+            ("masravi", "Masravi"),
+        ]
     )
     customer_notes = serializers.CharField(required=False, allow_blank=True, default="")
     dropoff_instructions = DeliveryInstructionsSerializer(required=False)

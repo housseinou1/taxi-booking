@@ -358,7 +358,23 @@ class DocumentService:
         today = date.today()
         alerts = []
 
+        # Map document types to legacy profile fields that satisfy the requirement
+        legacy_field_map = {
+            "profile_photo": lambda d: bool(d.driver_photo),
+            "plate_number_photo": lambda d: bool(d.vehicle_plate or d.plate_number),
+            "national_id": lambda d: bool(getattr(d.user, "national_id_document", None)),
+            "license": lambda d: bool(d.license_file),
+            "insurance": lambda d: bool(d.insurance_document),
+            "vignette": lambda d: bool(d.vignette_document),
+            "carte_grise": lambda d: bool(d.vehicle_registration),
+        }
+
         for doc_type in required_types or REQUIRED_DOCUMENT_TYPES:
+            # Check if a legacy profile field already satisfies this requirement
+            legacy_check = legacy_field_map.get(doc_type)
+            if legacy_check and legacy_check(driver):
+                continue
+
             compatible_types = [doc_type]
             if doc_type == "carte_grise":
                 compatible_types.append("vehicle_registration")

@@ -21,12 +21,28 @@ const driverLogoSrc = "/yala-driver-logo.png";
 const deliveryLogoSrc = "/yala-delivery-logo.png";
 
 function getLogoForApp() {
-  if (isDeliveryCourierApp()) return deliveryLogoSrc;
   const appType = getAppType();
   if (appType === "rider") return riderLogoSrc;
   if (appType === "driver") return driverLogoSrc;
-  if (appType === "delivery") return deliveryLogoSrc;
+  if (appType === "delivery" || isDeliveryCourierApp()) return deliveryLogoSrc;
   return logoSrc;
+}
+
+export function getRegistrationAppContext() {
+  const appType = getAppType();
+  // Native / stamped app type always wins — never inherit courier UI in Rider/Driver.
+  if (appType === "rider") return "rider";
+  if (appType === "driver") return "driver";
+  if (appType === "delivery") return "delivery";
+  if (isDeliveryCourierApp() || isDeliveryUberUI()) return "delivery";
+  return "web";
+}
+
+export function getLockedRegistrationUserType() {
+  const context = getRegistrationAppContext();
+  if (context === "rider") return "rider";
+  if (context === "driver" || context === "delivery") return "driver";
+  return getInitialUserType();
 }
 
 /**
@@ -57,7 +73,8 @@ const getRequestedRole = () => {
   if (nextRoute === "/admin" || nextRoute === "/admin-dashboard" || nextRoute.startsWith("/admin/")) {
     return "admin";
   }
-  if (isDeliveryCourierPath(nextRoute)) {
+  const appType = getAppType();
+  if (appType !== "rider" && appType !== "driver" && isDeliveryCourierPath(nextRoute)) {
     return "driver";
   }
 
@@ -103,7 +120,7 @@ function Register() {
     national_id_number: "",
     city: "",
     password: "",
-    user_type: getInitialUserType(),
+    user_type: getLockedRegistrationUserType(),
   });
   const [cities, setCities] = useState([]);
   const [citiesLoading, setCitiesLoading] = useState(true);
@@ -117,6 +134,19 @@ function Register() {
   const registrationRoles = !verificationStep && !isAppTypeLocked()
     ? ["rider", "driver"]
     : [];
+
+  useEffect(() => {
+    const appType = getAppType();
+    if (appType === "rider" || appType === "driver") {
+      clearDeliveryCourierSession();
+      localStorage.removeItem("sx_login_redirect");
+    }
+
+    const lockedType = getLockedRegistrationUserType();
+    setFormData((current) =>
+      current.user_type === lockedType ? current : { ...current, user_type: lockedType },
+    );
+  }, []);
 
   useEffect(() => {
     let isActive = true;
@@ -219,8 +249,9 @@ function Register() {
     try {
       setLoading(true);
 
+      const lockedUserType = getLockedRegistrationUserType();
       const payload = new FormData();
-      Object.entries(formData).forEach(([key, value]) => {
+      Object.entries({ ...formData, user_type: lockedUserType }).forEach(([key, value]) => {
         payload.append(key, value);
       });
 
@@ -249,9 +280,13 @@ function Register() {
 
       await postWithFallback("/auth/register/", payload, {
         headers: {
-          "X-App-Type": getAppType(),
+          "X-App-Type": getAppType() || lockedUserType,
         },
       });
+
+      if (formData.user_type !== lockedUserType) {
+        setFormData((current) => ({ ...current, user_type: lockedUserType }));
+      }
 
       const loginResponse = await postWithFallback("/auth/login/", {
         email: formData.email.trim().toLowerCase(),
@@ -378,36 +413,52 @@ function Register() {
     }
   };
 
-  const isDeliveryCourierAppFlow = getAppType() !== "rider" && (isDeliveryUberUI() || getAppType() === "delivery");
-  const isRiderLyft = isRiderLyftUI() || formData.user_type === "rider";
+  const registrationContext = getRegistrationAppContext();
+  const isDeliveryCourierAppFlow = registrationContext === "delivery";
+  const isRiderLyft = registrationContext === "rider" || isRiderLyftUI();
   const isDriverLyft =
-    !isDeliveryCourierAppFlow && (isDriverLyftUI() || formData.user_type === "driver");
+    registrationContext === "driver" ||
+    (!isDeliveryCourierAppFlow && (isDriverLyftUI() || formData.user_type === "driver"));
   const isDeliveryUber = isDeliveryCourierAppFlow;
 
   const registerTitle = isDeliveryCourierAppFlow
-    ? "Create courier account"
-    : getAppType() === "rider"
+    ? t("auth.courierRegisterTitle")
+    : registrationContext === "rider"
       ? t("auth.riderRegisterTitle")
-      : t("auth.registerTitle");
+      : registrationContext === "driver"
+        ? t("auth.driverRegisterTitle")
+        : t("auth.registerTitle");
   const registerSubtitle = isDeliveryCourierAppFlow
-    ? "Join Yala Delivery as a courier. Profile setup comes next."
-    : t("auth.registerSubtitle");
+    ? t("auth.courierRegisterSubtitle")
+    : registrationContext === "rider"
+      ? t("auth.riderRegisterSubtitle")
+      : registrationContext === "driver"
+        ? t("auth.driverRegisterSubtitle")
+        : t("auth.registerSubtitle");
   const accountLabel = verificationStep
     ? "Phone verification"
-    : formData.user_type === "rider"
+    : registrationContext === "rider" || formData.user_type === "rider"
       ? t("auth.riderAccount")
       : formData.user_type === "admin"
         ? "Admin Account"
         : isDeliveryCourierAppFlow
-          ? "Courier account"
+          ? t("auth.courierAccount")
           : t("auth.driverAccount");
+
+  const heroBrand = isDeliveryCourierAppFlow
+    ? "Yala Delivery"
+    : registrationContext === "rider"
+      ? "Yala Rider"
+      : registrationContext === "driver"
+        ? "Yala Driver"
+        : t("auth.join");
 
   return (
     <main className={`auth-register-page${isRiderLyft ? " auth-register-page--lyft" : ""}${isDriverLyft ? " auth-register-page--lyft-driver auth-register-page--lyft" : ""}${isDeliveryUber ? " auth-register-page--delivery yala-login--delivery-uber" : ""}`}>
       <AuthRegisterStyles />
       <section className="auth-register-hero">
-        <img src={getLogoForApp()} alt={isDeliveryCourierAppFlow ? "Yala Delivery" : "Yala"} />
-        <span>{isDeliveryCourierAppFlow ? "Yala Delivery" : t("auth.join")}</span>
+        <img src={getLogoForApp()} alt={heroBrand} />
+        <span>{heroBrand}</span>
         <h1>{registerTitle}</h1>
         <p>{registerSubtitle}</p>
       </section>

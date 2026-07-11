@@ -451,6 +451,13 @@ class TestGetExpiredOrMissing:
 
     def setup_method(self):
         self.service = DocumentService()
+        self.legacy_patcher = patch.object(
+            DocumentService, "_legacy_satisfies_required_type", return_value=False
+        )
+        self.legacy_patcher.start()
+
+    def teardown_method(self):
+        self.legacy_patcher.stop()
 
     @patch("taxi.drivers.services.document_service.DriverDocument.objects")
     def test_missing_document_detected(self, mock_objects):
@@ -547,6 +554,70 @@ class TestGetExpiredOrMissing:
         result = self.service.get_expired_or_missing(driver)
 
         assert len(result) == 0
+
+
+class TestGetDocumentsReviewState:
+    """Tests for DocumentService.get_documents_review_state() alert levels."""
+
+    def setup_method(self):
+        self.service = DocumentService()
+
+    @patch.object(DocumentService, "_legacy_satisfies_required_type", return_value=False)
+    @patch("taxi.drivers.services.document_service.DriverDocument.objects")
+    def test_no_alert_when_documents_valid_beyond_15_days(self, mock_objects, _legacy):
+        valid_doc = MagicMock()
+        valid_doc.status = "approved"
+        valid_doc.expires_at = date.today() + timedelta(days=40)
+
+        mock_qs = MagicMock()
+        mock_qs.order_by.return_value.first.return_value = valid_doc
+        mock_objects.filter.return_value = mock_qs
+
+        driver = MagicMock()
+        driver.status = "approved"
+        state = self.service.get_documents_review_state(driver)
+
+        assert state["documents_alert_level"] is None
+        assert state["documents_block_online"] is False
+        assert state["expiring_soon_documents"] == []
+
+    @patch.object(DocumentService, "_legacy_satisfies_required_type", return_value=False)
+    @patch("taxi.drivers.services.document_service.DriverDocument.objects")
+    def test_warning_when_document_expires_within_15_days(self, mock_objects, _legacy):
+        expiring_doc = MagicMock()
+        expiring_doc.status = "approved"
+        expiring_doc.expires_at = date.today() + timedelta(days=10)
+
+        mock_qs = MagicMock()
+        mock_qs.order_by.return_value.first.return_value = expiring_doc
+        mock_objects.filter.return_value = mock_qs
+
+        driver = MagicMock()
+        driver.status = "approved"
+        state = self.service.get_documents_review_state(driver)
+
+        assert state["documents_alert_level"] == "warning"
+        assert state["documents_block_online"] is False
+        assert len(state["expiring_soon_documents"]) == len(REQUIRED_DOCUMENT_TYPES)
+
+    @patch.object(DocumentService, "_legacy_satisfies_required_type", return_value=False)
+    @patch("taxi.drivers.services.document_service.DriverDocument.objects")
+    def test_error_when_document_expired(self, mock_objects, _legacy):
+        expired_doc = MagicMock()
+        expired_doc.status = "approved"
+        expired_doc.expires_at = date.today() - timedelta(days=1)
+
+        mock_qs = MagicMock()
+        mock_qs.order_by.return_value.first.return_value = expired_doc
+        mock_objects.filter.return_value = mock_qs
+
+        driver = MagicMock()
+        driver.status = "approved"
+        state = self.service.get_documents_review_state(driver)
+
+        assert state["documents_alert_level"] == "error"
+        assert state["documents_block_online"] is True
+        assert len(state["expired_document_types"]) == len(REQUIRED_DOCUMENT_TYPES)
 
 
 class TestRequiredDocumentTypes:

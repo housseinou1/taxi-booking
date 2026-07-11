@@ -254,6 +254,7 @@ const ADMIN_SECTION_KEYS = new Set([
   "hall-of-fame",
   "payments",
   "withdrawals",
+  "withdrawal-accounts",
   "analytics",
   "reports",
 ]);
@@ -324,6 +325,17 @@ function AdminDashboard() {
     phone_number: "",
     wallet_id: "",
   });
+  const [withdrawalAccountsForm, setWithdrawalAccountsForm] = useState({
+    bankily_number: "",
+    seddad_number: "",
+    masravi_number: "",
+  });
+  const [withdrawalAccountsMeta, setWithdrawalAccountsMeta] = useState({
+    updated_at: "",
+    updated_by_email: "",
+  });
+  const [withdrawalAccountsSaving, setWithdrawalAccountsSaving] = useState(false);
+  const [withdrawalAccountsMessage, setWithdrawalAccountsMessage] = useState("");
 
   const navigateAdminSection = useCallback((sectionKey) => {
     if (!ADMIN_SECTION_KEYS.has(sectionKey)) return;
@@ -449,8 +461,40 @@ function AdminDashboard() {
         owner_commission_balance: data.owner_commission_balance || 0,
         methods: Array.isArray(data.methods) ? data.methods : [],
       });
+      const defaultMethod =
+        (Array.isArray(data.methods) ? data.methods : []).find((item) => item.is_default) ||
+        (Array.isArray(data.methods) ? data.methods[0] : null);
+      if (defaultMethod) {
+        setOwnerPayoutForm({
+          payout_type: defaultMethod.payout_type || "bank_account",
+          account_holder_name: defaultMethod.account_holder_name || "",
+          bank_name: defaultMethod.bank_name || "",
+          account_reference: defaultMethod.account_reference || "",
+          phone_number: defaultMethod.phone_number || "",
+          wallet_id: defaultMethod.wallet_id || "",
+        });
+      }
     } catch (error) {
       console.error("Owner payout fetch error:", error);
+    }
+  }, []);
+
+  const fetchWithdrawalAccounts = useCallback(async () => {
+    try {
+      const res = await authenticatedApi.get(`${API_URL}/admin/withdrawal-accounts/`);
+      const data = res.data || {};
+      setWithdrawalAccountsForm({
+        bankily_number: data.bankily_number || "",
+        seddad_number: data.seddad_number || "",
+        masravi_number: data.masravi_number || "",
+      });
+      setWithdrawalAccountsMeta({
+        updated_at: data.updated_at || "",
+        updated_by_email: data.updated_by_email || "",
+      });
+    } catch (error) {
+      console.error("Withdrawal accounts fetch error:", error);
+      setWithdrawalAccountsMessage("Could not load withdrawal accounts.");
     }
   }, []);
 
@@ -463,6 +507,7 @@ function AdminDashboard() {
     fetchRides();
     fetchWithdrawals();
     fetchOwnerPayout();
+    fetchWithdrawalAccounts();
   }, [
     fetchDriverPerformance,
     fetchRewardsLeaderboard,
@@ -472,6 +517,7 @@ function AdminDashboard() {
     fetchRides,
     fetchUsers,
     fetchWithdrawals,
+    fetchWithdrawalAccounts,
   ]);
 
   const approveDriver = async (id) => {
@@ -676,6 +722,67 @@ function AdminDashboard() {
     }
   };
 
+  const markWithdrawalPaid = async (id) => {
+    try {
+      await authenticatedApi.post(`${API_URL}/payments/withdrawals/${id}/mark-paid/`);
+      showToast("Withdrawal marked paid", "success");
+      fetchWithdrawals();
+    } catch (error) {
+      console.error(error);
+      showToast(error?.response?.data?.error || "Could not mark withdrawal paid", "error");
+    }
+  };
+
+  const isSuperAdmin = (() => {
+    try {
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      return user.is_superuser === true || user.is_superuser === "true";
+    } catch (error) {
+      return false;
+    }
+  })();
+
+  const updateWithdrawalAccountsForm = (field, value) => {
+    setWithdrawalAccountsForm((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  };
+
+  const saveWithdrawalAccounts = async (event) => {
+    event.preventDefault();
+    if (!isSuperAdmin) {
+      setWithdrawalAccountsMessage("Only a super admin can update withdrawal accounts.");
+      return;
+    }
+    setWithdrawalAccountsSaving(true);
+    setWithdrawalAccountsMessage("");
+    try {
+      const res = await authenticatedApi.put(`${API_URL}/admin/withdrawal-accounts/`, withdrawalAccountsForm);
+      const data = res.data || {};
+      setWithdrawalAccountsForm({
+        bankily_number: data.bankily_number || "",
+        seddad_number: data.seddad_number || "",
+        masravi_number: data.masravi_number || "",
+      });
+      setWithdrawalAccountsMeta({
+        updated_at: data.updated_at || "",
+        updated_by_email: data.updated_by_email || "",
+      });
+      setWithdrawalAccountsMessage("Withdrawal accounts updated.");
+      showToast("Withdrawal accounts updated", "success");
+    } catch (error) {
+      const message =
+        error?.response?.data?.detail ||
+        error?.response?.data?.error ||
+        "Could not save withdrawal accounts.";
+      setWithdrawalAccountsMessage(message);
+      showToast(message, "error");
+    } finally {
+      setWithdrawalAccountsSaving(false);
+    }
+  };
+
   const updateOwnerPayoutForm = (field, value) => {
     setOwnerPayoutForm((current) => ({
       ...current,
@@ -739,6 +846,7 @@ function AdminDashboard() {
     { key: "hall-of-fame", label: "Hall of Fame" },
     { key: "payments", label: "Payments" },
     { key: "withdrawals", label: "Withdrawals" },
+    { key: "withdrawal-accounts", label: "Withdrawal Accounts" },
     { key: "analytics", label: "Analytics" },
     { key: "reports", label: "Reports" },
   ];
@@ -804,6 +912,9 @@ function AdminDashboard() {
   );
   const rejectedWithdrawals = withdrawals.filter(
     (item) => item.status === "rejected"
+  );
+  const paidWithdrawals = withdrawals.filter(
+    (item) => item.status === "paid"
   );
 
   const totalRevenue = rides.reduce(
@@ -1749,12 +1860,13 @@ function AdminDashboard() {
 
         {page === "withdrawals" && (
           <div style={card}>
-            <SectionTitle title="Withdrawal requests" subtitle="Approve driver payout requests when they are ready." />
+            <SectionTitle title="Withdrawal Dashboard" subtitle="Review driver withdrawal requests: Pending → Approved → Paid." />
 
             <div style={statsGrid}>
               <StatCard title="Total Requests" value={withdrawals.length} />
               <StatCard title="Pending" value={pendingWithdrawals.length} />
               <StatCard title="Approved" value={approvedWithdrawals.length} />
+              <StatCard title="Paid" value={paidWithdrawals.length} />
               <StatCard title="Rejected" value={rejectedWithdrawals.length} />
               <StatCard
                 title="Total Requested"
@@ -1805,20 +1917,107 @@ function AdminDashboard() {
                         style={approveButton}
                         onClick={() => approveWithdrawal(item.id)}
                       >
-                        Approve ✅
+                        Approve
                       </button>
 
                       <button
                         style={rejectButton}
                         onClick={() => rejectWithdrawal(item.id)}
                       >
-                        Reject ❌
+                        Reject
                       </button>
                     </>
+                  )}
+
+                  {item.status === "approved" && (
+                    <button
+                      style={approveButton}
+                      onClick={() => markWithdrawalPaid(item.id)}
+                    >
+                      Mark Paid
+                    </button>
                   )}
                 </div>
               ))
             )}
+          </div>
+        )}
+
+        {page === "withdrawal-accounts" && (
+          <div style={card}>
+            <SectionTitle
+              title="Withdrawal Accounts"
+              subtitle="Configure Yala payout destinations shown to drivers and couriers."
+            />
+
+            {withdrawalAccountsMessage ? (
+              <p style={{ color: withdrawalAccountsMessage.includes("updated") ? "#16a34a" : "#dc2626" }}>
+                {withdrawalAccountsMessage}
+              </p>
+            ) : null}
+
+            <div style={statsGrid}>
+              <StatCard title="Bankily" value={withdrawalAccountsForm.bankily_number || "Not set"} />
+              <StatCard title="Sedad" value={withdrawalAccountsForm.seddad_number || "Not set"} />
+              <StatCard title="Masravi" value={withdrawalAccountsForm.masravi_number || "Not set"} />
+            </div>
+
+            {withdrawalAccountsMeta.updated_at ? (
+              <p style={accessMetaStyle}>
+                Last updated {new Date(withdrawalAccountsMeta.updated_at).toLocaleString()}
+                {withdrawalAccountsMeta.updated_by_email
+                  ? ` by ${withdrawalAccountsMeta.updated_by_email}`
+                  : ""}
+              </p>
+            ) : null}
+
+            <form onSubmit={saveWithdrawalAccounts} style={{ display: "grid", gap: 12, maxWidth: 560 }}>
+              <label style={ownerPayoutFieldStyle}>
+                <span>Bankily Number</span>
+                <input
+                  value={withdrawalAccountsForm.bankily_number}
+                  onChange={(event) => updateWithdrawalAccountsForm("bankily_number", event.target.value)}
+                  placeholder="22114373"
+                  disabled={!isSuperAdmin || withdrawalAccountsSaving}
+                  style={ownerPayoutInputStyle}
+                  required
+                />
+              </label>
+              <label style={ownerPayoutFieldStyle}>
+                <span>Sedad Number</span>
+                <input
+                  value={withdrawalAccountsForm.seddad_number}
+                  onChange={(event) => updateWithdrawalAccountsForm("seddad_number", event.target.value)}
+                  placeholder="22114373"
+                  disabled={!isSuperAdmin || withdrawalAccountsSaving}
+                  style={ownerPayoutInputStyle}
+                  required
+                />
+              </label>
+              <label style={ownerPayoutFieldStyle}>
+                <span>Masravi Number</span>
+                <input
+                  value={withdrawalAccountsForm.masravi_number}
+                  onChange={(event) => updateWithdrawalAccountsForm("masravi_number", event.target.value)}
+                  placeholder="22114373"
+                  disabled={!isSuperAdmin || withdrawalAccountsSaving}
+                  style={ownerPayoutInputStyle}
+                  required
+                />
+              </label>
+              <button
+                type="submit"
+                style={approveButton}
+                disabled={!isSuperAdmin || withdrawalAccountsSaving}
+              >
+                {withdrawalAccountsSaving ? "Saving..." : "Save withdrawal accounts"}
+              </button>
+              {!isSuperAdmin ? (
+                <p style={accessMetaStyle}>Only super admins can edit these values. Changes are audit logged.</p>
+              ) : (
+                <p style={accessMetaStyle}>Every update is recorded in the security audit log.</p>
+              )}
+            </form>
           </div>
         )}
 

@@ -8,6 +8,17 @@ const browserProtocol =
     ? "https"
     : "http";
 
+function isCapacitorNative() {
+  return (
+    typeof window !== "undefined" &&
+    Boolean(window.Capacitor?.isNativePlatform?.())
+  );
+}
+
+const DEFAULT_PRODUCTION_API_URL = "https://api.yalataxi.live";
+const DEFAULT_PRODUCTION_WS_URL = "wss://api.yalataxi.live/ws/rides/";
+const DEFAULT_PRODUCTION_DELIVERY_WS_URL = "wss://api.yalataxi.live/ws/deliveries/";
+
 function isProductionWebHost(host) {
   const normalized = String(host || "").toLowerCase();
   return normalized === "yalataxi.live" || normalized === "www.yalataxi.live";
@@ -90,21 +101,27 @@ const localDevDeliveryWsUrl = `${localDevWsBase}/deliveries/`;
 
 export const API_URL = preferLocalDevApi
   ? localDevApiUrl
-  : configuredApiUrl || localDevApiUrl;
+  : configuredApiUrl || (isCapacitorNative() ? DEFAULT_PRODUCTION_API_URL : localDevApiUrl);
 
 export const WS_URL = preferLocalDevApi
   ? localDevWsUrl
-  : configuredWsUrl || localDevWsUrl;
+  : configuredWsUrl || (isCapacitorNative() ? DEFAULT_PRODUCTION_WS_URL : localDevWsUrl);
 
 export const DELIVERY_WS_URL = preferLocalDevApi
   ? localDevDeliveryWsUrl
-  : configuredDeliveryWsUrl || localDevDeliveryWsUrl;
+  : configuredDeliveryWsUrl || (isCapacitorNative() ? DEFAULT_PRODUCTION_DELIVERY_WS_URL : localDevDeliveryWsUrl);
 
 export function getApiCandidates(path = "") {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-  const candidates = [`${API_URL}${normalizedPath}`];
+  const remoteApiUrl =
+    configuredApiUrl && !isLocalNetworkApiUrl(configuredApiUrl)
+      ? configuredApiUrl
+      : isCapacitorNative()
+      ? DEFAULT_PRODUCTION_API_URL
+      : API_URL;
+  const candidates = [`${remoteApiUrl}${normalizedPath}`];
 
-  if (isRemoteApiConfigured) {
+  if (isRemoteApiConfigured || isCapacitorNative()) {
     return candidates;
   }
 

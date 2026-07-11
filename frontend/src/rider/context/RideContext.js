@@ -110,7 +110,17 @@ function rideReducer(state, action) {
           : null,
         driverPosition: null,
         loading: false,
-        bookingStep: state.currentRide ? 'tracking' : 'idle',
+        bookingStep: state.currentRide ? 'completed' : 'idle',
+      };
+
+    case 'RESET_RIDE':
+      return {
+        ...state,
+        currentRide: null,
+        driverPosition: null,
+        loading: false,
+        bookingStep: 'idle',
+        bottomSheetState: 'collapsed',
       };
 
     case 'RIDE_CANCELLED':

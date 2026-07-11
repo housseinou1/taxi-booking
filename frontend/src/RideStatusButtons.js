@@ -18,6 +18,7 @@ function RideStatusButtons({
   const [pickupPin, setPickupPin] = useState("");
   const pinVerified = Boolean(ride.pickup_pin_verified);
   const startRideButtonRef = useRef(null);
+  const actionInFlightRef = useRef(false);
   const [navigationStarted, setNavigationStarted] = useState(() =>
     localStorage.getItem(`ride_${ride.id}_navigation_started`) === "true"
   );
@@ -31,13 +32,39 @@ function RideStatusButtons({
   const stopNavigationUrls = nextStop ? getStopNavigationUrls(nextStop) : null;
   const finalNavigationUrls = getNavigationUrls(ride, "destination");
   const hasReliablePickupDistance = Boolean(arriveGate?.reliable);
+  const hasDriverCoords = Boolean(arriveGate?.driver || driverPosition || arriveGate?.arriveBody);
   const isNearPickup = Boolean(arriveGate?.near);
   const pickupDistanceKm = arriveGate?.distanceKm ?? distanceToNextKm;
-  const pickupDistanceLabel = gpsUnavailable || !hasReliablePickupDistance
-    ? "Waiting for your location"
-    : Number.isFinite(Number(pickupDistanceKm))
-    ? `Pickup is ${Number(pickupDistanceKm).toFixed(1)} km away`
-    : "Locating pickup...";
+  const arriveSlideLabel = "Slide Right to Arrive";
+  const arriveStatusHint = !hasDriverCoords
+    ? gpsUnavailable
+      ? "Waiting for your location — enable GPS"
+      : "Waiting for your location"
+    : !isNearPickup && hasReliablePickupDistance
+    ? `${Number(pickupDistanceKm).toFixed(1)} km away — move within ${Math.round(ARRIVE_MAX_DISTANCE_M)}m`
+    : null;
+  const canMarkArrived = isNearPickup;
+
+  useEffect(() => {
+    if (!["accepted", "driver_arriving"].includes(ride.status)) return;
+    console.warn("[driver-trip] slide-gate", {
+      rideId: ride.id,
+      status: ride.status,
+      hasDriverCoords,
+      distanceM: arriveGate?.distanceM ?? null,
+      near: isNearPickup,
+      slideEnabled: canMarkArrived,
+      hint: arriveStatusHint,
+    });
+  }, [
+    arriveGate?.distanceM,
+    arriveStatusHint,
+    canMarkArrived,
+    hasDriverCoords,
+    isNearPickup,
+    ride.id,
+    ride.status,
+  ]);
   const markNavigationStarted = useCallback(() => {
     localStorage.setItem(`ride_${ride.id}_navigation_started`, "true");
     setNavigationStarted(true);
@@ -76,17 +103,24 @@ function RideStatusButtons({
     fallback;
 
   const updateRideStatus = async (endpoint) => {
+    if (actionInFlightRef.current) return;
     setActionError("");
     try {
+      actionInFlightRef.current = true;
       setWorkingAction(endpoint);
       let body = {};
       if (endpoint === "arrived") {
-        if (arriveGate?.arriveBody) {
-          body = arriveGate.arriveBody;
-        } else {
-          setActionError("Waiting for your location. Please enable GPS and try again.");
+        if (!arriveGate?.arriveBody) {
+          setActionError(
+            hasDriverCoords
+              ? `Move within ${Math.round(ARRIVE_MAX_DISTANCE_M)}m of pickup before marking arrived.`
+              : "Waiting for your location. Please enable GPS and try again."
+          );
+          actionInFlightRef.current = false;
+          setWorkingAction("");
           return;
         }
+        body = arriveGate.arriveBody;
       }
       const data = await postRideAction(endpoint, body);
       if (endpoint === "start") {
@@ -97,21 +131,30 @@ function RideStatusButtons({
       console.error(error);
       setActionError(extractApiError(error, "Server error. Please try again."));
     } finally {
+      actionInFlightRef.current = false;
       setWorkingAction("");
     }
   };
 
   const verifyPickupPin = async () => {
-    if (pickupPin.length !== 4) return;
+    if (pickupPin.length !== 4 || actionInFlightRef.current) return;
     setActionError("");
     try {
+      actionInFlightRef.current = true;
       setWorkingAction("verify-pin");
       const data = await postRideAction("verify-pin", { pickup_pin: pickupPin });
-      if (onStatusChange) onStatusChange(data);
+      if (onStatusChange) {
+        onStatusChange({
+          ...data,
+          pickup_pin_verified: data.pickup_pin_verified ?? true,
+          status: data.status || ride.status,
+        });
+      }
     } catch (error) {
       console.error(error);
       setActionError(extractApiError(error, "Could not verify pickup PIN. Check the code and try again."));
     } finally {
+      actionInFlightRef.current = false;
       setWorkingAction("");
     }
   };
@@ -169,22 +212,15 @@ function RideStatusButtons({
             onChoose={markNavigationStarted}
           />
           <SlideRideAction
-            label={
-              isNearPickup
-                ? "Slide Right to Arrive"
-                : pickupDistanceLabel
-            }
+            label={arriveSlideLabel}
+            statusHint={arriveStatusHint}
             completeLabel="Marking arrived..."
             color="#0F8F4D"
-            disabled={Boolean(workingAction) || !isNearPickup}
+            disabled={Boolean(workingAction) || !canMarkArrived}
             isWorking={workingAction === "arrived"}
             onComplete={() => updateRideStatus("arrived")}
             onDisabledAttempt={() => {
-              if (!hasReliablePickupDistance) {
-                setActionError("Waiting for your location. Please enable GPS and try again.");
-                return;
-              }
-              if (!isNearPickup) {
+              if (hasReliablePickupDistance && !isNearPickup) {
                 setActionError(
                   `Move closer to the pickup point before tapping Arrived (${Math.round(
                     Number(arriveGate?.distanceM ?? pickupDistanceKm * 1000)
@@ -434,6 +470,7 @@ function nativeActionLabel(label) {
 
 function SlideRideAction({
   label,
+  statusHint = "",
   completeLabel,
   color,
   disabled = false,
@@ -567,8 +604,8 @@ function SlideRideAction({
         >
           {isWorking ? completeLabel : nativeTapLabel}
         </button>
-        {disabled && !isWorking ? (
-          <span style={nativeActionHintStyle}>{label}</span>
+        {statusHint && !isWorking ? (
+          <span style={nativeActionHintStyle}>{statusHint}</span>
         ) : null}
       </div>
     );

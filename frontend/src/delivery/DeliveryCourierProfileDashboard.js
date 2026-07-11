@@ -88,6 +88,16 @@ export default function DeliveryCourierProfileDashboard() {
     localStorage.removeItem("access");
     localStorage.removeItem("refresh");
     localStorage.removeItem("user");
+    localStorage.removeItem("selectedRideId");
+    localStorage.removeItem("needs_payment_setup");
+    localStorage.removeItem("needs_vehicle_setup");
+    localStorage.removeItem("sx_login_redirect");
+    localStorage.removeItem("yala_delivery_online_ms");
+    // Clear secure storage tokens (fire-and-forget for native apps)
+    import("../native/storage").then(({ removeToken }) => {
+      removeToken("access").catch(() => {});
+      removeToken("refresh").catch(() => {});
+    }).catch(() => {});
     window.location.href = "/login?next=/delivery/courier";
   };
 

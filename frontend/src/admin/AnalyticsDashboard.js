@@ -6,6 +6,7 @@
  */
 import React, { useCallback, useEffect, useState } from "react";
 import { API_URL } from "../apiConfig";
+import authenticatedApi from "../auth/authenticatedApi";
 import { formatMoney } from "../marketConfig";
 
 // ─── Design tokens (Uber-inspired) ──────────────────────────────────────────
@@ -35,25 +36,19 @@ const T = {
 };
 
 // ─── API ─────────────────────────────────────────────────────────────────────
-async function fetchAnalytics(mode, token, cityId = "") {
+async function fetchAnalytics(mode, cityId = "") {
   const path = mode === "admin" ? "/rides/analytics/admin/"
     : mode === "driver" ? "/rides/analytics/driver/"
     : "/rides/analytics/rider/";
   const query = mode === "admin" && cityId ? `?city=${cityId}` : "";
-  const res = await fetch(`${API_URL}${path}${query}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+  const res = await authenticatedApi.get(`${API_URL}${path}${query}`);
+  return res.data;
 }
 
-async function fetchActivityHeatmap(period, token, cityId = "") {
+async function fetchActivityHeatmap(period, cityId = "") {
   const cityQuery = cityId ? `&city=${cityId}` : "";
-  const res = await fetch(`${API_URL}/rides/analytics/admin/activity-heatmap/?period=${period}${cityQuery}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+  const res = await authenticatedApi.get(`${API_URL}/rides/analytics/admin/activity-heatmap/?period=${period}${cityQuery}`);
+  return res.data;
 }
 
 // ─── Metric Card ─────────────────────────────────────────────────────────────
@@ -344,7 +339,7 @@ function PeakHoursChart({ data }) {
   );
 }
 
-function AdminActivityHeatMap({ token, cityId = "" }) {
+function AdminActivityHeatMap({ cityId = "" }) {
   const [period, setPeriod] = useState("daily");
   const [heatmap, setHeatmap] = useState(null);
   const [error, setError] = useState("");
@@ -352,11 +347,11 @@ function AdminActivityHeatMap({ token, cityId = "" }) {
   useEffect(() => {
     let active = true;
     setError("");
-    fetchActivityHeatmap(period, token, cityId)
+    fetchActivityHeatmap(period, cityId)
       .then(data => { if (active) setHeatmap(data); })
       .catch(err => { if (active) setError(err.message); });
     return () => { active = false; };
-  }, [period, token, cityId]);
+  }, [period, cityId]);
 
   if (error) {
     return <ChartPanel title="Driver activity heat map"><div style={{ color: T.red }}>Unable to load heat map: {error}</div></ChartPanel>;
@@ -515,7 +510,7 @@ function RiderView({ data }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // ADMIN VIEW
 // ═══════════════════════════════════════════════════════════════════════════════
-function AdminView({ data, token, cityId }) {
+function AdminView({ data, cityId }) {
   const [revPeriod, setRevPeriod] = useState("monthly");
   const { summary, charts, ride_type_breakdown, top_drivers } = data;
   const revChart = revPeriod === "daily" ? charts.daily_revenue
@@ -541,7 +536,7 @@ function AdminView({ data, token, cityId }) {
         <UberBarChart data={revChart} color={T.green} height={200} />
       </ChartPanel>
 
-      <AdminActivityHeatMap token={token} cityId={cityId} />
+      <AdminActivityHeatMap cityId={cityId} />
 
       {/* Commission + rides trend */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -596,7 +591,7 @@ function AdminView({ data, token, cityId }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // MAIN EXPORT
 // ═══════════════════════════════════════════════════════════════════════════════
-export default function AnalyticsDashboard({ mode = "admin", token }) {
+export default function AnalyticsDashboard({ mode = "admin" }) {
   const [data, setData] = useState(null);
   const [cities, setCities] = useState([]);
   const [selectedCity, setSelectedCity] = useState("");
@@ -604,24 +599,20 @@ export default function AnalyticsDashboard({ mode = "admin", token }) {
   const [error, setError] = useState(null);
 
   const load = useCallback(async () => {
-    if (!token) { setError("Authentication required"); setLoading(false); return; }
-    try { setLoading(true); setError(null); setData(await fetchAnalytics(mode, token, selectedCity)); }
+    try { setLoading(true); setError(null); setData(await fetchAnalytics(mode, selectedCity)); }
     catch (err) { setError(err.message); }
     finally { setLoading(false); }
-  }, [mode, token, selectedCity]);
+  }, [mode, selectedCity]);
 
   const loadCities = useCallback(async () => {
-    if (!token || mode !== "admin") return;
+    if (mode !== "admin") return;
     try {
-      const response = await fetch(`${API_URL}/locations/cities/`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const result = await response.json();
-      setCities(Array.isArray(result) ? result : []);
+      const res = await authenticatedApi.get(`${API_URL}/locations/cities/`);
+      setCities(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       setCities([]);
     }
-  }, [mode, token]);
+  }, [mode]);
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { loadCities(); }, [loadCities]);
@@ -691,7 +682,7 @@ export default function AnalyticsDashboard({ mode = "admin", token }) {
       </div>
       {mode === "driver" && <DriverView data={data} />}
       {mode === "rider" && <RiderView data={data} />}
-      {mode === "admin" && <AdminView data={data} token={token} cityId={selectedCity} />}
+      {mode === "admin" && <AdminView data={data} cityId={selectedCity} />}
     </div>
   );
 }

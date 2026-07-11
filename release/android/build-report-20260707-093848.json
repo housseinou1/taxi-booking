@@ -1,0 +1,32 @@
+﻿[
+    {
+        "App":  "Yala Rider",
+        "VersionCode":  "15",
+        "VersionName":  "1.2.3",
+        "Output":  "C:\\Users\\Housseinou\\Projects\\Django\\taxi-booking\\release\\android\\yala-rider-1.2.3-15-20260707-093848.aab",
+        "Keystore":  "C:\\Users\\Housseinou\\Projects\\Django\\taxi-booking\\signing\\yala-rider-upload.jks",
+        "Alias":  "yala-rider-upload",
+        "SHA256":  "AC:A1:F0:65:F6:A3:AB:35:7E:F4:6E:E2:92:71:32:A9:1F:2C:D6:16:6A:48:A5:D1:43:BA:B6:7F:46:7C:B7:16",
+        "Owner":  "CN=Yala Rider Upload, OU=Mobile, O=Yala Taxi MR, L=Nouakchott, ST=Nouakchott, C=MR"
+    },
+    {
+        "App":  "Yala Driver",
+        "VersionCode":  "20",
+        "VersionName":  "1.2.5",
+        "Output":  "C:\\Users\\Housseinou\\Projects\\Django\\taxi-booking\\release\\android\\yala-driver-1.2.5-20-20260707-093848.aab",
+        "Keystore":  "C:\\Users\\Housseinou\\Projects\\Django\\taxi-booking\\signing\\yala-driver-upload.jks",
+        "Alias":  "yala-driver-upload",
+        "SHA256":  "7F:E1:F0:AB:9C:88:A8:F1:F5:7D:E2:6D:76:4B:39:0F:80:88:0B:7E:3E:F5:47:88:78:03:F2:1A:CE:85:34:0F",
+        "Owner":  "CN=Yala Driver Upload, OU=Mobile, O=Yala Taxi MR, L=Nouakchott, ST=Nouakchott, C=MR"
+    },
+    {
+        "App":  "Yala Delivery",
+        "VersionCode":  "6",
+        "VersionName":  "1.0.4",
+        "Output":  "C:\\Users\\Housseinou\\Projects\\Django\\taxi-booking\\release\\android\\yala-delivery-1.0.4-6-20260707-093848.aab",
+        "Keystore":  "C:\\Users\\Housseinou\\Projects\\Django\\taxi-booking\\signing\\yala-delivery-upload.jks",
+        "Alias":  "yala-delivery-upload",
+        "SHA256":  "BB:07:26:64:CA:0B:0D:1C:13:30:96:74:43:DC:E3:C2:FB:6D:E9:7C:C7:C0:AA:6E:10:F9:47:DD:40:6E:5D:8B",
+        "Owner":  "CN=Yala Delivery Upload, OU=Mobile, O=Yala Taxi MR, L=Nouakchott, ST=Nouakchott, C=MR"
+    }
+]

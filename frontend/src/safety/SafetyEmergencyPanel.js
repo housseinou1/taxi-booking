@@ -206,7 +206,9 @@ export default function SafetyEmergencyPanel({ role = "rider", currentRide, onCl
           <form onSubmit={addContact}>
             <input required value={contact.name} onChange={(event) => setContact({ ...contact, name: event.target.value })} placeholder="Contact name" />
             <input required value={contact.phone_number} onChange={(event) => setContact({ ...contact, phone_number: event.target.value })} placeholder="Phone number" />
-            <button type="submit" disabled={working === "contact"}>Add contact</button>
+            <button type="submit" disabled={working === "contact" || contacts.length >= 5}>
+              Add contact ({contacts.length}/5)
+            </button>
           </form>
         </article>
 

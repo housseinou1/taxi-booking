@@ -1,0 +1,79 @@
+.platform-withdrawal-accounts {
+  display: grid;
+  gap: 12px;
+  margin: 16px 0;
+  padding: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.04);
+}
+
+.platform-withdrawal-accounts__header h4 {
+  margin: 0 0 4px;
+  font-size: 1rem;
+}
+
+.platform-withdrawal-accounts__header p {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.platform-withdrawal-accounts__choices {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.platform-withdrawal-accounts__choice {
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 12px;
+  background: #fff;
+  padding: 10px 8px;
+  font-weight: 600;
+  color: #0f172a;
+  cursor: pointer;
+}
+
+.platform-withdrawal-accounts__choice.is-selected {
+  border-color: #0f8f4d;
+  background: rgba(15, 143, 77, 0.08);
+  box-shadow: inset 0 0 0 1px #0f8f4d;
+}
+
+.platform-withdrawal-accounts__destination {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #0f172a;
+  color: #f8fafc;
+}
+
+.platform-withdrawal-accounts__destination small {
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.72rem;
+}
+
+.platform-withdrawal-accounts__destination strong {
+  font-size: 1.05rem;
+  word-break: break-all;
+}
+
+.platform-withdrawal-accounts__loading,
+.platform-withdrawal-accounts__error {
+  margin: 12px 0;
+  font-size: 0.92rem;
+}
+
+.platform-withdrawal-accounts__error {
+  color: #b91c1c;
+}
+
+@media (max-width: 640px) {
+  .platform-withdrawal-accounts__choices {
+    grid-template-columns: 1fr;
+  }
+}

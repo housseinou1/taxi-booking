@@ -431,6 +431,34 @@ def toggle_availability(request):
 
         return _availability_toggle_response(profile)
 
+    from .services.document_service import DocumentService
+
+    document_state = DocumentService().get_documents_review_state(profile)
+    if document_state.get("documents_block_online"):
+        if profile.is_available:
+            profile.is_available = False
+            profile.save(update_fields=["is_available"])
+        expired_types = document_state.get("expired_document_types") or []
+        missing_types = document_state.get("missing_document_types") or []
+        if expired_types:
+            error = (
+                "One or more required documents have expired. "
+                "Upload renewed documents before going online."
+            )
+        else:
+            error = "Upload all required documents before going online."
+        return Response(
+            {
+                "error": error,
+                "status": profile.status,
+                "is_available": False,
+                "expired_document_types": expired_types,
+                "missing_document_types": missing_types,
+                "documents_alert_level": document_state.get("documents_alert_level"),
+            },
+            status=400,
+        )
+
     if expired_documents:
         if profile.is_available:
             profile.is_available = False

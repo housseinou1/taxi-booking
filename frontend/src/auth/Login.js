@@ -4,7 +4,9 @@ import { useTranslation } from "react-i18next";
 import { API_URL, getApiCandidates } from "../apiConfig";
 import { getSafeRedirectPath, getUserRole } from "./roleRouting";
 import { persistAuthTokens } from "./session";
-import { getAppType, isDeliveryCourierPath } from "../native/platform";
+import { getAppType, isDeliveryCourierPath, isNative } from "../native/platform";
+import { getDeviceName, getStableDeviceId } from "../native/deviceId";
+import { submitIntegrityToken } from "../native/playIntegrity";
 import "../delivery/delivery-uber.css";
 
 const logoSrc = "/yala-logo.png";
@@ -21,16 +23,65 @@ function getAuthApiCandidates(path) {
   return getApiCandidates(path);
 }
 
-function getApiErrorMessage(error, fallback) {
+async function postLoginRequest(endpoint, payload, headers = {}, timeoutMs = 15000) {
+  if (!isNative()) {
+    return axios.post(endpoint, payload, { timeout: timeoutMs, headers });
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(headers || {}),
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+    let data = {};
+    try {
+      data = await response.json();
+    } catch (error) {
+      data = {};
+    }
+    if (!response.ok) {
+      const httpError = new Error(`Login failed (${response.status})`);
+      httpError.response = { status: response.status, data };
+      throw httpError;
+    }
+    return { status: response.status, data };
+  } catch (error) {
+    if (error?.response) {
+      throw error;
+    }
+    const networkError = new Error(error?.message || "Network request failed");
+    networkError.request = true;
+    networkError.code = error?.name === "AbortError" ? "ECONNABORTED" : error?.code;
+    throw networkError;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function getApiErrorMessage(error, fallback, context = "web") {
   if (error?.response?.data) {
     const data = error.response.data;
     if (typeof data === "string" && data.trim()) return data.trim();
     if (data.error) return data.error;
     if (data.detail) return data.detail;
     if (data.message) return data.message;
+    if (error.response.status) {
+      return `${fallback} (HTTP ${error.response.status})`;
+    }
   }
   if (error?.request) {
-    return "Cannot reach the Yala server. Check your internet connection and try again.";
+    const apiTarget = API_URL || window.location.origin || "the API server";
+    if (context === "admin") {
+      return `Cannot reach Yala Admin API at ${apiTarget}. Check your internet, then hard-refresh (Ctrl+Shift+R).`;
+    }
+    return `Cannot reach ${apiTarget}. Check your internet connection and try again.`;
   }
   return fallback;
 }
@@ -220,15 +271,87 @@ export default function Login({ onLogin }) {
   const [resetConfirmPassword, setResetConfirmPassword] = useState("");
   const [resetMessage, setResetMessage] = useState("");
   const [resetLoading, setResetLoading] = useState(false);
+  const [pending2FA, setPending2FA] = useState(null);
+  const [totpCode, setTotpCode] = useState("");
+  const [newDeviceNotice, setNewDeviceNotice] = useState("");
 
   useEffect(() => {
     // Don't redirect here — let App.js handle routing for authenticated users
     // This prevents redirect loops in Capacitor WebView
   }, []);
 
+  const completeAuthenticatedLogin = async (data) => {
+    persistAuthTokens({
+      access: data.access,
+      refresh: data.refresh,
+      user: data,
+    });
+
+    if (data?.is_new_device) {
+      setNewDeviceNotice(
+        "New device sign-in detected. A security email was sent if alerts are configured.",
+      );
+    }
+
+    if (data?.access) {
+      submitIntegrityToken(data.access).catch(() => {});
+    }
+
+    if (onLogin) {
+      onLogin(data);
+    } else {
+      window.location.href = getRedirectPath(data);
+    }
+  };
+
+  const handleVerify2FA = async (event) => {
+    event.preventDefault();
+    setErrorMessage("");
+    if (!pending2FA?.pending_token) {
+      setErrorMessage("2FA session expired. Please sign in again.");
+      setPending2FA(null);
+      return;
+    }
+    if (!/^\d{6}$/.test(String(totpCode || "").trim())) {
+      setErrorMessage("Enter the 6-digit authenticator code.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      let response = null;
+      let lastError = null;
+      for (const endpoint of getAuthApiCandidates("/auth/2fa/verify/")) {
+        try {
+          response = await axios.post(
+            endpoint,
+            {
+              pending_token: pending2FA.pending_token,
+              code: String(totpCode).trim(),
+            },
+            { timeout: 15000 },
+          );
+          break;
+        } catch (error) {
+          lastError = error;
+          if (error?.response) break;
+        }
+      }
+      if (!response) throw lastError || new Error("2FA verification failed");
+      setPending2FA(null);
+      setTotpCode("");
+      await completeAuthenticatedLogin(response.data);
+    } catch (error) {
+      setErrorMessage(getApiErrorMessage(error, "Invalid authentication code."));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleLogin = async (event) => {
     event.preventDefault();
     setErrorMessage("");
+    setNewDeviceNotice("");
 
     if (!email.trim() || !password) {
       setErrorMessage(t("auth.enterCredentials"));
@@ -240,16 +363,21 @@ export default function Login({ onLogin }) {
 
       let response = null;
       let lastError = null;
+      const deviceId = await getStableDeviceId();
+      const deviceName = getDeviceName();
 
       for (const endpoint of getLoginApiCandidates()) {
         try {
-          response = await axios.post(
+          response = await postLoginRequest(
             endpoint,
             {
               email: email.trim().toLowerCase(),
               password,
+              device_id: deviceId,
+              device_name: deviceName,
             },
-            { timeout: 15000 }
+            deviceId ? { "X-Device-Id": deviceId } : undefined,
+            isNative() ? 45000 : 15000,
           );
           break;
         } catch (error) {
@@ -262,6 +390,15 @@ export default function Login({ onLogin }) {
 
       if (!response) {
         throw lastError || new Error("Login request failed");
+      }
+
+      if (response.data?.is_2fa_required && response.data?.pending_token) {
+        setPending2FA({
+          pending_token: response.data.pending_token,
+          email: response.data.email || email.trim().toLowerCase(),
+        });
+        setTotpCode("");
+        return;
       }
 
       const loginContext = getLoginContext();
@@ -299,17 +436,7 @@ export default function Login({ onLogin }) {
         return;
       }
 
-      persistAuthTokens({
-        access: response.data.access,
-        refresh: response.data.refresh,
-        user: response.data,
-      });
-
-      if (onLogin) {
-        onLogin(response.data);
-      } else {
-        window.location.href = getRedirectPath(response.data);
-      }
+      await completeAuthenticatedLogin(response.data);
     } catch (error) {
       setErrorMessage(getLoginErrorMessage(error, t, getLoginContext()));
     } finally {
@@ -328,7 +455,7 @@ export default function Login({ onLogin }) {
       return;
     }
     if (context === "delivery") {
-      window.location.href = "/register?next=/delivery/profile-setup";
+      window.location.href = "/register?role=driver&next=/delivery/profile-setup";
       return;
     }
     if (context === "rider") {
@@ -490,7 +617,9 @@ export default function Login({ onLogin }) {
 
       <form
         onSubmit={
-          resetStep === "request"
+          pending2FA
+            ? handleVerify2FA
+            : resetStep === "request"
             ? requestResetCode
             : resetStep === "verify"
               ? verifyResetCode
@@ -509,7 +638,45 @@ export default function Login({ onLogin }) {
           <div className="yala-login__success">{resetMessage}</div>
         )}
 
-        {resetStep === "login" ? (
+        {newDeviceNotice && (
+          <div className="yala-login__success">{newDeviceNotice}</div>
+        )}
+
+        {pending2FA ? (
+          <>
+            <p className="yala-login__tagline">
+              Enter the 6-digit code from your authenticator app for {pending2FA.email}.
+            </p>
+            <label className="yala-login__label">
+              Authentication code
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={6}
+                value={totpCode}
+                onChange={(event) => setTotpCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+                className="yala-login__input"
+                autoComplete="one-time-code"
+                placeholder="123456"
+              />
+            </label>
+            <button type="submit" disabled={loading} className="yala-login__btn-primary">
+              {loading ? "Verifying..." : "Verify 2FA"}
+            </button>
+            <button
+              type="button"
+              className="yala-login__link-btn"
+              onClick={() => {
+                setPending2FA(null);
+                setTotpCode("");
+                setErrorMessage("");
+              }}
+            >
+              Back to login
+            </button>
+          </>
+        ) : resetStep === "login" ? (
           <>
             <label className="yala-login__label">
               {t("auth.email")}

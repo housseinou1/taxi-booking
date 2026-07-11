@@ -392,6 +392,79 @@
   gap: 12px;
 }
 
+.delivery-dash__confirm-btn--pay {
+  background: #00a651;
+}
+
+.delivery-dash__payment-section {
+  margin-top: 18px;
+}
+
+.delivery-dash__payment-section h3 {
+  margin: 0 0 10px;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.delivery-dash__payment-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.delivery-dash__payment-chip {
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #111827;
+  border-radius: 999px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.delivery-dash__payment-chip.is-active {
+  border-color: #00a651;
+  background: rgba(0, 166, 81, 0.1);
+  color: #067a3d;
+}
+
+.delivery-dash__payment-success {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(0, 166, 81, 0.12);
+  color: #067a3d;
+  text-align: left;
+}
+
+.delivery-dash__payment-success strong {
+  display: block;
+  font-size: 15px;
+}
+
+.delivery-dash__payment-success p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #374151;
+}
+
+.delivery-dash__payment-success-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #00a651;
+  color: #fff;
+  font-weight: 800;
+}
+
 .delivery-dash__confirm-btn {
   width: 100%;
   min-height: 54px;

@@ -5,6 +5,8 @@ import { DELIVERY_VEHICLE_TYPES } from "../deliveryVehicleTypes";
 import { fetchServerCourierFares } from "../deliveryPricing";
 import { getDefaultCourierType } from "../deliveryCourierRouting";
 import { mapCategoryToApi } from "../deliveryCustomerCategories";
+import { DELIVERY_PAYMENT_METHODS } from "../../payments/paymentApi";
+import { getDeliveryPayButtonLabel } from "../../payments/deliveryPayment";
 
 export default function DeliveryOptionsScreen({
   form,
@@ -12,6 +14,8 @@ export default function DeliveryOptionsScreen({
   distanceKm,
   selectedOption,
   onSelectOption,
+  paymentMethod,
+  onPaymentMethodChange,
   onConfirm,
   onBack,
   busy = false,
@@ -61,6 +65,8 @@ export default function DeliveryOptionsScreen({
     return { ...vehicle, fare };
   }).filter((item) => item.fare);
 
+  const payLabel = getDeliveryPayButtonLabel(paymentMethod, selectedFare?.total || 0);
+
   return (
     <div className="delivery-dash__form-screen">
       <div className="delivery-dash__screen-head">
@@ -108,6 +114,23 @@ export default function DeliveryOptionsScreen({
         })}
       </div>
 
+      <section className="delivery-dash__payment-section">
+        <h3>Payment method</h3>
+        <div className="delivery-dash__payment-chips">
+          {DELIVERY_PAYMENT_METHODS.map((method) => (
+            <button
+              key={method.value}
+              type="button"
+              className={`delivery-dash__payment-chip ${paymentMethod === method.value ? "is-active" : ""}`}
+              onClick={() => onPaymentMethodChange(method.value)}
+              disabled={busy}
+            >
+              {method.label}
+            </button>
+          ))}
+        </div>
+      </section>
+
       <div className="delivery-dash__sticky-confirm">
         {showTermsAcceptance ? (
           <DeliveryCustomerTermsAcceptance
@@ -121,11 +144,12 @@ export default function DeliveryOptionsScreen({
         ) : null}
         <button
           type="button"
-          className="delivery-dash__confirm-btn"
+          className="delivery-dash__confirm-btn delivery-dash__confirm-btn--pay"
           onClick={onConfirm}
           disabled={busy || (showTermsAcceptance && (!termsChecked || !privacyChecked))}
+          aria-busy={busy}
         >
-          {busy ? "Confirming..." : `Confirm · ${selectedFare?.total || 0} MRU`}
+          {payLabel}
         </button>
       </div>
     </div>

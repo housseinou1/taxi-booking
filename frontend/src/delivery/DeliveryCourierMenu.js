@@ -1,5 +1,6 @@
 import React from "react";
 
+import { resetAuthRedirectFlag } from "../auth/authenticatedApi";
 import { useCourierMenuData } from "./useCourierMenuData";
 import "./delivery-courier-profile.css";
 
@@ -24,10 +25,10 @@ const MENU_ITEMS = [
 ];
 
 function courierLogout() {
-  localStorage.removeItem("access");
-  localStorage.removeItem("refresh");
-  localStorage.removeItem("user");
-  window.location.href = "/login?next=/delivery/courier";
+  resetAuthRedirectFlag();
+  ["access", "refresh", "user", "selectedRideId", "needs_payment_setup", "needs_vehicle_setup"]
+    .forEach((key) => localStorage.removeItem(key));
+  window.location.replace("/login?next=/delivery/courier");
 }
 
 export default function DeliveryCourierMenu({

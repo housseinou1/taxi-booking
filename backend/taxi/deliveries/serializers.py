@@ -492,6 +492,16 @@ class DeliveryCreateSerializer(serializers.Serializer):
     )
     promo_code = serializers.CharField(max_length=30, required=False, allow_blank=True, default="")
 
+    payment_method = serializers.ChoiceField(
+        choices=[
+            ("card", "Debit/Credit Card"),
+            ("bankily", "Bankily"),
+            ("sedad", "Sedad"),
+            ("masravi", "Masravi"),
+        ]
+    )
+    provider_token = serializers.CharField(required=False, allow_blank=True, default="")
+
     # Multi-stop
     stops = DeliveryStopInputSerializer(many=True, required=False, default=list)
 

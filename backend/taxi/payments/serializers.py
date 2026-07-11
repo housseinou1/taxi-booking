@@ -12,6 +12,7 @@ from .models import (
     WalletAccount,
     WalletTransaction,
 )
+from .withdrawal_service import normalize_payout_type
 
 
 class RiderPaymentMethodSerializer(serializers.ModelSerializer):
@@ -108,24 +109,20 @@ class DriverPayoutMethodSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "driver", "display_name", "created_at"]
 
     def validate(self, attrs):
-        payout_type = attrs.get("payout_type")
+        payout_type = normalize_payout_type(
+            attrs.get("payout_type") or getattr(self.instance, "payout_type", None)
+        )
+        attrs["payout_type"] = payout_type
 
-        if payout_type == "bank_account":
-            if not attrs.get("bank_name") or not attrs.get("account_reference"):
-                raise serializers.ValidationError(
-                    "Bank name and account number/RIB are required for bank withdrawals."
-                )
+        if payout_type in {"bank_account", "card"}:
+            raise serializers.ValidationError(
+                "Only Bankily, Sedad, and Masravi withdrawals are supported."
+            )
 
         if payout_type in ["bankily", "masrvi", "seddad"]:
             if not attrs.get("phone_number") and not attrs.get("wallet_id"):
                 raise serializers.ValidationError(
-                    "Phone number or wallet ID is required for mobile money withdrawals."
-                )
-
-        if payout_type == "card":
-            if not attrs.get("card_last4"):
-                raise serializers.ValidationError(
-                    "Card last 4 digits are required for card withdrawals."
+                    "Phone number is required for mobile money withdrawals."
                 )
 
         return attrs
@@ -152,6 +149,8 @@ class WithdrawalRequestSerializer(serializers.ModelSerializer):
             "status",
             "note",
             "admin_note",
+            "approved_at",
+            "paid_at",
             "created_at",
             "updated_at",
         ]

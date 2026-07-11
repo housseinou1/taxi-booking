@@ -93,7 +93,7 @@ export function validateCategoryForm(categoryKey, form) {
   return "";
 }
 
-export function buildDeliveryPayload(form, category, distanceKm, selectedOption) {
+export function buildDeliveryPayload(form, category, distanceKm, selectedOption, paymentMethod = "card") {
   const payload = {
     service_city: form.service_city,
     pickup: form.pickup,
@@ -129,6 +129,7 @@ export function buildDeliveryPayload(form, category, distanceKm, selectedOption)
     is_temperature_sensitive: Boolean(form.is_temperature_sensitive),
     is_secure_delivery: Boolean(form.is_secure_delivery),
     promo_code: form.promo_code || "",
+    payment_method: paymentMethod,
   };
 
   if (form.preparation_time_minutes) {
@@ -144,8 +145,8 @@ export function buildDeliveryPayload(form, category, distanceKm, selectedOption)
   return payload;
 }
 
-export function buildDeliveryFormData(form, category, distanceKm, selectedOption) {
-  const payload = buildDeliveryPayload(form, category, distanceKm, selectedOption);
+export function buildDeliveryFormData(form, category, distanceKm, selectedOption, paymentMethod = "card") {
+  const payload = buildDeliveryPayload(form, category, distanceKm, selectedOption, paymentMethod);
   const body = new FormData();
 
   Object.entries(payload).forEach(([key, value]) => {

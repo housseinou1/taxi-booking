@@ -35,7 +35,7 @@ export const CUSTOMER_TERMS_SECTIONS = [
     bullets: [
       "Fares and fees are shown before you confirm an order",
       "Prices may include delivery fee, service fee, surge, and applicable taxes",
-      "Payment methods include cash, card, wallet, and other supported options",
+      "Payment is required before your delivery is created. Supported methods: Debit/Credit Card, Bankily, Sedad, and Masravi",
       "Promo codes apply only when valid and within their terms",
     ],
   },

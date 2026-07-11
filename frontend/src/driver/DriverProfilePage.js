@@ -5,9 +5,12 @@ import { API_URL } from "../apiConfig";
 import { isDriverLyftUI } from "./lyftColors";
 import DocumentsUnderReviewBanner from "./components/DocumentsUnderReviewBanner";
 import DriverPayoutPanel from "./components/DriverPayoutPanel";
+import TrustedContactsSection from "../safety/TrustedContactsSection";
 import {
   DOCUMENTS_UNDER_REVIEW_MESSAGE,
+  getDocumentMenuStatusLabel,
   getDriverApprovalNotice,
+  getRequiredDocumentExpirationStatus,
   shouldShowDocumentsUnderReview,
 } from "./utils/documentReview";
 import "./DriverProfilePage.css";
@@ -61,11 +64,15 @@ const getProfileLoadError = (failures = []) => {
   return primary.message || "We could not load your driver profile. Please try again.";
 };
 
-const getDocumentStatus = (document) => {
+const getDocumentStatus = (document, docType = {}) => {
   if (!document?.file) return "missing";
-  const expired = document.days_until_expiry !== undefined && document.days_until_expiry !== null && document.days_until_expiry < 0;
-  if (expired) return "expired";
+  const expirationStatus = getRequiredDocumentExpirationStatus(document, {
+    required: docType.required !== false,
+  });
+  if (expirationStatus === "expired") return "expired";
+  if (expirationStatus === "expiring_soon") return "expiring_soon";
   if (document.status === "pending_review") return "pending_review";
+  if (document.status === "approved" || expirationStatus === "valid") return "valid";
   return document.status || "pending";
 };
 
@@ -331,7 +338,14 @@ export default function DriverProfilePage({ onBack }) {
   const plate = displayValue(vehicle.plate_number, base.vehicle_plate, base.plate_number);
   const contactPhone = displayValue(base.phone_number, enhanced.phone_number, user.phone_number);
   const contactEmail = displayValue(base.email, enhanced.email, user.email);
-  const walletBalance = getValue(stats.wallet_balance, enhanced.wallet_balance, base.wallet_balance, 12450);
+  const walletBalance = getValue(
+    stats.available_balance,
+    stats.withdrawable_balance,
+    stats.wallet_balance,
+    enhanced.wallet_balance,
+    base.wallet_balance,
+    0
+  );
   const todayEarnings = getValue(stats.today_earnings, enhanced.today_earnings, 1250);
   const weekEarnings = getValue(stats.week_earnings, enhanced.week_earnings, 8750);
   const monthEarnings = getValue(stats.month_earnings, enhanced.month_earnings, 32500);
@@ -347,7 +361,9 @@ export default function DriverProfilePage({ onBack }) {
     item,
     document: findDocumentByType(data.documents, item.type),
   }));
-  const approvedDocuments = documentsByType.filter(({ document }) => getDocumentStatus(document) === "approved").length;
+  const approvedDocuments = documentsByType.filter(
+    ({ document, item }) => ["approved", "valid", "expiring_soon"].includes(getDocumentStatus(document, item))
+  ).length;
 
   const shortDocumentCards = [
     { type: "license", label: "Driver License", icon: "🪪" },
@@ -367,15 +383,17 @@ export default function DriverProfilePage({ onBack }) {
 
   const statusBadgeLabel = (status) => {
     const map = {
-      approved: "Valid",
+      valid: getDocumentMenuStatusLabel("valid"),
+      approved: getDocumentMenuStatusLabel("valid"),
+      expiring_soon: getDocumentMenuStatusLabel("expiring_soon"),
       pending: "Pending Review",
       pending_review: "Pending Review",
       needs_review: "Pending Review",
       under_review: "Pending Review",
       submitted: "Pending Review",
       rejected: "Rejected",
-      expired: "Expired",
-      missing: "Missing",
+      expired: getDocumentMenuStatusLabel("expired"),
+      missing: getDocumentMenuStatusLabel("expired"),
     };
     return map[status] || titleCase(status);
   };
@@ -479,7 +497,7 @@ export default function DriverProfilePage({ onBack }) {
             <strong className="dp-wallet-amount">{formatMRU(walletBalance)}</strong>
           </div>
           <div className="dp-wallet-rows">
-            <button type="button" className="dp-row-btn" onClick={() => handleMenuAction("/driver/earnings")}>
+            <button type="button" className="dp-row-btn" onClick={() => handleMenuAction("payout")}>
               <span className="dp-row-icon">💳</span>
               <span className="dp-row-text">
                 <strong>Payment methods</strong>
@@ -487,7 +505,7 @@ export default function DriverProfilePage({ onBack }) {
               </span>
               <span className="dp-row-arrow">›</span>
             </button>
-            <button type="button" className="dp-row-btn" onClick={() => handleMenuAction("/driver/earnings")}>
+            <button type="button" className="dp-row-btn" onClick={() => handleMenuAction("payout")}>
               <span className="dp-row-icon">📜</span>
               <span className="dp-row-text">
                 <strong>Payment history</strong>
@@ -570,7 +588,7 @@ export default function DriverProfilePage({ onBack }) {
           {documentsUnderReview && <DocumentsUnderReviewBanner />}
           <div className="dp-doc-grid">
             {shortDocumentCards.map(({ type, label, icon, document }) => {
-              const status = getDocumentStatus(document);
+              const status = getDocumentStatus(document, { required: true });
               return (
                 <button
                   type="button"
@@ -618,6 +636,11 @@ export default function DriverProfilePage({ onBack }) {
             }}
           />
         </div>
+
+        {/* Trusted Contacts */}
+        <section className="dp-section-card">
+          <TrustedContactsSection compact />
+        </section>
 
         {/* Support Section */}
         <section className="dp-section-card">
@@ -726,24 +749,41 @@ export default function DriverProfilePage({ onBack }) {
 }
 
 function DocumentRow({ item, document, uploading, onUpload }) {
-  const status = getDocumentStatus(document);
+  const status = getDocumentStatus(document, item);
   const labels = {
-    approved: "Valid",
+    valid: getDocumentMenuStatusLabel("valid"),
+    approved: getDocumentMenuStatusLabel("valid"),
+    expiring_soon: getDocumentMenuStatusLabel("expiring_soon"),
     pending: "Pending Review",
     pending_review: "Pending Review",
     needs_review: "Pending Review",
     under_review: "Pending Review",
     submitted: "Pending Review",
     rejected: "Rejected",
-    expired: "Expired",
-    missing: "Missing",
+    expired: getDocumentMenuStatusLabel("expired"),
+    missing: getDocumentMenuStatusLabel("expired"),
   };
+
+  const daysRemaining =
+    document?.days_until_expiry ??
+    (document?.expires_at
+      ? Math.ceil(
+          (new Date(document.expires_at) - new Date(new Date().toDateString())) /
+            (1000 * 60 * 60 * 24)
+        )
+      : null);
 
   return (
     <div className="dp-doc-row">
       <div className="dp-doc-row-info">
         <strong>{item.label}</strong>
-        <small>{document?.expires_at ? `Expires ${document.expires_at}` : "No expiry set"}</small>
+        <small>
+          {status === "expiring_soon" && daysRemaining !== null
+            ? `Expiring in ${daysRemaining} day${daysRemaining === 1 ? "" : "s"}`
+            : document?.expires_at
+              ? `Expires ${document.expires_at}`
+              : "No expiry set"}
+        </small>
       </div>
       <span className={`dp-doc-status dp-doc-status--${status}`}>
         {labels[status] || titleCase(status)}

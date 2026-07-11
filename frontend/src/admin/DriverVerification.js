@@ -6,7 +6,7 @@ function DriverVerification({ onBack }) {
   const [loading, setLoading] = useState(true);
 
   const authHeaders = () => {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("access");
     return token
       ? {
           Authorization: `Bearer ${token}`,

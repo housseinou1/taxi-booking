@@ -1,0 +1,7 @@
+# Copy to delivery-signing.properties (gitignored) for local Delivery release builds.
+# Delivery Play uploads MUST use the original upload keystore only.
+
+YALA_ANDROID_KEYSTORE=C:/Users/Housseinou/Projects/Django/taxi-booking/yala-delivery-upload-key.jks
+YALA_ANDROID_KEY_ALIAS=yala_delivery_upload
+YALA_ANDROID_STORE_PASSWORD=
+YALA_ANDROID_KEY_PASSWORD=

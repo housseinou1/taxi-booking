@@ -6,8 +6,12 @@ import { getAppType, isDeliveryCourierApp } from "../native/platform";
 import DocumentsUnderReviewBanner from "./components/DocumentsUnderReviewBanner";
 import {
   DOCUMENTS_UNDER_REVIEW_MESSAGE,
+  DOCUMENT_EXPIRATION_ALERT_DAYS,
+  getDocumentMenuStatusLabel,
   getExpiredOrMissingDocuments,
+  getExpiringSoonDocuments,
   getRequiredCourierDocumentTypes,
+  getRequiredDocumentExpirationStatus,
   isBicycleCourier,
   isMotorVehicleCourier,
   REQUIRED_DRIVER_DOCUMENT_TYPES,
@@ -36,7 +40,7 @@ const ACCEPTED_FORMATS = ["image/jpeg", "image/png", "application/pdf"];
 const ACCEPTED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".pdf"];
 const MAX_FILE_SIZE_MB = 10;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
-const EXPIRATION_WARNING_DAYS = 30;
+const EXPIRATION_WARNING_DAYS = DOCUMENT_EXPIRATION_ALERT_DAYS;
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -288,6 +292,11 @@ export default function DriverDocuments() {
     [documents, documentTypes]
   );
 
+  const expiringSoonDocuments = useMemo(
+    () => getExpiringSoonDocuments(documents, documentTypes),
+    [documents, documentTypes]
+  );
+
   const documentMap = useMemo(() => {
     const map = {};
     documents.forEach((doc) => {
@@ -344,17 +353,39 @@ export default function DriverDocuments() {
         aria-label="Upload document file"
       />
 
-      {/* Persistent Alert for Expired/Missing Documents */}
+      {/* Red alert for expired/missing required documents */}
       {documentAlerts.length > 0 && (
-        <div style={dashboardAlertStyle} role="alert" aria-live="assertive">
-          <span style={alertIconStyle}>⚠️</span>
+        <div style={expiredAlertStyle} role="alert" aria-live="assertive">
+          <span style={alertIconStyle}>●</span>
           <div style={alertContentStyle}>
-            <strong style={alertTitleStyle}>Action Required</strong>
+            <strong style={alertTitleStyle}>Documents expired</strong>
             <p style={alertMessageStyle}>
+              Upload renewed documents before going online.{" "}
               {documentAlerts.map((alert, idx) => (
                 <span key={alert.key}>
                   {alert.label} ({alert.reason === "expired" ? "expired" : "missing"})
                   {idx < documentAlerts.length - 1 ? ", " : ""}
+                </span>
+              ))}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Orange alert for documents expiring within 15 days */}
+      {documentAlerts.length === 0 && expiringSoonDocuments.length > 0 && (
+        <div style={expiringAlertStyle} role="status" aria-live="polite">
+          <span style={alertIconStyle}>⚠</span>
+          <div style={alertContentStyle}>
+            <strong style={{ ...alertTitleStyle, color: COLORS.warningOrange }}>
+              Documents expiring soon
+            </strong>
+            <p style={alertMessageStyle}>
+              {expiringSoonDocuments.map((item, idx) => (
+                <span key={item.key}>
+                  {item.label}: Expiring in {item.days_remaining} day
+                  {item.days_remaining !== 1 ? "s" : ""}
+                  {idx < expiringSoonDocuments.length - 1 ? "; " : ""}
                 </span>
               ))}
             </p>
@@ -420,12 +451,10 @@ export default function DriverDocuments() {
           const doc = documentMap[docType.key];
           const daysRemaining = doc?.expires_at
             ? getDaysRemaining(doc.expires_at)
-            : null;
-          const showExpirationWarning =
-            daysRemaining !== null &&
-            daysRemaining >= 0 &&
-            daysRemaining <= EXPIRATION_WARNING_DAYS;
-          const isExpired = daysRemaining !== null && daysRemaining < 0;
+            : doc?.days_until_expiry ?? null;
+          const expirationStatus = getRequiredDocumentExpirationStatus(doc, docType);
+          const showExpirationWarning = expirationStatus === "expiring_soon";
+          const isExpired = expirationStatus === "expired";
           const isUploading = uploadingType === docType.key;
 
           return (
@@ -434,6 +463,7 @@ export default function DriverDocuments() {
               docType={docType}
               document={doc}
               daysRemaining={daysRemaining}
+              expirationStatus={expirationStatus}
               showExpirationWarning={showExpirationWarning}
               isExpired={isExpired}
               isUploading={isUploading}
@@ -452,12 +482,21 @@ function DocumentCard({
   docType,
   document: doc,
   daysRemaining,
+  expirationStatus,
   showExpirationWarning,
   isExpired,
   isUploading,
   onUpload,
 }) {
-  const status = isExpired ? "expired" : doc?.display_status || doc?.status || null;
+  const status = doc
+    ? expirationStatus === "valid" && (doc.display_status === "approved" || doc.status === "approved")
+      ? "valid"
+      : expirationStatus === "expiring_soon"
+        ? "expiring_soon"
+        : expirationStatus === "expired"
+          ? "expired"
+          : doc.display_status || doc.status || null
+    : "missing";
 
   return (
     <div style={documentCardStyle}>
@@ -486,18 +525,15 @@ function DocumentCard({
         </div>
 
         {/* Status Badge */}
-        {status && <StatusBadge status={status} />}
-        {!doc && (
-          <span style={notUploadedBadgeStyle}>Not Uploaded</span>
-        )}
+        {(status || !doc) && <StatusBadge status={status} />}
       </div>
 
       {/* Expiration Warning Badge */}
       {showExpirationWarning && (
         <div style={expirationWarningStyle} role="status">
-          <span style={warningBadgeIconStyle}>⏰</span>
+          <span style={warningBadgeIconStyle}>⚠</span>
           <span style={warningBadgeTextStyle}>
-            Expires in {daysRemaining} day{daysRemaining !== 1 ? "s" : ""}
+            Expiring in {daysRemaining} day{daysRemaining !== 1 ? "s" : ""}
           </span>
         </div>
       )}
@@ -541,13 +577,23 @@ function DocumentCard({
 
 function StatusBadge({ status }) {
   const config = {
+    valid: {
+      label: getDocumentMenuStatusLabel("valid"),
+      color: COLORS.approvedGreen,
+      bgColor: "rgba(16, 185, 129, 0.15)",
+    },
+    expiring_soon: {
+      label: getDocumentMenuStatusLabel("expiring_soon"),
+      color: COLORS.warningOrange,
+      bgColor: "rgba(245, 158, 11, 0.15)",
+    },
     pending_review: {
       label: "Pending Review",
       color: COLORS.pendingBlue,
       bgColor: "rgba(59, 130, 246, 0.15)",
     },
     approved: {
-      label: "Approved",
+      label: getDocumentMenuStatusLabel("valid"),
       color: COLORS.approvedGreen,
       bgColor: "rgba(16, 185, 129, 0.15)",
     },
@@ -557,7 +603,12 @@ function StatusBadge({ status }) {
       bgColor: "rgba(239, 68, 68, 0.15)",
     },
     expired: {
-      label: "Expired",
+      label: getDocumentMenuStatusLabel("expired"),
+      color: COLORS.rejectedRed,
+      bgColor: "rgba(239, 68, 68, 0.15)",
+    },
+    missing: {
+      label: getDocumentMenuStatusLabel("expired"),
       color: COLORS.rejectedRed,
       bgColor: "rgba(239, 68, 68, 0.15)",
     },
@@ -657,6 +708,14 @@ const dashboardAlertStyle = {
   borderRadius: "12px",
   marginBottom: "20px",
   marginTop: "8px",
+};
+
+const expiredAlertStyle = dashboardAlertStyle;
+
+const expiringAlertStyle = {
+  ...dashboardAlertStyle,
+  backgroundColor: "rgba(245, 158, 11, 0.12)",
+  border: `1px solid ${COLORS.warningOrange}`,
 };
 
 const alertIconStyle = {

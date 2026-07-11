@@ -1,0 +1,4 @@
+rider: com.yala.rider.mr 1.2.5 (17)
+driver: com.yala.driver.mr 1.2.5 (20)
+delivery: com.yala.delivery.mr 1.0.4 (6)
+admin: com.yala.admin.mr 1.0.0 (1)

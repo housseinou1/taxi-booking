@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
 import { API_URL } from "../../apiConfig";
+import authenticatedApi from "../../auth/authenticatedApi";
 import { formatMoney } from "../../marketConfig";
 import "./PostRidePayRate.css";
 
@@ -69,11 +69,7 @@ export default function PostRidePayRate({ ride, onDone }) {
   useEffect(() => {
     const loadPayment = async () => {
       try {
-        const token = localStorage.getItem("access");
-        if (!token) return;
-        const response = await axios.get(`${API_URL}/payments/my-payments/`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const response = await authenticatedApi.get(`${API_URL}/payments/my-payments/`);
         const payments = Array.isArray(response.data) ? response.data : [];
         const current = payments.find((item) => Number(item.ride_id) === Number(ride.id));
         if (current) setPayment(current);
@@ -85,16 +81,14 @@ export default function PostRidePayRate({ ride, onDone }) {
   }, [ride?.id]);
 
   const makePayment = async () => {
-    const token = localStorage.getItem("access");
-    const response = await axios.post(
+    const response = await authenticatedApi.post(
       `${API_URL}/payments/create/`,
       {
         ride_id: ride.id,
         amount: ride.fare || 0,
         tip_percentage: tipPercentage,
         method: selectedMethod,
-      },
-      { headers: { Authorization: `Bearer ${token}` } }
+      }
     );
     setPayment(response.data.payment);
     setNotice("Payment confirmed.");
@@ -119,14 +113,12 @@ export default function PostRidePayRate({ ride, onDone }) {
       }
 
       if (!ratingSubmitted && rating) {
-        const token = localStorage.getItem("access");
-        await axios.post(
+        await authenticatedApi.post(
           `${API_URL}/rides/rate/${ride.id}/`,
           {
             rating,
             review: [compliment, review].filter(Boolean).join(". "),
-          },
-          { headers: { Authorization: `Bearer ${token}` } }
+          }
         );
         setRatingSubmitted(true);
       }

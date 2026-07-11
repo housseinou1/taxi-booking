@@ -1,0 +1,56 @@
+# ── Core ──────────────────────────────────────────────────────────────────────
+django>=4.2,<5.0
+djangorestframework
+djangorestframework-simplejwt
+django-cors-headers
+django-filter
+drf-spectacular
+drf-writable-nested
+
+# ── Async / WebSocket ─────────────────────────────────────────────────────────
+channels
+channels-redis
+daphne
+celery[redis]>=5.0
+django-celery-beat>=2.5
+
+# ── Database ──────────────────────────────────────────────────────────────────
+dj-database-url
+psycopg2-binary
+
+# ── Cache & Rate Limiting ─────────────────────────────────────────────────────
+redis==5.2.1
+django-ratelimit
+
+# ── Media ─────────────────────────────────────────────────────────────────────
+Pillow
+qrcode[pil]>=7.0
+pyotp>=2.9.0
+
+# ── Environment ───────────────────────────────────────────────────────────────
+python-dotenv
+
+# ── Production Server ─────────────────────────────────────────────────────────
+gunicorn
+uvicorn[standard]
+whitenoise
+
+# ── Payments ──────────────────────────────────────────────────────────────────
+stripe>=7.0.0
+
+# ── Testing ───────────────────────────────────────────────────────────────────
+pytest
+pytest-django
+hypothesis>=6.0
+Faker
+
+# ── Utilities ─────────────────────────────────────────────────────────────────
+PyJWT
+python-dateutil
+PyYAML
+
+# ── Monitoring ────────────────────────────────────────────────────────────────
+sentry-sdk[django,celery,redis]>=1.40.0
+
+# ── Push Notifications ────────────────────────────────────────────────────────
+firebase-admin>=6.0.0

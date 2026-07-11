@@ -1,0 +1,4 @@
+model=SM-N986U1
+release=13
+fingerprint=samsung/c2quew/c2q:13/TP1A.220624.014/N986U1UESEHYH1:user/release-keys
+serial=R5CN80M3ZYJ

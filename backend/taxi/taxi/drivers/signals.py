@@ -31,6 +31,10 @@ def trigger_qr_generation_on_approval(sender, instance, created, **kwargs):
     On validation failure for missing driver_code, reverts status and raises
     a ValueError to reject the approval transition.
     """
+    update_fields = kwargs.get("update_fields")
+    if not created and update_fields is not None and "status" not in update_fields:
+        return
+
     # Only proceed if the status is "approved"
     if instance.status != "approved":
         return

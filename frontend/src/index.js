@@ -4,6 +4,7 @@ import "./index.css";
 import "./rider/lyft-rider.css";
 import "./i18n";
 import App from "./App";
+import { initFrontendSentry } from "./monitoring/sentry";
 import {
   getAppType,
   initNativeAppType,
@@ -57,6 +58,8 @@ async function loadAppTheme() {
 }
 
 async function bootstrap() {
+  await initFrontendSentry();
+
   if (isNative()) {
     showBootSplash("Starting Yala...");
     await initNativeAppType();
@@ -79,11 +82,11 @@ async function bootstrap() {
           registrations
             .filter((registration) => {
               const scriptUrl = registration.active?.scriptURL || "";
-              return scriptUrl.includes("/sw.js") && !scriptUrl.includes("v4");
+              return scriptUrl.includes("/sw.js") && !scriptUrl.includes("v5");
             })
             .map((registration) => registration.unregister())
         );
-        await navigator.serviceWorker.register("/sw.js?v=4");
+        await navigator.serviceWorker.register("/sw.js?v=5");
       } catch (error) {
         console.log("Service worker registration failed:", error);
       }

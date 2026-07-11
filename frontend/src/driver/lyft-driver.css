@@ -16,7 +16,7 @@
 /* ─── Driver map dashboard ─────────────────────────────────────────────────── */
 
 .driver-dashboard-new {
-  --driver-dock-height: min(20vh, 188px);
+  --driver-dock-height: min(52vh, 420px);
   --driver-nav-collapsed-height: 78px;
 }
 
@@ -148,10 +148,17 @@
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: #ef4444;
   border: 2px solid rgba(15, 23, 42, 0.96);
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35);
   z-index: 1;
+}
+
+.driver-dashboard-new__menu-btn-dot--error {
+  background: #ef4444;
+}
+
+.driver-dashboard-new__menu-btn-dot--warning {
+  background: #f59e0b;
 }
 
 .driver-dashboard-new__auto-accept {
@@ -219,13 +226,29 @@
   right: 0;
   bottom: 0;
   z-index: 25;
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 10px;
-  max-height: var(--driver-dock-height);
+  max-height: min(58vh, 480px);
   padding: 0 14px calc(12px + env(safe-area-inset-bottom, 0px));
   background: linear-gradient(0deg, rgba(13, 17, 23, 0.98) 68%, rgba(13, 17, 23, 0));
   animation: driver-dock-slide-up 0.38s cubic-bezier(0.22, 1, 0.36, 1);
   pointer-events: none;
+}
+
+.driver-action-dock__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  gap: 10px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  pointer-events: auto;
+}
+
+.driver-action-dock > .driver-go-btn {
+  flex: 0 0 auto;
+  pointer-events: auto;
 }
 
 .driver-action-dock > * {
@@ -344,20 +367,18 @@
   border-top: 1px solid rgba(0, 166, 81, 0.28);
   box-shadow: 0 -12px 40px rgba(2, 6, 23, 0.34);
   overflow: hidden;
-  transition: max-height 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+  display: flex;
+  flex-direction: column;
+  max-height: min(78vh, 560px);
 }
 
-.driver-nav-sheet.is-collapsed {
-  max-height: var(--driver-nav-collapsed-height);
+.driver-nav-sheet.is-expanded {
+  max-height: min(78vh, 560px);
 }
 
 .driver-dashboard-new--navigating .driver-earnings-chip,
 .driver-dashboard-new--incoming .driver-earnings-chip {
   display: none;
-}
-
-.driver-nav-sheet.is-expanded {
-  max-height: min(58vh, 440px);
 }
 
 .driver-nav-sheet__header {
@@ -366,12 +387,12 @@
   background: transparent;
   color: #fff;
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr;
   grid-template-rows: auto auto;
-  gap: 4px 10px;
-  padding: 8px 16px 12px;
-  cursor: pointer;
+  gap: 4px;
+  padding: 8px 16px 10px;
   text-align: left;
+  flex-shrink: 0;
 }
 
 .driver-nav-sheet__grip {
@@ -412,17 +433,21 @@
 }
 
 .driver-nav-sheet__body {
-  padding: 0 16px calc(14px + env(safe-area-inset-bottom, 0px));
-  opacity: 0;
-  transform: translateY(8px);
-  transition: opacity 0.28s ease, transform 0.28s ease;
-  pointer-events: none;
+  padding: 0 16px 8px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  pointer-events: auto;
 }
 
-.driver-nav-sheet.is-expanded .driver-nav-sheet__body {
-  opacity: 1;
-  transform: translateY(0);
+.driver-nav-sheet__actions {
+  width: 100%;
+  padding: 0 16px calc(14px + env(safe-area-inset-bottom, 0px));
   pointer-events: auto;
+  flex-shrink: 0;
+  display: grid;
+  gap: 8px;
 }
 
 .driver-nav-sheet__route {
@@ -436,10 +461,6 @@
 
 .driver-nav-sheet__route-arrow {
   color: #6b7280;
-}
-
-.driver-nav-sheet__actions {
-  width: 100%;
 }
 
 .driver-nav-sheet__cancel {

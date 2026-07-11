@@ -68,6 +68,7 @@ from .services.delivery_service import DeliveryServiceError
 from .services.dispute_service import DisputeServiceError
 from payments.settlement_service import courier_balance_summary
 from taxi.security.abuse import rate_limit
+from admin_2fa.integrity import require_integrity
 from taxi.security.upload_validation import validate_image_upload
 
 
@@ -220,6 +221,15 @@ def request_delivery(request):
             {"detail": "Too many delivery requests. Please wait and try again."},
             status=status.HTTP_429_TOO_MANY_REQUESTS,
             headers={"Retry-After": str(retry_after)},
+        )
+
+    if not require_integrity(request.user.id):
+        return Response(
+            {
+                "detail": "Device integrity check required. Update the app or use an official Play Store install.",
+                "code": "integrity_required",
+            },
+            status=status.HTTP_403_FORBIDDEN,
         )
 
     if getattr(request.user, "rider_status", "approved") != "approved":
@@ -893,7 +903,7 @@ def pay_delivery(request, delivery_id):
         delivery = delivery_service.settle_payment(
             delivery,
             request.user,
-            request.data.get("payment_method", "cash"),
+            request.data.get("payment_method", "card"),
             request.data.get("tip_amount", 0),
             payment_timing=request.data.get("payment_timing", ""),
         )

@@ -92,7 +92,8 @@ class RideSerializer(serializers.ModelSerializer):
         if (
             request
             and request.user == obj.rider
-            and obj.status not in ("completed", "cancelled", "rider_no_show")
+            and obj.status in ("requested", "accepted", "driver_arriving", "driver_arrived")
+            and not obj.pickup_pin_verified_at
         ):
             return obj.pickup_pin
         return ""

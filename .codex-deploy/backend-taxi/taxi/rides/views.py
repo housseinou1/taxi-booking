@@ -437,6 +437,49 @@ def ride_history(request):
     return Response(serializer.data)
 
 
+ACTIVE_RIDE_STATUSES = (
+    "requested",
+    "pending",
+    "accepted",
+    "driver_arriving",
+    "driver_arrived",
+    "in_progress",
+)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def active_ride(request):
+    """Return the rider's current in-flight ride, if any."""
+    if request.user.is_staff:
+        ride = (
+            Ride.objects.filter(status__in=ACTIVE_RIDE_STATUSES)
+            .order_by("-id")
+            .first()
+        )
+    else:
+        ride = (
+            Ride.objects.filter(
+                rider=request.user,
+                status__in=ACTIVE_RIDE_STATUSES,
+            )
+            .order_by("-id")
+            .first()
+        )
+
+    if not ride:
+        return Response(
+            {"detail": "No active ride."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    serializer = RideSerializer(
+        ride,
+        context={"request": request},
+    )
+    return Response({"ride": serializer.data})
+
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def ride_detail(request, ride_id):

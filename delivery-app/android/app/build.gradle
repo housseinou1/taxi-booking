@@ -1,10 +1,27 @@
 apply plugin: 'com.android.application'
 
-def releaseKeystore = System.getenv("YALA_ANDROID_KEYSTORE")
-def releaseStorePassword = System.getenv("YALA_ANDROID_STORE_PASSWORD")
-def releaseKeyAlias = System.getenv("YALA_ANDROID_KEY_ALIAS")
-def releaseKeyPassword = System.getenv("YALA_ANDROID_KEY_PASSWORD")
+def deliveryOriginalKeystore = rootProject.file("../../yala-delivery-upload-key.jks")
+def deliverySigningPropsFile = rootProject.file("delivery-signing.properties")
+def deliverySigningProps = new Properties()
+if (deliverySigningPropsFile.exists()) {
+    deliverySigningProps.load(new FileInputStream(deliverySigningPropsFile))
+}
+
+def releaseKeystore = deliverySigningProps.getProperty("YALA_ANDROID_KEYSTORE", deliveryOriginalKeystore.absolutePath)
+def releaseStorePassword = deliverySigningProps.getProperty("YALA_ANDROID_STORE_PASSWORD", System.getenv("YALA_ANDROID_STORE_PASSWORD"))
+def releaseKeyAlias = deliverySigningProps.getProperty("YALA_ANDROID_KEY_ALIAS", "yala_delivery_upload")
+def releaseKeyPassword = deliverySigningProps.getProperty("YALA_ANDROID_KEY_PASSWORD", System.getenv("YALA_ANDROID_KEY_PASSWORD"))
 def releaseSigningReady = releaseKeystore && releaseStorePassword && releaseKeyAlias && releaseKeyPassword
+
+if (releaseSigningReady) {
+    def configuredKeystore = file(releaseKeystore).canonicalFile
+    def requiredKeystore = deliveryOriginalKeystore.canonicalFile
+    if (!configuredKeystore.equals(requiredKeystore)) {
+        throw new GradleException(
+            "Delivery release builds must use the original Play upload keystore at ${requiredKeystore}, not ${configuredKeystore}."
+        )
+    }
+}
 
 android {
     namespace "com.yala.delivery.mr"

@@ -10,6 +10,9 @@ firebase-service-account.json
 
 # Android keystores and signing credentials — NEVER commit these
 signing/
+driver-app/android/driver-signing.properties
+rider-app/android/rider-signing.properties
+delivery-app/android/delivery-signing.properties
 *.jks
 *.keystore
 *.p12

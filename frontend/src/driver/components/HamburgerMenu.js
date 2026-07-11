@@ -9,8 +9,8 @@ const MENU_ITEMS = [
   { icon: "📄", label: "Documents", subtitle: "License, insurance, registration", path: "/driver/documents" },
   { icon: "🆔", label: "Driver Code", subtitle: "Your unique driver QR code", path: "/driver/code" },
   { icon: "🏆", label: "Driver Level", subtitle: "Progress and rewards", path: "/driver/achievements" },
-  { icon: "💳", label: "Payment / Withdrawals", subtitle: "Bank and payout settings", path: "/driver/earnings" },
-  { icon: "👛", label: "Wallet", subtitle: "Balance and transactions", path: "/driver/earnings" },
+  { icon: "💳", label: "Payment / Withdrawals", subtitle: "Bank and payout settings", path: "/driver/profile?section=payout" },
+  { icon: "👛", label: "Wallet", subtitle: "Balance and transactions", path: "/driver/profile?section=payout" },
   { icon: "⚙", label: "Settings", subtitle: "App and account preferences", path: "/settings" },
   { icon: "❓", label: "Help & Support", subtitle: "Get help from Yala team", path: "/driver/support" },
   { icon: "🆘", label: "Safety / SOS", subtitle: "Emergency tools and contacts", path: "/driver/support" },
@@ -24,7 +24,7 @@ const MENU_ITEMS = [
  * - isOpen: boolean
  * - onClose: function
  * - driverProfile: { first_name, last_name, profile_picture, level, points, nextLevelPoints,
- *                    rating, is_online, documents_alert, payment_alert, account_alert }
+ *                    rating, is_online, documents_alert, documents_alert_level, payment_alert, account_alert }
  * - onNavigate: function(path)
  * - onLogout: function
  */
@@ -45,6 +45,7 @@ export default function HamburgerMenu({
     rating = 0,
     is_online = false,
     documents_alert = false,
+    documents_alert_level = null,
     payment_alert = false,
     account_alert = false,
   } = driverProfile;
@@ -63,11 +64,18 @@ export default function HamburgerMenu({
   }[level] || "Bronze";
 
   // Determine which items should show alert badges
-  const getItemAlert = (item) => {
-    if (item.label === "Documents") return documents_alert;
-    if (item.label === "Payment / Withdrawals" || item.label === "Wallet") return payment_alert;
-    if (item.label === "Driver Profile" || item.label === "Settings") return account_alert;
-    return false;
+  const documentsAlertLevel =
+    documents_alert_level || (documents_alert ? "error" : null);
+
+  const getItemAlertLevel = (item) => {
+    if (item.label === "Documents") return documentsAlertLevel;
+    if (item.label === "Payment / Withdrawals" || item.label === "Wallet") {
+      return payment_alert ? "error" : null;
+    }
+    if (item.label === "Driver Profile" || item.label === "Settings") {
+      return account_alert ? "error" : null;
+    }
+    return null;
   };
 
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -160,7 +168,16 @@ export default function HamburgerMenu({
                 <strong>{item.label}</strong>
                 {item.subtitle && <small>{item.subtitle}</small>}
               </span>
-              {getItemAlert(item) && <span className="hm-item-alert" aria-label="Needs attention" />}
+              {getItemAlertLevel(item) ? (
+                <span
+                  className={`hm-item-alert hm-item-alert--${getItemAlertLevel(item)}`}
+                  aria-label={
+                    getItemAlertLevel(item) === "warning"
+                      ? "Document expiring soon"
+                      : "Documents need attention"
+                  }
+                />
+              ) : null}
               {!item.danger && <span className="hm-item-arrow">›</span>}
             </li>
           ))}

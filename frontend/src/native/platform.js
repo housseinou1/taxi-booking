@@ -184,11 +184,24 @@ function getNextRouteFromWindow() {
 }
 
 /**
+ * Native Yala Rider / Yala Driver installs must never inherit courier UI from
+ * stale web session flags or /delivery deep links.
+ */
+export function isNativeMobilityApp() {
+  const appType = getAppType();
+  return appType === "rider" || appType === "driver";
+}
+
+/**
  * True when the user is in the Yala Delivery courier app (native build or web courier flow).
  * Keeps courier UI separate from Yala Driver (taxi).
  */
 export function isDeliveryCourierApp() {
-  if (getAppType() === "delivery") return true;
+  const appType = getAppType();
+  if (appType === "rider" || appType === "driver") {
+    return false;
+  }
+  if (appType === "delivery") return true;
   if (typeof window === "undefined") return false;
   if (hasDeliveryCourierSession()) return true;
 
@@ -297,6 +310,7 @@ export function isDeliveryLyftUI() {
  * Native Yala Delivery always uses the courier dashboard — never taxi driver UI.
  */
 export function isDeliveryUberUI() {
+  if (isNativeMobilityApp()) return false;
   if (isDeliveryNativeApp()) return true;
   return isDeliveryCourierApp();
 }

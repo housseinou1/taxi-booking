@@ -161,3 +161,106 @@ class TripShare(models.Model):
     def is_available(self):
         return self.is_active and self.expires_at > timezone.now()
 
+
+MAX_TRUSTED_CONTACTS = 5
+
+
+class TripLocationPing(models.Model):
+    """Encrypted-in-transit GPS samples for trip replay and safety monitoring."""
+
+    ride = models.ForeignKey(
+        "rides.Ride",
+        on_delete=models.CASCADE,
+        related_name="safety_location_pings",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="trip_location_pings",
+    )
+    latitude = models.FloatField()
+    longitude = models.FloatField()
+    accuracy_meters = models.FloatField(null=True, blank=True)
+    speed_mps = models.FloatField(null=True, blank=True)
+    source = models.CharField(max_length=20, default="client")
+    recorded_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["recorded_at"]
+        indexes = [
+            models.Index(fields=["ride", "recorded_at"], name="safety_ping_ride_time_idx"),
+        ]
+
+
+class TripSafetyEvent(models.Model):
+    EVENT_TYPES = [
+        ("long_stop", "Long Stop"),
+        ("route_deviation", "Route Deviation"),
+        ("safety_check", "Safety Check"),
+    ]
+    STATUS_CHOICES = [
+        ("open", "Open"),
+        ("responded_safe", "Responded Safe"),
+        ("escalated", "Escalated"),
+        ("dismissed", "Dismissed"),
+    ]
+
+    ride = models.ForeignKey(
+        "rides.Ride",
+        on_delete=models.CASCADE,
+        related_name="safety_events",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="trip_safety_events",
+    )
+    event_type = models.CharField(max_length=30, choices=EVENT_TYPES)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="open")
+    message = models.CharField(max_length=255, blank=True, default="")
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
+    responded_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["ride", "status"], name="safety_event_ride_status_idx"),
+        ]
+
+
+class SafetyResponseLog(models.Model):
+    ACTION_CHOICES = [
+        ("acknowledged", "Acknowledged"),
+        ("investigating", "Investigating"),
+        ("contacted_user", "Contacted User"),
+        ("contacted_emergency", "Contacted Emergency Services"),
+        ("resolved", "Resolved"),
+        ("dismissed", "Dismissed"),
+        ("marked_paid", "Marked Paid"),
+    ]
+
+    incident = models.ForeignKey(
+        SafetyIncident,
+        on_delete=models.CASCADE,
+        related_name="response_logs",
+    )
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="safety_response_actions",
+    )
+    action = models.CharField(max_length=30, choices=ACTION_CHOICES)
+    note = models.TextField(blank=True, default="")
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+

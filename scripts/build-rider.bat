@@ -6,7 +6,7 @@ copy .env.rider .env.local
 call npm run build
 
 rd /s /q "..\rider-app\www" 2>nul
-xcopy /s /e /i build "..\rider-app\www"
+xcopy /s /e /i /y build "..\rider-app\www"
 
 cd /d "%~dp0\..\rider-app"
 call npx cap sync

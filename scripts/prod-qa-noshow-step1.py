@@ -6,6 +6,7 @@ import json
 import ssl
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.request
 
@@ -77,6 +78,27 @@ def cancel_open(token, role):
             )
 
 
+def ssh_assign_offered_driver(ride_id: int, driver_email: str) -> None:
+    script = f"""
+from django.contrib.auth import get_user_model
+from taxi.rides.models import Ride
+User = get_user_model()
+driver = User.objects.get(email="{driver_email}")
+ride = Ride.objects.get(id={ride_id})
+ride.offered_driver = driver
+ride.save(update_fields=["offered_driver"])
+print("assigned", ride.id, driver.id)
+"""
+    proc = subprocess.run(
+        ["ssh", REMOTE, "docker compose -p yala exec -T django python manage.py shell"],
+        input=script.encode(),
+        capture_output=True,
+        timeout=120,
+    )
+    if proc.returncode != 0:
+        raise RuntimeError(proc.stderr.decode() or proc.stdout.decode())
+
+
 def ssh_backdate_arrived(ride_id: int, minutes_ago: int) -> None:
     script = f"""
 from django.utils import timezone
@@ -105,6 +127,7 @@ def main() -> int:
     cancel_open(rider, "rider")
     cancel_open(driver, "driver")
     api("POST", "/drivers/availability/toggle/", driver, {"is_available": True})
+    time.sleep(2)
 
     st, ride = api(
         "POST",
@@ -127,6 +150,7 @@ def main() -> int:
     if not ride_id:
         return 1
 
+    ssh_assign_offered_driver(ride_id, DRIVER_EMAIL)
     st, accepted = api("POST", f"/rides/accept/{ride_id}/", driver, {})
     check("Driver accepts", st == 200, str(accepted.get("status", accepted)))
 
@@ -241,8 +265,13 @@ def main() -> int:
     )
 
     st, admin_rides = api("GET", "/rides/?status=rider_no_show", admin)
-    admin_list = admin_rides if isinstance(admin_rides, list) else admin_rides.get("results", admin_rides)
-    admin_hit = any(str(r.get("id")) == str(ride_id) for r in (admin_list or []))
+    if isinstance(admin_rides, dict):
+        admin_list = admin_rides.get("results", [])
+    elif isinstance(admin_rides, list):
+        admin_list = admin_rides
+    else:
+        admin_list = []
+    admin_hit = any(str(r.get("id")) == str(ride_id) for r in admin_list if isinstance(r, dict))
     check("Admin dashboard shows rider_no_show", admin_hit or final.get("is_rider_no_show"), f"ride_id={ride_id}")
 
     failed = [s for s, status in results if status == "FAIL"]

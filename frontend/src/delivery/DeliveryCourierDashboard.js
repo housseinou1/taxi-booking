@@ -153,18 +153,12 @@ export default function DeliveryCourierDashboard() {
           ? settings.delivery_cities
           : [DEFAULT_DELIVERY_CITY]
       );
-
-      setDeliveryMode(false);
-      onlineSinceRef.current = null;
-      if (settings.delivery_mode_enabled) {
-        try {
-          await apiRequest(`${API_URL}/deliveries/driver/mode/`, {
-            method: "PATCH",
-            body: JSON.stringify({ delivery_mode_enabled: false }),
-          });
-        } catch (_) {
-          // Keep local offline state even if sync fails.
-        }
+      const isOnline = Boolean(settings.delivery_mode_enabled);
+      setDeliveryMode(isOnline);
+      if (isOnline && !onlineSinceRef.current) {
+        onlineSinceRef.current = Date.now();
+      } else if (!isOnline) {
+        onlineSinceRef.current = null;
       }
     } catch (_) {
       setDeliveryMode(false);

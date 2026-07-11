@@ -44,6 +44,16 @@ def ride_snapshot(ride):
         if ride.driver
         else None
     )
+    completed_trips = 0
+    if ride.driver_id:
+        try:
+            from taxi.rides.models import Ride as RideModel
+
+            completed_trips = RideModel.objects.filter(
+                driver_id=ride.driver_id, status="completed"
+            ).count()
+        except Exception:
+            pass
     return {
         "ride_id": ride.id,
         "status": ride.status,
@@ -63,6 +73,26 @@ def ride_snapshot(ride):
         ),
         "driver_latitude": getattr(driver_profile, "current_lat", None),
         "driver_longitude": getattr(driver_profile, "current_lng", None),
+        "driver_verified": bool(
+            ride.driver and getattr(ride.driver, "driver_status", "") == "approved"
+        ),
+        "driver_level": getattr(driver_profile, "driver_level", "") if driver_profile else "",
+        "driver_avg_rating": float(getattr(driver_profile, "average_rating", 0) or 0)
+        if driver_profile
+        else 0,
+        "completed_trips": completed_trips,
+        "vehicle_make": getattr(driver_profile, "vehicle_make", "") if driver_profile else "",
+        "vehicle_model": getattr(driver_profile, "vehicle_model", "") if driver_profile else "",
+        "vehicle_color": getattr(driver_profile, "vehicle_color", "") if driver_profile else "",
+        "plate_number": getattr(driver_profile, "plate_number", "") if driver_profile else "",
+        "vehicle_photo_url": (
+            driver_profile.vehicle_photo.url
+            if driver_profile and getattr(driver_profile, "vehicle_photo", None)
+            else ""
+        ),
+        "vehicle_verified": bool(
+            driver_profile and getattr(driver_profile, "registration_status", "") == "approved"
+        ),
         "city": ride.city.name if ride.city else "",
     }
 

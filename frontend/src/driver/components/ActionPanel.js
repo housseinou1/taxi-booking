@@ -66,7 +66,7 @@ export function isOfflineToggleDisabled(activeRide) {
  * @param {Function} [props.onRideAction] - Callback after a ride action succeeds
  * @param {Function} [props.onError] - Callback when an error occurs (receives error message)
  */
-export default function ActionPanel({ onRideAction, onError }) {
+export default function ActionPanel({ onRideAction, onError, driverPosition = null }) {
   const { state, setOnline, addNotification } = useDriverContext();
   const { isOnline, activeRide } = state;
 
@@ -157,10 +157,30 @@ export default function ActionPanel({ onRideAction, onError }) {
     setIsActioning(true);
     setError(null);
 
+    // Prepare request payload with driver location for arrived geofence check
+    let payload = {};
+    if (action.endpoint === "arrived") {
+      // Use driverPosition prop if available
+      if (driverPosition && Array.isArray(driverPosition) && driverPosition.length >= 2) {
+        const [lat, lng] = driverPosition;
+        if (Number.isFinite(lat) && Number.isFinite(lng)) {
+          payload = {
+            lat: parseFloat(lat),
+            lng: parseFloat(lng),
+          };
+          console.log("Arrived payload with GPS:", payload);
+        } else {
+          console.warn("Invalid driverPosition values for arrived geofence check");
+        }
+      } else {
+        console.warn("No driverPosition available for arrived geofence check");
+      }
+    }
+
     try {
       const response = await axios.post(
         `${API_URL}/rides/${action.endpoint}/${activeRide.id || activeRide.ride_id}/`,
-        {},
+        payload,
         authHeaders
       );
 

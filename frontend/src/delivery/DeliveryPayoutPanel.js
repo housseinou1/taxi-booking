@@ -1,8 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import axios from "axios";
 
 import { API_URL } from "../apiConfig";
+import authenticatedApi from "../auth/authenticatedApi";
 import { formatMoney } from "../marketConfig";
+import PlatformWithdrawalAccounts, {
+  payoutTypeForMethod,
+} from "../components/PlatformWithdrawalAccounts";
 import "./delivery-uber.css";
 
 const EMPTY_FORM = {
@@ -10,6 +13,7 @@ const EMPTY_FORM = {
   account_holder_name: "",
   bank_name: "",
   account_reference: "",
+  phone_number: "",
 };
 
 function maskAccountReference(value = "") {
@@ -28,7 +32,17 @@ function payoutSummary(method) {
   return "Payout method on file";
 }
 
-export default function DeliveryPayoutPanel({ authHeaders, onMessage }) {
+function isPayoutFormReady(form) {
+  if (form.payout_type === "bank_account") {
+    return Boolean(form.bank_name?.trim() && form.account_reference?.trim());
+  }
+  if (["bankily", "seddad", "masrvi"].includes(form.payout_type)) {
+    return Boolean(form.phone_number?.trim());
+  }
+  return false;
+}
+
+export default function DeliveryPayoutPanel({ onMessage }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [withdrawing, setWithdrawing] = useState(false);
@@ -37,20 +51,22 @@ export default function DeliveryPayoutPanel({ authHeaders, onMessage }) {
   const [withdrawableBalance, setWithdrawableBalance] = useState(0);
   const [form, setForm] = useState(EMPTY_FORM);
   const [withdrawalForm, setWithdrawalForm] = useState({ amount: "", note: "" });
+  const [selectedWithdrawalMethod, setSelectedWithdrawalMethod] = useState("bank_transfer");
   const [panelError, setPanelError] = useState("");
 
   const defaultMethod = useMemo(
     () => payoutMethods.find((item) => item.is_default) || payoutMethods[0] || null,
     [payoutMethods]
   );
+  const canRequestWithdrawal = isPayoutFormReady(form) && Number(withdrawableBalance || 0) > 0;
 
   const loadPayoutData = useCallback(async () => {
     setLoading(true);
     setPanelError("");
     try {
       const [methodsResponse, withdrawalsResponse] = await Promise.all([
-        axios.get(`${API_URL}/payments/payout-methods/`, authHeaders),
-        axios.get(`${API_URL}/payments/withdrawals/`, authHeaders),
+        authenticatedApi.get(`${API_URL}/payments/payout-methods/`),
+        authenticatedApi.get(`${API_URL}/payments/withdrawals/`),
       ]);
 
       const methods = Array.isArray(methodsResponse.data) ? methodsResponse.data : [];
@@ -83,7 +99,7 @@ export default function DeliveryPayoutPanel({ authHeaders, onMessage }) {
     } finally {
       setLoading(false);
     }
-  }, [authHeaders]);
+  }, []);
 
   useEffect(() => {
     loadPayoutData();
@@ -93,13 +109,50 @@ export default function DeliveryPayoutPanel({ authHeaders, onMessage }) {
     setForm((current) => ({ ...current, [field]: value }));
   };
 
-  const saveBankAccount = async (event) => {
-    event.preventDefault();
+  const handleWithdrawalMethodSelect = (method) => {
+    setSelectedWithdrawalMethod(method.id);
+    setForm((current) => ({
+      ...current,
+      payout_type: payoutTypeForMethod(method),
+    }));
+  };
+
+  const ensurePayoutMethod = async () => {
+    const payoutType = form.payout_type || "bank_account";
+    const existing =
+      payoutMethods.find((item) => item.is_default && item.payout_type === payoutType) ||
+      payoutMethods.find((item) => item.payout_type === payoutType) ||
+      null;
+    if (existing) return existing;
+
+    const payload = {
+      ...form,
+      payout_type: payoutType,
+      is_default: true,
+    };
+    if (payoutType === "bank_account") {
+      if (!payload.bank_name || !payload.account_reference) {
+        throw new Error("Add your bank account details before requesting a delivery withdrawal.");
+      }
+    } else if (["bankily", "seddad"].includes(payoutType) && !payload.phone_number) {
+      throw new Error("Add your mobile money phone number before requesting a delivery withdrawal.");
+    }
+
+    const response = await authenticatedApi.post(`${API_URL}/payments/payout-methods/save/`, payload);
+    await loadPayoutData();
+    return response.data;
+  };
+
+  const savePayoutMethod = async (event) => {
+    if (event) event.preventDefault();
     setSaving(true);
     setPanelError("");
     try {
-      await axios.post(`${API_URL}/payments/payout-methods/save/`, form, authHeaders);
-      onMessage?.("Delivery payout account saved.");
+      await authenticatedApi.post(`${API_URL}/payments/payout-methods/save/`, {
+        ...form,
+        is_default: true,
+      });
+      onMessage?.("Delivery payout method saved.");
       await loadPayoutData();
     } catch (error) {
       const payload = error.response?.data;
@@ -107,7 +160,8 @@ export default function DeliveryPayoutPanel({ authHeaders, onMessage }) {
         payload?.error ||
         payload?.non_field_errors?.[0] ||
         Object.values(payload || {}).flat().find(Boolean) ||
-        "Could not save delivery payout account.";
+        error.message ||
+        "Could not save delivery payout method.";
       setPanelError(message);
     } finally {
       setSaving(false);
@@ -119,8 +173,9 @@ export default function DeliveryPayoutPanel({ authHeaders, onMessage }) {
     setWithdrawing(true);
     setPanelError("");
     try {
-      if (!defaultMethod) {
-        setPanelError("Add your bank account before requesting a delivery withdrawal.");
+      const payoutMethod = await ensurePayoutMethod();
+      if (!payoutMethod?.id && !defaultMethod) {
+        setPanelError("Add your payout details before requesting a delivery withdrawal.");
         return;
       }
       const amount = Number(withdrawalForm.amount || 0);
@@ -132,14 +187,13 @@ export default function DeliveryPayoutPanel({ authHeaders, onMessage }) {
         setPanelError(`You can withdraw up to ${formatMoney(withdrawableBalance)} right now.`);
         return;
       }
-      await axios.post(
+      await authenticatedApi.post(
         `${API_URL}/payments/withdrawals/request/`,
         {
           amount,
           note: withdrawalForm.note,
-          payout_method: defaultMethod.id,
-        },
-        authHeaders
+          payout_method: payoutMethod?.id || defaultMethod?.id,
+        }
       );
       setWithdrawalForm({ amount: "", note: "" });
       onMessage?.("Delivery withdrawal request submitted for admin approval.");
@@ -176,10 +230,17 @@ export default function DeliveryPayoutPanel({ authHeaders, onMessage }) {
         </article>
       </div>
 
+      <PlatformWithdrawalAccounts
+        selectedMethodId={selectedWithdrawalMethod}
+        onSelectMethod={handleWithdrawalMethodSelect}
+        title="Delivery withdrawal method"
+        subtitle="Choose Bank Transfer, Bankily, or Sedad. Yala destination account numbers are managed by admin."
+      />
+
       <div className="delivery-uber__summary-card">
-        <h3>Delivery payout account</h3>
+        <h3>Your delivery payout details</h3>
         <p>{payoutSummary(defaultMethod)}</p>
-        <form className="delivery-uber__form-grid" onSubmit={saveBankAccount}>
+        <form className="delivery-uber__form-grid" onSubmit={savePayoutMethod}>
           <label className="delivery-uber-field">
             Account holder name
             <input
@@ -189,29 +250,45 @@ export default function DeliveryPayoutPanel({ authHeaders, onMessage }) {
               autoComplete="name"
             />
           </label>
-          <label className="delivery-uber-field">
-            Bank name
-            <input
-              value={form.bank_name}
-              onChange={(event) => updateForm("bank_name", event.target.value)}
-              placeholder="Bank name"
-              autoComplete="organization"
-              required
-            />
-          </label>
-          <label className="delivery-uber-field">
-            Account number / RIB
-            <input
-              value={form.account_reference}
-              onChange={(event) => updateForm("account_reference", event.target.value)}
-              placeholder="Bank account or RIB"
-              inputMode="numeric"
-              autoComplete="off"
-              required
-            />
-          </label>
+          {form.payout_type === "bank_account" ? (
+            <>
+              <label className="delivery-uber-field">
+                Bank name
+                <input
+                  value={form.bank_name}
+                  onChange={(event) => updateForm("bank_name", event.target.value)}
+                  placeholder="Bank name"
+                  autoComplete="organization"
+                  required
+                />
+              </label>
+              <label className="delivery-uber-field">
+                Your account number / RIB
+                <input
+                  value={form.account_reference}
+                  onChange={(event) => updateForm("account_reference", event.target.value)}
+                  placeholder="Bank account or RIB"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  required
+                />
+              </label>
+            </>
+          ) : (
+            <label className="delivery-uber-field">
+              {form.payout_type === "bankily" ? "Bankily" : "Sedad"} phone number
+              <input
+                value={form.phone_number}
+                onChange={(event) => updateForm("phone_number", event.target.value)}
+                placeholder="Your mobile money number"
+                inputMode="tel"
+                autoComplete="tel"
+                required
+              />
+            </label>
+          )}
           <button type="submit" className="delivery-uber__primary-btn" disabled={saving}>
-            {saving ? "Saving..." : defaultMethod ? "Update payout account" : "Save payout account"}
+            {saving ? "Saving..." : defaultMethod ? "Update payout method" : "Save payout method"}
           </button>
         </form>
       </div>
@@ -231,7 +308,7 @@ export default function DeliveryPayoutPanel({ authHeaders, onMessage }) {
                 setWithdrawalForm((current) => ({ ...current, amount: event.target.value }))
               }
               placeholder="0"
-              disabled={!defaultMethod || Number(withdrawableBalance || 0) <= 0}
+              disabled={!canRequestWithdrawal}
             />
           </label>
           <label className="delivery-uber-field">
@@ -242,13 +319,13 @@ export default function DeliveryPayoutPanel({ authHeaders, onMessage }) {
                 setWithdrawalForm((current) => ({ ...current, note: event.target.value }))
               }
               placeholder="Optional note for admin"
-              disabled={!defaultMethod || Number(withdrawableBalance || 0) <= 0}
+              disabled={!canRequestWithdrawal}
             />
           </label>
           <button
             type="submit"
             className="delivery-uber__primary-btn"
-            disabled={withdrawing || !defaultMethod || Number(withdrawableBalance || 0) <= 0}
+            disabled={withdrawing || !canRequestWithdrawal}
           >
             {withdrawing ? "Submitting..." : "Request withdrawal"}
           </button>

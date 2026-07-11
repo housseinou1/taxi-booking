@@ -174,6 +174,29 @@ class DriverStatsView(APIView):
         week_earnings = earnings_service.get_period_earnings(driver_profile, "week")
         month_earnings = earnings_service.get_period_earnings(driver_profile, "month")
 
+        wallet_summary = {
+            "wallet_balance": "0",
+            "available_balance": "0",
+            "pending_balance": "0",
+            "pending_withdrawals": "0",
+            "total_earned": "0",
+            "minimum_withdrawal": "100",
+        }
+        try:
+            from payments.views import driver_withdrawal_summary
+
+            summary = driver_withdrawal_summary(request.user)
+            wallet_summary = {
+                "wallet_balance": str(summary["wallet_balance"]),
+                "available_balance": str(summary["available_balance"]),
+                "pending_balance": str(summary["pending_balance"]),
+                "pending_withdrawals": str(summary["pending_withdrawals"]),
+                "total_earned": str(summary["total_earned"]),
+                "minimum_withdrawal": str(summary["minimum_withdrawal"]),
+            }
+        except Exception:
+            pass
+
         no_show_count = driver_profile.total_rides_no_show or 0
         no_show_rate = (
             round((no_show_count / total_accepted) * 100, 1) if total_accepted > 0 else 0
@@ -214,6 +237,13 @@ class DriverStatsView(APIView):
                     "month": month_earnings["total_earnings"],
                     "currency": EarningsService.CURRENCY,
                 },
+                "wallet_balance": wallet_summary["wallet_balance"],
+                "available_balance": wallet_summary["available_balance"],
+                "withdrawable_balance": wallet_summary["available_balance"],
+                "pending_balance": wallet_summary["pending_balance"],
+                "pending_withdrawals": wallet_summary["pending_withdrawals"],
+                "total_earned": wallet_summary["total_earned"],
+                "minimum_withdrawal": wallet_summary["minimum_withdrawal"],
             },
             status=status.HTTP_200_OK,
         )

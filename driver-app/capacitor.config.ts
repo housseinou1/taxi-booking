@@ -4,6 +4,9 @@ const config: CapacitorConfig = {
   appId: 'com.yala.driver.mr',
   appName: 'Yala Driver',
   webDir: 'www',
+  server: {
+    allowNavigation: ['api.yalataxi.live', '*.yalataxi.live'],
+  },
   plugins: {
     SplashScreen: {
       launchAutoHide: true,
@@ -16,6 +19,9 @@ const config: CapacitorConfig = {
     },
     PushNotifications: {
       presentationOptions: ['badge', 'sound', 'alert'],
+    },
+    CapacitorHttp: {
+      enabled: true,
     },
   },
 };

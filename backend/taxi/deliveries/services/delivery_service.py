@@ -224,9 +224,34 @@ class DeliveryService:
 
         main_code, main_code_hash = self.generate_recipient_code()
         estimated_duration = estimate_delivery_duration_minutes(float(distance_km), service_category)
-        payment_method = data.get("payment_method") or "cash"
-        if payment_method not in {"cash", "card", "wallet"}:
-            payment_method = "cash"
+
+        payment_method_raw = data.get("payment_method")
+        if not payment_method_raw:
+            raise DeliveryServiceError(
+                "Payment method is required before creating a delivery.",
+                code="payment_required",
+            )
+
+        from payments.settlement_service import (
+            SettlementError,
+            normalize_delivery_payment_method,
+            prepay_delivery_request,
+        )
+
+        try:
+            payment_method = normalize_delivery_payment_method(payment_method_raw)
+        except SettlementError as exc:
+            raise DeliveryServiceError(exc.message, code=exc.code) from exc
+
+        try:
+            payment_record = prepay_delivery_request(
+                customer=customer,
+                amount=fare_breakdown.total_fare,
+                payment_method=payment_method,
+                provider_token=data.get("provider_token", ""),
+            )
+        except SettlementError as exc:
+            raise DeliveryServiceError(exc.message, code=exc.code) from exc
 
         with transaction.atomic():
             delivery = Delivery.objects.create(
@@ -258,7 +283,7 @@ class DeliveryService:
                 weight_kg=data.get("weight_kg"),
                 estimated_duration_minutes=estimated_duration,
                 payment_method=payment_method,
-                payment_status="pending",
+                payment_status="paid",
                 is_scheduled=is_scheduled,
                 scheduled_pickup_at=scheduled_pickup_at,
                 business_account=business_account,
@@ -312,6 +337,9 @@ class DeliveryService:
                 )
                 stop_codes[idx] = code
 
+            payment_record.delivery = delivery
+            payment_record.save(update_fields=["delivery"])
+
         metadata = {
             "recipient_code": main_code,
             "pickup_pin": delivery.pickup_pin,
@@ -319,6 +347,8 @@ class DeliveryService:
             "stop_codes": stop_codes,
             "fare_breakdown": fare_breakdown.as_dict(),
             "estimated_duration_minutes": estimated_duration,
+            "payment_status": delivery.payment_status,
+            "payment_method": delivery.payment_method,
         }
         return delivery, metadata
 
@@ -516,8 +546,16 @@ class DeliveryService:
                 code="not_delivered",
             )
 
-        method = (payment_method or "cash").lower()
-        if method not in {"cash", "card", "wallet", "bankily", "masrvi", "seddad"}:
+        if delivery.payment_status == "paid":
+            return delivery
+
+        method = (payment_method or delivery.payment_method or "card").lower()
+        if method in {"cash", "wallet"}:
+            raise DeliveryServiceError(
+                "Cash payments are not supported for delivery.",
+                code="invalid_payment_method",
+            )
+        if method not in {"card", "bankily", "masrvi", "masravi", "seddad", "sedad"}:
             raise DeliveryServiceError("Invalid payment method.", code="invalid_payment_method")
 
         from payments.settlement_service import SettlementError, settle_delivery_payment

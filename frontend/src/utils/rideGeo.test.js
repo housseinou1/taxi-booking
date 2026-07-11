@@ -21,12 +21,11 @@ describe("rideGeo", () => {
     expect(meters).toBeLessThan(1);
   });
 
-  it("does not show fake 0km when gps is unreliable", () => {
+  it("does not mark near without driver coordinates", () => {
     const gate = computeArriveGate({
-      driverPosition: [18.085, -15.955],
+      driverPosition: null,
       pickupLat: 18.085,
       pickupLng: -15.955,
-      gpsReliable: false,
     });
     expect(gate.reliable).toBe(false);
     expect(gate.distanceKm).toBeNull();
@@ -38,7 +37,6 @@ describe("rideGeo", () => {
       driverPosition: [18.085, -15.955],
       pickupLat: 18.0851,
       pickupLng: -15.9551,
-      gpsReliable: true,
     });
     expect(gate.near).toBe(true);
     expect(gate.distanceM).toBeLessThan(ARRIVE_MAX_DISTANCE_M);

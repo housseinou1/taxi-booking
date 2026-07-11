@@ -1,6 +1,7 @@
 from datetime import timedelta
 from decimal import Decimal
 import logging
+import math
 import secrets
 
 from django.shortcuts import get_object_or_404
@@ -683,61 +684,66 @@ def arrived_ride(request, ride_id):
         ride.status = "driver_arriving"
         ride.save(update_fields=["status"])
 
-    # Optional but preferred GPS check — reject when coords prove driver is far.
+    # Required GPS check. Keep this aligned with the driver app arrive gate.
     raw_lat = request.data.get("lat", request.data.get("driver_lat"))
     raw_lng = request.data.get("lng", request.data.get("driver_lng"))
-    if raw_lat is not None and raw_lng is not None:
-        from taxi.rides.services.no_show_service import _parse_geo_coord
-
-        driver = _parse_geo_coord(raw_lat, raw_lng)
-        if not driver:
-            return Response(
-                {"detail": "Invalid driver GPS coordinates."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        lat, lng = driver
-
-        pickup = _parse_geo_coord(ride.pickup_lat, ride.pickup_lng)
-        if not pickup:
-            return Response(
-                {"detail": "Invalid pickup coordinates for ride."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        distance_m = distance_to_pickup_m(ride, lat, lng)
-        max_m = arrive_max_distance_m()
-
-        logger = logging.getLogger(__name__)
-        logger.warning(
-            "ARRIVE_GEOFENCE_CHECK ride_id=%s driver_lat=%s driver_lng=%s "
-            "pickup_lat=%s pickup_lng=%s calculated_distance_m=%s max_allowed_m=%s",
-            ride.id,
-            lat,
-            lng,
-            pickup[0],
-            pickup[1],
-            distance_m,
-            max_m,
+    if raw_lat is None or raw_lng is None:
+        return Response(
+            {"detail": "Waiting for your location. Please enable GPS and try again."},
+            status=status.HTTP_400_BAD_REQUEST,
         )
 
-        if distance_m is None:
-            return Response(
-                {"detail": "Unable to calculate distance to pickup. Please check your GPS and try again."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+    from taxi.rides.services.no_show_service import _parse_geo_coord
 
-        if distance_m > max_m:
-            return Response(
-                {
-                    "detail": (
-                        f"Move closer to the pickup point before tapping Arrived "
-                        f"({int(distance_m)}m away, max {int(max_m)}m)."
-                    ),
-                    "distance_m": round(distance_m, 1),
-                    "max_distance_m": max_m,
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+    driver = _parse_geo_coord(raw_lat, raw_lng)
+    if not driver:
+        return Response(
+            {"detail": "Invalid driver GPS coordinates."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    lat, lng = driver
+
+    pickup = _parse_geo_coord(ride.pickup_lat, ride.pickup_lng)
+    if not pickup:
+        return Response(
+            {"detail": "Invalid pickup coordinates for ride."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    distance_m = distance_to_pickup_m(ride, lat, lng)
+    max_m = arrive_max_distance_m()
+
+    logger = logging.getLogger(__name__)
+    logger.warning(
+        "ARRIVE_GEOFENCE_CHECK ride_id=%s driver_lat=%s driver_lng=%s "
+        "pickup_lat=%s pickup_lng=%s calculated_distance_m=%s max_allowed_m=%s",
+        ride.id,
+        lat,
+        lng,
+        pickup[0],
+        pickup[1],
+        distance_m,
+        max_m,
+    )
+
+    if distance_m is None or not math.isfinite(distance_m):
+        return Response(
+            {"detail": "Unable to calculate distance to pickup. Please check your GPS and try again."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if distance_m > max_m:
+        return Response(
+            {
+                "detail": (
+                    f"Move closer to the pickup point before tapping Arrived "
+                    f"({int(distance_m)}m away, max {int(max_m)}m)."
+                ),
+                "distance_m": round(distance_m, 1),
+                "max_distance_m": max_m,
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     ride.status = "driver_arrived"
     ride.driver_arrived_at = now()
@@ -795,30 +801,75 @@ def _check_ride_pickup_pin(ride, ride_id, user, submitted_pin):
 @permission_classes([IsAuthenticated])
 def verify_pickup_pin(request, ride_id):
     """Verify rider pickup PIN without starting the trip."""
-    ride = get_object_or_404(
-        Ride,
-        id=ride_id,
-        driver=request.user,
-    )
-
-    if ride.status != "driver_arrived":
-        return Response(
-            {"detail": "PIN can only be verified after the driver arrives."},
-            status=status.HTTP_400_BAD_REQUEST,
+    with transaction.atomic():
+        ride = get_object_or_404(
+            Ride.objects.select_for_update(),
+            id=ride_id,
+            driver=request.user,
         )
 
-    if ride.pickup_pin_verified_at:
-        serializer = RideSerializer(ride, context={"request": request})
-        return Response(serializer.data)
+        if ride.status == "in_progress":
+            return Response(
+                {"detail": "Pickup PIN expired. The ride has already started."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-    submitted_pin = str(request.data.get("pickup_pin", "")).strip()
-    pin_error = _check_ride_pickup_pin(ride, ride_id, request.user, submitted_pin)
-    if pin_error:
-        return pin_error
+        if ride.status != "driver_arrived":
+            return Response(
+                {"detail": "PIN can only be verified after the driver arrives."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-    ride.pickup_pin_verified_at = now()
-    ride.save(update_fields=["pickup_pin_verified_at"])
+        if ride.pickup_pin_verified_at:
+            try:
+                from security.services.audit_service import log_from_request
+
+                log_from_request(
+                    request,
+                    action="ride_pickup_pin_reverify_ignored",
+                    entity_type="ride",
+                    entity_id=ride.id,
+                    summary=f"Driver re-submitted PIN for already-verified ride #{ride.id}",
+                )
+            except Exception:
+                logging.getLogger(__name__).exception("PIN audit log failed")
+            serializer = RideSerializer(ride, context={"request": request})
+            return Response(serializer.data)
+
+        submitted_pin = str(request.data.get("pickup_pin", "")).strip()
+        pin_error = _check_ride_pickup_pin(ride, ride_id, request.user, submitted_pin)
+        if pin_error:
+            try:
+                from security.services.audit_service import log_from_request
+
+                log_from_request(
+                    request,
+                    action="ride_pickup_pin_failed",
+                    entity_type="ride",
+                    entity_id=ride.id,
+                    summary=f"Incorrect pickup PIN for ride #{ride.id}",
+                    details={"submitted_length": len(submitted_pin)},
+                )
+            except Exception:
+                logging.getLogger(__name__).exception("PIN audit log failed")
+            return pin_error
+
+        ride.pickup_pin_verified_at = now()
+        ride.save(update_fields=["pickup_pin_verified_at"])
+
     broadcast_ride_update(ride)
+    try:
+        from security.services.audit_service import log_from_request
+
+        log_from_request(
+            request,
+            action="ride_pickup_pin_verified",
+            entity_type="ride",
+            entity_id=ride.id,
+            summary=f"Pickup PIN verified for ride #{ride.id}",
+        )
+    except Exception:
+        logging.getLogger(__name__).exception("PIN audit log failed")
 
     serializer = RideSerializer(ride, context={"request": request})
     return Response(serializer.data)
@@ -827,39 +878,59 @@ def verify_pickup_pin(request, ride_id):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def start_ride(request, ride_id):
-    ride = get_object_or_404(
-        Ride,
-        id=ride_id,
-        driver=request.user,
-    )
-
-    if ride.status != "driver_arrived":
-        return Response(
-            {"detail": "Ride can only be started after driver arrives."},
-            status=status.HTTP_400_BAD_REQUEST,
+    with transaction.atomic():
+        ride = get_object_or_404(
+            Ride.objects.select_for_update(),
+            id=ride_id,
+            driver=request.user,
         )
 
-    if not ride.pickup_pin_verified_at:
-        return Response(
-            {"detail": "Verify the rider pickup PIN before starting the ride."},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+        if ride.status == "in_progress":
+            serializer = RideSerializer(ride, context={"request": request})
+            return Response(serializer.data)
 
-    ride.status = "in_progress"
+        if ride.status != "driver_arrived":
+            return Response(
+                {"detail": "Ride can only be started after driver arrives."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-    waiting_fee = Decimal("0")
-    if ride.driver_arrived_at:
-        waited_seconds = int((now() - ride.driver_arrived_at).total_seconds())
-        waiting_fee = calculate_waiting_fee(waited_seconds)
+        if not ride.pickup_pin_verified_at:
+            return Response(
+                {"detail": "Verify the rider pickup PIN before starting the ride."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-    ride.waiting_fee = waiting_fee
-    if waiting_fee > 0:
-        ride.fare = ride.fare + waiting_fee
-        ride.app_fee = calculate_app_fee(ride.fare)
-        ride.driver_earning = ride.fare - ride.app_fee
+        ride.status = "in_progress"
 
-    ride.save(update_fields=["status", "waiting_fee", "fare", "app_fee", "driver_earning"])
+        waiting_fee = Decimal("0")
+        if ride.driver_arrived_at:
+            waited_seconds = int((now() - ride.driver_arrived_at).total_seconds())
+            waiting_fee = calculate_waiting_fee(waited_seconds)
+
+        ride.waiting_fee = waiting_fee
+        if waiting_fee > 0:
+            ride.fare = ride.fare + waiting_fee
+            ride.app_fee = calculate_app_fee(ride.fare)
+            ride.driver_earning = ride.fare - ride.app_fee
+
+        ride.save(update_fields=["status", "waiting_fee", "fare", "app_fee", "driver_earning"])
+
     broadcast_ride_update(ride)
+
+    try:
+        from security.services.audit_service import log_from_request
+
+        log_from_request(
+            request,
+            action="ride_started",
+            entity_type="ride",
+            entity_id=ride.id,
+            summary=f"Ride #{ride.id} started after PIN verification",
+            details={"waiting_fee": str(ride.waiting_fee)},
+        )
+    except Exception:
+        logging.getLogger(__name__).exception("Start ride audit log failed")
 
     # Push notification to rider
     try:

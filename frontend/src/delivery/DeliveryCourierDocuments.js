@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import axios from "axios";
 
 import { API_URL } from "../apiConfig";
+import authenticatedApi from "../auth/authenticatedApi";
 import { DeliveryUberPage } from "./DeliveryUberLayout";
 import {
   buildDocumentMap,
@@ -38,13 +38,6 @@ export default function DeliveryCourierDocuments() {
   const [notice, setNotice] = useState("");
   const fileInputRef = useRef(null);
   const selectedTypeRef = useRef("");
-  const token = localStorage.getItem("access");
-
-  const authHeaders = useMemo(
-    () => ({ Authorization: `Bearer ${token}` }),
-    [token]
-  );
-
   const documentTypes = useMemo(
     () => getRequiredCourierDocumentTypes(deliveryVehicleType || "motorcycle"),
     [deliveryVehicleType]
@@ -54,9 +47,7 @@ export default function DeliveryCourierDocuments() {
     setLoading(true);
     setError("");
     try {
-      const response = await axios.get(`${API_URL}/drivers/me/documents/?context=delivery`, {
-        headers: authHeaders,
-      });
+      const response = await authenticatedApi.get(`${API_URL}/drivers/me/documents/?context=delivery`);
       setDocuments(response.data?.documents || []);
       setDeliveryVehicleType(response.data?.delivery_vehicle_type || "motorcycle");
     } catch (err) {
@@ -64,7 +55,7 @@ export default function DeliveryCourierDocuments() {
     } finally {
       setLoading(false);
     }
-  }, [authHeaders]);
+  }, []);
 
   useEffect(() => {
     load();
@@ -98,8 +89,8 @@ export default function DeliveryCourierDocuments() {
       const formData = new FormData();
       formData.append("file", file);
       formData.append("document_type", documentType);
-      await axios.post(`${API_URL}/drivers/me/documents/upload/`, formData, {
-        headers: { ...authHeaders, "Content-Type": "multipart/form-data" },
+      await authenticatedApi.post(`${API_URL}/drivers/me/documents/upload/`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
       });
       setNotice("Delivery document uploaded for review.");
       await load();

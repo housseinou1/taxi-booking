@@ -78,7 +78,7 @@ class MerchantOrderService:
         recipient_name: str,
         recipient_phone: str,
         distance_km=5,
-        payment_method="cash",
+        payment_method="card",
         customer_notes="",
         dropoff_instructions=None,
         recipient_alt_phone="",
@@ -120,7 +120,7 @@ class MerchantOrderService:
             dropoff_instructions=normalized_dropoff,
             recipient_alt_phone=(recipient_alt_phone or "").strip(),
             payment_method=payment_method,
-            payment_status="paid" if payment_method == "cash" else "pending",
+            payment_status="pending",
             promo_code=promo_code or "",
             status="new_order",
         )
@@ -142,17 +142,21 @@ class MerchantOrderService:
 
         notify_merchant_new_order(order)
 
-        if payment_method != "cash":
-            try:
-                from payments.settlement_service import settle_merchant_order_payment
+        try:
+            from payments.settlement_service import settle_merchant_order_payment
 
-                settle_merchant_order_payment(
-                    order,
-                    payment_method=payment_method,
-                    payment_timing="before_delivery",
-                )
-            except Exception:
-                logger.exception("Merchant payment settlement failed for order %s", order.id)
+            settle_merchant_order_payment(
+                order,
+                payment_method=payment_method,
+                payment_timing="before_delivery",
+            )
+            order.refresh_from_db()
+        except Exception as exc:
+            order.delete()
+            raise MerchantOrderError(
+                str(exc) if str(exc) else "Payment failed. Order was not created.",
+                code="payment_failed",
+            ) from exc
 
         return order
 

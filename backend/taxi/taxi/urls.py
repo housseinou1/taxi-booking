@@ -8,6 +8,7 @@ from taxi.drivers.views_verification import VerifyDriverView
 from taxi.rides.share_admin_views import share_analytics, share_analytics_chart
 from taxi.ai_support import support_ai
 from health.views import readiness
+from payments.withdrawal_accounts_views import admin_withdrawal_accounts_view
 
 
 urlpatterns = [
@@ -16,6 +17,9 @@ urlpatterns = [
 
     # Admin document review endpoints (before Django admin catch-all)
     path("admin/documents/", include(admin_document_urlpatterns)),
+
+    # Platform withdrawal account configuration (before Django admin catch-all)
+    path("admin/withdrawal-accounts/", admin_withdrawal_accounts_view),
 
     # Admin QR verification endpoints
     path("api/v1/admin/", include(admin_qr_urlpatterns)),

@@ -2,6 +2,7 @@ import React from "react";
 
 import { API_URL } from "../apiConfig";
 import { persistAuthTokens } from "../auth/session";
+import { resetAuthRedirectFlag } from "../auth/authenticatedApi";
 import { getDeliveryCategoryIcon, getDeliveryCategoryLabel } from "./deliveryCategories";
 import { isDeliveryUberUI } from "../native/platform";
 
@@ -40,6 +41,7 @@ async function refreshAccessToken() {
         access: data.access,
         refresh: data.refresh,
       });
+      resetAuthRedirectFlag();
       return data.access;
     })
     .finally(() => {
@@ -65,6 +67,13 @@ async function fetchWithAuth(url, options = {}, allowRefresh = true) {
   try {
     await refreshAccessToken();
   } catch (error) {
+    // Token refresh failed — session is invalid, redirect to login
+    localStorage.removeItem("access");
+    localStorage.removeItem("refresh");
+    localStorage.removeItem("user");
+    if (window.location.pathname !== "/login") {
+      window.location.replace("/login?next=/delivery/courier");
+    }
     return response;
   }
 
@@ -161,7 +170,7 @@ export async function reportDeliveryException(deliveryId, { reason, exceptionNot
 export async function confirmStopWithProof(deliveryId, stopId, recipientCode, proofFile) {
   const form = new FormData();
   form.append("recipient_code", recipientCode);
-  form.append("proof_photo", proofFile, proofFile.name || "delivery-proof.jpg");
+  form.append("proof_of_delivery", proofFile, proofFile.name || "delivery-proof.jpg");
   return apiRequest(`${API_URL}/deliveries/${deliveryId}/stops/${stopId}/confirm/`, { method: "POST", body: form });
 }
 

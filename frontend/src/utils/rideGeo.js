@@ -96,14 +96,13 @@ export function computeArriveGate({
   driverPosition,
   pickupLat,
   pickupLng,
-  gpsReliable = true,
 }) {
   const pickup = parseGeoCoord(pickupLat, pickupLng);
   const driver = Array.isArray(driverPosition)
     ? parseGeoCoord(driverPosition[0], driverPosition[1])
     : null;
 
-  if (!gpsReliable || !pickup || !driver) {
+  if (!pickup || !driver) {
     return {
       reliable: false,
       distanceM: null,

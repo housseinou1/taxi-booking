@@ -1,0 +1,7 @@
+# Copy to driver-signing.properties (gitignored) for local Driver release builds.
+# Driver Play uploads MUST use the original upload keystore only.
+
+YALA_ANDROID_KEYSTORE=C:/Users/Housseinou/Projects/Django/taxi-booking/yala-release.keystore
+YALA_ANDROID_KEY_ALIAS=yala-key
+YALA_ANDROID_STORE_PASSWORD=
+YALA_ANDROID_KEY_PASSWORD=

@@ -1,5 +1,6 @@
 import logging
 import secrets
+import threading
 from datetime import timedelta
 
 from django.conf import settings
@@ -165,7 +166,15 @@ def forgot_password(request):
         requested_device_info=_device_info(request),
     )
 
-    delivery_method = _send_reset_code(user, identifier_type, identifier, code)
+    delivery_method = "email" if identifier_type == "email" else "sms"
+
+    def deliver_code():
+        try:
+            _send_reset_code(user, identifier_type, identifier, code)
+        except Exception:
+            logger.exception("Failed to deliver password reset code for user %s", user.id)
+
+    threading.Thread(target=deliver_code, daemon=True).start()
     logger.info(
         "Password reset code created",
         extra={

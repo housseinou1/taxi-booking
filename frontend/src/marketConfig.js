@@ -28,6 +28,7 @@ export const MARKET = {
     { label: "Police", number: "117", description: "Emergency police" },
     { label: "Ambulance", number: "101", description: "Medical emergency" },
     { label: "Fire", number: "118", description: "Fire emergency" },
+    { label: "Yala Support", number: "+22245292929", description: "24/7 Yala safety support" },
   ],
   center: [18.0735, -15.9582],
   cities: MAURITANIA_WILAYA_CITIES.map(({ label, center }) => ({ label, center })),

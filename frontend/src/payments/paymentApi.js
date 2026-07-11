@@ -93,15 +93,14 @@ export function fetchAdminPaymentDashboard() {
   return paymentRequest("/admin/dashboard/");
 }
 
-export const PAYMENT_METHODS = [
-  { value: "cash", label: "Cash" },
-  { value: "card", label: "Card" },
-  { value: "wallet", label: "Yala Wallet" },
-  { value: "bankily", label: "Bankily" },
-  { value: "masrvi", label: "Masrvi" },
-  { value: "seddad", label: "Seddad" },
-  { value: "promo_credit", label: "Promo / Credit" },
+export const DELIVERY_PAYMENT_METHODS = [
+  { value: "card", label: "Debit/Credit Card", payLabel: "Pay with Card" },
+  { value: "bankily", label: "Bankily", payLabel: "Pay with Bankily" },
+  { value: "sedad", label: "Sedad", payLabel: "Pay with Sedad" },
+  { value: "masravi", label: "Masravi", payLabel: "Pay with Masravi" },
 ];
+
+export const PAYMENT_METHODS = DELIVERY_PAYMENT_METHODS;
 
 export const REFUND_REASONS = [
   { value: "cancelled_order", label: "Cancelled order" },

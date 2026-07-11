@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { languageOptions, normalizeLanguageCode } from "../i18n";
 import { MARKET } from "../marketConfig";
 import LegalCenter from "../legal/LegalCenter";
+import TrustedContactsSection from "../safety/TrustedContactsSection";
 
 const LOGO_SRC = "/yala-logo.png";
 
@@ -191,6 +192,12 @@ function SettingsPage({ onLogout, riderMode = false }) {
               <em>{item.value}</em>
             </button>
           ))}
+
+          {riderMode ? (
+            <div style={{ marginTop: 16 }}>
+              <TrustedContactsSection compact />
+            </div>
+          ) : null}
 
           {riderMode ? (
             <div style={{ marginTop: 16 }}>

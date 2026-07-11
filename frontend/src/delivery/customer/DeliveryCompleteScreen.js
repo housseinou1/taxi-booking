@@ -1,19 +1,12 @@
 import React, { useState } from "react";
 
 import { formatDeliveryDuration } from "../deliveryTrackingStatus";
-
-const PAYMENT_METHODS = [
-  { key: "cash", label: "Cash" },
-  { key: "card", label: "Card" },
-  { key: "wallet", label: "Wallet" },
-];
+import { DELIVERY_PAYMENT_METHODS } from "../../payments/paymentApi";
+import { getDeliveryPaymentLabel } from "../../payments/deliveryPayment";
 
 export default function DeliveryCompleteScreen({ delivery, onContinue, busy = false }) {
-  const [tip, setTip] = useState("0");
-  const [paymentMethod, setPaymentMethod] = useState(delivery.payment_method || "cash");
   const duration = delivery.delivery_duration_minutes;
-  const tipAmount = Number(delivery.tip_amount || 0);
-  const totalPaid = Number(delivery.fare || 0) + tipAmount;
+  const totalPaid = Number(delivery.fare || 0) + Number(delivery.tip_amount || 0);
 
   return (
     <div className="delivery-track__complete">
@@ -28,18 +21,24 @@ export default function DeliveryCompleteScreen({ delivery, onContinue, busy = fa
       </div>
 
       <section className="delivery-track__payment-card">
-        <h3>Payment summary</h3>
+        <h3>Delivery summary</h3>
         <div className="delivery-track__summary-row">
           <span>Delivery fare</span>
           <strong>{Number(delivery.fare || 0).toFixed(2)} MRU</strong>
         </div>
-        <div className="delivery-track__summary-row">
-          <span>Tip</span>
-          <strong>{tipAmount.toFixed(2)} MRU</strong>
-        </div>
+        {delivery.tip_amount ? (
+          <div className="delivery-track__summary-row">
+            <span>Tip</span>
+            <strong>{Number(delivery.tip_amount || 0).toFixed(2)} MRU</strong>
+          </div>
+        ) : null}
         <div className="delivery-track__summary-row delivery-track__summary-row--total">
           <span>Total paid</span>
           <strong>{totalPaid.toFixed(2)} MRU</strong>
+        </div>
+        <div className="delivery-track__summary-row">
+          <span>Payment method</span>
+          <strong>{getDeliveryPaymentLabel(delivery.payment_method)}</strong>
         </div>
         <div className="delivery-track__summary-row">
           <span>Delivery duration</span>
@@ -51,41 +50,13 @@ export default function DeliveryCompleteScreen({ delivery, onContinue, busy = fa
         </div>
       </section>
 
-      <p className="delivery-track__section-label">Payment method</p>
-      <div className="delivery-track__chip-row">
-        {PAYMENT_METHODS.map((method) => (
-          <button
-            key={method.key}
-            type="button"
-            className={`delivery-track__chip ${paymentMethod === method.key ? "is-active" : ""}`}
-            onClick={() => setPaymentMethod(method.key)}
-          >
-            {method.label}
-          </button>
-        ))}
-      </div>
-
-      <p className="delivery-track__section-label">Tip your courier</p>
-      <div className="delivery-track__chip-row">
-        {["0", "50", "100", "200"].map((amount) => (
-          <button
-            key={amount}
-            type="button"
-            className={`delivery-track__chip ${tip === amount ? "is-active" : ""}`}
-            onClick={() => setTip(amount)}
-          >
-            {amount === "0" ? "No tip" : `${amount} MRU`}
-          </button>
-        ))}
-      </div>
-
       <button
         type="button"
         className="delivery-track__primary-btn"
         disabled={busy}
-        onClick={() => onContinue({ paymentMethod, tip: Number(tip) })}
+        onClick={onContinue}
       >
-        {busy ? "Processing..." : "Continue to rating"}
+        {busy ? "Loading..." : "Rate courier"}
       </button>
     </div>
   );

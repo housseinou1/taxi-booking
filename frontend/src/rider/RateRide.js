@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import authenticatedApi from "../auth/authenticatedApi";
 import { API_URL } from "../apiConfig";
 
 function RateRide({ ride, onRated }) {
@@ -10,22 +11,15 @@ function RateRide({ ride, onRated }) {
     try {
       setLoading(true);
 
-      const response = await fetch(`${API_URL}/rides/rate/${ride.id}/`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("access")}`,
-        },
-        body: JSON.stringify({
-          rating: rating,
-          review: review,
-        }),
+      const response = await authenticatedApi.post(`${API_URL}/rides/rate/${ride.id}/`, {
+        rating: rating,
+        review: review,
       });
 
-      const data = await response.json();
+      const data = response.data;
 
-      if (!response.ok) {
-        alert(data.error || "Could not submit rating");
+      if (data.error) {
+        alert(data.error);
         return;
       }
 
@@ -35,8 +29,8 @@ function RateRide({ ride, onRated }) {
         onRated();
       }
     } catch (error) {
-      console.error(error);
-      alert("Server error submitting rating");
+      const message = error.response?.data?.error || error.response?.data?.detail || "Server error submitting rating";
+      alert(message);
     } finally {
       setLoading(false);
     }

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import EmergencyContact, SafetyIncident
+from .models import EmergencyContact, SafetyIncident, SafetyResponseLog, TripSafetyEvent
 
 
 class EmergencyContactSerializer(serializers.ModelSerializer):
@@ -16,6 +16,49 @@ class EmergencyContactSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
+
+
+class TripSafetyEventSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TripSafetyEvent
+        fields = [
+            "id",
+            "ride",
+            "event_type",
+            "status",
+            "message",
+            "latitude",
+            "longitude",
+            "metadata",
+            "responded_at",
+            "created_at",
+        ]
+        read_only_fields = fields
+
+
+class SafetyResponseLogSerializer(serializers.ModelSerializer):
+    actor_name = serializers.SerializerMethodField()
+    incident_reference = serializers.CharField(source="incident.reference", read_only=True)
+
+    class Meta:
+        model = SafetyResponseLog
+        fields = [
+            "id",
+            "incident",
+            "incident_reference",
+            "actor",
+            "actor_name",
+            "action",
+            "note",
+            "metadata",
+            "created_at",
+        ]
+        read_only_fields = fields
+
+    def get_actor_name(self, obj):
+        if not obj.actor:
+            return ""
+        return obj.actor.get_full_name().strip() or obj.actor.email
 
 
 class SafetyIncidentSerializer(serializers.ModelSerializer):

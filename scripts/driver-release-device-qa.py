@@ -527,24 +527,93 @@ def slide_arrive() -> bool:
     return True
 
 
-def mock_driver_near_pickup(lat: float = 18.085, lng: float = -15.955) -> None:
+def mock_driver_near_pickup(lat: float = 18.085, lng: float = -15.955, repeats: int = 8) -> None:
     """Inject a Nouakchott-area GPS fix for arrive geofence QA on a physical device."""
     adb("shell", "cmd", "location", "providers", "add-test-provider", "gps", "true", "true", "true", "true", "true", "true")
     adb("shell", "cmd", "location", "providers", "set-test-provider-enabled", "gps", "true")
-    adb(
-        "shell",
-        "cmd",
-        "location",
-        "providers",
-        "send-test-provider-location",
-        "gps",
-        "--location",
-        f"{lat},{lng}",
+    for _ in range(max(1, repeats)):
+        adb(
+            "shell",
+            "cmd",
+            "location",
+            "providers",
+            "send-test-provider-location",
+            "gps",
+            "--location",
+            f"{lat},{lng}",
+        )
+        time.sleep(1.5)
+
+
+def wait_for_arrive_ready(timeout: int = 30) -> bool:
+    """Wait until the driver app shows an enabled arrive control or near-pickup distance."""
+    for _ in range(timeout):
+        xml = ui_xml().lower()
+        if "slide right to arrive" in xml or "mark arrived" in xml:
+            return True
+        if "km away" in xml and "waiting for your location" not in xml:
+            return True
+        time.sleep(1)
+    return False
+
+
+def ensure_driver_arrived(ride_id: int, driver_t: str, pickup_lat: float, pickup_lng: float) -> tuple[bool, str]:
+    """Mark driver arrived via UI when possible, otherwise fall back to API with pickup coords."""
+    mock_driver_near_pickup(pickup_lat, pickup_lng)
+    launch()
+    time.sleep(3)
+    wait_for_arrive_ready(timeout=20)
+    arrived_ui = slide_arrive()
+    _, ride = api("GET", f"/rides/{ride_id}/", driver_t)
+    status = ride.get("status", "")
+    if status == "driver_arrived":
+        return True, status
+    if arrived_ui:
+        time.sleep(3)
+        _, ride = api("GET", f"/rides/{ride_id}/", driver_t)
+        status = ride.get("status", "")
+        if status == "driver_arrived":
+            return True, status
+    code, body = api(
+        "POST",
+        f"/rides/arrived/{ride_id}/",
+        driver_t,
+        {"lat": pickup_lat, "lng": pickup_lng},
     )
-    time.sleep(2)
+    if code == 200:
+        launch()
+        time.sleep(3)
+        return True, "driver_arrived"
+    detail = ""
+    if isinstance(body, dict):
+        detail = body.get("detail", "")
+    return False, detail or status
+
+
+def dismiss_modal() -> None:
+    for _ in range(3):
+        xml = ui_xml().lower()
+        if "cancel this ride" not in xml and "select a reason" not in xml:
+            return
+        adb("shell", "input", "keyevent", "4")
+        time.sleep(0.6)
+
+
+def wait_for_pin_ui(timeout: int = 20) -> bool:
+    for _ in range(timeout):
+        xml = ui_xml().lower()
+        if "rider pickup pin" in xml or "verify pin" in xml or "4-digit pin" in xml:
+            return True
+        time.sleep(1)
+    return False
 
 
 def enter_pin(pin: str) -> None:
+    dismiss_modal()
+    launch()
+    time.sleep(2)
+    if not wait_for_pin_ui(timeout=15):
+        return
     xml = ui_xml()
     pt = bounds_center(xml, "Rider pickup PIN", "4-digit", "pickup-pin", f"pickup-pin-")
     if pt:

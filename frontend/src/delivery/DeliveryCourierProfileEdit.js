@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import axios from "axios";
+import React, { useCallback, useEffect, useState } from "react";
 
 import { API_URL } from "../apiConfig";
+import authenticatedApi from "../auth/authenticatedApi";
 import { DeliveryUberPage } from "./DeliveryUberLayout";
 import { getDeliveryVehicleLabel } from "./deliveryVehicleTypes";
 import "./delivery-uber.css";
@@ -20,21 +20,14 @@ export default function DeliveryCourierProfileEdit() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const token = localStorage.getItem("access");
-
-  const authHeaders = useMemo(
-    () => ({ Authorization: `Bearer ${token}` }),
-    [token]
-  );
-
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
       const [profileResponse, cityResponse, onboardingResponse] = await Promise.all([
-        axios.get(`${API_URL}/drivers/me/`, { headers: authHeaders }),
-        axios.get(`${API_URL}/cities/`),
-        axios.get(`${API_URL}/deliveries/courier/onboarding/`, { headers: authHeaders }),
+        authenticatedApi.get(`${API_URL}/drivers/me/`),
+        authenticatedApi.get(`${API_URL}/cities/`),
+        authenticatedApi.get(`${API_URL}/deliveries/courier/onboarding/`),
       ]);
       const profile = profileResponse.data || {};
       const user = profile.user || {};
@@ -58,7 +51,7 @@ export default function DeliveryCourierProfileEdit() {
     } finally {
       setLoading(false);
     }
-  }, [authHeaders]);
+  }, []);
 
   useEffect(() => {
     load();
@@ -82,8 +75,8 @@ export default function DeliveryCourierProfileEdit() {
       body.append("city", form.city);
       if (profilePhoto) body.append("profile_picture", profilePhoto);
 
-      await axios.patch(`${API_URL}/auth/identity/update/`, body, {
-        headers: { ...authHeaders, "Content-Type": "multipart/form-data" },
+      await authenticatedApi.patch(`${API_URL}/auth/identity/update/`, body, {
+        headers: { "Content-Type": "multipart/form-data" },
       });
       setNotice("Delivery courier profile updated.");
     } catch (err) {

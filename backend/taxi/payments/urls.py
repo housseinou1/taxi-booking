@@ -11,9 +11,11 @@ from .views import (
     my_payout_methods,
     owner_payout_summary,
     withdrawal_requests,
+    send_withdrawal_otp_view,
     request_withdrawal,
     approve_withdrawal,
     reject_withdrawal,
+    mark_withdrawal_paid,
     save_payout_method,
     save_owner_payout_method,
     my_wallet,
@@ -40,6 +42,7 @@ from .wallet_views import (
     wallet_top_up_view,
 )
 from .webhooks import stripe_webhook
+from .withdrawal_accounts_views import platform_withdrawal_accounts_view
 
 urlpatterns = [
     path("methods/save/", save_payment_method),
@@ -57,9 +60,12 @@ urlpatterns = [
     path("owner-payout/", owner_payout_summary),
     path("owner-payout/save/", save_owner_payout_method),
     path("withdrawals/", withdrawal_requests),
+    path("withdrawals/send-otp/", send_withdrawal_otp_view),
     path("withdrawals/request/", request_withdrawal),
     path("withdrawals/<int:withdrawal_id>/approve/", approve_withdrawal),
     path("withdrawals/<int:withdrawal_id>/reject/", reject_withdrawal),
+    path("withdrawals/<int:withdrawal_id>/mark-paid/", mark_withdrawal_paid),
+    path("withdrawal-accounts/", platform_withdrawal_accounts_view),
     path("wallet/", my_wallet),
     path("wallet/admin-adjustment/", admin_wallet_adjustment),
     path("wallet/pay-ride/<int:ride_id>/", wallet_pay_ride),

@@ -12,6 +12,8 @@ import RideTracker from './RideTracker';
 import RideChat from '../../components/RideChat';
 import PostRidePayRate from './PostRidePayRate';
 import SafetyEmergencyPanel from '../../safety/SafetyEmergencyPanel';
+import TripSafetyPrompt from '../../safety/TripSafetyPrompt';
+import useTripSafetyMonitor from '../../safety/useTripSafetyMonitor';
 import RiderHamburgerMenu from './RiderHamburgerMenu';
 import wsService, { resetWsConnection } from '../services/wsService';
 import { resetAuthRedirectFlag } from '../../auth/authenticatedApi';
@@ -142,6 +144,14 @@ function RiderHome() {
     loading,
     error,
   } = state;
+
+  const tripMonitoringEnabled = Boolean(
+    currentRide?.id && ACTIVE_RIDE_STATUSES.has(currentRide.status)
+  );
+  const { openEvent: safetyEvent, respond: respondSafetyEvent } = useTripSafetyMonitor({
+    rideId: currentRide?.id,
+    enabled: tripMonitoringEnabled,
+  });
 
   // ─── Default map center ────────────────────────────────────────────
   const defaultCenter = useMemo(() => {
@@ -1196,6 +1206,15 @@ function RiderHome() {
         </div>,
         document.body
       )}
+
+      <TripSafetyPrompt
+        event={safetyEvent}
+        onSafe={() => respondSafetyEvent(true)}
+        onNeedHelp={() => {
+          respondSafetyEvent(false, "User requested help from safety prompt");
+          setShowSafety(true);
+        }}
+      />
 
       <RiderHamburgerMenu
         isOpen={showMenu}

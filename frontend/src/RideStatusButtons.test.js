@@ -56,4 +56,44 @@ describe("RideStatusButtons core driver actions", () => {
 
     expect(screen.getByRole("button", { name: "Slide Right to Finish Ride" })).toBeInTheDocument();
   });
+
+  it("shows arrive slide label while waiting for GPS", () => {
+    render(
+      <RideStatusButtons
+        ride={makeRide("driver_arriving")}
+        gpsUnavailable
+        arriveGate={{
+          reliable: false,
+          near: false,
+          distanceM: null,
+          distanceKm: null,
+          arriveBody: null,
+        }}
+      />
+    );
+
+    const arriveButton = screen.getByRole("button", { name: "Slide Right to Arrive" });
+    expect(arriveButton).toBeInTheDocument();
+    expect(arriveButton).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("enables arrive when within geofence", () => {
+    render(
+      <RideStatusButtons
+        ride={makeRide("driver_arriving")}
+        arriveGate={{
+          reliable: true,
+          near: true,
+          distanceM: 80,
+          distanceKm: 0.08,
+          arriveBody: { lat: 18.1, lng: -15.9 },
+        }}
+      />
+    );
+
+    expect(screen.getByRole("button", { name: "Slide Right to Arrive" })).toHaveAttribute(
+      "aria-disabled",
+      "false"
+    );
+  });
 });

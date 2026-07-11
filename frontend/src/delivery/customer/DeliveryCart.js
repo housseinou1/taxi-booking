@@ -5,7 +5,8 @@ import DeliveryInstructionFields from "../components/DeliveryInstructionFields";
 import { emptyInstructions, instructionsFromDefaults } from "../deliveryInstructionUtils";
 import { getDeliveryInstructionDefaults } from "../../security/securityApi";
 import { checkoutCart, fetchCart, removeCartItem, updateCartItem } from "../../merchant/merchantApi";
-import { PAYMENT_METHODS } from "../../payments/paymentApi";
+import { DELIVERY_PAYMENT_METHODS } from "../../payments/paymentApi";
+import { getDeliveryPayButtonLabel } from "../../payments/deliveryPayment";
 
 export default function DeliveryCart({
   store,
@@ -23,7 +24,7 @@ export default function DeliveryCart({
   const [recipientName, setRecipientName] = useState("");
   const [recipientPhone, setRecipientPhone] = useState("");
   const [promoCode, setPromoCode] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("cash");
+  const [paymentMethod, setPaymentMethod] = useState("card");
   const [dropoffInstructions, setDropoffInstructions] = useState(emptyInstructions);
   const [recipientAltPhone, setRecipientAltPhone] = useState("");
   const [saveAddress, setSaveAddress] = useState(false);
@@ -186,7 +187,7 @@ export default function DeliveryCart({
       <section className="delivery-cart__section">
         <h3>Payment</h3>
         <div className="delivery-cart__chips">
-          {PAYMENT_METHODS.filter((m) => m.value !== "promo_credit").map((m) => (
+          {DELIVERY_PAYMENT_METHODS.map((m) => (
             <button
               key={m.value}
               type="button"
@@ -229,8 +230,9 @@ export default function DeliveryCart({
         className="delivery-cart__checkout"
         disabled={busy || items.length === 0 || (showTermsAcceptance && (!termsChecked || !privacyChecked))}
         onClick={handleCheckout}
+        aria-busy={busy}
       >
-        {busy ? "Placing order..." : `Place order · ${totals.total || 0} MRU`}
+        {getDeliveryPayButtonLabel(paymentMethod, totals.total || 0)}
       </button>
 
       <DeliveryCartStyles />

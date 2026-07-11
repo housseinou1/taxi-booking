@@ -96,6 +96,8 @@ export const DOCUMENTS_UNDER_REVIEW_TITLE = "Documents under review";
 export const DOCUMENTS_UNDER_REVIEW_MESSAGE =
   "You have uploaded all required documents. Our team is reviewing your application. You will be able to go online once your documents are approved.";
 
+export const DOCUMENT_EXPIRATION_ALERT_DAYS = 15;
+
 export const COURIER_PROFILE_UNDER_REVIEW_MESSAGE =
   "Your Yala Delivery profile is under review.";
 
@@ -123,6 +125,111 @@ function getDaysRemaining(expiresAt) {
   return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 }
 
+export function getDocumentDaysUntilExpiration(document) {
+  if (!document) return null;
+  if (document.days_until_expiry !== undefined && document.days_until_expiry !== null) {
+    return Number(document.days_until_expiry);
+  }
+  return getDaysRemaining(document.expires_at);
+}
+
+/**
+ * Required-document expiration status used for menu badges and alert dots.
+ * Optional document types are ignored.
+ */
+export function getRequiredDocumentExpirationStatus(document, docType = {}) {
+  if (docType.required === false) return "valid";
+  if (!document || document.status === "rejected") return "expired";
+
+  const days = getDocumentDaysUntilExpiration(document);
+  if (days === null) return "valid";
+  if (days < 0) return "expired";
+  if (days <= DOCUMENT_EXPIRATION_ALERT_DAYS) return "expiring_soon";
+  return "valid";
+}
+
+export function getDocumentMenuStatusLabel(status) {
+  const labels = {
+    valid: "✓ Valid",
+    expiring_soon: "⚠ Expiring Soon",
+    expired: "● Expired",
+    missing: "● Expired",
+    pending_review: "Pending Review",
+    rejected: "Rejected",
+  };
+  return labels[status] || status;
+}
+
+export function getExpiringSoonDocuments(
+  documents,
+  documentTypes = REQUIRED_DRIVER_DOCUMENT_TYPES,
+) {
+  const results = [];
+
+  documentTypes.forEach((docType) => {
+    if (!docType.required) return;
+    const uploaded = findDocumentForRequiredType(documents, docType.key);
+    if (!uploaded || uploaded.status === "rejected") return;
+
+    const days = getDocumentDaysUntilExpiration(uploaded);
+    if (days === null || days < 0 || days > DOCUMENT_EXPIRATION_ALERT_DAYS) return;
+
+    results.push({
+      key: docType.key,
+      label: docType.label,
+      days_remaining: days,
+      expires_at: uploaded.expires_at,
+    });
+  });
+
+  return results;
+}
+
+export function getDriverDocumentsAlertLevel(profile = {}) {
+  if (!profile) return null;
+
+  if (profile.documents_alert_level) {
+    return profile.documents_alert_level;
+  }
+
+  if (profile.documents_block_online) {
+    return "error";
+  }
+
+  const missing = profile.missing_document_types;
+  const expired = profile.expired_document_types;
+  if (
+    (Array.isArray(missing) && missing.length > 0) ||
+    (Array.isArray(expired) && expired.length > 0)
+  ) {
+    return "error";
+  }
+
+  if (Array.isArray(profile.expiring_soon_documents) && profile.expiring_soon_documents.length > 0) {
+    return "warning";
+  }
+
+  if (Array.isArray(profile.documents) && profile.documents.length > 0) {
+    if (getExpiredOrMissingDocuments(profile.documents).length > 0) {
+      return "error";
+    }
+    if (getExpiringSoonDocuments(profile.documents).length > 0) {
+      return "warning";
+    }
+    return null;
+  }
+
+  return null;
+}
+
+export function driverDocumentsBlockOnline(profile = {}) {
+  if (!profile) return false;
+  if (typeof profile.documents_block_online === "boolean") {
+    return profile.documents_block_online;
+  }
+  return getDriverDocumentsAlertLevel(profile) === "error";
+}
+
 export function buildDocumentMap(documents) {
   const map = {};
   const list = Array.isArray(documents) ? documents : [];
@@ -135,6 +242,16 @@ export function buildDocumentMap(documents) {
   return map;
 }
 
+export function findDocumentForRequiredType(documents, docTypeKey) {
+  const list = Array.isArray(documents) ? documents : [];
+  const direct = list.find((doc) => doc.document_type === docTypeKey);
+  if (direct) return direct;
+  if (docTypeKey === "carte_grise") {
+    return list.find((doc) => doc.document_type === "vehicle_registration") || null;
+  }
+  return null;
+}
+
 /**
  * Get documents that are expired or missing (required but not uploaded).
  */
@@ -143,12 +260,10 @@ export function getExpiredOrMissingDocuments(
   documentTypes = REQUIRED_DRIVER_DOCUMENT_TYPES,
 ) {
   const alerts = [];
-  const uploadedMap = buildDocumentMap(documents);
-
   documentTypes.forEach((docType) => {
     if (!docType.required) return;
 
-    const uploaded = uploadedMap[docType.key];
+    const uploaded = findDocumentForRequiredType(documents, docType.key);
 
     if (!uploaded || uploaded.status === "rejected") {
       alerts.push({
@@ -217,22 +332,11 @@ export function shouldShowDocumentsUnderReview({
 }
 
 /**
- * True when the driver menu should show a documents alert dot
- * (missing, rejected, or expired — not merely "under review").
+ * True when the driver menu should show a documents alert dot.
+ * Orange for expiring soon (<=15 days), red for expired/missing.
  */
 export function driverNeedsDocumentAlert(profile = {}) {
-  if (!profile) return false;
-
-  if (Array.isArray(profile.documents) && profile.documents.length > 0) {
-    return getExpiredOrMissingDocuments(profile.documents).length > 0;
-  }
-
-  const missing = profile.missing_document_types;
-  const expired = profile.expired_document_types;
-  return (
-    (Array.isArray(missing) && missing.length > 0) ||
-    (Array.isArray(expired) && expired.length > 0)
-  );
+  return getDriverDocumentsAlertLevel(profile) !== null;
 }
 
 export function getDriverApprovalNotice(profile = {}, documents = []) {

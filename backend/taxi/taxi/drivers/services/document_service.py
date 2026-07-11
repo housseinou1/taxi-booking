@@ -47,8 +47,10 @@ EXPIRING_DOCUMENT_TYPES = {
     "vehicle_registration",
 }
 
-# Expiration warning window in days
+# Push-notification lookahead (30 days)
 EXPIRATION_WARNING_DAYS = 30
+# In-app alert dot / menu status (15 days)
+EXPIRATION_ALERT_DAYS = 15
 
 DOCUMENT_DISPLAY_STATUSES = (
     "uploaded",
@@ -56,14 +58,19 @@ DOCUMENT_DISPLAY_STATUSES = (
     "approved",
     "rejected",
     "expired",
+    "expiring_soon",
 )
 
 
 def get_document_display_status(document: DriverDocument) -> str:
     """Return the user-facing document lifecycle status."""
     today = date.today()
-    if document.expires_at and document.expires_at < today:
-        return "expired"
+    if document.expires_at:
+        if document.expires_at < today:
+            return "expired"
+        days_remaining = (document.expires_at - today).days
+        if days_remaining <= EXPIRATION_ALERT_DAYS:
+            return "expiring_soon"
     if document.status == "pending_review":
         return "pending_review"
     return document.status
@@ -359,19 +366,11 @@ class DocumentService:
         alerts = []
 
         for doc_type in required_types or REQUIRED_DOCUMENT_TYPES:
-            compatible_types = [doc_type]
-            if doc_type == "carte_grise":
-                compatible_types.append("vehicle_registration")
+            # Check if a legacy profile field already satisfies this requirement
+            if self._legacy_satisfies_required_type(driver, doc_type):
+                continue
 
-            # Get the most recent document of this type
-            document = (
-                DriverDocument.objects.filter(
-                    driver=driver,
-                    document_type__in=compatible_types,
-                )
-                .order_by("-uploaded_at")
-                .first()
-            )
+            document = self._latest_required_document(driver, doc_type)
 
             if document is None:
                 # No document uploaded at all
@@ -403,6 +402,71 @@ class DocumentService:
 
         return alerts
 
+    def _legacy_satisfies_required_type(self, driver: DriverProfile, doc_type: str) -> bool:
+        legacy_field_map = {
+            "profile_photo": lambda d: bool(d.driver_photo),
+            "plate_number_photo": lambda d: bool(d.vehicle_plate or d.plate_number),
+            "national_id": lambda d: bool(getattr(d.user, "national_id_document", None)),
+            "license": lambda d: bool(d.license_file),
+            "insurance": lambda d: bool(d.insurance_document),
+            "vignette": lambda d: bool(d.vignette_document),
+            "carte_grise": lambda d: bool(d.vehicle_registration),
+        }
+        legacy_check = legacy_field_map.get(doc_type)
+        return bool(legacy_check and legacy_check(driver))
+
+    def _latest_required_document(
+        self, driver: DriverProfile, doc_type: str
+    ) -> Optional[DriverDocument]:
+        if self._legacy_satisfies_required_type(driver, doc_type):
+            return None
+
+        compatible_types = [doc_type]
+        if doc_type == "carte_grise":
+            compatible_types.append("vehicle_registration")
+
+        return (
+            DriverDocument.objects.filter(
+                driver=driver,
+                document_type__in=compatible_types,
+            )
+            .order_by("-uploaded_at")
+            .first()
+        )
+
+    def get_expiring_soon_documents(
+        self, driver: DriverProfile, days: int = EXPIRATION_ALERT_DAYS
+    ) -> List[dict]:
+        """
+        Return required documents expiring within the alert window (default 15 days).
+
+        Documents with no expiration date are ignored. Optional document types are
+        not included because only REQUIRED_DOCUMENT_TYPES are checked.
+        """
+        today = date.today()
+        horizon = today + timedelta(days=days)
+        results = []
+
+        for doc_type in REQUIRED_DOCUMENT_TYPES:
+            document = self._latest_required_document(driver, doc_type)
+            if document is None or document.status == "rejected":
+                continue
+            if document.expires_at is None:
+                continue
+            if document.expires_at < today or document.expires_at > horizon:
+                continue
+
+            days_remaining = (document.expires_at - today).days
+            results.append(
+                {
+                    "document_type": doc_type,
+                    "expires_at": document.expires_at,
+                    "days_remaining": days_remaining,
+                }
+            )
+
+        return results
+
     def get_documents_review_state(self, driver: DriverProfile) -> dict:
         """
         Summarize whether the driver finished uploading required documents
@@ -415,6 +479,7 @@ class DocumentService:
         expired_types = [
             alert.document_type for alert in alerts if alert.reason == "expired"
         ]
+        expiring_soon = self.get_expiring_soon_documents(driver)
         all_required_uploaded = len(missing_types) == 0
         documents_under_review = (
             all_required_uploaded
@@ -422,11 +487,21 @@ class DocumentService:
             and driver.status != "approved"
         )
 
+        if missing_types or expired_types:
+            documents_alert_level = "error"
+        elif expiring_soon:
+            documents_alert_level = "warning"
+        else:
+            documents_alert_level = None
+
         return {
             "all_required_documents_uploaded": all_required_uploaded,
             "documents_under_review": documents_under_review,
             "missing_document_types": missing_types,
             "expired_document_types": expired_types,
+            "expiring_soon_documents": expiring_soon,
+            "documents_alert_level": documents_alert_level,
+            "documents_block_online": documents_alert_level == "error",
         }
 
     def mark_application_pending_if_complete(self, driver: DriverProfile) -> bool:

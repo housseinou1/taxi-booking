@@ -281,9 +281,10 @@ class Delivery(models.Model):
     estimated_duration_minutes = models.PositiveIntegerField(null=True, blank=True)
 
     PAYMENT_METHOD_CHOICES = [
-        ("cash", "Cash"),
-        ("card", "Card"),
-        ("wallet", "Yala Wallet"),
+        ("card", "Debit/Credit Card"),
+        ("bankily", "Bankily"),
+        ("sedad", "Sedad"),
+        ("masravi", "Masravi"),
     ]
     PAYMENT_STATUS_CHOICES = [
         ("pending", "Pending"),
@@ -292,7 +293,7 @@ class Delivery(models.Model):
     ]
 
     payment_method = models.CharField(
-        max_length=20, choices=PAYMENT_METHOD_CHOICES, default="cash"
+        max_length=20, choices=PAYMENT_METHOD_CHOICES, default="card"
     )
     payment_status = models.CharField(
         max_length=20, choices=PAYMENT_STATUS_CHOICES, default="pending"

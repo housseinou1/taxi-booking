@@ -285,7 +285,7 @@ def _broadcast_ride_request(ride, driver_user_id: int) -> None:
         async_to_sync(channel_layer.group_send)(
             driver_group,
             {
-                "type": "ride_update",
+                "type": "ride_request",
                 "message": message,
             },
         )

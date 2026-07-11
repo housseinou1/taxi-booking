@@ -13,9 +13,24 @@ from taxi.rides.models import Ride
 
 from deliveries.models import Delivery
 
-from .models import EmergencyContact, SafetyIncident, TripShare
-from .serializers import EmergencyContactSerializer, SafetyIncidentSerializer
+from .models import (
+    EmergencyContact,
+    MAX_TRUSTED_CONTACTS,
+    SafetyIncident,
+    SafetyResponseLog,
+    TripLocationPing,
+    TripSafetyEvent,
+    TripShare,
+)
+from .monitoring_service import record_trip_ping, respond_to_safety_event
+from .serializers import (
+    EmergencyContactSerializer,
+    SafetyIncidentSerializer,
+    SafetyResponseLogSerializer,
+    TripSafetyEventSerializer,
+)
 from .services import delivery_snapshot, dispatch_emergency_alert, ride_snapshot
+from security.services.audit_service import log_from_request
 
 
 ACTIVE_RIDE_STATUSES = {
@@ -83,6 +98,15 @@ def emergency_contacts(request):
         )
     serializer = EmergencyContactSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
+    existing_count = EmergencyContact.objects.filter(user=request.user).count()
+    if existing_count >= MAX_TRUSTED_CONTACTS:
+        return Response(
+            {
+                "detail": f"You can save up to {MAX_TRUSTED_CONTACTS} trusted contacts.",
+                "max_contacts": MAX_TRUSTED_CONTACTS,
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
     if serializer.validated_data.get("is_primary"):
         EmergencyContact.objects.filter(user=request.user).update(is_primary=False)
     serializer.save(user=request.user)
@@ -156,6 +180,19 @@ def trigger_sos(request):
             trip_snapshot=ride_snapshot(ride),
         )
     alert = dispatch_emergency_alert(incident)
+    log_from_request(
+        request,
+        action="verification_event",
+        entity_type="payment" if delivery_id else "customer",
+        entity_id=incident.id,
+        summary=f"SOS triggered {incident.reference}",
+        details={
+            "ride_id": incident.ride_id,
+            "delivery_id": incident.delivery_id,
+            "latitude": incident.latitude,
+            "longitude": incident.longitude,
+        },
+    )
     return Response(
         {
             "incident": SafetyIncidentSerializer(incident).data,
@@ -310,4 +347,158 @@ def admin_incident_detail(request, incident_id):
     if next_status in {"resolved", "dismissed"}:
         incident.resolved_at = timezone.now()
     incident.save()
+    if next_status in {"acknowledged", "investigating", "resolved", "dismissed"}:
+        action_map = {
+            "acknowledged": "acknowledged",
+            "investigating": "investigating",
+            "resolved": "resolved",
+            "dismissed": "dismissed",
+        }
+        SafetyResponseLog.objects.create(
+            incident=incident,
+            actor=request.user,
+            action=action_map[next_status],
+            note=incident.resolution_notes,
+        )
+        log_from_request(
+            request,
+            action="admin_action",
+            entity_type="system",
+            entity_id=incident.id,
+            summary=f"Safety incident {incident.reference} → {next_status}",
+            details={"status": next_status},
+        )
     return Response(SafetyIncidentSerializer(incident).data)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def monitoring_ping(request):
+    ride = _ride_for_user(request.user, request.data.get("ride_id"), require_active=True)
+    if not ride:
+        return Response(
+            {"detail": "Safety monitoring requires an active ride."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    lat = _coordinate(request.data.get("latitude"))
+    lng = _coordinate(request.data.get("longitude"))
+    if lat is None or lng is None:
+        return Response({"detail": "GPS coordinates required."}, status=status.HTTP_400_BAD_REQUEST)
+    _, event = record_trip_ping(
+        ride,
+        request.user,
+        latitude=lat,
+        longitude=lng,
+        accuracy=_coordinate(request.data.get("accuracy")),
+        speed_mps=_coordinate(request.data.get("speed")),
+    )
+    payload = {"recorded": True}
+    if event:
+        payload["safety_event"] = TripSafetyEventSerializer(event).data
+    return Response(payload)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def monitoring_status(request):
+    ride = _ride_for_user(request.user, request.query_params.get("ride_id"), require_active=True)
+    if not ride:
+        return Response({"open_event": None})
+    event = (
+        TripSafetyEvent.objects.filter(ride=ride, user=request.user, status="open")
+        .order_by("-created_at")
+        .first()
+    )
+    return Response({"open_event": TripSafetyEventSerializer(event).data if event else None})
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def monitoring_respond(request):
+    event = get_object_or_404(
+        TripSafetyEvent,
+        id=request.data.get("event_id"),
+        user=request.user,
+        status="open",
+    )
+    is_safe = bool(request.data.get("is_safe", True))
+    event = respond_to_safety_event(
+        event,
+        is_safe=is_safe,
+        note=str(request.data.get("note", "")).strip(),
+    )
+    return Response(TripSafetyEventSerializer(event).data)
+
+
+@api_view(["GET"])
+@permission_classes([IsAdminUser])
+def admin_active_trips(request):
+    rides = (
+        Ride.objects.filter(status__in=ACTIVE_RIDE_STATUSES)
+        .select_related("rider", "driver", "driver__driver_profile")
+        .order_by("-created_at")[:100]
+    )
+    active_sos = {
+        row["ride_id"]: row["count"]
+        for row in SafetyIncident.objects.filter(
+            incident_type="sos",
+            status__in=["open", "acknowledged", "investigating"],
+            ride_id__isnull=False,
+        )
+        .values("ride_id")
+        .annotate(count=Count("id"))
+    }
+    payload = []
+    for ride in rides:
+        profile = getattr(ride.driver, "driver_profile", None) if ride.driver else None
+        snapshot = ride_snapshot(ride)
+        payload.append(
+            {
+                **snapshot,
+                "active_sos_count": active_sos.get(ride.id, 0),
+                "vehicle_make": getattr(profile, "vehicle_make", "") if profile else "",
+                "vehicle_model": getattr(profile, "vehicle_model", "") if profile else "",
+                "vehicle_color": getattr(profile, "vehicle_color", "") if profile else "",
+                "plate_number": getattr(profile, "plate_number", "") if profile else "",
+            }
+        )
+    return Response({"active_trips": payload})
+
+
+@api_view(["GET"])
+@permission_classes([IsAdminUser])
+def admin_trip_replay(request, ride_id):
+    ride = get_object_or_404(Ride, id=ride_id)
+    pings = TripLocationPing.objects.filter(ride=ride).order_by("recorded_at")[:500]
+    events = TripSafetyEvent.objects.filter(ride=ride).order_by("-created_at")[:50]
+    incidents = SafetyIncident.objects.filter(ride=ride).order_by("-created_at")[:20]
+    return Response(
+        {
+            "ride": ride_snapshot(ride),
+            "pings": [
+                {
+                    "latitude": ping.latitude,
+                    "longitude": ping.longitude,
+                    "accuracy_meters": ping.accuracy_meters,
+                    "recorded_at": ping.recorded_at,
+                }
+                for ping in pings
+            ],
+            "safety_events": TripSafetyEventSerializer(events, many=True).data,
+            "incidents": SafetyIncidentSerializer(incidents, many=True).data,
+        }
+    )
+
+
+@api_view(["GET"])
+@permission_classes([IsAdminUser])
+def admin_response_log(request):
+    incident_id = request.query_params.get("incident_id")
+    queryset = SafetyResponseLog.objects.select_related("incident", "actor").order_by("-created_at")
+    if incident_id:
+        queryset = queryset.filter(incident_id=incident_id)
+    return Response(
+        {
+            "logs": SafetyResponseLogSerializer(queryset[:200], many=True).data,
+        }
+    )

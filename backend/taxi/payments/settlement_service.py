@@ -19,7 +19,8 @@ from .wallet_ledger import apply_wallet_transaction, get_or_create_wallet
 
 logger = logging.getLogger(__name__)
 TWO = Decimal("0.01")
-MOBILE_METHODS = {"bankily", "masrvi", "seddad"}
+MOBILE_METHODS = {"bankily", "masrvi", "seddad", "sedad", "masravi"}
+DELIVERY_PREPAY_METHODS = {"card", "bankily", "sedad", "masravi", "masrvi", "seddad"}
 
 
 class SettlementError(Exception):
@@ -75,12 +76,22 @@ def split_merchant_order(subtotal, delivery_fee=Decimal("0"), promo_discount=Dec
 
 
 def _normalize_method(method: str) -> str:
-    method = (method or "cash").lower()
-    if method in MOBILE_METHODS:
+    method = (method or "card").lower()
+    aliases = {
+        "masrvi": "masravi",
+        "seddad": "sedad",
+    }
+    method = aliases.get(method, method)
+    if method in MOBILE_METHODS or method == "card":
         return method
-    if method in {"cash", "card", "wallet", "promo_credit"}:
-        return method
+    if method in {"cash", "wallet", "promo_credit"}:
+        raise SettlementError("Cash payments are not supported for delivery.", code="invalid_method")
     raise SettlementError("Invalid payment method.", code="invalid_method")
+
+
+def normalize_delivery_payment_method(method: str) -> str:
+    """Normalize customer-facing delivery payment providers."""
+    return _normalize_method(method)
 
 
 def _generate_transaction_id(prefix="YL"):
@@ -90,9 +101,39 @@ def _generate_transaction_id(prefix="YL"):
 def _payment_timing(method: str, timing: str = "") -> str:
     if timing in {"before_delivery", "after_delivery", "cash_on_delivery"}:
         return timing
-    if method == "cash":
-        return "cash_on_delivery"
-    return "after_delivery"
+    return "before_delivery"
+
+
+@transaction.atomic
+def prepay_delivery_request(
+    customer,
+    amount,
+    payment_method: str,
+    provider_token: str = "",
+) -> PaymentRecord:
+    """Charge the customer before a delivery request is created."""
+    method = normalize_delivery_payment_method(payment_method)
+    total = _quantize(amount)
+    if total <= 0:
+        raise SettlementError("Invalid payment amount.", code="invalid_amount")
+
+    split = split_delivery_amount(total)
+    ledger_method = "masrvi" if method == "masravi" else ("seddad" if method == "sedad" else method)
+
+    record = PaymentRecord.objects.create(
+        source="delivery",
+        customer=customer,
+        amount=split["total"],
+        method=ledger_method,
+        status="paid",
+        payment_timing="before_delivery",
+        transaction_id=_generate_transaction_id("DLV"),
+        provider_token=(provider_token or "")[:255],
+        app_fee=split["app_fee"],
+        courier_earning=split["courier_earning"],
+        merchant_earning=Decimal("0"),
+    )
+    return record
 
 
 @transaction.atomic
@@ -187,7 +228,8 @@ def settle_merchant_order_payment(
     if existing:
         return existing
 
-    status = "paid" if method == "cash" else "pending"
+    status = "paid" if payment_timing == "before_delivery" else "pending"
+    ledger_method = "masrvi" if method == "masravi" else ("seddad" if method == "sedad" else method)
     if method == "wallet":
         wallet = get_or_create_wallet(order.customer)
         wallet_tx = apply_wallet_transaction(
@@ -201,8 +243,6 @@ def settle_merchant_order_payment(
         status = "paid"
     else:
         wallet_tx = None
-        if method == "card":
-            status = "pending"
 
     record = PaymentRecord.objects.create(
         source="merchant_order",
@@ -211,7 +251,7 @@ def settle_merchant_order_payment(
         merchant_order=order,
         amount=order.total,
         promo_discount=order.discount_amount,
-        method=method,
+        method=ledger_method,
         status=status,
         payment_timing=payment_timing or "before_delivery",
         transaction_id=_generate_transaction_id("ORD"),
@@ -312,7 +352,7 @@ def courier_balance_summary(courier):
         pass
 
     reserved = WithdrawalRequest.objects.filter(
-        driver=courier, status__in=["pending", "approved"]
+        driver=courier, status__in=["pending", "approved", "paid"]
     ).aggregate(total=Sum("amount"))["total"] or Decimal("0")
 
     wallet = get_or_create_wallet(courier)

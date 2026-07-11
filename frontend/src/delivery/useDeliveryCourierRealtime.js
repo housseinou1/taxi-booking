@@ -141,14 +141,16 @@ export default function useDeliveryCourierRealtime({
       }
     };
 
+    const buildUrl = () => {
+      const token = localStorage.getItem("access");
+      if (!token) return DELIVERY_WS_URL;
+      const separator = DELIVERY_WS_URL.includes("?") ? "&" : "?";
+      return `${DELIVERY_WS_URL}${separator}token=${encodeURIComponent(token)}`;
+    };
+
     const connect = () => {
       if (cancelled || !DELIVERY_WS_URL) return;
-      const token = localStorage.getItem("access");
-      const separator = DELIVERY_WS_URL.includes("?") ? "&" : "?";
-      const wsUrl = token
-        ? `${DELIVERY_WS_URL}${separator}token=${encodeURIComponent(token)}`
-        : DELIVERY_WS_URL;
-      ws = new WebSocket(wsUrl);
+      ws = new WebSocket(buildUrl());
 
       ws.onopen = () => {
         const wasReconnect = hadConnectedRef.current;
