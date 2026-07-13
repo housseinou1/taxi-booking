@@ -69,6 +69,35 @@ class Ride(models.Model):
         blank=True,
     )
 
+    DISPATCH_STATUS_CHOICES = [
+        ("idle", "Idle"),
+        ("searching", "Searching"),
+        ("offered", "Offered"),
+        ("assigned", "Assigned"),
+        ("no_driver_found", "No Driver Found"),
+    ]
+    dispatch_status = models.CharField(
+        max_length=20,
+        choices=DISPATCH_STATUS_CHOICES,
+        default="idle",
+        db_index=True,
+        help_text="Smart-dispatch search state for rider/admin UX.",
+    )
+    dispatch_round = models.PositiveSmallIntegerField(
+        default=1,
+        help_text="Expanding search round: 1=2km, 2=5km, 3=10km, 4=city.",
+    )
+    search_radius_km = models.FloatField(
+        null=True,
+        blank=True,
+        help_text="Radius (km) used for the current dispatch round.",
+    )
+    search_started_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When driver search began for this ride request.",
+    )
+
     city = models.ForeignKey(
         "cities.City",
         on_delete=models.SET_NULL,
@@ -286,6 +315,50 @@ class Ride(models.Model):
 
     def __str__(self):
         return f"Ride #{self.id} - {self.rider.email}"
+
+
+class DispatchOfferLog(models.Model):
+    """Audit trail for smart-dispatch offer decisions."""
+
+    RESULT_CHOICES = [
+        ("offered", "Offered"),
+        ("accepted", "Accepted"),
+        ("declined", "Declined"),
+        ("expired", "Expired"),
+        ("skipped", "Skipped"),
+        ("no_driver", "No Driver"),
+    ]
+
+    ride = models.ForeignKey(
+        Ride,
+        on_delete=models.CASCADE,
+        related_name="dispatch_logs",
+    )
+    driver = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="dispatch_offer_logs",
+    )
+    dispatch_round = models.PositiveSmallIntegerField(default=1)
+    search_radius_km = models.FloatField(null=True, blank=True)
+    distance_km = models.FloatField(null=True, blank=True)
+    eta_minutes = models.FloatField(null=True, blank=True)
+    score = models.FloatField(null=True, blank=True)
+    score_breakdown = models.JSONField(default=dict, blank=True)
+    result = models.CharField(max_length=20, choices=RESULT_CHOICES, default="offered")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["ride", "-created_at"], name="dispatch_log_ride_idx"),
+            models.Index(fields=["result", "-created_at"], name="dispatch_log_result_idx"),
+        ]
+
+    def __str__(self):
+        return f"DispatchOfferLog ride={self.ride_id} driver={self.driver_id} {self.result}"
 
 
 class RideStop(models.Model):

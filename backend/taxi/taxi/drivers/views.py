@@ -427,7 +427,8 @@ def toggle_availability(request):
     if not going_online:
         if profile.is_available:
             profile.is_available = False
-            profile.save(update_fields=["is_available"])
+            profile.available_since = None
+            profile.save(update_fields=["is_available", "available_since"])
 
         return _availability_toggle_response(profile)
 
@@ -504,7 +505,8 @@ def toggle_availability(request):
         )
 
     profile.is_available = True
-    profile.save(update_fields=["is_available"])
+    profile.available_since = timezone.now()
+    profile.save(update_fields=["is_available", "available_since"])
 
     return _availability_toggle_response(profile)
 

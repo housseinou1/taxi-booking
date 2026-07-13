@@ -500,8 +500,20 @@ function RideTracker({ ride, driverPosition, city = 'Nouakchott', onAddStop, onC
         <div className="ride-tracker__searching" role="status">
           <span className="ride-tracker__searching-spinner" aria-hidden="true" />
           <div>
-            <strong>Looking for a nearby driver</strong>
-            <span>We will show verified driver and vehicle details after acceptance.</span>
+            <strong>
+              {ride.dispatch_status === 'no_driver_found'
+                ? 'No driver available right now'
+                : 'Looking for a nearby driver'}
+            </strong>
+            <span>
+              {ride.dispatch_status === 'no_driver_found'
+                ? 'You can cancel and retry, or schedule a ride for later.'
+                : ride.dispatch_round >= 3
+                  ? `Expanding search${ride.search_radius_km ? ` (~${Math.round(ride.search_radius_km)} km)` : ''}…`
+                  : ride.dispatch_round >= 2
+                    ? 'Still searching nearby drivers…'
+                    : 'We will show verified driver and vehicle details after acceptance.'}
+            </span>
           </div>
         </div>
       )}

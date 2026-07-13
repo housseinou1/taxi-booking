@@ -119,8 +119,12 @@ class RideAssignmentPerformanceTests(APITestCase):
 
     @patch("taxi.rides.services.ride_assignment_service.start_ride_request_timeout")
     @patch("taxi.rides.services.ride_assignment_service._broadcast_ride_request")
-    def test_offer_assigns_single_driver(self, _broadcast, _timeout):
-        offered = offer_ride_to_next_driver(self.ride)
+    @patch(
+        "taxi.rides.services.driver_dispatch_service.driver_documents_ok",
+        return_value=True,
+    )
+    def test_offer_assigns_single_driver(self, _docs, _broadcast, _timeout):
+        offered = offer_ride_to_next_driver(self.ride, require_documents=False)
 
         self.assertTrue(offered)
         self.ride.refresh_from_db()

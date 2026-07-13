@@ -541,6 +541,8 @@ def driver_rides(request):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def accept_ride(request, ride_id):
+    from django.db import transaction
+
     error = approved_driver_error(request.user)
     if error:
         return Response({"detail": error}, status=status.HTTP_403_FORBIDDEN)
@@ -553,60 +555,66 @@ def accept_ride(request, ride_id):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    ride = get_object_or_404(Ride, id=ride_id)
+    with transaction.atomic():
+        ride = get_object_or_404(Ride.objects.select_for_update(), id=ride_id)
 
-    if request.user.city_id and ride.city_id and request.user.city_id != ride.city_id:
-        return Response(
-            {"detail": "This ride belongs to a different city."},
-            status=status.HTTP_403_FORBIDDEN,
+        if request.user.city_id and ride.city_id and request.user.city_id != ride.city_id:
+            return Response(
+                {"detail": "This ride belongs to a different city."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if ride.status != "requested":
+            return Response(
+                {"detail": "This ride is no longer available."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if ride.driver is not None:
+            return Response(
+                {"detail": "Ride already accepted."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if ride.offered_driver_id and ride.offered_driver_id != request.user.id:
+            return Response(
+                {"detail": "This ride offer was assigned to another driver."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        active_driver_ride = (
+            Ride.objects.filter(driver=request.user, status__in=DRIVER_ACTIVE_STATUSES)
+            .exclude(id=ride.id)
+            .order_by("-id")
+            .first()
         )
 
-    if ride.status != "requested":
-        return Response(
-            {"detail": "This ride is no longer available."},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+        if active_driver_ride:
+            return Response(
+                {
+                    "detail": (
+                        "Finish your current active ride before accepting another request."
+                    ),
+                    "ride_id": active_driver_ride.id,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-    if ride.driver is not None:
-        return Response(
-            {"detail": "Ride already accepted."},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+        ride.driver = request.user
+        ride.status = "driver_arriving"
+        ride.offered_driver = None
+        ride.offer_sent_at = None
+        ride.dispatch_status = "assigned"
+        ride.save()
 
-    if ride.offered_driver_id and ride.offered_driver_id != request.user.id:
-        return Response(
-            {"detail": "This ride offer was assigned to another driver."},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+        if profile:
+            from taxi.drivers.services.ride_performance_service import record_ride_accepted
 
-    active_driver_ride = (
-        Ride.objects.filter(driver=request.user, status__in=DRIVER_ACTIVE_STATUSES)
-        .exclude(id=ride.id)
-        .order_by("-id")
-        .first()
-    )
+            record_ride_accepted(profile)
 
-    if active_driver_ride:
-        return Response(
-            {
-                "detail": (
-                    "Finish your current active ride before accepting another request."
-                ),
-                "ride_id": active_driver_ride.id,
-            },
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+        from taxi.rides.services.ride_assignment_service import mark_dispatch_assigned
 
-    ride.driver = request.user
-    ride.status = "driver_arriving"
-    ride.offered_driver = None
-    ride.offer_sent_at = None
-    ride.save()
-
-    if profile:
-        from taxi.drivers.services.ride_performance_service import record_ride_accepted
-
-        record_ride_accepted(profile)
+        mark_dispatch_assigned(ride, request.user)
 
     # Cancel the timeout since the driver accepted
     cancel_ride_request_timeout(ride.id)

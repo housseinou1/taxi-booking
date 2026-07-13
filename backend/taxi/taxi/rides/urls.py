@@ -34,6 +34,7 @@ from .analytics import (
     driver_analytics,
     rider_analytics,
 )
+from .dispatch_admin import admin_dispatch_dashboard, admin_dispatch_ride_history
 from features.views import (
     list_airports,
     book_airport_pickup,
@@ -93,6 +94,8 @@ urlpatterns = [
     path("analytics/rider/", rider_analytics),
     path("analytics/admin/", admin_analytics),
     path("analytics/admin/activity-heatmap/", admin_activity_heatmap),
+    path("analytics/admin/dispatch/", admin_dispatch_dashboard),
+    path("analytics/admin/dispatch/<int:ride_id>/", admin_dispatch_ride_history),
 
     # Share Ride endpoints
     path("share/", include("taxi.rides.share_urls")),

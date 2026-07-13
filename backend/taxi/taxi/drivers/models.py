@@ -60,6 +60,11 @@ class DriverProfile(models.Model):
     application_rejection_reason = models.TextField(blank=True, default="")
 
     is_available = models.BooleanField(default=False)
+    available_since = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the driver last went online (fair rotation).",
+    )
 
     # --- Driver identification ---
     driver_code = models.CharField(

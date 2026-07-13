@@ -243,6 +243,24 @@ describe('RideTracker component', () => {
       expect(screen.queryByText('Verified by Yala')).not.toBeInTheDocument();
     });
 
+    it('shows no-driver message when dispatch fails', () => {
+      render(
+        <RideTracker
+          ride={makeRide({
+            status: 'requested',
+            driver_name: '',
+            driver_code: '',
+            driver: null,
+            dispatch_status: 'no_driver_found',
+            eta_minutes: null,
+            pickup_pin: '',
+            pin_code: '',
+          })}
+        />
+      );
+      expect(screen.getByText('No driver available right now')).toBeInTheDocument();
+    });
+
     it('removes searching message after acceptance', () => {
       render(<RideTracker ride={makeRide({ status: 'driver_arriving' })} />);
       expect(screen.queryByText('Looking for a nearby driver')).not.toBeInTheDocument();
