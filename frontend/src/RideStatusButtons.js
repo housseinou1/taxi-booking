@@ -106,7 +106,8 @@ function RideStatusButtons({
 
   useEffect(() => {
     if (!pinVerified || !startRideButtonRef.current) return;
-    startRideButtonRef.current.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+    // Instant scroll — smooth scroll + keyboard dismiss was eating the first tap.
+    startRideButtonRef.current.scrollIntoView?.({ block: "nearest", behavior: "auto" });
   }, [pinVerified]);
 
   const postRideAction = async (endpoint, body = {}) => {
@@ -126,10 +127,23 @@ function RideStatusButtons({
     error.message ||
     fallback;
 
-  const recoverCompletedRide = async (rideId) => {
+  const recoverRideAfterAction = async (rideId, endpoint) => {
     try {
       const response = await authenticatedApi.get(`${API_URL}/rides/${rideId}/`);
-      if (response.data?.status === "completed" && onStatusChange) {
+      const status = response.data?.status;
+      if (!status || !onStatusChange) return false;
+
+      if (endpoint === "start" && (status === "in_progress" || status === "completed")) {
+        onStatusChange(response.data);
+        setActionError("");
+        return true;
+      }
+      if (endpoint === "complete" && status === "completed") {
+        onStatusChange(response.data);
+        setActionError("");
+        return true;
+      }
+      if (endpoint === "arrived" && ["driver_arrived", "in_progress", "completed"].includes(status)) {
         onStatusChange(response.data);
         setActionError("");
         return true;
@@ -164,6 +178,10 @@ function RideStatusButtons({
         }
       }
       const data = await postRideAction(endpoint, body);
+      // Clear in-flight BEFORE status change so the next action button
+      // (e.g. Start Ride after PIN/arrive) is not born disabled.
+      actionInFlightRef.current = false;
+      setWorkingAction("");
       if (endpoint === "start") {
         setPickupPin("");
       }
@@ -172,12 +190,12 @@ function RideStatusButtons({
       console.error(error);
       const rideId = ride.id || ride.ride_id;
       const statusCode = error.response?.status;
-      if (
-        endpoint === "complete" &&
+      const shouldRecover =
         rideId &&
-        (statusCode === 400 || statusCode === 503 || !statusCode)
-      ) {
-        const recovered = await recoverCompletedRide(rideId);
+        ["arrived", "start", "complete"].includes(endpoint) &&
+        (statusCode === 400 || statusCode === 503 || statusCode === 504 || !statusCode);
+      if (shouldRecover) {
+        const recovered = await recoverRideAfterAction(rideId, endpoint);
         if (recovered) return;
       }
       setActionError(extractApiError(error, "Server error. Please try again."));
@@ -193,7 +211,13 @@ function RideStatusButtons({
     try {
       actionInFlightRef.current = true;
       setWorkingAction("verify-pin");
+      // Dismiss soft keyboard so the first Start Ride tap is not eaten.
+      if (typeof document !== "undefined" && document.activeElement?.blur) {
+        document.activeElement.blur();
+      }
       const data = await postRideAction("verify-pin", { pickup_pin: pickupPin });
+      actionInFlightRef.current = false;
+      setWorkingAction("");
       if (onStatusChange) {
         onStatusChange({
           ...data,
@@ -337,6 +361,7 @@ function RideStatusButtons({
                   background: "#2563EB",
                   opacity: workingAction ? 0.72 : 1,
                   cursor: workingAction ? "wait" : "pointer",
+                  touchAction: "manipulation",
                 }}
                 aria-label="Start Ride"
               >

@@ -508,11 +508,17 @@ function DriverDashboardContent() {
           nextActive &&
           String(prevActive.id) === String(nextActive.id)
         ) {
-          return rides.map((ride) =>
-            String(ride.id) === String(nextActive.id)
-              ? { ...prevActive, ...ride }
-              : ride
-          );
+          return rides.map((ride) => {
+            if (String(ride.id) !== String(nextActive.id)) return ride;
+            const merged = { ...prevActive, ...ride };
+            if (prevActive.pickup_pin_verified && !ride.pickup_pin_verified) {
+              merged.pickup_pin_verified = true;
+              if (prevActive.pickup_pin_verified_at) {
+                merged.pickup_pin_verified_at = prevActive.pickup_pin_verified_at;
+              }
+            }
+            return merged;
+          });
         }
         if (prevActive && !nextActive) {
           const serverMatch = rides.find(
@@ -760,10 +766,22 @@ function DriverDashboardContent() {
     setDriverRides((prev) =>
       prev.map((ride) => {
         if (String(ride.id) !== String(rideId)) return ride;
-        return { ...ride, ...message, id: rideId, status };
+        const merged = { ...ride, ...message, id: rideId, status };
+        // Never let a partial WS payload wipe a verified PIN.
+        if (ride.pickup_pin_verified && message.pickup_pin_verified !== true) {
+          merged.pickup_pin_verified = true;
+          if (ride.pickup_pin_verified_at && !merged.pickup_pin_verified_at) {
+            merged.pickup_pin_verified_at = ride.pickup_pin_verified_at;
+          }
+        }
+        return merged;
       })
     );
-    activeRideSnapshotRef.current = { ...active, ...message, id: rideId, status };
+    const snapshot = { ...active, ...message, id: rideId, status };
+    if (active.pickup_pin_verified && message.pickup_pin_verified !== true) {
+      snapshot.pickup_pin_verified = true;
+    }
+    activeRideSnapshotRef.current = snapshot;
     return true;
   }, []);
 

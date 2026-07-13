@@ -3,6 +3,7 @@ from decimal import Decimal
 import logging
 import math
 import secrets
+import threading
 
 from django.shortcuts import get_object_or_404
 from django.db.models import Q, Sum
@@ -926,30 +927,46 @@ def start_ride(request, ride_id):
 
         ride.save(update_fields=["status", "waiting_fee", "fare", "app_fee", "driver_earning"])
 
-    broadcast_ride_update(ride)
-
-    try:
-        from security.services.audit_service import log_from_request
-
-        log_from_request(
-            request,
-            action="ride_started",
-            entity_type="ride",
-            entity_id=ride.id,
-            summary=f"Ride #{ride.id} started after PIN verification",
-            details={"waiting_fee": str(ride.waiting_fee)},
-        )
-    except Exception:
-        logging.getLogger(__name__).exception("Start ride audit log failed")
-
-    # Push notification to rider
-    try:
-        notify_ride_started(ride.rider, ride)
-    except Exception:
-        pass
-
+    # Return immediately so the driver app never times out / gets 503 while side
+    # effects (WS broadcast, push, audit) run.
     serializer = RideSerializer(ride, context={"request": request})
-    return Response(serializer.data)
+    response = Response(serializer.data)
+
+    ride_id = ride.id
+    waiting_fee = str(ride.waiting_fee)
+    request_for_audit = request
+
+    def _post_start_side_effects():
+        try:
+            fresh = Ride.objects.select_related("rider", "driver").get(id=ride_id)
+        except Ride.DoesNotExist:
+            return
+        try:
+            broadcast_ride_update(fresh)
+        except Exception:
+            logging.getLogger(__name__).exception(
+                "Start ride broadcast failed ride=%s", ride_id
+            )
+        try:
+            from security.services.audit_service import log_from_request
+
+            log_from_request(
+                request_for_audit,
+                action="ride_started",
+                entity_type="ride",
+                entity_id=ride_id,
+                summary=f"Ride #{ride_id} started after PIN verification",
+                details={"waiting_fee": waiting_fee},
+            )
+        except Exception:
+            logging.getLogger(__name__).exception("Start ride audit log failed")
+        try:
+            notify_ride_started(fresh.rider, fresh)
+        except Exception:
+            pass
+
+    threading.Thread(target=_post_start_side_effects, daemon=True).start()
+    return response
 
 
 @api_view(["POST"])
@@ -991,7 +1008,8 @@ def complete_ride(request, ride_id):
     ride.completed_at = now()
     ride.save(update_fields=["status", "completed_at"])
 
-    # Payment capture — must succeed before returning; guard against crashes
+    # Keep payment capture in-request (needed for response payload), but keep it
+    # failure-tolerant so completion never hangs the driver app.
     try:
         captured_payment = capture_ride_payment(ride)
         if not captured_payment:
@@ -999,75 +1017,84 @@ def complete_ride(request, ride_id):
     except Exception:
         logger.exception("Payment capture failed for ride=%s; completing anyway", ride.id)
 
-    # Broadcast the status change to WebSocket clients
-    broadcast_ride_update(ride)
-
-    # Build and return the response immediately so the driver gets confirmation.
-    # All secondary tasks below are best-effort and must not block the response.
     serializer = RideSerializer(ride, context={"request": request})
     response = Response(serializer.data)
 
-    # Apply referral code if this is the rider's first completed ride
-    try:
-        if ride.referral_code:
-            rider = ride.rider
-            completed_count = Ride.objects.filter(
-                rider=rider, status="completed"
-            ).count()
-            if completed_count == 1:
-                service = PromoCodeService()
-                referral_result = service.apply_referral(
-                    ride.referral_code, rider, ride, ride.fare
-                )
-                if referral_result.success and referral_result.referee_discount > 0:
-                    from decimal import Decimal
-                    from payments.models import Payment
-                    discount = min(referral_result.referee_discount, ride.fare)
-                    final_fare = max(ride.fare - discount, Decimal("0.00"))
-                    payment = Payment.objects.filter(
-                        ride_id=ride.id,
-                        status__in=["authorized", "paid"],
-                    ).order_by("-created_at").first()
-                    if payment:
-                        payment.discount_amount = discount
-                        payment.amount = final_fare
-                        payment.save(update_fields=["discount_amount", "amount"])
-    except Exception:
-        logger.exception("Referral application failed for ride=%s", ride.id)
+    ride_id = ride.id
 
-    # Update driver performance counters and check for level-up
-    if ride.driver:
+    def _post_complete_side_effects():
         try:
-            from taxi.drivers.models import DriverProfile as _DP
-            from taxi.drivers.services.ride_performance_service import (
-                record_ride_completed as _rec_completed,
-                notify_driver_level_up as _notify_level_up,
-            )
-            from taxi.drivers.services.level_service import DriverLevelService as _LvlSvc
+            fresh = Ride.objects.select_related("rider", "driver").get(id=ride_id)
+        except Ride.DoesNotExist:
+            return
 
-            _dp = _DP.objects.filter(user=ride.driver).first()
-            if _dp:
-                _prev_level = _dp.driver_level
-                _rec_completed(_dp)
-                _dp.refresh_from_db(fields=["total_rides_completed"])
-                _new_level = _LvlSvc().evaluate_level(_dp)
-                if _new_level != _prev_level:
-                    _dp.driver_level = _new_level
-                    _dp.save(update_fields=["driver_level"])
-                    _notify_level_up(_dp, _new_level)
-                from taxi.drivers.services.rewards_service import RewardsService
-                RewardsService().on_ride_completed(ride, _dp)
+        try:
+            broadcast_ride_update(fresh)
         except Exception:
-            logger.exception("Failed to update driver performance counters ride=%s", ride.id)
+            logger.exception("Complete ride broadcast failed ride=%s", ride_id)
 
-    # Push notifications for ride completion
-    try:
-        notify_ride_completed(ride.rider, ride)
-        if ride.driver:
-            notify_payment_completed(ride.driver, ride)
-    except Exception:
-        pass
+        try:
+            if fresh.referral_code:
+                rider = fresh.rider
+                completed_count = Ride.objects.filter(
+                    rider=rider, status="completed"
+                ).count()
+                if completed_count == 1:
+                    service = PromoCodeService()
+                    referral_result = service.apply_referral(
+                        fresh.referral_code, rider, fresh, fresh.fare
+                    )
+                    if referral_result.success and referral_result.referee_discount > 0:
+                        from payments.models import Payment
 
+                        discount = min(referral_result.referee_discount, fresh.fare)
+                        final_fare = max(fresh.fare - discount, Decimal("0.00"))
+                        payment = Payment.objects.filter(
+                            ride_id=fresh.id,
+                            status__in=["authorized", "paid"],
+                        ).order_by("-created_at").first()
+                        if payment:
+                            payment.discount_amount = discount
+                            payment.amount = final_fare
+                            payment.save(update_fields=["discount_amount", "amount"])
+        except Exception:
+            logger.exception("Referral application failed for ride=%s", ride_id)
+
+        if fresh.driver:
+            try:
+                from taxi.drivers.models import DriverProfile as _DP
+                from taxi.drivers.services.ride_performance_service import (
+                    record_ride_completed as _rec_completed,
+                    notify_driver_level_up as _notify_level_up,
+                )
+                from taxi.drivers.services.level_service import DriverLevelService as _LvlSvc
+
+                _dp = _DP.objects.filter(user=fresh.driver).first()
+                if _dp:
+                    _prev_level = _dp.driver_level
+                    _rec_completed(_dp)
+                    _dp.refresh_from_db(fields=["total_rides_completed"])
+                    _new_level = _LvlSvc().evaluate_level(_dp)
+                    if _new_level != _prev_level:
+                        _dp.driver_level = _new_level
+                        _dp.save(update_fields=["driver_level"])
+                        _notify_level_up(_dp, _new_level)
+                    from taxi.drivers.services.rewards_service import RewardsService
+
+                    RewardsService().on_ride_completed(fresh, _dp)
+            except Exception:
+                logger.exception(
+                    "Failed to update driver performance counters ride=%s", ride_id
+                )
+
+        try:
+            notify_ride_completed(fresh.rider, fresh)
+            if fresh.driver:
+                notify_payment_completed(fresh.driver, fresh)
+        except Exception:
+            pass
+
+    threading.Thread(target=_post_complete_side_effects, daemon=True).start()
     return response
 
 
