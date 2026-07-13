@@ -57,7 +57,7 @@ describe("RideStatusButtons core driver actions", () => {
     expect(screen.getByRole("button", { name: "Slide Right to Finish Ride" })).toBeInTheDocument();
   });
 
-  it("shows arrive slide label while waiting for GPS", () => {
+  it("shows Mark Arrived when waiting for GPS (manual fallback)", () => {
     render(
       <RideStatusButtons
         ride={makeRide("driver_arriving")}
@@ -72,9 +72,9 @@ describe("RideStatusButtons core driver actions", () => {
       />
     );
 
-    const arriveButton = screen.getByRole("button", { name: "Slide Right to Arrive" });
+    const arriveButton = screen.getByRole("button", { name: "Mark Arrived" });
     expect(arriveButton).toBeInTheDocument();
-    expect(arriveButton).toHaveAttribute("aria-disabled", "true");
+    expect(arriveButton).toHaveAttribute("aria-disabled", "false");
   });
 
   it("enables arrive when within geofence", () => {
@@ -92,6 +92,28 @@ describe("RideStatusButtons core driver actions", () => {
     );
 
     expect(screen.getByRole("button", { name: "Slide Right to Arrive" })).toHaveAttribute(
+      "aria-disabled",
+      "false"
+    );
+  });
+
+  it("enables Mark Arrived when GPS distance is absurd (out-of-market)", () => {
+    render(
+      <RideStatusButtons
+        ride={makeRide("driver_arriving")}
+        arriveGate={{
+          reliable: true,
+          near: false,
+          distanceM: 6029100,
+          distanceKm: 6029.1,
+          arriveBody: { lat: 40.8, lng: -73.9 },
+          outsideServiceArea: true,
+        }}
+        distanceToNextKm={6029.1}
+      />
+    );
+
+    expect(screen.getByRole("button", { name: /Mark Arrived|Slide Right to Arrive/i })).toHaveAttribute(
       "aria-disabled",
       "false"
     );

@@ -126,6 +126,20 @@ function RideStatusButtons({
     error.message ||
     fallback;
 
+  const recoverCompletedRide = async (rideId) => {
+    try {
+      const response = await authenticatedApi.get(`${API_URL}/rides/${rideId}/`);
+      if (response.data?.status === "completed" && onStatusChange) {
+        onStatusChange(response.data);
+        setActionError("");
+        return true;
+      }
+    } catch (recoveryError) {
+      console.error(recoveryError);
+    }
+    return false;
+  };
+
   const updateRideStatus = async (endpoint) => {
     if (actionInFlightRef.current) return;
     setActionError("");
@@ -156,6 +170,16 @@ function RideStatusButtons({
       if (onStatusChange) onStatusChange(data);
     } catch (error) {
       console.error(error);
+      const rideId = ride.id || ride.ride_id;
+      const statusCode = error.response?.status;
+      if (
+        endpoint === "complete" &&
+        rideId &&
+        (statusCode === 400 || statusCode === 503 || !statusCode)
+      ) {
+        const recovered = await recoverCompletedRide(rideId);
+        if (recovered) return;
+      }
       setActionError(extractApiError(error, "Server error. Please try again."));
     } finally {
       actionInFlightRef.current = false;

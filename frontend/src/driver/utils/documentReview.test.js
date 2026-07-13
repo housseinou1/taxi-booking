@@ -42,6 +42,18 @@ describe("document expiration alert UX", () => {
     expect(driverDocumentsBlockOnline(profile)).toBe(false);
   });
 
+  test("does not block online when plate photo is satisfied by vehicle plate", () => {
+    const profile = {
+      missing_document_types: ["plate_number_photo"],
+      expired_document_types: [],
+      plate_number: "TEMP-PLATE",
+      vehicle_plate: "TEMP-PLATE",
+    };
+
+    expect(getDriverDocumentsAlertLevel(profile)).toBeNull();
+    expect(driverDocumentsBlockOnline(profile)).toBe(false);
+  });
+
   test("red error and online block when a required document is expired", () => {
     const profile = {
       documents_alert_level: "error",

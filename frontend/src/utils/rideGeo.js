@@ -96,6 +96,7 @@ export function computeArriveGate({
   driverPosition,
   pickupLat,
   pickupLng,
+  outsideServiceArea = false,
 }) {
   const pickup = parseGeoCoord(pickupLat, pickupLng);
   const driver = Array.isArray(driverPosition)
@@ -111,6 +112,7 @@ export function computeArriveGate({
       arriveBody: null,
       pickup,
       driver,
+      outsideServiceArea: Boolean(outsideServiceArea),
     };
   }
 
@@ -125,16 +127,18 @@ export function computeArriveGate({
     pickupLng: pickup.lng,
     distanceM,
     maxM: ARRIVE_MAX_DISTANCE_M,
+    outsideServiceArea: Boolean(outsideServiceArea),
   });
 
   return {
-    reliable: distanceM != null,
+    reliable: distanceM != null && !outsideServiceArea,
     distanceM,
     distanceKm,
-    near: isWithinArriveDistanceM(distanceM),
+    near: !outsideServiceArea && isWithinArriveDistanceM(distanceM),
     arriveBody: { lat: driver.lat, lng: driver.lng },
     pickup,
     driver,
+    outsideServiceArea: Boolean(outsideServiceArea),
   };
 }
 

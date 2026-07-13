@@ -515,7 +515,17 @@ function DriverDashboardContent() {
           );
         }
         if (prevActive && !nextActive) {
-          return [prevActive, ...rides.filter((ride) => String(ride.id) !== String(prevActive.id))];
+          const serverMatch = rides.find(
+            (ride) => String(ride.id) === String(prevActive.id)
+          );
+          if (serverMatch && TERMINAL_RIDE_STATUSES.includes(serverMatch.status)) {
+            activeRideSnapshotRef.current = null;
+            return rides;
+          }
+          if (!serverMatch) {
+            return [prevActive, ...rides.filter((ride) => String(ride.id) !== String(prevActive.id))];
+          }
+          return rides;
         }
         return rides;
       });

@@ -961,6 +961,10 @@ def complete_ride(request, ride_id):
         driver=request.user,
     )
 
+    if ride.status == "completed":
+        serializer = RideSerializer(ride, context={"request": request})
+        return Response(serializer.data)
+
     if ride.status != "in_progress":
         return Response(
             {"detail": "Ride can only be completed while in progress."},
