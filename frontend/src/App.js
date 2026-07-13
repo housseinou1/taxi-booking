@@ -186,6 +186,7 @@ const LazyDriverAchievements = React.lazy(() => import("./driver/DriverAchieveme
 const LazyDriverHallOfFame = React.lazy(() => import("./driver/DriverHallOfFame"));
 const LazyDriverRideHistory = React.lazy(() => import("./driver/DriverRideHistory"));
 const LazyDriverSettings = React.lazy(() => import("./driver/DriverSettings"));
+const LazyDriverCodePage = React.lazy(() => import("./driver/DriverCodePage"));
 
 const driverPageFallback = (
   <div className="driver-shell-loading">Loading...</div>
@@ -857,13 +858,17 @@ function App() {
     );
   }
 
-  if (page === "driver-premium-profile" || page === "driver-documents" || page === "driver-code") {
+  if (page === "driver-premium-profile" || page === "driver-documents") {
     const LazyDriverProfilePage = React.lazy(() => import("./driver/DriverProfilePage"));
     return withInstall(
       <Suspense fallback={<div style={{ minHeight: "100vh", backgroundColor: "#eef3ef" }} />}>
         <LazyDriverProfilePage />
       </Suspense>
     );
+  }
+
+  if (page === "driver-code") {
+    return withInstall(wrapDriverSecondaryPage("Driver Code", <LazyDriverCodePage />));
   }
 
   if (page === "driver-profile-edit") {
