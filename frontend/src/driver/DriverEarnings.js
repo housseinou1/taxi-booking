@@ -4,6 +4,7 @@ import axios from "axios";
 import { API_URL } from "../apiConfig";
 import { MARKET } from "../marketConfig";
 import { bindDriverTheme } from "./themeRefresh";
+import authenticatedApi from "../auth/authenticatedApi";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 const PERIODS = ["today", "week", "month", "year", "lifetime"];
@@ -190,6 +191,211 @@ function EarningsLineItem({ label, amount, icon }) {
   );
 }
 
+// ─── Withdrawal Flow Component ──────────────────────────────────────────────
+function WithdrawalSheet({ onClose, onDone }) {
+  const { COLORS } = driverTheme;
+  const [step, setStep] = useState("loading"); // loading | idle | amount | otp | success
+  const [walletData, setWalletData] = useState(null);
+  const [amount, setAmount] = useState("");
+  const [otp, setOtp] = useState("");
+  const [payoutMethod, setPayoutMethod] = useState(null);
+  const [working, setWorking] = useState(false);
+  const [err, setErr] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [wRes, mRes] = await Promise.all([
+          authenticatedApi.get(`${API_URL}/payments/withdrawals/`),
+          authenticatedApi.get(`${API_URL}/payments/payout-methods/`),
+        ]);
+        if (cancelled) return;
+        const wd = wRes.data || {};
+        const methods = Array.isArray(mRes.data) ? mRes.data : [];
+        setWalletData(wd);
+        const def = methods.find((m) => m.is_default) || methods[0] || null;
+        setPayoutMethod(def);
+        setStep("idle");
+      } catch {
+        if (!cancelled) setStep("error");
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const availableBalance = Number(walletData?.available_balance || 0);
+  const minWithdrawal = Number(walletData?.minimum_withdrawal || 500);
+  const hasPending = (walletData?.withdrawals || []).some((w) => w.status === "pending");
+
+  const maskPhone = (v = "") => v.length > 4 ? `•••• ${String(v).slice(-4)}` : v;
+  const methodLabel = payoutMethod
+    ? `${payoutMethod.payout_type?.toUpperCase() || "Mobile money"} · ${maskPhone(payoutMethod.phone_number)}`
+    : "No payout method";
+
+  const sendOtp = async () => {
+    setWorking(true);
+    setErr("");
+    try {
+      await authenticatedApi.post(`${API_URL}/payments/withdrawals/send-otp/`, {});
+      setStep("otp");
+    } catch (e) {
+      setErr(e.response?.data?.error || "Could not send code.");
+    } finally { setWorking(false); }
+  };
+
+  const submitWithdrawal = async () => {
+    if (!otp.trim() || otp.length < 4) { setErr("Enter the verification code."); return; }
+    setWorking(true);
+    setErr("");
+    try {
+      await authenticatedApi.post(`${API_URL}/payments/withdrawals/request/`, {
+        amount: Number(amount),
+        payout_method: payoutMethod?.id,
+        otp_code: otp.trim(),
+      });
+      setStep("success");
+      onDone?.();
+    } catch (e) {
+      setErr(e.response?.data?.error || "Could not submit withdrawal.");
+    } finally { setWorking(false); }
+  };
+
+  const overlayStyle = {
+    position: "fixed", inset: 0, zIndex: 9999,
+    background: "rgba(0,0,0,0.72)",
+    display: "flex", alignItems: "flex-end",
+  };
+  const sheetStyle = {
+    width: "100%", maxWidth: 428, margin: "0 auto",
+    background: COLORS.cardBg || "#1a2236",
+    borderRadius: "24px 24px 0 0",
+    padding: "28px 24px 40px",
+    boxSizing: "border-box",
+  };
+  const titleStyle = { fontSize: 20, fontWeight: 800, color: COLORS.white, marginBottom: 4 };
+  const subStyle = { fontSize: 13, color: COLORS.lightGray, marginBottom: 20 };
+  const balStyle = { fontSize: 36, fontWeight: 900, color: COLORS.primaryGreen, marginBottom: 2 };
+  const inputStyle = {
+    width: "100%", boxSizing: "border-box",
+    background: "rgba(255,255,255,0.07)", border: `1px solid ${COLORS.cardBorder}`,
+    borderRadius: 12, padding: "14px 16px",
+    fontSize: 20, fontWeight: 700, color: COLORS.white,
+    marginBottom: 12, outline: "none",
+  };
+  const btnStyle = (disabled) => ({
+    width: "100%", padding: "16px",
+    background: disabled ? "#2d3748" : COLORS.primaryGreen,
+    color: disabled ? COLORS.textMuted : "#fff",
+    border: "none", borderRadius: 999,
+    fontSize: 16, fontWeight: 800, cursor: disabled ? "not-allowed" : "pointer",
+    marginBottom: 10,
+  });
+  const cancelStyle = {
+    width: "100%", padding: "14px",
+    background: "transparent", color: COLORS.lightGray,
+    border: `1px solid ${COLORS.cardBorder}`, borderRadius: 999,
+    fontSize: 14, fontWeight: 600, cursor: "pointer",
+  };
+
+  return (
+    <div style={overlayStyle} onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div style={sheetStyle}>
+        <div style={{ width: 40, height: 4, background: COLORS.cardBorder, borderRadius: 99, margin: "0 auto 20px" }} />
+
+        {step === "loading" && <p style={{ color: COLORS.lightGray, textAlign: "center" }}>Loading wallet...</p>}
+        {step === "error" && <p style={{ color: "#ef4444", textAlign: "center" }}>Could not load wallet. Try again.</p>}
+
+        {step === "idle" && (
+          <>
+            <p style={titleStyle}>Withdraw earnings</p>
+            <p style={subStyle}>via {methodLabel}</p>
+            <p style={balStyle}>{formatEarningsMRU(availableBalance)}</p>
+            <p style={{ ...subStyle, marginBottom: 24 }}>Available balance</p>
+            {err && <p style={{ color: "#ef4444", fontSize: 13, marginBottom: 12 }}>{err}</p>}
+            {hasPending && <p style={{ color: "#f59e0b", fontSize: 13, marginBottom: 12 }}>You have a pending withdrawal under review.</p>}
+            {!payoutMethod && <p style={{ color: "#ef4444", fontSize: 13, marginBottom: 12 }}>Add a payout method in your profile first.</p>}
+            <button
+              type="button"
+              style={btnStyle(!payoutMethod || hasPending || availableBalance < minWithdrawal)}
+              disabled={!payoutMethod || hasPending || availableBalance < minWithdrawal}
+              onClick={() => setStep("amount")}
+            >
+              {availableBalance < minWithdrawal ? `Min. ${formatEarningsMRU(minWithdrawal)} required` : "Withdraw now"}
+            </button>
+            <button type="button" style={cancelStyle} onClick={onClose}>Cancel</button>
+          </>
+        )}
+
+        {step === "amount" && (
+          <>
+            <p style={titleStyle}>How much?</p>
+            <p style={subStyle}>Available: {formatEarningsMRU(availableBalance)} · Min: {formatEarningsMRU(minWithdrawal)}</p>
+            {err && <p style={{ color: "#ef4444", fontSize: 13, marginBottom: 8 }}>{err}</p>}
+            <input
+              type="number"
+              style={inputStyle}
+              value={amount}
+              onChange={(e) => { setErr(""); setAmount(e.target.value); }}
+              placeholder={`${minWithdrawal}`}
+              min={minWithdrawal}
+              max={availableBalance}
+              inputMode="decimal"
+            />
+            <button
+              type="button"
+              style={btnStyle(working || !amount || Number(amount) < minWithdrawal || Number(amount) > availableBalance)}
+              disabled={working || !amount || Number(amount) < minWithdrawal || Number(amount) > availableBalance}
+              onClick={sendOtp}
+            >
+              {working ? "Sending code..." : "Continue"}
+            </button>
+            <button type="button" style={cancelStyle} onClick={() => { setStep("idle"); setErr(""); }}>Back</button>
+          </>
+        )}
+
+        {step === "otp" && (
+          <>
+            <p style={titleStyle}>Verify it's you</p>
+            <p style={subStyle}>Enter the 6-digit code sent to your phone to confirm {formatEarningsMRU(amount)} withdrawal.</p>
+            {err && <p style={{ color: "#ef4444", fontSize: 13, marginBottom: 8 }}>{err}</p>}
+            <input
+              type="text"
+              style={{ ...inputStyle, letterSpacing: 8, textAlign: "center" }}
+              value={otp}
+              onChange={(e) => { setErr(""); setOtp(e.target.value.replace(/\D/g, "").slice(0, 6)); }}
+              placeholder="······"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
+            />
+            <button
+              type="button"
+              style={btnStyle(working || otp.length < 4)}
+              disabled={working || otp.length < 4}
+              onClick={submitWithdrawal}
+            >
+              {working ? "Submitting..." : `Confirm ${formatEarningsMRU(amount)}`}
+            </button>
+            <button type="button" style={cancelStyle} onClick={() => { setStep("amount"); setOtp(""); setErr(""); }}>Back</button>
+          </>
+        )}
+
+        {step === "success" && (
+          <>
+            <div style={{ textAlign: "center", padding: "20px 0" }}>
+              <div style={{ fontSize: 56, marginBottom: 16 }}>✅</div>
+              <p style={titleStyle}>Withdrawal submitted!</p>
+              <p style={subStyle}>{formatEarningsMRU(amount)} is being processed. You'll receive it within 1-2 business days.</p>
+            </div>
+            <button type="button" style={btnStyle(false)} onClick={onClose}>Done</button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Earnings Center Component ─────────────────────────────────────────
 export default function DriverEarnings() {
   const { lyftUI } = syncDriverTheme();
@@ -204,6 +410,7 @@ export default function DriverEarnings() {
   const [chartLoading, setChartLoading] = useState(false);
   const [error, setError] = useState(null);
   const [syncing, setSyncing] = useState(false);
+  const [showWithdraw, setShowWithdraw] = useState(false);
 
   const retryCountRef = useRef(0);
   const retryTimerRef = useRef(null);
@@ -224,9 +431,8 @@ export default function DriverEarnings() {
     }
 
     try {
-      const response = await axios.get(
-        `${API_URL}/drivers/me/earnings/`,
-        authHeaders
+      const response = await authenticatedApi.get(
+        `${API_URL}/drivers/me/earnings/`
       );
       setEarnings(normalizeEarningsPayload(response.data || {}));
       retryCountRef.current = 0;
@@ -258,9 +464,8 @@ export default function DriverEarnings() {
     setChartLoading(true);
 
     try {
-      const response = await axios.get(
-        `${API_URL}/drivers/me/earnings/chart/?period=${period}`,
-        authHeaders
+      const response = await authenticatedApi.get(
+        `${API_URL}/drivers/me/earnings/chart/?period=${period}`
       );
       setChartData(normalizeChartPayload(response.data));
     } catch (err) {
@@ -404,6 +609,13 @@ export default function DriverEarnings() {
         ...(lyftUI ? { minHeight: "auto", paddingTop: 12 } : null),
       }}
     >
+      {showWithdraw && (
+        <WithdrawalSheet
+          onClose={() => setShowWithdraw(false)}
+          onDone={() => { setShowWithdraw(false); fetchEarnings(); }}
+        />
+      )}
+
       {/* Header */}
       {!lyftUI && (
       <div style={styles.header}>
@@ -431,22 +643,46 @@ export default function DriverEarnings() {
         ))}
       </div>
 
-      {/* Main Earnings Display */}
-      <div style={styles.earningsCard}>
-        <span style={styles.earningsLabel}>
+      {/* Wallet / Withdraw Card — Uber/Lyft style */}
+      <div style={{
+        ...styles.earningsCard,
+        background: "linear-gradient(135deg, #00A651 0%, #007a3d 100%)",
+        border: "none",
+        position: "relative",
+        overflow: "hidden",
+      }}>
+        <span style={{ ...styles.earningsLabel, color: "rgba(255,255,255,0.75)" }}>
           {activePeriod === "today" ? "Today's Earnings" :
            activePeriod === "week" ? "This Week" :
            activePeriod === "month" ? "This Month" :
            activePeriod === "year" ? "This Year" : "Lifetime Earnings"}
         </span>
-        <h2 style={styles.earningsAmount}>
+        <h2 style={{ ...styles.earningsAmount, color: "#fff", fontSize: 38 }}>
           {formatEarningsMRU(getPeriodEarnings(activePeriod))}
         </h2>
         {activePeriod !== "week" && (
-          <span style={styles.weekTotalHint}>
+          <span style={{ ...styles.weekTotalHint, color: "rgba(255,255,255,0.65)" }}>
             Week total: {formatEarningsMRU(weekTotal)}
           </span>
         )}
+        <button
+          type="button"
+          onClick={() => setShowWithdraw(true)}
+          style={{
+            marginTop: 20,
+            background: "rgba(255,255,255,0.2)",
+            border: "2px solid rgba(255,255,255,0.6)",
+            borderRadius: 999,
+            color: "#fff",
+            fontWeight: 800,
+            fontSize: 15,
+            padding: "12px 32px",
+            cursor: "pointer",
+            backdropFilter: "blur(4px)",
+          }}
+        >
+          💸 Withdraw
+        </button>
       </div>
 
       {/* Bonus/Incentive/Referral Line Items */}
