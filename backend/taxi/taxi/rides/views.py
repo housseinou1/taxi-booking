@@ -37,6 +37,7 @@ from .serializers import RideSerializer
 from .broadcast import broadcast_ride_update
 from .services.waiting_service import calculate_waiting_fee
 from .services.no_show_service import (
+    _parse_geo_coord,
     arrive_max_distance_m,
     CANONICAL_NO_SHOW_REASON,
     distance_to_pickup_m,
@@ -896,7 +897,7 @@ def start_ride(request, ride_id):
             driver=request.user,
         )
 
-        if ride.status == "in_progress":
+        if ride.status in ("in_progress", "completed"):
             serializer = RideSerializer(ride, context={"request": request})
             return Response(serializer.data)
 

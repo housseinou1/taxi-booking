@@ -50,7 +50,11 @@ function RideStatusButtons({
 
   const arriveBodyOverride =
     canMarkArrivedManually && !canMarkArrivedByGps
-      ? { lat: Number(ride.pickup_lat), lng: Number(ride.pickup_lng) }
+      ? {
+          lat: Number(ride.pickup_lat),
+          lng: Number(ride.pickup_lng),
+          gps_fallback: true,
+        }
       : null;
 
   const arriveSlideLabel = canMarkArrivedManually && !canMarkArrivedByGps
@@ -102,7 +106,13 @@ function RideStatusButtons({
 
   useEffect(() => {
     setPickupPin("");
+    setActionError("");
   }, [ride.id]);
+
+  useEffect(() => {
+    // Drop stale errors from a previous step (e.g. Start Ride 400 still showing on Complete).
+    setActionError("");
+  }, [ride.status, pinVerified]);
 
   useEffect(() => {
     if (!pinVerified || !startRideButtonRef.current) return;
@@ -150,6 +160,15 @@ function RideStatusButtons({
       }
     } catch (recoveryError) {
       console.error(recoveryError);
+    }
+    // If UI already advanced past this step, drop the contradictory error.
+    if (endpoint === "start" && ["in_progress", "completed"].includes(ride.status)) {
+      setActionError("");
+      return true;
+    }
+    if (endpoint === "complete" && ride.status === "completed") {
+      setActionError("");
+      return true;
     }
     return false;
   };
