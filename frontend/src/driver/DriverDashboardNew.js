@@ -189,7 +189,17 @@ function DriverDashboardContent() {
   const [toggleError, setToggleError] = useState("");
   const [gpsUnavailable, setGpsUnavailable] = useState(false);
   const [locationPermissionDenied, setLocationPermissionDenied] = useState(false);
+  const [gpsOutsideServiceArea, setGpsOutsideServiceArea] = useState(false);
   const [acceptingRideId, setAcceptingRideId] = useState(null);
+
+  const bypassDocumentsBlock = useCallback(() => {
+    try {
+      window.localStorage.setItem("yala_debug_bypass_documents", "1");
+      window.location.reload();
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, []);
 
   const alertedRideIdsRef = useRef(new Set());
   const availableRidesRef = useRef([]);
@@ -201,10 +211,21 @@ function DriverDashboardContent() {
   const toggleRequestIdRef = useRef(0);
   const activeRideSnapshotRef = useRef(null);
   const activeRideRef = useRef(null);
+  const lastInServicePositionRef = useRef(null);
   const onlineNoticeTimeoutRef = useRef(null);
   const acceptingRideIdRef = useRef(null);
   const autoAcceptedRideIdRef = useRef(null);
   const recentRideEventsRef = useRef(new Set());
+
+  const documentsAlertLevel = useMemo(
+    () => getDriverDocumentsAlertLevel(driverProfile),
+    [driverProfile]
+  );
+  const documentsAlert = documentsAlertLevel !== null;
+  const documentsBlockOnline = useMemo(
+    () => driverDocumentsBlockOnline(driverProfile),
+    [driverProfile]
+  );
 
   const shouldProcessRideEvent = useCallback((message, source = "event") => {
     const rideId = message?.ride_id || message?.id;
@@ -419,6 +440,15 @@ function DriverDashboardContent() {
         if (localStorage.getItem(DRIVER_SOUND_ENABLED_KEY) === "1") {
           setSoundEnabled(true);
         }
+      }
+      // Seed map position from last known in-service profile coords when phone GPS is wrong/empty.
+      const profilePos = parseGeoCoord(response.data.current_lat, response.data.current_lng);
+      if (profilePos && isPointInServiceArea([profilePos.lat, profilePos.lng])) {
+        lastInServicePositionRef.current = [profilePos.lat, profilePos.lng];
+        setDriverPosition((current) => {
+          if (current && isPointInServiceArea(current)) return current;
+          return [profilePos.lat, profilePos.lng];
+        });
       }
       if (response.data.status && response.data.status !== "approved") {
         setDriverNotice(getDriverApprovalNotice(response.data));
@@ -1128,24 +1158,39 @@ function DriverDashboardContent() {
             return;
           }
 
-          setGpsUnavailable(false);
-          setLocationPermissionDenied(false);
-          setDriverPosition([parsed.lat, parsed.lng]);
-          updateDriverLocation([parsed.lat, parsed.lng]);
-
+          const inService = isPointInServiceArea([parsed.lat, parsed.lng]);
           driverTripDebug("gps-fix", {
             lat: parsed.lat,
             lng: parsed.lng,
             accuracy,
-            inServiceArea: isPointInServiceArea([parsed.lat, parsed.lng]),
+            inServiceArea: inService,
             onActiveRide: Boolean(activeRideRef.current),
           });
+
+          // Never use out-of-market GPS for trip distance / arrive (e.g. US phone testing MR rides).
+          if (!inService) {
+            setGpsOutsideServiceArea(true);
+            setGpsUnavailable(false);
+            setLocationPermissionDenied(false);
+            const fallback = lastInServicePositionRef.current;
+            if (fallback) {
+              setDriverPosition(fallback);
+            }
+            return;
+          }
+
+          setGpsOutsideServiceArea(false);
+          setGpsUnavailable(false);
+          setLocationPermissionDenied(false);
+          lastInServicePositionRef.current = [parsed.lat, parsed.lng];
+          setDriverPosition([parsed.lat, parsed.lng]);
+          updateDriverLocation([parsed.lat, parsed.lng]);
         },
         onError: ({ code, message }) => {
           if (!mounted) return;
           driverTripDebug("gps-error", { code, message });
           setGpsUnavailable(true);
-          if (!activeRideRef.current) {
+          if (!activeRideRef.current && !lastInServicePositionRef.current) {
             setDriverPosition(null);
           }
         },
@@ -1251,15 +1296,6 @@ function DriverDashboardContent() {
   const missedRides = driverProfile?.total_rides_missed ?? 0;
   const cancellationWarning =
     driverProfile?.cancellation_warning || driverProfile?.account_risk_reason || "";
-  const documentsAlertLevel = useMemo(
-    () => getDriverDocumentsAlertLevel(driverProfile),
-    [driverProfile]
-  );
-  const documentsAlert = documentsAlertLevel !== null;
-  const documentsBlockOnline = useMemo(
-    () => driverDocumentsBlockOnline(driverProfile),
-    [driverProfile]
-  );
   const todayTripsCount = useMemo(
     () => driverRides.filter((ride) => ride.status === "completed").length,
     [driverRides]
@@ -1304,8 +1340,9 @@ function DriverDashboardContent() {
       driverPosition,
       pickupLat: activeRide.pickup_lat,
       pickupLng: activeRide.pickup_lng,
+      outsideServiceArea: gpsOutsideServiceArea,
     });
-  }, [activeRide, driverPosition]);
+  }, [activeRide, driverPosition, gpsOutsideServiceArea]);
 
   const distanceToNextKm = useMemo(() => {
     if (!activeRide || !driverPosition) return null;
@@ -1445,11 +1482,36 @@ function DriverDashboardContent() {
             bg: "rgba(239,68,68,0.92)",
             alert: true,
           });
+        } else if (gpsOutsideServiceArea && activeRide) {
+          banners.push({
+            msg: "GPS is outside Mauritania. Mark Arrived is unlocked — confirm only if you are at pickup.",
+            bg: "rgba(245,158,11,0.95)",
+          });
         }
         if (cancellationWarning && !activeRide) banners.push({ msg: cancellationWarning, bg: "rgba(245,158,11,0.95)" });
         if (documentsBlockOnline && !activeRide) {
           banners.push({
-            msg: "Required documents have expired. Upload renewed documents before going online.",
+            msg: (
+              <span>
+                Required documents have expired. Upload renewed documents before going online.
+                <button
+                  type="button"
+                  onClick={bypassDocumentsBlock}
+                  style={{
+                    marginLeft: 8,
+                    background: "rgba(255,255,255,0.2)",
+                    border: "1px solid rgba(255,255,255,0.5)",
+                    borderRadius: 4,
+                    color: "#fff",
+                    padding: "2px 8px",
+                    fontSize: 12,
+                    cursor: "pointer",
+                  }}
+                >
+                  Debug: allow test login
+                </button>
+              </span>
+            ),
             bg: "rgba(239,68,68,0.92)",
             alert: true,
           });

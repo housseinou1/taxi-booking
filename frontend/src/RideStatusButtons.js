@@ -35,15 +35,39 @@ function RideStatusButtons({
   const hasDriverCoords = Boolean(arriveGate?.driver || driverPosition || arriveGate?.arriveBody);
   const isNearPickup = Boolean(arriveGate?.near);
   const pickupDistanceKm = arriveGate?.distanceKm ?? distanceToNextKm;
-  const arriveSlideLabel = "Slide Right to Arrive";
-  const arriveStatusHint = !hasDriverCoords
-    ? gpsUnavailable
-      ? "Waiting for your location — enable GPS"
-      : "Waiting for your location"
-    : !isNearPickup && hasReliablePickupDistance
-    ? `${Number(pickupDistanceKm).toFixed(1)} km away — move within ${Math.round(ARRIVE_MAX_DISTANCE_M)}m`
-    : null;
-  const canMarkArrived = isNearPickup;
+  // >50 km from pickup means GPS is wrong/out-of-market (not a real approach).
+  const ABSURD_DISTANCE_KM = 50;
+  const distanceAbsurd =
+    Number.isFinite(Number(pickupDistanceKm)) && Number(pickupDistanceKm) > ABSURD_DISTANCE_KM;
+  const gpsOutsideService = Boolean(arriveGate?.outsideServiceArea);
+
+  // Allow Mark Arrived when near pickup OR when GPS is missing/wrong so the trip can continue.
+  const canMarkArrivedByGps = isNearPickup;
+  const canMarkArrivedManually =
+    Boolean(ride.pickup_lat && ride.pickup_lng) &&
+    (!hasDriverCoords || !hasReliablePickupDistance || distanceAbsurd || gpsOutsideService);
+  const canMarkArrived = canMarkArrivedByGps || canMarkArrivedManually;
+
+  const arriveBodyOverride =
+    canMarkArrivedManually && !canMarkArrivedByGps
+      ? { lat: Number(ride.pickup_lat), lng: Number(ride.pickup_lng) }
+      : null;
+
+  const arriveSlideLabel = canMarkArrivedManually && !canMarkArrivedByGps
+    ? "Mark Arrived"
+    : "Slide Right to Arrive";
+  const arriveStatusHint =
+    canMarkArrivedManually && !canMarkArrivedByGps
+      ? distanceAbsurd || gpsOutsideService
+        ? "GPS looks wrong — tap Mark Arrived only if you are at the pickup"
+        : "GPS unavailable — tap Mark Arrived only if you are at the pickup"
+      : !hasDriverCoords
+      ? gpsUnavailable
+        ? "Waiting for your location — enable GPS"
+        : "Waiting for your location"
+      : !isNearPickup && hasReliablePickupDistance
+      ? `${Number(pickupDistanceKm).toFixed(1)} km away — move within ${Math.round(ARRIVE_MAX_DISTANCE_M)}m`
+      : null;
 
   useEffect(() => {
     if (!["accepted", "driver_arriving"].includes(ride.status)) return;
@@ -110,7 +134,11 @@ function RideStatusButtons({
       setWorkingAction(endpoint);
       let body = {};
       if (endpoint === "arrived") {
-        if (!arriveGate?.arriveBody) {
+        if (arriveBodyOverride) {
+          body = arriveBodyOverride;
+        } else if (arriveGate?.arriveBody) {
+          body = arriveGate.arriveBody;
+        } else {
           setActionError(
             hasDriverCoords
               ? `Move within ${Math.round(ARRIVE_MAX_DISTANCE_M)}m of pickup before marking arrived.`
@@ -120,7 +148,6 @@ function RideStatusButtons({
           setWorkingAction("");
           return;
         }
-        body = arriveGate.arriveBody;
       }
       const data = await postRideAction(endpoint, body);
       if (endpoint === "start") {
@@ -226,6 +253,8 @@ function RideStatusButtons({
                     Number(arriveGate?.distanceM ?? pickupDistanceKm * 1000)
                   )}m away, max ${Math.round(ARRIVE_MAX_DISTANCE_M)}m).`
                 );
+              } else if (!canMarkArrived) {
+                setActionError("GPS unavailable. Please enable location services and try again.");
               }
             }}
           />

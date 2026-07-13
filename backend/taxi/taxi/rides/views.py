@@ -732,18 +732,28 @@ def arrived_ride(request, ride_id):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
+    gps_fallback = str(request.data.get("gps_fallback", "")).lower() in ("true", "1", "yes")
+
     if distance_m > max_m:
-        return Response(
-            {
-                "detail": (
-                    f"Move closer to the pickup point before tapping Arrived "
-                    f"({int(distance_m)}m away, max {int(max_m)}m)."
-                ),
-                "distance_m": round(distance_m, 1),
-                "max_distance_m": max_m,
-            },
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+        if gps_fallback:
+            logger.warning(
+                "ARRIVE_GPS_FALLBACK ride_id=%s driver_lat=%s driver_lng=%s "
+                "pickup_lat=%s pickup_lng=%s distance_m=%s max_m=%s "
+                "(GPS unavailable on device; pickup coords used as fallback)",
+                ride.id, lat, lng, pickup[0], pickup[1], distance_m, max_m,
+            )
+        else:
+            return Response(
+                {
+                    "detail": (
+                        f"Move closer to the pickup point before tapping Arrived "
+                        f"({int(distance_m)}m away, max {int(max_m)}m)."
+                    ),
+                    "distance_m": round(distance_m, 1),
+                    "max_distance_m": max_m,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
     ride.status = "driver_arrived"
     ride.driver_arrived_at = now()
@@ -977,28 +987,39 @@ def complete_ride(request, ride_id):
     ride.completed_at = now()
     ride.save(update_fields=["status", "completed_at"])
 
+    # Payment capture — must succeed before returning; guard against crashes
+    try:
+        captured_payment = capture_ride_payment(ride)
+        if not captured_payment:
+            calculate_money(ride)
+    except Exception:
+        logger.exception("Payment capture failed for ride=%s; completing anyway", ride.id)
+
+    # Broadcast the status change to WebSocket clients
+    broadcast_ride_update(ride)
+
+    # Build and return the response immediately so the driver gets confirmation.
+    # All secondary tasks below are best-effort and must not block the response.
+    serializer = RideSerializer(ride, context={"request": request})
+    response = Response(serializer.data)
+
     # Apply referral code if this is the rider's first completed ride
-    if ride.referral_code:
-        rider = ride.rider
-        # Check if this is the rider's first completed ride (only this one exists)
-        completed_count = Ride.objects.filter(
-            rider=rider, status="completed"
-        ).count()
-        if completed_count == 1:
-            try:
+    try:
+        if ride.referral_code:
+            rider = ride.rider
+            completed_count = Ride.objects.filter(
+                rider=rider, status="completed"
+            ).count()
+            if completed_count == 1:
                 service = PromoCodeService()
                 referral_result = service.apply_referral(
                     ride.referral_code, rider, ride, ride.fare
                 )
-                # If referral was successfully applied, apply referee discount to fare
                 if referral_result.success and referral_result.referee_discount > 0:
                     from decimal import Decimal
-
+                    from payments.models import Payment
                     discount = min(referral_result.referee_discount, ride.fare)
                     final_fare = max(ride.fare - discount, Decimal("0.00"))
-                    # Update the payment with the referral discount
-                    from payments.models import Payment
-
                     payment = Payment.objects.filter(
                         ride_id=ride.id,
                         status__in=["authorized", "paid"],
@@ -1007,16 +1028,8 @@ def complete_ride(request, ride_id):
                         payment.discount_amount = discount
                         payment.amount = final_fare
                         payment.save(update_fields=["discount_amount", "amount"])
-            except Exception:
-                # Referral application failure should not block ride completion
-                pass
-
-    captured_payment = capture_ride_payment(ride)
-
-    if not captured_payment:
-        calculate_money(ride)
-
-    broadcast_ride_update(ride)
+    except Exception:
+        logger.exception("Referral application failed for ride=%s", ride.id)
 
     # Update driver performance counters and check for level-up
     if ride.driver:
@@ -1039,7 +1052,6 @@ def complete_ride(request, ride_id):
                     _dp.save(update_fields=["driver_level"])
                     _notify_level_up(_dp, _new_level)
                 from taxi.drivers.services.rewards_service import RewardsService
-
                 RewardsService().on_ride_completed(ride, _dp)
         except Exception:
             logger.exception("Failed to update driver performance counters ride=%s", ride.id)
@@ -1052,8 +1064,7 @@ def complete_ride(request, ride_id):
     except Exception:
         pass
 
-    serializer = RideSerializer(ride, context={"request": request})
-    return Response(serializer.data)
+    return response
 
 
 

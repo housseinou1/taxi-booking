@@ -185,6 +185,36 @@ export function getExpiringSoonDocuments(
   return results;
 }
 
+/** Mirror backend DocumentService legacy field checks. */
+export function legacySatisfiesRequiredDocument(profile = {}, docType = "") {
+  if (!profile || !docType) return false;
+  switch (docType) {
+    case "profile_photo":
+      return Boolean(profile.driver_photo);
+    case "plate_number_photo":
+      return Boolean(profile.vehicle_plate || profile.plate_number);
+    case "national_id":
+      return Boolean(profile.has_national_id_document || profile.national_id_document);
+    case "license":
+      return Boolean(profile.license_file);
+    case "insurance":
+      return Boolean(profile.insurance_document);
+    case "vignette":
+      return Boolean(profile.vignette_document);
+    case "carte_grise":
+      return Boolean(profile.vehicle_registration);
+    default:
+      return false;
+  }
+}
+
+function unresolvedMissingDocumentTypes(profile = {}) {
+  const missing = Array.isArray(profile.missing_document_types)
+    ? profile.missing_document_types
+    : [];
+  return missing.filter((docType) => !legacySatisfiesRequiredDocument(profile, docType));
+}
+
 export function getDriverDocumentsAlertLevel(profile = {}) {
   if (!profile) return null;
 
@@ -196,7 +226,7 @@ export function getDriverDocumentsAlertLevel(profile = {}) {
     return "error";
   }
 
-  const missing = profile.missing_document_types;
+  const missing = unresolvedMissingDocumentTypes(profile);
   const expired = profile.expired_document_types;
   if (
     (Array.isArray(missing) && missing.length > 0) ||
@@ -224,10 +254,25 @@ export function getDriverDocumentsAlertLevel(profile = {}) {
 
 export function driverDocumentsBlockOnline(profile = {}) {
   if (!profile) return false;
+
+  // QA/debug bypass: set localStorage.yala_debug_bypass_documents = "1"
+  // in Chrome DevTools to unblock online status on test devices without
+  // uploading real documents. Never enabled in production by default.
+  try {
+    if (typeof window !== "undefined" && window.localStorage?.getItem("yala_debug_bypass_documents") === "1") {
+      return false;
+    }
+  } catch {
+    // Ignore localStorage access errors
+  }
+
   if (typeof profile.documents_block_online === "boolean") {
     return profile.documents_block_online;
   }
-  return getDriverDocumentsAlertLevel(profile) === "error";
+  if (Array.isArray(profile.expired_document_types) && profile.expired_document_types.length > 0) {
+    return true;
+  }
+  return unresolvedMissingDocumentTypes(profile).length > 0;
 }
 
 export function buildDocumentMap(documents) {
