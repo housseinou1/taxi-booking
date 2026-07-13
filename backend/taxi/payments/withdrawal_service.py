@@ -283,7 +283,19 @@ def _log_withdrawal_audit(request, *, withdrawal=None, driver=None, summary="", 
 
 
 def send_withdrawal_otp(user, request=None) -> dict:
-    if not user.phone_number:
+    phone = (getattr(user, "phone_number", None) or "").strip()
+    if not phone:
+        payout = (
+            DriverPayoutMethod.objects.filter(driver=user, is_default=True)
+            .exclude(phone_number="")
+            .first()
+            or DriverPayoutMethod.objects.filter(driver=user)
+            .exclude(phone_number="")
+            .order_by("-updated_at", "-id")
+            .first()
+        )
+        phone = (getattr(payout, "phone_number", None) or "").strip()
+    if not phone:
         raise WithdrawalError(
             "Add and verify a phone number before withdrawing.",
             code="phone_required",
@@ -308,7 +320,7 @@ def send_withdrawal_otp(user, request=None) -> dict:
 
     try:
         send_sms(
-            user.phone_number,
+            phone,
             f"Yala withdrawal confirmation code: {code}. Valid for {OTP_TTL_MINUTES} minutes.",
         )
     except Exception as exc:
@@ -321,7 +333,7 @@ def send_withdrawal_otp(user, request=None) -> dict:
             request,
             driver=user,
             summary="Withdrawal OTP requested",
-            details={"phone_masked": user.phone_number[-4:] if user.phone_number else ""},
+            details={"phone_masked": phone[-4:] if phone else ""},
         )
     return {"message": "Verification code sent.", "expires_in_minutes": OTP_TTL_MINUTES}
 
