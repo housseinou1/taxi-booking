@@ -98,14 +98,15 @@ export default function RideRequestCard({
   }, [expired, handleExpired]);
 
   useEffect(() => {
-    if (!enableSound || expired || !getRideId(ride)) {
+    const rideId = getRideId(ride);
+    if (!enableSound || expired || !rideId) {
       return undefined;
     }
 
     let cancelled = false;
     const ring = async () => {
       if (!cancelled) {
-        await playRideRequestAlert();
+        await playRideRequestAlert({ force: true });
       }
     };
 
@@ -116,7 +117,7 @@ export default function RideRequestCard({
       window.clearInterval(intervalId);
       stopRideRequestAlert();
     };
-  }, [enableSound, expired, ride]);
+  }, [enableSound, expired, getRideId(ride)]);
 
   const pickupLabel = ride?.pickup || ride?.pickup_address || "Pickup";
   const destinationLabel = ride?.destination || ride?.destination_address || "Destination";

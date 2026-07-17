@@ -182,7 +182,13 @@ function getLoginContext() {
   const path = window.location.pathname || "";
   const next = getNextRouteFromSearch();
   const storedNext = localStorage.getItem("sx_login_redirect") || "";
-  const route = normalizeContextRoute(next || storedNext || path);
+  // Prefer explicit ?next= or the current path over a stale stored redirect.
+  const route = normalizeContextRoute(
+    next ||
+      (path && path !== "/" && path !== "/login" && path !== "/register" ? path : "") ||
+      storedNext ||
+      path
+  );
 
   if (
     route === "/admin" ||

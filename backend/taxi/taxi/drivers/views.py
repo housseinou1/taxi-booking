@@ -159,6 +159,18 @@ def get_driver_profile_by_any_id(driver_id):
     return profile
 
 
+def _courier_settings(profile):
+    """Return delivery settings for this driver, if they are a courier."""
+    from deliveries.models import DriverDeliverySettings
+
+    return DriverDeliverySettings.objects.filter(driver_id=profile.user_id).first()
+
+
+def _driver_is_courier(profile) -> bool:
+    """Return True if this driver has registered as a delivery courier."""
+    return _courier_settings(profile) is not None
+
+
 def serialize_driver(profile, request):
     expired_documents = enforce_document_expiration(profile)
     driver_name = f"{profile.user.first_name} {profile.user.last_name}".strip()
@@ -176,6 +188,20 @@ def serialize_driver(profile, request):
     if (not profile.user.is_active or profile.status != "approved") and profile.is_available:
         profile.is_available = False
         profile.save(update_fields=["is_available"])
+
+    courier_settings = _courier_settings(profile)
+    is_courier = courier_settings is not None
+    delivery_mode_enabled = bool(
+        getattr(courier_settings, "delivery_mode_enabled", False)
+    )
+    # Couriers go online via delivery_mode_enabled; taxi drivers use is_available.
+    courier_online = bool(
+        is_courier
+        and delivery_mode_enabled
+        and profile.user.is_active
+        and profile.status == "approved"
+        and not getattr(courier_settings, "is_suspended", False)
+    )
 
     return {
         "id": profile.id,
@@ -244,7 +270,10 @@ def serialize_driver(profile, request):
         "next_level": points_progress["next_level"],
         "level_progress_percentage": points_progress["progress_percentage"],
         "points_rule": points_progress["points_rule"],
-        "is_courier": _driver_is_courier(profile),
+        "is_courier": is_courier,
+        "delivery_mode_enabled": delivery_mode_enabled,
+        "courier_online": courier_online,
+        "delivery_vehicle_type": getattr(courier_settings, "delivery_vehicle_type", "") or "",
         **review_state,
         **performance_snapshot,
     }
@@ -286,12 +315,6 @@ def driver_me(request):
         return Response(error["data"], status=error["status"])
     enforce_document_expiration(profile)
     return Response(serialize_driver(profile, request))
-
-
-def _driver_is_courier(profile) -> bool:
-    """Return True if this driver has registered as a delivery courier."""
-    from deliveries.models import DriverDeliverySettings
-    return DriverDeliverySettings.objects.filter(driver=profile.user).exists()
 
 
 @api_view(["GET"])

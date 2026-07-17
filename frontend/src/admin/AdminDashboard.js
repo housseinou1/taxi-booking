@@ -244,6 +244,7 @@ const ADMIN_SECTION_KEYS = new Set([
   "verification",
   "riders",
   "drivers",
+  "delivery-drivers",
   "rides",
   "deliveries",
   "emergency",
@@ -311,7 +312,6 @@ function AdminDashboard() {
   });
   const [ownerPayoutSaving, setOwnerPayoutSaving] = useState(false);
   const [ownerPayoutMessage, setOwnerPayoutMessage] = useState("");
-  const [driverTab, setDriverTab] = useState("taxi"); // 'taxi' | 'courier'
   const [cancelRide, setCancelRide] = useState(null); // { rideId, reason }
   const [cancelRideLoading, setCancelRideLoading] = useState(false);
   const [isCompactLayout, setIsCompactLayout] = useState(
@@ -836,6 +836,7 @@ function AdminDashboard() {
     { key: "verification", label: "Verification" },
     { key: "riders", label: "Riders" },
     { key: "drivers", label: "Drivers" },
+    { key: "delivery-drivers", label: "Deliveries Drivers" },
     { key: "rides", label: "Dispatch" },
     { key: "deliveries", label: "Deliveries" },
     { key: "emergency", label: "Emergency" },
@@ -854,12 +855,19 @@ function AdminDashboard() {
     { key: "overview", label: "Overview" },
     { key: "riders", label: "Riders" },
     { key: "drivers", label: "Drivers" },
+    { key: "delivery-drivers", label: "Deliveries Drivers" },
     { key: "deliveries", label: "Deliveries" },
     { key: "payments", label: "Payments" },
   ];
 
   const alphabetDrivers = sortAlphabetically(drivers);
+  const taxiDriverProfiles = alphabetDrivers.filter((driver) => !driver.is_courier);
+  const deliveryDriverProfiles = alphabetDrivers.filter((driver) => driver.is_courier);
   const pendingDrivers = alphabetDrivers.filter((driver) => driver.status === "pending");
+  const pendingTaxiDrivers = taxiDriverProfiles.filter((driver) => driver.status === "pending");
+  const pendingDeliveryDrivers = deliveryDriverProfiles.filter(
+    (driver) => driver.status === "pending"
+  );
   const approvedDrivers = alphabetDrivers.filter(
     (driver) => driver.status === "approved"
   );
@@ -867,6 +875,10 @@ function AdminDashboard() {
     (driver) => driver.status === "rejected"
   );
   const onlineDrivers = drivers.filter((driver) => driver.is_available);
+  const onlineTaxiDrivers = taxiDriverProfiles.filter((driver) => driver.is_available);
+  const onlineDeliveryDrivers = deliveryDriverProfiles.filter(
+    (driver) => driver.courier_online || driver.delivery_mode_enabled
+  );
   const riders = sortAlphabetically(
     users.filter(
       (user) => (user.is_rider || user.user_type === "rider") && !user.is_staff
@@ -976,8 +988,10 @@ function AdminDashboard() {
     overview: activeRides.length,
     verification: pendingDrivers.length,
     riders: riders.length,
-    drivers: platformDrivers.length,
+    drivers: taxiDriverProfiles.length,
+    "delivery-drivers": deliveryDriverProfiles.length,
     rides: rides.length,
+    deliveries: 0,
     emergency: emergencyWatchList.length,
     vehicles: drivers.length,
     cities: cities.length,
@@ -1018,6 +1032,12 @@ function AdminDashboard() {
       "driver_category_label",
       "status",
     ])
+  );
+  const filteredTaxiDriverProfiles = filteredDriverProfiles.filter(
+    (driver) => !driver.is_courier
+  );
+  const filteredDeliveryDriverProfiles = filteredDriverProfiles.filter(
+    (driver) => driver.is_courier
   );
   const usersById = new Map(users.map((user) => [Number(user.id), user]));
   const filteredPendingDrivers = pendingDrivers.filter((driver) =>
@@ -1242,9 +1262,10 @@ function AdminDashboard() {
           </div>
 
           <div style={opsStatsGridStyle}>
-            <StatCard title="Drivers" value={drivers.length} />
+            <StatCard title="Drivers" value={taxiDriverProfiles.length} />
+            <StatCard title="Delivery Drivers" value={deliveryDriverProfiles.length} />
             <StatCard title="Riders" value={riders.length} />
-            <StatCard title="Online" value={onlineDrivers.length} />
+            <StatCard title="Online" value={onlineTaxiDrivers.length} />
             <StatCard title="Active rides" value={activeRides.length} />
             <StatCard title="Revenue" value={formatMoney(totalRevenue)} />
           </div>
@@ -1437,81 +1458,87 @@ function AdminDashboard() {
           </div>
         )}
 
-        {page === "drivers" && (() => {
-          const taxiProfiles = filteredDriverProfiles.filter((d) => !d.is_courier);
-          const courierProfiles = filteredDriverProfiles.filter((d) => d.is_courier);
-          const shownProfiles = driverTab === "taxi" ? taxiProfiles : courierProfiles;
-          return (
-            <div style={card}>
-              <SectionTitle
-                title="Drivers"
-                subtitle="Manage driver accounts, approval status, and access. Switch tabs to separate taxi drivers from delivery couriers."
+        {page === "drivers" && (
+          <div style={card}>
+            <SectionTitle
+              title="Drivers"
+              subtitle="Taxi driver accounts, approval status, and access. Delivery couriers are managed under Deliveries Drivers."
+            />
+
+            <div style={statsGrid}>
+              <StatCard title="Taxi Drivers" value={filteredTaxiDriverProfiles.length} />
+              <StatCard title="Online" value={onlineTaxiDrivers.length} />
+              <StatCard title="Pending" value={pendingTaxiDrivers.length} />
+              <StatCard
+                title="Blocked"
+                value={filteredTaxiDriverProfiles.filter((d) => !d.is_active).length}
               />
-
-              {/* Taxi / Courier tab switcher */}
-              <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
-                <button
-                  type="button"
-                  onClick={() => setDriverTab("taxi")}
-                  style={{
-                    ...refreshButtonStyle,
-                    background: driverTab === "taxi"
-                      ? "linear-gradient(135deg, #6366f1, #4f46e5)"
-                      : "rgba(99,102,241,0.15)",
-                    color: driverTab === "taxi" ? "#fff" : "#a5b4fc",
-                    border: "1.5px solid #6366f1",
-                  }}
-                >
-                  🚗 Taxi Drivers ({taxiProfiles.length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDriverTab("courier")}
-                  style={{
-                    ...refreshButtonStyle,
-                    background: driverTab === "courier"
-                      ? "linear-gradient(135deg, #f59e0b, #d97706)"
-                      : "rgba(245,158,11,0.15)",
-                    color: driverTab === "courier" ? "#fff" : "#fcd34d",
-                    border: "1.5px solid #f59e0b",
-                  }}
-                >
-                  📦 Delivery Couriers ({courierProfiles.length})
-                </button>
-              </div>
-
-              <div style={statsGrid}>
-                <StatCard title={driverTab === "taxi" ? "Taxi Drivers" : "Delivery Couriers"} value={shownProfiles.length} />
-                <StatCard title="Online" value={shownProfiles.filter((d) => d.is_available).length} />
-                <StatCard title="Pending" value={shownProfiles.filter((d) => d.status === "pending").length} />
-                <StatCard title="Blocked" value={shownProfiles.filter((d) => !d.is_active).length} />
-              </div>
-
-              <h2 style={subHeadingStyle}>
-                {driverTab === "taxi" ? "Taxi Drivers" : "Delivery Couriers"}
-              </h2>
-              {shownProfiles.length === 0 ? (
-                <p style={{ color: "#94a3b8" }}>No {driverTab === "taxi" ? "taxi drivers" : "delivery couriers"} found.</p>
-              ) : (
-                shownProfiles.map((driver) => (
-                  <DriverInfoCard
-                    key={driver.id}
-                    driver={driver}
-                    relatedUser={usersById.get(Number(driver.user_id))}
-                    getFileUrl={getFileUrl}
-                    setUserBlocked={setUserBlocked}
-                    approveDriver={approveDriver}
-                    rejectDriver={rejectDriver}
-                    updateDriverCategory={updateDriverCategory}
-                    reintegrateDriver={reintegrateDriver}
-                    deleteDriver={deleteDriver}
-                    driverCategories={DRIVER_CATEGORIES}
-                  />
-                ))
-              )}
             </div>
-          );
-        })()}
+
+            <h2 style={subHeadingStyle}>Taxi Drivers</h2>
+            {filteredTaxiDriverProfiles.length === 0 ? (
+              <p style={{ color: "#94a3b8" }}>No taxi drivers found.</p>
+            ) : (
+              filteredTaxiDriverProfiles.map((driver) => (
+                <DriverInfoCard
+                  key={driver.id}
+                  driver={driver}
+                  relatedUser={usersById.get(Number(driver.user_id))}
+                  getFileUrl={getFileUrl}
+                  setUserBlocked={setUserBlocked}
+                  approveDriver={approveDriver}
+                  rejectDriver={rejectDriver}
+                  updateDriverCategory={updateDriverCategory}
+                  reintegrateDriver={reintegrateDriver}
+                  deleteDriver={deleteDriver}
+                  driverCategories={DRIVER_CATEGORIES}
+                />
+              ))
+            )}
+          </div>
+        )}
+
+        {page === "delivery-drivers" && (
+          <div style={card}>
+            <SectionTitle
+              title="Deliveries Drivers"
+              subtitle="Yala Delivery courier accounts — approve, block, and manage access separately from taxi drivers."
+            />
+
+            <div style={statsGrid}>
+              <StatCard title="Delivery Drivers" value={filteredDeliveryDriverProfiles.length} />
+              <StatCard title="Online" value={onlineDeliveryDrivers.length} />
+              <StatCard title="Pending" value={pendingDeliveryDrivers.length} />
+              <StatCard
+                title="Blocked"
+                value={filteredDeliveryDriverProfiles.filter((d) => !d.is_active).length}
+              />
+            </div>
+
+            <h2 style={subHeadingStyle}>Delivery Couriers</h2>
+            {filteredDeliveryDriverProfiles.length === 0 ? (
+              <p style={{ color: "#94a3b8" }}>
+                No delivery drivers found. Couriers appear here after they register for Yala Delivery.
+              </p>
+            ) : (
+              filteredDeliveryDriverProfiles.map((driver) => (
+                <DriverInfoCard
+                  key={driver.id}
+                  driver={driver}
+                  relatedUser={usersById.get(Number(driver.user_id))}
+                  getFileUrl={getFileUrl}
+                  setUserBlocked={setUserBlocked}
+                  approveDriver={approveDriver}
+                  rejectDriver={rejectDriver}
+                  updateDriverCategory={updateDriverCategory}
+                  reintegrateDriver={reintegrateDriver}
+                  deleteDriver={deleteDriver}
+                  driverCategories={DRIVER_CATEGORIES}
+                />
+              ))
+            )}
+          </div>
+        )}
 
         {page === "deliveries" && (
           <div style={card}>
@@ -3284,6 +3311,24 @@ function DriverInfoCard({
               value={`${driver.vehicle_make || ""} ${driver.vehicle_model || ""}`.trim() || "N/A"}
             />
             <DetailItem label="Plate" value={driver.vehicle_plate || "N/A"} />
+            <DetailItem
+              label={driver.is_courier ? "Delivery online" : "Taxi online"}
+              value={
+                driver.is_courier
+                  ? driver.courier_online || driver.delivery_mode_enabled
+                    ? "Online"
+                    : "Offline"
+                  : driver.is_available
+                    ? "Online"
+                    : "Offline"
+              }
+            />
+            {driver.is_courier ? (
+              <DetailItem
+                label="Delivery vehicle"
+                value={driver.delivery_vehicle_type || "N/A"}
+              />
+            ) : null}
             <DetailItem label="Documents" value={`${uploadedDriverDocs}/4 uploaded`} />
             <DetailItem
               label="Driver agreement"

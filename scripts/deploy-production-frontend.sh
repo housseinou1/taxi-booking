@@ -11,7 +11,14 @@ cd "${REPO_ROOT}/frontend"
 cp -f .env.production.example .env.production
 export CI=false
 export GENERATE_SOURCEMAP=false
+# Force web build — local .env.local may stamp REACT_APP_TYPE=driver for native work.
+export REACT_APP_TYPE=web
 npm run build
+if ! grep -q 'REACT_APP_TYPE:"web"' frontend/build/static/js/main.*.js 2>/dev/null \
+  && ! grep -q 'REACT_APP_TYPE:"web"' "${REPO_ROOT}/frontend/build/static/js/main."*.js; then
+  echo "ERROR: production bundle is not stamped REACT_APP_TYPE=web" >&2
+  exit 1
+fi
 
 echo "=== Upload to ${REMOTE}:/opt/yala/frontend/build ==="
 ssh "${REMOTE}" "mkdir -p /opt/yala/frontend/build"

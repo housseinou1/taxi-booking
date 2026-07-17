@@ -10,7 +10,7 @@ import {
 } from "../auth/session";
 import { MARKET, isPointInServiceArea } from "../marketConfig";
 import { subscribeRideUpdates } from "../socket";
-import { preloadNotificationSound, unlockRideRequestSound, playRideRequestAlert, stopRideRequestAlert } from "../native/sound";
+import { preloadNotificationSound, unlockRideRequestSound, stopRideRequestAlert } from "../native/sound";
 import { driverDocumentsBlockOnline, getDriverApprovalNotice, getDriverDocumentsAlertLevel } from "./utils/documentReview";
 import {
   ensureDriverAgreementBeforeOnline,
@@ -1069,7 +1069,7 @@ function DriverDashboardContent() {
         && !active
       ) {
         mergeIncomingRideRequest(msg);
-        playRideRequestAlert({ force: true });
+        // Sound/vibration is handled by RideRequestCard so it is not duplicated here.
         return;
       }
       if (msg.type === "ride_request" && active) {

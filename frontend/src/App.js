@@ -142,10 +142,16 @@ function getRouteAppType() {
   }
 
   const params = new URLSearchParams(window.location.search || "");
+  const pathname = normalizeRouteContext(window.location.pathname);
+  // Prefer the URL the user actually opened over a stale login redirect
+  // (e.g. leftover /driver must not force Driver branding on /admin).
   const route = normalizeRouteContext(
     params.get("next") ||
+      (pathname && pathname !== "/" && pathname !== "/login" && pathname !== "/register"
+        ? pathname
+        : "") ||
       localStorage.getItem("sx_login_redirect") ||
-      window.location.pathname
+      pathname
   );
 
   if (route === "/delivery/courier" || route.startsWith("/delivery/courier")) return "delivery";
@@ -431,6 +437,27 @@ function App() {
         return;
       }
 
+      // If the user explicitly opened Admin, don't keep a Driver/Rider session alive.
+      const path = window.location.pathname || "";
+      const next = new URLSearchParams(window.location.search || "").get("next") || "";
+      const wantsAdmin =
+        path === "/admin" ||
+        path === "/admin-dashboard" ||
+        path.startsWith("/admin/") ||
+        next === "/admin" ||
+        next.startsWith("/admin/");
+      if (wantsAdmin) {
+        const role = getUserRole(getStoredUser());
+        if (role !== "admin") {
+          clearAuthSession();
+          if (isMounted) {
+            setIsAuthenticated(false);
+            setSessionChecked(true);
+          }
+          return;
+        }
+      }
+
       const result = await restoreAuthSession({
         requiredRole: getRequiredRoleForApp(),
       });
@@ -602,6 +629,26 @@ function App() {
       return withInstall(<LoginRequiredRedirect path={currentPath} />);
     }
     if (appType === "web" && !canAccessPage(user, page)) {
+      // Visiting /admin while a driver/rider session is still stored must not
+      // bounce into the Driver app — clear session and show the right login.
+      const roleLockedHomes = {
+        admin: "/admin",
+        "admin-share-analytics": "/admin",
+        "delivery-admin": "/admin",
+        "admin-payments": "/admin/payments",
+        driver: "/driver",
+        "driver-profile": "/driver",
+        "driver-account": "/driver",
+        "driver-documents": "/driver",
+        "driver-code": "/driver",
+        "driver-earnings": "/driver",
+        rider: "/rider-dashboard",
+        "rider-dashboard": "/rider-dashboard",
+      };
+      if (roleLockedHomes[page]) {
+        clearAuthSession();
+        return withInstall(<LoginRequiredRedirect path={roleLockedHomes[page]} />);
+      }
       return withInstall(<RoleAccessRedirect user={user} />);
     }
   }

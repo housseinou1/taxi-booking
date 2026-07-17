@@ -510,7 +510,7 @@ export async function startDeliveryOfferAlertLoop(options = {}) {
 export async function playRideRequestAlert({ force = false } = {}) {
   await vibrateNative(true);
 
-  const chimePlayed = await playRideAlertChime({ force: force || true });
+  const chimePlayed = await playRideAlertChime({ force });
 
   try {
     const audio = getNotificationAudio();

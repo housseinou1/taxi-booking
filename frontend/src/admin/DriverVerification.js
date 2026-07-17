@@ -81,7 +81,9 @@ function DriverVerification({ onBack }) {
           <div key={driver.id} style={card}>
             <p><b>ID:</b> {driver.id}</p>
             <p><b>Status:</b> {driver.status}</p>
-            <p><b>Available:</b> {driver.is_available ? "Online" : "Offline"}</p>
+            <p><b>Available:</b> {driver.is_courier
+              ? ((driver.courier_online || driver.delivery_mode_enabled) ? "Online" : "Offline")
+              : (driver.is_available ? "Online" : "Offline")}</p>
             <p><b>Vehicle:</b> {driver.vehicle_make || "-"} {driver.vehicle_model || "-"}</p>
             <p><b>Plate:</b> {driver.vehicle_plate || "-"}</p>
             <p><b>ID:</b> {driver.id}</p>
