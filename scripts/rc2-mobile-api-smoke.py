@@ -75,9 +75,9 @@ def main() -> int:
             code, _ = req("GET", path, driver_token)
             record(name, code in (200, 404), f"HTTP {code}")
 
-    # Delivery / public
-    code, _ = req("GET", "/deliveries/")
-    record("delivery_list_auth", code in (200, 401, 403), f"HTTP {code}")
+    # Delivery — list endpoint requires auth; /deliveries/ root is not routed
+    code, _ = req("GET", "/deliveries/mine/")
+    record("delivery_mine_auth", code in (401, 403), f"HTTP {code} (401/403 expected without token)")
 
     code, data = req("GET", "/health/")
     record("health_gps_backend", code == 200 and data.get("status") == "ok", f"HTTP {code}")

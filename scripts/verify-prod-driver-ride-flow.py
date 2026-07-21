@@ -6,8 +6,8 @@ import urllib.error
 import urllib.request
 
 API = "https://api.yalataxi.live"
-DRIVER_EMAIL = "qa-driver-final-qa@test.local"
-DRIVER_PASSWORD = "QaDriverFinal!2026"
+DRIVER_EMAIL = "qa-driver-profile-fix@test.local"
+DRIVER_PASSWORD = "QaDriverFix!2026"
 RIDER_EMAIL = "qa-rider-profile-fix@test.local"
 RIDER_PASSWORD = "QaRiderFix!2026"
 
@@ -95,7 +95,14 @@ def create_ride_at_arrived(rider_token, driver_token):
     if status != 200:
         raise SystemExit(f"Ride accept failed: {status} {accepted}")
 
-    status, arrived = request("POST", f"/rides/arrived/{ride_id}/", token=driver_token, body={})
+    status, ride = request("GET", f"/rides/{ride_id}/", token=rider_token)
+    if status != 200:
+        raise SystemExit(f"Ride detail failed: {status} {ride}")
+
+    status, arrived = request("POST", f"/rides/arrived/{ride_id}/", token=driver_token, body={
+        "lat": ride.get("pickup_lat"),
+        "lng": ride.get("pickup_lng"),
+    })
     if status != 200:
         raise SystemExit(f"Ride arrived failed: {status} {arrived}")
 
