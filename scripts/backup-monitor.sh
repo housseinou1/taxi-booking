@@ -39,4 +39,14 @@ if last:
         sys.exit(1)
 
 print(f"OK: backup status={status} last_success={last}")
+
+offsite = os.environ.get("BACKUP_OFFSITE_REMOTE", "")
+if offsite:
+    import subprocess
+    remote = offsite.split(":")[0] + ":"
+    proc = subprocess.run(["rclone", "lsf", f"{offsite}/daily/", "--max-depth", "1"], capture_output=True, text=True)
+    if proc.returncode != 0 or not proc.stdout.strip():
+        print(f"CRITICAL: offsite remote configured but no daily files at {offsite}/daily/")
+        sys.exit(1)
+    print(f"OK: offsite daily files present at {offsite}/daily/")
 PY

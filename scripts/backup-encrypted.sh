@@ -63,6 +63,7 @@ write_status "running" "Backup in progress"
 
 STAGING="$BACKUP_DIR/staging/$DATE"
 mkdir -p "$STAGING"
+OFFSITE_OK=true
 
 # ── PostgreSQL ────────────────────────────────────────────────────────────────
 RAW_DB="$STAGING/yala_db.sql.gz"
@@ -133,10 +134,17 @@ find "$BACKUP_DIR/staging" -mindepth 1 -maxdepth 1 -type d -mtime +2 -exec rm -r
 # ── Off-server upload (optional rclone) ───────────────────────────────────────
 if [ -n "${BACKUP_OFFSITE_REMOTE:-}" ] && command -v rclone >/dev/null 2>&1; then
   rclone copy "$BACKUP_DIR/daily/" "${BACKUP_OFFSITE_REMOTE}/daily/" --max-age 48h >> "$LOG_FILE" 2>&1 || {
-    echo "[$DATE] WARN: Offsite upload failed" | tee -a "$LOG_FILE"
-    write_status "warning" "Backup OK but offsite upload failed"
+    echo "[$DATE] WARN: Offsite daily upload failed" | tee -a "$LOG_FILE"
+    OFFSITE_OK=false
   }
-  echo "[$DATE] Offsite upload complete -> $BACKUP_OFFSITE_REMOTE" | tee -a "$LOG_FILE"
+  if [ "$DAY_OF_WEEK" = "7" ] && [ -d "$BACKUP_DIR/weekly" ]; then
+    rclone copy "$BACKUP_DIR/weekly/" "${BACKUP_OFFSITE_REMOTE}/weekly/" --max-age 168h >> "$LOG_FILE" 2>&1 || OFFSITE_OK=false
+  fi
+  if [ "$OFFSITE_OK" = true ]; then
+    echo "[$DATE] Offsite upload complete -> $BACKUP_OFFSITE_REMOTE" | tee -a "$LOG_FILE"
+  else
+    write_status "warning" "Backup OK but offsite upload failed"
+  fi
 elif [ -n "${BACKUP_OFFSITE_REMOTE:-}" ]; then
   echo "[$DATE] WARN: rclone not installed; skipping offsite upload" | tee -a "$LOG_FILE"
 fi
