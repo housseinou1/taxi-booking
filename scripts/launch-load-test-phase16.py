@@ -23,7 +23,7 @@ RIDER_REQUESTS = int(os.environ.get("LOAD_RIDERS", "200"))
 DRIVER_REQUESTS = int(os.environ.get("LOAD_DRIVERS", "100"))
 DISPATCH_REQUESTS = int(os.environ.get("LOAD_DISPATCH", "25"))
 EXEC_REQUESTS = int(os.environ.get("LOAD_EXEC", "10"))
-MAX_WORKERS = int(os.environ.get("LOAD_WORKERS", "60"))
+MAX_WORKERS = int(os.environ.get("LOAD_WORKERS", "40"))
 
 
 @dataclass
@@ -61,11 +61,13 @@ def hit(path: str, token: str | None = None) -> Result:
 
 
 def main() -> int:
-    if not ADMIN_EMAIL or not ADMIN_PASSWORD:
-        print(json.dumps({"error": "set YALA_ADMIN_EMAIL and YALA_ADMIN_PASSWORD"}))
-        return 2
+    token = None
+    if DISPATCH_REQUESTS > 0 or EXEC_REQUESTS > 0:
+        if not ADMIN_EMAIL or not ADMIN_PASSWORD:
+            print(json.dumps({"error": "set YALA_ADMIN_EMAIL and YALA_ADMIN_PASSWORD"}))
+            return 2
+        token = login()
 
-    token = login()
     jobs: list[tuple[str, str | None]] = []
     jobs += [("/health/", None)] * RIDER_REQUESTS
     jobs += [("/api/health/ready/", None)] * DRIVER_REQUESTS
