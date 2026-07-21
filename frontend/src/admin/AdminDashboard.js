@@ -871,6 +871,7 @@ function AdminDashboard() {
     { key: "operations-link", label: "Operations Center", path: "/admin/operations" },
     { key: "ai-ops-link", label: "AI Operations", path: "/admin/ai-operations" },
     { key: "status-link", label: "Production Status", path: "/admin/status" },
+    { key: "launch-link", label: "Launch Control", path: "/admin/launch" },
     { key: "verification", label: "Verification" },
     { key: "riders", label: "Riders" },
     { key: "drivers", label: "Drivers" },

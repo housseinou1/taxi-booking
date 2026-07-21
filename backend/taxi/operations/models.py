@@ -118,3 +118,136 @@ class AIRecommendation(models.Model):
     def __str__(self):
         return f"{self.category}: {self.title[:60]}"
 
+
+class OpsIncident(models.Model):
+    """Operational incident tracking for launch and platform reliability."""
+
+    SEVERITY_CHOICES = [
+        ("critical", "Critical"),
+        ("high", "High"),
+        ("medium", "Medium"),
+        ("low", "Low"),
+    ]
+    STATUS_CHOICES = [
+        ("open", "Open"),
+        ("investigating", "Investigating"),
+        ("mitigated", "Mitigated"),
+        ("resolved", "Resolved"),
+    ]
+
+    reference = models.CharField(max_length=32, unique=True, db_index=True)
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True, default="")
+    severity = models.CharField(max_length=20, choices=SEVERITY_CHOICES, default="medium", db_index=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="open", db_index=True)
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="owned_ops_incidents",
+    )
+    root_cause = models.TextField(blank=True, default="")
+    resolution = models.TextField(blank=True, default="")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_ops_incidents",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["status", "severity", "-created_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.reference} — {self.title[:50]}"
+
+
+class OpsIncidentEvent(models.Model):
+    """Timeline entries for operational incidents."""
+
+    EVENT_TYPES = [
+        ("note", "Note"),
+        ("status_change", "Status Change"),
+        ("assignment", "Assignment"),
+        ("root_cause", "Root Cause"),
+        ("resolution", "Resolution"),
+    ]
+
+    incident = models.ForeignKey(OpsIncident, on_delete=models.CASCADE, related_name="events")
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="ops_incident_events",
+    )
+    event_type = models.CharField(max_length=20, choices=EVENT_TYPES, default="note")
+    message = models.TextField()
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+
+    def __str__(self):
+        return f"{self.incident.reference}: {self.event_type}"
+
+
+class LaunchAlert(models.Model):
+    """Persistent operational alerts for the launch control center."""
+
+    ALERT_TYPES = [
+        ("api_offline", "API Offline"),
+        ("redis_offline", "Redis Offline"),
+        ("database_offline", "Database Offline"),
+        ("celery_stopped", "Celery Stopped"),
+        ("high_error_rate", "High Error Rate"),
+        ("high_cancellation_rate", "High Cancellation Rate"),
+        ("large_withdrawal_queue", "Large Withdrawal Queue"),
+        ("sos_event", "SOS Event"),
+        ("expired_documents", "Expired Documents"),
+        ("failed_payments", "Failed Payments"),
+        ("other", "Other"),
+    ]
+    SEVERITY_CHOICES = OpsIncident.SEVERITY_CHOICES
+    STATUS_CHOICES = [
+        ("active", "Active"),
+        ("acknowledged", "Acknowledged"),
+        ("resolved", "Resolved"),
+    ]
+
+    alert_type = models.CharField(max_length=40, choices=ALERT_TYPES, db_index=True)
+    severity = models.CharField(max_length=20, choices=SEVERITY_CHOICES, default="medium")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="active", db_index=True)
+    title = models.CharField(max_length=200)
+    message = models.TextField(blank=True, default="")
+    metadata = models.JSONField(default=dict, blank=True)
+    acknowledged_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="acknowledged_launch_alerts",
+    )
+    acknowledged_at = models.DateTimeField(null=True, blank=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["status", "alert_type", "-created_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.alert_type}: {self.title[:50]}"
+

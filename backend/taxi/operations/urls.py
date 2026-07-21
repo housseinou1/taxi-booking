@@ -47,6 +47,22 @@ from .operations_center_views import (
     operations_reassign_delivery,
     operations_reassign_ride,
 )
+from .launch_views import (
+    launch_alert_ack,
+    launch_alert_resolve,
+    launch_alerts_list,
+    launch_checklist,
+    launch_control_dashboard,
+    launch_finance_export,
+    launch_finance_reconciliation,
+    launch_hub,
+    launch_incident_detail,
+    launch_incident_export,
+    launch_incidents,
+    launch_kpis,
+    launch_onboarding,
+    launch_support_queue,
+)
 from .views import complete_maintenance, maintenance_reminders
 
 urlpatterns = [
@@ -93,4 +109,18 @@ urlpatterns = [
     path("executive/broadcast/", executive_broadcast),
     path("executive/maintenance-mode/", executive_maintenance_mode),
     path("executive/account-action/", executive_account_action),
+    path("launch/hub/", launch_hub),
+    path("launch/control/", launch_control_dashboard),
+    path("launch/alerts/", launch_alerts_list),
+    path("launch/alerts/<int:alert_id>/ack/", launch_alert_ack),
+    path("launch/alerts/<int:alert_id>/resolve/", launch_alert_resolve),
+    path("launch/incidents/", launch_incidents),
+    path("launch/incidents/<int:incident_id>/", launch_incident_detail),
+    path("launch/incidents/<int:incident_id>/export/", launch_incident_export),
+    path("launch/support/", launch_support_queue),
+    path("launch/onboarding/", launch_onboarding),
+    path("launch/finance/", launch_finance_reconciliation),
+    path("launch/finance/export/", launch_finance_export),
+    path("launch/kpis/", launch_kpis),
+    path("launch/checklist/", launch_checklist),
 ]

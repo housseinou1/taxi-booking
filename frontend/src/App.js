@@ -28,6 +28,7 @@ import ExecutiveDashboard from "./admin/executive/ExecutiveDashboard";
 import OperationsCenter from "./admin/operations/OperationsCenter";
 import AIOperationsDashboard from "./admin/ai/AIOperationsDashboard";
 import ProductionStatus from "./admin/status/ProductionStatus";
+import LaunchHub from "./admin/launch/LaunchHub";
 import InstallAppButton from "./InstallAppButton";
 import NotificationCenter from "./components/NotificationCenter";
 import YalaAIAssistant from "./components/YalaAIAssistant";
@@ -423,6 +424,7 @@ function App() {
     else if (currentPath === "/admin/operations") setPage("admin-operations");
     else if (currentPath === "/admin/ai-operations") setPage("admin-ai-operations");
     else if (currentPath === "/admin/status") setPage("admin-status");
+    else if (currentPath === "/admin/launch") setPage("admin-launch");
     else if (currentPath === "/settings") setPage("settings");
     else if (currentPath === "/terms") setPage("terms");
     else if (currentPath === "/privacy") setPage("privacy");
@@ -864,6 +866,10 @@ function App() {
 
   if (page === "admin-status") {
     return withInstall(<ProductionStatus />);
+  }
+
+  if (page === "admin-launch") {
+    return withInstall(<LaunchHub />);
   }
 
   if (page === "payment-setup") {
