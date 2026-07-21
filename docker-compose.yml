@@ -79,6 +79,33 @@ services:
     expose:
       - "8000"
 
+  django-replica-2:
+    build:
+      context: ./backend/taxi
+      dockerfile: Dockerfile
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --noinput &&
+             daphne -b 0.0.0.0 -p 8000 taxi.asgi:application"
+    volumes:
+      - ./backend/taxi/media:/app/media
+    env_file:
+      - ./backend/taxi/.env.production
+    environment:
+      DATABASE_URL: postgres://yala_user:${POSTGRES_PASSWORD}@postgres:5432/yala_db
+      DATABASE_SSL_REQUIRE: "False"
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: always
+    expose:
+      - "8000"
+
   postgres:
     image: postgres:15-alpine
     volumes:

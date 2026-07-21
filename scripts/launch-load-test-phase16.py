@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 API = os.environ.get("YALA_API_BASE", "https://api.yalataxi.live").rstrip("/")
 ADMIN_EMAIL = os.environ.get("YALA_ADMIN_EMAIL", "")
 ADMIN_PASSWORD = os.environ.get("YALA_ADMIN_PASSWORD", "")
+AUTH_TOKEN = os.environ.get("LOAD_AUTH_TOKEN", "")
 CTX = ssl.create_default_context()
 
 # Simulated concurrency (not unique users — repeated health/auth patterns)
@@ -34,14 +35,24 @@ class Result:
 
 
 def login() -> str:
+    if AUTH_TOKEN:
+        return AUTH_TOKEN
     req = urllib.request.Request(
         f"{API}/auth/login/",
         data=json.dumps({"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}).encode(),
         headers={"Content-Type": "application/json"},
         method="POST",
     )
-    with urllib.request.urlopen(req, context=CTX, timeout=30) as resp:
-        return json.loads(resp.read())["access"]
+    try:
+        with urllib.request.urlopen(req, context=CTX, timeout=30) as resp:
+            return json.loads(resp.read())["access"]
+    except urllib.error.HTTPError as exc:
+        if exc.code == 429:
+            raise RuntimeError(
+                "login rate-limited (429); set LOAD_AUTH_TOKEN from internal JWT "
+                "or wait for auth_limit cooldown"
+            ) from exc
+        raise
 
 
 def hit(path: str, token: str | None = None) -> Result:
