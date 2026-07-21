@@ -196,7 +196,10 @@ class DriverPayoutMethod(models.Model):
     phone_number = models.CharField(max_length=30, blank=True, default="")
     wallet_id = models.CharField(max_length=100, blank=True, default="")
     is_default = models.BooleanField(default=True)
+    is_verified = models.BooleanField(default=False)
+    verified_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         if self.payout_type == "bank_account":
@@ -279,6 +282,9 @@ class WithdrawalRequest(models.Model):
         related_name="paid_withdrawals",
     )
     otp_verified_at = models.DateTimeField(null=True, blank=True)
+    idempotency_key = models.CharField(max_length=64, blank=True, default="")
+    reference = models.CharField(max_length=120, blank=True, default="")
+    payment_reference = models.CharField(max_length=120, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -315,6 +321,7 @@ class WalletAccount(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="wallet_account"
     )
     balance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    pending_balance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     currency = models.CharField(max_length=10, default="MRU")
     is_active = models.BooleanField(default=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -339,8 +346,14 @@ class WalletTransaction(models.Model):
         ("no_show", "Rider No-Show Compensation"),
         ("adjustment", "Admin Adjustment"),
     ]
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("completed", "Completed"),
+        ("reversed", "Reversed"),
+    ]
     wallet = models.ForeignKey(WalletAccount, on_delete=models.CASCADE, related_name="transactions")
     transaction_type = models.CharField(max_length=20, choices=TYPE_CHOICES)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="completed")
     amount = models.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(0.01)])
     is_credit = models.BooleanField()
     balance_after = models.DecimalField(max_digits=12, decimal_places=2)
