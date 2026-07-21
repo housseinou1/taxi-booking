@@ -26,9 +26,9 @@ ENDPOINTS = [
     "/operations/executive/security/",
     "/operations/executive/support/",
     "/operations/executive/qa/",
-    "/operations/executive/reports/export/?format=csv",
-    "/operations/executive/reports/export/?format=xlsx",
-    "/operations/executive/reports/export/?format=pdf",
+    "/operations/executive/reports/export/?export_format=csv",
+    "/operations/executive/reports/export/?export_format=xlsx",
+    "/operations/executive/reports/export/?export_format=pdf",
 ]
 
 

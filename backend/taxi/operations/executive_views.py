@@ -114,7 +114,8 @@ def executive_qa(request):
 @api_view(["GET"])
 @permission_classes([IsExecutiveStaff])
 def executive_export(request):
-    export_format = (request.query_params.get("format") or "csv").lower()
+    # DRF reserves the `format` query param; use `export_format` instead.
+    export_format = (request.query_params.get("export_format") or "csv").lower()
     filters = {
         "date_from": request.query_params.get("date_from"),
         "date_to": request.query_params.get("date_to"),

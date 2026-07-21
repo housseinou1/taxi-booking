@@ -184,7 +184,7 @@ export default function ExecutiveDashboard() {
   const handleExport = async (format) => {
     setExporting(true);
     try {
-      const response = await exportExecutiveReport({ format, period });
+      const response = await exportExecutiveReport({ export_format: format, period });
       const blob = new Blob([response.data]);
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
