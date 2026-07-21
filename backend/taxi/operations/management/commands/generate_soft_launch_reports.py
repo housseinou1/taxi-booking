@@ -79,7 +79,7 @@ def build_pilot_driver_report() -> dict:
     with_payout = len(payout_user_ids & approved_user_ids)
 
     wallet_user_ids = set(
-        WalletAccount.objects.filter(balance__gt=0).values_list("user_id", flat=True)
+        WalletAccount.objects.filter(balance__gt=0).values_list("owner_id", flat=True)
     )
     with_wallet = len(wallet_user_ids & approved_user_ids)
 
@@ -123,7 +123,7 @@ def build_pilot_courier_report() -> dict:
     available = approved_couriers.filter(driver__driver_profile__is_available=True).count()
 
     with_wallet = WalletAccount.objects.filter(
-        user_id__in=approved_couriers.values_list("driver_id", flat=True),
+        owner_id__in=approved_couriers.values_list("driver_id", flat=True),
         balance__gt=0,
     ).count()
 
