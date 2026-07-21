@@ -17,6 +17,7 @@ API_BASE = os.environ.get("YALA_API_BASE", "https://api.yalataxi.live").rstrip("
 ADMIN_BASE = os.environ.get("YALA_ADMIN_BASE", "https://www.yalataxi.live").rstrip("/")
 ADMIN_EMAIL = os.environ.get("YALA_ADMIN_EMAIL", "")
 ADMIN_PASSWORD = os.environ.get("YALA_ADMIN_PASSWORD", "")
+AUTH_TOKEN = os.environ.get("LOAD_AUTH_TOKEN", "")
 
 
 @dataclass
@@ -79,6 +80,8 @@ def http_post_json(url: str, payload: dict, headers: dict | None = None, timeout
 
 
 def login_admin() -> tuple[str | None, CheckResult]:
+    if AUTH_TOKEN:
+        return AUTH_TOKEN, CheckResult("admin_login", "pass", "LOAD_AUTH_TOKEN provided")
     if not ADMIN_EMAIL or not ADMIN_PASSWORD:
         return None, CheckResult("admin_login", "skip", "YALA_ADMIN_EMAIL/PASSWORD not set")
     code, data, ms = http_post_json(
@@ -143,11 +146,13 @@ def run_checks() -> list[CheckResult]:
             )
         )
 
-    # Phase 12/13 API surfaces
+    # Phase 12/13/15 API surfaces
     for path, name in [
         ("/operations/center/dashboard/", "operations_center"),
         ("/operations/ai/dashboard/", "ai_operations"),
         ("/operations/executive/dashboard/", "executive_dashboard"),
+        ("/operations/launch/hub/", "launch_hub"),
+        ("/operations/launch/control/", "launch_control"),
     ]:
         code, data, ms, _ = http_get(f"{API_BASE}{path}", headers=auth_headers)
         if not token:
@@ -166,6 +171,7 @@ def run_checks() -> list[CheckResult]:
         ("/admin/executive", "admin_ui_executive"),
         ("/admin/operations", "admin_ui_operations"),
         ("/admin/ai-operations", "admin_ui_ai"),
+        ("/admin/launch", "admin_ui_launch"),
         ("/admin/status", "admin_ui_status"),
     ]:
         code, data, ms, _ = http_get(f"{ADMIN_BASE}{path}")
