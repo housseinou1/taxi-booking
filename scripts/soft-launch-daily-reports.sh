@@ -11,8 +11,10 @@ cd "$APP_DIR"
 mkdir -p "$OUTPUT_DIR"
 
 docker compose -p "$COMPOSE_PROJECT" exec -T django python manage.py generate_soft_launch_reports \
-  --output-dir "$OUTPUT_DIR" \
+  --output-dir /tmp/soft-launch-reports \
   --report "$REPORT"
 
+docker compose -p "$COMPOSE_PROJECT" cp "django:/tmp/soft-launch-reports/." "$OUTPUT_DIR/" 2>/dev/null || true
+
 echo "Reports written to $OUTPUT_DIR"
-ls -la "$OUTPUT_DIR" | tail -10
+ls -la "$OUTPUT_DIR" | tail -12
