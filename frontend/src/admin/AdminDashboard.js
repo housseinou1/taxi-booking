@@ -44,6 +44,18 @@ const formatDocumentStatus = (status) => {
   return "Missing expiration";
 };
 
+const formatDateTime = (value) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+};
+
 const documentStatusStyle = (status) => ({
   color:
     status === "valid"
@@ -276,6 +288,8 @@ function AdminDashboard() {
 
   const [page, setPage] = useState(getInitialAdminSection);
   const [searchQuery, setSearchQuery] = useState("");
+  const [withdrawalMethodFilter, setWithdrawalMethodFilter] = useState("");
+  const [withdrawalStatusFilter, setWithdrawalStatusFilter] = useState("");
   const [drivers, setDrivers] = useState([]);
   const [users, setUsers] = useState([]);
   const [rides, setRides] = useState([]);
@@ -701,8 +715,12 @@ function AdminDashboard() {
   };
 
   const approveWithdrawal = async (id) => {
+    const adminNote = await showPrompt("Optional approval note:");
+    if (adminNote === null) return;
     try {
-      await authenticatedApi.post(`${API_URL}/payments/withdrawals/${id}/approve/`);
+      await authenticatedApi.post(`${API_URL}/payments/withdrawals/${id}/approve/`, {
+        admin_note: adminNote,
+      });
       showToast("Withdrawal approved", "success");
       fetchWithdrawals();
     } catch (error) {
@@ -712,8 +730,16 @@ function AdminDashboard() {
   };
 
   const rejectWithdrawal = async (id) => {
+    const adminNote = await showPrompt("Rejection reason (required):");
+    if (adminNote === null) return;
+    if (!adminNote.trim()) {
+      showToast("Rejection reason is required", "error");
+      return;
+    }
     try {
-      await authenticatedApi.post(`${API_URL}/payments/withdrawals/${id}/reject/`);
+      await authenticatedApi.post(`${API_URL}/payments/withdrawals/${id}/reject/`, {
+        admin_note: adminNote,
+      });
       showToast("Withdrawal rejected", "error");
       fetchWithdrawals();
     } catch (error) {
@@ -723,8 +749,16 @@ function AdminDashboard() {
   };
 
   const markWithdrawalPaid = async (id) => {
+    const paymentReference = await showPrompt("Payment reference:");
+    if (paymentReference === null) return;
+    if (!paymentReference.trim()) {
+      showToast("Payment reference is required", "error");
+      return;
+    }
     try {
-      await authenticatedApi.post(`${API_URL}/payments/withdrawals/${id}/mark-paid/`);
+      await authenticatedApi.post(`${API_URL}/payments/withdrawals/${id}/mark-paid/`, {
+        payment_reference: paymentReference,
+      });
       showToast("Withdrawal marked paid", "success");
       fetchWithdrawals();
     } catch (error) {
@@ -834,6 +868,9 @@ function AdminDashboard() {
   const menuItems = [
     { key: "overview", label: "Overview" },
     { key: "executive-link", label: "Executive Dashboard", path: "/admin/executive" },
+    { key: "operations-link", label: "Operations Center", path: "/admin/operations" },
+    { key: "ai-ops-link", label: "AI Operations", path: "/admin/ai-operations" },
+    { key: "status-link", label: "Production Status", path: "/admin/status" },
     { key: "verification", label: "Verification" },
     { key: "riders", label: "Riders" },
     { key: "drivers", label: "Drivers" },
@@ -1063,15 +1100,21 @@ function AdminDashboard() {
       "driver_name",
     ])
   );
-  const filteredWithdrawals = withdrawals.filter((item) =>
-    matchesSearch(item, searchQuery, [
+  const filteredWithdrawals = withdrawals.filter((item) => {
+    const matchesSearchQuery = matchesSearch(item, searchQuery, [
       "id",
       "driver",
       "driver_name",
       "status",
       "payout_method_display",
-    ])
-  );
+    ]);
+    const matchesMethod =
+      !withdrawalMethodFilter ||
+      (item.payout_method_display || "").toLowerCase().includes(withdrawalMethodFilter);
+    const matchesStatus =
+      !withdrawalStatusFilter || item.status === withdrawalStatusFilter;
+    return matchesSearchQuery && matchesMethod && matchesStatus;
+  });
 
   const refreshAdminData = () => {
     fetchDrivers();
@@ -1908,6 +1951,41 @@ function AdminDashboard() {
 
             <h2 style={subHeadingStyle}>Requests list</h2>
 
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
+              <select
+                value={withdrawalMethodFilter}
+                onChange={(e) => setWithdrawalMethodFilter(e.target.value)}
+                style={selectInputStyle}
+              >
+                <option value="">All methods</option>
+                <option value="bankily">Bankily</option>
+                <option value="sedad">Sedad</option>
+                <option value="masravi">Masravi</option>
+                <option value="bank">Bank account</option>
+              </select>
+              <select
+                value={withdrawalStatusFilter}
+                onChange={(e) => setWithdrawalStatusFilter(e.target.value)}
+                style={selectInputStyle}
+              >
+                <option value="">All statuses</option>
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="paid">Paid</option>
+                <option value="rejected">Rejected</option>
+              </select>
+              <button
+                type="button"
+                onClick={() => {
+                  setWithdrawalMethodFilter("");
+                  setWithdrawalStatusFilter("");
+                }}
+                style={secondaryButtonStyle}
+              >
+                Clear filters
+              </button>
+            </div>
+
             {filteredWithdrawals.length === 0 ? (
               <p>No withdrawal requests.</p>
             ) : (
@@ -1936,11 +2014,41 @@ function AdminDashboard() {
                   </p>
 
                   <p>
-                    <b>Status:</b> {item.status}
+                    <b>Reference:</b> {item.reference || "—"}
+                  </p>
+
+                  {item.payment_reference && (
+                    <p>
+                      <b>Payment reference:</b> {item.payment_reference}
+                    </p>
+                  )}
+
+                  {item.admin_note && (
+                    <p>
+                      <b>Admin note:</b> {item.admin_note}
+                    </p>
+                  )}
+
+                  {item.approved_by_email && (
+                    <p>
+                      <b>Approved by:</b> {item.approved_by_email}{" "}
+                      {item.approved_at && formatDateTime(item.approved_at)}
+                    </p>
+                  )}
+
+                  {item.paid_by_email && (
+                    <p>
+                      <b>Paid by:</b> {item.paid_by_email}{" "}
+                      {item.paid_at && formatDateTime(item.paid_at)}
+                    </p>
+                  )}
+
+                  <p>
+                    <b>Created:</b> {formatDateTime(item.created_at)}
                   </p>
 
                   {item.status === "pending" && (
-                    <>
+                    <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
                       <button
                         style={approveButton}
                         onClick={() => approveWithdrawal(item.id)}
@@ -1954,16 +2062,34 @@ function AdminDashboard() {
                       >
                         Reject
                       </button>
-                    </>
+                    </div>
                   )}
 
                   {item.status === "approved" && (
-                    <button
-                      style={approveButton}
-                      onClick={() => markWithdrawalPaid(item.id)}
-                    >
-                      Mark Paid
-                    </button>
+                    <div style={{ marginTop: 10 }}>
+                      <button
+                        style={approveButton}
+                        onClick={() => markWithdrawalPaid(item.id)}
+                      >
+                        Mark Paid
+                      </button>
+                    </div>
+                  )}
+
+                  {Array.isArray(item.audit_history) && item.audit_history.length > 0 && (
+                    <details style={{ marginTop: 12, color: "#94a3b8", fontSize: 13 }}>
+                      <summary style={{ cursor: "pointer", color: "#e2e8f0" }}>
+                        Audit history ({item.audit_history.length})
+                      </summary>
+                      <ul style={{ margin: "8px 0 0", paddingLeft: 18 }}>
+                        {item.audit_history.map((log, index) => (
+                          <li key={index}>
+                            {formatDateTime(log.created_at)} — {log.action} — {log.summary}{" "}
+                            ({log.actor})
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
                   )}
                 </div>
               ))
@@ -4406,6 +4532,26 @@ const rejectButton = {
   color: "white",
   cursor: "pointer",
   fontWeight: 950,
+};
+
+const selectInputStyle = {
+  padding: "10px 14px",
+  borderRadius: "10px",
+  border: `1px solid ${ADMIN_BLUE_BORDER}`,
+  background: ADMIN_BLUE_PANEL_DARK,
+  color: "white",
+  fontSize: 14,
+  minWidth: 160,
+};
+
+const secondaryButtonStyle = {
+  padding: "10px 14px",
+  borderRadius: "10px",
+  border: `1px solid ${ADMIN_BLUE_BORDER}`,
+  background: "transparent",
+  color: "#cbd5e1",
+  cursor: "pointer",
+  fontWeight: 700,
 };
 
 const accessCardStyle = {

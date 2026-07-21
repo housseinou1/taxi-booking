@@ -190,6 +190,7 @@ def score_driver(
     distance_km: float,
     radius_km: float,
     now=None,
+    ride_type: Optional[str] = None,
 ) -> RankedDriver:
     now = now or timezone.now()
     eta_minutes = (distance_km / AVG_CITY_SPEED_KMH) * 60.0
@@ -222,6 +223,14 @@ def score_driver(
         "cancellation": round(cancel_s, 4),
         "level": round(level_s, 4),
         "fairness": round(fair_s, 4),
+        "vehicle_match": 1.0 if vehicle_matches(ride_type, profile.car_type) else 0.0,
+        "online_minutes": round(
+            max((now - profile.available_since).total_seconds() / 60.0, 0)
+            if profile.available_since
+            else 0,
+            1,
+        ),
+        "traffic": None,
         "total": round(score, 4),
     }
     return RankedDriver(
@@ -294,7 +303,13 @@ def rank_eligible_drivers(
             continue
 
         ranked.append(
-            score_driver(profile, distance_km=distance, radius_km=radius_km, now=now)
+            score_driver(
+                profile,
+                distance_km=distance,
+                radius_km=radius_km,
+                now=now,
+                ride_type=ride.ride_type,
+            )
         )
 
     ranked.sort(
@@ -336,3 +351,69 @@ def select_best_driver(
         round_no += 1
 
     return None, last_radius, max_dispatch_round()
+
+
+def explain_ranked_driver(ranked: RankedDriver, ride_type: Optional[str] = None) -> dict:
+    """Human-readable explanation for why a driver was selected."""
+    profile = ranked.profile
+    breakdown = ranked.breakdown or {}
+    reasons = []
+
+    if ranked.distance_km <= 1:
+        reasons.append(f"Closest available driver ({ranked.distance_km} km from pickup).")
+    else:
+        reasons.append(f"Within search radius at {ranked.distance_km} km ({ranked.eta_minutes} min ETA).")
+
+    rating = float(profile.average_rating or 0)
+    if rating >= 4.5:
+        reasons.append(f"Strong rider rating ({rating:.1f}/5).")
+    elif rating > 0:
+        reasons.append(f"Rider rating {rating:.1f}/5.")
+
+    accept_pts = profile.acceptance_rate_points or 0
+    if accept_pts >= 90:
+        reasons.append(f"High acceptance rate ({accept_pts}%).")
+
+    cancel_rate = _cancellation_rate(profile)
+    if cancel_rate <= 0.05:
+        reasons.append("Low cancellation history.")
+    elif cancel_rate > 0.2:
+        reasons.append(f"Moderate cancellation rate ({cancel_rate * 100:.0f}%) — still best match.")
+
+    online_min = breakdown.get("online_minutes") or 0
+    if online_min >= 30:
+        reasons.append(f"Online for {int(online_min)} minutes (fairness boost).")
+
+    if vehicle_matches(ride_type, profile.car_type):
+        reasons.append(f"Vehicle type '{profile.car_type or 'regular'}' matches ride request.")
+
+    reasons.append("Traffic overlay not available — ETA uses average city speed.")
+
+    weights = {
+        "distance": 0.40,
+        "eta": 0.15,
+        "rating": 0.12,
+        "acceptance": 0.10,
+        "cancellation": 0.08,
+        "level": 0.05,
+        "fairness": 0.10,
+    }
+    factor_contributions = []
+    for key, weight in weights.items():
+        value = breakdown.get(key)
+        if value is not None:
+            factor_contributions.append(
+                {"factor": key, "weight": weight, "score": value, "contribution": round(weight * value, 4)}
+            )
+    factor_contributions.sort(key=lambda item: item["contribution"], reverse=True)
+
+    return {
+        "driver_id": profile.user_id,
+        "driver_name": profile.user.get_full_name() or profile.user.email,
+        "total_score": ranked.score,
+        "distance_km": ranked.distance_km,
+        "eta_minutes": ranked.eta_minutes,
+        "breakdown": breakdown,
+        "top_factors": factor_contributions[:5],
+        "reasons": reasons,
+    }

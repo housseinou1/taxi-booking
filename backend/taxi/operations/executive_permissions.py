@@ -43,6 +43,18 @@ def can_ceo_actions(user) -> bool:
     return user_in_groups(user, CEO_ONLY_GROUPS)
 
 
+OPS_DISPATCH_GROUPS = {"CEO", "Super Admin", "Operations Manager"}
+
+
+def can_dispatch_operations(user) -> bool:
+    return user_in_groups(user, OPS_DISPATCH_GROUPS)
+
+
+class IsOperationsDispatcher(BasePermission):
+    def has_permission(self, request, view):
+        return can_dispatch_operations(request.user)
+
+
 class IsExecutiveStaff(BasePermission):
     def has_permission(self, request, view):
         return can_view_executive(request.user)

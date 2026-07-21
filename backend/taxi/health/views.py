@@ -2,8 +2,9 @@ from django.db import connections
 from django.core.cache import cache
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAdminUser
 from rest_framework.response import Response
+import time
 
 
 def _check_database():
@@ -47,4 +48,50 @@ def readiness(request):
             "redis": redis_status,
         },
         status=http_status,
+    )
+
+
+def _check_celery():
+    try:
+        from celery import current_app
+
+        inspector = current_app.control.inspect(timeout=2.0)
+        ping = inspector.ping() if inspector else None
+        if ping:
+            return "ok", len(ping)
+        return "unknown", 0
+    except Exception:
+        return "error", 0
+
+
+@api_view(["GET"])
+@permission_classes([IsAdminUser])
+def production_status(request):
+    """Aggregated production readiness snapshot for admin status page."""
+    started = time.perf_counter()
+    db_status = _check_database()
+    redis_status = _check_redis()
+    celery_status, worker_count = _check_celery()
+
+    checks = {
+        "api": "ok",
+        "database": db_status,
+        "redis": redis_status,
+        "celery": celery_status,
+        "celery_workers": worker_count,
+        "websocket": "ok" if redis_status == "ok" else "degraded",
+    }
+    overall = "ok" if db_status == "ok" and redis_status == "ok" else "degraded"
+    if db_status == "error" or redis_status == "error":
+        overall = "critical"
+
+    elapsed_ms = round((time.perf_counter() - started) * 1000, 1)
+    return Response(
+        {
+            "status": overall,
+            "service": "yala-api",
+            "checks": checks,
+            "response_time_ms": elapsed_ms,
+            "timestamp": time.time(),
+        }
     )

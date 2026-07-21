@@ -8,6 +8,8 @@ from channels.db import database_sync_to_async
 logger = logging.getLogger(__name__)
 
 RIDES_GROUP = "rides"
+OPERATIONS_CENTER_GROUP = "operations_center"
+ADMIN_SAFETY_GROUP = "admin_safety"
 
 # Maximum interval (in seconds) for broadcasting driver location to session groups
 LOCATION_BROADCAST_INTERVAL_SECONDS = 5
@@ -67,6 +69,8 @@ class RideConsumer(AsyncWebsocketConsumer):
         self.delivery_chat_groups = set()
         self.merchant_groups = set()
         self.joined_admin_group = False
+        self.joined_ops_center_group = False
+        self.joined_admin_safety_group = False
         # Timestamp of last location broadcast to session groups (throttle)
         self._last_session_location_broadcast = 0.0
 
@@ -85,6 +89,14 @@ class RideConsumer(AsyncWebsocketConsumer):
         if self.user.is_staff:
             await self.channel_layer.group_add(RIDES_GROUP, self.channel_name)
             self.joined_admin_group = True
+
+        if await self._user_can_ops_center():
+            await self.channel_layer.group_add(
+                OPERATIONS_CENTER_GROUP, self.channel_name
+            )
+            await self.channel_layer.group_add(ADMIN_SAFETY_GROUP, self.channel_name)
+            self.joined_ops_center_group = True
+            self.joined_admin_safety_group = True
 
         # Join user-specific groups
         self.driver_group = f"driver_{self.user.id}"
@@ -117,6 +129,14 @@ class RideConsumer(AsyncWebsocketConsumer):
     async def disconnect(self, close_code):
         if self.joined_admin_group:
             await self.channel_layer.group_discard(RIDES_GROUP, self.channel_name)
+        if self.joined_ops_center_group:
+            await self.channel_layer.group_discard(
+                OPERATIONS_CENTER_GROUP, self.channel_name
+            )
+        if self.joined_admin_safety_group:
+            await self.channel_layer.group_discard(
+                ADMIN_SAFETY_GROUP, self.channel_name
+            )
 
         # Leave driver-specific group
         if self.driver_group:
@@ -617,6 +637,26 @@ class RideConsumer(AsyncWebsocketConsumer):
         except Exception as exc:
             logger.error("WebSocket send error (ride_update): %s", exc)
 
+    async def operations_update(self, event):
+        try:
+            await self.send(
+                text_data=json.dumps(
+                    {"type": "operations_update", **event.get("payload", {})}
+                )
+            )
+        except Exception as exc:
+            logger.error("WebSocket send error (operations_update): %s", exc)
+
+    async def safety_alert(self, event):
+        try:
+            await self.send(
+                text_data=json.dumps(
+                    {"type": "safety_alert", **event.get("payload", {})}
+                )
+            )
+        except Exception as exc:
+            logger.error("WebSocket send error (safety_alert): %s", exc)
+
     async def ride_request(self, event):
         """
         Send a new ride request to the driver.
@@ -885,6 +925,12 @@ class RideConsumer(AsyncWebsocketConsumer):
         from merchants.models import Merchant
 
         return Merchant.objects.filter(owner_id=self.user.id).exists()
+
+    @database_sync_to_async
+    def _user_can_ops_center(self):
+        from operations.executive_permissions import can_dispatch_operations
+
+        return can_dispatch_operations(self.user) or self.user.is_superuser
 
     @database_sync_to_async
     def _user_can_access_ride(self, ride_id):
