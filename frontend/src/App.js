@@ -431,6 +431,7 @@ function App() {
     else if (currentPath === "/support") setPage("support");
     else if (currentPath === "/services") setPage("services");
     else if (currentPath.match(/^\/trip-share\/[^/]+$/)) setPage("shared-trip");
+    else if (currentPath === "/" && getAppType() === "admin") setPage("admin");
     else setPage("home");
   }, [currentPath, navCounter]);
 
