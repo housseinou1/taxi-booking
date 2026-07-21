@@ -74,10 +74,13 @@ def hit(path: str, token: str | None = None) -> Result:
 def main() -> int:
     token = None
     if DISPATCH_REQUESTS > 0 or EXEC_REQUESTS > 0:
-        if not ADMIN_EMAIL or not ADMIN_PASSWORD:
-            print(json.dumps({"error": "set YALA_ADMIN_EMAIL and YALA_ADMIN_PASSWORD"}))
+        if AUTH_TOKEN:
+            token = AUTH_TOKEN
+        elif not ADMIN_EMAIL or not ADMIN_PASSWORD:
+            print(json.dumps({"error": "set LOAD_AUTH_TOKEN or YALA_ADMIN_EMAIL and YALA_ADMIN_PASSWORD"}))
             return 2
-        token = login()
+        else:
+            token = login()
 
     jobs: list[tuple[str, str | None]] = []
     jobs += [("/health/", None)] * RIDER_REQUESTS
