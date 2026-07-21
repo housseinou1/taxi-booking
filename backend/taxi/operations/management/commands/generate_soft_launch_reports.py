@@ -299,9 +299,9 @@ def build_daily_ceo_report() -> dict:
     finance = build_financial_reconciliation()
     support = build_support_panel()
     alerts = list(
-        LaunchAlert.objects.filter(is_resolved=False)
+        LaunchAlert.objects.filter(status__in=["active", "acknowledged"])
         .order_by("-created_at")[:20]
-        .values("id", "category", "severity", "message", "created_at")
+        .values("id", "alert_type", "severity", "title", "message", "created_at")
     )
     open_incidents = OpsIncident.objects.filter(status__in=["open", "investigating"]).count()
 
