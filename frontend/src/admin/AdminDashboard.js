@@ -833,6 +833,7 @@ function AdminDashboard() {
 
   const menuItems = [
     { key: "overview", label: "Overview" },
+    { key: "executive-link", label: "Executive Dashboard", path: "/admin/executive" },
     { key: "verification", label: "Verification" },
     { key: "riders", label: "Riders" },
     { key: "drivers", label: "Drivers" },

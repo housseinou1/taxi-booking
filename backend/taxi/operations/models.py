@@ -34,3 +34,34 @@ class VehicleMaintenanceReminder(models.Model):
         self.completed_at = timezone.now()
         self.save(update_fields=["status", "completed_at"])
 
+
+class PlatformSetting(models.Model):
+    """Key/value platform flags for executive controls (maintenance mode, etc.)."""
+
+    key = models.CharField(max_length=64, unique=True)
+    value = models.JSONField(default=dict, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="platform_setting_updates",
+    )
+
+    class Meta:
+        ordering = ["key"]
+
+    @classmethod
+    def get_value(cls, key: str, default=None):
+        row = cls.objects.filter(key=key).first()
+        return row.value if row else default
+
+    @classmethod
+    def set_value(cls, key: str, value, user=None):
+        row, _ = cls.objects.update_or_create(
+            key=key,
+            defaults={"value": value, "updated_by": user},
+        )
+        return row
+

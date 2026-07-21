@@ -1,4 +1,4 @@
-import React, { Suspense, useEffect, useRef, useState } from "react";
+import React, { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import { useTranslation } from "react-i18next";
 
@@ -24,6 +24,7 @@ import RiderLegalAcceptRoute from "./rider/RiderLegalAcceptRoute";
 import { DriverProvider } from "./driver/context/DriverContext";
 
 import AdminDashboard from "./admin/AdminDashboard";
+import ExecutiveDashboard from "./admin/executive/ExecutiveDashboard";
 import InstallAppButton from "./InstallAppButton";
 import NotificationCenter from "./components/NotificationCenter";
 import YalaAIAssistant from "./components/YalaAIAssistant";
@@ -91,7 +92,7 @@ function getBrandLogoSrc() {
 
 // Route filtering for native apps — only show relevant routes per app type
 const RIDER_ROUTES = ['/rider', '/rider-dashboard', '/rider/legal', '/rider-history', '/history', '/rider-reviews', '/saved-places', '/rider-profile', '/rider-payments', '/wallet', '/ride/share', '/delivery', '/merchant', '/merchant/register', '/services', '/login', '/register', '/settings', '/support', '/terms', '/privacy'];
-const DRIVER_ROUTES = ['/driver', '/driver/sign', '/driver/profile', '/driver/profile/edit', '/driver/documents', '/driver/code', '/driver/earnings', '/driver/feedback', '/driver/support', '/driver/achievements', '/driver/hall-of-fame', '/driver/history', '/services', '/login', '/register', '/settings', '/support', '/terms', '/privacy', '/payment-setup', '/driver-vehicle-setup'];
+const DRIVER_ROUTES = ['/driver', '/driver/sign', '/driver/profile', '/driver/profile/edit', '/driver/documents', '/driver/code', '/driver/earnings', '/driver/wallet', '/driver/feedback', '/driver/support', '/driver/achievements', '/driver/hall-of-fame', '/driver/history', '/services', '/login', '/register', '/settings', '/support', '/terms', '/privacy', '/payment-setup', '/driver-vehicle-setup'];
 const DELIVERY_ROUTES = ['/delivery/courier', '/delivery/account', '/delivery/bank', '/delivery/wallet', '/delivery/history', '/delivery/profile-setup', '/delivery/vehicle-setup', '/delivery/earnings', '/delivery/documents', '/delivery/profile/edit', '/delivery/support', '/delivery/settings', '/delivery/courier/terms', '/delivery/courier/sign', '/delivery/customer/terms', '/delivery/customer/settings', '/driver/deliveries', '/login', '/register', '/settings', '/support', '/terms', '/privacy'];
 
 const TAXI_DRIVER_ONLY_PAGES = new Set([
@@ -103,6 +104,8 @@ const TAXI_DRIVER_ONLY_PAGES = new Set([
   "driver-documents",
   "driver-code",
   "driver-earnings",
+  "driver-wallet",
+  "driver-wallet-withdraw",
   "driver-feedback",
   "driver-support",
   "driver-achievements",
@@ -193,6 +196,10 @@ const LazyDriverHallOfFame = React.lazy(() => import("./driver/DriverHallOfFame"
 const LazyDriverRideHistory = React.lazy(() => import("./driver/DriverRideHistory"));
 const LazyDriverSettings = React.lazy(() => import("./driver/DriverSettings"));
 const LazyDriverCodePage = React.lazy(() => import("./driver/DriverCodePage"));
+const LazyDriverDashboardNew = React.lazy(() => import("./driver/DriverDashboardNew"));
+const LazyDriverProfilePage = React.lazy(() => import("./driver/DriverProfilePage"));
+const LazyDriverProfileEditPage = React.lazy(() => import("./driver/DriverProfileEditPage"));
+const LazyDriverWallet = React.lazy(() => import("./driver/DriverWallet"));
 
 const driverPageFallback = (
   <div className="driver-shell-loading">Loading...</div>
@@ -210,7 +217,11 @@ function wrapDriverSecondaryPage(title, node, { backTo = "/driver", withProvider
 }
 
 function App() {
-  const currentPath = (window.location.pathname || "/").replace(/\/+$/, "") || "/";
+  const [navCounter, setNavCounter] = useState(0);
+  const currentPath = useMemo(() => {
+    void navCounter;
+    return (window.location.pathname || "/").replace(/\/+$/, "") || "/";
+  }, [navCounter]);
 
   const [page, setPage] = useState("home");
   const [paymentMethods, setPaymentMethods] = useState([]);
@@ -220,7 +231,6 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const sessionCheckStarted = useRef(false);
   const [, forceUpdate] = useState(0);
-  const [navCounter, setNavCounter] = useState(0);
 
   // Listen for pushState-based navigation (SPA tab switches)
   useEffect(() => {
@@ -284,10 +294,20 @@ function App() {
     }, API_URL);
   }, [isAuthenticated]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (currentPath === "/driver/deliveries") {
       window.location.replace("/delivery/courier");
       return;
+    }
+
+    const builtAppType = getAppType();
+    if (builtAppType !== "web" && currentPath === "/") {
+      const homePath = getAppHomePath();
+      if (homePath !== "/") {
+        window.history.replaceState(null, "", homePath);
+        setNavCounter((n) => n + 1);
+        return;
+      }
     }
 
     if (isDeliveryNativeApp()) {
@@ -371,6 +391,8 @@ function App() {
     else if (currentPath === "/driver/code") setPage("driver-code");
     else if (currentPath === "/driver/profile") setPage("driver-premium-profile");
     else if (currentPath === "/driver/earnings") setPage("driver-earnings");
+    else if (currentPath === "/driver/wallet/withdraw") setPage("driver-wallet-withdraw");
+    else if (currentPath === "/driver/wallet") setPage("driver-wallet");
     else if (currentPath === "/driver/feedback") setPage("driver-feedback");
     else if (currentPath === "/driver/support") setPage("driver-support");
     else if (currentPath === "/driver/achievements") setPage("driver-achievements");
@@ -394,6 +416,7 @@ function App() {
       setPage("admin");
     }
     else if (currentPath === "/admin/payments") setPage("admin-payments");
+    else if (currentPath === "/admin/executive") setPage("admin-executive");
     else if (currentPath === "/settings") setPage("settings");
     else if (currentPath === "/terms") setPage("terms");
     else if (currentPath === "/privacy") setPage("privacy");
@@ -401,7 +424,7 @@ function App() {
     else if (currentPath === "/services") setPage("services");
     else if (currentPath.match(/^\/trip-share\/[^/]+$/)) setPage("shared-trip");
     else setPage("home");
-  }, [currentPath]);
+  }, [currentPath, navCounter]);
 
   useEffect(() => {
     if (page === "rider-payments") {
@@ -427,14 +450,28 @@ function App() {
 
     let isMounted = true;
 
+    const finishSessionCheck = (authenticated) => {
+      if (!isMounted) return;
+      setIsAuthenticated(Boolean(authenticated));
+      setSessionChecked(true);
+    };
+
+    const timeoutId = window.setTimeout(() => {
+      if (!isMounted) return;
+      finishSessionCheck(hasStoredAuthCredentials());
+    }, 12000);
+
     const restoreSession = async () => {
       if (!hasStoredAuthCredentials()) {
         clearAuthSession();
-        if (isMounted) {
-          setIsAuthenticated(false);
-          setSessionChecked(true);
-        }
+        finishSessionCheck(false);
         return;
+      }
+
+      const cachedUser = getStoredUser();
+      if (cachedUser && Object.keys(cachedUser).length > 0) {
+        setIsAuthenticated(true);
+        setSessionChecked(true);
       }
 
       // If the user explicitly opened Admin, don't keep a Driver/Rider session alive.
@@ -450,27 +487,30 @@ function App() {
         const role = getUserRole(getStoredUser());
         if (role !== "admin") {
           clearAuthSession();
-          if (isMounted) {
-            setIsAuthenticated(false);
-            setSessionChecked(true);
-          }
+          finishSessionCheck(false);
           return;
         }
       }
 
-      const result = await restoreAuthSession({
-        requiredRole: getRequiredRoleForApp(),
-      });
-
-      if (!isMounted) return;
-      setIsAuthenticated(result.authenticated);
-      setSessionChecked(true);
+      try {
+        const result = await restoreAuthSession({
+          requiredRole: getRequiredRoleForApp(),
+        });
+        if (!isMounted) return;
+        finishSessionCheck(result.authenticated);
+      } catch (error) {
+        if (!isMounted) return;
+        finishSessionCheck(hasStoredAuthCredentials());
+      } finally {
+        window.clearTimeout(timeoutId);
+      }
     };
 
     restoreSession();
 
     return () => {
       isMounted = false;
+      window.clearTimeout(timeoutId);
     };
   }, []);
 
@@ -646,8 +686,7 @@ function App() {
         "rider-dashboard": "/rider-dashboard",
       };
       if (roleLockedHomes[page]) {
-        clearAuthSession();
-        return withInstall(<LoginRequiredRedirect path={roleLockedHomes[page]} />);
+        return withInstall(<RoleAccessRedirect user={user} />);
       }
       return withInstall(<RoleAccessRedirect user={user} />);
     }
@@ -805,6 +844,10 @@ function App() {
     return withInstall(<AdminPaymentDashboard />);
   }
 
+  if (page === "admin-executive") {
+    return withInstall(<ExecutiveDashboard />);
+  }
+
   if (page === "payment-setup") {
     return withInstall(
       <RiderShell title="Payment setup" backTo="/rider-dashboard">
@@ -887,7 +930,6 @@ function App() {
       window.location.replace("/delivery/courier");
       return null;
     }
-    const LazyDriverDashboardNew = React.lazy(() => import("./driver/DriverDashboardNew"));
     return withInstall(
       <Suspense fallback={<div style={{ minHeight: "100vh", background: "#0B1220" }} />}>
         <LazyDriverDashboardNew />
@@ -897,7 +939,6 @@ function App() {
   }
 
   if (page === "driver-account") {
-    const LazyDriverProfilePage = React.lazy(() => import("./driver/DriverProfilePage"));
     return withInstall(
       <Suspense fallback={<div style={{ minHeight: "100vh", backgroundColor: "#0B1220" }} />}>
         <LazyDriverProfilePage />
@@ -906,7 +947,6 @@ function App() {
   }
 
   if (page === "driver-premium-profile" || page === "driver-documents") {
-    const LazyDriverProfilePage = React.lazy(() => import("./driver/DriverProfilePage"));
     return withInstall(
       <Suspense fallback={<div style={{ minHeight: "100vh", backgroundColor: "#eef3ef" }} />}>
         <LazyDriverProfilePage />
@@ -919,7 +959,6 @@ function App() {
   }
 
   if (page === "driver-profile-edit") {
-    const LazyDriverProfileEditPage = React.lazy(() => import("./driver/DriverProfileEditPage"));
     return withInstall(
       <Suspense fallback={<div style={{ minHeight: "100vh", backgroundColor: "#eef3ef" }} />}>
         <LazyDriverProfileEditPage />
@@ -929,6 +968,18 @@ function App() {
 
   if (page === "driver-earnings") {
     return withInstall(wrapDriverSecondaryPage("Earnings", <LazyDriverEarnings />));
+  }
+
+  if (page === "driver-wallet") {
+    return withInstall(wrapDriverSecondaryPage("Driver Wallet", <LazyDriverWallet />));
+  }
+
+  if (page === "driver-wallet-withdraw") {
+    return withInstall(
+      wrapDriverSecondaryPage("Cash Out", <LazyDriverWallet withdrawMode />, {
+        backTo: "/driver/wallet",
+      })
+    );
   }
 
   if (page === "driver-hall-of-fame") {
@@ -1059,8 +1110,7 @@ function App() {
       markDeliveryCourierSession();
       return withInstall(<DeliveryDashboard />);
     }
-    if (getAppType() === 'driver' && isTaxiDriverContext()) {
-      const LazyDriverDashboardNew = React.lazy(() => import("./driver/DriverDashboardNew"));
+    if (getAppType() === "driver" && isTaxiDriverContext()) {
       return withInstall(
         <Suspense fallback={<div style={{ minHeight: "100vh", background: "#0B1220" }} />}>
           <LazyDriverDashboardNew />
@@ -1093,6 +1143,8 @@ function isProtectedPage(page) {
     "driver-documents",
     "driver-code",
     "driver-earnings",
+    "driver-wallet",
+    "driver-wallet-withdraw",
     "driver-feedback",
     "driver-support",
     "driver-achievements",
