@@ -283,6 +283,7 @@ export default function ExecutiveDashboard() {
     <div className="executive">
       <div className="executive__header">
         <div>
+          <a href="/admin" className="executive__back-link">← Back to Admin</a>
           <h1>Yala Executive Operations</h1>
           <p>CEO · Finance · Operations — live platform monitoring</p>
         </div>

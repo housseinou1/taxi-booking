@@ -1,6 +1,6 @@
 import { getAppType, isTaxiDriverContext } from "../native/platform";
 
-const ADMIN_PAGES = new Set(["admin", "admin-share-analytics", "delivery-admin", "admin-payments"]);
+const ADMIN_PAGES = new Set(["admin", "admin-share-analytics", "delivery-admin", "admin-payments", "admin-executive"]);
 
 const MERCHANT_PAGES = new Set(["merchant", "merchant-register", "merchant-legal-sign"]);
 

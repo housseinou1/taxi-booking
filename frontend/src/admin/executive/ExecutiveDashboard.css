@@ -37,6 +37,19 @@
   color: var(--exec-muted);
 }
 
+.executive__back-link {
+  display: inline-block;
+  font-size: 0.8rem;
+  color: var(--exec-muted);
+  text-decoration: none;
+  margin-bottom: 6px;
+  transition: color 0.2s;
+}
+
+.executive__back-link:hover {
+  color: var(--exec-text);
+}
+
 .executive__toolbar {
   display: flex;
   flex-wrap: wrap;
