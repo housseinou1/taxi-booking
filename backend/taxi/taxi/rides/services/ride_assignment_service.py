@@ -27,8 +27,8 @@ from taxi.rides.services.driver_dispatch_service import (
 from taxi.rides.timeout import (
     RIDE_REQUEST_TIMEOUT_SECONDS,
     cancel_ride_request_timeout,
+    schedule_ride_request_broadcast,
     start_ride_request_timeout,
-    _broadcast_ride_request,
 )
 
 logger = logging.getLogger(__name__)
@@ -148,17 +148,23 @@ def offer_ride_to_next_driver(ride: Ride, *, require_documents: bool = True) -> 
         radius_km=radius_km,
         dispatch_round=used_round,
     )
-    _broadcast_ride_request(ride, next_profile.user_id)
-    start_ride_request_timeout(ride.id, next_profile.user_id)
+    driver_user_id = next_profile.user_id
+    schedule_ride_request_broadcast(ride, driver_user_id)
+    start_ride_request_timeout(ride.id, driver_user_id)
 
-    try:
-        from notifications.push import notify_new_ride_request
+    def _notify_after_commit() -> None:
+        try:
+            from notifications.push import notify_new_ride_request
 
-        notify_new_ride_request(next_profile.user, ride)
-    except Exception:
-        logger.exception(
-            "Failed to push ride offer %s to driver %s", ride.id, next_profile.user_id
-        )
+            notify_new_ride_request(next_profile.user, ride)
+        except Exception:
+            logger.exception(
+                "Failed to push ride offer %s to driver %s",
+                ride.id,
+                driver_user_id,
+            )
+
+    transaction.on_commit(_notify_after_commit)
 
     logger.info(
         "Offered ride %s to driver %s (score=%.3f dist=%.2fkm round=%s radius=%.1f)",

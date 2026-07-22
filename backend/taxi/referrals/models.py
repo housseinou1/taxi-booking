@@ -282,3 +282,50 @@ class FlaggedReferral(models.Model):
 
     def __str__(self):
         return f"FlaggedReferral: {self.reason} ({self.status})"
+
+
+class MerchantReferralCode(models.Model):
+    merchant = models.OneToOneField(
+        "merchants.Merchant",
+        on_delete=models.CASCADE,
+        related_name="referral_code_record",
+    )
+    code = models.CharField(max_length=8, unique=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.merchant.business_name} — {self.code}"
+
+
+class MerchantReferral(models.Model):
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("completed", "Completed"),
+        ("expired", "Expired"),
+        ("revoked", "Revoked"),
+    ]
+    REWARD_STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("issued", "Issued"),
+        ("expired", "Expired"),
+    ]
+
+    referral_code = models.ForeignKey(
+        MerchantReferralCode,
+        on_delete=models.CASCADE,
+        related_name="referrals",
+    )
+    referred_merchant = models.OneToOneField(
+        "merchants.Merchant",
+        on_delete=models.CASCADE,
+        related_name="merchant_referral_as_referee",
+    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
+    reward_status = models.CharField(max_length=20, choices=REWARD_STATUS_CHOICES, default="pending")
+    reward_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"MerchantReferral {self.referral_code.merchant.business_name} -> {self.referred_merchant.business_name}"

@@ -123,6 +123,7 @@ class Payment(models.Model):
         ("masrvi", "Masravi"),
         ("seddad", "Seddad"),
         ("wallet", "Yala Wallet"),
+        ("corporate", "Corporate Account"),
         ("test", "Test"),
     ]
 
@@ -162,6 +163,11 @@ class Payment(models.Model):
 
     transaction_id = models.CharField(max_length=255, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["ride_id", "status"], name="payment_ride_status_idx"),
+        ]
 
     def __str__(self):
         return f"Payment #{self.id} - Ride {self.ride_id}"
@@ -289,8 +295,16 @@ class WithdrawalRequest(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["driver", "idempotency_key"],
+                condition=models.Q(idempotency_key__gt=""),
+                name="uniq_driver_withdrawal_idempotency_key",
+            ),
+        ]
         indexes = [
             models.Index(fields=["driver", "status"], name="withdrawal_driver_status_idx"),
+            models.Index(fields=["status", "-created_at"], name="withdrawal_status_created_idx"),
         ]
 
     def __str__(self):
@@ -496,6 +510,7 @@ class PaymentRecord(models.Model):
         indexes = [
             models.Index(fields=["status", "-created_at"], name="payment_record_status_idx"),
             models.Index(fields=["source", "-created_at"], name="payment_record_source_idx"),
+            models.Index(fields=["method", "status", "-created_at"], name="payrec_method_status_idx"),
         ]
 
     def __str__(self):
@@ -543,6 +558,9 @@ class RefundRequest(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["status", "-created_at"], name="refund_status_created_idx"),
+        ]
 
     def __str__(self):
         return f"Refund #{self.id} — {self.amount} — {self.status}"

@@ -745,11 +745,14 @@ class DeliveryService:
 
         service = MerchantOrderService()
         try:
-            if delivery_status == "picked_up" and order.status == "ready_for_pickup":
+            if delivery_status in {"accepted", "courier_arriving"} and order.status == "ready_for_pickup":
+                service.mark_courier_assigned(order)
+            elif delivery_status == "picked_up" and order.status in {"ready_for_pickup", "courier_assigned"}:
                 service.mark_picked_up(order)
             elif delivery_status == "delivered" and order.status in {
                 "picked_up",
                 "ready_for_pickup",
+                "courier_assigned",
             }:
                 service.mark_delivered(order)
         except MerchantOrderError:

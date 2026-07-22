@@ -1,4 +1,5 @@
 import React from "react";
+import { navigateInApp } from "../../navigation/inAppNavigation";
 import "./DriverShell.css";
 
 export default function DriverShell({
@@ -13,7 +14,7 @@ export default function DriverShell({
       onBack();
       return;
     }
-    window.location.href = backTo;
+    navigateInApp(backTo);
   };
 
   return (

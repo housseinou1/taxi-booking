@@ -3,6 +3,7 @@ from decimal import Decimal
 import logging
 import math
 import secrets
+import sys
 import threading
 
 from django.shortcuts import get_object_or_404
@@ -21,6 +22,7 @@ from rest_framework import status
 
 from taxi.market import MARKET, calculate_app_fee, calculate_fare
 from payments.services import (
+    authorize_corporate_ride_payment,
     authorize_ride_payment,
     cancel_ride_payment,
     capture_ride_payment,
@@ -35,6 +37,7 @@ from legal.ride_terms import ensure_ride_legal_acceptance
 from .models import Ride, RideStop
 from .serializers import RideSerializer
 from .broadcast import broadcast_ride_update
+from .distance_utils import resolve_ride_distance_km
 from .services.waiting_service import calculate_waiting_fee
 from .services.no_show_service import (
     _parse_geo_coord,
@@ -61,6 +64,13 @@ from notifications.push import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _run_in_background(target):
+    if "test" in sys.argv:
+        target()
+        return
+    threading.Thread(target=target, daemon=True).start()
 
 
 def broadcast_ride_request_to_available_drivers(ride):
@@ -237,9 +247,6 @@ def request_ride(request):
         )
 
     try:
-        distance_km = Decimal(str(request.data.get("distance_km", request.data.get("distance", 0))))
-        if distance_km < Decimal("0.1") or distance_km > Decimal("200"):
-            raise ValueError("Ride distance must be between 0.1 and 200 km.")
         pickup_lat, pickup_lng = validate_coordinates(
             request.data.get("pickup_lat", MARKET["default_pickup_lat"]),
             request.data.get("pickup_lng", MARKET["default_pickup_lng"]),
@@ -248,6 +255,14 @@ def request_ride(request):
             request.data.get("destination_lat", MARKET["default_destination_lat"]),
             request.data.get("destination_lng", MARKET["default_destination_lng"]),
         )
+        resolved_request_data = {
+            **request.data,
+            "pickup_lat": pickup_lat,
+            "pickup_lng": pickup_lng,
+            "destination_lat": destination_lat,
+            "destination_lng": destination_lng,
+        }
+        distance_km = resolve_ride_distance_km(resolved_request_data)
     except (ValueError, TypeError) as exc:
         return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -258,6 +273,20 @@ def request_ride(request):
         fallback_user=request.user,
     )
     fare = calculate_city_fare(city, ride_type, distance_km)
+
+    billing_source = (request.data.get("billing_source") or "personal").strip().lower()
+    corporate_account = None
+    cost_center = (request.data.get("cost_center") or "")[:100]
+    if billing_source == "corporate":
+        from features.corporate_service import apply_corporate_discount, validate_corporate_booking
+
+        try:
+            employee, corporate_account = validate_corporate_booking(request.user, fare)
+            fare = apply_corporate_discount(fare, corporate_account)
+            if not cost_center:
+                cost_center = employee.cost_center
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
     referral_code = request.data.get("referral_code") or None
 
@@ -277,6 +306,9 @@ def request_ride(request):
                 fare=fare,
                 status="requested",
                 referral_code=referral_code,
+                billing_source=billing_source,
+                corporate_account=corporate_account,
+                cost_center=cost_center,
             )
             create_initial_stops(ride, request.data.get("stops", []))
     except ValueError as exc:
@@ -291,7 +323,10 @@ def request_ride(request):
         if validation.valid:
             discount_amount = validation.discount_amount
 
-    authorize_ride_payment(ride, discount_amount=discount_amount)
+    if ride.billing_source == "corporate":
+        authorize_corporate_ride_payment(ride, discount_amount=discount_amount)
+    else:
+        authorize_ride_payment(ride, discount_amount=discount_amount)
     broadcast_ride_update(ride)
 
     from taxi.rides.services.ride_assignment_service import offer_ride_to_next_driver
@@ -360,6 +395,20 @@ def schedule_ride(request):
     )
     fare = calculate_city_fare(city, ride_type, distance_km)
 
+    billing_source = (request.data.get("billing_source") or "personal").strip().lower()
+    corporate_account = None
+    cost_center = (request.data.get("cost_center") or "")[:100]
+    if billing_source == "corporate":
+        from features.corporate_service import apply_corporate_discount, validate_corporate_booking
+
+        try:
+            employee, corporate_account = validate_corporate_booking(request.user, fare)
+            fare = apply_corporate_discount(fare, corporate_account)
+            if not cost_center:
+                cost_center = employee.cost_center
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
     try:
         with transaction.atomic():
             ride = Ride.objects.create(
@@ -376,6 +425,9 @@ def schedule_ride(request):
                 fare=fare,
                 status="scheduled",
                 scheduled_at=scheduled_time,
+                billing_source=billing_source,
+                corporate_account=corporate_account,
+                cost_center=cost_center,
             )
             create_initial_stops(ride, request.data.get("stops", []))
     except ValueError as exc:
@@ -425,7 +477,7 @@ def available_rides(request):
         status="requested",
         driver__isnull=True,
         offered_driver=request.user,
-    )
+    ).select_related("rider", "driver", "city")
     if request.user.city_id:
         rides = rides.filter(city_id=request.user.city_id)
     rides = rides.order_by("-id")
@@ -443,14 +495,15 @@ def available_rides(request):
 @permission_classes([IsAuthenticated])
 def ride_history(request):
     if request.user.is_staff:
-        rides = Ride.objects.all().order_by("-id")
+        rides = Ride.objects.select_related("rider", "driver", "city").order_by("-id")
         city_id = request.query_params.get("city")
         if city_id:
             rides = rides.filter(city_id=city_id)
+        rides = rides[:500]
     else:
         rides = Ride.objects.filter(
             rider=request.user,
-        ).order_by("-id")
+        ).select_related("driver", "city").order_by("-id")[:100]
 
     serializer = RideSerializer(
         rides,
@@ -974,7 +1027,7 @@ def start_ride(request, ride_id):
         except Exception:
             pass
 
-    threading.Thread(target=_post_start_side_effects, daemon=True).start()
+    _run_in_background(_post_start_side_effects)
     return response
 
 
@@ -986,10 +1039,6 @@ def complete_ride(request, ride_id):
         id=ride_id,
         driver=request.user,
     )
-
-    if ride.status == "completed":
-        serializer = RideSerializer(ride, context={"request": request})
-        return Response(serializer.data)
 
     if ride.status != "in_progress":
         return Response(
@@ -1069,6 +1118,13 @@ def complete_ride(request, ride_id):
         except Exception:
             logger.exception("Referral application failed for ride=%s", ride_id)
 
+        try:
+            from features.corporate_service import record_corporate_ride_completion
+
+            record_corporate_ride_completion(fresh)
+        except Exception:
+            logger.exception("Corporate ride accounting failed for ride=%s", ride_id)
+
         if fresh.driver:
             try:
                 from taxi.drivers.models import DriverProfile as _DP
@@ -1091,6 +1147,12 @@ def complete_ride(request, ride_id):
                     from taxi.drivers.services.rewards_service import RewardsService
 
                     RewardsService().on_ride_completed(fresh, _dp)
+                    try:
+                        from incentives.services.ride_incentives import track_ride_completion
+
+                        track_ride_completion(fresh.driver, fresh)
+                    except Exception:
+                        logger.exception("Incentive tracking failed ride=%s", ride_id)
             except Exception:
                 logger.exception(
                     "Failed to update driver performance counters ride=%s", ride_id
@@ -1103,7 +1165,7 @@ def complete_ride(request, ride_id):
         except Exception:
             pass
 
-    threading.Thread(target=_post_complete_side_effects, daemon=True).start()
+    _run_in_background(_post_complete_side_effects)
     return response
 
 

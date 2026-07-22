@@ -2,9 +2,16 @@ export function formatAvailabilityApiError(error) {
   const status = error?.response?.status;
   const data = error?.response?.data;
 
+  if (status === 503) {
+    return "Driver service is temporarily unavailable. You remain in your current status. Please try again.";
+  }
+
   if (!data) {
     if (error?.code === "ECONNABORTED") {
       return "Request timed out. Check your connection and try again.";
+    }
+    if (status) {
+      return "Could not update availability. Please try again.";
     }
     return error?.message || "Network error. Check your connection and try again.";
   }
@@ -22,6 +29,14 @@ export function formatAvailabilityApiError(error) {
 
   if (messages.length) {
     return messages.join(" ");
+  }
+
+  if (status === 503) {
+    return "Server is busy. Retrying automatically — you can stay online.";
+  }
+
+  if (status === 429) {
+    return "Too many requests. Please wait a moment and try again.";
   }
 
   return status ? `Request failed (HTTP ${status}).` : "Could not toggle availability.";

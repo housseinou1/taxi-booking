@@ -492,6 +492,7 @@ def withdrawal_requests(request):
     return Response({
         **summary,
         "ledger": build_driver_wallet_ledger(request.user),
+        "recent_transactions": build_driver_wallet_ledger(request.user),
         "withdrawals": WithdrawalRequestSerializer(withdrawals, many=True).data,
     })
 
@@ -587,22 +588,48 @@ def send_withdrawal_otp_view(request):
     return Response(payload)
 
 
-@api_view(["POST"])
-@permission_classes([IsAuthenticated])
-def request_withdrawal(request):
-    amount = Decimal(str(request.data.get("amount", 0)))
+def _parse_withdrawal_request_payload(request):
+    data = request.data
+    payout_method_id = data.get("payout_method_id") or data.get("payout_method")
+    idempotency_key = (
+        data.get("idempotency_key")
+        or request.headers.get("Idempotency-Key")
+        or request.headers.get("X-Idempotency-Key")
+        or ""
+    )
+    return {
+        "amount": Decimal(str(data.get("amount", 0))),
+        "payout_method_id": payout_method_id,
+        "note": data.get("note", ""),
+        "otp_code": data.get("otp_code", ""),
+        "password": data.get("password", ""),
+        "idempotency_key": idempotency_key,
+    }
+
+
+def _submit_withdrawal_request(request):
+    retry_after = rate_limit(request, "withdrawal-request", limit=10, window_seconds=600)
+    if retry_after:
+        return Response(
+            {"error": "Too many withdrawal requests. Please wait before trying again."},
+            status=status.HTTP_429_TOO_MANY_REQUESTS,
+            headers={"Retry-After": str(retry_after)},
+        )
+    payload = _parse_withdrawal_request_payload(request)
     try:
         withdrawal = create_withdrawal_request(
             request.user,
-            amount=amount,
-            payout_method_id=request.data.get("payout_method"),
-            note=request.data.get("note", ""),
-            otp_code=request.data.get("otp_code", ""),
+            amount=payload["amount"],
+            payout_method_id=payload["payout_method_id"],
+            note=payload["note"],
+            otp_code=payload["otp_code"],
+            password=payload["password"],
+            idempotency_key=payload["idempotency_key"],
             request=request,
         )
     except WithdrawalError as exc:
         status_code = status.HTTP_400_BAD_REQUEST
-        if exc.code == "otp_required":
+        if exc.code in {"otp_required", "password_invalid"}:
             status_code = status.HTTP_401_UNAUTHORIZED
         return Response({"error": exc.message, "code": exc.code}, status=status_code)
 
@@ -613,6 +640,18 @@ def request_withdrawal(request):
         },
         status=status.HTTP_201_CREATED,
     )
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def request_withdrawal(request):
+    return _submit_withdrawal_request(request)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def wallet_withdraw_request(request):
+    return _submit_withdrawal_request(request)
 
 
 @api_view(["POST"])
@@ -661,9 +700,22 @@ def reject_withdrawal(request, withdrawal_id):
     return Response({"message": "Withdrawal rejected", "withdrawal": WithdrawalRequestSerializer(withdrawal).data})
 
 
+def _can_mark_paid(user):
+    if user.is_superuser:
+        return True
+    if user.is_staff and user.groups.filter(name__in=["Accountant", "Finance", "Super Admin"]).exists():
+        return True
+    return False
+
+
 @api_view(["POST"])
 @permission_classes([IsAdminUser])
 def mark_withdrawal_paid(request, withdrawal_id):
+    if not _can_mark_paid(request.user):
+        return Response(
+            {"error": "Only a super admin or accountant can mark withdrawals as paid."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
     try:
         withdrawal = WithdrawalRequest.objects.get(id=withdrawal_id)
     except WithdrawalRequest.DoesNotExist:
@@ -674,6 +726,8 @@ def mark_withdrawal_paid(request, withdrawal_id):
             withdrawal,
             request.user,
             admin_note=request.data.get("admin_note", ""),
+            payment_reference=request.data.get("payment_reference")
+            or request.data.get("reference", ""),
             request=request,
         )
     except WithdrawalError as exc:

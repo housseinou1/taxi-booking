@@ -455,6 +455,19 @@ def toggle_availability(request):
 
         return _availability_toggle_response(profile)
 
+    if profile.status != "approved":
+        if profile.is_available:
+            profile.is_available = False
+            profile.save(update_fields=["is_available"])
+        return Response(
+            {
+                "error": "Driver must be approved before going online",
+                "status": profile.status,
+                "is_available": False,
+            },
+            status=400,
+        )
+
     from .services.document_service import DocumentService
 
     document_state = DocumentService().get_documents_review_state(profile)
@@ -493,19 +506,6 @@ def toggle_availability(request):
                 "status": profile.status,
                 "is_available": False,
                 "expired_documents": expired_documents,
-            },
-            status=400,
-        )
-
-    if profile.status != "approved":
-        if profile.is_available:
-            profile.is_available = False
-            profile.save(update_fields=["is_available"])
-        return Response(
-            {
-                "error": "Driver must be approved before going online",
-                "status": profile.status,
-                "is_available": False,
             },
             status=400,
         )

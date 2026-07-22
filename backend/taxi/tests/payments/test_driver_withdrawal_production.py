@@ -12,15 +12,23 @@ from rest_framework.test import APIClient
 
 from payments.models import DriverPayoutMethod, WalletTransaction, WithdrawalOTPCode, WithdrawalRequest
 from security.models import AuditLog
+from taxi.drivers.models import DriverProfile
 from taxi.rides.models import Ride
 
 User = get_user_model()
 
 
+def _approved_driver(**kwargs):
+    user = User.objects.create_user(**kwargs)
+    with patch("taxi.drivers.tasks.generate_qr_code_task.delay"):
+        DriverProfile.objects.create(user=user, status="approved")
+    return user
+
+
 class DriverWithdrawalProductionTests(TestCase):
     def setUp(self):
         self.client = APIClient()
-        self.driver = User.objects.create_user(
+        self.driver = _approved_driver(
             email="driver-prod@test.local",
             password="Pass123!",
             user_type="driver",
@@ -64,7 +72,19 @@ class DriverWithdrawalProductionTests(TestCase):
         self.assertIn("ledger", response.data)
         self.assertEqual(Decimal(response.data["available_balance"]), Decimal("640.00"))
 
-    def test_rejects_bank_transfer_payout_method(self):
+    def test_rejects_bank_transfer_payout_method_without_details(self):
+        self.client.force_authenticate(self.driver)
+        response = self.client.post(
+            "/payments/payout-methods/save/",
+            {
+                "payout_type": "bank_account",
+                "is_default": True,
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_bank_account_payout_method_supported(self):
         self.client.force_authenticate(self.driver)
         response = self.client.post(
             "/payments/payout-methods/save/",
@@ -72,11 +92,12 @@ class DriverWithdrawalProductionTests(TestCase):
                 "payout_type": "bank_account",
                 "bank_name": "BNM",
                 "account_reference": "1234567890",
+                "account_holder_name": "Amadou Diallo",
                 "is_default": True,
             },
             format="json",
         )
-        self.assertEqual(response.status_code, 400)
+        self.assertIn(response.status_code, [200, 201])
 
     @patch("payments.withdrawal_service.send_sms")
     def test_send_withdrawal_otp(self, mock_sms):
@@ -93,6 +114,7 @@ class DriverWithdrawalProductionTests(TestCase):
                 "amount": "200",
                 "payout_method": self.payout_method.id,
                 "otp_code": "123456",
+                "idempotency_key": "min-500",
             },
             format="json",
         )
@@ -107,6 +129,7 @@ class DriverWithdrawalProductionTests(TestCase):
                 "amount": "500",
                 "payout_method": self.payout_method.id,
                 "otp_code": "123456",
+                "idempotency_key": "dup-1",
             },
             format="json",
         )
@@ -118,6 +141,7 @@ class DriverWithdrawalProductionTests(TestCase):
                 "amount": "500",
                 "payout_method": self.payout_method.id,
                 "otp_code": "654321",
+                "idempotency_key": "dup-2",
             },
             format="json",
         )
@@ -132,6 +156,7 @@ class DriverWithdrawalProductionTests(TestCase):
                 "amount": "500",
                 "payout_method": self.payout_method.id,
                 "otp_code": "000000",
+                "idempotency_key": "bad-otp",
             },
             format="json",
         )
@@ -153,10 +178,15 @@ class DriverWithdrawalProductionTests(TestCase):
         self.assertEqual(withdrawal.status, "approved")
         self.assertIsNotNone(withdrawal.approved_at)
 
-        paid = self.client.post(f"/payments/withdrawals/{withdrawal.id}/mark-paid/")
+        paid = self.client.post(
+            f"/payments/withdrawals/{withdrawal.id}/mark-paid/",
+            {"payment_reference": "BNK-12345"},
+            format="json",
+        )
         self.assertEqual(paid.status_code, 200)
         withdrawal.refresh_from_db()
         self.assertEqual(withdrawal.status, "paid")
+        self.assertEqual(withdrawal.payment_reference, "BNK-12345")
         self.assertIsNotNone(withdrawal.paid_at)
         self.assertTrue(
             WalletTransaction.objects.filter(
@@ -203,7 +233,37 @@ class DriverWithdrawalProductionTests(TestCase):
             1,
         )
 
-    def test_sedad_payout_method_supported(self):
+    def test_wallet_withdraw_alias_endpoint(self):
+        self.client.force_authenticate(self.driver)
+        response = self.client.post(
+            "/payments/wallet/withdrawals/",
+            {
+                "amount": "500",
+                "method": "bankily",
+                "payout_method_id": self.payout_method.id,
+                "otp_code": "123456",
+                "idempotency_key": "wallet-alias-1",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertTrue(str(response.data["withdrawal"]["reference"]).startswith("WD-"))
+
+    def test_insufficient_balance_rejected(self):
+        self.client.force_authenticate(self.driver)
+        self._seed_otp("999999")
+        response = self.client.post(
+            "/payments/wallet/withdrawals/",
+            {
+                "amount": "700",
+                "payout_method_id": self.payout_method.id,
+                "otp_code": "999999",
+                "idempotency_key": "insufficient-1",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data["code"], "insufficient_balance")
         self.client.force_authenticate(self.driver)
         response = self.client.post(
             "/payments/payout-methods/save/",

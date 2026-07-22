@@ -242,7 +242,7 @@
     },
     "cancel": {
       "title": "Pourquoi annulez-vous ?",
-      "description": "Vous pouvez annuler avant le debut du trajet. Les frais sont actuellement a 0 MRU.",
+      "description": "Vous pouvez annuler avant le debut du trajet. Si un chauffeur est deja en route, des frais de 100 MRU peuvent s'appliquer.",
       "selectReason": "Choisir une raison",
       "tooFar": "Le chauffeur est trop loin",
       "changedPlans": "J'ai change mes plans",

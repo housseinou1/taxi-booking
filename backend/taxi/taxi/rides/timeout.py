@@ -14,7 +14,7 @@ from typing import Optional
 
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
-from django.db import close_old_connections
+from django.db import close_old_connections, transaction
 
 logger = logging.getLogger(__name__)
 
@@ -255,6 +255,35 @@ def _attempt_reassignment(ride, excluded_driver_user_id: Optional[int] = None) -
             ride.id,
             exc,
         )
+
+
+def schedule_ride_request_broadcast(ride, driver_user_id: int) -> None:
+    """
+    Send a ride offer over WebSocket after the DB transaction commits.
+
+    Without this, drivers can receive the WS event before /rides/available/
+    includes the offer, and the app dismisses the request sheet immediately.
+    """
+    ride_id = ride.id
+
+    def _send() -> None:
+        try:
+            from taxi.rides.models import Ride
+
+            fresh = Ride.objects.filter(pk=ride_id).first()
+            if (
+                fresh
+                and fresh.status == "requested"
+                and fresh.offered_driver_id == driver_user_id
+            ):
+                _broadcast_ride_request(fresh, driver_user_id)
+        except Exception:
+            logger.exception(
+                "Failed post-commit ride request broadcast for ride %s",
+                ride_id,
+            )
+
+    transaction.on_commit(_send)
 
 
 def _broadcast_ride_request(ride, driver_user_id: int) -> None:

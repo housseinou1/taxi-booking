@@ -4,10 +4,13 @@ import { API_URL } from "../apiConfig";
 import authenticatedApi, { resetAuthRedirectFlag } from "../auth/authenticatedApi";
 import {
   clearAuthSession,
+  getStoredUser,
+  hasStoredAuthCredentials,
   isDriverAccount,
   redirectToLogin,
   restoreAuthSession,
 } from "../auth/session";
+import { navigateInApp } from "../navigation/inAppNavigation";
 import { MARKET, isPointInServiceArea } from "../marketConfig";
 import { subscribeRideUpdates } from "../socket";
 import { preloadNotificationSound, unlockRideRequestSound, stopRideRequestAlert } from "../native/sound";
@@ -38,6 +41,7 @@ import { getAutoNavigationEnabled } from "./utils/driverNavigationPrefs";
 import { openExternalNavigation } from "./utils/externalNavigation";
 import { driverTripDebug } from "./utils/driverTripDebug";
 import { getNavigationDestination } from "./components/MultiStopProgress";
+import { mergeAvailableRidesFromServer, normalizeRideOfferId } from "./utils/mergeAvailableRides";
 import HamburgerMenu from "./components/HamburgerMenu";
 import RideRequestCard from "./components/RideRequestCard";
 import DriverProfilePage from "./DriverProfilePage";
@@ -52,6 +56,7 @@ const DRIVER_SOUND_ENABLED_KEY = "driver_ride_sound_enabled";
 const HEATMAP_REFRESH_INTERVAL = 60000;
 const AVAILABILITY_TOGGLE_TIMEOUT_MS = 5000;
 const AVAILABILITY_TOGGLE_WATCHDOG_MS = 5500;
+const DRIVER_SESSION_GATE_TIMEOUT_MS = 8000;
 const ONLINE_NOTICE_MESSAGE = "You're online — receiving ride requests.";
 const ONLINE_NOTICE_DURATION_MS = 2500;
 const ACTIVE_RIDE_STATUSES = ["driver_arriving", "accepted", "driver_arrived", "in_progress"];
@@ -111,7 +116,10 @@ function heatmapZoneToBusyArea(zone) {
 // ─── Main Container ─────────────────────────────────────────────────────────
 
 export default function DriverDashboardNew() {
-  const [authReady, setAuthReady] = useState(false);
+  const [authReady, setAuthReady] = useState(
+    () => hasStoredAuthCredentials() && isDriverAccount(getStoredUser())
+  );
+  const [authGateError, setAuthGateError] = useState("");
 
   useEffect(() => {
     if (isDeliveryAppInstall()) {
@@ -120,27 +128,68 @@ export default function DriverDashboardNew() {
   }, []);
 
   useEffect(() => {
+    if (authReady) return undefined;
+
     let cancelled = false;
+    let timeoutId = null;
+    let gateResolved = false;
 
-    const verifyDriverSession = async () => {
-      const result = await restoreAuthSession({ requiredRole: "driver" });
-      if (cancelled) return;
-
-      if (!result.authenticated || !isDriverAccount(result.user)) {
-        clearAuthSession();
-        redirectToLogin("/driver");
+    const allowCachedSessionOrLogin = () => {
+      if (cancelled || gateResolved) return;
+      gateResolved = true;
+      if (hasStoredAuthCredentials()) {
+        setAuthGateError("");
+        setAuthReady(true);
         return;
       }
+      clearAuthSession();
+      redirectToLogin("/driver");
+    };
 
-      setAuthReady(true);
+    const verifyDriverSession = async () => {
+      timeoutId = window.setTimeout(() => {
+        allowCachedSessionOrLogin();
+      }, DRIVER_SESSION_GATE_TIMEOUT_MS);
+
+      try {
+        const result = await restoreAuthSession({ requiredRole: "driver" });
+        if (cancelled || gateResolved) return;
+        gateResolved = true;
+
+        if (!result.authenticated || !isDriverAccount(result.user)) {
+          if (result.offline && hasStoredAuthCredentials()) {
+            setAuthGateError("");
+            setAuthReady(true);
+            return;
+          }
+          clearAuthSession();
+          redirectToLogin("/driver");
+          return;
+        }
+
+        setAuthGateError("");
+        setAuthReady(true);
+      } catch (error) {
+        console.log("Driver session restore error:", error);
+        if (cancelled || gateResolved) return;
+        setAuthGateError("Unable to verify session. Opening cached driver mode...");
+        allowCachedSessionOrLogin();
+      } finally {
+        if (timeoutId) {
+          window.clearTimeout(timeoutId);
+        }
+      }
     };
 
     verifyDriverSession();
 
     return () => {
       cancelled = true;
+      if (timeoutId) {
+        window.clearTimeout(timeoutId);
+      }
     };
-  }, []);
+  }, [authReady]);
 
   useEffect(() => {
     if (!authReady) return undefined;
@@ -157,7 +206,11 @@ export default function DriverDashboardNew() {
   }, [authReady]);
 
   if (!authReady) {
-    return <div className="driver-shell-loading">Checking your driver session...</div>;
+    return (
+      <div className="driver-shell-loading">
+        {authGateError || "Checking your driver session..."}
+      </div>
+    );
   }
 
   return <DriverDashboardContent />;
@@ -202,6 +255,7 @@ function DriverDashboardContent() {
   }, []);
 
   const alertedRideIdsRef = useRef(new Set());
+  const suppressedOfferIdsRef = useRef(new Map());
   const availableRidesRef = useRef([]);
   const isOnlineRef = useRef(isOnline);
   const hasLoadedStatusRef = useRef(false);
@@ -478,17 +532,22 @@ function DriverDashboardContent() {
       const response = await authenticatedApi.get(`${API_URL}/rides/available/`);
       const activeId = activeRideRef.current?.id || activeRideSnapshotRef.current?.id;
       const rides = Array.isArray(response.data) ? response.data : [];
-      setAvailableRides(
-        activeId
-          ? rides.filter((ride) => String(ride.id || ride.ride_id) !== String(activeId))
-          : rides
+      setAvailableRides((prev) =>
+        mergeAvailableRidesFromServer(rides, prev, activeId).filter((ride) => {
+          const offerId = normalizeRideOfferId(ride);
+          const expiresAt = suppressedOfferIdsRef.current.get(offerId);
+          if (!expiresAt) return true;
+          if (Date.now() > expiresAt) {
+            suppressedOfferIdsRef.current.delete(offerId);
+            return true;
+          }
+          return false;
+        })
       );
     } catch (error) {
       console.log("Available rides error:", error.response?.data || error);
       if (isAuthError(error)) { sendToLogin(); return; }
-      if (!activeRideRef.current && !activeRideSnapshotRef.current) {
-        setAvailableRides([]);
-      }
+      // Keep pending WS offers during transient polling failures.
     }
   }, [isAuthError, sendToLogin]);
 
@@ -742,8 +801,9 @@ function DriverDashboardContent() {
   const mergeIncomingRideRequest = useCallback((message) => {
     const rideId = message?.ride_id || message?.id;
     if (!rideId || activeRideRef.current) return;
+    if (message?.status && message.status !== "requested") return;
     setAvailableRides((prev) => {
-      if (prev.some((ride) => String(ride.id || ride.ride_id) === String(rideId))) return prev;
+      if (prev.some((ride) => normalizeRideOfferId(ride) === String(rideId))) return prev;
       return [{
         id: rideId, ride_id: rideId,
         pickup: message.pickup, destination: message.destination,
@@ -752,6 +812,7 @@ function DriverDashboardContent() {
         fare: message.fare, distance_km: message.distance_km,
         stop_count: message.stop_count, stops: message.stops,
         countdown: message.countdown || 30,
+        offerReceivedAt: Date.now(),
       }, ...prev];
     });
   }, []);
@@ -814,6 +875,7 @@ function DriverDashboardContent() {
 
     acceptingRideIdRef.current = rideId;
     setAcceptingRideId(rideId);
+    stopRideRequestAlert();
     const requestRide = availableRidesRef.current.find((ride) => String(ride.id || ride.ride_id) === String(rideId)) || {};
     setAvailableRides((prev) => prev.filter((ride) => String(ride.id || ride.ride_id) !== String(rideId)));
 
@@ -850,20 +912,23 @@ function DriverDashboardContent() {
     } catch (error) {
       console.log("Accept ride error:", error.response?.data || error);
       if (isAuthError(error)) { sendToLogin(); return; }
+      stopRideRequestAlert();
+      suppressedOfferIdsRef.current.set(String(rideId), Date.now() + 90000);
+      alertedRideIdsRef.current.add(rideId);
       setAcceptError(error.response?.data?.detail || error.response?.data?.error || "Could not accept ride. Please try again.");
-      fetchAvailableRides();
+      fetchDriverRides();
     } finally {
       if (acceptingRideIdRef.current === rideId) {
         acceptingRideIdRef.current = null;
       }
       setAcceptingRideId((current) => (current === rideId ? null : current));
     }
-  }, [fetchAvailableRides, fetchDriverRides, isAuthError, sendToLogin]);
+  }, [fetchDriverRides, isAuthError, sendToLogin]);
 
   const dismissRideOffer = useCallback((rideId) => {
     stopRideRequestAlert();
     setAvailableRides((prev) =>
-      prev.filter((ride) => ride.id !== rideId && ride.ride_id !== rideId)
+      prev.filter((ride) => normalizeRideOfferId(ride) !== String(rideId))
     );
     alertedRideIdsRef.current.delete(rideId);
   }, []);
@@ -1039,13 +1104,13 @@ function DriverDashboardContent() {
 
   // Poll rides every 5s; skip available-ride poll while on an active trip.
   useEffect(() => {
-    const statusInterval = setInterval(fetchDriverStatus, 10000);
+    const statusInterval = setInterval(fetchDriverStatus, 15000);
     const ridesInterval = setInterval(() => {
       fetchDriverRides();
       if (!activeRideRef.current && (isOnlineRef.current || serverOnlineRef.current)) {
         fetchAvailableRides();
       }
-    }, 2000);
+    }, 5000);
     return () => {
       clearInterval(statusInterval);
       clearInterval(ridesInterval);
@@ -1073,6 +1138,26 @@ function DriverDashboardContent() {
         return;
       }
       if (msg.type === "ride_request" && active) {
+        return;
+      }
+      if (msg.type === "ride_request_expired") {
+        const expiredRideId = msg?.ride_id || msg?.id;
+        if (expiredRideId) {
+          dismissRideOffer(expiredRideId);
+        } else {
+          fetchAvailableRides();
+        }
+        return;
+      }
+      if (
+        !active &&
+        msgRideId &&
+        (msg.status === "accepted" || msg.status === "driver_arriving") &&
+        availableRidesRef.current.some(
+          (ride) => normalizeRideOfferId(ride) === String(msgRideId)
+        )
+      ) {
+        dismissRideOffer(msgRideId);
         return;
       }
       if (msg.type === "document_status") {
@@ -1114,7 +1199,7 @@ function DriverDashboardContent() {
       }
     });
     return () => unsub();
-  }, [fetchAvailableRides, fetchDriverRides, fetchDriverStats, fetchDriverStatus, handleRideStatusChange, mergeIncomingRideRequest, shouldProcessRideEvent, silentMergeActiveRide]);
+  }, [dismissRideOffer, fetchAvailableRides, fetchDriverRides, fetchDriverStats, fetchDriverStatus, handleRideStatusChange, mergeIncomingRideRequest, shouldProcessRideEvent, silentMergeActiveRide]);
 
   // Foreground push: refresh silently; never duplicate active ride UI.
   useEffect(() => {
@@ -1621,7 +1706,12 @@ function DriverDashboardContent() {
         </button>
       </header>
 
-      <button type="button" className="driver-earnings-chip" aria-label={`Today's earnings: ${todayEarnings} MRU`}>
+      <button
+        type="button"
+        className="driver-earnings-chip"
+        aria-label={`Today's earnings: ${todayEarnings} MRU`}
+        onClick={() => navigateInApp("/driver/wallet")}
+      >
         <span className="driver-earnings-chip__label">Today</span>
         <span className="driver-earnings-chip__divider" aria-hidden="true">•</span>
         <span className="driver-earnings-chip__amount">{todayEarnings} MRU</span>
@@ -1654,10 +1744,15 @@ function DriverDashboardContent() {
                   <strong>{todayTripsCount}</strong>
                   <span>Trips</span>
                 </div>
-                <div className="driver-summary-card__stat">
+                <button
+                  type="button"
+                  className="driver-summary-card__stat driver-summary-card__stat--link"
+                  onClick={() => navigateInApp("/driver/wallet")}
+                  aria-label={`Open wallet. Today's earnings: ${todayEarnings} MRU`}
+                >
                   <strong>{todayEarnings}</strong>
                   <span>Earnings (MRU)</span>
-                </div>
+                </button>
                 <div className="driver-summary-card__stat">
                   <strong>{acceptanceRate}%</strong>
                   <span>Acceptance</span>
@@ -1673,7 +1768,7 @@ function DriverDashboardContent() {
               stats={driverPerformance}
               todayEarnings={earningsByPeriod.today}
               onOpenEarnings={() => {
-                window.location.href = "/driver/earnings";
+                navigateInApp("/driver/wallet");
               }}
             />
           </div>
@@ -1883,7 +1978,7 @@ function DriverDashboardContent() {
             setMenuOpen(false);
             return;
           }
-          window.location.href = path;
+          navigateInApp(path);
         }}
         onLogout={logout}
       />

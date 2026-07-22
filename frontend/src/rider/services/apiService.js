@@ -1,5 +1,44 @@
 import { API_URL } from "../../apiConfig";
+import { calculateDistanceKm } from "../../marketConfig";
 import riderApi from "./authenticatedApi";
+
+function ensureRequestDistanceKm(params) {
+  const direct = Number(params?.distance_km);
+  if (Number.isFinite(direct) && direct >= 0.1 && direct <= 200) {
+    return Math.round(direct * 100) / 100;
+  }
+
+  const points = [
+    [params?.pickup_latitude, params?.pickup_longitude],
+    ...(Array.isArray(params?.stops) ? params.stops : []).map((stop) => [
+      stop?.latitude,
+      stop?.longitude,
+    ]),
+    [params?.destination_latitude, params?.destination_longitude],
+  ].filter(
+    (point) =>
+      Array.isArray(point) &&
+      point.length === 2 &&
+      Number.isFinite(Number(point[0])) &&
+      Number.isFinite(Number(point[1])),
+  );
+
+  if (points.length < 2) {
+    return Math.max(0.1, direct || 0.1);
+  }
+
+  let total = 0;
+  for (let index = 1; index < points.length; index += 1) {
+    const segment = calculateDistanceKm(points[index - 1], points[index]);
+    if (segment == null) {
+      return 0.1;
+    }
+    total += segment;
+  }
+
+  const resolved = Math.max(0.1, Math.round(total * 100) / 100);
+  return resolved <= 200 ? resolved : 0.1;
+}
 
 /**
  * Centralized API client for the Rider app.
@@ -63,6 +102,7 @@ function handleError(error) {
  */
 export async function requestRide(params) {
   try {
+    const distanceKm = ensureRequestDistanceKm(params);
     const response = await riderApi.post(`${API_URL}/rides/request/`, {
       pickup: params.pickup_address || "",
       destination: params.destination_address || "",
@@ -72,8 +112,8 @@ export async function requestRide(params) {
       pickup_lng: params.pickup_longitude,
       destination_lat: params.destination_latitude,
       destination_lng: params.destination_longitude,
-      distance_km: params.distance_km,
-      distance: params.distance_km,
+      distance_km: distanceKm,
+      distance: distanceKm,
       ride_type: params.ride_type,
       fare: params.estimated_fare,
       stops: params.stops || [],

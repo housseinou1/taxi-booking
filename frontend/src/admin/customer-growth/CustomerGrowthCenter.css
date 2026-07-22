@@ -1,0 +1,60 @@
+.customer-growth-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 1rem 0;
+}
+
+.customer-growth-tab {
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.customer-growth-tab--active {
+  background: #111827;
+  color: #fff;
+  border-color: #111827;
+}
+
+.customer-growth-panel {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 14px;
+  background: #fff;
+  margin-bottom: 1rem;
+}
+
+.customer-growth-form {
+  display: grid;
+  gap: 10px;
+  max-width: 520px;
+}
+
+.customer-growth-form label {
+  display: grid;
+  gap: 4px;
+  font-weight: 700;
+}
+
+.customer-growth-form input,
+.customer-growth-form select {
+  padding: 8px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+}
+
+.customer-growth-flags {
+  display: grid;
+  gap: 8px;
+}
+
+.customer-growth-flags label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-weight: 600;
+}

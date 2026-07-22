@@ -1,0 +1,131 @@
+.academy-timer {
+  color: #b45309;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+
+.academy-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 1rem 0;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 0.5rem;
+}
+
+.academy-tab {
+  padding: 8px 14px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  color: #374151;
+  transition: background 0.15s, color 0.15s;
+}
+
+.academy-tab:hover {
+  background: #f3f4f6;
+}
+
+.academy-tab--active {
+  background: #7c3aed;
+  color: #fff;
+  border-color: #7c3aed;
+}
+
+.academy-content {
+  margin-top: 1rem;
+}
+
+.academy-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.academy-panel {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.academy-panel h3 {
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+  color: #111827;
+}
+
+.academy-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.academy-form input,
+.academy-form select,
+.academy-form textarea,
+.academy-form button {
+  padding: 8px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-family: inherit;
+}
+
+.academy-form button {
+  background: #7c3aed;
+  color: #fff;
+  border-color: #7c3aed;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.academy-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.academy-table th,
+.academy-table td {
+  border: 1px solid #e5e7eb;
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.academy-table th {
+  background: #f9fafb;
+  font-weight: 600;
+}
+
+.academy-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.academy-list li {
+  padding: 8px 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.academy-list li:last-child {
+  border-bottom: none;
+}
+
+.academy-link {
+  background: none;
+  border: none;
+  color: #7c3aed;
+  cursor: pointer;
+  text-decoration: underline;
+  font-size: 0.95rem;
+}
+
+.academy-question {
+  margin-bottom: 1rem;
+}

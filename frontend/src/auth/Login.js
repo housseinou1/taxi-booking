@@ -7,6 +7,7 @@ import { persistAuthTokens } from "./session";
 import { getAppType, isDeliveryCourierPath, isNative } from "../native/platform";
 import { getDeviceName, getStableDeviceId } from "../native/deviceId";
 import { submitIntegrityToken } from "../native/playIntegrity";
+import { postWithNativeFallback } from "../nativeHttp";
 import "../delivery/delivery-uber.css";
 
 const logoSrc = "/yala-logo.png";
@@ -24,45 +25,12 @@ function getAuthApiCandidates(path) {
 }
 
 async function postLoginRequest(endpoint, payload, headers = {}, timeoutMs = 15000) {
-  if (!isNative()) {
-    return axios.post(endpoint, payload, { timeout: timeoutMs, headers });
+  if (isNative()) {
+    const path = endpoint.replace(/^https?:\/\/[^/]+/i, "");
+    return postWithNativeFallback(path || "/auth/login/", payload, headers, timeoutMs);
   }
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(headers || {}),
-      },
-      body: JSON.stringify(payload),
-      signal: controller.signal,
-    });
-    let data = {};
-    try {
-      data = await response.json();
-    } catch (error) {
-      data = {};
-    }
-    if (!response.ok) {
-      const httpError = new Error(`Login failed (${response.status})`);
-      httpError.response = { status: response.status, data };
-      throw httpError;
-    }
-    return { status: response.status, data };
-  } catch (error) {
-    if (error?.response) {
-      throw error;
-    }
-    const networkError = new Error(error?.message || "Network request failed");
-    networkError.request = true;
-    networkError.code = error?.name === "AbortError" ? "ECONNABORTED" : error?.code;
-    throw networkError;
-  } finally {
-    clearTimeout(timer);
-  }
+  return axios.post(endpoint, payload, { timeout: timeoutMs, headers });
 }
 
 function getApiErrorMessage(error, fallback, context = "web") {
@@ -371,25 +339,37 @@ export default function Login({ onLogin }) {
       let lastError = null;
       const deviceId = await getStableDeviceId();
       const deviceName = getDeviceName();
+      const loginPayload = {
+        email: email.trim().toLowerCase(),
+        password,
+        device_id: deviceId,
+        device_name: deviceName,
+      };
+      const loginHeaders = deviceId ? { "X-Device-Id": deviceId } : undefined;
+      const loginTimeout = isNative() ? 12000 : 15000;
 
-      for (const endpoint of getLoginApiCandidates()) {
-        try {
-          response = await postLoginRequest(
-            endpoint,
-            {
-              email: email.trim().toLowerCase(),
-              password,
-              device_id: deviceId,
-              device_name: deviceName,
-            },
-            deviceId ? { "X-Device-Id": deviceId } : undefined,
-            isNative() ? 45000 : 15000,
-          );
-          break;
-        } catch (error) {
-          lastError = error;
-          if (error?.response) {
+      if (isNative()) {
+        response = await postWithNativeFallback(
+          "/auth/login/",
+          loginPayload,
+          loginHeaders,
+          loginTimeout,
+        );
+      } else {
+        for (const endpoint of getLoginApiCandidates()) {
+          try {
+            response = await postLoginRequest(
+              endpoint,
+              loginPayload,
+              loginHeaders,
+              loginTimeout,
+            );
             break;
+          } catch (error) {
+            lastError = error;
+            if (error?.response) {
+              break;
+            }
           }
         }
       }

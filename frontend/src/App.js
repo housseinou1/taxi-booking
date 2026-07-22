@@ -29,6 +29,27 @@ import OperationsCenter from "./admin/operations/OperationsCenter";
 import AIOperationsDashboard from "./admin/ai/AIOperationsDashboard";
 import ProductionStatus from "./admin/status/ProductionStatus";
 import LaunchHub from "./admin/launch/LaunchHub";
+import BusinessHub from "./admin/business/BusinessHub";
+import BusinessAccountsCenter from "./admin/business/BusinessAccountsCenter";
+import BetaDashboard from "./admin/beta/BetaDashboard";
+import BetaFeedbackCenter from "./admin/beta/BetaFeedbackCenter";
+import FleetPerformanceCenter from "./admin/fleet/FleetPerformanceCenter";
+import FinanceOperationsCenter from "./admin/finance/FinanceOperationsCenter";
+import LaunchCommandCenter from "./admin/command/LaunchCommandCenter";
+import CeoMasterCommandCenter from "./admin/ceo/CeoMasterCommandCenter";
+import BoardReportingSuite from "./admin/board/BoardReportingSuite";
+import ComplianceGovernanceCenter from "./admin/compliance/ComplianceGovernanceCenter";
+import BIAnalyticsCenter from "./admin/bi/BIAnalyticsCenter";
+import APIGatewayCenter from "./admin/apiGateway/APIGatewayCenter";
+import AcademyCenter from "./admin/academy/AcademyCenter";
+import GrowthExpansionDashboard from "./admin/growth/GrowthExpansionDashboard";
+import MultiCityOperationsCenter from "./admin/multicity/MultiCityOperationsCenter";
+import SmartPricingDispatchCenter from "./admin/pricing/SmartPricingDispatchCenter";
+import TrustSafetyCenter from "./admin/trust/TrustSafetyCenter";
+import DriverIncentivesCenter from "./admin/incentives/DriverIncentivesCenter";
+import MerchantPlatformCenter from "./admin/merchant/MerchantPlatformCenter";
+import PartnerPlatformCenter from "./admin/partner/PartnerPlatformCenter";
+import CustomerGrowthCenter from "./admin/customer-growth/CustomerGrowthCenter";
 import InstallAppButton from "./InstallAppButton";
 import NotificationCenter from "./components/NotificationCenter";
 import YalaAIAssistant from "./components/YalaAIAssistant";
@@ -425,6 +446,27 @@ function App() {
     else if (currentPath === "/admin/ai-operations") setPage("admin-ai-operations");
     else if (currentPath === "/admin/status") setPage("admin-status");
     else if (currentPath === "/admin/launch") setPage("admin-launch");
+    else if (currentPath === "/admin/business") setPage("admin-business");
+    else if (currentPath === "/admin/beta") setPage("admin-beta");
+    else if (currentPath === "/admin/business-accounts") setPage("admin-business-accounts");
+    else if (currentPath === "/admin/fleet") setPage("admin-fleet");
+    else if (currentPath === "/admin/finance-ops") setPage("admin-finance-ops");
+    else if (currentPath === "/admin/command" || currentPath === "/admin/operations-command") setPage("admin-command");
+    else if (currentPath === "/admin/growth") setPage("admin-growth");
+    else if (currentPath === "/admin/multi-city") setPage("admin-multi-city");
+    else if (currentPath === "/admin/smart-pricing" || currentPath === "/admin/pricing-dispatch") setPage("admin-smart-pricing");
+    else if (currentPath === "/admin/trust-safety" || currentPath === "/admin/safety") setPage("admin-trust-safety");
+    else if (currentPath === "/admin/incentives" || currentPath === "/admin/incentive-engine") setPage("admin-incentives");
+    else if (currentPath === "/admin/merchant-platform" || currentPath === "/admin/merchants") setPage("admin-merchant-platform");
+    else if (currentPath === "/admin/partner-platform" || currentPath === "/admin/partners") setPage("admin-partner-platform");
+    else if (currentPath === "/admin/customer-growth" || currentPath === "/admin/loyalty") setPage("admin-customer-growth");
+    else if (currentPath === "/admin/ceo-master" || currentPath === "/admin/ceo") setPage("admin-ceo-master");
+    else if (currentPath === "/admin/board-reports") setPage("admin-board-reports");
+    else if (currentPath === "/admin/compliance-governance") setPage("admin-compliance-governance");
+    else if (currentPath === "/admin/bi" || currentPath === "/admin/business-intelligence") setPage("admin-bi");
+    else if (currentPath === "/admin/api-gateway" || currentPath === "/admin/integration") setPage("admin-api-gateway");
+    else if (currentPath === "/admin/academy") setPage("admin-academy");
+    else if (currentPath === "/admin/beta-feedback" || currentPath === "/admin/support") setPage("admin-support");
     else if (currentPath === "/settings") setPage("settings");
     else if (currentPath === "/terms") setPage("terms");
     else if (currentPath === "/privacy") setPage("privacy");
@@ -870,6 +912,90 @@ function App() {
 
   if (page === "admin-launch") {
     return withInstall(<LaunchHub />);
+  }
+
+  if (page === "admin-business") {
+    return withInstall(<BusinessHub />);
+  }
+
+  if (page === "admin-beta") {
+    return withInstall(<BetaDashboard />);
+  }
+
+  if (page === "admin-business-accounts") {
+    return withInstall(<BusinessAccountsCenter />);
+  }
+
+  if (page === "admin-fleet") {
+    return withInstall(<FleetPerformanceCenter />);
+  }
+
+  if (page === "admin-finance-ops") {
+    return withInstall(<FinanceOperationsCenter />);
+  }
+
+  if (page === "admin-command") {
+    return withInstall(<LaunchCommandCenter />);
+  }
+
+  if (page === "admin-growth") {
+    return withInstall(<GrowthExpansionDashboard />);
+  }
+
+  if (page === "admin-multi-city") {
+    return withInstall(<MultiCityOperationsCenter />);
+  }
+
+  if (page === "admin-smart-pricing") {
+    return withInstall(<SmartPricingDispatchCenter />);
+  }
+
+  if (page === "admin-trust-safety") {
+    return withInstall(<TrustSafetyCenter />);
+  }
+
+  if (page === "admin-incentives") {
+    return withInstall(<DriverIncentivesCenter />);
+  }
+
+  if (page === "admin-merchant-platform") {
+    return withInstall(<MerchantPlatformCenter />);
+  }
+
+  if (page === "admin-partner-platform") {
+    return withInstall(<PartnerPlatformCenter />);
+  }
+
+  if (page === "admin-customer-growth") {
+    return withInstall(<CustomerGrowthCenter />);
+  }
+
+  if (page === "admin-ceo-master") {
+    return withInstall(<CeoMasterCommandCenter />);
+  }
+
+  if (page === "admin-board-reports") {
+    return withInstall(<BoardReportingSuite />);
+  }
+
+  if (page === "admin-compliance-governance") {
+    return withInstall(<ComplianceGovernanceCenter />);
+  }
+
+  if (page === "admin-bi") {
+    return withInstall(<BIAnalyticsCenter />);
+  }
+
+  if (page === "admin-api-gateway") {
+    return withInstall(<APIGatewayCenter />);
+  }
+
+  if (page === "admin-academy") {
+    return withInstall(<AcademyCenter />);
+  }
+
+  if (page === "admin-support") {
+    return withInstall(<BetaFeedbackCenter />);
   }
 
   if (page === "payment-setup") {

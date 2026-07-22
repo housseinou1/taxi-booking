@@ -184,6 +184,27 @@ def _fairness_score(profile: DriverProfile, now) -> float:
     return 0.5 * waiting + 0.35 * offer_fairness + 0.15 * miss_penalty
 
 
+def _resolve_scoring_weights(city_id=None) -> dict:
+    """Use smart-engine weights when feature-flagged; else built-in defaults."""
+    try:
+        from operations.smart_pricing_dispatch_service import resolve_dispatch_weights
+
+        return resolve_dispatch_weights(city_id)
+    except Exception:
+        return {
+            "distance": 0.40,
+            "eta": 0.15,
+            "rating": 0.12,
+            "acceptance": 0.10,
+            "cancellation": 0.08,
+            "level": 0.05,
+            "fairness": 0.10,
+            "traffic_factor": 0.0,
+            "vehicle_match": 0.0,
+            "idle_time": 0.0,
+        }
+
+
 def score_driver(
     profile: DriverProfile,
     *,
@@ -191,9 +212,20 @@ def score_driver(
     radius_km: float,
     now=None,
     ride_type: Optional[str] = None,
+    city_id: Optional[int] = None,
 ) -> RankedDriver:
     now = now or timezone.now()
-    eta_minutes = (distance_km / AVG_CITY_SPEED_KMH) * 60.0
+    avg_speed = AVG_CITY_SPEED_KMH
+    try:
+        from operations.smart_pricing_dispatch_service import get_dispatch_rules, is_smart_dispatch_enabled
+
+        if is_smart_dispatch_enabled():
+            rules = get_dispatch_rules(city_id)
+            avg_speed = float(rules.get("avg_city_speed_kmh") or AVG_CITY_SPEED_KMH)
+    except Exception:
+        pass
+
+    eta_minutes = (distance_km / max(avg_speed, 1.0)) * 60.0
 
     dist_s = _distance_score(distance_km, radius_km)
     # ETA mirrors distance; keep a separate light weight for clarity in logs
@@ -203,16 +235,27 @@ def score_driver(
     cancel_s = max(0.0, 1.0 - _cancellation_rate(profile))
     level_s = LEVEL_SCORE.get((profile.driver_level or "bronze").lower(), 0.55)
     fair_s = _fairness_score(profile, now)
+    vehicle_s = 1.0 if vehicle_matches(ride_type, profile.car_type) else 0.0
+    idle_minutes = (
+        max((now - profile.available_since).total_seconds() / 60.0, 0)
+        if profile.available_since
+        else 0.0
+    )
+    idle_s = min(idle_minutes / 60.0, 1.0)
+    traffic_s = 1.0
 
-    # Distance + ETA dominate (~55%).
+    weights = _resolve_scoring_weights(city_id)
     score = (
-        0.40 * dist_s
-        + 0.15 * eta_s
-        + 0.12 * rating_s
-        + 0.10 * accept_s
-        + 0.08 * cancel_s
-        + 0.05 * level_s
-        + 0.10 * fair_s
+        weights.get("distance", 0.40) * dist_s
+        + weights.get("eta", 0.15) * eta_s
+        + weights.get("rating", 0.12) * rating_s
+        + weights.get("acceptance", 0.10) * accept_s
+        + weights.get("cancellation", 0.08) * cancel_s
+        + weights.get("level", 0.05) * level_s
+        + weights.get("fairness", 0.10) * fair_s
+        + weights.get("vehicle_match", 0.0) * vehicle_s
+        + weights.get("idle_time", 0.0) * idle_s
+        + weights.get("traffic_factor", 0.0) * traffic_s
     )
 
     breakdown = {
@@ -223,14 +266,10 @@ def score_driver(
         "cancellation": round(cancel_s, 4),
         "level": round(level_s, 4),
         "fairness": round(fair_s, 4),
-        "vehicle_match": 1.0 if vehicle_matches(ride_type, profile.car_type) else 0.0,
-        "online_minutes": round(
-            max((now - profile.available_since).total_seconds() / 60.0, 0)
-            if profile.available_since
-            else 0,
-            1,
-        ),
-        "traffic": None,
+        "vehicle_match": round(vehicle_s, 4),
+        "idle_time": round(idle_s, 4),
+        "online_minutes": round(idle_minutes, 1),
+        "traffic": round(traffic_s, 4),
         "total": round(score, 4),
     }
     return RankedDriver(
@@ -309,6 +348,7 @@ def rank_eligible_drivers(
                 radius_km=radius_km,
                 now=now,
                 ride_type=ride.ride_type,
+                city_id=getattr(ride, "city_id", None),
             )
         )
 

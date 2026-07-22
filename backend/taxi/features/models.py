@@ -85,17 +85,34 @@ class CorporateAccount(models.Model):
         ("prepaid", "Prepaid Balance"),
         ("per_ride", "Per Ride"),
     ]
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("approved", "Approved"),
+        ("suspended", "Suspended"),
+    ]
 
     company_name = models.CharField(max_length=200)
+    commercial_registration = models.CharField(max_length=100, blank=True, default="")
+    tax_id = models.CharField(max_length=50, blank=True, default="")
+    address = models.TextField(blank=True, default="")
     contact_person = models.CharField(max_length=200)
     contact_email = models.EmailField()
     contact_phone = models.CharField(max_length=40)
+    billing_email = models.EmailField(blank=True, default="")
     billing_type = models.CharField(max_length=20, choices=BILLING_CHOICES, default="monthly_invoice")
     credit_limit = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("50000"))
     balance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     discount_percent = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending", db_index=True)
     is_active = models.BooleanField(default=True)
     city = models.ForeignKey("cities.City", on_delete=models.SET_NULL, null=True, blank=True)
+    admin_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="managed_corporate_accounts",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -104,12 +121,20 @@ class CorporateAccount(models.Model):
 
 class CorporateEmployee(models.Model):
     """Employee linked to a corporate account."""
+    ROLE_CHOICES = [
+        ("admin", "Admin"),
+        ("employee", "Employee"),
+    ]
+
     account = models.ForeignKey(CorporateAccount, on_delete=models.CASCADE, related_name="employees")
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="corporate_profile")
     employee_id = models.CharField(max_length=50, blank=True, default="")
     department = models.CharField(max_length=100, blank=True, default="")
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="employee")
+    cost_center = models.CharField(max_length=100, blank=True, default="")
     monthly_limit = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("10000"))
     monthly_spent = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    ride_limit = models.PositiveIntegerField(null=True, blank=True, help_text="Max completed rides per month.")
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

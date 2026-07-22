@@ -108,11 +108,12 @@ def build_surge_monitor(city_id=None) -> dict:
         key = _grid_key(ride.pickup_lat, ride.pickup_lng)
         cell = cells.setdefault(
             key,
-            {"requests": 0, "waiting": 0, "lat": key[0], "lng": key[1], "labels": []},
+            {"requests": 0, "waiting": 0, "lat": key[0], "lng": key[1], "labels": [], "waiting_since": []},
         )
         cell["requests"] += 1
         if ride.status == "requested" and not ride.driver_id:
             cell["waiting"] += 1
+            cell["waiting_since"].append(ride.created_at)
         cell["labels"].append(ride.pickup)
 
     drivers = DriverProfile.objects.filter(
@@ -136,20 +137,12 @@ def build_surge_monitor(city_id=None) -> dict:
             continue
         drivers_nearby = cell.get("drivers", 0)
         demand_ratio = cell["requests"] / max(drivers_nearby, 0.5)
+        waiting_since = cell.get("waiting_since") or []
         avg_wait = 0
-        waiting_rides = Ride.objects.filter(
-            status="requested",
-            driver__isnull=True,
-            created_at__gte=hour_start,
-            pickup_lat__gte=cell["lat"] - 0.02,
-            pickup_lat__lte=cell["lat"] + 0.02,
-            pickup_lng__gte=cell["lng"] - 0.02,
-            pickup_lng__lte=cell["lng"] + 0.02,
-        )
-        if waiting_rides.exists():
+        if waiting_since:
+            sample = waiting_since[:20]
             avg_wait = int(
-                sum((now - r.created_at).total_seconds() for r in waiting_rides[:20])
-                / max(waiting_rides.count(), 1)
+                sum((now - ts).total_seconds() for ts in sample) / max(len(sample), 1)
             )
         suggested_multiplier = round(min(1.0 + demand_ratio * 0.15, 2.5), 2)
         zones.append(
@@ -603,15 +596,19 @@ def build_financial_insights() -> dict:
 
 
 def build_ai_operations_dashboard(city_id=None) -> dict:
-    generate_ai_recommendations()
-    return {
-        "generated_at": timezone.now().isoformat(),
-        "smart_dispatch": build_smart_dispatch_insights(city_id=city_id),
-        "surge_monitor": build_surge_monitor(city_id),
-        "hotspot_map": build_hotspot_map("hour", city_id),
-        "predictive_alerts": build_predictive_alerts(),
-        "driver_performance": build_driver_performance_scores(),
-        "fleet_health": build_fleet_health(),
-        "recommendations": list_recommendations(status="pending"),
-        "financial_insights": build_financial_insights(),
-    }
+    from .cache_utils import cached_ops_call
+
+    def _build():
+        return {
+            "generated_at": timezone.now().isoformat(),
+            "smart_dispatch": build_smart_dispatch_insights(city_id=city_id),
+            "surge_monitor": build_surge_monitor(city_id),
+            "hotspot_map": build_hotspot_map("hour", city_id),
+            "predictive_alerts": build_predictive_alerts(),
+            "driver_performance": build_driver_performance_scores(),
+            "fleet_health": build_fleet_health(),
+            "recommendations": list_recommendations(status="pending"),
+            "financial_insights": build_financial_insights(),
+        }
+
+    return cached_ops_call("ai_dashboard", _build, city_id=city_id)

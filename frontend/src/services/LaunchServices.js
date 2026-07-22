@@ -523,8 +523,45 @@ function ReferralPanel({ role }) {
 
 function CorporatePanel() {
   const [data, setData] = useState(null);
-  useEffect(() => { apiGet("/features/corporate/me/").then((r) => setData(r.data)).catch(() => setData({ empty: true })); }, []);
-  return <Panel title="Business travel"><div className="ys-corporate">{data?.empty ? <p>You are not linked to a corporate account yet.</p> : <><h3>{data?.company}</h3><div className="ys-stat-row"><Metric label="Monthly limit" value={`${data?.monthly_limit || 0} MRU`} /><Metric label="Spent" value={`${data?.monthly_spent || 0} MRU`} /><Metric label="Remaining" value={`${data?.remaining || 0} MRU`} /></div></>}</div></Panel>;
+  const [billingSource, setBillingSource] = useState(() => localStorage.getItem("yala_billing_source") || "personal");
+
+  useEffect(() => {
+    apiGet("/features/corporate/me/").then((r) => setData(r.data)).catch(() => setData({ empty: true }));
+  }, []);
+
+  const toggleBilling = (source) => {
+    setBillingSource(source);
+    localStorage.setItem("yala_billing_source", source);
+  };
+
+  return (
+    <Panel title="Business travel">
+      <div className="ys-corporate">
+        {data?.empty ? (
+          <p>You are not linked to a corporate account yet.</p>
+        ) : (
+          <>
+            <h3>{data?.company}</h3>
+            <div className="ys-stat-row">
+              <Metric label="Monthly limit" value={`${data?.monthly_limit || 0} MRU`} />
+              <Metric label="Spent" value={`${data?.monthly_spent || 0} MRU`} />
+              <Metric label="Remaining" value={`${data?.remaining || 0} MRU`} />
+            </div>
+            {data?.can_book_corporate ? (
+              <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
+                <button type="button" onClick={() => toggleBilling("personal")}>
+                  {billingSource === "personal" ? "✓ Personal payment" : "Personal payment"}
+                </button>
+                <button type="button" onClick={() => toggleBilling("corporate")}>
+                  {billingSource === "corporate" ? "✓ Bill to company" : "Bill to company"}
+                </button>
+              </div>
+            ) : null}
+          </>
+        )}
+      </div>
+    </Panel>
+  );
 }
 
 function BonusPanel() {

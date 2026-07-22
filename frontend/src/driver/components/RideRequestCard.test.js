@@ -5,6 +5,8 @@ import RideRequestCard from "./RideRequestCard";
 
 jest.mock("../../native/sound", () => ({
   playRideRequestAlert: jest.fn(() => Promise.resolve(true)),
+  startRideRequestAlertLoop: jest.fn(() => Promise.resolve(true)),
+  stopRideRequestAlertLoop: jest.fn(),
 }));
 
 // ─── Test Helpers ───────────────────────────────────────────────────────────
@@ -269,7 +271,34 @@ describe("RideRequestCard", () => {
       />
     );
 
-    expect(screen.getByText("Pickup")).toBeInTheDocument();
+    expect(screen.getAllByText("Pickup")).toHaveLength(2);
     expect(screen.getByText("Destination")).toBeInTheDocument();
+  });
+
+  it("does not start alert sound while accept is in progress", () => {
+    const { startRideRequestAlertLoop } = require("../../native/sound");
+
+    const { rerender } = render(
+      <RideRequestCard
+        ride={mockRide}
+        onAccept={jest.fn()}
+        onDecline={jest.fn()}
+        onExpired={jest.fn()}
+      />
+    );
+
+    expect(startRideRequestAlertLoop).toHaveBeenCalled();
+
+    rerender(
+      <RideRequestCard
+        ride={mockRide}
+        onAccept={jest.fn()}
+        onDecline={jest.fn()}
+        onExpired={jest.fn()}
+        accepting
+      />
+    );
+
+    expect(startRideRequestAlertLoop).toHaveBeenCalledTimes(1);
   });
 });

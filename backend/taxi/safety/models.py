@@ -198,6 +198,8 @@ class TripSafetyEvent(models.Model):
     EVENT_TYPES = [
         ("long_stop", "Long Stop"),
         ("route_deviation", "Route Deviation"),
+        ("long_trip", "Long Trip"),
+        ("driver_offline", "Driver Offline"),
         ("safety_check", "Safety Check"),
     ]
     STATUS_CHOICES = [

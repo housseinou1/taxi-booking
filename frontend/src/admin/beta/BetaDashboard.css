@@ -1,0 +1,248 @@
+/* Closed Beta Dashboard — extends Launch Hub dark theme */
+
+.beta {
+  min-height: 100vh;
+  background: #070b10;
+  color: #f8fafc;
+  font-family: "Plus Jakarta Sans", Inter, sans-serif;
+  padding: 20px 24px 40px;
+}
+
+.beta__back {
+  color: #94a3b8;
+  text-decoration: none;
+  font-size: 0.875rem;
+}
+
+.beta__back:hover {
+  color: #e2e8f0;
+}
+
+.beta__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 16px 0 24px;
+}
+
+.beta__title {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 700;
+}
+
+.beta__subtitle {
+  margin: 6px 0 0;
+  color: #94a3b8;
+  font-size: 0.9rem;
+}
+
+.beta__actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.beta__btn {
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #f8fafc;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.beta__btn:hover {
+  background: #334155;
+}
+
+.beta__btn--primary {
+  background: #059669;
+  border-color: #059669;
+}
+
+.beta__btn--primary:hover {
+  background: #047857;
+}
+
+.beta__section {
+  margin-bottom: 28px;
+}
+
+.beta__section-title {
+  margin: 0 0 12px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #e2e8f0;
+  border-bottom: 1px solid #1f2937;
+  padding-bottom: 8px;
+}
+
+.beta__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.beta__grid--wide {
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+}
+
+.beta__card {
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+.beta__card-label {
+  color: #94a3b8;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.beta__card-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin-top: 6px;
+}
+
+.beta__card-sub {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+.beta__panel {
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 12px;
+}
+
+.beta__panel h4 {
+  margin: 0 0 10px;
+  font-size: 0.95rem;
+}
+
+.beta__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.beta__table th,
+.beta__table td {
+  border-bottom: 1px solid #1f2937;
+  padding: 8px 6px;
+  text-align: left;
+}
+
+.beta__table th {
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.beta__badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.beta__badge--p0 { background: #7f1d1d; color: #fecaca; }
+.beta__badge--p1 { background: #78350f; color: #fde68a; }
+.beta__badge--ok { background: #14532d; color: #bbf7d0; }
+.beta__badge--warn { background: #713f12; color: #fde68a; }
+.beta__badge--fail { background: #450a0a; color: #fca5a5; }
+
+.beta__status-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.beta__status-chip {
+  flex: 1;
+  min-width: 180px;
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.beta__status-chip strong {
+  display: block;
+  font-size: 0.8rem;
+  color: #94a3b8;
+  margin-bottom: 4px;
+}
+
+.beta__cohort-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.beta__error {
+  background: #450a0a;
+  border: 1px solid #991b1b;
+  color: #fecaca;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.beta__print-area {
+  display: none;
+}
+
+@media print {
+  .beta__no-print {
+    display: none !important;
+  }
+
+  .beta {
+    background: #fff;
+    color: #111;
+    padding: 12px;
+  }
+
+  .beta__print-area {
+    display: block;
+  }
+
+  .beta__section {
+    break-inside: avoid;
+  }
+
+  .beta__card,
+  .beta__panel,
+  .beta__status-chip {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    color: #111;
+  }
+
+  .beta__card-label,
+  .beta__subtitle {
+    color: #475569;
+  }
+}
+
+@media (max-width: 640px) {
+  .beta {
+    padding: 12px 14px 32px;
+  }
+
+  .beta__grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

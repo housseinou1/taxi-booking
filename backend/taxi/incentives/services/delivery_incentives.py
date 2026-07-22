@@ -55,13 +55,14 @@ def track_delivery_completion(courier):
             progress.status = "completed"
             progress.completed_at = timezone.now()
             progress.bonus_earned = program.bonus_amount
+            progress.pending_bonus = program.bonus_amount
             progress.save()
-            _notify_bonus_earned(courier, program)
+            _notify_bonus_earned(courier, program, progress)
         else:
             progress.save(update_fields=["current_value"])
 
 
-def _notify_bonus_earned(courier, program):
+def _notify_bonus_earned(courier, program, progress):
     if not _courier_wants_promotions(courier):
         return
 
@@ -82,6 +83,8 @@ def _notify_bonus_earned(courier, program):
     BonusPayment.objects.get_or_create(
         driver=courier,
         program=program,
+        progress=progress,
+        payout_status="pending",
         defaults={
             "amount": Decimal(program.bonus_amount),
             "reason": f"Auto: {program.name}",

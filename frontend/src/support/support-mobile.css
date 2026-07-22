@@ -1,0 +1,125 @@
+.support-report-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.support-report-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.support-report-form__field input,
+.support-report-form__field textarea {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 16px;
+  background: rgba(255, 255, 255, 0.06);
+  color: inherit;
+}
+
+.support-report-form__banner {
+  background: rgba(220, 38, 38, 0.15);
+  border: 1px solid rgba(220, 38, 38, 0.35);
+  border-radius: 12px;
+  padding: 12px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.support-report-form--emergency .support-report-form__btn {
+  background: #dc2626;
+}
+
+.support-report-form__actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.support-report-form__btn {
+  flex: 1;
+  min-height: 48px;
+  border: none;
+  border-radius: 12px;
+  background: #00a651;
+  color: #fff;
+  font-weight: 700;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.support-report-form__btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.support-report-form__btn--ghost {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: inherit;
+  flex: 0 0 auto;
+  padding: 0 16px;
+}
+
+.support-report-form__error {
+  color: #fca5a5;
+  font-size: 14px;
+}
+
+.support-report-form__success {
+  color: #86efac;
+  font-size: 14px;
+}
+
+.support-hub-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@media (min-width: 640px) {
+  .support-hub-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.support-hub-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-height: 88px;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  text-decoration: none;
+}
+
+.support-hub-tile span {
+  font-size: 22px;
+}
+
+.support-hub-tile strong {
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.support-hub-tile--emergency {
+  border-color: rgba(220, 38, 38, 0.45);
+  background: rgba(220, 38, 38, 0.12);
+}
+
+.support-hub-section-title {
+  margin: 0 0 10px;
+  font-size: 16px;
+}

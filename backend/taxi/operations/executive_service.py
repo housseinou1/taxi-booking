@@ -9,6 +9,8 @@ from django.contrib.auth import get_user_model
 from django.db.models import Count, Sum
 from django.utils import timezone
 
+from .chart_utils import build_daily_payment_chart
+
 from admin_2fa.models import AdminTOTP
 from deliveries.models import Delivery, DeliveryDispute
 from payments.models import PaymentRecord, RefundRequest, WalletAccount, WithdrawalRequest
@@ -160,23 +162,7 @@ def build_finance_dashboard(period: str = "daily", city_id=None) -> dict:
         status__in=["pending", "approved"]
     ).aggregate(total=Sum("amount"))["total"] or Decimal("0")
 
-    chart = []
-    cursor = start
-    while cursor <= end:
-        day_payments = payments.filter(created_at__date=cursor)
-        chart.append(
-            {
-                "date": cursor.isoformat(),
-                "label": cursor.strftime("%b %d"),
-                "gross_revenue": float(
-                    day_payments.aggregate(total=Sum("amount"))["total"] or 0
-                ),
-                "platform_commission": float(
-                    day_payments.aggregate(total=Sum("app_fee"))["total"] or 0
-                ),
-            }
-        )
-        cursor += timedelta(days=1)
+    chart = build_daily_payment_chart(payments, start, end)
 
     return {
         "period": period,

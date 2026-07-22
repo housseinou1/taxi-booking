@@ -763,12 +763,31 @@ function RiderHome() {
   const handleRideTypeSelect = useCallback(
     (type) => {
       dispatch({ type: 'SET_RIDE_TYPE', payload: type });
+      if (routeInfo?.distanceKm) {
+        dispatch({
+          type: 'SET_FARE',
+          payload: {
+            fare: calculateFare(type, routeInfo.distanceKm),
+            discountedFare: undefined,
+          },
+        });
+      }
     },
-    [dispatch]
+    [dispatch, routeInfo]
   );
 
   const handleConfirmBooking = useCallback(async () => {
     if (!pickup || !destination) return;
+    if (!hasValidLocation(pickup) || !hasValidLocation(destination)) {
+      dispatch({
+        type: 'SET_ERROR',
+        payload: t(
+          'riderHome.invalidLocations',
+          'Set a valid pickup and destination before confirming your ride.',
+        ),
+      });
+      return;
+    }
     if (!legalCompliant && !legalAccepted) return;
 
     dispatch({ type: 'REQUEST_RIDE' });
@@ -782,6 +801,7 @@ function RiderHome() {
         setRequiresResign(false);
       }
 
+      const billingSource = localStorage.getItem("yala_billing_source") || "personal";
       const payload = buildRideRequest({
         pickup,
         destination,
@@ -790,9 +810,19 @@ function RiderHome() {
         routeInfo,
         fare: discountedFare || fare,
         promoCode,
+        billingSource: billingSource === "corporate" ? "corporate" : "personal",
         rideTermsAccepted: legalCompliant || termsChecked,
         privacyAccepted: legalCompliant || privacyChecked,
       });
+
+      if (!payload) {
+        throw new Error(
+          t(
+            'riderHome.invalidLocations',
+            'Set a valid pickup and destination before confirming your ride.',
+          ),
+        );
+      }
 
       const response = await apiService.requestRide(payload);
       dispatch({ type: 'RIDE_ACCEPTED', payload: response });
@@ -1024,6 +1054,7 @@ function RiderHome() {
                 <button
                   type="button"
                   className="yala-btn-primary"
+                  disabled={!hasValidLocation(pickup) || !hasValidLocation(destination)}
                   onClick={() => dispatch({ type: 'SET_BOOKING_STEP', payload: 'confirm' })}
                 >
                   {t('riderHome.requestRide', 'Request Ride →')}

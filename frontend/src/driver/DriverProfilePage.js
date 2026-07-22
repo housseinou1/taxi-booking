@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
+import { navigateInApp } from "../navigation/inAppNavigation";
 
 import { API_URL } from "../apiConfig";
 import { isDriverLyftUI } from "./lyftColors";
@@ -283,7 +284,7 @@ export default function DriverProfilePage({ onBack }) {
       handlePayoutClick();
       return;
     }
-    window.location.href = action;
+    navigateInApp(action);
   };
 
   if (loading) {

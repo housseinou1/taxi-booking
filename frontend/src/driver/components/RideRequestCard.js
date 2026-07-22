@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { formatMoney } from "../../marketConfig";
-import { playRideRequestAlert, stopRideRequestAlert } from "../../native/sound";
+import { startRideRequestAlertLoop, stopRideRequestAlertLoop } from "../../native/sound";
 import "./RideRequestCard.css";
 
 const RIDE_TYPE_ICONS = {
@@ -32,7 +32,6 @@ function SurgeBadge({ multiplier }) {
 }
 
 const COUNTDOWN_SECONDS = 30;
-const RING_INTERVAL_MS = 2800;
 const TIMER_RADIUS = 23;
 const TIMER_CIRCUMFERENCE = 2 * Math.PI * TIMER_RADIUS;
 
@@ -99,25 +98,15 @@ export default function RideRequestCard({
 
   useEffect(() => {
     const rideId = getRideId(ride);
-    if (!enableSound || expired || !rideId) {
+    if (!enableSound || expired || accepting || !rideId) {
       return undefined;
     }
 
-    let cancelled = false;
-    const ring = async () => {
-      if (!cancelled) {
-        await playRideRequestAlert({ force: true });
-      }
-    };
-
-    ring();
-    const intervalId = window.setInterval(ring, RING_INTERVAL_MS);
+    startRideRequestAlertLoop();
     return () => {
-      cancelled = true;
-      window.clearInterval(intervalId);
-      stopRideRequestAlert();
+      stopRideRequestAlertLoop();
     };
-  }, [enableSound, expired, getRideId(ride)]);
+  }, [accepting, enableSound, expired, ride]);
 
   const pickupLabel = ride?.pickup || ride?.pickup_address || "Pickup";
   const destinationLabel = ride?.destination || ride?.destination_address || "Destination";

@@ -17,6 +17,7 @@ from authapp.phone_views import send_sms
 from payments.models import (
     DriverPayoutMethod,
     PaymentRecord,
+    WalletAccount,
     WalletTransaction,
     WithdrawalOTPCode,
     WithdrawalRequest,
@@ -36,7 +37,7 @@ PAYOUT_TYPE_ALIASES = {
     "masravi": "masrvi",
     "masrvi": "masrvi",
 }
-ALLOWED_PAYOUT_TYPES = set(PAYOUT_TYPE_ALIASES.values())
+ALLOWED_PAYOUT_TYPES = set(PAYOUT_TYPE_ALIASES.values()) | {"bank_account"}
 RESERVED_WITHDRAWAL_STATUSES = ("pending", "approved", "paid")
 OTP_TTL_MINUTES = 10
 OTP_THROTTLE_SECONDS = 60
@@ -151,15 +152,25 @@ def driver_wallet_summary(driver) -> dict:
     pending_withdrawals = WithdrawalRequest.objects.filter(
         driver=driver, status="pending"
     ).aggregate(total=Sum("amount"))["total"] or Decimal("0")
-    wallet = get_or_create_wallet(driver)
+    pending_withdrawal_balance = WithdrawalRequest.objects.filter(
+        driver=driver, status__in=["pending", "approved"]
+    ).aggregate(total=Sum("amount"))["total"] or Decimal("0")
+    wallet = sync_driver_wallet(driver)
+    periods = driver_earnings_periods(driver)
     return {
         "available_balance": str(driver_available_balance(driver)),
-        "pending_balance": str(driver_pending_delivery_balance(driver)),
+        "pending_balance": str(pending_withdrawal_balance),
         "pending_withdrawals": str(pending_withdrawals),
+        "pending_delivery_balance": str(driver_pending_delivery_balance(driver)),
         "total_earned": str(driver_total_earned(driver)),
+        "lifetime_earnings": str(driver_total_earned(driver)),
         "wallet_balance": str(wallet.balance),
         "minimum_withdrawal": str(MIN_WITHDRAWAL_AMOUNT),
-        "earnings": driver_earnings_periods(driver),
+        "earnings": periods,
+        "today_earnings": periods.get("today", {}).get("total", "0"),
+        "week_earnings": periods.get("week", {}).get("total", "0"),
+        "month_earnings": periods.get("month", {}).get("total", "0"),
+        "recent_transactions": build_driver_wallet_ledger(driver, limit=25),
     }
 
 
@@ -242,15 +253,75 @@ def validate_payout_method(method: DriverPayoutMethod | None) -> DriverPayoutMet
     method.payout_type = normalize_payout_type(method.payout_type)
     if method.payout_type not in ALLOWED_PAYOUT_TYPES:
         raise WithdrawalError(
-            "Only Bankily, Sedad, and Masravi withdrawals are supported.",
+            "Only Bankily, Sedad, Masravi, and bank account withdrawals are supported.",
             code="invalid_payout_method",
         )
+    if method.payout_type == "bank_account":
+        if not method.bank_name or not method.account_reference:
+            raise WithdrawalError(
+                "Bank name and account number are required for bank account withdrawals.",
+                code="invalid_payout_method",
+            )
+        return method
     if not (method.phone_number or method.wallet_id):
         raise WithdrawalError(
             "Phone number is required for mobile money withdrawals.",
             code="invalid_payout_method",
         )
     return method
+
+
+def assert_driver_can_withdraw(driver) -> None:
+    from taxi.drivers.models import DriverProfile
+
+    if getattr(driver, "user_type", "") != "driver":
+        raise WithdrawalError("Only driver accounts can request withdrawals.", code="not_driver")
+    if not DriverProfile.objects.filter(user=driver, status="approved").exists():
+        raise WithdrawalError(
+            "Your driver account must be approved before withdrawing.",
+            code="driver_not_approved",
+        )
+
+
+def sync_driver_wallet(driver) -> WalletAccount:
+    """Sync wallet balance fields with the computed driver earnings model."""
+    wallet = get_or_create_wallet(driver)
+    wallet.balance = driver_available_balance(driver)
+    wallet.pending_balance = driver_reserved_withdrawals(driver)
+    wallet.save(update_fields=["balance", "pending_balance", "updated_at"])
+    return wallet
+
+
+def _record_pending_withdrawal_ledger(wallet: WalletAccount, withdrawal: WithdrawalRequest) -> WalletTransaction:
+    return apply_wallet_transaction(
+        wallet=wallet,
+        amount=withdrawal.amount,
+        is_credit=False,
+        transaction_type="withdrawal",
+        reference=f"withdrawal:{withdrawal.id}",
+        note="Withdrawal pending admin review",
+        status="pending",
+    )
+
+
+def _record_withdrawal_reversal_ledger(wallet: WalletAccount, withdrawal: WithdrawalRequest) -> WalletTransaction:
+    return apply_wallet_transaction(
+        wallet=wallet,
+        amount=withdrawal.amount,
+        is_credit=True,
+        transaction_type="withdrawal",
+        reference=f"withdrawal:{withdrawal.id}:reversed",
+        note="Withdrawal rejected - amount returned",
+        status="reversed",
+    )
+
+
+def _mark_withdrawal_ledger_completed(withdrawal: WithdrawalRequest) -> None:
+    WalletTransaction.objects.filter(
+        wallet__owner=withdrawal.driver,
+        reference=f"withdrawal:{withdrawal.id}",
+        status="pending",
+    ).update(status="completed")
 
 
 def _fraud_check_withdrawal(driver, amount: Decimal) -> bool:
@@ -357,9 +428,44 @@ def verify_withdrawal_otp(user, code: str) -> WithdrawalOTPCode:
     return otp
 
 
+def _verify_withdrawal_confirmation(driver, otp_code: str = "", password: str = ""):
+    """Confirm a withdrawal with either an OTP code or the account password."""
+    if str(password or "").strip():
+        if not driver.check_password(str(password).strip()):
+            raise WithdrawalError("Incorrect password. Please try again.", code="password_invalid")
+        return "password"
+    if not str(otp_code or "").strip():
+        raise WithdrawalError("OTP code or password is required.", code="otp_required")
+    verify_withdrawal_otp(driver, otp_code)
+    return "otp"
+
+
 @transaction.atomic
-def create_withdrawal_request(driver, *, amount, payout_method_id=None, note="", otp_code="", request=None):
+def create_withdrawal_request(
+    driver,
+    *,
+    amount,
+    payout_method_id=None,
+    note="",
+    otp_code="",
+    password="",
+    idempotency_key="",
+    request=None,
+):
     amount = _quantize(amount)
+    assert_driver_can_withdraw(driver)
+
+    if not str(idempotency_key or "").strip():
+        raise WithdrawalError("Idempotency key is required.", code="missing_idempotency_key")
+
+    idempotency_key = str(idempotency_key).strip()[:64]
+    existing = WithdrawalRequest.objects.filter(
+        driver=driver,
+        idempotency_key=idempotency_key,
+    ).first()
+    if existing:
+        return existing
+
     if amount <= 0:
         raise WithdrawalError("Withdrawal amount must be greater than zero.", code="invalid_amount")
     if amount < MIN_WITHDRAWAL_AMOUNT:
@@ -376,18 +482,23 @@ def create_withdrawal_request(driver, *, amount, payout_method_id=None, note="",
             code="duplicate_pending",
         )
 
-    available = driver_available_balance(driver)
+    wallet = sync_driver_wallet(driver)
+    wallet = WalletAccount.objects.select_for_update().get(pk=wallet.pk)
+    available = wallet.balance
     if amount > available:
         raise WithdrawalError(
             f"Withdrawal amount is higher than available balance ({available} MRU)",
             code="insufficient_balance",
         )
 
-    otp_record = verify_withdrawal_otp(driver, otp_code)
+    _verify_withdrawal_confirmation(driver, otp_code=otp_code, password=password)
 
     payout_method = None
     if payout_method_id:
-        payout_method = DriverPayoutMethod.objects.filter(driver=driver, id=payout_method_id).first()
+        payout_method = DriverPayoutMethod.objects.filter(
+            driver=driver,
+            id=payout_method_id,
+        ).first()
     if not payout_method:
         payout_method = DriverPayoutMethod.objects.filter(driver=driver, is_default=True).first()
     payout_method = validate_payout_method(payout_method)
@@ -399,7 +510,16 @@ def create_withdrawal_request(driver, *, amount, payout_method_id=None, note="",
         amount=amount,
         note=note or "",
         otp_verified_at=timezone.now(),
+        idempotency_key=idempotency_key,
+        reference="",
     )
+    withdrawal.reference = f"WD-{withdrawal.id}"
+    withdrawal.save(update_fields=["reference"])
+
+    _record_pending_withdrawal_ledger(wallet, withdrawal)
+    wallet.refresh_from_db()
+    wallet.pending_balance += amount
+    wallet.save(update_fields=["pending_balance", "updated_at"])
 
     if fraud_flag:
         FraudFlag.objects.create(
@@ -423,7 +543,12 @@ def create_withdrawal_request(driver, *, amount, payout_method_id=None, note="",
             request,
             withdrawal=withdrawal,
             summary=f"Withdrawal #{withdrawal.id} submitted",
-            details={"amount": str(amount), "payout_type": payout_method.payout_type, "fraud_flag": fraud_flag},
+            details={
+                "amount": str(amount),
+                "payout_type": payout_method.payout_type,
+                "fraud_flag": fraud_flag,
+                "confirmation_method": "password" if password else "otp",
+            },
         )
 
     return withdrawal
@@ -457,9 +582,17 @@ def reject_withdrawal_request(withdrawal: WithdrawalRequest, admin, admin_note="
     if withdrawal.status != "pending":
         raise WithdrawalError("Only pending withdrawals can be rejected.", code="invalid_status")
 
+    wallet = sync_driver_wallet(withdrawal.driver)
+    wallet = WalletAccount.objects.select_for_update().get(pk=wallet.pk)
+
     withdrawal.status = "rejected"
     withdrawal.admin_note = admin_note or withdrawal.admin_note
     withdrawal.save(update_fields=["status", "admin_note", "updated_at"])
+
+    _record_withdrawal_reversal_ledger(wallet, withdrawal)
+    wallet.refresh_from_db()
+    wallet.pending_balance -= withdrawal.amount
+    wallet.save(update_fields=["pending_balance", "updated_at"])
 
     if request:
         _log_withdrawal_audit(
@@ -472,45 +605,74 @@ def reject_withdrawal_request(withdrawal: WithdrawalRequest, admin, admin_note="
 
 
 @transaction.atomic
-def mark_withdrawal_paid(withdrawal: WithdrawalRequest, admin, admin_note="", request=None):
+def mark_withdrawal_paid(
+    withdrawal: WithdrawalRequest,
+    admin,
+    admin_note="",
+    payment_reference="",
+    request=None,
+):
     if withdrawal.status != "approved":
         raise WithdrawalError("Only approved withdrawals can be marked paid.", code="invalid_status")
+
+    wallet = sync_driver_wallet(withdrawal.driver)
+    wallet = WalletAccount.objects.select_for_update().get(pk=wallet.pk)
 
     withdrawal.status = "paid"
     withdrawal.paid_at = timezone.now()
     withdrawal.paid_by = admin
     if admin_note:
         withdrawal.admin_note = admin_note
+    if payment_reference:
+        withdrawal.payment_reference = payment_reference
     withdrawal.save(
-        update_fields=["status", "paid_at", "paid_by", "admin_note", "updated_at"]
+        update_fields=[
+            "status",
+            "paid_at",
+            "paid_by",
+            "admin_note",
+            "payment_reference",
+            "updated_at",
+        ]
     )
 
-    wallet = get_or_create_wallet(withdrawal.driver)
-    try:
-        apply_wallet_transaction(
-            wallet=wallet,
-            amount=withdrawal.amount,
-            is_credit=False,
-            transaction_type="withdrawal",
-            reference=f"withdrawal:{withdrawal.id}",
-            note=f"Withdrawal paid via {withdrawal.payout_method}",
-        )
-    except ValueError:
-        WalletTransaction.objects.create(
-            wallet=wallet,
-            transaction_type="withdrawal",
-            amount=withdrawal.amount,
-            is_credit=False,
-            balance_after=wallet.balance,
-            reference=f"withdrawal:{withdrawal.id}",
-            note=f"Withdrawal paid via {withdrawal.payout_method}",
-        )
+    wallet.pending_balance -= withdrawal.amount
+    wallet.save(update_fields=["pending_balance", "updated_at"])
+    _mark_withdrawal_ledger_completed(withdrawal)
+
+    if not WalletTransaction.objects.filter(
+        wallet__owner=withdrawal.driver,
+        reference=f"withdrawal:{withdrawal.id}",
+    ).exists():
+        try:
+            apply_wallet_transaction(
+                wallet=wallet,
+                amount=withdrawal.amount,
+                is_credit=False,
+                transaction_type="withdrawal",
+                reference=f"withdrawal:{withdrawal.id}",
+                note=f"Withdrawal paid via {withdrawal.payout_method}",
+            )
+        except ValueError:
+            WalletTransaction.objects.create(
+                wallet=wallet,
+                transaction_type="withdrawal",
+                status="completed",
+                amount=withdrawal.amount,
+                is_credit=False,
+                balance_after=wallet.balance,
+                reference=f"withdrawal:{withdrawal.id}",
+                note=f"Withdrawal paid via {withdrawal.payout_method}",
+            )
 
     if request:
         _log_withdrawal_audit(
             request,
             withdrawal=withdrawal,
             summary=f"Withdrawal #{withdrawal.id} marked paid",
-            details={"admin_note": withdrawal.admin_note},
+            details={
+                "admin_note": withdrawal.admin_note,
+                "payment_reference": withdrawal.payment_reference,
+            },
         )
     return withdrawal

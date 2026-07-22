@@ -34,7 +34,7 @@ services:
       # do not depend on a correct value in .env.production. Use True only with
       # an external managed DATABASE_URL (see backend/taxi/.env.production.template).
       DATABASE_SSL_REQUIRE: "False"
-      REDIS_URL: redis://redis:6379/0
+      REDIS_URL: redis://redis:6379/1
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
     depends_on:
@@ -46,7 +46,7 @@ services:
     expose:
       - "8000"
     healthcheck:
-      test: ["CMD-SHELL", "python -c 'import socket; s=socket.create_connection((\"127.0.0.1\",8000),timeout=5); s.close()' && echo ok"]
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health/ready/', timeout=5)\""]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -152,6 +152,12 @@ services:
       redis:
         condition: service_healthy
     restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A taxi.celery inspect ping | grep -q pong"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 60s
 
   celery-worker-2:
     build:

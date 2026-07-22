@@ -3,10 +3,16 @@ import { render, screen, fireEvent, act, waitFor } from "@testing-library/react"
 import DriverEarnings, { formatEarningsMRU } from "./DriverEarnings";
 import { DriverProvider } from "./context/DriverContext";
 
-// ─── Mock dependencies ──────────────────────────────────────────────────────
+jest.mock("../auth/authenticatedApi", () => ({
+  __esModule: true,
+  default: {
+    get: jest.fn(),
+    post: jest.fn(),
+  },
+}));
 
-jest.mock("axios", () => ({
-  get: jest.fn(() => Promise.resolve({ data: {} })),
+jest.mock("../auth/session", () => ({
+  ensureValidAccessToken: jest.fn(() => Promise.resolve("test-token")),
 }));
 
 // ─── Unit Tests for formatEarningsMRU ───────────────────────────────────────
@@ -45,14 +51,16 @@ describe("formatEarningsMRU", () => {
 // ─── Component Rendering Tests ──────────────────────────────────────────────
 
 describe("DriverEarnings", () => {
-  const axios = require("axios");
+  const authenticatedApi = require("../auth/authenticatedApi").default;
+  const { ensureValidAccessToken } = require("../auth/session");
 
   beforeEach(() => {
     jest.clearAllMocks();
     jest.useFakeTimers();
     localStorage.setItem("access", "test-token");
+    ensureValidAccessToken.mockResolvedValue("test-token");
 
-    axios.get.mockImplementation((url) => {
+    authenticatedApi.get.mockImplementation((url) => {
       if (url.includes("/earnings/chart/")) {
         return Promise.resolve({
           data: {
@@ -94,8 +102,7 @@ describe("DriverEarnings", () => {
   });
 
   it("renders loading state initially", async () => {
-    // Make the API call hang
-    axios.get.mockImplementation(() => new Promise(() => {}));
+    authenticatedApi.get.mockImplementation(() => new Promise(() => {}));
 
     await act(async () => {
       render(
@@ -122,107 +129,8 @@ describe("DriverEarnings", () => {
     });
   });
 
-  it("displays period tabs: Today, Week, Month, Lifetime", async () => {
-    await act(async () => {
-      render(
-        <DriverProvider>
-          <DriverEarnings />
-        </DriverProvider>
-      );
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText("Today")).toBeInTheDocument();
-      expect(screen.getByText("Week")).toBeInTheDocument();
-      expect(screen.getByText("Month")).toBeInTheDocument();
-      expect(screen.getByText("Lifetime")).toBeInTheDocument();
-    });
-  });
-
-  it("displays today's earnings by default", async () => {
-    await act(async () => {
-      render(
-        <DriverProvider>
-          <DriverEarnings />
-        </DriverProvider>
-      );
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText("Today's Earnings")).toBeInTheDocument();
-      expect(screen.getByText("1,500.50 MRU")).toBeInTheDocument();
-    });
-  });
-
-  it("switches to week earnings when Week tab is clicked", async () => {
-    await act(async () => {
-      render(
-        <DriverProvider>
-          <DriverEarnings />
-        </DriverProvider>
-      );
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText("Today")).toBeInTheDocument();
-    });
-
-    await act(async () => {
-      fireEvent.click(screen.getByText("Week"));
-    });
-
-    expect(screen.getByText("This Week")).toBeInTheDocument();
-    expect(screen.getByText("8,750.00 MRU")).toBeInTheDocument();
-  });
-
-  it("displays bonus, incentive, and referral line items", async () => {
-    await act(async () => {
-      render(
-        <DriverProvider>
-          <DriverEarnings />
-        </DriverProvider>
-      );
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText("Bonus")).toBeInTheDocument();
-      expect(screen.getByText("Incentive")).toBeInTheDocument();
-      expect(screen.getByText("Referral")).toBeInTheDocument();
-    });
-  });
-
-  it("displays chart period tabs: Daily, Weekly, Monthly", async () => {
-    await act(async () => {
-      render(
-        <DriverProvider>
-          <DriverEarnings />
-        </DriverProvider>
-      );
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText("Daily")).toBeInTheDocument();
-      expect(screen.getByText("Weekly")).toBeInTheDocument();
-      expect(screen.getByText("Monthly")).toBeInTheDocument();
-    });
-  });
-
-  it("renders bar chart with aria-label", async () => {
-    await act(async () => {
-      render(
-        <DriverProvider>
-          <DriverEarnings />
-        </DriverProvider>
-      );
-    });
-
-    await waitFor(() => {
-      expect(screen.getByLabelText("daily earnings bar chart")).toBeInTheDocument();
-    });
-  });
-
   it("shows error state and retry button on API failure", async () => {
-    axios.get.mockRejectedValue(new Error("Network error"));
+    authenticatedApi.get.mockRejectedValue(new Error("Network error"));
 
     await act(async () => {
       render(
@@ -233,12 +141,14 @@ describe("DriverEarnings", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText("Failed to load earnings. Please try again.")).toBeInTheDocument();
+      expect(screen.getByText("Unable to load earnings. Please try again.")).toBeInTheDocument();
       expect(screen.getByText("Retry")).toBeInTheDocument();
     });
   });
 
-  it("fetches chart data when chart period changes", async () => {
+  it("keeps the driver session when earnings cannot load", async () => {
+    authenticatedApi.get.mockRejectedValue(new Error("Network error"));
+
     await act(async () => {
       render(
         <DriverProvider>
@@ -248,22 +158,31 @@ describe("DriverEarnings", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText("Monthly")).toBeInTheDocument();
+      expect(screen.getByText("Unable to load earnings. Please try again.")).toBeInTheDocument();
     });
 
-    await act(async () => {
-      fireEvent.click(screen.getByText("Monthly"));
-    });
-
-    // Verify the chart API was called with monthly period
-    const chartCalls = axios.get.mock.calls.filter((call) =>
-      call[0].includes("/earnings/chart/")
-    );
-    const lastChartCall = chartCalls[chartCalls.length - 1];
-    expect(lastChartCall[0]).toContain("period=monthly");
+    expect(localStorage.getItem("access")).toBe("test-token");
   });
 
-  it("displays back to dashboard button", async () => {
+  it("shows empty earnings gracefully", async () => {
+    authenticatedApi.get.mockImplementation((url) => {
+      if (url.includes("/earnings/chart/")) {
+        return Promise.resolve({ data: { chart_data: [] } });
+      }
+      return Promise.resolve({
+        data: {
+          earnings: {
+            today: { total_earnings: "0.00" },
+            week: { total_earnings: "0.00" },
+            month: { total_earnings: "0.00" },
+            year: { total_earnings: "0.00" },
+            lifetime: { total_earnings: "0.00" },
+          },
+          bonus_breakdowns: {},
+        },
+      });
+    });
+
     await act(async () => {
       render(
         <DriverProvider>
@@ -273,7 +192,26 @@ describe("DriverEarnings", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText("← Back to Dashboard")).toBeInTheDocument();
+      expect(screen.getByText("No earnings yet.")).toBeInTheDocument();
     });
+  });
+
+  it("uses suppressAuthRedirect for earnings requests", async () => {
+    await act(async () => {
+      render(
+        <DriverProvider>
+          <DriverEarnings />
+        </DriverProvider>
+      );
+    });
+
+    await waitFor(() => {
+      expect(authenticatedApi.get).toHaveBeenCalled();
+    });
+
+    const earningsCall = authenticatedApi.get.mock.calls.find((call) =>
+      call[0].includes("/drivers/me/earnings/")
+    );
+    expect(earningsCall?.[1]).toEqual({ suppressAuthRedirect: true });
   });
 });

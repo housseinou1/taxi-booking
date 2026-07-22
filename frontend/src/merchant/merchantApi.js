@@ -38,6 +38,39 @@ export function updateMerchantMe(formData) {
   return merchantRequest("/me/", { method: "PATCH", body: formData });
 }
 
+export function updateMerchantSettings(payload) {
+  return merchantRequest("/me/", {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function fetchMenuCategories() {
+  return merchantRequest("/menu/categories/");
+}
+
+export function createMenuCategory(payload) {
+  return merchantRequest("/menu/categories/", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateMenuCategory(id, payload) {
+  return merchantRequest(`/menu/categories/${id}/`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deleteMenuCategory(id) {
+  return merchantRequest(`/menu/categories/${id}/`, { method: "DELETE" });
+}
+
+export function fetchMerchantSettlements() {
+  return merchantRequest("/settlements/");
+}
+
 export function fetchStores(params = {}) {
   const query = new URLSearchParams(params).toString();
   return merchantRequest(`/stores/${query ? `?${query}` : ""}`);
@@ -179,7 +212,10 @@ export const ORDER_STATUS_LABELS = {
   accepted: "Accepted",
   preparing: "Preparing",
   ready_for_pickup: "Ready for Pickup",
+  courier_assigned: "Courier Assigned",
   picked_up: "Picked Up",
   delivered: "Delivered",
   cancelled: "Cancelled",
 };
+
+export const WEEKDAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];

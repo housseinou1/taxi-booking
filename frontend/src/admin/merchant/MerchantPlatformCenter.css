@@ -1,0 +1,53 @@
+.merchant-platform-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 1rem 0;
+}
+
+.merchant-platform-tab {
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.merchant-platform-tab--active {
+  background: #111827;
+  color: #fff;
+  border-color: #111827;
+}
+
+.merchant-platform-panel {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 14px;
+  background: #fff;
+  margin-bottom: 1rem;
+}
+
+.merchant-platform-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #e2e8f0;
+  align-items: center;
+}
+
+.merchant-platform-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.merchant-platform-actions button {
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #f8fafc;
+  padding: 7px 10px;
+  font-weight: 700;
+  cursor: pointer;
+}

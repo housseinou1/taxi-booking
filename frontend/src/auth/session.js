@@ -1,6 +1,4 @@
-import axios from "axios";
-
-import { API_URL } from "../apiConfig";
+import { axiosWithApiFallback } from "../apiFallback";
 import { getAppType } from "../native/platform";
 import { getToken, removeToken, setToken } from "../native/storage";
 import { getUserRole } from "./roleRouting";
@@ -35,12 +33,22 @@ export function persistAuthTokens({ access, refresh, user } = {}) {
 }
 
 async function hydrateTokensFromSecureStorage() {
-  if (localStorage.getItem("access") || localStorage.getItem("refresh")) {
-    return;
+  try {
+    const [secureAccess, secureRefresh] = await Promise.all([
+      getToken("access"),
+      getToken("refresh"),
+    ]);
+
+    if (secureAccess && !localStorage.getItem("access")) {
+      localStorage.setItem("access", secureAccess);
+    }
+
+    if (secureRefresh && !hasRefreshToken()) {
+      localStorage.setItem("refresh", secureRefresh);
+    }
+  } catch {
+    // Secure storage is optional on web builds.
   }
-  const [access, refresh] = await Promise.all([getToken("access"), getToken("refresh")]);
-  if (access) localStorage.setItem("access", access);
-  if (refresh) localStorage.setItem("refresh", refresh);
 }
 
 export function isJwtUsable(token) {
@@ -86,18 +94,24 @@ export function isDriverAccount(user = getStoredUser()) {
 
 let refreshPromise = null;
 
-export async function refreshAccessToken() {
+export async function refreshAccessToken({ clearOnFailure = true } = {}) {
   if (refreshPromise) return refreshPromise;
 
   if (!hasRefreshToken()) {
-    clearAuthSession();
+    if (clearOnFailure) {
+      clearAuthSession();
+    }
     throw new Error("missing_refresh_token");
   }
 
   const refresh = localStorage.getItem("refresh");
 
-  refreshPromise = axios
-    .post(`${API_URL}/auth/token/refresh/`, { refresh }, { timeout: 15000 })
+  refreshPromise = axiosWithApiFallback(
+    "post",
+    "/auth/token/refresh/",
+    { refresh },
+    { timeout: 15000 },
+  )
     .then((response) => {
       persistAuthTokens({
         access: response.data.access,
@@ -106,7 +120,9 @@ export async function refreshAccessToken() {
       return response.data.access;
     })
     .catch((error) => {
-      clearAuthSession();
+      if (clearOnFailure) {
+        clearAuthSession();
+      }
       throw error;
     })
     .finally(() => {
@@ -141,7 +157,7 @@ export async function fetchAuthenticatedUser(accessToken) {
     throw new Error("missing_access_token");
   }
 
-  const response = await axios.get(`${API_URL}/auth/me/`, {
+  const response = await axiosWithApiFallback("get", "/auth/me/", undefined, {
     headers: { Authorization: `Bearer ${token}` },
     timeout: 10000,
   });
@@ -182,7 +198,18 @@ export async function restoreAuthSession({ requiredRole = null } = {}) {
       }
     }
 
-    clearAuthSession();
+    const cachedUser = getStoredUser();
+    if (access && cachedUser && Object.keys(cachedUser).length > 0) {
+      if (requiredRole && getUserRole(cachedUser) !== requiredRole) {
+        clearAuthSession();
+        return { authenticated: false, user: null, wrongRole: getUserRole(cachedUser) };
+      }
+      return { authenticated: true, user: cachedUser, offline: true };
+    }
+
+    if (status === 401 || status === 403) {
+      clearAuthSession();
+    }
     return { authenticated: false, user: null };
   }
 }

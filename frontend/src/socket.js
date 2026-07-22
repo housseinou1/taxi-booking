@@ -7,7 +7,7 @@
  *   const unsub = subscribeRideUpdates((data) => { ... });
  *   // later: unsub();
  */
-import { WS_URL } from "./apiConfig";
+import { WS_URL, getWsCandidates } from "./apiConfig";
 
 let ws = null;
 let listeners = new Set();
@@ -15,16 +15,24 @@ let reconnectTimer = null;
 let reconnectDelay = 1000;
 let pendingMessages = [];
 let joinedRideIds = new Set();
+let wsCandidateIndex = 0;
+
+function buildWsUrl(baseUrl) {
+  const token = localStorage.getItem("access");
+  const separator = baseUrl.includes("?") ? "&" : "?";
+  return token ? `${baseUrl}${separator}token=${encodeURIComponent(token)}` : baseUrl;
+}
 
 function connect() {
   if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
     return;
   }
 
+  const candidates = getWsCandidates("rides");
+  const baseUrl = candidates[wsCandidateIndex] || WS_URL;
+  const wsUrl = buildWsUrl(baseUrl);
+
   try {
-    const token = localStorage.getItem("access");
-    const separator = WS_URL.includes("?") ? "&" : "?";
-    const wsUrl = token ? `${WS_URL}${separator}token=${encodeURIComponent(token)}` : WS_URL;
     ws = new WebSocket(wsUrl);
   } catch (err) {
     scheduleReconnect();
@@ -32,7 +40,8 @@ function connect() {
   }
 
   ws.onopen = () => {
-    reconnectDelay = 1000; // reset backoff on success
+    reconnectDelay = 1000;
+    wsCandidateIndex = 0;
     joinedRideIds.forEach((rideId) =>
       ws.send(JSON.stringify({ type: "join_ride", ride_id: rideId }))
     );
@@ -53,6 +62,10 @@ function connect() {
   };
 
   ws.onerror = () => {
+    const candidates = getWsCandidates("rides");
+    if (wsCandidateIndex < candidates.length - 1) {
+      wsCandidateIndex += 1;
+    }
     if (ws) ws.close();
   };
 }

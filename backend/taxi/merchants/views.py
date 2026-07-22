@@ -163,6 +163,8 @@ def merchant_me(request):
         "payout_method",
         "estimated_prep_minutes",
         "delivery_fee",
+        "delivery_radius_km",
+        "opening_hours",
     ):
         if field in request.data:
             setattr(merchant, field, request.data[field])
@@ -406,6 +408,8 @@ def cart_checkout(request):
             recipient_alt_phone=data.get("recipient_alt_phone", ""),
             promo_code=promo_code,
             promo_discount=promo_discount,
+            destination_lat=data.get("destination_lat"),
+            destination_lng=data.get("destination_lng"),
         )
     except MerchantOrderError as exc:
         return Response({"error": exc.message, "code": exc.code}, status=status.HTTP_400_BAD_REQUEST)

@@ -36,6 +36,7 @@ def liveness(request):
 def readiness(request):
     db_status = _check_database()
     redis_status = _check_redis()
+    celery_status, worker_count = _check_celery()
 
     overall = "ok" if db_status == "ok" and redis_status == "ok" else "unavailable"
     http_status = status.HTTP_200_OK if overall == "ok" else status.HTTP_503_SERVICE_UNAVAILABLE
@@ -46,6 +47,8 @@ def readiness(request):
             "service": "yala-api",
             "database": db_status,
             "redis": redis_status,
+            "celery": celery_status,
+            "celery_workers": worker_count,
         },
         status=http_status,
     )

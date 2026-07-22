@@ -1,0 +1,87 @@
+.incentive-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 1rem 0;
+}
+
+.incentive-tab {
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.incentive-tab--active {
+  background: #111827;
+  color: #fff;
+  border-color: #111827;
+}
+
+.incentive-panel {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 14px;
+  background: #fff;
+  margin-bottom: 1rem;
+}
+
+.incentive-form {
+  display: grid;
+  gap: 10px;
+  max-width: 520px;
+}
+
+.incentive-form label {
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.incentive-form input,
+.incentive-form select,
+.incentive-form textarea {
+  padding: 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+}
+
+.incentive-campaign {
+  border: 1px solid #e2e8f0;
+  border-left: 5px solid #00A651;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 8px;
+}
+
+.incentive-campaign--draft {
+  border-left-color: #94a3b8;
+}
+
+.incentive-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.incentive-actions button {
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #f8fafc;
+  padding: 7px 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.incentive-payout-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid #e2e8f0;
+}

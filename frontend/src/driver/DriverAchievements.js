@@ -128,11 +128,13 @@ export default function DriverAchievements() {
   const [rewardPoints, setRewardPoints] = useState(0);
   const [dashboard, setDashboard] = useState(null);
   const [challenges, setChallenges] = useState([]);
+  const [campaigns, setCampaigns] = useState([]);
+  const [bonusSummary, setBonusSummary] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const fetchAchievements = useCallback(async () => {
     try {
-      const [achievementsRes, rewardsRes, dashboardRes, challengesRes] = await Promise.all([
+      const [achievementsRes, rewardsRes, dashboardRes, challengesRes, campaignsRes] = await Promise.all([
         axios.get(`${API_URL}/drivers/me/achievements/`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
@@ -143,6 +145,9 @@ export default function DriverAchievements() {
           headers: { Authorization: `Bearer ${token}` },
         }),
         axios.get(`${API_URL}/drivers/me/challenges/`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        axios.get(`${API_URL}/incentives/my-progress/`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ]);
@@ -158,6 +163,14 @@ export default function DriverAchievements() {
           ? challengesRes.data.challenges
           : [],
       );
+      setCampaigns(
+        Array.isArray(campaignsRes.data?.active_campaigns)
+          ? campaignsRes.data.active_campaigns
+          : Array.isArray(campaignsRes.data?.campaigns)
+            ? campaignsRes.data.campaigns
+            : [],
+      );
+      setBonusSummary(campaignsRes.data?.bonus_summary || null);
     } catch (error) {
       console.log("Achievements fetch error:", error.response?.data || error);
     } finally {
@@ -204,8 +217,6 @@ export default function DriverAchievements() {
         </div>
       )}
 
-      )}
-
       {dashboard && (
         <section style={{ marginBottom: 20, background: styles.cardStyle.background, borderRadius: 14, padding: 16, border: styles.cardStyle.border }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
@@ -234,6 +245,36 @@ export default function DriverAchievements() {
             <div><strong>{dashboard.weekly_earnings}</strong><br />Week MRU</div>
             <div><strong>{dashboard.monthly_earnings}</strong><br />Month MRU</div>
           </div>
+        </section>
+      )}
+
+      {campaigns.length > 0 && (
+        <section style={{ marginBottom: 20 }}>
+          <h2 style={{ ...styles.titleStyle, fontSize: 16, marginBottom: 10 }}>Incentive Campaigns</h2>
+          {bonusSummary ? (
+            <div style={{ color: styles.cardDateStyle.color, fontSize: 12, marginBottom: 8 }}>
+              Pending {bonusSummary.pending_bonus} MRU · Paid {bonusSummary.paid_bonus} MRU
+            </div>
+          ) : null}
+          {campaigns.map((c) => (
+            <div key={c.program_id || c.id} style={{ ...styles.cardStyle, marginBottom: 8, textAlign: "left", padding: 14 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                <strong style={{ color: styles.cardTitleStyle.color }}>{c.name}</strong>
+                <span style={{ color: styles.cardDateStyle.color, fontSize: 11 }}>{c.status}</span>
+              </div>
+              <div style={{ height: 6, borderRadius: 999, background: "rgba(148,163,184,0.2)", overflow: "hidden", margin: "8px 0" }}>
+                <div style={{ width: `${c.progress_percent || 0}%`, height: "100%", background: "#fbbf24" }} />
+              </div>
+              <div style={{ fontSize: 11, color: styles.cardDateStyle.color }}>
+                {c.trips_completed ?? c.current_value}/{c.target_value} trips · {c.trips_remaining ?? 0} remaining · Est. {c.estimated_bonus} MRU
+              </div>
+              {c.expires_at ? (
+                <div style={{ fontSize: 11, color: styles.cardDateStyle.color, marginTop: 4 }}>
+                  Expires {new Date(c.expires_at).toLocaleDateString()}
+                </div>
+              ) : null}
+            </div>
+          ))}
         </section>
       )}
 

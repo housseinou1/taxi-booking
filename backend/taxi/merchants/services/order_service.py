@@ -9,6 +9,8 @@ from django.utils import timezone
 from deliveries.services.delivery_service import DeliveryService, DeliveryServiceError
 from deliveries.services.pricing import DeliveryPricingService
 
+from taxi.market import MARKET
+
 from ..models import Cart, CartItem, Merchant, MerchantOrder, MerchantOrderItem, Product
 from .notifications import notify_merchant_new_order, notify_merchant_order_update
 
@@ -84,9 +86,13 @@ class MerchantOrderService:
         recipient_alt_phone="",
         promo_code="",
         promo_discount=Decimal("0"),
-        destination_lat=18.0896,
-        destination_lng=-15.9754,
+        destination_lat=None,
+        destination_lng=None,
     ) -> MerchantOrder:
+        if destination_lat is None:
+            destination_lat = MARKET["default_destination_lat"]
+        if destination_lng is None:
+            destination_lng = MARKET["default_destination_lng"]
         if not cart.items.exists():
             raise MerchantOrderError("Cart is empty.", code="empty_cart")
         if not cart.merchant.is_operational:
@@ -114,6 +120,8 @@ class MerchantOrderService:
             discount_amount=totals["discount_amount"],
             total=totals["total"],
             delivery_address=delivery_address,
+            destination_lat=destination_lat,
+            destination_lng=destination_lng,
             recipient_name=recipient_name,
             recipient_phone=recipient_phone,
             customer_notes=customer_notes,
@@ -202,10 +210,6 @@ class MerchantOrderService:
         if order.status not in {"accepted", "preparing"}:
             raise MerchantOrderError("Order is not ready to mark.", code="invalid_status")
 
-        order.status = "ready_for_pickup"
-        order.ready_at = timezone.now()
-        order.save(update_fields=["status", "ready_at"])
-
         merchant = order.merchant
         category = _map_merchant_to_service_category(merchant)
         items_summary = ", ".join(
@@ -221,8 +225,8 @@ class MerchantOrderService:
                     "destination": order.delivery_address,
                     "pickup_lat": merchant.latitude,
                     "pickup_lng": merchant.longitude,
-                    "destination_lat": 18.0896,
-                    "destination_lng": -15.9754,
+                    "destination_lat": order.destination_lat,
+                    "destination_lng": order.destination_lng,
                     "recipient_name": order.recipient_name,
                     "recipient_phone": order.recipient_phone,
                     "service_category": category,
@@ -242,15 +246,31 @@ class MerchantOrderService:
                     "payment_method": order.payment_method,
                 },
             )
-            order.delivery = delivery
-            order.save(update_fields=["delivery"])
-        except DeliveryServiceError:
-            pass
+        except DeliveryServiceError as exc:
+            logger.exception("Delivery creation failed for merchant order %s", order.id)
+            raise MerchantOrderError(
+                str(exc) if str(exc) else "Could not create delivery for this order.",
+                code="delivery_failed",
+            ) from exc
+
+        order.status = "ready_for_pickup"
+        order.ready_at = timezone.now()
+        order.delivery = delivery
+        order.save(update_fields=["status", "ready_at", "delivery"])
 
         return order
 
+    def mark_courier_assigned(self, order: MerchantOrder) -> MerchantOrder:
+        if order.status not in {"ready_for_pickup", "preparing", "accepted"}:
+            return order
+        order.status = "courier_assigned"
+        order.courier_assigned_at = timezone.now()
+        order.save(update_fields=["status", "courier_assigned_at"])
+        notify_merchant_order_update(order, "courier_assigned")
+        return order
+
     def mark_picked_up(self, order: MerchantOrder) -> MerchantOrder:
-        if order.status != "ready_for_pickup":
+        if order.status not in {"ready_for_pickup", "courier_assigned"}:
             raise MerchantOrderError("Invalid status.", code="invalid_status")
         order.status = "picked_up"
         order.picked_up_at = timezone.now()

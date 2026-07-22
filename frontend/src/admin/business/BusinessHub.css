@@ -1,0 +1,28 @@
+.biz__actions,
+.biz__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.biz__search {
+  flex: 1;
+  min-width: 220px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #1f2937;
+  background: #111827;
+  color: #f8fafc;
+}
+
+.biz__section-title {
+  margin: 24px 0 12px;
+  font-size: 1rem;
+  color: #cbd5e1;
+}
+
+.launch__btn--sm {
+  padding: 4px 10px;
+  font-size: 0.8rem;
+}

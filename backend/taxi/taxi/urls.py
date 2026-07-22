@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 from taxi.drivers.urls import admin_document_urlpatterns, admin_qr_urlpatterns
 from taxi.drivers.views_verification import VerifyDriverView
@@ -56,6 +57,8 @@ urlpatterns = [
 
     path("merchants/", include("merchants.urls")),
 
+    path("partners/", include("partners.urls")),
+
     path("safety/", include("safety.urls")),
 
     path("security/", include("security.urls")),
@@ -74,7 +77,13 @@ urlpatterns = [
 
     path("referrals/", include("referrals.urls")),
 
+    path("loyalty/", include("loyalty.urls")),
+
     path("operations/", include("operations.urls")),
+    path("api-gateway/", include("api_gateway.urls")),
+    path("academy/", include("academy.urls")),
+    path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
+    path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
 ]
 
 

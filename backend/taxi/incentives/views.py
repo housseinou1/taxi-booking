@@ -19,23 +19,32 @@ from .models import IncentiveProgram, DriverIncentiveProgress, BonusPayment
 @permission_classes([IsAuthenticated])
 def available_programs(request):
     """List active incentive programs the driver can join."""
+    from operations.incentive_engine_service import build_driver_campaigns_payload
+
+    payload = build_driver_campaigns_payload(request.user)
     programs = IncentiveProgram.objects.filter(status="active")
     active = [p for p in programs if p.is_currently_active]
-    # Get driver's existing enrollments
     enrolled_ids = set(
         DriverIncentiveProgress.objects.filter(driver=request.user).values_list("program_id", flat=True)
     )
-    return Response([{
-        "id": p.id,
-        "name": p.name,
-        "description": p.description,
-        "type": p.incentive_type,
-        "bonus_amount": float(p.bonus_amount),
-        "target": p.target_value,
-        "ends_at": p.ends_at,
-        "city": p.city.name if p.city else "All cities",
-        "enrolled": p.id in enrolled_ids,
-    } for p in active])
+    return Response({
+        "campaigns": payload["active_campaigns"],
+        "bonus_summary": payload["bonus_summary"],
+        "programs": [{
+            "id": p.id,
+            "name": p.name,
+            "description": p.description,
+            "type": p.incentive_type,
+            "campaign_type": p.incentive_type,
+            "reward_type": p.reward_type,
+            "bonus_amount": float(p.bonus_amount),
+            "target": p.target_value,
+            "ends_at": p.ends_at,
+            "expires_at": p.ends_at.isoformat() if p.ends_at else None,
+            "city": p.city.name if p.city else "All cities",
+            "enrolled": p.id in enrolled_ids,
+        } for p in active],
+    })
 
 
 @api_view(["POST"])
@@ -63,32 +72,24 @@ def enroll_program(request, program_id):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def my_progress(request):
-    """Driver's incentive progress and history."""
-    active = DriverIncentiveProgress.objects.filter(
-        driver=request.user, status="in_progress"
-    ).select_related("program")
+    """Driver's incentive progress with campaign bars and bonus breakdown."""
+    from operations.incentive_engine_service import build_driver_campaigns_payload
+
+    payload = build_driver_campaigns_payload(request.user)
     completed = DriverIncentiveProgress.objects.filter(
         driver=request.user, status__in=["completed", "paid"]
-    ).select_related("program")
-
-    total_earned = BonusPayment.objects.filter(driver=request.user).aggregate(t=Sum("amount"))["t"] or 0
+    ).select_related("program")[:10]
 
     return Response({
-        "total_bonus_earned": float(total_earned),
-        "active_goals": [{
-            "program": p.program.name,
-            "type": p.program.incentive_type,
-            "current": p.current_value,
-            "target": p.program.target_value,
-            "progress_percent": p.progress_percent,
-            "bonus": float(p.program.bonus_amount),
-        } for p in active],
+        **payload,
+        "total_bonus_earned": payload["bonus_summary"]["earned_bonus"],
+        "active_goals": payload["active_campaigns"],
         "completed": [{
             "program": p.program.name,
             "bonus_earned": float(p.bonus_earned),
             "completed_at": p.completed_at,
             "status": p.status,
-        } for p in completed[:10]],
+        } for p in completed],
     })
 
 
@@ -96,11 +97,12 @@ def my_progress(request):
 @permission_classes([IsAuthenticated])
 def my_bonus_history(request):
     """Driver's bonus payment history."""
-    payments = BonusPayment.objects.filter(driver=request.user)
+    payments = BonusPayment.objects.filter(driver=request.user).select_related("program")
     return Response([{
         "amount": float(p.amount),
         "reason": p.reason,
         "paid_at": p.paid_at,
+        "payout_status": p.payout_status,
         "program": p.program.name if p.program else "Manual",
     } for p in payments[:20]])
 
@@ -118,16 +120,19 @@ def admin_programs(request):
             "bonus": float(p.bonus_amount), "target": p.target_value,
             "status": p.status, "participants": p.participants.count(),
             "completed": p.participants.filter(status__in=["completed", "paid"]).count(),
-            "total_paid": float(BonusPayment.objects.filter(program=p).aggregate(t=Sum("amount"))["t"] or 0),
+            "total_paid": float(BonusPayment.objects.filter(program=p, payout_status="paid").aggregate(t=Sum("amount"))["t"] or 0),
         } for p in programs])
 
     program = IncentiveProgram.objects.create(
         name=request.data.get("name", "New Bonus"),
         description=request.data.get("description", ""),
-        incentive_type=request.data.get("type", "ride_count"),
+        incentive_type=request.data.get("type", "weekly_trip_target"),
+        reward_type=request.data.get("reward_type", "fixed"),
         bonus_amount=Decimal(str(request.data.get("bonus_amount", 200))),
         target_value=request.data.get("target", 10),
         city_id=request.data.get("city_id"),
+        status=request.data.get("status", "draft"),
+        eligible_groups=request.data.get("eligible_groups") or ["all"],
         starts_at=request.data.get("starts_at") or timezone.now(),
         ends_at=request.data.get("ends_at"),
     )
@@ -152,6 +157,7 @@ def admin_pay_bonus(request):
         amount=amount,
         reason=request.data.get("reason", "Manual bonus"),
         admin_note=request.data.get("note", ""),
+        payout_status="pending",
     )
     try:
         from notifications.push import notify_courier_bonus
@@ -159,7 +165,7 @@ def admin_pay_bonus(request):
         notify_courier_bonus(driver, amount, payment.reason, program_id=payment.program_id)
     except Exception:
         pass
-    return Response({"message": f"{amount} MRU bonus paid to {driver.email}", "id": payment.id}, status=status.HTTP_201_CREATED)
+    return Response({"message": f"{amount} MRU bonus queued for {driver.email}", "id": payment.id}, status=status.HTTP_201_CREATED)
 
 
 @api_view(["GET"])
@@ -168,12 +174,11 @@ def admin_incentive_analytics(request):
     """Admin: incentive program analytics."""
     total_programs = IncentiveProgram.objects.count()
     active_programs = IncentiveProgram.objects.filter(status="active").count()
-    total_paid = float(BonusPayment.objects.aggregate(t=Sum("amount"))["t"] or 0)
+    total_paid = float(BonusPayment.objects.filter(payout_status="paid").aggregate(t=Sum("amount"))["t"] or 0)
     total_bonuses = BonusPayment.objects.count()
     active_participants = DriverIncentiveProgress.objects.filter(status="in_progress").count()
     completed_goals = DriverIncentiveProgress.objects.filter(status__in=["completed", "paid"]).count()
 
-    # Top earners
     top_drivers = (
         BonusPayment.objects.values("driver__first_name", "driver__last_name", "driver__email")
         .annotate(total=Sum("amount"), count=Count("id"))

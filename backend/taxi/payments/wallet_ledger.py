@@ -12,7 +12,9 @@ def get_or_create_wallet(user):
     return wallet
 
 
-def apply_wallet_transaction(wallet, amount, is_credit, transaction_type, reference="", note=""):
+def apply_wallet_transaction(
+    wallet, amount, is_credit, transaction_type, reference="", note="", status="completed"
+):
     amount = Decimal(str(amount))
     if amount <= 0:
         raise ValueError("Amount must be positive.")
@@ -26,6 +28,7 @@ def apply_wallet_transaction(wallet, amount, is_credit, transaction_type, refere
         return WalletTransaction.objects.create(
             wallet=wallet,
             transaction_type=transaction_type,
+            status=status,
             amount=amount,
             is_credit=is_credit,
             balance_after=new_balance,

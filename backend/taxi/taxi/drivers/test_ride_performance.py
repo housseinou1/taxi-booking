@@ -118,7 +118,7 @@ class RideAssignmentPerformanceTests(APITestCase):
         )
 
     @patch("taxi.rides.services.ride_assignment_service.start_ride_request_timeout")
-    @patch("taxi.rides.services.ride_assignment_service._broadcast_ride_request")
+    @patch("taxi.rides.services.ride_assignment_service.schedule_ride_request_broadcast")
     @patch(
         "taxi.rides.services.driver_dispatch_service.driver_documents_ok",
         return_value=True,

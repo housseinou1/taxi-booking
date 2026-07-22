@@ -7,12 +7,16 @@ from deliveries.serializers import DeliveryInstructionsSerializer
 from .models import (
     Cart,
     CartItem,
+    MenuCategory,
     Merchant,
     MerchantOrder,
     MerchantOrderItem,
     MerchantPayout,
     MerchantPromotion,
+    MerchantSettlement,
     Product,
+    ProductExtra,
+    ProductVariant,
 )
 
 
@@ -44,6 +48,8 @@ class MerchantSerializer(serializers.ModelSerializer):
             "total_orders",
             "estimated_prep_minutes",
             "delivery_fee",
+            "delivery_radius_km",
+            "opening_hours",
             "is_active",
             "is_operational",
             "created_at",
@@ -108,25 +114,56 @@ class StoreCardSerializer(serializers.ModelSerializer):
         return getattr(obj, "_distance_km", None)
 
 
+class MenuCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MenuCategory
+        fields = ("id", "name", "description", "sort_order", "is_active", "created_at")
+        read_only_fields = ("id", "created_at")
+
+
+class ProductVariantSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductVariant
+        fields = ("id", "name", "price_delta", "is_available", "sort_order")
+        read_only_fields = ("id",)
+
+
+class ProductExtraSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductExtra
+        fields = ("id", "name", "price", "is_available", "sort_order")
+        read_only_fields = ("id",)
+
+
 class ProductSerializer(serializers.ModelSerializer):
     effective_price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    variants = ProductVariantSerializer(many=True, read_only=True)
+    extras = ProductExtraSerializer(many=True, read_only=True)
 
     class Meta:
         model = Product
         fields = (
             "id",
             "merchant",
+            "menu_category",
             "product_name",
             "description",
             "category",
+            "product_kind",
+            "requires_prescription",
             "image",
             "price",
+            "price_per_kg",
+            "weight_kg",
             "discount_percent",
             "effective_price",
             "stock_quantity",
             "stock_status",
             "is_available",
             "low_stock_threshold",
+            "sort_order",
+            "variants",
+            "extras",
             "created_at",
         )
         read_only_fields = ("id", "stock_status", "merchant", "created_at")
@@ -215,6 +252,8 @@ class MerchantOrderSerializer(serializers.ModelSerializer):
             "accepted_at",
             "preparing_at",
             "ready_at",
+            "courier_assigned_at",
+            "picked_up_at",
             "delivered_at",
         )
         read_only_fields = fields
@@ -226,6 +265,8 @@ class MerchantOrderSerializer(serializers.ModelSerializer):
 class CheckoutSerializer(serializers.Serializer):
     merchant_id = serializers.IntegerField()
     delivery_address = serializers.CharField()
+    destination_lat = serializers.FloatField(required=False)
+    destination_lng = serializers.FloatField(required=False)
     recipient_name = serializers.CharField(max_length=120)
     recipient_phone = serializers.CharField(max_length=30)
     distance_km = serializers.DecimalField(max_digits=7, decimal_places=2, default=Decimal("5"))
@@ -249,6 +290,25 @@ class CheckoutSerializer(serializers.Serializer):
 class AddCartItemSerializer(serializers.Serializer):
     product_id = serializers.IntegerField()
     quantity = serializers.IntegerField(min_value=1, default=1)
+
+
+class MerchantSettlementSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MerchantSettlement
+        fields = (
+            "id",
+            "status",
+            "period_start",
+            "period_end",
+            "gross_sales",
+            "commission_amount",
+            "net_payout",
+            "order_count",
+            "invoice_reference",
+            "paid_at",
+            "created_at",
+        )
+        read_only_fields = fields
 
 
 class MerchantPayoutSerializer(serializers.ModelSerializer):

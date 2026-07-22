@@ -599,6 +599,8 @@ export default function DeliveryCustomerApp() {
         <DeliveryCart
           store={selectedStore}
           deliveryAddress={form.destination || "Nouakchott"}
+          destinationLat={form.destination_lat}
+          destinationLng={form.destination_lng}
           distanceKm={distanceKm}
           showTermsAcceptance={!customerTermsOnRecord}
           termsChecked={customerTermsChecked}

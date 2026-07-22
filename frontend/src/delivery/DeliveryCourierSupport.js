@@ -1,6 +1,9 @@
 import React, { useState } from "react";
 
 import { MARKET } from "../marketConfig";
+import SupportReportForm from "../support/SupportReportForm";
+import { DELIVERY_REPORT_OPTIONS } from "../support/supportCategories";
+import "../support/support-mobile.css";
 import { DeliveryUberPage } from "./DeliveryUberLayout";
 import "./delivery-uber.css";
 
@@ -28,39 +31,7 @@ const DELIVERY_FAQS = [
 ];
 
 export default function DeliveryCourierSupport() {
-  const [message, setMessage] = useState("");
-  const [phone, setPhone] = useState("");
-  const [deliveryId, setDeliveryId] = useState("");
-  const [notice, setNotice] = useState("");
-
-  const submitReport = (event) => {
-    event.preventDefault();
-    if (!phone.trim() && !message.trim()) {
-      setNotice("Add a phone number and describe the issue.");
-      return;
-    }
-
-    const caseNumber = `YDL-${Date.now().toString().slice(-6)}`;
-    const savedReports = JSON.parse(localStorage.getItem("sx_support_reports") || "[]");
-    localStorage.setItem(
-      "sx_support_reports",
-      JSON.stringify([
-        {
-          id: caseNumber,
-          topic: "delivery",
-          phone: phone.trim(),
-          deliveryId: deliveryId.trim(),
-          message: message.trim(),
-          createdAt: new Date().toISOString(),
-        },
-        ...savedReports,
-      ])
-    );
-
-    setNotice(`Report submitted. Case ${caseNumber}. Our team will follow up.`);
-    setMessage("");
-    setDeliveryId("");
-  };
+  const [reportCategory, setReportCategory] = useState(null);
 
   return (
     <DeliveryUberPage
@@ -92,39 +63,32 @@ export default function DeliveryCourierSupport() {
 
       <section className="delivery-uber-card delivery-courier-support-card">
         <h2>Report an issue</h2>
-        <form className="delivery-courier-support-form" onSubmit={submitReport}>
-          <label className="delivery-uber-field">
-            Phone number
-            <input
-              type="tel"
-              value={phone}
-              onChange={(event) => setPhone(event.target.value)}
-              placeholder="+222XXXXXXXX"
-            />
-          </label>
-          <label className="delivery-uber-field">
-            Delivery ID (optional)
-            <input
-              type="text"
-              value={deliveryId}
-              onChange={(event) => setDeliveryId(event.target.value)}
-              placeholder="Example: 1042"
-            />
-          </label>
-          <label className="delivery-uber-field">
-            What happened?
-            <textarea
-              rows={4}
-              value={message}
-              onChange={(event) => setMessage(event.target.value)}
-              placeholder="Describe the delivery, payment, or safety issue."
-            />
-          </label>
-          {notice ? <p className="delivery-courier-support-notice">{notice}</p> : null}
-          <button type="submit" className="delivery-uber__primary-btn">
-            Submit report
-          </button>
-        </form>
+        {!reportCategory ? (
+          <div className="support-hub-grid">
+            {DELIVERY_REPORT_OPTIONS.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                className="support-hub-tile"
+                onClick={() => setReportCategory(option)}
+              >
+                <span>{option.icon}</span>
+                <strong>{option.label}</strong>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <SupportReportForm
+            appType="delivery"
+            category={reportCategory.id}
+            categoryLabel={reportCategory.label}
+            onCancel={() => setReportCategory(null)}
+            contextFields={[
+              { key: "delivery_id", label: "Delivery ID (optional)", placeholder: "Delivery reference" },
+              { key: "phone", label: "Phone (optional)", type: "tel", placeholder: "+222XXXXXXXX" },
+            ]}
+          />
+        )}
       </section>
 
       <section className="delivery-uber-card delivery-courier-support-card">

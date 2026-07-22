@@ -1,10 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import axios from "axios";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import { API_URL } from "../apiConfig";
 import { MARKET } from "../marketConfig";
 import { bindDriverTheme } from "./themeRefresh";
 import authenticatedApi from "../auth/authenticatedApi";
+import { ensureValidAccessToken } from "../auth/session";
+import { navigateInApp } from "../navigation/inAppNavigation";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 const PERIODS = ["today", "week", "month", "year", "lifetime"];
@@ -12,6 +13,7 @@ const CHART_PERIODS = ["daily", "weekly", "monthly"];
 const MAX_RETRIES = 3;
 const RETRY_INTERVAL_MS = 5000;
 const EARNINGS_REFRESH_INTERVAL_MS = 10000;
+const NON_REDIRECTING_AUTH_CONFIG = { suppressAuthRedirect: true };
 
 const toAmount = (value) => {
   const parsed = Number(value);
@@ -207,8 +209,8 @@ function WithdrawalSheet({ onClose, onDone }) {
     (async () => {
       try {
         const [wRes, mRes] = await Promise.all([
-          authenticatedApi.get(`${API_URL}/payments/withdrawals/`),
-          authenticatedApi.get(`${API_URL}/payments/payout-methods/`),
+          authenticatedApi.get(`${API_URL}/payments/withdrawals/`, NON_REDIRECTING_AUTH_CONFIG),
+          authenticatedApi.get(`${API_URL}/payments/payout-methods/`, NON_REDIRECTING_AUTH_CONFIG),
         ]);
         if (cancelled) return;
         const wd = wRes.data || {};
@@ -237,7 +239,7 @@ function WithdrawalSheet({ onClose, onDone }) {
     setWorking(true);
     setErr("");
     try {
-      await authenticatedApi.post(`${API_URL}/payments/withdrawals/send-otp/`, {});
+      await authenticatedApi.post(`${API_URL}/payments/withdrawals/send-otp/`, {}, NON_REDIRECTING_AUTH_CONFIG);
       setStep("otp");
     } catch (e) {
       setErr(e.response?.data?.error || "Could not send code.");
@@ -253,7 +255,7 @@ function WithdrawalSheet({ onClose, onDone }) {
         amount: Number(amount),
         payout_method: payoutMethod?.id,
         otp_code: otp.trim(),
-      });
+      }, NON_REDIRECTING_AUTH_CONFIG);
       setStep("success");
       onDone?.();
     } catch (e) {
@@ -400,7 +402,6 @@ function WithdrawalSheet({ onClose, onDone }) {
 export default function DriverEarnings() {
   const { lyftUI } = syncDriverTheme();
   const { COLORS, styles } = driverTheme;
-  const token = localStorage.getItem("access");
 
   const [activePeriod, setActivePeriod] = useState("today");
   const [chartPeriod, setChartPeriod] = useState("daily");
@@ -416,23 +417,25 @@ export default function DriverEarnings() {
   const retryTimerRef = useRef(null);
   const refreshTimerRef = useRef(null);
 
-  const authHeaders = useMemo(
-    () => ({ headers: { Authorization: `Bearer ${token}` } }),
-    [token]
-  );
-
   // ─── Fetch Earnings Data ────────────────────────────────────────────────
   const fetchEarnings = useCallback(async (isRetry = false) => {
-    if (!token) return;
-
     if (!isRetry) {
       setLoading(true);
       setError(null);
     }
 
+    const access = await ensureValidAccessToken();
+    if (!access) {
+      setError("Unable to load earnings. Please try again.");
+      setLoading(false);
+      setSyncing(false);
+      return;
+    }
+
     try {
       const response = await authenticatedApi.get(
-        `${API_URL}/drivers/me/earnings/`
+        `${API_URL}/drivers/me/earnings/`,
+        NON_REDIRECTING_AUTH_CONFIG
       );
       setEarnings(normalizeEarningsPayload(response.data || {}));
       retryCountRef.current = 0;
@@ -445,7 +448,7 @@ export default function DriverEarnings() {
           fetchEarnings(true);
         }, RETRY_INTERVAL_MS);
       } else if (!isRetry) {
-        setError("Failed to load earnings. Please try again.");
+        setError("Unable to load earnings. Please try again.");
         console.error("Earnings fetch error:", err);
       } else {
         setSyncing(false);
@@ -456,16 +459,22 @@ export default function DriverEarnings() {
         setLoading(false);
       }
     }
-  }, [authHeaders, token]);
+  }, []);
 
   // ─── Fetch Chart Data ───────────────────────────────────────────────────
   const fetchChartData = useCallback(async (period) => {
-    if (!token) return;
+    const access = await ensureValidAccessToken();
+    if (!access) {
+      setChartData([]);
+      return;
+    }
+
     setChartLoading(true);
 
     try {
       const response = await authenticatedApi.get(
-        `${API_URL}/drivers/me/earnings/chart/?period=${period}`
+        `${API_URL}/drivers/me/earnings/chart/?period=${period}`,
+        NON_REDIRECTING_AUTH_CONFIG
       );
       setChartData(normalizeChartPayload(response.data));
     } catch (err) {
@@ -474,7 +483,7 @@ export default function DriverEarnings() {
     } finally {
       setChartLoading(false);
     }
-  }, [authHeaders, token]);
+  }, []);
 
   // ─── Initial Load ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -572,6 +581,7 @@ export default function DriverEarnings() {
   const normalizedData = getNormalizedChartData();
   const chartLabels = getChartLabels();
   const weekTotal = getPeriodEarnings("week");
+  const hasAnyEarnings = PERIODS.some((period) => getPeriodEarnings(period) > 0);
 
   if (loading) {
     return (
@@ -660,6 +670,11 @@ export default function DriverEarnings() {
         <h2 style={{ ...styles.earningsAmount, color: "#fff", fontSize: 38 }}>
           {formatEarningsMRU(getPeriodEarnings(activePeriod))}
         </h2>
+        {!hasAnyEarnings && (
+          <span style={{ ...styles.weekTotalHint, color: "rgba(255,255,255,0.78)" }}>
+            No earnings yet.
+          </span>
+        )}
         {activePeriod !== "week" && (
           <span style={{ ...styles.weekTotalHint, color: "rgba(255,255,255,0.65)" }}>
             Week total: {formatEarningsMRU(weekTotal)}
@@ -667,7 +682,7 @@ export default function DriverEarnings() {
         )}
         <button
           type="button"
-          onClick={() => setShowWithdraw(true)}
+          onClick={() => navigateInApp("/driver/wallet/withdraw")}
           style={{
             marginTop: 20,
             background: "rgba(255,255,255,0.2)",
@@ -726,7 +741,7 @@ export default function DriverEarnings() {
       {!lyftUI && (
       <button
         type="button"
-        onClick={() => { window.location.href = "/driver"; }}
+        onClick={() => { navigateInApp("/driver"); }}
         style={styles.backButton}
       >
         ← Back to Dashboard

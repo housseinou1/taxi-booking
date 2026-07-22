@@ -2,11 +2,24 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { MARKET } from "../marketConfig";
+import {
+  hasBetaFeedbackAuth,
+  mapSupportTopicToCategory,
+  mapUrgencyToSeverity,
+  submitBetaFeedback,
+} from "../services/betaFeedbackApi";
+import SupportReportForm from "./SupportReportForm";
+import { RIDER_REPORT_OPTIONS } from "./supportCategories";
+import "./support-mobile.css";
 
 const supportTopics = [
   "contact",
   "ride",
   "payment",
+  "driver",
+  "gps",
+  "bug",
+  "suggestion",
   "lost",
 ];
 
@@ -37,6 +50,7 @@ function SupportCenter({ variant = "default" }) {
   const { t } = useTranslation();
   const isRider = variant === "rider";
   const [activeTopic, setActiveTopic] = useState(() => getInitialTopic());
+  const [reportCategory, setReportCategory] = useState(null);
   const [submitted, setSubmitted] = useState("");
   const [form, setForm] = useState({
     name: "",
@@ -66,7 +80,7 @@ function SupportCenter({ variant = "default" }) {
     }));
   };
 
-  const submitSupport = (event) => {
+  const submitSupport = async (event) => {
     event.preventDefault();
 
     if (!form.phone.trim() && !form.email.trim()) {
@@ -79,20 +93,37 @@ function SupportCenter({ variant = "default" }) {
       return;
     }
 
-    const caseNumber = `SX-${Date.now().toString().slice(-6)}`;
-    const savedReports = JSON.parse(localStorage.getItem("sx_support_reports") || "[]");
-    localStorage.setItem(
-      "sx_support_reports",
-      JSON.stringify([
-        {
-          id: caseNumber,
-          topic: activeTopic,
-          ...form,
-          createdAt: new Date().toISOString(),
-        },
-        ...savedReports,
-      ])
-    );
+    let caseNumber = `SX-${Date.now().toString().slice(-6)}`;
+
+    if (hasBetaFeedbackAuth()) {
+      try {
+        const payload = await submitBetaFeedback({
+          category: mapSupportTopicToCategory(activeTopic),
+          severity: mapUrgencyToSeverity(form.urgency),
+          description: `[${activeTopic}] ${form.message.trim()}`,
+          appType: isRider ? "rider" : "rider",
+        });
+        if (payload?.reference) {
+          caseNumber = payload.reference;
+        }
+      } catch {
+        // Fall back to local case number if API fails.
+      }
+    } else {
+      const savedReports = JSON.parse(localStorage.getItem("sx_support_reports") || "[]");
+      localStorage.setItem(
+        "sx_support_reports",
+        JSON.stringify([
+          {
+            id: caseNumber,
+            topic: activeTopic,
+            ...form,
+            createdAt: new Date().toISOString(),
+          },
+          ...savedReports,
+        ])
+      );
+    }
 
     setSubmitted(t("supportCenter.messages.caseCreated", { caseNumber }));
     setForm({
@@ -113,23 +144,28 @@ function SupportCenter({ variant = "default" }) {
 
       {isRider ? (
         <section className="sx-support-rider-intro">
-          <p>Get help with rides, payments, lost items, and safety.</p>
-          <div className="sx-support-rider-quick">
-            <button type="button" onClick={() => setActiveTopic("ride")}>
-              <span>🚗</span>
-              <strong>Ride issue</strong>
-            </button>
-            <button type="button" onClick={() => setActiveTopic("payment")}>
-              <span>💳</span>
-              <strong>Payment</strong>
-            </button>
-            <button type="button" onClick={() => setActiveTopic("lost")}>
-              <span>🎒</span>
-              <strong>Lost item</strong>
-            </button>
-            <a href="#emergency" className="sx-support-rider-emergency">
-              <span>🆘</span>
-              <strong>Emergency</strong>
+          <p>Help &amp; Support — report problems, contact support, or send suggestions.</p>
+          <h3 className="support-hub-section-title">Report a problem</h3>
+          <div className="support-hub-grid">
+            {RIDER_REPORT_OPTIONS.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                className={`support-hub-tile ${option.emergency ? "support-hub-tile--emergency" : ""}`}
+                onClick={() => {
+                  setReportCategory(option);
+                  setSubmitted("");
+                }}
+              >
+                <span>{option.icon}</span>
+                <strong>{option.label}</strong>
+              </button>
+            ))}
+          </div>
+          <div className="sx-support-rider-quick" style={{ marginTop: 16 }}>
+            <a href={`tel:${MARKET.privateCallNumber}`} className="sx-support-rider-emergency">
+              <span>📞</span>
+              <strong>Contact Support</strong>
             </a>
           </div>
         </section>
@@ -156,6 +192,26 @@ function SupportCenter({ variant = "default" }) {
         </aside>
       </section>
       )}
+
+      {isRider && reportCategory ? (
+        <section className="sx-support-panel" id="support-form">
+          <div className="sx-panel-head">
+            <span>Report</span>
+            <h2>{reportCategory.label}</h2>
+          </div>
+          <SupportReportForm
+            appType="rider"
+            category={reportCategory.id}
+            categoryLabel={reportCategory.label}
+            onCancel={() => setReportCategory(null)}
+            contextFields={
+              reportCategory.id === "ride" || reportCategory.id === "payment"
+                ? [{ key: "ride_id", label: "Ride ID (optional)", placeholder: "Ride reference" }]
+                : []
+            }
+          />
+        </section>
+      ) : null}
 
       <section className="sx-support-grid">
         <article className="sx-support-panel sx-faq-panel">

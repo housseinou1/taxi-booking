@@ -4,19 +4,26 @@ import { WS_URL } from "../apiConfig";
 import {
   ORDER_STATUS_LABELS,
   PRODUCT_CATEGORIES,
+  WEEKDAYS,
+  createMenuCategory,
   createProduct,
   createPromotion,
+  deleteMenuCategory,
   deleteProduct,
   deletePromotion,
   fetchInventory,
+  fetchMenuCategories,
   fetchMerchantAnalytics,
   fetchMerchantMe,
   fetchMerchantOrders,
   fetchMerchantPayouts,
   fetchMerchantProducts,
+  fetchMerchantSettlements,
   fetchPromotions,
   merchantLogin,
   merchantOrderAction,
+  updateMerchantSettings,
+  updateProduct,
 } from "./merchantApi";
 import { fetchLegalStatus } from "../legal/legalApi";
 import LegalCenter from "../legal/LegalCenter";
@@ -54,7 +61,15 @@ const ORDER_PIPELINE = [
   { key: "accepted", label: "Accepted" },
   { key: "preparing", label: "Preparing" },
   { key: "ready_for_pickup", label: "Ready" },
+  { key: "courier_assigned", label: "Courier" },
+  { key: "picked_up", label: "Picked up" },
+  { key: "delivered", label: "Delivered" },
 ];
+
+const DEFAULT_HOURS = WEEKDAYS.reduce((acc, day) => {
+  acc[day] = { open: "08:00", close: "22:00", closed: false };
+  return acc;
+}, {});
 
 export default function MerchantApp() {
   const [tab, setTab] = useState("dashboard");
@@ -67,6 +82,16 @@ export default function MerchantApp() {
   const [payouts, setPayouts] = useState([]);
   const [payoutSummary, setPayoutSummary] = useState(null);
   const [payoutHistory, setPayoutHistory] = useState([]);
+  const [settlements, setSettlements] = useState([]);
+  const [menuCategories, setMenuCategories] = useState([]);
+  const [categoryForm, setCategoryForm] = useState({ name: "", description: "" });
+  const [settingsForm, setSettingsForm] = useState({
+    delivery_radius_km: "8",
+    estimated_prep_minutes: "25",
+    opening_hours: DEFAULT_HOURS,
+  });
+  const [editingProductId, setEditingProductId] = useState(null);
+  const [editProductForm, setEditProductForm] = useState(null);
   const [payoutAmount, setPayoutAmount] = useState("");
   const [error, setError] = useState("");
   const [loginForm, setLoginForm] = useState({ email: "", password: "" });
@@ -88,7 +113,7 @@ export default function MerchantApp() {
 
   const loadAll = useCallback(async () => {
     try {
-      const [me, stats, orderList, productList, promoList, payoutList, walletSummary, withdrawalHistory] = await Promise.all([
+      const [me, stats, orderList, productList, promoList, payoutList, walletSummary, withdrawalHistory, settlementList, categories] = await Promise.all([
         fetchMerchantMe(),
         fetchMerchantAnalytics(),
         fetchMerchantOrders(),
@@ -97,6 +122,8 @@ export default function MerchantApp() {
         fetchMerchantPayouts(),
         fetchMerchantWalletSummary(),
         fetchMerchantPayoutHistory(),
+        fetchMerchantSettlements().catch(() => []),
+        fetchMenuCategories().catch(() => []),
       ]);
       setMerchant(me.merchant || me);
       const legal = await fetchLegalStatus().catch(() => null);
@@ -116,6 +143,14 @@ export default function MerchantApp() {
       setPayouts(payoutList);
       setPayoutSummary(walletSummary);
       setPayoutHistory(withdrawalHistory);
+      setSettlements(settlementList);
+      setMenuCategories(categories);
+      const profile = me.merchant || me;
+      setSettingsForm({
+        delivery_radius_km: String(profile.delivery_radius_km ?? 8),
+        estimated_prep_minutes: String(profile.estimated_prep_minutes ?? 25),
+        opening_hours: { ...DEFAULT_HOURS, ...(profile.opening_hours || {}) },
+      });
       const inv = await fetchInventory();
       setInventory(inv);
     } catch (err) {
@@ -200,6 +235,48 @@ export default function MerchantApp() {
     }
   };
 
+  const handleSaveSettings = async (event) => {
+    event.preventDefault();
+    try {
+      await updateMerchantSettings({
+        delivery_radius_km: Number(settingsForm.delivery_radius_km),
+        estimated_prep_minutes: Number(settingsForm.estimated_prep_minutes),
+        opening_hours: settingsForm.opening_hours,
+      });
+      await loadAll();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleCreateCategory = async (event) => {
+    event.preventDefault();
+    try {
+      await createMenuCategory(categoryForm);
+      setCategoryForm({ name: "", description: "" });
+      await loadAll();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleSaveProductEdit = async (event) => {
+    event.preventDefault();
+    if (!editingProductId || !editProductForm) return;
+    const payload = new FormData();
+    Object.entries(editProductForm).forEach(([key, value]) => {
+      if (value !== "" && value !== null && value !== undefined) payload.append(key, value);
+    });
+    try {
+      await updateProduct(editingProductId, payload);
+      setEditingProductId(null);
+      setEditProductForm(null);
+      await loadAll();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   if (!merchant) {
     return (
       <div className="delivery-uber__panel" style={{ maxWidth: 420, margin: "40px auto" }}>
@@ -235,10 +312,18 @@ export default function MerchantApp() {
       {tab === "dashboard" && analytics ? (
         <>
           <div className="merchant-dash__stat-grid">
+            <StatCard label="Today's orders" value={analytics.today_orders ?? analytics.daily_sales?.count ?? 0} />
             <StatCard label="New orders" value={newOrders.length} />
             <StatCard label="Active orders" value={analytics.active_orders} />
             <StatCard label="Revenue" value={`${analytics.revenue} MRU`} />
-            <StatCard label="Cancelled" value={analytics.cancelled_orders} />
+            <StatCard
+              label="Avg prep time"
+              value={analytics.avg_preparation_minutes != null ? `${analytics.avg_preparation_minutes} min` : "—"}
+            />
+            <StatCard
+              label="Cancellation rate"
+              value={analytics.cancellation_rate != null ? `${analytics.cancellation_rate}%` : "—"}
+            />
             <StatCard
               label="Daily sales"
               value={analytics.daily_sales.count}
@@ -250,6 +335,16 @@ export default function MerchantApp() {
               sub={`${analytics.weekly_sales.revenue} MRU`}
             />
           </div>
+          {analytics.best_selling_items?.length ? (
+            <section style={{ marginTop: 16 }}>
+              <h3 style={{ margin: "0 0 10px", fontSize: 16, fontWeight: 800 }}>Best sellers</h3>
+              {analytics.best_selling_items.slice(0, 5).map((item) => (
+                <div key={item.product_name} className="delivery-uber__list-item">
+                  {item.product_name} — {item.quantity_sold} sold
+                </div>
+              ))}
+            </section>
+          ) : null}
           {newOrders.length > 0 ? (
             <section>
               <h3 style={{ margin: "0 0 10px", fontSize: 16, fontWeight: 800 }}>Needs action</h3>
@@ -367,6 +462,23 @@ export default function MerchantApp() {
 
       {tab === "products" ? (
         <div>
+          <form className="delivery-uber__form delivery-uber__panel" onSubmit={handleCreateCategory} style={{ marginBottom: 16 }}>
+            <h3>Menu categories</h3>
+            <label>Name<input required value={categoryForm.name} onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })} /></label>
+            <label>Description<textarea value={categoryForm.description} onChange={(e) => setCategoryForm({ ...categoryForm, description: e.target.value })} /></label>
+            <button type="submit" className="delivery-uber__primary-btn">Add category</button>
+          </form>
+          {menuCategories.length ? (
+            <div className="delivery-uber__panel" style={{ marginBottom: 16 }}>
+              {menuCategories.map((cat) => (
+                <div key={cat.id} className="delivery-uber__list-item">
+                  <strong>{cat.name}</strong>
+                  {cat.description ? <small> — {cat.description}</small> : null}
+                  <button type="button" className="delivery-uber__link-btn" onClick={() => deleteMenuCategory(cat.id).then(loadAll)}>Delete</button>
+                </div>
+              ))}
+            </div>
+          ) : null}
           <form className="delivery-uber__form delivery-uber__panel" onSubmit={handleCreateProduct}>
             <h3>Add product</h3>
             <label>Name<input required value={productForm.product_name} onChange={(e) => setProductForm({ ...productForm, product_name: e.target.value })} /></label>
@@ -388,11 +500,52 @@ export default function MerchantApp() {
             {products.map((product) => (
               <div key={product.id} className="delivery-uber__list-item">
                 <strong>{product.product_name}</strong> — {product.effective_price || product.price} MRU
-                <small> {product.category} · {product.stock_status}</small>
+                <small> {product.category} · {product.stock_status}{product.requires_prescription ? " · Rx" : ""}</small>
+                <button
+                  type="button"
+                  className="delivery-uber__link-btn"
+                  onClick={() => {
+                    setEditingProductId(product.id);
+                    setEditProductForm({
+                      product_name: product.product_name,
+                      description: product.description || "",
+                      category: product.category,
+                      price: String(product.price),
+                      discount_percent: String(product.discount_percent || 0),
+                      stock_quantity: String(product.stock_quantity),
+                      requires_prescription: product.requires_prescription ? "true" : "false",
+                      is_available: product.is_available ? "true" : "false",
+                    });
+                  }}
+                >
+                  Edit
+                </button>
                 <button type="button" className="delivery-uber__link-btn" onClick={() => deleteProduct(product.id).then(loadAll)}>Delete</button>
               </div>
             ))}
           </div>
+          {editingProductId && editProductForm ? (
+            <form className="delivery-uber__form delivery-uber__panel" style={{ marginTop: 16 }} onSubmit={handleSaveProductEdit}>
+              <h3>Edit product #{editingProductId}</h3>
+              <label>Name<input required value={editProductForm.product_name} onChange={(e) => setEditProductForm({ ...editProductForm, product_name: e.target.value })} /></label>
+              <label>Description<textarea value={editProductForm.description} onChange={(e) => setEditProductForm({ ...editProductForm, description: e.target.value })} /></label>
+              <label>Price<input required type="number" step="0.01" value={editProductForm.price} onChange={(e) => setEditProductForm({ ...editProductForm, price: e.target.value })} /></label>
+              <label>Stock<input type="number" value={editProductForm.stock_quantity} onChange={(e) => setEditProductForm({ ...editProductForm, stock_quantity: e.target.value })} /></label>
+              {merchant.business_type === "pharmacy" ? (
+                <label>
+                  Prescription required
+                  <select value={editProductForm.requires_prescription} onChange={(e) => setEditProductForm({ ...editProductForm, requires_prescription: e.target.value })}>
+                    <option value="false">No</option>
+                    <option value="true">Yes</option>
+                  </select>
+                </label>
+              ) : null}
+              <div style={{ display: "flex", gap: 8 }}>
+                <button type="submit" className="delivery-uber__primary-btn">Save</button>
+                <button type="button" className="delivery-uber__link-btn" onClick={() => { setEditingProductId(null); setEditProductForm(null); }}>Cancel</button>
+              </div>
+            </form>
+          ) : null}
         </div>
       ) : null}
 
@@ -482,6 +635,15 @@ export default function MerchantApp() {
             ))}
           </div>
           <div className="delivery-uber__panel" style={{ marginTop: 16 }}>
+            <h3>Weekly settlements</h3>
+            {settlements.length === 0 ? <p>No settlements yet.</p> : settlements.map((settlement) => (
+              <div key={settlement.id} className="delivery-uber__list-item">
+                {settlement.invoice_reference || `Settlement #${settlement.id}`} — {settlement.net_payout} MRU ({settlement.status})
+                <small> {settlement.period_start} → {settlement.period_end}</small>
+              </div>
+            ))}
+          </div>
+          <div className="delivery-uber__panel" style={{ marginTop: 16 }}>
             <h3>Legacy payout records</h3>
             {payouts.length === 0 ? <p>No payouts yet.</p> : payouts.map((payout) => (
               <div key={payout.id} className="delivery-uber__list-item">
@@ -493,23 +655,94 @@ export default function MerchantApp() {
       ) : null}
 
       {tab === "settings" ? (
-        <div className="delivery-uber__panel">
-          <p><strong>Owner:</strong> {merchant.owner_name}</p>
-          <p><strong>Phone:</strong> {merchant.phone_number}</p>
-          <p><strong>Address:</strong> {merchant.address}</p>
-          <p><strong>Payout:</strong> {merchant.payout_method}</p>
-          <div style={{ marginTop: 16 }}>
-            <button
-              type="button"
-              className="delivery-uber__btn"
-              onClick={() => {
-                window.location.href = "/merchant/sign";
-              }}
-            >
-              View / re-sign merchant agreement
-            </button>
+        <div>
+          <form className="delivery-uber__form delivery-uber__panel" onSubmit={handleSaveSettings}>
+            <h3>Store configuration</h3>
+            <label>
+              Delivery radius (km)
+              <input
+                type="number"
+                min="1"
+                step="0.5"
+                required
+                value={settingsForm.delivery_radius_km}
+                onChange={(e) => setSettingsForm({ ...settingsForm, delivery_radius_km: e.target.value })}
+              />
+            </label>
+            <label>
+              Preparation time (minutes)
+              <input
+                type="number"
+                min="5"
+                required
+                value={settingsForm.estimated_prep_minutes}
+                onChange={(e) => setSettingsForm({ ...settingsForm, estimated_prep_minutes: e.target.value })}
+              />
+            </label>
+            <h4 style={{ margin: "12px 0 8px" }}>Opening hours</h4>
+            {WEEKDAYS.map((day) => (
+              <div key={day} style={{ display: "grid", gridTemplateColumns: "80px 1fr 1fr auto", gap: 8, marginBottom: 8, alignItems: "center" }}>
+                <strong style={{ textTransform: "capitalize" }}>{day}</strong>
+                <input
+                  type="time"
+                  disabled={settingsForm.opening_hours[day]?.closed}
+                  value={settingsForm.opening_hours[day]?.open || "08:00"}
+                  onChange={(e) => setSettingsForm({
+                    ...settingsForm,
+                    opening_hours: {
+                      ...settingsForm.opening_hours,
+                      [day]: { ...settingsForm.opening_hours[day], open: e.target.value },
+                    },
+                  })}
+                />
+                <input
+                  type="time"
+                  disabled={settingsForm.opening_hours[day]?.closed}
+                  value={settingsForm.opening_hours[day]?.close || "22:00"}
+                  onChange={(e) => setSettingsForm({
+                    ...settingsForm,
+                    opening_hours: {
+                      ...settingsForm.opening_hours,
+                      [day]: { ...settingsForm.opening_hours[day], close: e.target.value },
+                    },
+                  })}
+                />
+                <label style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(settingsForm.opening_hours[day]?.closed)}
+                    onChange={(e) => setSettingsForm({
+                      ...settingsForm,
+                      opening_hours: {
+                        ...settingsForm.opening_hours,
+                        [day]: { ...settingsForm.opening_hours[day], closed: e.target.checked },
+                      },
+                    })}
+                  />
+                  Closed
+                </label>
+              </div>
+            ))}
+            <button type="submit" className="delivery-uber__primary-btn">Save settings</button>
+          </form>
+          <div className="delivery-uber__panel" style={{ marginTop: 16 }}>
+            <p><strong>Owner:</strong> {merchant.owner_name}</p>
+            <p><strong>Phone:</strong> {merchant.phone_number}</p>
+            <p><strong>Address:</strong> {merchant.address}</p>
+            <p><strong>Payout:</strong> {merchant.payout_method}</p>
+            <div style={{ marginTop: 16 }}>
+              <button
+                type="button"
+                className="delivery-uber__btn"
+                onClick={() => {
+                  window.location.href = "/merchant/sign";
+                }}
+              >
+                View / re-sign merchant agreement
+              </button>
+            </div>
+            <LegalCenter app="delivery" />
           </div>
-          <LegalCenter app="delivery" />
         </div>
       ) : null}
     </MerchantShell>

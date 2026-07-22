@@ -1,0 +1,495 @@
+/* Yala Driver Wallet — Uber/Lyft-inspired cash-out experience */
+
+.dw {
+  --dw-navy: #08111f;
+  --dw-ink: #101827;
+  --dw-muted: #667085;
+  --dw-line: #eaecf0;
+  --dw-soft: #f5f7fa;
+  --dw-green: #00a651;
+  --dw-green-dark: #007a3d;
+  --dw-card-shadow: 0 12px 32px rgba(8, 17, 31, 0.08);
+  --dw-radius: 20px;
+  color: var(--dw-ink);
+  font-family: "Plus Jakarta Sans", Inter, system-ui, sans-serif;
+}
+
+.dw__content {
+  padding: 16px 16px 28px;
+}
+
+.dw-balance-card {
+  border-radius: 24px;
+  padding: 24px 22px;
+  background: linear-gradient(145deg, #08111f 0%, #12243d 100%);
+  color: #fff;
+  box-shadow: var(--dw-card-shadow);
+}
+
+.dw-balance-card__label {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.72;
+}
+
+.dw-balance-card__amount {
+  display: block;
+  margin-top: 8px;
+  font-size: 40px;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+}
+
+.dw-balance-card__meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.dw-balance-card__meta-item small {
+  display: block;
+  font-size: 11px;
+  opacity: 0.68;
+  font-weight: 600;
+}
+
+.dw-balance-card__meta-item strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.dw-btn-primary {
+  width: 100%;
+  margin-top: 16px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--dw-green) 0%, var(--dw-green-dark) 100%);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  padding: 16px 20px;
+  cursor: pointer;
+}
+
+.dw-btn-primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.dw-btn-secondary {
+  width: 100%;
+  margin-top: 10px;
+  border: 1px solid var(--dw-line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--dw-ink);
+  font-size: 14px;
+  font-weight: 800;
+  padding: 14px 18px;
+  cursor: pointer;
+}
+
+.dw-section {
+  margin-top: 28px;
+}
+
+.dw-section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.dw-section__header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--dw-navy);
+}
+
+.dw-section__header button {
+  border: 0;
+  background: transparent;
+  color: var(--dw-green-dark);
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.dw-card {
+  border: 1px solid var(--dw-line);
+  border-radius: var(--dw-radius);
+  background: #fff;
+  box-shadow: 0 4px 18px rgba(16, 24, 40, 0.04);
+}
+
+.dw-activity-row,
+.dw-history-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 12px;
+  align-items: center;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--dw-line);
+}
+
+.dw-activity-row:last-child,
+.dw-history-row:last-child {
+  border-bottom: 0;
+}
+
+.dw-activity-row__title,
+.dw-history-row__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--dw-navy);
+}
+
+.dw-activity-row__meta,
+.dw-history-row__meta {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--dw-muted);
+  font-weight: 600;
+}
+
+.dw-activity-row__amount,
+.dw-history-row__amount {
+  font-size: 15px;
+  font-weight: 900;
+  text-align: right;
+}
+
+.dw-activity-row__amount.is-credit,
+.dw-history-row__amount.is-credit {
+  color: var(--dw-green-dark);
+}
+
+.dw-activity-row__amount.is-debit,
+.dw-history-row__amount.is-debit {
+  color: #b42318;
+}
+
+.dw-status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 72px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: capitalize;
+}
+
+.dw-status-pill--pending {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.dw-status-pill--approved {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.dw-status-pill--paid {
+  background: #ecfdf3;
+  color: #027a48;
+}
+
+.dw-status-pill--rejected {
+  background: #fef3f2;
+  color: #b42318;
+}
+
+.dw-empty,
+.dw-error {
+  padding: 28px 18px;
+  border-radius: var(--dw-radius);
+  background: #fff;
+  border: 1px dashed var(--dw-line);
+  text-align: center;
+  color: var(--dw-muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.dw-error {
+  border-color: #fecdca;
+  background: #fff5f5;
+  color: #b42318;
+}
+
+.dw-skeleton {
+  border-radius: var(--dw-radius);
+  background: linear-gradient(90deg, #eef2f6 25%, #f8fafc 50%, #eef2f6 75%);
+  background-size: 200% 100%;
+  animation: dw-shimmer 1.2s infinite;
+}
+
+.dw-skeleton--hero {
+  height: 180px;
+}
+
+.dw-skeleton--row {
+  height: 68px;
+  margin-top: 10px;
+}
+
+@keyframes dw-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Cash out flow */
+.dw-cashout {
+  padding: 16px;
+}
+
+.dw-cashout__balance {
+  padding: 18px;
+  border-radius: 18px;
+  background: var(--dw-soft);
+  text-align: center;
+}
+
+.dw-cashout__balance small {
+  display: block;
+  color: var(--dw-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.dw-cashout__balance strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 28px;
+  font-weight: 900;
+  color: var(--dw-navy);
+}
+
+.dw-amount-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.dw-amount-chip {
+  border: 1.5px solid var(--dw-line);
+  border-radius: 16px;
+  background: #fff;
+  padding: 14px 12px;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--dw-navy);
+  cursor: pointer;
+}
+
+.dw-amount-chip.is-selected {
+  border-color: var(--dw-green);
+  background: #ecfdf3;
+  color: var(--dw-green-dark);
+}
+
+.dw-input-label {
+  display: block;
+  margin-top: 16px;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--dw-muted);
+}
+
+.dw-input {
+  width: 100%;
+  margin-top: 8px;
+  border: 1.5px solid var(--dw-line);
+  border-radius: 14px;
+  padding: 14px 16px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--dw-navy);
+  background: #fff;
+}
+
+.dw-method-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.dw-method-card {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 14px;
+  border: 1.5px solid var(--dw-line);
+  border-radius: 18px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.dw-method-card.is-selected {
+  border-color: var(--dw-green);
+  box-shadow: 0 0 0 1px rgba(0, 166, 81, 0.15);
+}
+
+.dw-method-card.is-disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.dw-method-card__icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: var(--dw-soft);
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--dw-navy);
+}
+
+.dw-method-card__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.dw-method-card__subtitle {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--dw-muted);
+  font-weight: 600;
+}
+
+.dw-method-card__badge {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--dw-green-dark);
+  background: #ecfdf3;
+  padding: 4px 8px;
+  border-radius: 999px;
+}
+
+.dw-confirm-card {
+  margin-top: 16px;
+  padding: 18px;
+  border-radius: 18px;
+  background: #fff;
+  border: 1px solid var(--dw-line);
+}
+
+.dw-confirm-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--dw-line);
+  font-size: 14px;
+}
+
+.dw-confirm-row:last-child {
+  border-bottom: 0;
+}
+
+.dw-confirm-row span {
+  color: var(--dw-muted);
+  font-weight: 700;
+}
+
+.dw-confirm-row strong {
+  color: var(--dw-navy);
+  font-weight: 900;
+  text-align: right;
+}
+
+.dw-success {
+  padding: 28px 16px 16px;
+  text-align: center;
+}
+
+.dw-success__icon {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #ecfdf3;
+  color: var(--dw-green-dark);
+  font-size: 34px;
+  font-weight: 900;
+}
+
+.dw-success h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 900;
+  color: var(--dw-navy);
+}
+
+.dw-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  background: rgba(8, 17, 31, 0.45);
+}
+
+.dw-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 121;
+  max-height: 88vh;
+  overflow: auto;
+  border-radius: 24px 24px 0 0;
+  background: #fff;
+  padding: 12px 16px calc(20px + env(safe-area-inset-bottom));
+  animation: dw-slide-up 0.24s ease-out;
+}
+
+.dw-sheet__handle {
+  width: 42px;
+  height: 4px;
+  margin: 0 auto 14px;
+  border-radius: 999px;
+  background: #d0d5dd;
+}
+
+.dw-sheet__title {
+  margin: 0 0 14px;
+  font-size: 20px;
+  font-weight: 900;
+  color: var(--dw-navy);
+}
+
+@keyframes dw-slide-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@media (max-width: 420px) {
+  .dw-balance-card__meta {
+    grid-template-columns: 1fr;
+  }
+
+  .dw-balance-card__amount {
+    font-size: 34px;
+  }
+}

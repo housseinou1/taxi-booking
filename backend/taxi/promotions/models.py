@@ -71,6 +71,15 @@ class PromoCode(models.Model):
         ("percentage", "Percentage Off"),
         ("fixed", "Fixed Amount Off"),
         ("free_ride", "Free Ride"),
+        ("free_delivery", "Free Delivery"),
+    ]
+
+    CAMPAIGN_TYPE_CHOICES = [
+        ("general", "General"),
+        ("first_ride", "First Ride Offer"),
+        ("free_delivery", "Free Delivery"),
+        ("city_campaign", "City Campaign"),
+        ("loyalty_exclusive", "Loyalty Exclusive"),
     ]
 
     STATUS_CHOICES = [
@@ -100,6 +109,12 @@ class PromoCode(models.Model):
     )
 
     first_ride_only = models.BooleanField(default=False)
+    campaign_type = models.CharField(
+        max_length=30,
+        choices=CAMPAIGN_TYPE_CHOICES,
+        default="general",
+        blank=True,
+    )
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="active")
 
     created_at = models.DateTimeField(auto_now_add=True)

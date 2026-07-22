@@ -251,3 +251,514 @@ class LaunchAlert(models.Model):
     def __str__(self):
         return f"{self.alert_type}: {self.title[:50]}"
 
+
+class OpsCustomerRecord(models.Model):
+    """CRM overlay for riders, drivers, and couriers — VIP, blacklist, notes."""
+
+    VIP_TIERS = [
+        ("silver", "Silver"),
+        ("gold", "Gold"),
+        ("platinum", "Platinum"),
+    ]
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="ops_customer_record",
+    )
+    is_vip = models.BooleanField(default=False, db_index=True)
+    vip_tier = models.CharField(max_length=20, choices=VIP_TIERS, blank=True, default="")
+    is_blacklisted = models.BooleanField(default=False, db_index=True)
+    blacklist_reason = models.TextField(blank=True, default="")
+    blacklist_until = models.DateTimeField(null=True, blank=True)
+    complaints_count = models.PositiveIntegerField(default=0)
+    notes = models.TextField(blank=True, default="")
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="crm_updates",
+    )
+
+    class Meta:
+        ordering = ["-updated_at"]
+
+    def __str__(self):
+        return f"CRM: {self.user_id}"
+
+
+class MarketingCampaign(models.Model):
+    """Platform marketing campaigns — push, email, promo, referral, incentive."""
+
+    CHANNEL_CHOICES = [
+        ("push", "Push Notification"),
+        ("email", "Email"),
+        ("promo", "Promo Code"),
+        ("referral", "Referral"),
+        ("incentive", "Driver/Courier Incentive"),
+    ]
+    AUDIENCE_CHOICES = [
+        ("all_riders", "All Riders"),
+        ("all_drivers", "All Drivers"),
+        ("all_couriers", "All Couriers"),
+        ("vip", "VIP Customers"),
+        ("city", "City Segment"),
+        ("custom", "Custom"),
+    ]
+    STATUS_CHOICES = [
+        ("draft", "Draft"),
+        ("scheduled", "Scheduled"),
+        ("active", "Active"),
+        ("completed", "Completed"),
+        ("cancelled", "Cancelled"),
+    ]
+
+    name = models.CharField(max_length=200)
+    channel = models.CharField(max_length=20, choices=CHANNEL_CHOICES, db_index=True)
+    audience = models.CharField(max_length=30, choices=AUDIENCE_CHOICES, default="all_riders")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="draft", db_index=True)
+    subject = models.CharField(max_length=200, blank=True, default="")
+    message = models.TextField(blank=True, default="")
+    promo_code_id = models.IntegerField(null=True, blank=True)
+    city_id = models.IntegerField(null=True, blank=True)
+    scheduled_at = models.DateTimeField(null=True, blank=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+    metrics = models.JSONField(default=dict, blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="marketing_campaigns",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.name} ({self.channel})"
+
+
+class CorporateInvoice(models.Model):
+    """Monthly invoices for corporate and business accounts."""
+
+    ACCOUNT_TYPES = [
+        ("ride_corporate", "Ride Corporate"),
+        ("delivery_business", "Delivery Business"),
+    ]
+    STATUS_CHOICES = [
+        ("draft", "Draft"),
+        ("sent", "Sent"),
+        ("paid", "Paid"),
+        ("overdue", "Overdue"),
+        ("cancelled", "Cancelled"),
+    ]
+
+    account_type = models.CharField(max_length=30, choices=ACCOUNT_TYPES)
+    account_id = models.PositiveIntegerField()
+    company_name = models.CharField(max_length=200)
+    invoice_number = models.CharField(max_length=32, unique=True, db_index=True)
+    period_start = models.DateField()
+    period_end = models.DateField()
+    amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    subtotal = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    tax_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    tax_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    ride_count = models.PositiveIntegerField(default=0)
+    delivery_count = models.PositiveIntegerField(default=0)
+    invoice_frequency = models.CharField(
+        max_length=20,
+        choices=[
+            ("weekly", "Weekly"),
+            ("monthly", "Monthly"),
+            ("statement", "Ride Statement"),
+        ],
+        default="monthly",
+    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="draft", db_index=True)
+    notes = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-period_end", "-created_at"]
+
+    def __str__(self):
+        return f"{self.invoice_number} — {self.company_name}"
+
+
+class BetaFeedback(models.Model):
+    """In-app support and beta feedback tickets (rider, driver, delivery)."""
+
+    APP_CHOICES = [
+        ("rider", "Rider"),
+        ("driver", "Driver"),
+        ("delivery", "Delivery"),
+    ]
+    CATEGORY_CHOICES = [
+        ("emergency", "Emergency"),
+        ("ride", "Ride Issue"),
+        ("payment", "Payment Issue"),
+        ("driver", "Driver Issue"),
+        ("rider", "Rider Issue"),
+        ("gps", "GPS Issue"),
+        ("bug", "App Bug"),
+        ("suggestion", "Suggestion"),
+        ("contact", "Contact Support"),
+        ("vehicle", "Vehicle Issue"),
+        ("withdrawal", "Withdrawal Issue"),
+        ("customer", "Customer Issue"),
+        ("store", "Store Issue"),
+        ("delivery", "Delivery Issue"),
+        ("crash", "Crash"),
+        ("account", "Account"),
+        ("ui", "UI/UX"),
+        ("performance", "Performance"),
+        ("other", "Other"),
+    ]
+    SEVERITY_CHOICES = [
+        ("P0", "P0 — Critical"),
+        ("P1", "P1 — High"),
+        ("P2", "P2 — Medium"),
+        ("P3", "P3 — Low"),
+    ]
+    STATUS_CHOICES = [
+        ("open", "Open"),
+        ("assigned", "Assigned"),
+        ("waiting", "Waiting"),
+        ("resolved", "Resolved"),
+        ("closed", "Closed"),
+    ]
+
+    reference = models.CharField(max_length=32, unique=True, db_index=True)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="beta_feedback_reports",
+    )
+    app_type = models.CharField(max_length=20, choices=APP_CHOICES, db_index=True)
+    category = models.CharField(max_length=30, choices=CATEGORY_CHOICES, db_index=True)
+    severity = models.CharField(max_length=5, choices=SEVERITY_CHOICES, default="P2", db_index=True)
+    subject = models.CharField(max_length=200, blank=True, default="")
+    description = models.TextField()
+    screenshot = models.ImageField(upload_to="beta_feedback/%Y/%m/", null=True, blank=True)
+    device = models.CharField(max_length=200, blank=True, default="")
+    app_version = models.CharField(max_length=40, blank=True, default="")
+    is_emergency = models.BooleanField(default=False, db_index=True)
+    metadata = models.JSONField(default=dict, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="open", db_index=True)
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="assigned_beta_feedback",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    first_response_at = models.DateTimeField(null=True, blank=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["status", "-created_at"]),
+            models.Index(fields=["app_type", "severity"]),
+        ]
+
+    def __str__(self):
+        return f"{self.reference} ({self.app_type}/{self.severity})"
+
+
+class OpsCityProfile(models.Model):
+    """Multi-city operations profile — extends locations.City for platform administration."""
+
+    STATUS_CHOICES = [
+        ("pilot", "Pilot"),
+        ("active", "Active"),
+        ("suspended", "Suspended"),
+    ]
+
+    city = models.OneToOneField(
+        "locations.City",
+        on_delete=models.CASCADE,
+        related_name="ops_profile",
+    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pilot")
+    operations_manager = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="managed_ops_cities",
+    )
+    finance_manager = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="managed_finance_cities",
+    )
+    support_manager = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="managed_support_cities",
+    )
+    service_zones = models.JSONField(default=list, blank=True)
+    timezone = models.CharField(max_length=64, default="Africa/Nouakchott")
+    currency = models.CharField(max_length=10, default="MRU")
+    notes = models.TextField(blank=True, default="")
+    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["city__name"]
+
+    def __str__(self):
+        return f"{self.city.name} ({self.status})"
+
+    @property
+    def name(self):
+        return self.city.name
+
+
+# Phase 36 — Compliance & Governance Center
+
+
+class ComplianceAudit(models.Model):
+    """Internal, financial, security, operational, and IT audit records."""
+
+    AUDIT_TYPE_CHOICES = [
+        ("internal", "Internal Audit"),
+        ("financial", "Financial Audit"),
+        ("security", "Security Audit"),
+        ("operational", "Operational Audit"),
+        ("it", "IT Audit"),
+        ("compliance", "Compliance Audit"),
+    ]
+    STATUS_CHOICES = [
+        ("planned", "Planned"),
+        ("in_progress", "In Progress"),
+        ("pending_findings", "Pending Findings"),
+        ("closed", "Closed"),
+        ("overdue", "Overdue"),
+    ]
+
+    reference = models.CharField(max_length=32, unique=True, db_index=True)
+    audit_type = models.CharField(max_length=20, choices=AUDIT_TYPE_CHOICES)
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True, default="")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="planned", db_index=True)
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="owned_compliance_audits",
+    )
+    due_date = models.DateField()
+    findings = models.JSONField(default=list, blank=True)
+    corrective_actions = models.JSONField(default=list, blank=True)
+    evidence_file = models.FileField(upload_to="compliance/audit_evidence/", null=True, blank=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-due_date", "-created_at"]
+        indexes = [
+            models.Index(fields=["status", "due_date"]),
+            models.Index(fields=["audit_type", "status"]),
+        ]
+
+    def __str__(self):
+        return f"{self.reference} — {self.title[:50]}"
+
+
+class PolicyDocument(models.Model):
+    """Company, security, privacy, and operational policy documents."""
+
+    CATEGORY_CHOICES = [
+        ("company", "Company Policy"),
+        ("security", "Security Policy"),
+        ("privacy", "Privacy Policy"),
+        ("operational", "Operational Procedure"),
+        ("driver_handbook", "Driver Handbook"),
+        ("courier_handbook", "Courier Handbook"),
+        ("merchant_handbook", "Merchant Handbook"),
+        ("employee_handbook", "Employee Handbook"),
+        ("terms", "Terms of Service"),
+    ]
+    STATUS_CHOICES = [
+        ("draft", "Draft"),
+        ("approved", "Approved"),
+        ("review_pending", "Review Pending"),
+        ("expired", "Expired"),
+    ]
+
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES)
+    title = models.CharField(max_length=200)
+    version = models.CharField(max_length=20)
+    content_url = models.URLField(blank=True, default="")
+    file = models.FileField(upload_to="compliance/policies/", null=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="draft")
+    approval_date = models.DateField(null=True, blank=True)
+    review_date = models.DateField(db_index=True)
+    acknowledgement_required = models.BooleanField(default=False)
+    notes = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["category", "-review_date"]
+        unique_together = [["category", "version"]]
+
+    def __str__(self):
+        return f"{self.title} v{self.version}"
+
+
+class PolicyAcknowledgement(models.Model):
+    """Records that a user has acknowledged a policy version."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="policy_acknowledgements",
+    )
+    policy = models.ForeignKey(
+        PolicyDocument,
+        on_delete=models.CASCADE,
+        related_name="acknowledgements",
+    )
+    version = models.CharField(max_length=20)
+    acknowledged_at = models.DateTimeField(auto_now_add=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+
+    class Meta:
+        unique_together = [["user", "policy"]]
+        ordering = ["-acknowledged_at"]
+
+    def __str__(self):
+        return f"{self.user} — {self.policy.title} v{self.version}"
+
+
+class ComplianceRisk(models.Model):
+    """Risk register entries for governance tracking."""
+
+    CATEGORY_CHOICES = [
+        ("strategic", "Strategic"),
+        ("operational", "Operational"),
+        ("financial", "Financial"),
+        ("cybersecurity", "Cybersecurity"),
+        ("legal", "Legal"),
+        ("reputation", "Reputation"),
+        ("compliance", "Compliance"),
+    ]
+    LIKELIHOOD_CHOICES = [
+        ("low", "Low"),
+        ("medium", "Medium"),
+        ("high", "High"),
+        ("critical", "Critical"),
+    ]
+    IMPACT_CHOICES = [
+        ("low", "Low"),
+        ("medium", "Medium"),
+        ("high", "High"),
+        ("critical", "Critical"),
+    ]
+    STATUS_CHOICES = [
+        ("open", "Open"),
+        ("mitigated", "Mitigated"),
+        ("accepted", "Accepted"),
+        ("closed", "Closed"),
+    ]
+
+    reference = models.CharField(max_length=32, unique=True, db_index=True)
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, db_index=True)
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True, default="")
+    likelihood = models.CharField(max_length=10, choices=LIKELIHOOD_CHOICES)
+    impact = models.CharField(max_length=10, choices=IMPACT_CHOICES)
+    mitigation = models.TextField(blank=True, default="")
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="owned_compliance_risks",
+    )
+    review_date = models.DateField(db_index=True)
+    status = models.CharField(max_length=15, choices=STATUS_CHOICES, default="open", db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-review_date", "-created_at"]
+        indexes = [
+            models.Index(fields=["status", "category", "-review_date"]),
+        ]
+
+    @property
+    def score(self) -> int:
+        mapping = {"low": 1, "medium": 2, "high": 3, "critical": 4}
+        return mapping.get(self.likelihood, 1) * mapping.get(self.impact, 1)
+
+    def __str__(self):
+        return f"{self.reference} — {self.title[:50]}"
+
+
+class ComplianceCalendarEvent(models.Model):
+    """Deadlines for renewals, filings, reviews, and audits."""
+
+    EVENT_TYPE_CHOICES = [
+        ("insurance_renewal", "Insurance Renewal"),
+        ("license_renewal", "Business License Renewal"),
+        ("tax_filing", "Tax Filing"),
+        ("financial_reporting", "Financial Reporting"),
+        ("policy_review", "Policy Review"),
+        ("security_review", "Security Review"),
+        ("annual_audit", "Annual Audit"),
+        ("compliance_deadline", "Compliance Deadline"),
+    ]
+    STATUS_CHOICES = [
+        ("upcoming", "Upcoming"),
+        ("due_soon", "Due Soon"),
+        ("overdue", "Overdue"),
+        ("completed", "Completed"),
+    ]
+
+    title = models.CharField(max_length=200)
+    event_type = models.CharField(max_length=25, choices=EVENT_TYPE_CHOICES, db_index=True)
+    due_date = models.DateField(db_index=True)
+    status = models.CharField(max_length=15, choices=STATUS_CHOICES, default="upcoming")
+    related_entity_type = models.CharField(max_length=50, blank=True, default="")
+    related_entity_id = models.IntegerField(null=True, blank=True)
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="owned_compliance_events",
+    )
+    notes = models.TextField(blank=True, default="")
+    completed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["due_date", "status"]
+        indexes = [
+            models.Index(fields=["status", "due_date"]),
+        ]
+
+    def __str__(self):
+        return f"{self.title} ({self.due_date})"
+

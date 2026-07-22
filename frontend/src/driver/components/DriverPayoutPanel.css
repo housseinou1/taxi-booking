@@ -261,6 +261,24 @@
   font-weight: 800;
 }
 
+.driver-payout-withdraw-primary {
+  width: 100%;
+  margin-top: 14px;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #00a651 0%, #007a3d 100%);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  padding: 14px 18px;
+  cursor: pointer;
+}
+
+.driver-payout-withdraw-primary:active {
+  transform: scale(0.99);
+}
+
 @media (max-width: 720px) {
   .driver-payout-summary {
     grid-template-columns: 1fr;

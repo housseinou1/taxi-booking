@@ -48,6 +48,9 @@ let soundPreloaded = false;
 let deliverySoundPreloaded = false;
 let deliveryAlertIntervalId = null;
 let deliveryAlertActive = false;
+let rideRequestAlertIntervalId = null;
+let rideRequestAlertActive = false;
+const RIDE_REQUEST_ALERT_INTERVAL_MS = 2800;
 let sharedAudioContext = null;
 let lastRideAlertAt = 0;
 const RIDE_ALERT_MIN_GAP_MS = 350;
@@ -507,6 +510,25 @@ export async function startDeliveryOfferAlertLoop(options = {}) {
   }, 3200);
 }
 
+/** Repeat ride-request alert until stopped (accept, decline, timeout). */
+export async function startRideRequestAlertLoop() {
+  stopRideRequestAlertLoop();
+  rideRequestAlertActive = true;
+  await playRideRequestAlert({ force: true });
+  rideRequestAlertIntervalId = window.setInterval(() => {
+    if (!rideRequestAlertActive) return;
+    playRideRequestAlert({ force: true }).catch(() => {});
+  }, RIDE_REQUEST_ALERT_INTERVAL_MS);
+}
+
+export function stopRideRequestAlertLoop() {
+  rideRequestAlertActive = false;
+  if (rideRequestAlertIntervalId) {
+    window.clearInterval(rideRequestAlertIntervalId);
+    rideRequestAlertIntervalId = null;
+  }
+}
+
 export async function playRideRequestAlert({ force = false } = {}) {
   await vibrateNative(true);
 
@@ -532,6 +554,7 @@ export async function playRideRequestAlert({ force = false } = {}) {
 
 /** Stop ride-request alert audio immediately (accept, decline, active trip). */
 export function stopRideRequestAlert() {
+  stopRideRequestAlertLoop();
   if (notificationAudio) {
     try {
       notificationAudio.pause();

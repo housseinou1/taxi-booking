@@ -3,10 +3,34 @@ import axios from "axios";
 
 import { API_URL } from "../../apiConfig";
 import { formatMoney } from "../../marketConfig";
+import authenticatedApi from "../../auth/authenticatedApi";
 import PlatformWithdrawalAccounts, {
   payoutTypeForMethod,
 } from "../../components/PlatformWithdrawalAccounts";
 import "./DriverPayoutPanel.css";
+
+const NON_REDIRECTING_AUTH_CONFIG = { suppressAuthRedirect: true };
+
+const WITHDRAWAL_STATUS_LABELS = {
+  pending: "Pending",
+  approved: "Approved",
+  paid: "Paid",
+  rejected: "Rejected",
+};
+
+async function payoutGet(url, { authHeaders, useAuthenticatedApi }) {
+  if (useAuthenticatedApi) {
+    return authenticatedApi.get(url, NON_REDIRECTING_AUTH_CONFIG);
+  }
+  return axios.get(url, authHeaders);
+}
+
+async function payoutPost(url, data, { authHeaders, useAuthenticatedApi }) {
+  if (useAuthenticatedApi) {
+    return authenticatedApi.post(url, data, NON_REDIRECTING_AUTH_CONFIG);
+  }
+  return axios.post(url, data, authHeaders);
+}
 
 const EMPTY_FORM = {
   payout_type: "bankily",
@@ -43,7 +67,19 @@ const formFromMethod = (method, payoutType = "bankily") => ({
 const isPayoutFormReady = (form) =>
   Boolean(["bankily", "sedad", "masravi"].includes(form.payout_type) && form.phone_number?.trim());
 
-export default function DriverPayoutPanel({ authHeaders, onMessage }) {
+export default function DriverPayoutPanel({
+  authHeaders = null,
+  useAuthenticatedApi = false,
+  viewMode = "full",
+  onMessage,
+  onWithdrawClick,
+}) {
+  const apiOptions = useMemo(
+    () => ({ authHeaders, useAuthenticatedApi: useAuthenticatedApi || !authHeaders }),
+    [authHeaders, useAuthenticatedApi]
+  );
+  const showWalletOverview = viewMode === "wallet";
+  const showWithdrawFlow = viewMode === "withdraw" || viewMode === "full";
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [withdrawing, setWithdrawing] = useState(false);
@@ -83,8 +119,8 @@ export default function DriverPayoutPanel({ authHeaders, onMessage }) {
     setPanelError("");
     try {
       const [methodsResponse, withdrawalsResponse] = await Promise.all([
-        axios.get(`${API_URL}/payments/payout-methods/`, authHeaders),
-        axios.get(`${API_URL}/payments/withdrawals/`, authHeaders),
+        payoutGet(`${API_URL}/payments/payout-methods/`, apiOptions),
+        payoutGet(`${API_URL}/payments/withdrawals/`, apiOptions),
       ]);
 
       const methods = Array.isArray(methodsResponse.data) ? methodsResponse.data : [];
@@ -119,11 +155,15 @@ export default function DriverPayoutPanel({ authHeaders, onMessage }) {
         else if (payoutTypeForMethod(savedMethod) === "masravi") setSelectedWithdrawalMethod("masravi");
       }
     } catch (error) {
-      setPanelError(error.response?.data?.error || "Could not load payout details.");
+      setPanelError(
+        useAuthenticatedApi || !authHeaders
+          ? "Unable to load wallet. Please try again."
+          : error.response?.data?.error || "Could not load payout details."
+      );
     } finally {
       setLoading(false);
     }
-  }, [authHeaders, selectedWithdrawalMethod]);
+  }, [apiOptions, selectedWithdrawalMethod, authHeaders, useAuthenticatedApi]);
 
   useEffect(() => {
     loadPayoutData();
@@ -153,7 +193,11 @@ export default function DriverPayoutPanel({ authHeaders, onMessage }) {
       throw new Error("Add your mobile money phone number before requesting a withdrawal.");
     }
 
-    const response = await axios.post(`${API_URL}/payments/payout-methods/save/`, payload, authHeaders);
+    const response = await payoutPost(
+      `${API_URL}/payments/payout-methods/save/`,
+      payload,
+      apiOptions
+    );
     await loadPayoutData();
     return response.data;
   };
@@ -163,10 +207,10 @@ export default function DriverPayoutPanel({ authHeaders, onMessage }) {
     setSaving(true);
     setPanelError("");
     try {
-      await axios.post(
+      await payoutPost(
         `${API_URL}/payments/payout-methods/save/`,
         { ...form, is_default: true },
-        authHeaders
+        apiOptions
       );
       onMessage?.("Payout method saved for withdrawals.");
       await loadPayoutData();
@@ -219,7 +263,7 @@ export default function DriverPayoutPanel({ authHeaders, onMessage }) {
     setSendingOtp(true);
     setPanelError("");
     try {
-      await axios.post(`${API_URL}/payments/withdrawals/send-otp/`, {}, authHeaders);
+      await payoutPost(`${API_URL}/payments/withdrawals/send-otp/`, {}, apiOptions);
       setWithdrawStep("otp");
       onMessage?.("Verification code sent to your phone.");
     } catch (error) {
@@ -242,7 +286,7 @@ export default function DriverPayoutPanel({ authHeaders, onMessage }) {
     setPanelError("");
     try {
       const payoutMethod = await ensurePayoutMethod();
-      await axios.post(
+      await payoutPost(
         `${API_URL}/payments/withdrawals/request/`,
         {
           amount,
@@ -250,7 +294,7 @@ export default function DriverPayoutPanel({ authHeaders, onMessage }) {
           payout_method: payoutMethod?.id || defaultMethod?.id,
           otp_code: withdrawalForm.otp_code.trim(),
         },
-        authHeaders
+        apiOptions
       );
       setWithdrawalForm({ amount: "", note: "", otp_code: "" });
       setWithdrawStep("amount");
@@ -275,10 +319,13 @@ export default function DriverPayoutPanel({ authHeaders, onMessage }) {
     );
   }
 
+  const formatWithdrawalStatus = (status = "pending") =>
+    WITHDRAWAL_STATUS_LABELS[status] || status.replace(/_/g, " ");
+
   return (
     <section className="driver-payout-panel" aria-label="Wallet and withdrawals">
       <div className="driver-payout-header">
-        <h3>Wallet &amp; withdrawals</h3>
+        <h3>{showWalletOverview ? "Wallet" : "Wallet &amp; withdrawals"}</h3>
         <span>{payoutReady ? "Ready" : "Setup required"}</span>
       </div>
 
@@ -293,27 +340,51 @@ export default function DriverPayoutPanel({ authHeaders, onMessage }) {
           <small>Pending balance</small>
           <strong>{formatMoney(pendingBalance)}</strong>
         </article>
+        {!showWalletOverview && (
+          <article>
+            <small>Lifetime earnings</small>
+            <strong>{formatMoney(totalEarned)}</strong>
+          </article>
+        )}
         <article>
-          <small>Lifetime earnings</small>
-          <strong>{formatMoney(totalEarned)}</strong>
-        </article>
-        <article>
-          <small>Today</small>
+          <small>Today&apos;s earnings</small>
           <strong>{formatMoney(earnings.today?.total || 0)}</strong>
         </article>
         <article>
-          <small>This week</small>
+          <small>Weekly earnings</small>
           <strong>{formatMoney(earnings.week?.total || 0)}</strong>
         </article>
         <article>
-          <small>This month</small>
+          <small>Monthly earnings</small>
           <strong>{formatMoney(earnings.month?.total || 0)}</strong>
         </article>
       </div>
 
+      {showWalletOverview && (
+        <>
+          <button
+            type="button"
+            className="driver-payout-withdraw-primary"
+            onClick={onWithdrawClick}
+          >
+            WITHDRAW MONEY
+          </button>
+          {!payoutReady ? (
+            <p className="driver-payout-help">
+              Add a payout method on the withdraw screen before requesting money.
+            </p>
+          ) : null}
+          {hasPendingWithdrawal ? (
+            <p className="driver-payout-help">You have a withdrawal pending admin review.</p>
+          ) : null}
+        </>
+      )}
+
+      {showWithdrawFlow && (
+        <>
       <PlatformWithdrawalAccounts
-        apiClient={axios}
-        authHeaders={authHeaders}
+        apiClient={apiOptions.useAuthenticatedApi ? authenticatedApi : axios}
+        authHeaders={apiOptions.useAuthenticatedApi ? NON_REDIRECTING_AUTH_CONFIG : authHeaders}
         selectedMethodId={selectedWithdrawalMethod}
         onSelectMethod={handleWithdrawalMethodSelect}
         title="Withdrawal provider"
@@ -348,9 +419,10 @@ export default function DriverPayoutPanel({ authHeaders, onMessage }) {
 
       {withdrawStep === "amount" && (
         <form className="driver-payout-withdraw" onSubmit={proceedToConfirm}>
-          <h4>Withdraw</h4>
+          <h4>Withdraw money</h4>
           <p>
-            Minimum {formatMoney(minimumWithdrawal)} · Current method: {payoutSummary(selectedMethodRecord)}
+            Minimum {formatMoney(minimumWithdrawal)} · Available {formatMoney(withdrawableBalance)} ·{" "}
+            {payoutSummary(selectedMethodRecord)}
           </p>
           <label>
             <span>Amount (MRU)</span>
@@ -364,7 +436,7 @@ export default function DriverPayoutPanel({ authHeaders, onMessage }) {
                 setWithdrawalForm((current) => ({ ...current, amount: event.target.value }))
               }
               placeholder="0"
-              disabled={!canRequestWithdrawal || hasPendingWithdrawal}
+              disabled={!canRequestWithdrawal || hasPendingWithdrawal || withdrawing}
             />
           </label>
           <label>
@@ -375,10 +447,10 @@ export default function DriverPayoutPanel({ authHeaders, onMessage }) {
                 setWithdrawalForm((current) => ({ ...current, note: event.target.value }))
               }
               placeholder="Any details for admin review"
-              disabled={!canRequestWithdrawal || hasPendingWithdrawal}
+              disabled={!canRequestWithdrawal || hasPendingWithdrawal || withdrawing}
             />
           </label>
-          <button type="submit" disabled={!canRequestWithdrawal || hasPendingWithdrawal}>
+          <button type="submit" disabled={!canRequestWithdrawal || hasPendingWithdrawal || withdrawing}>
             Continue
           </button>
           {!payoutReady ? (
@@ -436,8 +508,10 @@ export default function DriverPayoutPanel({ authHeaders, onMessage }) {
           </div>
         </form>
       )}
+        </>
+      )}
 
-      {ledger.length > 0 && (
+      {!showWalletOverview && ledger.length > 0 && (
         <div className="driver-payout-ledger">
           <h4>Wallet ledger</h4>
           {ledger.slice(0, 8).map((item) => (
@@ -457,15 +531,15 @@ export default function DriverPayoutPanel({ authHeaders, onMessage }) {
 
       {withdrawals.length > 0 && (
         <div className="driver-payout-history">
-          <h4>Recent withdrawals</h4>
-          {withdrawals.slice(0, 5).map((item) => (
+          <h4>{showWalletOverview ? "Withdrawal history" : "Recent withdrawals"}</h4>
+          {withdrawals.slice(0, showWalletOverview ? 10 : 5).map((item) => (
             <article key={item.id} className="driver-payout-history-row">
               <div>
                 <strong>{formatMoney(item.amount)}</strong>
                 <small>{item.payout_method_display || payoutSummary(defaultMethod)}</small>
               </div>
               <span className={`driver-payout-status ${item.status || "pending"}`}>
-                {(item.status || "pending").replace(/_/g, " ")}
+                {formatWithdrawalStatus(item.status || "pending")}
               </span>
             </article>
           ))}

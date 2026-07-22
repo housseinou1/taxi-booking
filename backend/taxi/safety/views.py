@@ -180,6 +180,12 @@ def trigger_sos(request):
             trip_snapshot=ride_snapshot(ride),
         )
     alert = dispatch_emergency_alert(incident)
+    try:
+        from operations.trust_safety_service import notify_sos_to_operations
+
+        notify_sos_to_operations(incident)
+    except Exception:
+        pass
     log_from_request(
         request,
         action="verification_event",

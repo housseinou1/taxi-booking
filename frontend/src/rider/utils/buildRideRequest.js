@@ -1,3 +1,38 @@
+import { calculateDistanceKm } from "../../marketConfig";
+
+/**
+ * Resolve trip distance for the ride request payload.
+ * Prefer routed distance, then fall back to straight-line segments between stops.
+ */
+export function resolveBookingDistanceKm({ pickup, destination, stops, routeInfo }) {
+  const routeDistance = Number(routeInfo?.distanceKm);
+  if (Number.isFinite(routeDistance) && routeDistance >= 0.1 && routeDistance <= 200) {
+    return Math.round(routeDistance * 100) / 100;
+  }
+
+  const points = [
+    pickup?.position,
+    ...(stops || []).map((stop) => stop?.position).filter(Boolean),
+    destination?.position,
+  ].filter(Boolean);
+
+  if (points.length < 2) {
+    return 0.1;
+  }
+
+  let total = 0;
+  for (let index = 1; index < points.length; index += 1) {
+    const segment = calculateDistanceKm(points[index - 1], points[index]);
+    if (segment == null) {
+      return 0.1;
+    }
+    total += segment;
+  }
+
+  const resolved = Math.max(0.1, Math.round(total * 100) / 100);
+  return resolved <= 200 ? resolved : 0.1;
+}
+
 /**
  * Transform booking state into an API request payload for ride creation.
  * Maps the internal booking state to the RideRequestParams format expected by
@@ -41,7 +76,7 @@ export function buildRideRequest(bookingState) {
       stop_order: index + 1,
     })),
     ride_type: rideType,
-    distance_km: routeInfo ? routeInfo.distanceKm : 0,
+    distance_km: resolveBookingDistanceKm({ pickup, destination, stops, routeInfo }),
     estimated_fare: fare || 0,
   };
 
@@ -56,6 +91,13 @@ export function buildRideRequest(bookingState) {
   if (bookingState.privacyAccepted) {
     payload.privacy_accepted = true;
     payload.privacy_policy_accepted = true;
+  }
+
+  if (bookingState.billingSource === "corporate") {
+    payload.billing_source = "corporate";
+    if (bookingState.costCenter) {
+      payload.cost_center = bookingState.costCenter;
+    }
   }
 
   return payload;

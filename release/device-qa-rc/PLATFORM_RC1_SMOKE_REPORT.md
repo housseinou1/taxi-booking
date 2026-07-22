@@ -2,7 +2,7 @@
 
 **Verdict: FAIL**
 **API:** https://api.yalataxi.live
-**Time:** 2026-07-08 12:53:44 UTC
+**Time:** 2026-07-22 13:20:53 UTC
 
 ## Results by test
 
@@ -13,13 +13,13 @@
 - [PASS] Driver login
 - [PASS] Driver go online — availability toggle
 - [PASS] Request ride — HTTP 201
-- [FAIL] Driver accept — HTTP 400
-- [FAIL] Driver arrive — HTTP 404
-- [PASS] Rider live detail has PIN — 5100****
+- [PASS] Driver accept — driver_arriving
+- [FAIL] Driver arrive — HTTP 400
+- [PASS] Rider live detail has PIN — 5041****
 - [FAIL] Verify PIN
 - [FAIL] Start ride
 - [FAIL] Complete ride
-- [PASS] Rider trip history updated — ride 56
+- [PASS] Rider trip history updated — ride 115
 - [PASS] Driver earnings updated — 0.0 -> 0.0
 - [PASS] Payment recorded — authorized
 - [PASS] Rating works — HTTP 200
@@ -27,24 +27,16 @@
 ### TEST2-DELIVERY
 - [PASS] Customer login
 - [PASS] Courier login
-- [PASS] Courier delivery mode — {'delivery_mode_enabled': True, 'delivery_cities': ['Nouakchott'], 'delivery_vehicle_type': 'motorcycle', 'delivery_vehicle_label': 'Motorcycle', 'max_package_size': 'large', 'accepts_food': True, 'accepts_pharmacy': True, 'accepts_fragile': True, 'total_deliveries_completed': 1, 'average_delivery_time_minutes': 0, 'delivery_rating': '5.0'}
-- [PASS] Request delivery — HTTP 201 
-- [PASS] Courier accept — accepted
-- [PASS] Navigate/arrive pickup — courier_arriving
-- [PASS] Verify pickup PIN + pick up — picked_up
-- [PASS] Navigate to destination — in_transit
-- [PASS] Customer live tracking — in_transit
-- [PASS] Drop-off PIN + photo + complete — delivered
-- [PASS] Delivery history updated — id 17
-- [PASS] Courier earnings updated — 0 -> 0
+- [PASS] Courier delivery mode — {'delivery_mode_enabled': False, 'delivery_cities': ['Nouakchott'], 'delivery_vehicle_type': 'motorcycle', 'delivery_vehicle_label': 'Motorcycle', 'max_package_size': 'large', 'accepts_food': True, 'accepts_pharmacy': True, 'accepts_fragile': True, 'total_deliveries_completed': 0, 'average_delivery_time_minutes': 0, 'delivery_rating': '5.0'}
+- [FAIL] Request delivery — HTTP 400 
 ### TEST3-ADMIN
 - [PASS] Admin login
-- [PASS] Ride appears in history — ride 56
+- [PASS] Ride appears in history — ride 115
 - [PASS] Delivery appears — delivery None
-- [PASS] Payments updated — revenue=132.08
+- [PASS] Payments updated — revenue=243.98
 - [PASS] Analytics updated — HTTP 200
 - [PASS] Driver performance — 4 drivers
-- [PASS] Acceptance rate — 99.0
+- [PASS] Acceptance rate — 91.0
 - [PASS] Cancellation statistics — present
 ### TEST4-SECURITY
 - [PASS] JWT refresh — HTTP 200
@@ -63,4 +55,4 @@
 
 ## Issues before launch
 
-1. [CRITICAL] Delivery flow exception: The read operation timed out
+1. [CRITICAL] Delivery request failed on production

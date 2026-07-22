@@ -74,6 +74,15 @@ class Merchant(models.Model):
     total_orders = models.PositiveIntegerField(default=0)
     estimated_prep_minutes = models.PositiveIntegerField(default=25)
     delivery_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    delivery_radius_km = models.FloatField(default=8.0)
+    opening_hours = models.JSONField(default=dict, blank=True)
+    commission_rate = models.DecimalField(
+        max_digits=5,
+        decimal_places=4,
+        null=True,
+        blank=True,
+        help_text="Override merchant goods share (e.g. 0.90). Null uses platform default.",
+    )
     is_active = models.BooleanField(default=True)
 
     terms_accepted = models.BooleanField(default=False)
@@ -102,7 +111,30 @@ class Merchant(models.Model):
         return self.status == "approved" and self.is_active
 
 
+class MenuCategory(models.Model):
+    merchant = models.ForeignKey(Merchant, on_delete=models.CASCADE, related_name="menu_categories")
+    name = models.CharField(max_length=120)
+    description = models.TextField(blank=True, default="")
+    sort_order = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["sort_order", "name"]
+
+    def __str__(self):
+        return f"{self.name} ({self.merchant.business_name})"
+
+
 class Product(models.Model):
+    PRODUCT_KIND_CHOICES = [
+        ("general", "General"),
+        ("food", "Food"),
+        ("medicine", "Medicine"),
+        ("otc", "OTC"),
+        ("grocery", "Grocery"),
+    ]
+
     STOCK_STATUS_CHOICES = [
         ("in_stock", "In Stock"),
         ("low_stock", "Low Stock"),
@@ -110,14 +142,22 @@ class Product(models.Model):
     ]
 
     merchant = models.ForeignKey(Merchant, on_delete=models.CASCADE, related_name="products")
+    menu_category = models.ForeignKey(
+        MenuCategory, on_delete=models.SET_NULL, null=True, blank=True, related_name="products"
+    )
     product_name = models.CharField(max_length=200)
     description = models.TextField(blank=True, default="")
     category = models.CharField(max_length=100, default="General")
+    product_kind = models.CharField(max_length=20, choices=PRODUCT_KIND_CHOICES, default="general")
+    requires_prescription = models.BooleanField(default=False)
     image = models.ImageField(upload_to="merchants/products/", null=True, blank=True)
     price = models.DecimalField(max_digits=10, decimal_places=2)
+    price_per_kg = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    weight_kg = models.DecimalField(max_digits=8, decimal_places=3, null=True, blank=True)
     discount_percent = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     stock_quantity = models.PositiveIntegerField(default=0)
     low_stock_threshold = models.PositiveIntegerField(default=5)
+    sort_order = models.PositiveIntegerField(default=0)
     stock_status = models.CharField(
         max_length=20, choices=STOCK_STATUS_CHOICES, default="in_stock"
     )
@@ -144,10 +184,36 @@ class Product(models.Model):
 
     @property
     def effective_price(self):
+        if self.price_per_kg and self.weight_kg:
+            base = self.price_per_kg * self.weight_kg
+        else:
+            base = self.price
         if self.discount_percent > 0:
-            discount = self.price * self.discount_percent / 100
-            return self.price - discount
-        return self.price
+            discount = base * self.discount_percent / 100
+            return base - discount
+        return base
+
+
+class ProductVariant(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="variants")
+    name = models.CharField(max_length=120)
+    price_delta = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    is_available = models.BooleanField(default=True)
+    sort_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["sort_order", "name"]
+
+
+class ProductExtra(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="extras")
+    name = models.CharField(max_length=120)
+    price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    is_available = models.BooleanField(default=True)
+    sort_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["sort_order", "name"]
 
 
 class MerchantPromotion(models.Model):
@@ -210,6 +276,7 @@ class MerchantOrder(models.Model):
         ("accepted", "Accepted"),
         ("preparing", "Preparing"),
         ("ready_for_pickup", "Ready for Pickup"),
+        ("courier_assigned", "Courier Assigned"),
         ("picked_up", "Picked Up"),
         ("delivered", "Delivered"),
         ("cancelled", "Cancelled"),
@@ -244,6 +311,8 @@ class MerchantOrder(models.Model):
     total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
     delivery_address = models.TextField()
+    destination_lat = models.FloatField(default=18.0896)
+    destination_lng = models.FloatField(default=-15.9754)
     recipient_name = models.CharField(max_length=120)
     recipient_phone = models.CharField(max_length=30)
     customer_notes = models.TextField(blank=True, default="")
@@ -260,6 +329,7 @@ class MerchantOrder(models.Model):
     accepted_at = models.DateTimeField(null=True, blank=True)
     preparing_at = models.DateTimeField(null=True, blank=True)
     ready_at = models.DateTimeField(null=True, blank=True)
+    courier_assigned_at = models.DateTimeField(null=True, blank=True)
     picked_up_at = models.DateTimeField(null=True, blank=True)
     delivered_at = models.DateTimeField(null=True, blank=True)
     cancelled_at = models.DateTimeField(null=True, blank=True)
@@ -302,3 +372,34 @@ class MerchantPayout(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+
+
+class MerchantSettlement(models.Model):
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("processing", "Processing"),
+        ("paid", "Paid"),
+        ("failed", "Failed"),
+    ]
+
+    merchant = models.ForeignKey(Merchant, on_delete=models.CASCADE, related_name="settlements")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
+    period_start = models.DateField()
+    period_end = models.DateField()
+    gross_sales = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    commission_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    net_payout = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    order_count = models.PositiveIntegerField(default=0)
+    invoice_reference = models.CharField(max_length=64, blank=True, default="")
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="approved_merchant_settlements",
+    )
+    paid_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-period_end"]

@@ -203,7 +203,7 @@ class SmartDispatchMatchingTests(APITestCase):
         self.assertEqual(candidates[0].profile.user_id, long_user.id)
 
     @patch("taxi.rides.services.ride_assignment_service.start_ride_request_timeout")
-    @patch("taxi.rides.services.ride_assignment_service._broadcast_ride_request")
+    @patch("taxi.rides.services.ride_assignment_service.schedule_ride_request_broadcast")
     @patch(
         "taxi.rides.services.driver_dispatch_service.driver_documents_ok",
         return_value=True,
@@ -224,7 +224,7 @@ class SmartDispatchMatchingTests(APITestCase):
         )
 
     @patch("taxi.rides.services.ride_assignment_service.start_ride_request_timeout")
-    @patch("taxi.rides.services.ride_assignment_service._broadcast_ride_request")
+    @patch("taxi.rides.services.ride_assignment_service.schedule_ride_request_broadcast")
     @patch(
         "taxi.rides.services.driver_dispatch_service.driver_documents_ok",
         return_value=True,
@@ -247,7 +247,7 @@ class SmartDispatchMatchingTests(APITestCase):
         self.assertIn(first.id, self.ride.declined_driver_ids)
 
     @patch("taxi.rides.services.ride_assignment_service.start_ride_request_timeout")
-    @patch("taxi.rides.services.ride_assignment_service._broadcast_ride_request")
+    @patch("taxi.rides.services.ride_assignment_service.schedule_ride_request_broadcast")
     @patch(
         "taxi.rides.services.driver_dispatch_service.driver_documents_ok",
         return_value=True,
@@ -264,7 +264,7 @@ class SmartDispatchMatchingTests(APITestCase):
         )
 
     @patch("taxi.rides.services.ride_assignment_service.start_ride_request_timeout")
-    @patch("taxi.rides.services.ride_assignment_service._broadcast_ride_request")
+    @patch("taxi.rides.services.ride_assignment_service.schedule_ride_request_broadcast")
     @patch(
         "taxi.rides.services.driver_dispatch_service.driver_documents_ok",
         return_value=True,

@@ -2,7 +2,11 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import axios from "axios";
 
 import { API_URL } from "../apiConfig";
+import { submitBetaFeedback } from "../services/betaFeedbackApi";
 import { getDriverColors, isDriverLyftUI } from "./lyftColors";
+import SupportReportForm from "../support/SupportReportForm";
+import { DRIVER_REPORT_OPTIONS } from "../support/supportCategories";
+import "../support/support-mobile.css";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -22,6 +26,7 @@ const COLORS = {
 
 const SUPPORT_TABS = [
   { key: "help", label: "Help Center", icon: "📚" },
+  { key: "report", label: "Report", icon: "📋" },
   { key: "contact", label: "Contact", icon: "✉️" },
   { key: "chat", label: "Live Chat", icon: "💬" },
   { key: "safety", label: "Safety", icon: "🛡️" },
@@ -283,6 +288,7 @@ export default function DriverSupport() {
   const [contactMessage, setContactMessage] = useState("");
   const [contactSubmitting, setContactSubmitting] = useState(false);
   const [contactStatus, setContactStatus] = useState(null);
+  const [reportCategory, setReportCategory] = useState(null);
 
   // Live chat state
   const [chatStatus, setChatStatus] = useState("idle"); // idle | queued | error
@@ -372,6 +378,16 @@ export default function DriverSupport() {
           },
           authHeaders
         );
+        try {
+          await submitBetaFeedback({
+            category: "other",
+            severity: "P2",
+            description: `[${contactSubject.trim()}] ${contactMessage.trim()}`,
+            appType: "driver",
+          });
+        } catch {
+          // Support chat already submitted; beta feedback is best-effort.
+        }
         setContactStatus("success");
         setContactSubject("");
         setContactMessage("");
@@ -679,6 +695,40 @@ export default function DriverSupport() {
     </div>
   );
 
+  const renderReportCenter = () => (
+    <div style={tabContentStyle}>
+      <p style={sectionDescStyle}>Report rider, payment, GPS, vehicle, or withdrawal issues.</p>
+      {!reportCategory ? (
+        <div className="support-hub-grid">
+          {DRIVER_REPORT_OPTIONS.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              className={`support-hub-tile ${option.emergency ? "support-hub-tile--emergency" : ""}`}
+              onClick={() => setReportCategory(option)}
+              style={{ color: COLORS.white }}
+            >
+              <span>{option.icon}</span>
+              <strong>{option.label}</strong>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <SupportReportForm
+          appType="driver"
+          category={reportCategory.id}
+          categoryLabel={reportCategory.label}
+          onCancel={() => setReportCategory(null)}
+          contextFields={
+            reportCategory.id === "payment" || reportCategory.id === "withdrawal"
+              ? [{ key: "ride_id", label: "Trip / payout reference (optional)" }]
+              : []
+          }
+        />
+      )}
+    </div>
+  );
+
   // ─── Main Render ──────────────────────────────────────────────────────────
 
   return (
@@ -723,6 +773,7 @@ export default function DriverSupport() {
       {/* Tab Content */}
       <div role="tabpanel" id={`panel-${activeTab}`}>
         {activeTab === "help" && renderHelpCenter()}
+        {activeTab === "report" && renderReportCenter()}
         {activeTab === "contact" && renderContactForm()}
         {activeTab === "chat" && renderLiveChat()}
         {activeTab === "safety" && renderSafetyCenter()}

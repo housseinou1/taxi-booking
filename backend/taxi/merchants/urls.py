@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views
+from . import menu_views, views
 
 urlpatterns = [
     path("register/", views.merchant_register, name="merchant-register"),
@@ -22,6 +22,13 @@ urlpatterns = [
     path("orders/mine/", views.my_orders, name="merchant-my-orders"),
     path("orders/<int:order_id>/action/", views.merchant_order_action, name="merchant-order-action"),
     path("dashboard/analytics/", views.merchant_analytics, name="merchant-analytics"),
+    path("settlements/", menu_views.merchant_settlements, name="merchant-settlements"),
+    path("menu/categories/", menu_views.MenuCategoryListCreateView.as_view(), name="merchant-menu-categories"),
+    path("menu/categories/<int:pk>/", menu_views.MenuCategoryDetailView.as_view(), name="merchant-menu-category-detail"),
+    path("products/<int:product_id>/variants/", menu_views.product_variants, name="merchant-product-variants"),
+    path("products/<int:product_id>/variants/<int:variant_id>/", menu_views.product_variant_detail, name="merchant-product-variant-detail"),
+    path("products/<int:product_id>/extras/", menu_views.product_extras, name="merchant-product-extras"),
+    path("products/<int:product_id>/extras/<int:extra_id>/", menu_views.product_extra_detail, name="merchant-product-extra-detail"),
     path("payouts/", views.merchant_payouts, name="merchant-payouts"),
     path("admin/<int:merchant_id>/status/", views.admin_merchant_status, name="merchant-admin-status"),
 ]

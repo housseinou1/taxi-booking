@@ -322,6 +322,7 @@ const DRIVER_LYFT_ROUTES = [
   "/driver/documents",
   "/driver/code",
   "/driver/earnings",
+  "/driver/wallet",
   "/driver/feedback",
   "/driver/support",
   "/driver/achievements",

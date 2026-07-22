@@ -1,4 +1,5 @@
 import React from "react";
+import { navigateInApp } from "../navigation/inAppNavigation";
 
 /**
  * DriverNavigation - Bottom navigation bar for the premium driver app.
@@ -74,7 +75,7 @@ export default function DriverNavigation() {
 
   const handleNavigate = (path) => {
     if (currentPath !== path) {
-      window.location.href = path;
+      navigateInApp(path);
     }
   };
 

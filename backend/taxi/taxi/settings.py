@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     "promotions",
     "deliveries",
     "merchants",
+    "partners",
     "safety",
     "security",
     "legal",
@@ -60,10 +61,13 @@ INSTALLED_APPS = [
     "shifts",
     "incentives",
     "referrals",
+    "loyalty",
     "operations",
     "health",
     "django_celery_beat",
     "admin_2fa",
+    "api_gateway",
+    "academy",
 ]
 
 MIDDLEWARE = [
@@ -73,6 +77,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "api_gateway.middleware.APIGatewayLogMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -163,6 +168,14 @@ REST_FRAMEWORK = {
     ),
     "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "60/minute",
+        "user": "300/minute",
+    },
 }
 
 # ── Simple JWT ────────────────────────────────────────────────────────────────
@@ -214,6 +227,9 @@ CORS_ALLOW_HEADERS = [
     "x-csrftoken",
     "x-requested-with",
     "x-app-type",
+    "x-api-key",
+    "x-api-signature",
+    "x-api-timestamp",
 ]
 CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS")
 
@@ -287,7 +303,16 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": "Yala — Ride Anywhere. Taxi booking platform API for Mauritania.",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
+    "TAGS": [
+        {"name": "Partner API", "description": "Third-party integration endpoints (API key auth)."},
+    ],
 }
+
+# ── API Gateway (Phase 38) ────────────────────────────────────────────────────
+API_GATEWAY_PARTNER_PREFIX = "/api-gateway/v1/partner/"
+API_GATEWAY_SIGNATURE_MAX_SKEW_SECONDS = 300
+API_GATEWAY_OAUTH2_ENABLED = False
+API_GATEWAY_KEY_GRACE_PERIOD_DAYS = 7
 
 # ── Static files storage (Django 4.2+ STORAGES dict replaces STATICFILES_STORAGE)
 STORAGES = {
@@ -329,6 +354,7 @@ CELERY_TIMEZONE = TIME_ZONE
 CELERY_TASK_ALWAYS_EAGER = os.getenv("CELERY_TASK_ALWAYS_EAGER", "False").lower() in ("true", "1", "yes")
 
 if "test" in sys.argv:
+    CELERY_BROKER_URL = "memory://"
     CELERY_TASK_ALWAYS_EAGER = True
     CELERY_TASK_EAGER_PROPAGATES = True
     CELERY_RESULT_BACKEND = "cache+memory://"

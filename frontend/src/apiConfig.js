@@ -15,9 +15,25 @@ function isCapacitorNative() {
   );
 }
 
-const DEFAULT_PRODUCTION_API_URL = "https://api.yalataxi.live";
-const DEFAULT_PRODUCTION_WS_URL = "wss://api.yalataxi.live/ws/rides/";
-const DEFAULT_PRODUCTION_DELIVERY_WS_URL = "wss://api.yalataxi.live/ws/deliveries/";
+const DEFAULT_PRODUCTION_API_URL = "https://www.yalataxi.live";
+const DEFAULT_PRODUCTION_WS_URL = "wss://www.yalataxi.live/ws/rides/";
+const DEFAULT_PRODUCTION_DELIVERY_WS_URL = "wss://www.yalataxi.live/ws/deliveries/";
+const PRODUCTION_API_BASES = [
+  "https://www.yalataxi.live",
+  "https://api.yalataxi.live",
+  // Apex may lack an A record on some public resolvers; keep as last resort.
+  "https://yalataxi.live",
+];
+const PRODUCTION_WS_BASES = [
+  "wss://www.yalataxi.live/ws/rides/",
+  "wss://yalataxi.live/ws/rides/",
+  "wss://api.yalataxi.live/ws/rides/",
+];
+const PRODUCTION_DELIVERY_WS_BASES = [
+  "wss://www.yalataxi.live/ws/deliveries/",
+  "wss://yalataxi.live/ws/deliveries/",
+  "wss://api.yalataxi.live/ws/deliveries/",
+];
 
 function isProductionWebHost(host) {
   const normalized = String(host || "").toLowerCase();
@@ -111,19 +127,60 @@ export const DELIVERY_WS_URL = preferLocalDevApi
   ? localDevDeliveryWsUrl
   : configuredDeliveryWsUrl || (isCapacitorNative() ? DEFAULT_PRODUCTION_DELIVERY_WS_URL : localDevDeliveryWsUrl);
 
+function normalizeBaseUrl(url) {
+  return String(url || "").replace(/\/$/, "");
+}
+
+export function getProductionApiBases() {
+  const bases = [];
+  const add = (url) => {
+    const normalized = normalizeBaseUrl(url);
+    if (normalized && !isLocalNetworkApiUrl(normalized) && !bases.includes(normalized)) {
+      bases.push(normalized);
+    }
+  };
+
+  PRODUCTION_API_BASES.forEach(add);
+  add(configuredApiUrl);
+  if (bases.length === 0) {
+    add(DEFAULT_PRODUCTION_API_URL);
+  }
+  return bases;
+}
+
+export function getWsCandidates(kind = "rides") {
+  if (preferLocalDevApi) {
+    return kind === "deliveries" ? [localDevDeliveryWsUrl] : [localDevWsUrl];
+  }
+
+  const bases =
+    kind === "deliveries" ? PRODUCTION_DELIVERY_WS_BASES : PRODUCTION_WS_BASES;
+  const configured = kind === "deliveries" ? configuredDeliveryWsUrl : configuredWsUrl;
+  const candidates = [];
+
+  if (configured && !isLocalNetworkApiUrl(configured.replace(/^wss?:\/\//, "https://"))) {
+    candidates.push(configured);
+  }
+
+  for (const candidate of bases) {
+    if (!candidates.includes(candidate)) {
+      candidates.push(candidate);
+    }
+  }
+
+  return candidates.length > 0
+    ? candidates
+    : [kind === "deliveries" ? DEFAULT_PRODUCTION_DELIVERY_WS_URL : DEFAULT_PRODUCTION_WS_URL];
+}
+
 export function getApiCandidates(path = "") {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-  const remoteApiUrl =
-    configuredApiUrl && !isLocalNetworkApiUrl(configuredApiUrl)
-      ? configuredApiUrl
-      : isCapacitorNative()
-      ? DEFAULT_PRODUCTION_API_URL
-      : API_URL;
-  const candidates = [`${remoteApiUrl}${normalizedPath}`];
 
   if (isRemoteApiConfigured || isCapacitorNative()) {
-    return candidates;
+    return getProductionApiBases().map((base) => `${base}${normalizedPath}`);
   }
+
+  const candidates = [`${API_URL}${normalizedPath}`];
 
   if (typeof window !== "undefined") {
     const localFallback = `${window.location.protocol}//${window.location.hostname}:8000${normalizedPath}`;

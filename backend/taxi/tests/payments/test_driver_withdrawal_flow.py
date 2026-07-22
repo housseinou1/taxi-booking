@@ -1,6 +1,7 @@
 """Driver withdrawal request flow tests."""
 
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
@@ -10,15 +11,23 @@ from datetime import timedelta
 from rest_framework.test import APIClient
 
 from payments.models import DriverPayoutMethod, WithdrawalOTPCode, WithdrawalRequest
+from taxi.drivers.models import DriverProfile
 from taxi.rides.models import Ride
 
 User = get_user_model()
 
 
+def _approved_driver(**kwargs):
+    user = User.objects.create_user(**kwargs)
+    with patch("taxi.drivers.tasks.generate_qr_code_task.delay"):
+        DriverProfile.objects.create(user=user, status="approved")
+    return user
+
+
 class DriverWithdrawalFlowTests(TestCase):
     def setUp(self):
         self.client = APIClient()
-        self.driver = User.objects.create_user(
+        self.driver = _approved_driver(
             email="driver-withdraw@test.local",
             password="Pass123!",
             user_type="driver",
@@ -63,6 +72,7 @@ class DriverWithdrawalFlowTests(TestCase):
                 "note": "Weekly payout",
                 "payout_method": self.payout_method.id,
                 "otp_code": "123456",
+                "idempotency_key": "test-withdraw-1",
             },
             format="json",
         )
@@ -79,6 +89,7 @@ class DriverWithdrawalFlowTests(TestCase):
                 "amount": "50",
                 "payout_method": self.payout_method.id,
                 "otp_code": "123456",
+                "idempotency_key": "test-withdraw-1",
             },
             format="json",
         )

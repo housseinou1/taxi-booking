@@ -96,6 +96,39 @@ def authorize_ride_payment(ride, discount_amount=0):
     return payment
 
 
+def authorize_corporate_ride_payment(ride, discount_amount=0):
+    """Authorize a corporate-billed ride (company invoiced, not rider card/cash)."""
+    existing_payment = Payment.objects.filter(
+        ride_id=ride.id,
+        status__in=["authorized", "paid", "pending_verification"],
+    ).first()
+    if existing_payment:
+        return existing_payment
+
+    charge_amount, app_fee, tip_percent, tip_amount, driver_earning, discount = (
+        calculate_payment_amounts(ride.fare, 0, discount_amount)
+    )
+
+    payment = Payment.objects.create(
+        rider=ride.rider,
+        ride_id=ride.id,
+        amount=charge_amount,
+        discount_amount=discount,
+        app_fee=app_fee,
+        tip_percentage=tip_percent,
+        tip_amount=tip_amount,
+        driver_earning=driver_earning,
+        method="corporate",
+        status="authorized",
+        transaction_id=f"CORP-{uuid.uuid4()}",
+    )
+
+    ride.app_fee = app_fee
+    ride.driver_earning = driver_earning
+    ride.save(update_fields=["app_fee", "driver_earning"])
+    return payment
+
+
 def capture_ride_payment(ride):
     payment = Payment.objects.filter(
         ride_id=ride.id,

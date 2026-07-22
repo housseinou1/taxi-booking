@@ -242,7 +242,7 @@
     },
     "cancel": {
       "title": "Why are you cancelling?",
-      "description": "You can cancel before the trip starts. Cancellation fee logic is ready as a placeholder and currently shows 0 MRU.",
+      "description": "You can cancel before the trip starts. If a driver is already on the way, a 100 MRU cancellation fee may apply.",
       "selectReason": "Select a reason",
       "tooFar": "Driver is too far",
       "changedPlans": "Changed my plans",

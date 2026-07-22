@@ -6,6 +6,7 @@
         </trust-anchors>
     </base-config>
     <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">www.yalataxi.live</domain>
         <domain includeSubdomains="true">api.yalataxi.live</domain>
         <domain includeSubdomains="true">yalataxi.live</domain>
         <trust-anchors>

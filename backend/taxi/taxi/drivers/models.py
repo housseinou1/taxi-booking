@@ -349,6 +349,11 @@ class DriverProfile(models.Model):
         blank=True,
     )
 
+    class Meta:
+        indexes = [
+            models.Index(fields=["status", "is_available"], name="driver_status_available_idx"),
+        ]
+
     def save(self, *args, **kwargs):
         if self.vehicle_plate and not self.plate_number:
             self.plate_number = self.vehicle_plate
@@ -413,6 +418,11 @@ class DriverDocument(models.Model):
         on_delete=models.SET_NULL,
         related_name="reviewed_documents",
     )
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["status", "expires_at"], name="driverdoc_status_exp_idx"),
+        ]
 
     def __str__(self):
         return f"{self.driver} - {self.get_document_type_display()}"

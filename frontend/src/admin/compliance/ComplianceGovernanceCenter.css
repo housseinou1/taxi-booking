@@ -1,0 +1,147 @@
+.compliance-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 1rem 0;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 0.5rem;
+}
+
+.compliance-tab {
+  padding: 8px 14px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  color: #374151;
+  transition: background 0.15s, color 0.15s;
+}
+
+.compliance-tab:hover {
+  background: #f3f4f6;
+}
+
+.compliance-tab--active {
+  background: #0f766e;
+  color: #fff;
+  border-color: #0f766e;
+}
+
+.compliance-content {
+  margin-top: 1rem;
+}
+
+.compliance-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.compliance-panel {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.compliance-panel h3 {
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+  color: #111827;
+}
+
+.compliance-critical .beta__card-value {
+  color: #dc2626;
+}
+
+.compliance-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.compliance-table th,
+.compliance-table td {
+  border: 1px solid #e5e7eb;
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.compliance-table th {
+  background: #f9fafb;
+  font-weight: 600;
+}
+
+.compliance-table select {
+  padding: 4px 6px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.compliance-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.compliance-list li {
+  padding: 8px 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.compliance-list li:last-child {
+  border-bottom: none;
+}
+
+.compliance-report-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1rem;
+}
+
+.compliance-report-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.compliance-report-card h4 {
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+  font-size: 1rem;
+  color: #111827;
+}
+
+.compliance-report-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.compliance-report-button {
+  padding: 6px 12px;
+  background: #0f766e;
+  color: #fff;
+  text-decoration: none;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.compliance-report-button:hover {
+  opacity: 0.92;
+}
+
+.beta__success {
+  color: #047857;
+  background: #d1fae5;
+  border: 1px solid #a7f3d0;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+}

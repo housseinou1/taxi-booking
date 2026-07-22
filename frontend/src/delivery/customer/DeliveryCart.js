@@ -11,6 +11,8 @@ import { getDeliveryPayButtonLabel } from "../../payments/deliveryPayment";
 export default function DeliveryCart({
   store,
   deliveryAddress,
+  destinationLat,
+  destinationLng,
   distanceKm,
   onBack,
   onOrdered,
@@ -78,6 +80,8 @@ export default function DeliveryCart({
       const order = await checkoutCart({
         merchant_id: store.id,
         delivery_address: deliveryAddress,
+        destination_lat: destinationLat,
+        destination_lng: destinationLng,
         recipient_name: recipientName,
         recipient_phone: recipientPhone,
         recipient_alt_phone: recipientAltPhone,

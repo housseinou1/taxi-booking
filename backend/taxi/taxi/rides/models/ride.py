@@ -303,6 +303,25 @@ class Ride(models.Model):
         help_text="When the driver completed a verified rider no-show.",
     )
 
+    BILLING_SOURCE_CHOICES = [
+        ("personal", "Personal"),
+        ("corporate", "Corporate"),
+    ]
+    billing_source = models.CharField(
+        max_length=20,
+        choices=BILLING_SOURCE_CHOICES,
+        default="personal",
+        db_index=True,
+    )
+    corporate_account = models.ForeignKey(
+        "features.CorporateAccount",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="rides",
+    )
+    cost_center = models.CharField(max_length=100, blank=True, default="")
+
     class Meta:
         indexes = [
             models.Index(fields=["status"], name="ride_status_idx"),

@@ -196,7 +196,11 @@ class DeviceSession(models.Model):
 
     class Meta:
         ordering = ["-last_seen_at"]
-        unique_together = [("user", "device_id")]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "device_id"], name="device_sess_user_device_uniq"
+            ),
+        ]
         indexes = [
             models.Index(fields=["user", "-last_seen_at"], name="device_sess_user_idx"),
         ]

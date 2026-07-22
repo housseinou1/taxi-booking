@@ -92,10 +92,34 @@ describe('buildRideRequest', () => {
     expect(buildRideRequest(state)).toBeNull();
   });
 
-  it('defaults distance_km to 0 when routeInfo is missing', () => {
+  it('computes distance_km from coordinates when routeInfo is missing', () => {
     const state = { ...validState, routeInfo: null };
     const payload = buildRideRequest(state);
-    expect(payload.distance_km).toBe(0);
+    expect(payload.distance_km).toBeGreaterThanOrEqual(0.1);
+  });
+
+  it('falls back to coordinate distance when route distance is too small', () => {
+    const state = { ...validState, routeInfo: { distanceKm: 0, etaMinutes: 1 } };
+    const payload = buildRideRequest(state);
+    expect(payload.distance_km).toBeGreaterThanOrEqual(0.1);
+  });
+
+  it('falls back to coordinate distance when route distance is too large', () => {
+    const state = { ...validState, routeInfo: { distanceKm: 250, etaMinutes: 1 } };
+    const payload = buildRideRequest(state);
+    expect(payload.distance_km).toBeGreaterThanOrEqual(0.1);
+    expect(payload.distance_km).toBeLessThanOrEqual(200);
+  });
+
+  it('uses minimum valid distance when coordinates cannot resolve a distance', () => {
+    const state = {
+      ...validState,
+      routeInfo: { distanceKm: 250, etaMinutes: 1 },
+      pickup: { label: 'Sebkha', position: [18.0735, -15.9582] },
+      destination: { label: 'Unknown', position: null },
+    };
+
+    expect(buildRideRequest(state)).toBeNull();
   });
 
   it('defaults estimated_fare to 0 when fare is missing', () => {
