@@ -148,6 +148,5 @@ export function logRideGeoDebug(context, payload) {
     return;
   }
   if (process.env.NODE_ENV !== "production") {
-    console.log(`[ride-geo] ${context}`, payload);
   }
 }

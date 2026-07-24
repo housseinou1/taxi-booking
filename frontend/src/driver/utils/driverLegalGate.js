@@ -57,7 +57,6 @@ export async function ensureDriverAgreementBeforeOnline(returnPath = "/driver") 
     }
     return true;
   } catch (error) {
-    console.log("Driver legal gate error:", error.response?.data || error);
     return { ok: false, error: "Could not verify driver agreement. Check your connection and try again." };
   }
 }

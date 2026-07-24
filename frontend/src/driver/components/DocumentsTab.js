@@ -22,7 +22,6 @@ export default function DocumentsTab({ onDocumentsChanged }) {
         (a) => a.status === "missing" || a.status === "rejected"
       ));
     } catch (error) {
-      console.log("Documents fetch error:", error.response?.data || error);
     } finally {
       setLoading(false);
     }

@@ -63,7 +63,6 @@ function AddPaymentMethod({ onCardSaved }) {
         onCardSaved();
       }
     } catch (error) {
-      console.log(error.response?.data || error);
       setMessage("Failed to save payment method. Please check the information.");
     } finally {
       setLoading(false);

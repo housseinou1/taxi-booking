@@ -446,7 +446,6 @@ export default function RiderDashboard() {
         }
       }
     } catch (error) {
-      console.log("Saved place apply error:", error);
     } finally {
       localStorage.removeItem("yala_next_place");
     }
@@ -472,7 +471,6 @@ export default function RiderDashboard() {
           setDistance(Number(route.distanceKm.toFixed(1)));
         }
       } catch (error) {
-        console.log("Route service unavailable:", error);
         if (cancelled) return;
 
         setRoutePath(fallbackRoute);
@@ -508,7 +506,6 @@ export default function RiderDashboard() {
         years_using_app: response.data.years_using_app || 0,
       });
     } catch (error) {
-      console.log("Rider identity error:", error.response?.data || error);
     }
   }, [token]);
 
@@ -540,7 +537,6 @@ export default function RiderDashboard() {
         setCurrentRide(null);
       }
     } catch (error) {
-      console.log("Ride history error:", error.response?.data || error);
     }
   }, [token]);
 
@@ -585,7 +581,6 @@ export default function RiderDashboard() {
 
       setDriverPosition(isPointInServiceArea(livePosition) ? livePosition : null);
     } catch (error) {
-      console.log("Driver location error:", error.response?.data || error);
     }
   }, [currentRide, token]);
 
@@ -828,7 +823,6 @@ export default function RiderDashboard() {
         error.response?.data?.error ||
         t("riderDashboard.messages.requestFailed");
 
-      console.log("Ride request error:", error.response?.data || error);
       setRequestMessage(requestError);
     } finally {
       setRequesting(false);
@@ -922,7 +916,6 @@ export default function RiderDashboard() {
       await navigator.clipboard.writeText(`${tripText} ${window.location.href}`);
       alert(t("riderDashboard.messages.tripCopied"));
     } catch (error) {
-      console.log("Trip share error:", error);
       alert(tripText);
     }
   };
@@ -967,7 +960,6 @@ export default function RiderDashboard() {
       setProfilePictureFile(null);
       setIdentityMessage(t("riderDashboard.messages.identitySaved"));
     } catch (error) {
-      console.log("Rider identity update error:", error.response?.data || error);
       setIdentityMessage(
         error.response?.data?.error ||
           error.response?.data?.detail ||

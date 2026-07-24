@@ -114,7 +114,6 @@ export default function useDeliveryCourierRealtime({
             body,
           });
         } catch (e) {
-          console.log("Delivery offer alert failed:", e?.message || e);
         }
       }
     };

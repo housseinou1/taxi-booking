@@ -172,7 +172,6 @@ export default function DriverAchievements() {
       );
       setBonusSummary(campaignsRes.data?.bonus_summary || null);
     } catch (error) {
-      console.log("Achievements fetch error:", error.response?.data || error);
     } finally {
       setLoading(false);
     }

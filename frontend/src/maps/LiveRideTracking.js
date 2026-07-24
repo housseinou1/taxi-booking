@@ -49,7 +49,6 @@ function LiveRideTracking({ ride }) {
         ]);
       }
     } catch (error) {
-      console.log("Live tracking error:", error);
     }
   };
 

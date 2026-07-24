@@ -18,7 +18,6 @@ class RideBookingSerializer(serializers.ModelSerializer):
 
 
     def create(self, validated_data):
-        print("validated_data:", validated_data)
         rider_data = validated_data.pop('rider_id', None)  # Extract rider data if present
         if not validated_data["pick_up_location"] and not validated_data["drop_off_location"]:
             raise serializers.ValidationError({"Error":"Pick up location and Destionation are required!"})

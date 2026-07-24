@@ -104,7 +104,6 @@ function DriverMap({ driverLocation, activeRide, availableRides = [], onRouteUpd
           const googleRoute = await fetchGoogleDirections(start, end);
           if (googleRoute) return googleRoute;
         } catch (error) {
-          console.log("Google Directions unavailable, using route fallback:", error);
         }
       }
 
@@ -148,7 +147,6 @@ function DriverMap({ driverLocation, activeRide, availableRides = [], onRouteUpd
               : "Continue toward the rider pickup")
         );
       } catch (error) {
-        console.log("Route service unavailable:", error);
         if (cancelled) return;
 
         setRouteToPickup(fallbackToPickup);

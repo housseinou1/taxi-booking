@@ -57,7 +57,6 @@ function AuthPage({ onLogin }) {
         alert(JSON.stringify(data));
       }
     } catch (error) {
-      console.log(error);
       alert("Register server error");
     }
   };
@@ -91,7 +90,6 @@ function AuthPage({ onLogin }) {
         alert(JSON.stringify(data));
       }
     } catch (error) {
-      console.log(error);
       alert("Login server error");
     }
   };

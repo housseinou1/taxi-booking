@@ -26,7 +26,6 @@ async function getNativeAudioPlugin() {
     const mod = await import("@capacitor-community/native-audio");
     cachedNativeAudio = mod?.NativeAudio || mod?.default || null;
   } catch (error) {
-    console.log("NativeAudio plugin unavailable:", error?.message || error);
     cachedNativeAudio = false;
   }
 
@@ -203,7 +202,6 @@ export async function preloadNotificationSound() {
       soundPreloaded = true;
       break;
     } catch (error) {
-      console.log("NativeAudio preload failed for", assetPath, error.message || error);
     }
   }
 
@@ -211,10 +209,8 @@ export async function preloadNotificationSound() {
     try {
       await preloadAsset("delivery_request", assetPath);
       deliverySoundPreloaded = true;
-      console.log("NativeAudio preloaded delivery_request:", assetPath);
       break;
     } catch (error) {
-      console.log("NativeAudio delivery preload failed for", assetPath, error.message || error);
     }
   }
 
@@ -241,7 +237,6 @@ async function playNativeDeliverySound() {
       await NativeAudio.play({ assetId, time: 0 });
       return true;
     } catch (error) {
-      console.log("NativeAudio play error:", assetId, error.message || error);
     }
   }
 
@@ -265,7 +260,6 @@ export async function playNativeSound() {
     await NativeAudio.play({ assetId: "notification", time: 0 });
     return true;
   } catch (error) {
-    console.log("NativeAudio play error:", error.message || error);
     return false;
   }
 }
@@ -281,7 +275,6 @@ export async function vibrateNative(pattern) {
       }
       return true;
     } catch (error) {
-      console.log("Haptics vibrate error:", error.message || error);
     }
   }
 
@@ -347,7 +340,6 @@ export async function playRideAlertChime({ force = false } = {}) {
 
     return true;
   } catch (error) {
-    console.log("Chime play error:", error);
     return false;
   }
 }
@@ -382,7 +374,6 @@ export async function unlockRideRequestSound() {
     audio.currentTime = 0;
     audio.volume = 1;
   } catch (error) {
-    console.log("Primary audio unlock failed:", error?.message || error);
   }
 
   // Unlock fallback audio
@@ -394,7 +385,6 @@ export async function unlockRideRequestSound() {
     fallback.currentTime = 0;
     fallback.volume = 1;
   } catch (error) {
-    console.log("Fallback audio unlock failed:", error?.message || error);
   }
 
   await playRideAlertChime({ force: true });
@@ -438,7 +428,6 @@ export async function playDeliveryOfferAlert(options = {}) {
   try {
     await vibrateNative(true);
   } catch (e) {
-    console.log("Vibration failed:", e?.message || e);
   }
 
   let played = false;
@@ -447,7 +436,6 @@ export async function playDeliveryOfferAlert(options = {}) {
   try {
     played = await playRideAlertChime({ force });
   } catch (e) {
-    console.log("Chime failed:", e?.message || e);
   }
 
   // Try primary HTML5 Audio (delivery_request.wav)
@@ -458,7 +446,6 @@ export async function playDeliveryOfferAlert(options = {}) {
     await audio.play();
     return true;
   } catch (e) {
-    console.log("HTML5 primary audio failed:", e?.message || e);
   }
 
   // Try fallback HTML5 Audio (notification.wav)
@@ -469,7 +456,6 @@ export async function playDeliveryOfferAlert(options = {}) {
     await fallback.play();
     return true;
   } catch (e) {
-    console.log("HTML5 fallback audio failed:", e?.message || e);
   }
 
   // Try NativeAudio plugin
@@ -482,7 +468,6 @@ export async function playDeliveryOfferAlert(options = {}) {
       return true;
     }
   } catch (e) {
-    console.log("Native delivery sound fallback failed:", e?.message || e);
   }
 
   return played;
@@ -541,7 +526,6 @@ export async function playRideRequestAlert({ force = false } = {}) {
     await audio.play();
     return true;
   } catch (error) {
-    console.log("HTML5 ride alert failed:", error?.message || error);
   }
 
   await preloadNotificationSound();

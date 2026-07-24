@@ -299,7 +299,6 @@ export default function DriverApp() {
     // Preload native sound for Capacitor Android (with small delay for plugin init)
     setTimeout(() => {
       preloadNotificationSound().then(() => {
-        console.log("Sound preload complete, isNative:", isNative());
       });
     }, 1000);
 
@@ -338,7 +337,6 @@ export default function DriverApp() {
         await Notification.requestPermission().catch(() => {});
       }
     } catch (error) {
-      console.log("Audio unlock error:", error);
     }
 
     // Also try native preload
@@ -404,7 +402,6 @@ export default function DriverApp() {
         await audio.play();
       }
     } catch (error) {
-      console.log("Notification sound blocked:", error);
     }
   }, [soundEnabled]);
 
@@ -436,7 +433,6 @@ export default function DriverApp() {
           new Notification("New ride request", notificationOptions);
         }
       } catch (error) {
-        console.log("Driver push notification error:", error);
         new Notification("New ride request", {
           body: notificationOptions.body,
           icon: notificationOptions.icon,
@@ -523,7 +519,6 @@ export default function DriverApp() {
           : MARKET.defaultPickup.position[1],
       });
     } catch (error) {
-      console.log("Driver status error:", error.response?.data || error);
       if (isAuthError(error)) {
         sendToLogin("Your login expired. Please log in again.");
         return;
@@ -547,7 +542,6 @@ export default function DriverApp() {
 
       setAvailableRides(rides);
     } catch (error) {
-      console.log("Available rides error:", error.response?.data || error);
       setAvailableRides([]);
     }
   }, []);
@@ -557,7 +551,6 @@ export default function DriverApp() {
       const response = await axios.get(`${API_URL}/rides/driver-rides/`, authHeaders);
       setDriverRides(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
-      console.log("Driver rides error:", error.response?.data || error);
       setDriverRides([]);
     }
   }, [authHeaders]);
@@ -573,7 +566,6 @@ export default function DriverApp() {
       setWithdrawableBalance(response.data.withdrawable_balance || 0);
       setCompletedRides(response.data.completed_rides || 0);
     } catch (error) {
-      console.log("Driver stats error:", error.response?.data || error);
     }
   }, [authHeaders]);
 
@@ -599,7 +591,6 @@ export default function DriverApp() {
         setWithdrawableBalance(Number(withdrawalPayload.available_balance || 0));
       }
     } catch (error) {
-      console.log("Payout data error:", error.response?.data || error);
     }
   }, [authHeaders]);
 
@@ -623,7 +614,6 @@ export default function DriverApp() {
           authHeaders
         );
       } catch (error) {
-        console.log("Location update error:", error.response?.data || error);
       }
     },
     [authHeaders]
@@ -711,7 +701,6 @@ export default function DriverApp() {
           }
         },
         (error) => {
-          console.log("Phone GPS error:", error);
           setDriverNotice(
             "Location permission is required for navigation. Enable precise location in your phone settings, then return to Yala."
           );
@@ -763,7 +752,6 @@ export default function DriverApp() {
       setIsOnline(Boolean(response.data.is_available));
       fetchAllDriverData();
     } catch (error) {
-      console.log("Toggle status error:", error.response?.data || error);
       setIsOnline(!nextAvailability);
       if (isAuthError(error)) {
         sendToLogin("Your login expired. Please log in again before going online.");
@@ -888,7 +876,6 @@ export default function DriverApp() {
       await navigator.clipboard.writeText(`${tripText} ${window.location.href}`);
       setDriverNotice("Trip status copied for sharing.");
     } catch (error) {
-      console.log("Driver trip share error:", error);
       setDriverNotice(tripText);
     }
   };
@@ -958,7 +945,6 @@ export default function DriverApp() {
       setMenuMessage("Car information and documents updated successfully.");
       fetchAllDriverData();
     } catch (error) {
-      console.log("Vehicle profile update error:", error.response?.data || error);
       setMenuMessage(
         error.response?.data?.error ||
           error.response?.data?.detail ||
@@ -1013,7 +999,6 @@ export default function DriverApp() {
       }));
       setMenuMessage("National ID information updated successfully.");
     } catch (error) {
-      console.log("National ID update error:", error.response?.data || error);
       setMenuMessage(
         error.response?.data?.error ||
           error.response?.data?.detail ||
@@ -1042,7 +1027,6 @@ export default function DriverApp() {
       setMenuMessage("Payout method saved successfully.");
       fetchPayoutData();
     } catch (error) {
-      console.log("Payout method error:", error.response?.data || error);
       setMenuMessage(error.response?.data?.error || "Could not save payout method.");
     } finally {
       setPayoutSaving(false);
@@ -1078,7 +1062,6 @@ export default function DriverApp() {
       setMenuMessage("Withdrawal request submitted for admin approval.");
       fetchPayoutData();
     } catch (error) {
-      console.log("Withdrawal request error:", error.response?.data || error);
       setMenuMessage(
         error.response?.data?.error ||
           error.response?.data?.detail ||

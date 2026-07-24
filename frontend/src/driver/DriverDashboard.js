@@ -212,7 +212,6 @@ export default function DriverDashboard() {
       setOnline(Boolean(profileRes.data.is_available));
       setTodayEarnings(earningsRes.data?.today_earnings || 0);
     } catch (err) {
-      console.log("Dashboard data error:", err);
     }
   }, [authHeaders, token, setDriverProfile, setOnline]);
 
@@ -486,7 +485,6 @@ export default function DriverDashboard() {
                 const errorMsg = error.response?.data?.detail || error.response?.data?.error || "Could not accept ride";
                 setRideRequest(null);
                 // Show error briefly
-                console.log("Ride accept error:", errorMsg);
                 alert(errorMsg);
               }
             }}

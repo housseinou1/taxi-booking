@@ -24,7 +24,6 @@ export async function initDeliveryAlertNotifications() {
   try {
     await LocalNotifications.requestPermissions();
   } catch (error) {
-    console.log("Local notification permission failed:", error?.message || error);
   }
 
   if (getPlatform() !== "android") return;
@@ -55,7 +54,6 @@ export async function initDeliveryAlertNotifications() {
       sound: "delivery_request.wav",
     });
   } catch (error) {
-    console.log("Delivery alert channel setup failed:", error?.message || error);
   }
 }
 
@@ -83,7 +81,6 @@ export async function showDeliveryOfferAlertNotification({
     });
     return true;
   } catch (error) {
-    console.log("Delivery local notification failed:", error?.message || error);
     return false;
   }
 }

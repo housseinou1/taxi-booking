@@ -21,6 +21,7 @@ delivery-app/android/delivery-signing.properties
 venv/
 env/
 .venv/
+.codex-test-venv/
 
 # Python
 __pycache__/
@@ -32,6 +33,20 @@ node_modules/
 
 # Build outputs
 frontend/build/
+driver-app/www/
+rider-app/www/
+delivery-app/www/
+admin-app/www/
+
+# Mobile release artifacts
+*.apk
+*.aab
+*.pem
+release/android/
+
+# Deployment scratch directories
+.codex-deploy/
+*.pid
 
 # IDE
 .idea/
@@ -44,6 +59,7 @@ Thumbs.db
 
 # Database
 *.sqlite3
+*.db
 
 # Media uploads
 backend/taxi/media/

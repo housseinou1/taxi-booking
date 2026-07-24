@@ -168,7 +168,6 @@ export default function ActionPanel({ onRideAction, onError, driverPosition = nu
             lat: parseFloat(lat),
             lng: parseFloat(lng),
           };
-          console.log("Arrived payload with GPS:", payload);
         } else {
           console.warn("Invalid driverPosition values for arrived geofence check");
         }
