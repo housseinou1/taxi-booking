@@ -5,6 +5,8 @@
 !.env.*.example
 !.env.production.template
 !.env.production.example
+!.env.pilot.template
+!.env.pilot.example
 firebase-service-account.json
 **/firebase-service-account.json
 
