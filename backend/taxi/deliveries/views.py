@@ -454,9 +454,14 @@ def accept_delivery(request, delivery_id):
         try:
             delivery = delivery_service.assign_driver(delivery, request.user)
         except DeliveryServiceError as e:
+            http_status = (
+                status.HTTP_403_FORBIDDEN
+                if e.code in {"offer_not_available", "city_not_served"}
+                else status.HTTP_400_BAD_REQUEST
+            )
             return Response(
                 {"detail": e.message, "code": e.code},
-                status=status.HTTP_400_BAD_REQUEST,
+                status=http_status,
             )
 
     return Response(DeliverySerializer(delivery, context={"request": request}).data)
@@ -476,7 +481,7 @@ def decline_delivery(request, delivery_id):
     try:
         assignment_service.decline_offer(delivery, request.user)
     except ValueError as exc:
-        return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
 
     return Response({"detail": "Offer declined.", "delivery_id": delivery_id})
 
@@ -486,6 +491,17 @@ def decline_delivery(request, delivery_id):
 def offer_timeout(request, delivery_id):
     """Mark an expired offer and move to the next courier."""
     delivery = get_object_or_404(Delivery, id=delivery_id, status="requested", driver__isnull=True)
+    is_offered_courier = delivery.offered_driver_id == request.user.id
+    if not request.user.is_staff and not is_offered_courier:
+        return Response(
+            {"detail": "Only the offered courier or admin can expire this offer."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+    if is_offered_courier:
+        error = approved_driver_error(request.user)
+        if error:
+            return Response({"detail": error}, status=status.HTTP_403_FORBIDDEN)
+
     from .services.assignment_service import assignment_service
 
     assignment_service.process_expired_offer(delivery)
@@ -1298,9 +1314,14 @@ def create_dispute(request, delivery_id):
             photo_evidence=serializer.validated_data.get("photo_evidence"),
         )
     except DisputeServiceError as e:
+        http_status = (
+            status.HTTP_403_FORBIDDEN
+            if e.code == "not_owner"
+            else status.HTTP_400_BAD_REQUEST
+        )
         return Response(
             {"detail": e.message, "code": e.code},
-            status=status.HTTP_400_BAD_REQUEST,
+            status=http_status,
         )
 
     return Response(
