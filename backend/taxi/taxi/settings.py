@@ -20,10 +20,23 @@ def env_list(name, default=""):
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-sakho-express-local-dev-key")
-DEBUG = env_bool("DJANGO_DEBUG", True)
+# Fail closed by default. Local/dev must set DJANGO_DEBUG=True explicitly.
+# manage.py test keeps prior DX when DJANGO_DEBUG is unset.
+_IN_TEST = "test" in sys.argv
+_DEBUG_ENV_SET = "DJANGO_DEBUG" in os.environ
+DEBUG = env_bool("DJANGO_DEBUG", False)
+if _IN_TEST and not _DEBUG_ENV_SET:
+    DEBUG = True
 
-ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "*" if DEBUG else "")
+_INSECURE_SECRET_DEFAULT = "django-insecure-sakho-express-local-dev-key"
+if DEBUG or _IN_TEST:
+    SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", _INSECURE_SECRET_DEFAULT)
+else:
+    SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "")
+
+# Never default to wildcard hosts. Tests need testserver when DEBUG is on.
+_allowed_default = "localhost,127.0.0.1,testserver" if (DEBUG or _IN_TEST) else ""
+ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", _allowed_default)
 PUBLIC_APP_URL = os.getenv("PUBLIC_APP_URL", "").rstrip("/")
 
 INSTALLED_APPS = [
@@ -77,6 +90,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "taxi.middleware.request_tracing.RequestTracingMiddleware",
     "api_gateway.middleware.APIGatewayLogMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
@@ -217,7 +231,8 @@ SIMPLE_JWT = {
 }
 
 # ── CORS ──────────────────────────────────────────────────────────────────────
-CORS_ALLOW_ALL_ORIGINS = env_bool("CORS_ALLOW_ALL_ORIGINS", DEBUG)
+# Opt-in only — never imply allow-all from DEBUG alone.
+CORS_ALLOW_ALL_ORIGINS = env_bool("CORS_ALLOW_ALL_ORIGINS", False)
 CORS_ALLOWED_ORIGINS = env_list("CORS_ALLOWED_ORIGINS")
 CORS_ALLOW_HEADERS = [
     "accept",
@@ -233,7 +248,9 @@ CORS_ALLOW_HEADERS = [
 ]
 CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS")
 
-if not DEBUG:
+if not DEBUG and not _IN_TEST:
+    from django.core.exceptions import ImproperlyConfigured
+
     SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT", True)
     SESSION_COOKIE_SECURE = env_bool("SESSION_COOKIE_SECURE", True)
     CSRF_COOKIE_SECURE = env_bool("CSRF_COOKIE_SECURE", True)
@@ -242,14 +259,19 @@ if not DEBUG:
     SECURE_HSTS_PRELOAD = env_bool("SECURE_HSTS_PRELOAD", True)
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
-    if (
-        not os.getenv("DJANGO_SECRET_KEY")
-        or SECRET_KEY.startswith("django-insecure")
-    ):
-        from django.core.exceptions import ImproperlyConfigured
-
+    if not SECRET_KEY or SECRET_KEY.startswith("django-insecure"):
         raise ImproperlyConfigured(
             "DJANGO_SECRET_KEY must be set to a strong unique value when DJANGO_DEBUG=False."
+        )
+
+    if not ALLOWED_HOSTS:
+        raise ImproperlyConfigured(
+            "DJANGO_ALLOWED_HOSTS must be set to an explicit host list when DJANGO_DEBUG=False."
+        )
+
+    if not os.getenv("REDIS_URL"):
+        raise ImproperlyConfigured(
+            "REDIS_URL must be set when DJANGO_DEBUG=False so cache, rate limits, and channels share state."
         )
 
 # ── Stripe ────────────────────────────────────────────────────────────────────
@@ -351,6 +373,9 @@ CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = TIME_ZONE
+# Prefer late ack so worker death requeues work; tasks must stay idempotent.
+CELERY_TASK_ACKS_LATE = env_bool("CELERY_TASK_ACKS_LATE", True)
+CELERY_TASK_REJECT_ON_WORKER_LOST = env_bool("CELERY_TASK_REJECT_ON_WORKER_LOST", True)
 CELERY_TASK_ALWAYS_EAGER = os.getenv("CELERY_TASK_ALWAYS_EAGER", "False").lower() in ("true", "1", "yes")
 
 if "test" in sys.argv:
@@ -358,6 +383,28 @@ if "test" in sys.argv:
     CELERY_TASK_ALWAYS_EAGER = True
     CELERY_TASK_EAGER_PROPAGATES = True
     CELERY_RESULT_BACKEND = "cache+memory://"
+    # Keep Hypothesis property suites bounded under manage.py test.
+    try:
+        from hypothesis import settings as hypothesis_settings
+
+        hypothesis_settings.register_profile(
+            "django_test",
+            max_examples=10,
+            deadline=None,
+        )
+        hypothesis_settings.load_profile("django_test")
+    except ImportError:
+        pass
+
+# Local UAT / API smoke without Redis workers (seeded SQLite pilot).
+if env_bool("YALA_UAT_LOCAL", False):
+    CELERY_BROKER_URL = "memory://"
+    CELERY_TASK_ALWAYS_EAGER = True
+    CELERY_TASK_EAGER_PROPAGATES = True
+    CELERY_RESULT_BACKEND = "cache+memory://"
+    CHANNEL_LAYERS = {
+        "default": {"BACKEND": "channels.layers.InMemoryChannelLayer"},
+    }
 
 CELERY_BEAT_SCHEDULE = {
     "expire-credits-hourly": {
@@ -413,6 +460,17 @@ YALA_SERVICE_AREA_BOUNDS = {
     "max_lng": float(os.getenv("YALA_SERVICE_MAX_LNG", "-15.65")),
 }
 
+YALA_APP_MIN_VERSIONS = {
+    "rider": os.getenv("YALA_RIDER_MIN_VERSION", "1.0.0"),
+    "driver": os.getenv("YALA_DRIVER_MIN_VERSION", "1.0.0"),
+    "delivery": os.getenv("YALA_DELIVERY_MIN_VERSION", "1.0.0"),
+}
+YALA_APP_LATEST_VERSIONS = {
+    "rider": os.getenv("YALA_RIDER_LATEST_VERSION", os.getenv("YALA_RIDER_MIN_VERSION", "1.2.7")),
+    "driver": os.getenv("YALA_DRIVER_LATEST_VERSION", os.getenv("YALA_DRIVER_MIN_VERSION", "1.2.23")),
+    "delivery": os.getenv("YALA_DELIVERY_LATEST_VERSION", os.getenv("YALA_DELIVERY_MIN_VERSION", "1.0.4")),
+}
+
 # ── Production security (only when DEBUG=False) ───────────────────────────────
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
@@ -442,6 +500,47 @@ ADMIN_2FA_ENABLED = os.getenv("ADMIN_2FA_ENABLED", "true").lower() in {
 # Limit concurrent authenticated devices per user (0 = unlimited).
 # Oldest DeviceSession rows are pruned on login when the limit is exceeded.
 MAX_CONCURRENT_DEVICE_SESSIONS = int(os.getenv("MAX_CONCURRENT_DEVICE_SESSIONS", "5"))
+
+# ── Structured logging (request tracing) ─────────────────────────────────────
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "filters": {
+        "request_context": {
+            "()": "taxi.logging_context.RequestContextFilter",
+        },
+    },
+    "formatters": {
+        "verbose": {
+            "format": (
+                "%(asctime)s %(levelname)s %(name)s "
+                "request_id=%(request_id)s correlation_id=%(correlation_id)s "
+                "user_id=%(user_id)s %(message)s"
+            ),
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
+            "filters": ["request_context"],
+        },
+    },
+    "loggers": {
+        "yala.request": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "yala.celery": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "yala.dispatch": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "yala.payments": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "yala.auth": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "django.request": {"handlers": ["console"], "level": "WARNING", "propagate": False},
+    },
+}
+
+# Reduce log noise during manage.py test (major slowdown on Windows redirect).
+if "test" in sys.argv:
+    LOGGING["loggers"]["yala.request"]["level"] = "ERROR"
+    LOGGING["loggers"]["yala.celery"]["level"] = "ERROR"
+    LOGGING["loggers"]["django.request"]["level"] = "ERROR"
 
 # ── Sentry (error tracking & performance monitoring) ─────────────────────────
 SENTRY_DSN = os.getenv("SENTRY_DSN", "")
