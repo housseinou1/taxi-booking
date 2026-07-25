@@ -495,15 +495,22 @@ def available_rides(request):
 @permission_classes([IsAuthenticated])
 def ride_history(request):
     if request.user.is_staff:
-        rides = Ride.objects.select_related("rider", "driver", "city").order_by("-id")
+        rides = (
+            Ride.objects.select_related("rider", "driver", "city")
+            .prefetch_related("stops")
+            .order_by("-id")
+        )
         city_id = request.query_params.get("city")
         if city_id:
             rides = rides.filter(city_id=city_id)
         rides = rides[:500]
     else:
-        rides = Ride.objects.filter(
-            rider=request.user,
-        ).select_related("driver", "city").order_by("-id")[:100]
+        rides = (
+            Ride.objects.filter(rider=request.user)
+            .select_related("driver", "city")
+            .prefetch_related("stops")
+            .order_by("-id")[:100]
+        )
 
     serializer = RideSerializer(
         rides,
@@ -632,7 +639,7 @@ def accept_ride(request, ride_id):
         if ride.offered_driver_id and ride.offered_driver_id != request.user.id:
             return Response(
                 {"detail": "This ride offer was assigned to another driver."},
-                status=status.HTTP_400_BAD_REQUEST,
+                status=status.HTTP_403_FORBIDDEN,
             )
 
         active_driver_ride = (
@@ -702,7 +709,7 @@ def decline_ride(request, ride_id):
     if ride.offered_driver_id and ride.offered_driver_id != request.user.id:
         return Response(
             {"detail": "This ride offer was assigned to another driver."},
-            status=status.HTTP_400_BAD_REQUEST,
+            status=status.HTTP_403_FORBIDDEN,
         )
 
     from taxi.rides.services.ride_assignment_service import handle_driver_decline
@@ -744,8 +751,19 @@ def arrived_ride(request, ride_id):
         )
 
     if ride.status == "accepted":
-        ride.status = "driver_arriving"
-        ride.save(update_fields=["status"])
+        with transaction.atomic():
+            locked = Ride.objects.select_for_update().get(pk=ride.id, driver=request.user)
+            if locked.status == "accepted":
+                locked.status = "driver_arriving"
+                locked.save(update_fields=["status"])
+                ride = locked
+            elif locked.status == "driver_arriving":
+                ride = locked
+            else:
+                return Response(
+                    {"detail": "Ride can only be marked arrived when driver is arriving."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
     # Required GPS check. Keep this aligned with the driver app arrive gate.
     raw_lat = request.data.get("lat", request.data.get("driver_lat"))
@@ -818,9 +836,19 @@ def arrived_ride(request, ride_id):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-    ride.status = "driver_arrived"
-    ride.driver_arrived_at = now()
-    ride.save(update_fields=["status", "driver_arrived_at"])
+    with transaction.atomic():
+        ride = Ride.objects.select_for_update().get(pk=ride.id, driver=request.user)
+        if ride.status not in ("driver_arriving", "accepted"):
+            return Response(
+                {"detail": "Ride can only be marked arrived when driver is arriving."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if ride.status == "driver_arrived":
+            serializer = RideSerializer(ride, context={"request": request})
+            return Response(serializer.data)
+        ride.status = "driver_arrived"
+        ride.driver_arrived_at = now()
+        ride.save(update_fields=["status", "driver_arrived_at"])
     broadcast_ride_update(ride)
 
     # Push notification to rider
@@ -1034,46 +1062,54 @@ def start_ride(request, ride_id):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def complete_ride(request, ride_id):
-    ride = get_object_or_404(
-        Ride,
-        id=ride_id,
-        driver=request.user,
-    )
-
-    if ride.status != "in_progress":
-        return Response(
-            {"detail": "Ride can only be completed while in progress."},
-            status=status.HTTP_400_BAD_REQUEST,
+    with transaction.atomic():
+        ride = get_object_or_404(
+            Ride.objects.select_for_update(),
+            id=ride_id,
+            driver=request.user,
         )
 
-    unfinished_stop = (
-        ride.stops.filter(departed_at__isnull=True)
-        .order_by("stop_order")
-        .first()
-    )
-    if unfinished_stop:
-        return Response(
-            {
-                "detail": (
-                    f"Complete stop #{unfinished_stop.stop_order} before "
-                    "completing the ride."
-                )
-            },
-            status=status.HTTP_400_BAD_REQUEST,
+        if ride.status == "completed":
+            return Response(
+                {"detail": "Ride can only be completed while in progress."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if ride.status != "in_progress":
+            return Response(
+                {"detail": "Ride can only be completed while in progress."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        unfinished_stop = (
+            ride.stops.filter(departed_at__isnull=True)
+            .order_by("stop_order")
+            .first()
         )
+        if unfinished_stop:
+            return Response(
+                {
+                    "detail": (
+                        f"Complete stop #{unfinished_stop.stop_order} before "
+                        "completing the ride."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-    ride.status = "completed"
-    ride.completed_at = now()
-    ride.save(update_fields=["status", "completed_at"])
+        ride.status = "completed"
+        ride.completed_at = now()
+        ride.save(update_fields=["status", "completed_at"])
 
-    # Keep payment capture in-request (needed for response payload), but keep it
-    # failure-tolerant so completion never hangs the driver app.
-    try:
-        captured_payment = capture_ride_payment(ride)
-        if not captured_payment:
-            calculate_money(ride)
-    except Exception:
-        logger.exception("Payment capture failed for ride=%s; completing anyway", ride.id)
+        # Capture while the ride row is locked to avoid double-capture races.
+        try:
+            captured_payment = capture_ride_payment(ride)
+            if not captured_payment:
+                calculate_money(ride)
+        except Exception:
+            logger.exception(
+                "Payment capture failed for ride=%s; completing anyway", ride.id
+            )
 
     serializer = RideSerializer(ride, context={"request": request})
     response = Response(serializer.data)
@@ -1328,50 +1364,63 @@ def cancel_ride(request, ride_id):
             cancellation_fee = Decimal("150")  # driver-side cancel penalty
 
     stamp = now()
-    pre_cancel_status = ride.status
-    ride.status = "rider_no_show" if is_rider_no_show else "cancelled"
-    ride.cancelled_at = stamp
-    # Keep cancelled_by as the actor who submitted; no-show is flagged via status/is_rider_no_show.
-    ride.cancelled_by = cancelled_by
-    ride.cancellation_reason = cancellation_reason
-    ride.cancellation_reason_details = cancellation_reason_details
-    ride.cancellation_fee = cancellation_fee
-    ride.is_rider_no_show = is_rider_no_show
-    ride.no_show_fee = no_show_fee
-    ride.no_show_driver_compensation = driver_compensation
-    update_fields = [
-        "status",
-        "cancelled_at",
-        "cancelled_by",
-        "cancellation_reason",
-        "cancellation_reason_details",
-        "cancellation_fee",
-        "is_rider_no_show",
-        "no_show_fee",
-        "no_show_driver_compensation",
-        "no_show_evidence",
-        "no_show_at",
-    ]
-    if is_rider_no_show:
-        ride.no_show_at = stamp
-        ride.driver_earning = driver_compensation
-        ride.no_show_evidence = {
-            "at": stamp.isoformat(),
-            "driver_user_id": request.user.id,
-            "device_id": device_id,
-            "driver_lat": driver_lat,
-            "driver_lng": driver_lng,
-            "pickup_lat": ride.pickup_lat,
-            "pickup_lng": ride.pickup_lng,
-            "distance_to_pickup_m": waiver_details.get("distance_to_pickup_m"),
-            "waited_seconds": waiver_details.get("waited_seconds"),
-            "max_wait_seconds": waiver_details.get("max_wait_seconds"),
-            "free_wait_seconds": waiver_details.get("free_wait_seconds"),
-            "call_attempts": waiver_details.get("call_attempts"),
-            "user_agent": str(request.META.get("HTTP_USER_AGENT", ""))[:255],
-        }
-        update_fields.append("driver_earning")
-    ride.save(update_fields=update_fields)
+    with transaction.atomic():
+        ride = Ride.objects.select_for_update().get(pk=ride.id)
+        if ride.status in ("cancelled", "rider_no_show"):
+            return Response(
+                {"detail": "This ride has already been cancelled."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if ride.status in ["in_progress", "completed"]:
+            return Response(
+                {"detail": "Ride can only be cancelled before the trip starts."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        pre_cancel_status = ride.status
+        ride.status = "rider_no_show" if is_rider_no_show else "cancelled"
+        ride.cancelled_at = stamp
+        # Keep cancelled_by as the actor who submitted; no-show is flagged via status/is_rider_no_show.
+        ride.cancelled_by = cancelled_by
+        ride.cancellation_reason = cancellation_reason
+        ride.cancellation_reason_details = cancellation_reason_details
+        ride.cancellation_fee = cancellation_fee
+        ride.is_rider_no_show = is_rider_no_show
+        ride.no_show_fee = no_show_fee
+        ride.no_show_driver_compensation = driver_compensation
+        update_fields = [
+            "status",
+            "cancelled_at",
+            "cancelled_by",
+            "cancellation_reason",
+            "cancellation_reason_details",
+            "cancellation_fee",
+            "is_rider_no_show",
+            "no_show_fee",
+            "no_show_driver_compensation",
+            "no_show_evidence",
+            "no_show_at",
+        ]
+        if is_rider_no_show:
+            ride.no_show_at = stamp
+            ride.driver_earning = driver_compensation
+            ride.no_show_evidence = {
+                "at": stamp.isoformat(),
+                "driver_user_id": request.user.id,
+                "device_id": device_id,
+                "driver_lat": driver_lat,
+                "driver_lng": driver_lng,
+                "pickup_lat": ride.pickup_lat,
+                "pickup_lng": ride.pickup_lng,
+                "distance_to_pickup_m": waiver_details.get("distance_to_pickup_m"),
+                "waited_seconds": waiver_details.get("waited_seconds"),
+                "max_wait_seconds": waiver_details.get("max_wait_seconds"),
+                "free_wait_seconds": waiver_details.get("free_wait_seconds"),
+                "call_attempts": waiver_details.get("call_attempts"),
+                "user_agent": str(request.META.get("HTTP_USER_AGENT", ""))[:255],
+            }
+            update_fields.append("driver_earning")
+        ride.save(update_fields=update_fields)
 
     if cancelled_by == "driver" or is_rider_no_show:
         DriverProfile.objects.filter(user=ride.driver or request.user).update(is_available=True)
@@ -1511,6 +1560,12 @@ def rate_ride(request, ride_id):
         id=ride_id,
         rider=request.user,
     )
+
+    if ride.status != "completed":
+        return Response(
+            {"detail": "Only completed rides can be rated."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     rating = request.data.get("rating")
     review = request.data.get("review", "")
