@@ -1,0 +1,218 @@
+.earnings-hub__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.earnings-hub__stat {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+
+.earnings-hub__stat strong {
+  display: block;
+  font-size: 18px;
+  color: #f8fafc;
+  margin-bottom: 4px;
+}
+
+.earnings-hub__stat span {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(248, 250, 252, 0.62);
+}
+
+.earnings-hub__section {
+  margin-bottom: 18px;
+}
+
+.earnings-hub__section-title {
+  margin: 0 0 10px;
+  font-size: 15px;
+  font-weight: 800;
+  color: #f8fafc;
+}
+
+.earnings-hub__section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.earnings-hub__section-head .earnings-hub__section-title {
+  margin: 0;
+}
+
+.earnings-hub__link-btn {
+  border: 0;
+  background: transparent;
+  color: #34d399;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.earnings-hub__wallet-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(248, 250, 252, 0.72);
+}
+
+.earnings-hub__sublist {
+  margin-top: 14px;
+}
+
+.earnings-hub__sublist-title {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.62);
+}
+
+.earnings-hub__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 13px;
+  color: rgba(248, 250, 252, 0.82);
+}
+
+.earnings-hub__row strong {
+  color: #f8fafc;
+}
+
+.earnings-hub__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.earnings-hub__btn {
+  flex: 1 1 140px;
+  min-height: 42px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: #f8fafc;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.earnings-hub__btn:active {
+  transform: scale(0.98);
+}
+
+.earnings-hub__trip {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+
+.earnings-hub__trip-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: rgba(248, 250, 252, 0.65);
+}
+
+.earnings-hub__trip-route {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: #f8fafc;
+}
+
+.earnings-hub__trip-meta {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  color: rgba(248, 250, 252, 0.72);
+}
+
+.earnings-hub__trip-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.earnings-hub__trip-actions button {
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: #f8fafc;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.earnings-hub__incentive {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+
+.earnings-hub__progress {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  margin: 8px 0;
+}
+
+.earnings-hub__progress span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #00a651, #d4af37);
+}
+
+.earnings-hub__empty {
+  padding: 24px 16px;
+  text-align: center;
+  color: rgba(248, 250, 252, 0.65);
+  font-size: 13px;
+}
+
+.earnings-hub__cache-note {
+  font-size: 11px;
+  color: #fbbf24;
+  margin-bottom: 10px;
+}
+
+.earnings-hub__analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@media (max-width: 360px) {
+  .earnings-hub__grid,
+  .earnings-hub__analytics-grid {
+    grid-template-columns: 1fr;
+  }
+}

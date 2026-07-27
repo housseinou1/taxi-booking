@@ -1,0 +1,573 @@
+.driver-docs-page {
+  position: relative;
+  min-height: 100vh;
+  background: #0b1220;
+  padding: 24px 16px 80px;
+  overflow-y: auto;
+}
+
+.driver-docs-page__accent {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #00a651 0%, #d4af37 50%, #00a651 100%);
+}
+
+.driver-docs-page__header {
+  margin-bottom: 20px;
+}
+
+.driver-docs-page__title {
+  margin: 0 0 6px;
+  font-size: 24px;
+  font-weight: 800;
+  color: #fff;
+}
+
+.driver-docs-page__subtitle {
+  margin: 0;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.65);
+  line-height: 1.45;
+}
+
+.driver-docs-alert {
+  display: flex;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+}
+
+.driver-docs-alert--error {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+.driver-docs-alert--warning {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+.driver-docs-alert__title {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #fff;
+}
+
+.driver-docs-alert__message {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.78);
+  line-height: 1.45;
+}
+
+.driver-docs-feedback--warning {
+  background: rgba(245, 158, 11, 0.12);
+  color: #fcd34d;
+}
+
+.driver-docs-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  margin-bottom: 18px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.driver-docs-dashboard__ring {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  border: 4px solid rgba(0, 166, 81, 0.45);
+  background: rgba(0, 166, 81, 0.08);
+}
+
+.driver-docs-dashboard__pct {
+  font-size: 22px;
+  font-weight: 800;
+  color: #10b981;
+}
+
+.driver-docs-dashboard__pct-label {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.driver-docs-dashboard__stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.driver-docs-stat {
+  padding: 10px 8px;
+  border-radius: 10px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.driver-docs-stat__value {
+  display: block;
+  font-size: 18px;
+  font-weight: 800;
+  color: #fff;
+}
+
+.driver-docs-stat__label {
+  display: block;
+  margin-top: 2px;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.55);
+  text-transform: uppercase;
+}
+
+.driver-docs-stat--valid .driver-docs-stat__value { color: #10b981; }
+.driver-docs-stat--expiring .driver-docs-stat__value { color: #f59e0b; }
+.driver-docs-stat--expired .driver-docs-stat__value { color: #ef4444; }
+.driver-docs-stat--pending .driver-docs-stat__value { color: #94a3b8; }
+
+.driver-docs-dashboard__hint {
+  margin: 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.62);
+  line-height: 1.45;
+}
+
+.driver-docs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.driver-doc-card {
+  padding: 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left-width: 4px;
+}
+
+.driver-doc-card--valid { border-left-color: #10b981; }
+.driver-doc-card--expiring_soon { border-left-color: #f59e0b; }
+.driver-doc-card--expired,
+.driver-doc-card--missing { border-left-color: #ef4444; }
+.driver-doc-card--pending_review,
+.driver-doc-card--uploaded { border-left-color: #94a3b8; }
+.driver-doc-card--rejected { border-left-color: #ef4444; }
+
+.driver-doc-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.driver-doc-card__title-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.driver-doc-card__icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.driver-doc-card__name {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.driver-doc-card__optional {
+  display: inline-block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.driver-doc-card__badge {
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.driver-doc-card__badge--valid,
+.driver-doc-card__badge--approved {
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.15);
+}
+
+.driver-doc-card__badge--expiring_soon {
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.15);
+}
+
+.driver-doc-card__badge--expired,
+.driver-doc-card__badge--rejected,
+.driver-doc-card__badge--missing {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.15);
+}
+
+.driver-doc-card__badge--pending_review,
+.driver-doc-card__badge--uploaded {
+  color: #cbd5e1;
+  background: rgba(148, 163, 184, 0.18);
+}
+
+.driver-doc-card__meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 12px;
+  margin: 0 0 10px;
+}
+
+.driver-doc-card__meta div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.driver-doc-card__meta dt {
+  margin: 0;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.driver-doc-card__meta dd {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.driver-doc-card__warning,
+.driver-doc-card__alert,
+.driver-doc-card__rejection {
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.driver-doc-card__warning {
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.12);
+}
+
+.driver-doc-card__alert,
+.driver-doc-card__rejection {
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.12);
+}
+
+.driver-doc-card__timeline-toggle {
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.driver-docs-timeline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+}
+
+.driver-docs-timeline__step {
+  flex: 1 1 90px;
+  padding: 8px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.driver-docs-timeline__step--done {
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.12);
+}
+
+.driver-docs-timeline__step--active {
+  color: #93c5fd;
+  background: rgba(59, 130, 246, 0.15);
+}
+
+.driver-docs-timeline__step--rejected,
+.driver-docs-timeline__step--expired {
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.15);
+}
+
+.driver-docs-timeline__date {
+  display: block;
+  margin-top: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  opacity: 0.75;
+}
+
+.driver-docs-timeline__reason {
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: #fca5a5;
+}
+
+.driver-doc-card__upload {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid rgba(0, 166, 81, 0.45);
+  border-radius: 10px;
+  background: rgba(0, 166, 81, 0.12);
+  color: #00a651;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.driver-doc-card__progress {
+  position: relative;
+  height: 36px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.driver-doc-card__progress-bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: rgba(0, 166, 81, 0.35);
+}
+
+.driver-docs-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.driver-docs-sheet__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.driver-docs-sheet__panel {
+  position: relative;
+  width: min(100%, 480px);
+  padding: 20px 16px 24px;
+  border-radius: 18px 18px 0 0;
+  background: #111827;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.driver-docs-sheet__title {
+  margin: 0 0 6px;
+  font-size: 18px;
+  font-weight: 800;
+  color: #fff;
+}
+
+.driver-docs-sheet__subtitle {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.driver-docs-sheet__sources {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.driver-docs-sheet__source {
+  padding: 12px 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.driver-docs-sheet__preview {
+  margin-bottom: 12px;
+}
+
+.driver-docs-sheet__file {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.8);
+  word-break: break-all;
+}
+
+.driver-docs-sheet__expiry {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.driver-docs-sheet__expiry input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: rgba(15, 23, 42, 0.6);
+  color: #f8fafc;
+}
+
+.driver-docs-sheet__progress {
+  position: relative;
+  height: 32px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.driver-docs-sheet__progress-bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: rgba(0, 166, 81, 0.35);
+}
+
+.driver-docs-sheet__error {
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.12);
+  color: #fca5a5;
+  font-size: 12px;
+}
+
+.driver-docs-sheet__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.driver-docs-sheet__cancel,
+.driver-docs-sheet__confirm {
+  flex: 1;
+  padding: 11px 12px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.driver-docs-sheet__cancel {
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.driver-docs-sheet__confirm {
+  border: none;
+  background: #00a651;
+  color: #fff;
+}
+
+.driver-docs-feedback {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.driver-docs-feedback--success {
+  background: rgba(16, 185, 129, 0.12);
+  color: #6ee7b7;
+}
+
+.driver-docs-feedback--error {
+  background: rgba(239, 68, 68, 0.12);
+  color: #fca5a5;
+}
+
+.driver-docs-loading,
+.driver-docs-error {
+  min-height: 50vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.driver-docs-error button {
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 166, 81, 0.45);
+  background: rgba(0, 166, 81, 0.12);
+  color: #00a651;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+@media (min-width: 640px) {
+  .driver-docs-dashboard {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .driver-docs-dashboard__stats {
+    flex: 1;
+  }
+
+  .driver-docs-dashboard__hint {
+    width: 100%;
+  }
+}
