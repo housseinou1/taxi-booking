@@ -65,10 +65,10 @@
   --yds-space-10: 40px;
   --yds-space-12: 48px;
 
-  /* Border radius */
-  --yds-radius-sm: 10px;
-  --yds-radius-md: 14px;
-  --yds-radius-lg: 18px;
+  /* Border radius — commercial 16–20px cards */
+  --yds-radius-sm: 12px;
+  --yds-radius-md: 16px;
+  --yds-radius-lg: 20px;
   --yds-radius-xl: 24px;
   --yds-radius-2xl: 32px;
   --yds-radius-pill: 9999px;
