@@ -50,7 +50,7 @@ async function loadAppTheme() {
   }
 
   if (appType === "driver" || isTaxiDriverContext()) {
-    await import("./driver/lyft-driver.css");
+    await import("./driver/driver-theme.css");
     document.documentElement.classList.add("yala-app--driver");
     return;
   }

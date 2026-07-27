@@ -121,7 +121,7 @@ function buildStyles(COLORS) {
 const { bag: driverTheme, syncDriverTheme } = bindDriverTheme(buildStyles);
 
 export default function DriverAchievements() {
-  const { lyftUI } = syncDriverTheme();
+  const { yalaUI } = syncDriverTheme();
   const styles = driverTheme.styles;
   const token = localStorage.getItem("access");
   const [achievements, setAchievements] = useState([]);
@@ -183,13 +183,13 @@ export default function DriverAchievements() {
 
   return (
     <div
-      className={lyftUI ? "driver-page--lyft" : undefined}
+      className={yalaUI ? "driver-page--lyft" : undefined}
       style={{
         ...styles.containerStyle,
-        ...(lyftUI ? { minHeight: "auto", paddingTop: 12 } : null),
+        ...(yalaUI ? { minHeight: "auto", paddingTop: 12 } : null),
       }}
     >
-      {!lyftUI && (
+      {!yalaUI && (
         <header style={styles.headerStyle}>
           <h1 style={styles.titleStyle}>Achievements & Rewards</h1>
           <div style={styles.headerActionsStyle}>
@@ -204,7 +204,7 @@ export default function DriverAchievements() {
         </header>
       )}
 
-      {lyftUI && (
+      {yalaUI && (
         <div style={{ ...styles.headerActionsStyle, marginBottom: 16, justifyContent: "space-between" }}>
           <button style={styles.hallButtonStyle} onClick={() => (window.location.href = "/driver/hall-of-fame")}>
             Hall of Fame

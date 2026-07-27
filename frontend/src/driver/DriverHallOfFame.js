@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useState } from "react";
 
 import { API_URL } from "../apiConfig";
-import { isDriverLyftUI } from "./lyftColors";
+import { isDriverYalaUI } from "./yalaColors";
 
 
 export default function DriverHallOfFame() {
-  const lyftUI = isDriverLyftUI();
+  const yalaUI = isDriverYalaUI();
   const [data, setData] = useState({ my_recognitions: [], my_stats: {}, achievement_badges: [], driver_of_month: [], top_city: [], top_mauritania: [] });
   const [loading, setLoading] = useState(true);
 
@@ -24,10 +24,10 @@ export default function DriverHallOfFame() {
   useEffect(() => { load(); }, [load]);
 
   return (
-    <main className={lyftUI ? "hof-page hof-page--lyft driver-page--lyft" : "hof-page"}>
-      <HallStyles lyft={lyftUI} />
+    <main className={yalaUI ? "hof-page hof-page--lyft driver-page--lyft" : "hof-page"}>
+      <HallStyles yala={yalaUI} />
       <header className="hof-hero">
-        {!lyftUI && (
+        {!yalaUI && (
           <button type="button" onClick={() => (window.location.href = "/driver/achievements")}>Back</button>
         )}
         <span>Yala Driver Recognition</span>
@@ -94,8 +94,8 @@ function RecognitionCard({ item }) {
   );
 }
 
-function HallStyles({ lyft = false }) {
-  if (lyft) {
+function HallStyles({ yala = false }) {
+  if (yala) {
     return <style>{`
     .hof-page--lyft{min-height:auto;background:#f3f4f6;color:#111827;padding:8px 0 24px;font-family:"Plus Jakarta Sans",Inter,"Segoe UI",sans-serif}
     .hof-page--lyft .hof-hero,.hof-page--lyft .hof-section{max-width:1100px;margin:0 auto}.hof-page--lyft .hof-hero{padding:8px 0 20px;border-bottom:1px solid #e5e7eb}

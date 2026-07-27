@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 
 import { API_URL } from "../apiConfig";
 import authenticatedApi from "../auth/authenticatedApi";
-import { getDriverColors, isDriverLyftUI } from "./lyftColors";
+import { getDriverColors, isDriverYalaUI } from "./yalaColors";
 
 function formatGeneratedAt(value) {
   if (!value) return "";
@@ -15,7 +15,7 @@ function formatGeneratedAt(value) {
 
 export default function DriverCodePage() {
   const COLORS = getDriverColors();
-  const lyft = isDriverLyftUI();
+  const yalaUI = isDriverYalaUI();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [qr, setQr] = useState(null);
@@ -45,7 +45,7 @@ export default function DriverCodePage() {
 
   const pageStyle = {
     minHeight: "100%",
-    background: lyft ? "#f3f4f6" : COLORS.darkNavy,
+    background: yalaUI ? "#f3f4f6" : COLORS.darkNavy,
     color: COLORS.white,
     padding: "20px 16px 40px",
     boxSizing: "border-box",

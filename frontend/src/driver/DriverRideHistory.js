@@ -128,7 +128,7 @@ const { bag: driverTheme, syncDriverTheme } = bindDriverTheme(buildStyles);
 
 // ─── Main Component ─────────────────────────────────────────────────────────
 export default function DriverRideHistory() {
-  const { lyftUI } = syncDriverTheme();
+  const { yalaUI } = syncDriverTheme();
   const styles = driverTheme.styles;
   const COLORS = driverTheme.COLORS;
   const [rides, setRides] = useState([]);
@@ -177,13 +177,13 @@ export default function DriverRideHistory() {
 
   return (
     <div
-      className={lyftUI ? "driver-page--lyft" : undefined}
+      className={yalaUI ? "driver-page--lyft" : undefined}
       style={{
         ...styles.containerStyle,
-        ...(lyftUI ? { minHeight: "auto", paddingTop: 12 } : null),
+        ...(yalaUI ? { minHeight: "auto", paddingTop: 12 } : null),
       }}
     >
-      {!lyftUI && (
+      {!yalaUI && (
       <header style={styles.headerStyle}>
         <h1 style={styles.titleStyle}>Ride History</h1>
       </header>

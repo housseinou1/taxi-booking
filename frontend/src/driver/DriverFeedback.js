@@ -206,7 +206,7 @@ function ComplimentCard({ icon, label, count }) {
 
 // ─── Main Feedback Center Component ─────────────────────────────────────────
 export default function DriverFeedback() {
-  const { lyftUI } = syncDriverTheme();
+  const { yalaUI } = syncDriverTheme();
   const { COLORS, styles } = driverTheme;
   const token = localStorage.getItem("access");
 
@@ -362,14 +362,14 @@ export default function DriverFeedback() {
 
   return (
     <div
-      className={lyftUI ? "driver-page--lyft" : undefined}
+      className={yalaUI ? "driver-page--lyft" : undefined}
       style={{
         ...styles.container,
-        ...(lyftUI ? { minHeight: "auto", paddingTop: 12 } : null),
+        ...(yalaUI ? { minHeight: "auto", paddingTop: 12 } : null),
       }}
     >
       {/* Header */}
-      {!lyftUI && (
+      {!yalaUI && (
       <div style={styles.header}>
         <h1 style={styles.title}>Feedback Center</h1>
       </div>
@@ -473,7 +473,7 @@ export default function DriverFeedback() {
       </div>
 
       {/* Back to Dashboard */}
-      {!lyftUI && (
+      {!yalaUI && (
       <button
         type="button"
         onClick={() => { window.location.href = "/driver"; }}

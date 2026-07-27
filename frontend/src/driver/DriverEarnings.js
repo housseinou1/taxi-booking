@@ -400,7 +400,7 @@ function WithdrawalSheet({ onClose, onDone }) {
 
 // ─── Main Earnings Center Component ─────────────────────────────────────────
 export default function DriverEarnings() {
-  const { lyftUI } = syncDriverTheme();
+  const { yalaUI } = syncDriverTheme();
   const { COLORS, styles } = driverTheme;
 
   const [activePeriod, setActivePeriod] = useState("today");
@@ -613,10 +613,10 @@ export default function DriverEarnings() {
 
   return (
     <div
-      className={lyftUI ? "driver-page--lyft" : undefined}
+      className={yalaUI ? "driver-page--lyft" : undefined}
       style={{
         ...styles.container,
-        ...(lyftUI ? { minHeight: "auto", paddingTop: 12 } : null),
+        ...(yalaUI ? { minHeight: "auto", paddingTop: 12 } : null),
       }}
     >
       {showWithdraw && (
@@ -627,7 +627,7 @@ export default function DriverEarnings() {
       )}
 
       {/* Header */}
-      {!lyftUI && (
+      {!yalaUI && (
       <div style={styles.header}>
         <h1 style={styles.title}>Earnings</h1>
         {syncing && (
@@ -635,7 +635,7 @@ export default function DriverEarnings() {
         )}
       </div>
       )}
-      {lyftUI && syncing && (
+      {yalaUI && syncing && (
         <div style={{ ...styles.header, marginBottom: 12 }}>
           <span style={styles.syncBadge}>Syncing...</span>
         </div>
@@ -653,7 +653,7 @@ export default function DriverEarnings() {
         ))}
       </div>
 
-      {/* Wallet / Withdraw Card — Uber/Lyft style */}
+      {/* Wallet / Withdraw Card — map-app style */}
       <div style={{
         ...styles.earningsCard,
         background: "linear-gradient(135deg, #00A651 0%, #007a3d 100%)",
@@ -738,7 +738,7 @@ export default function DriverEarnings() {
       </div>
 
       {/* Back to Dashboard */}
-      {!lyftUI && (
+      {!yalaUI && (
       <button
         type="button"
         onClick={() => { navigateInApp("/driver"); }}

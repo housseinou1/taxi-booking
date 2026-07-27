@@ -1,8 +1,8 @@
 /**
- * Lyft-style driver theme — white surfaces, list rows, pill CTAs, map-first dashboard.
+ * YALA driver theme — white surfaces, list rows, pill CTAs, map-first dashboard.
  */
 
-/* Login / Register reuse rider Lyft form styles */
+/* Login / Register reuse the shared rider auth form styles */
 .yala-login--lyft-driver,
 .auth-register-page--lyft-driver {
   /* aliases — same rules as rider in lyft-rider.css */
@@ -362,9 +362,9 @@
   right: 0;
   bottom: 0;
   z-index: 28;
-  border-radius: 20px 20px 0 0;
-  background: rgba(18, 24, 38, 0.98);
-  border-top: 1px solid rgba(0, 166, 81, 0.28);
+  border-radius: var(--yds-sheet-radius);
+  background: var(--panel-bg);
+  border-top: 1px solid var(--driver-green-border);
   box-shadow: 0 -12px 40px rgba(2, 6, 23, 0.34);
   overflow: hidden;
   display: flex;
@@ -385,12 +385,12 @@
   width: 100%;
   border: none;
   background: transparent;
-  color: #fff;
+  color: var(--driver-white);
   display: grid;
   grid-template-columns: 1fr;
   grid-template-rows: auto auto;
-  gap: 4px;
-  padding: 8px 16px 10px;
+  gap: var(--yds-space-1);
+  padding: var(--yds-space-2) var(--yds-space-4) var(--yds-space-2);
   text-align: left;
   flex-shrink: 0;
 }
@@ -400,7 +400,7 @@
   width: 40px;
   height: 4px;
   margin: 0 auto 4px;
-  border-radius: 999px;
+  border-radius: var(--yds-radius-pill);
   background: rgba(255, 255, 255, 0.22);
 }
 
@@ -408,32 +408,32 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--yds-space-3);
   grid-column: 1 / 2;
 }
 
 .driver-nav-sheet__status {
-  color: #00a651;
-  font-size: 14px;
-  font-weight: 800;
+  color: var(--driver-green);
+  font-size: var(--yds-text-sm);
+  font-weight: var(--yds-weight-extrabold);
 }
 
 .driver-nav-sheet__fare {
-  color: #fff;
-  font-size: 15px;
-  font-weight: 800;
+  color: var(--driver-white);
+  font-size: var(--yds-text-base);
+  font-weight: var(--yds-weight-extrabold);
 }
 
 .driver-nav-sheet__chevron {
   grid-column: 2 / 3;
   grid-row: 2;
   align-self: center;
-  color: #9ca3af;
-  font-size: 16px;
+  color: var(--yds-muted);
+  font-size: var(--yds-text-lg);
 }
 
 .driver-nav-sheet__body {
-  padding: 0 16px 8px;
+  padding: 0 var(--yds-space-4) var(--yds-space-2);
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -443,36 +443,36 @@
 
 .driver-nav-sheet__actions {
   width: 100%;
-  padding: 0 16px calc(14px + env(safe-area-inset-bottom, 0px));
+  padding: 0 var(--yds-space-4) calc(var(--yds-space-3) + var(--yds-safe-bottom));
   pointer-events: auto;
   flex-shrink: 0;
   display: grid;
-  gap: 8px;
+  gap: var(--yds-space-2);
 }
 
 .driver-nav-sheet__route {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
-  color: #d1d5db;
-  font-size: 12px;
-  margin-bottom: 10px;
+  gap: var(--yds-space-1);
+  color: var(--driver-gray-300);
+  font-size: var(--yds-text-xs);
+  margin-bottom: var(--yds-space-3);
 }
 
 .driver-nav-sheet__route-arrow {
-  color: #6b7280;
+  color: var(--yds-muted);
 }
 
 .driver-nav-sheet__cancel {
   width: 100%;
-  margin-top: 10px;
-  background: rgba(239, 68, 68, 0.12);
-  border: 1px solid rgba(239, 68, 68, 0.35);
-  color: #fca5a5;
-  border-radius: 12px;
-  padding: 12px 16px;
-  font-size: 14px;
-  font-weight: 700;
+  margin-top: var(--yds-space-2);
+  background: var(--driver-red-soft);
+  border: 1px solid var(--driver-red);
+  color: var(--driver-white);
+  border-radius: var(--yds-radius-sm);
+  padding: var(--yds-space-3) var(--yds-space-4);
+  font-size: var(--yds-text-sm);
+  font-weight: var(--yds-weight-bold);
   cursor: pointer;
 }
 
@@ -1558,7 +1558,7 @@
   }
 }
 
-/* ─── Lyft override for dashboard ────────────────────────────────────────── */
+/* ─── YALA theme override for dashboard ──────────────────────────────────── */
 
 .dd-shell.driver-app--lyft .dd-header {
   background: #fff;

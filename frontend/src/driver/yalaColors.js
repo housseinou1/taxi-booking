@@ -1,4 +1,4 @@
-import { isDriverLyftUI } from "../native/platform";
+import { isDriverYalaUI } from "../native/platform";
 
 const DRIVER_COLORS_DARK = {
   primaryGreen: "#00A651",
@@ -19,7 +19,7 @@ const DRIVER_COLORS_DARK = {
   starYellow: "#FBBF24",
 };
 
-const DRIVER_COLORS_LYFT = {
+const DRIVER_COLORS_YALA = {
   primaryGreen: "#00A651",
   goldAccent: "#111827",
   darkNavy: "#f3f4f6",
@@ -39,7 +39,7 @@ const DRIVER_COLORS_LYFT = {
 };
 
 export function getDriverColors() {
-  return isDriverLyftUI() ? DRIVER_COLORS_LYFT : DRIVER_COLORS_DARK;
+  return isDriverYalaUI() ? DRIVER_COLORS_YALA : DRIVER_COLORS_DARK;
 }
 
-export { isDriverLyftUI };
+export { isDriverYalaUI };

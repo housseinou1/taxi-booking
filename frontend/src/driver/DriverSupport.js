@@ -3,7 +3,7 @@ import axios from "axios";
 
 import { API_URL } from "../apiConfig";
 import { submitBetaFeedback } from "../services/betaFeedbackApi";
-import { getDriverColors, isDriverLyftUI } from "./lyftColors";
+import { getDriverColors, isDriverYalaUI } from "./yalaColors";
 import SupportReportForm from "../support/SupportReportForm";
 import { DRIVER_REPORT_OPTIONS } from "../support/supportCategories";
 import "../support/support-mobile.css";
@@ -271,7 +271,7 @@ export function EmergencySupportButton() {
 // ─── Main Support Center Component ──────────────────────────────────────────
 
 export default function DriverSupport() {
-  const lyftUI = isDriverLyftUI();
+  const yalaUI = isDriverYalaUI();
   const themeColors = getDriverColors();
   const token = localStorage.getItem("access");
   const [activeTab, setActiveTab] = useState("help");
@@ -733,17 +733,17 @@ export default function DriverSupport() {
 
   return (
     <div
-      className={lyftUI ? "driver-page--lyft driver-support--lyft" : undefined}
+      className={yalaUI ? "driver-page--lyft driver-support--lyft" : undefined}
       style={{
         ...containerStyle,
-        ...(lyftUI ? { backgroundColor: themeColors.darkNavy, minHeight: "auto", paddingTop: 12, paddingBottom: 24 } : null),
+        ...(yalaUI ? { backgroundColor: themeColors.darkNavy, minHeight: "auto", paddingTop: 12, paddingBottom: 24 } : null),
       }}
     >
       {/* Mauritania accent bar */}
-      {!lyftUI && <div style={mauritaniaAccentBarStyle} aria-hidden="true" />}
+      {!yalaUI && <div style={mauritaniaAccentBarStyle} aria-hidden="true" />}
 
       {/* Page Header */}
-      {!lyftUI && (
+      {!yalaUI && (
       <div style={headerStyle}>
         <h1 style={pageTitleStyle}>🛟 Support Center</h1>
         <p style={pageSubtitleStyle}>Get help, chat with support, or report an emergency</p>

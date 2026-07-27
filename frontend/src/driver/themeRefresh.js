@@ -1,4 +1,4 @@
-import { getDriverColors, isDriverLyftUI } from "./lyftColors";
+import { getDriverColors, isDriverYalaUI } from "./yalaColors";
 
 /**
  * Keeps shared COLORS/styles in sync for driver pages with module-level subcomponents.
@@ -7,7 +7,7 @@ export function bindDriverTheme(buildStyles) {
   const bag = {
     COLORS: getDriverColors(),
     styles: null,
-    lyftUI: isDriverLyftUI(),
+    yalaUI: isDriverYalaUI(),
   };
 
   bag.styles = buildStyles(bag.COLORS);
@@ -15,7 +15,7 @@ export function bindDriverTheme(buildStyles) {
   function syncDriverTheme() {
     bag.COLORS = getDriverColors();
     bag.styles = buildStyles(bag.COLORS);
-    bag.lyftUI = isDriverLyftUI();
+    bag.yalaUI = isDriverYalaUI();
     return bag;
   }
 

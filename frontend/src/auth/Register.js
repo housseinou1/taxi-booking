@@ -8,7 +8,7 @@ import {
   getAppType,
   isDeliveryCourierApp,
   isDeliveryCourierPath,
-  isDriverLyftUI,
+  isDriverYalaUI,
   isDeliveryUberUI,
   isRiderLyftUI,
   markDeliveryCourierSession,
@@ -418,7 +418,7 @@ function Register() {
   const isRiderLyft = registrationContext === "rider" || isRiderLyftUI();
   const isDriverLyft =
     registrationContext === "driver" ||
-    (!isDeliveryCourierAppFlow && (isDriverLyftUI() || formData.user_type === "driver"));
+    (!isDeliveryCourierAppFlow && (isDriverYalaUI() || formData.user_type === "driver"));
   const isDeliveryUber = isDeliveryCourierAppFlow;
 
   const registerTitle = isDeliveryCourierAppFlow

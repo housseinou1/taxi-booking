@@ -16,8 +16,19 @@ try {
 }
 
 try {
-  const bgMod = require('@capacitor-community/background-geolocation');
-  BackgroundGeolocation = bgMod.BackgroundGeolocation;
+  // `@capacitor-community/background-geolocation` ships only native (Android/iOS)
+  // code and has no web/JS entry point. Use Webpack's non-bundled require escape
+  // hatch (`__non_webpack_require__`) so the production web build never tries to
+  // statically resolve the package. At runtime the plugin is loaded only where a
+  // real CommonJS require exists (native Capacitor container); on the web there is
+  // no such require, so `BackgroundGeolocation` stays null and every caller
+  // no-ops via its existing `!BackgroundGeolocation` guards — exactly as before.
+  /* eslint-disable-next-line no-undef */
+  const nativeRequire = typeof __non_webpack_require__ === "function" ? __non_webpack_require__ : null;
+  if (nativeRequire) {
+    const bgMod = nativeRequire("@capacitor-community/background-geolocation");
+    BackgroundGeolocation = bgMod.BackgroundGeolocation;
+  }
 } catch {
   // Background geolocation plugin not available
 }

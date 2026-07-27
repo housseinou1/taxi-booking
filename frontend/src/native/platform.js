@@ -315,7 +315,7 @@ export function isDeliveryUberUI() {
   return isDeliveryCourierApp();
 }
 
-const DRIVER_LYFT_ROUTES = [
+const DRIVER_YALA_ROUTES = [
   "/driver",
   "/driver/profile",
   "/driver/profile/edit",
@@ -336,9 +336,9 @@ const DRIVER_LYFT_ROUTES = [
 ];
 
 /**
- * True for native driver app and web driver account screens (Lyft-style UI).
+ * True for native driver app and web driver account screens (YALA driver UI).
  */
-export function isDriverLyftUI() {
+export function isDriverYalaUI() {
   if (isDeliveryCourierApp()) {
     return false;
   }
@@ -352,7 +352,7 @@ export function isDriverLyftUI() {
   }
 
   const path = window.location.pathname || "";
-  return DRIVER_LYFT_ROUTES.some(
+  return DRIVER_YALA_ROUTES.some(
     (route) => path === route || path.startsWith(`${route}/`),
   );
 }
