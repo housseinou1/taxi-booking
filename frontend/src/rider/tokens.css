@@ -1,4 +1,6 @@
 /* Yala Rider App Design Tokens */
+@import '../design-system/tokens/index.css';
+
 :root {
   /* Brand Colors */
   --yala-green: #00A651;

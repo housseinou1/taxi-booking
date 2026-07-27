@@ -16,8 +16,8 @@ html, body {
 }
 
 body {
-  background: #fafbfa;
-  color: #1a2332;
+  background: var(--yds-canvas, #fafbfa);
+  color: var(--yds-ink, #1a2332);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -40,7 +40,7 @@ textarea {
 
 .navbar {
   width: 100%;
-  background: black;
+  background: var(--yds-ink, #000);
   padding: 14px 20px;
 
   display: flex;
@@ -79,12 +79,12 @@ textarea {
 /* CARD */
 
 .card {
-  background: white;
+  background: var(--yds-card, #fff);
   max-width: 900px;
   margin: auto;
   padding: 30px;
-  border-radius: 20px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+  border-radius: var(--yds-radius-xl, 20px);
+  box-shadow: var(--yds-shadow-md, 0 10px 25px rgba(0,0,0,0.08));
 }
 
 /* HEADINGS */
@@ -110,8 +110,8 @@ input {
 }
 
 input:focus {
-  border: 1px solid #00a651;
-  box-shadow: 0 0 0 3px rgba(0, 166, 81, 0.14);
+  border: 1px solid var(--yds-primary, #00a651);
+  box-shadow: 0 0 0 3px var(--yds-primary-soft, rgba(0, 166, 81, 0.14));
 }
 
 /* BUTTONS */
@@ -121,9 +121,9 @@ input:focus {
   margin-top: 16px;
   padding: 14px;
   border: none;
-  border-radius: 9999px;
-  background: #00a651;
-  color: white;
+  border-radius: var(--yds-radius-pill, 9999px);
+  background: var(--yds-primary, #00a651);
+  color: var(--yds-card, #fff);
   cursor: pointer;
   font-size: 16px;
   font-weight: 700;
@@ -131,7 +131,7 @@ input:focus {
 }
 
 .primary-btn:hover {
-  background: #009248;
+  background: var(--yds-primary-strong, #009248);
 }
 
 /* RESPONSIVE */

@@ -2,6 +2,7 @@
  * Uber-style layout for Yala Delivery courier app.
  * Map-first shell, floating controls, bottom sheet, pill CTAs.
  */
+@import '../design-system/tokens/index.css';
 
 .delivery-uber {
   --du-black: #000000;

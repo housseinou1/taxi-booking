@@ -43,13 +43,13 @@
 
 /* ─── Yala Branding Variables ──────────────────────────────────────────────── */
 :root {
-  --yala-green: #00A651;
-  --yala-gold: #D4AF37;
-  --yala-navy: #0B1220;
-  --yala-white: #FFFFFF;
-  --yala-transition-fast: 200ms ease;
-  --yala-transition-normal: 300ms ease;
-  --yala-transition-slow: 400ms ease;
+  --yala-green: var(--yds-primary, #00A651);
+  --yala-gold: var(--yds-gold, #D4AF37);
+  --yala-navy: var(--yds-ink, #0B1220);
+  --yala-white: var(--yds-card, #FFFFFF);
+  --yala-transition-fast: var(--yds-duration-fast, 150ms) var(--yds-easing, ease);
+  --yala-transition-normal: var(--yds-duration-normal, 250ms) var(--yds-easing, ease);
+  --yala-transition-slow: var(--yds-duration-slow, 350ms) var(--yds-easing, ease);
 }
 
 /* ─── Smooth CSS Transitions (200-400ms) ───────────────────────────────────── */
@@ -222,8 +222,8 @@
   right: 0;
   z-index: 9999;
   padding: 8px 16px;
-  background-color: #EF4444;
-  color: #FFFFFF;
+  background-color: var(--yds-danger, #EF4444);
+  color: var(--yds-card, #FFFFFF);
   font-size: 12px;
   font-weight: 700;
   text-align: center;
@@ -244,9 +244,9 @@
   align-items: center;
   gap: 4px;
   padding: 4px 10px;
-  border-radius: 999px;
-  background-color: rgba(212, 175, 55, 0.15);
-  color: #D4AF37;
+  border-radius: var(--yds-radius-pill, 999px);
+  background-color: var(--yds-app-soft, rgba(212, 175, 55, 0.15));
+  color: var(--yds-app-accent, #D4AF37);
   font-size: 11px;
   font-weight: 700;
 }

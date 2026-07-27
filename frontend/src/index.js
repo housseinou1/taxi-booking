@@ -1,9 +1,11 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
+import "./design-system";
 import "./index.css";
 import "./rider/lyft-rider.css";
 import "./i18n";
 import App from "./App";
+import { ThemeProvider as YalaThemeProvider } from "./design-system";
 import { initFrontendSentry } from "./monitoring/sentry";
 import {
   getAppType,
@@ -20,7 +22,9 @@ const root = ReactDOM.createRoot(rootElement);
 function renderApp() {
   root.render(
     <React.StrictMode>
-      <App />
+      <YalaThemeProvider>
+        <App />
+      </YalaThemeProvider>
     </React.StrictMode>
   );
 }

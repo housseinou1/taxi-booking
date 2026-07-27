@@ -1,0 +1,204 @@
+/* =========================================================
+   YALA Unified Design System — Tokens
+   ========================================================= */
+
+:root,
+.yds-root,
+[data-yala-theme] {
+  /* Brand */
+  --yds-primary: #00a651;
+  --yds-primary-strong: #009248;
+  --yds-primary-deep: #087a45;
+  --yds-primary-dark: #034f2f;
+  --yds-primary-soft: rgba(0, 166, 81, 0.12);
+  --yds-primary-soft-strong: rgba(0, 166, 81, 0.2);
+
+  --yds-lime: #31d565;
+  --yds-gold: #f5b719;
+  --yds-gold-strong: #7c4a03;
+  --yds-blue: #3b82f6;
+  --yds-purple: #8b5cf6;
+  --yds-coral: #ff6b6b;
+
+  /* Semantics */
+  --yds-success: #059669;
+  --yds-warn: #d97706;
+  --yds-danger: #dc2626;
+  --yds-info: #2563eb;
+
+  /* Neutrals */
+  --yds-ink: #0f172a;
+  --yds-ink-soft: rgba(15, 23, 42, 0.72);
+  --yds-muted: #64748b;
+  --yds-canvas: #f3f7f5;
+  --yds-card: #ffffff;
+  --yds-line: rgba(15, 23, 42, 0.08);
+  --yds-line-strong: rgba(15, 23, 42, 0.14);
+
+  /* Typography */
+  --yds-font: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --yds-font-display: "Plus Jakarta Sans", var(--yds-font);
+  --yds-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  --yds-text-xs: 0.75rem;
+  --yds-text-sm: 0.875rem;
+  --yds-text-base: 1rem;
+  --yds-text-lg: 1.125rem;
+  --yds-text-xl: 1.25rem;
+  --yds-text-2xl: 1.5rem;
+  --yds-text-3xl: 2rem;
+
+  --yds-weight-regular: 400;
+  --yds-weight-medium: 500;
+  --yds-weight-semibold: 600;
+  --yds-weight-bold: 700;
+  --yds-weight-extrabold: 800;
+
+  /* Spacing */
+  --yds-space-1: 4px;
+  --yds-space-2: 8px;
+  --yds-space-3: 12px;
+  --yds-space-4: 16px;
+  --yds-space-5: 20px;
+  --yds-space-6: 24px;
+  --yds-space-8: 32px;
+  --yds-space-10: 40px;
+  --yds-space-12: 48px;
+
+  /* Border radius */
+  --yds-radius-sm: 10px;
+  --yds-radius-md: 14px;
+  --yds-radius-lg: 18px;
+  --yds-radius-xl: 24px;
+  --yds-radius-2xl: 32px;
+  --yds-radius-pill: 9999px;
+
+  /* Elevation / shadows */
+  --yds-shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.06);
+  --yds-shadow-md: 0 8px 22px rgba(15, 23, 42, 0.08);
+  --yds-shadow-lg: 0 14px 34px rgba(15, 23, 42, 0.12);
+  --yds-shadow-sheet: 0 -8px 32px rgba(15, 23, 42, 0.11);
+  --yds-shadow-cta: 0 12px 30px rgba(0, 166, 81, 0.24);
+
+  /* Animation */
+  --yds-duration-fast: 150ms;
+  --yds-duration-normal: 250ms;
+  --yds-duration-slow: 350ms;
+  --yds-easing: cubic-bezier(0.4, 0, 0.2, 1);
+  --yds-easing-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Layout */
+  --yds-page-max: 560px;
+  --yds-touch: 44px;
+  --yds-header-height: 56px;
+  --yds-bottom-nav-height: 64px;
+  --yds-safe-top: env(safe-area-inset-top, 0px);
+  --yds-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --yds-safe-left: env(safe-area-inset-left, 0px);
+  --yds-safe-right: env(safe-area-inset-right, 0px);
+
+  /* Z scale */
+  --yds-z-base: 0;
+  --yds-z-sticky: 100;
+  --yds-z-header: 200;
+  --yds-z-drawer: 300;
+  --yds-z-modal: 400;
+  --yds-z-toast: 500;
+
+  /* App accents (overridden per app) */
+  --yds-app-accent: var(--yds-primary);
+  --yds-app-soft: var(--yds-primary-soft);
+}
+
+/* Per-app accents */
+.yala-app--rider,
+[data-yala-app="rider"] {
+  --yds-app-accent: var(--yds-primary);
+  --yds-app-soft: var(--yds-primary-soft);
+}
+
+.yala-app--driver,
+[data-yala-app="driver"] {
+  --yds-app-accent: var(--yds-primary);
+  --yds-app-soft: var(--yds-primary-soft);
+}
+
+.yala-app--delivery,
+[data-yala-app="delivery"] {
+  --yds-app-accent: var(--yds-gold);
+  --yds-app-soft: rgba(245, 183, 25, 0.12);
+}
+
+/* Dark mode */
+html[data-yala-theme="dark"],
+.yala-theme--dark {
+  --yds-ink: #f8fafc;
+  --yds-ink-soft: rgba(248, 250, 252, 0.8);
+  --yds-muted: #94a3b8;
+  --yds-canvas: #0b1220;
+  --yds-card: #111827;
+  --yds-line: rgba(248, 250, 252, 0.1);
+  --yds-line-strong: rgba(248, 250, 252, 0.16);
+  --yds-primary-soft: rgba(0, 166, 81, 0.18);
+  --yds-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.25);
+  --yds-shadow-md: 0 8px 22px rgba(0, 0, 0, 0.35);
+  --yds-shadow-lg: 0 14px 34px rgba(0, 0, 0, 0.45);
+}
+
+/* High contrast */
+html[data-yala-contrast="high"],
+.yala-contrast--high {
+  --yds-line: #000;
+  --yds-ink: #000;
+  --yds-muted: #000;
+  --yds-primary: #006400;
+  --yds-canvas: #fff;
+  --yds-card: #fff;
+}
+
+html[data-yala-contrast="high"][data-yala-theme="dark"],
+.yala-contrast--high.yala-theme--dark {
+  --yds-line: #fff;
+  --yds-ink: #fff;
+  --yds-muted: #fff;
+  --yds-canvas: #000;
+  --yds-card: #000;
+  --yds-primary: #00ff7f;
+}
+
+/* RTL */
+html[dir="rtl"],
+html[dir="rtl"] body {
+  --yds-dir: rtl;
+}
+
+html[dir="ltr"],
+html[dir="ltr"] body {
+  --yds-dir: ltr;
+}
+
+/* Safe area helpers */
+.yds-safe-top { padding-top: var(--yds-safe-top); }
+.yds-safe-bottom { padding-bottom: var(--yds-safe-bottom); }
+.yds-safe-x {
+  padding-left: var(--yds-safe-left);
+  padding-right: var(--yds-safe-right);
+}
+
+/* Focus ring */
+.yds-focus-ring:focus-visible,
+*:focus-visible {
+  outline: 3px solid var(--yds-primary-soft-strong);
+  outline-offset: 2px;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

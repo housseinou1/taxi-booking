@@ -1,0 +1,515 @@
+@import url("../../design-system/tokens/index.css");
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap");
+
+/* =========================================================
+   YALA Driver Design System — canonical tokens + primitives
+   Premium commercial light theme · dark-mode ready · 8pt grid
+   ========================================================= */
+
+:root,
+.yds-root,
+.yala-driver-surface,
+.driver-shell,
+.dp-shell,
+.driver-dashboard-new,
+.driver-settings-page,
+.driver-nav {
+  /* Brand */
+  --yds-primary: #00a651;
+  --yds-primary-deep: #087a45;
+  --yds-primary-dark: #034f2f;
+  --yds-primary-soft: rgba(0, 166, 81, 0.12);
+  --yds-lime: #31d565;
+  --yds-gold: #f5b719;
+
+  /* Surfaces */
+  --yds-ink: #111827;
+  --yds-muted: #6b7280;
+  --yds-canvas: #f5f7fa;
+  --yds-card: #ffffff;
+  --yds-line: rgba(17, 24, 39, 0.08);
+  --yds-overlay: rgba(15, 23, 42, 0.45);
+
+  /* Status */
+  --yds-danger: #dc2626;
+  --yds-danger-soft: rgba(220, 38, 38, 0.1);
+  --yds-warn: #d97706;
+  --yds-warn-soft: rgba(217, 119, 6, 0.12);
+  --yds-success: #059669;
+  --yds-success-soft: rgba(5, 150, 105, 0.12);
+
+  /* Shape — 16–20px commercial radius */
+  --yds-radius-sm: 12px;
+  --yds-radius-md: 16px;
+  --yds-radius-lg: 20px;
+  --yds-radius-xl: 24px;
+  --yds-radius-pill: 999px;
+
+  /* Elevation */
+  --yds-shadow-sm: 0 4px 16px rgba(15, 23, 42, 0.06);
+  --yds-shadow-md: 0 10px 28px rgba(15, 23, 42, 0.1);
+  --yds-shadow-lg: 0 18px 40px rgba(15, 23, 42, 0.14);
+
+  /* Typography — MD3-inspired scale on Plus Jakarta Sans */
+  --yds-font: "Plus Jakarta Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --yds-display: 1.75rem;
+  --yds-title-lg: 1.25rem;
+  --yds-title: 1.0625rem;
+  --yds-body: 0.9375rem;
+  --yds-label: 0.8125rem;
+  --yds-caption: 0.75rem;
+
+  /* 8pt spacing grid */
+  --yds-space-1: 4px;
+  --yds-space-2: 8px;
+  --yds-space-3: 12px;
+  --yds-space-4: 16px;
+  --yds-space-5: 20px;
+  --yds-space-6: 24px;
+  --yds-space-8: 32px;
+  --yds-touch: 48px;
+
+  /* Safe areas */
+  --yds-safe-top: env(safe-area-inset-top, 0px);
+  --yds-safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* Bridge legacy token names → design system */
+  --yala-driver-primary: var(--yds-primary);
+  --yala-driver-primary-deep: var(--yds-primary-deep);
+  --yala-driver-primary-soft: var(--yds-primary-soft);
+  --yala-driver-accent: var(--yds-lime);
+  --yala-driver-gold: var(--yds-gold);
+  --yala-driver-ink: var(--yds-ink);
+  --yala-driver-muted: var(--yds-muted);
+  --yala-driver-canvas: var(--yds-canvas);
+  --yala-driver-card: var(--yds-card);
+  --yala-driver-line: var(--yds-line);
+  --yala-driver-danger: var(--yds-danger);
+  --yala-driver-radius-sm: var(--yds-radius-sm);
+  --yala-driver-radius-md: var(--yds-radius-md);
+  --yala-driver-radius-lg: var(--yds-radius-lg);
+  --yala-driver-shadow-sm: var(--yds-shadow-sm);
+  --yala-driver-shadow-md: var(--yds-shadow-md);
+  --driver-green: var(--yds-primary);
+  --ds-green: var(--yds-primary-deep);
+  --ds-ink: var(--yds-ink);
+  --ds-muted: var(--yds-muted);
+  --ds-line: #e5e7eb;
+  --ds-soft: var(--yds-canvas);
+  --ds-safe-top: var(--yds-safe-top);
+  --ds-safe-bottom: var(--yds-safe-bottom);
+}
+
+/* Dark mode ready */
+@media (prefers-color-scheme: dark) {
+  .yds-root.yds-root--system-dark,
+  .yala-driver-surface.yds-root--system-dark,
+  .driver-shell.yds-root--system-dark {
+    --yds-ink: #f1f5f9;
+    --yds-muted: #94a3b8;
+    --yds-canvas: #0f1713;
+    --yds-card: #1a2420;
+    --yds-line: rgba(241, 245, 249, 0.1);
+    --yds-primary-soft: rgba(0, 166, 81, 0.2);
+    --yds-shadow-sm: 0 4px 16px rgba(0, 0, 0, 0.35);
+    --yds-shadow-md: 0 10px 28px rgba(0, 0, 0, 0.45);
+    --ds-line: rgba(241, 245, 249, 0.1);
+    --ds-soft: #0f1713;
+  }
+}
+
+.yds-root,
+.yala-driver-surface {
+  color: var(--yds-ink);
+  font-family: var(--yds-font);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  background:
+    radial-gradient(120% 55% at 50% -8%, rgba(0, 166, 81, 0.12), transparent 52%),
+    linear-gradient(180deg, #eef6f1 0%, var(--yds-canvas) 36%, #ffffff 100%);
+}
+
+.yds-root *,
+.yala-driver-surface *,
+.yds-root *::before,
+.yala-driver-surface *::before,
+.yds-root *::after,
+.yala-driver-surface *::after {
+  box-sizing: border-box;
+}
+
+.yala-driver-surface :is(a, button, input, select, textarea):focus-visible {
+  outline: 3px solid rgba(0, 166, 81, 0.35);
+  outline-offset: 2px;
+}
+
+.yala-driver-surface :is(button, [role="button"], a.yds-btn) {
+  min-height: var(--yds-touch);
+  font-family: inherit;
+}
+
+/* ─── Page ─────────────────────────────────────────────────────────────── */
+.yds-page {
+  width: min(100%, 560px);
+  margin: 0 auto;
+  padding: var(--yds-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--yds-space-4);
+}
+
+.yds-section-title {
+  margin: 0;
+  font-size: var(--yds-title);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--yds-ink);
+}
+
+.yds-section-desc {
+  margin: 4px 0 0;
+  color: var(--yds-muted);
+  font-size: var(--yds-caption);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+/* ─── Card ─────────────────────────────────────────────────────────────── */
+.yds-card {
+  background: var(--yds-card);
+  border: 1px solid var(--yds-line);
+  border-radius: var(--yds-radius-lg);
+  box-shadow: var(--yds-shadow-sm);
+  padding: var(--yds-space-4);
+}
+
+.yds-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--yds-space-3);
+  margin-bottom: var(--yds-space-3);
+}
+
+/* ─── KPI ──────────────────────────────────────────────────────────────── */
+.yds-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--yds-space-3);
+}
+
+.yds-kpi {
+  background: var(--yds-card);
+  border: 1px solid var(--yds-line);
+  border-radius: var(--yds-radius-md);
+  box-shadow: var(--yds-shadow-sm);
+  padding: 14px 12px;
+  display: grid;
+  gap: 4px;
+}
+
+.yds-kpi__icon {
+  font-size: 1.05rem;
+}
+
+.yds-kpi__value {
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--yds-ink);
+}
+
+.yds-kpi__label {
+  color: var(--yds-muted);
+  font-size: var(--yds-caption);
+  font-weight: 650;
+}
+
+/* ─── List row ─────────────────────────────────────────────────────────── */
+.yds-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 10px 2px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.05);
+}
+
+.yds-row:last-child {
+  border-bottom: 0;
+}
+
+.yds-row__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: var(--yds-primary-soft);
+  color: var(--yds-primary-deep);
+  flex: 0 0 auto;
+  font-size: 1.1rem;
+}
+
+.yds-row__body {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.yds-row__title {
+  font-size: 0.92rem;
+  font-weight: 780;
+  color: var(--yds-ink);
+}
+
+.yds-row__subtitle {
+  color: var(--yds-muted);
+  font-size: var(--yds-caption);
+  font-weight: 600;
+}
+
+.yds-row__meta {
+  color: var(--yds-muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.yds-row__chevron {
+  color: var(--yds-muted);
+  font-size: 1.1rem;
+  font-weight: 300;
+}
+
+/* ─── Buttons ──────────────────────────────────────────────────────────── */
+.yds-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: var(--yds-touch);
+  padding: 0 18px;
+  border-radius: var(--yds-radius-md);
+  border: 0;
+  font-family: inherit;
+  font-weight: 800;
+  font-size: 0.95rem;
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.yds-btn:active {
+  transform: scale(0.98);
+}
+
+.yds-btn--primary {
+  background: var(--yds-primary);
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(0, 166, 81, 0.28);
+}
+
+.yds-btn--secondary {
+  background: #fff;
+  color: var(--yds-primary-deep);
+  border: 1.5px solid var(--yds-line);
+}
+
+.yds-btn--ghost {
+  background: transparent;
+  color: var(--yds-primary-deep);
+}
+
+.yds-btn--danger {
+  background: #fff;
+  color: var(--yds-danger);
+  border: 1.5px solid rgba(220, 38, 38, 0.25);
+}
+
+.yds-btn--block {
+  width: 100%;
+}
+
+/* ─── Chip / Badge ─────────────────────────────────────────────────────── */
+.yds-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: var(--yds-radius-pill);
+  background: var(--yds-primary-soft);
+  color: var(--yds-primary-deep);
+  font-size: 0.72rem;
+  font-weight: 750;
+}
+
+.yds-chip--success {
+  background: var(--yds-success-soft);
+  color: var(--yds-success);
+}
+
+.yds-chip--warn {
+  background: var(--yds-warn-soft);
+  color: #92400e;
+}
+
+.yds-chip--danger {
+  background: var(--yds-danger-soft);
+  color: var(--yds-danger);
+}
+
+.yds-chip--neutral {
+  background: #f3f4f6;
+  color: var(--yds-muted);
+}
+
+/* ─── Toggle ───────────────────────────────────────────────────────────── */
+.yds-toggle {
+  width: 52px;
+  height: 32px;
+  border-radius: var(--yds-radius-pill);
+  border: 0;
+  padding: 2px;
+  background: #cbd5e1;
+  cursor: pointer;
+  flex: 0 0 auto;
+  transition: background 0.2s ease;
+  position: relative;
+}
+
+.yds-toggle[aria-checked="true"],
+.yds-toggle.is-on {
+  background: var(--yds-primary);
+}
+
+.yds-toggle__knob {
+  display: block;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.18);
+  transition: transform 0.2s ease;
+  transform: translateX(0);
+}
+
+.yds-toggle[aria-checked="true"] .yds-toggle__knob,
+.yds-toggle.is-on .yds-toggle__knob {
+  transform: translateX(20px);
+}
+
+/* ─── Empty ────────────────────────────────────────────────────────────── */
+.yds-empty {
+  text-align: center;
+  padding: 40px 16px;
+  color: var(--yds-muted);
+}
+
+.yds-empty__icon {
+  font-size: 2.2rem;
+  display: block;
+  margin-bottom: 10px;
+}
+
+.yds-empty__title {
+  margin: 0 0 6px;
+  color: var(--yds-ink);
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.yds-empty__text {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+/* ─── Bottom navigation ────────────────────────────────────────────────── */
+.driver-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: stretch;
+  justify-content: space-around;
+  height: calc(64px + var(--yds-safe-bottom));
+  padding: 0 8px var(--yds-safe-bottom);
+  background: rgba(255, 255, 255, 0.96);
+  border-top: 1px solid var(--yds-line);
+  box-shadow: 0 -8px 28px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  font-family: var(--yds-font);
+}
+
+.driver-nav__tab {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 64px;
+  min-height: 56px;
+  padding: 8px 4px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  color: var(--yds-muted);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  font-family: inherit;
+}
+
+.driver-nav__tab.is-active {
+  color: var(--yds-primary);
+}
+
+.driver-nav__indicator {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 28px;
+  height: 3px;
+  border-radius: 0 0 3px 3px;
+  background: var(--yds-primary);
+}
+
+.driver-nav__icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+}
+
+.driver-nav__label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+
+.driver-nav__tab.is-active .driver-nav__label {
+  font-weight: 800;
+}
+
+/* Hide duplicate in-page titles when DriverShell already provides chrome */
+.driver-shell__content .yds-hide-when-shelled,
+.driver-shell__content .driver-docs-page__header,
+.driver-shell__content .driver-docs-page__accent,
+.driver-shell__content .driver-settings-page > h1:first-child,
+.driver-shell__content .driver-settings-page > div:first-child > h1,
+.driver-shell__content [data-yds-duplicate-title="true"] {
+  display: none !important;
+}

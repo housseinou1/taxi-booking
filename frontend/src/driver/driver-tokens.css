@@ -1,5 +1,6 @@
 /* Yala Driver App Design Tokens */
-/* Imports shared rider tokens and adds driver-specific values */
+/* Imports shared YALA design tokens, then rider tokens and adds driver-specific values */
+@import '../design-system/tokens/index.css';
 @import '../rider/tokens.css';
 
 /* ─── Driver-Specific Design Tokens ───────────────────────────────────── */
