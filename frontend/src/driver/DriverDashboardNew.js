@@ -1993,7 +1993,7 @@ const mapFirstShell = {
   inset: 0,
   background: "#0d1117",
   overflow: "hidden",
-  fontFamily: "'Inter', system-ui, sans-serif",
+  fontFamily: "'Plus Jakarta Sans', system-ui, -apple-system, sans-serif",
 };
 
 const mapFullscreen = {
