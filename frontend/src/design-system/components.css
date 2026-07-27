@@ -465,6 +465,13 @@
   line-height: 1.5;
 }
 
+.yds-loading--compact {
+  min-height: auto;
+  padding: var(--yds-space-4);
+  flex-direction: row;
+  justify-content: flex-start;
+}
+
 @media (min-width: 768px) {
   :root { --yds-page-max: 960px; }
   .yds-page { padding-inline: var(--yds-space-6); }

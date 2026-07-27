@@ -55,10 +55,7 @@ async function loadAppTheme() {
     return;
   }
 
-  if (appType === "web") {
-    await import("./driver/lyft-driver.css");
-    return;
-  }
+  document.documentElement.classList.add("yala-app--rider");
 }
 
 async function bootstrap() {

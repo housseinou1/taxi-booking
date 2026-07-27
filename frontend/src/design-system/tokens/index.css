@@ -108,6 +108,43 @@
   /* App accents (overridden per app) */
   --yds-app-accent: var(--yds-primary);
   --yds-app-soft: var(--yds-primary-soft);
+
+  /* Component tokens — buttons */
+  --yds-btn-height-sm: 40px;
+  --yds-btn-height-md: 48px;
+  --yds-btn-height-lg: 52px;
+  --yds-btn-radius: var(--yds-radius-md);
+  --yds-btn-bg-primary: var(--yds-primary);
+  --yds-btn-bg-secondary: var(--yds-canvas);
+  --yds-btn-ink: var(--yds-on-primary, #ffffff);
+  --yds-btn-ink-secondary: var(--yds-ink);
+
+  /* Inputs */
+  --yds-input-height: 48px;
+  --yds-input-bg: var(--yds-card);
+  --yds-input-border: var(--yds-line-strong);
+  --yds-input-radius: var(--yds-radius-sm);
+  --yds-input-focus: var(--yds-primary-soft-strong);
+
+  /* Cards */
+  --yds-card-radius: var(--yds-radius-lg);
+  --yds-card-padding: var(--yds-space-4);
+  --yds-card-shadow: var(--yds-shadow-sm);
+
+  /* Chips & badges */
+  --yds-chip-height: 28px;
+  --yds-chip-radius: var(--yds-radius-pill);
+  --yds-badge-size: 18px;
+
+  /* Progress & loading */
+  --yds-progress-height: 6px;
+  --yds-skeleton-base: var(--yds-line);
+
+  /* Empty / error surfaces */
+  --yds-state-min-height: 180px;
+  --yds-state-padding: var(--yds-space-8) var(--yds-space-4);
+
+  --yds-on-primary: #ffffff;
 }
 
 /* Per-app accents */

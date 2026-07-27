@@ -9,7 +9,8 @@ export default function BottomNav({ items = [], active, onChange, className, ...
           key={item.key}
           type="button"
           className="yds-bottom-nav__item"
-          aria-current={active === item.key}
+          aria-current={active === item.key ? "page" : undefined}
+          aria-label={item.label}
           onClick={() => onChange && onChange(item.key)}
         >
           {item.icon}

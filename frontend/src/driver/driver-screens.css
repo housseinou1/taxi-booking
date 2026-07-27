@@ -1,0 +1,202 @@
+/* =========================================================
+   YALA Driver — screen bridges onto the shared design system
+   Force readable light commercial surfaces on secondary pages
+   ========================================================= */
+
+.yala-driver-surface,
+.driver-shell,
+.dp-shell {
+  color: var(--yds-ink);
+  font-family: var(--yds-font);
+}
+
+/* Soften dark inline leftovers inside shelled pages */
+.driver-shell__content .driver-page--lyft,
+.driver-shell__content .driver-settings-page,
+.driver-shell__content .driver-docs-page,
+.driver-shell__content .earnings-hub,
+.driver-shell__content .dw {
+  background: transparent !important;
+  min-height: auto !important;
+  color: var(--yds-ink) !important;
+}
+
+.driver-shell__content :is(h1, h2, h3, strong, .driver-settings__row-title) {
+  color: var(--yds-ink) !important;
+}
+
+.driver-shell__content :is(p, small, .driver-settings__row-desc) {
+  color: var(--yds-muted) !important;
+}
+
+.driver-shell__content :is(section, .driver-settings__card, [class*="Card"], .yds-card) {
+  border-radius: var(--yds-radius-lg);
+}
+
+/* Cards / panels that still use translucent dark backgrounds */
+.driver-shell__content [style*="rgba(255, 255, 255, 0.06)"],
+.driver-shell__content [style*="rgba(255,255,255,0.06)"] {
+  background: var(--yds-card) !important;
+  border-color: var(--yds-line) !important;
+  color: var(--yds-ink) !important;
+  box-shadow: var(--yds-shadow-sm);
+}
+
+.driver-shell__content [style*="#0B1220"],
+.driver-shell__content [style*="rgb(11, 18, 32)"] {
+  background: transparent !important;
+  color: var(--yds-ink) !important;
+}
+
+/* Hide duplicate page H1 when shell already shows the title */
+.driver-shell__content .driver-settings-page > div:first-child > h1,
+.driver-shell__content .driver-docs-page__header,
+.driver-shell__content [data-yds-duplicate-title="true"] {
+  display: none !important;
+}
+
+/* Documents */
+.driver-docs-page,
+.driver-docs-dashboard,
+.driver-docs-card,
+.driver-document-card,
+.driver-docs-section {
+  color: var(--yds-ink);
+}
+
+.driver-docs-dashboard,
+.driver-docs-card,
+.driver-document-card,
+.driver-docs-section {
+  background: var(--yds-card) !important;
+  border: 1px solid var(--yds-line) !important;
+  border-radius: var(--yds-radius-lg) !important;
+  box-shadow: var(--yds-shadow-sm);
+}
+
+/* Earnings */
+.earnings-hub__stat,
+.earnings-hub__panel,
+.earnings-hub__card {
+  background: var(--yds-card) !important;
+  border: 1px solid var(--yds-line) !important;
+  border-radius: var(--yds-radius-md) !important;
+  box-shadow: var(--yds-shadow-sm);
+  color: var(--yds-ink);
+}
+
+.earnings-hub__trip-id {
+  color: var(--yds-muted) !important;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* Wallet */
+.dw {
+  color: var(--yds-ink);
+  background: transparent !important;
+}
+
+.dw-card {
+  background: var(--yds-card) !important;
+  border: 1px solid var(--yds-line) !important;
+  border-radius: var(--yds-radius-md) !important;
+  box-shadow: var(--yds-shadow-sm) !important;
+}
+
+.dw-balance-card {
+  border-radius: var(--yds-radius-lg) !important;
+  background: linear-gradient(135deg, var(--yds-primary-dark), var(--yds-primary)) !important;
+}
+
+.dw-btn-primary {
+  min-height: 52px;
+  border-radius: var(--yds-radius-md) !important;
+  background: var(--yds-primary) !important;
+}
+
+/* Profile edit / vehicle */
+.driver-edit-shell {
+  background: transparent !important;
+  color: var(--yds-ink) !important;
+}
+
+.driver-edit-section {
+  background: var(--yds-card) !important;
+  border: 1px solid var(--yds-line) !important;
+  border-radius: var(--yds-radius-lg) !important;
+  box-shadow: var(--yds-shadow-sm) !important;
+}
+
+/* Support */
+.driver-support--lyft,
+.driver-page--lyft.driver-support--lyft {
+  background: transparent !important;
+  color: var(--yds-ink) !important;
+}
+
+.support-hub-tile {
+  min-height: 112px;
+  color: var(--yds-ink) !important;
+  background: #fff !important;
+  border: 1px solid var(--yds-line) !important;
+  border-radius: var(--yds-radius-md) !important;
+  box-shadow: var(--yds-shadow-sm);
+}
+
+/* Ride request / live trip token bridge */
+.ride-request-sheet {
+  --rr-green: var(--yds-primary);
+  --rr-ink: var(--yds-ink);
+}
+
+.ride-request-sheet__accept,
+.ride-request-sheet__primary {
+  background: var(--yds-primary) !important;
+  border-radius: var(--yds-radius-md) !important;
+}
+
+/* Bottom nav polish for driver */
+.driver-nav.yds-bottom-nav {
+  height: calc(64px + var(--yds-safe-bottom));
+  padding-bottom: var(--yds-safe-bottom);
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(16px);
+}
+
+.driver-nav .yds-bottom-nav__item {
+  color: var(--yds-muted);
+  font-size: 10px;
+  font-weight: 700;
+  gap: 4px;
+  min-height: 56px;
+}
+
+.driver-nav .yds-bottom-nav__item[aria-current="page"] {
+  color: var(--yds-primary);
+  font-weight: 800;
+}
+
+.driver-nav .yds-icon {
+  fill: currentColor;
+}
+
+/* Inputs */
+.driver-shell__content :is(input, select, textarea) {
+  min-height: 48px;
+  color: var(--yds-ink);
+  background: #fff;
+  border: 1px solid #d7e0db;
+  border-radius: var(--yds-radius-sm);
+}
+
+/* Hall of fame / achievements */
+.hof-hero,
+.hof-section,
+.hof-card {
+  color: var(--yds-ink) !important;
+  background: var(--yds-card) !important;
+  border: 1px solid var(--yds-line) !important;
+  border-radius: var(--yds-radius-lg) !important;
+  box-shadow: var(--yds-shadow-sm);
+}
