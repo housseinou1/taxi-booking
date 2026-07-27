@@ -2,6 +2,21 @@ import React from "react";
 import { cx } from "../utils/cx";
 
 const ICONS = {
+  navigation: (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M20.5 3.5l-17 7.1c-.8.34-.72 1.5.12 1.72l7.06 1.84 1.84 7.06c.22.84 1.38.92 1.72.12l7.1-17c.28-.68-.4-1.36-1.08-1.08l.24.24zM12.2 12.2l5.56-5.56-3.9 9.36-1.1-4.24-4.24-1.1 9.36-3.9-5.68 5.44z" />
+    </svg>
+  ),
+  documents: (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm1 7V3.5L19.5 9H15zM8 13h8v2H8v-2zm0 4h8v2H8v-2z" />
+    </svg>
+  ),
+  warning: (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" />
+    </svg>
+  ),
   trips: (
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z" />

@@ -13,6 +13,21 @@
   min-height: 100dvh;
 }
 
+.yds-stack { display: flex; flex-direction: column; }
+.yds-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+}
+.yds-grid--1 { grid-template-columns: minmax(0, 1fr); }
+.yds-grid--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.yds-grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.yds-grid--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.yds-gap-2 { gap: var(--yds-space-2); }
+.yds-gap-3 { gap: var(--yds-space-3); }
+.yds-gap-4 { gap: var(--yds-space-4); }
+.yds-gap-6 { gap: var(--yds-space-6); }
+.yds-gap-8 { gap: var(--yds-space-8); }
+
 .yds-page-header {
   position: sticky;
   top: 0;
@@ -117,6 +132,12 @@
   font-size: 10px;
   font-weight: var(--yds-weight-extrabold);
 }
+
+.yds-badge--primary { background: var(--yds-primary); }
+.yds-badge--success { background: var(--yds-success); }
+.yds-badge--warning { background: var(--yds-warn); color: var(--yds-ink); }
+.yds-badge--info { background: var(--yds-info); }
+.yds-badge--neutral { background: var(--yds-muted); }
 
 /* App bar */
 .yds-app-bar {
@@ -396,6 +417,10 @@
   transition: width var(--yds-duration-normal) var(--yds-easing);
 }
 
+.yds-progress--success .yds-progress__bar { background: var(--yds-success); }
+.yds-progress--warning .yds-progress__bar { background: var(--yds-warn); }
+.yds-progress--danger .yds-progress__bar { background: var(--yds-danger); }
+
 .yds-spinner {
   width: 20px;
   height: 20px;
@@ -415,6 +440,49 @@
   text-align: center;
   padding: var(--yds-space-10) var(--yds-space-4);
   color: var(--yds-muted);
+}
+
+.yds-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--yds-space-3);
+  min-height: 180px;
+  padding: var(--yds-space-8) var(--yds-space-4);
+  text-align: center;
+  color: var(--yds-muted);
+}
+.yds-state__title {
+  color: var(--yds-ink);
+  font-size: var(--yds-text-lg);
+  font-weight: var(--yds-weight-bold);
+}
+.yds-state__description {
+  max-width: 36ch;
+  margin: 0;
+  color: var(--yds-muted);
+  line-height: 1.5;
+}
+
+@media (min-width: 768px) {
+  :root { --yds-page-max: 960px; }
+  .yds-page { padding-inline: var(--yds-space-6); }
+}
+
+@media (orientation: landscape) and (max-height: 600px) {
+  .yds-page {
+    min-height: auto;
+    padding-top: var(--yds-space-3);
+    padding-bottom: calc(var(--yds-space-3) + var(--yds-safe-bottom));
+  }
+  .yds-dialog,
+  .yds-sheet { max-height: calc(100dvh - var(--yds-space-4)); }
+}
+
+@media (max-width: 420px) {
+  .yds-grid--3,
+  .yds-grid--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 .yds-empty__title,
