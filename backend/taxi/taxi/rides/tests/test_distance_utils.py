@@ -64,3 +64,28 @@ def test_resolve_ride_distance_km_includes_stops():
     }
     resolved = resolve_ride_distance_km(payload)
     assert resolved >= Decimal("0.1")
+
+
+def test_resolve_ride_distance_km_accepts_distance_unit_string():
+    assert resolve_ride_distance_km({"distance": "5.3 km"}) == Decimal("5.3")
+
+
+def test_resolve_ride_distance_km_accepts_comma_decimal():
+    assert resolve_ride_distance_km({"distance_km": "5,3"}) == Decimal("5.3")
+
+
+def test_resolve_ride_distance_km_accepts_distance_meters():
+    assert resolve_ride_distance_km({"distance_meters": "5300"}) == Decimal("5.3")
+
+
+def test_resolve_ride_distance_km_accepts_camelcase_coordinates():
+    payload = {
+        "distance": 0,
+        "pickupLatitude": 18.0735,
+        "pickupLongitude": -15.9582,
+        "destinationLatitude": 18.0896,
+        "destinationLongitude": -15.9754,
+    }
+    resolved = resolve_ride_distance_km(payload)
+    assert resolved >= Decimal("0.1")
+    assert resolved <= Decimal("200")
