@@ -1,3 +1,8 @@
+/**
+ * Production Driver dashboard (ACTIVE).
+ * Mounted by App.js for `/driver` and native driver bootstrap.
+ * Do not replace with DriverApp / DriverDashboard / RideDashboard.
+ */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { API_URL } from "../apiConfig";
@@ -244,15 +249,6 @@ function DriverDashboardContent() {
   const [locationPermissionDenied, setLocationPermissionDenied] = useState(false);
   const [gpsOutsideServiceArea, setGpsOutsideServiceArea] = useState(false);
   const [acceptingRideId, setAcceptingRideId] = useState(null);
-
-  const bypassDocumentsBlock = useCallback(() => {
-    try {
-      window.localStorage.setItem("yala_debug_bypass_documents", "1");
-      window.location.reload();
-    } catch {
-      // Ignore localStorage errors
-    }
-  }, []);
 
   const alertedRideIdsRef = useRef(new Set());
   const suppressedOfferIdsRef = useRef(new Map());
@@ -1604,27 +1600,7 @@ function DriverDashboardContent() {
         if (cancellationWarning && !activeRide) banners.push({ msg: cancellationWarning, bg: "rgba(245,158,11,0.95)" });
         if (documentsBlockOnline && !activeRide) {
           banners.push({
-            msg: (
-              <span>
-                Required documents have expired. Upload renewed documents before going online.
-                <button
-                  type="button"
-                  onClick={bypassDocumentsBlock}
-                  style={{
-                    marginLeft: 8,
-                    background: "rgba(255,255,255,0.2)",
-                    border: "1px solid rgba(255,255,255,0.5)",
-                    borderRadius: 4,
-                    color: "#fff",
-                    padding: "2px 8px",
-                    fontSize: 12,
-                    cursor: "pointer",
-                  }}
-                >
-                  Debug: allow test login
-                </button>
-              </span>
-            ),
+            msg: "Required documents have expired. Upload renewed documents before going online.",
             bg: "rgba(239,68,68,0.92)",
             alert: true,
           });
@@ -1656,147 +1632,27 @@ function DriverDashboardContent() {
         );
       })()}
 
-      {/* ─── Top Bar (menu · status · auto-accept) ───────────── */}
-      <header className="driver-dashboard-new__topbar">
-        <button
-          type="button"
-          className="driver-dashboard-new__menu-btn"
-          onClick={() => setMenuOpen(true)}
-          aria-label="Open menu"
-        >
-          <span className="driver-dashboard-new__menu-btn-icon" aria-hidden="true">
-            <span />
-            <span />
-            <span />
-          </span>
-          {documentsAlert ? (
-            <span
-              className={`driver-dashboard-new__menu-btn-dot driver-dashboard-new__menu-btn-dot--${documentsAlertLevel}`}
-              aria-label={
-                documentsAlertLevel === "warning"
-                  ? "Document expiring soon"
-                  : "Documents need attention"
-              }
-            />
-          ) : null}
-        </button>
-
-        <div className="driver-dashboard-new__topbar-center">
-          {isOnline ? (
-            <span className="driver-online-badge" aria-live="polite">
-              <span className="driver-online-badge__dot" aria-hidden="true" />
-              Online
-            </span>
-          ) : null}
-        </div>
-
-        <button
-          type="button"
-          className={`driver-dashboard-new__auto-accept${autoAccept ? " is-active" : ""}`}
-          style={{ ...autoAcceptBtn, borderColor: autoAccept ? "#00A651" : "#4a5568" }}
-          onClick={() => setAutoAccept((value) => !value)}
-          aria-pressed={autoAccept}
-          aria-label="Auto accept ride requests"
-        >
-          <span style={{ fontSize: 10, color: "#ccc", lineHeight: 1 }}>Auto</span>
-          <span style={{ fontSize: 10, color: "#ccc", lineHeight: 1 }}>Accept</span>
-          <span style={toggleTrack(autoAccept, true)}>
-            <span style={toggleThumb(autoAccept, true)} />
-          </span>
-        </button>
-      </header>
-
-      <button
-        type="button"
-        className="driver-earnings-chip"
-        aria-label={`Today's earnings: ${todayEarnings} MRU`}
-        onClick={() => navigateInApp("/driver/wallet")}
-      >
-        <span className="driver-earnings-chip__label">Today</span>
-        <span className="driver-earnings-chip__divider" aria-hidden="true">•</span>
-        <span className="driver-earnings-chip__amount">{todayEarnings} MRU</span>
-      </button>
-
-      {/* ─── Map recenter ───────────────────────────────────── */}
-      <button
-        type="button"
-        className="driver-dashboard-new__recenter"
-        aria-label="Re-center map"
-        onClick={() => {
-          if (driverPosition) {
-            setDriverPosition([...driverPosition]);
-          }
-        }}
-      >
-        ◎
-      </button>
-
-      {/* ─── Bottom action dock ─────────────────────────────── */}
-      {!activeRide && !incomingRide && (
-        <section className="driver-action-dock" aria-label="Driver availability">
-          <div className="driver-action-dock__body">
-            <div className="driver-summary-card">
-              <div className="driver-summary-card__header">
-                <span className="driver-summary-card__title">Today</span>
-              </div>
-              <div className="driver-summary-card__stats driver-summary-card__stats--four">
-                <div className="driver-summary-card__stat">
-                  <strong>{todayTripsCount}</strong>
-                  <span>Trips</span>
-                </div>
-                <button
-                  type="button"
-                  className="driver-summary-card__stat driver-summary-card__stat--link"
-                  onClick={() => navigateInApp("/driver/wallet")}
-                  aria-label={`Open wallet. Today's earnings: ${todayEarnings} MRU`}
-                >
-                  <strong>{todayEarnings}</strong>
-                  <span>Earnings (MRU)</span>
-                </button>
-                <div className="driver-summary-card__stat">
-                  <strong>{acceptanceRate}%</strong>
-                  <span>Acceptance</span>
-                </div>
-                <div className="driver-summary-card__stat">
-                  <strong>{missedRides}</strong>
-                  <span>Missed</span>
-                </div>
-              </div>
-            </div>
-
-            <DriverPerformanceStrip
-              stats={driverPerformance}
-              todayEarnings={earningsByPeriod.today}
-              onOpenEarnings={() => {
-                navigateInApp("/driver/wallet");
-              }}
-            />
-          </div>
-
-          <button
-            type="button"
-            className={[
-              "driver-go-btn",
-              isOnline ? "driver-go-btn--offline" : "driver-go-btn--online",
-              toggleLoading ? "is-loading" : "",
-            ]
-              .filter(Boolean)
-              .join(" ")}
-            onClick={toggleAvailability}
-            disabled={toggleLoading || (!isOnline && documentsBlockOnline)}
-            aria-label={isOnline ? "Go offline" : "Go online"}
-            aria-disabled={!isOnline && documentsBlockOnline}
-            data-testid="driver-availability-toggle"
-          >
-            <span className="driver-go-btn__icon" aria-hidden="true">
-              {isOnline ? "⏻" : "⏻"}
-            </span>
-            <span className="driver-go-btn__label">
-              {toggleLoading ? "Updating..." : isOnline ? "Go Offline" : "Go Online"}
-            </span>
-          </button>
-        </section>
-      )}
+      <DriverDashboardContent
+        driverProfile={driverProfile}
+        isOnline={isOnline}
+        toggleLoading={toggleLoading}
+        toggleError={toggleError}
+        documentsBlockOnline={documentsBlockOnline}
+        documentsAlert={documentsAlert}
+        documentsAlertLevel={documentsAlertLevel}
+        todayTripsCount={todayTripsCount}
+        todayEarnings={earningsByPeriod.today}
+        acceptanceRate={acceptanceRate}
+        missedRides={missedRides}
+        driverPerformance={driverPerformance}
+        earningsByPeriod={earningsByPeriod}
+        recentRides={driverRides}
+        onToggleAvailability={toggleAvailability}
+        onOpenMenu={() => setMenuOpen(true)}
+        loading={!driverProfile && !statusLoadError}
+        error={statusLoadError}
+        onRetry={fetchDriverStatus}
+      />
 
       {/* ─── Navigation sheet (collapsed during active ride) ─── */}
       {activeRide && (
