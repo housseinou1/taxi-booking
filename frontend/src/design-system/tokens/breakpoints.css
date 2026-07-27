@@ -1,0 +1,30 @@
+/* =========================================================
+   YALA Design System — Responsive breakpoints
+   Use in media queries: @media (min-width: 768px) { ... }
+   or custom properties for container queries where supported.
+   ========================================================= */
+
+:root {
+  --yds-bp-xs: 360px;
+  --yds-bp-sm: 480px;
+  --yds-bp-md: 768px;
+  --yds-bp-lg: 1024px;
+  --yds-bp-xl: 1280px;
+
+  /* Content max widths per breakpoint */
+  --yds-content-max-mobile: 560px;
+  --yds-content-max-tablet: 960px;
+  --yds-content-max-desktop: 1200px;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --yds-page-max: var(--yds-content-max-tablet);
+  }
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --yds-page-max: var(--yds-content-max-desktop);
+  }
+}

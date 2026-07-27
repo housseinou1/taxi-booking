@@ -1,0 +1,76 @@
+/* =========================================================
+   YALA Design System — Component-level design tokens
+   (Mission 2 — foundations for Mission 3 components)
+   ========================================================= */
+
+:root,
+.yds-root,
+[data-yala-theme] {
+  /* Elevation levels */
+  --yds-elevation-0: none;
+  --yds-elevation-1: var(--yds-shadow-sm);
+  --yds-elevation-2: var(--yds-shadow-md);
+  --yds-elevation-3: var(--yds-shadow-lg);
+
+  /* Icon sizes */
+  --yds-icon-xs: 16px;
+  --yds-icon-sm: 20px;
+  --yds-icon-md: 24px;
+  --yds-icon-lg: 28px;
+  --yds-icon-xl: 32px;
+
+  /* Dialog */
+  --yds-dialog-radius: var(--yds-radius-lg);
+  --yds-dialog-padding: var(--yds-space-6);
+  --yds-dialog-max-width: min(100% - 32px, 400px);
+  --yds-dialog-shadow: var(--yds-elevation-3);
+
+  /* Bottom sheet */
+  --yds-sheet-radius: var(--yds-radius-xl) var(--yds-radius-xl) 0 0;
+  --yds-sheet-padding: var(--yds-space-4) var(--yds-space-4) calc(var(--yds-space-6) + var(--yds-safe-bottom));
+  --yds-sheet-shadow: var(--yds-shadow-sheet);
+  --yds-sheet-handle-width: 40px;
+  --yds-sheet-handle-height: 4px;
+
+  /* Snackbar */
+  --yds-snackbar-radius: var(--yds-radius-md);
+  --yds-snackbar-padding: var(--yds-space-3) var(--yds-space-4);
+  --yds-snackbar-bg: var(--yds-ink);
+  --yds-snackbar-ink: #ffffff;
+  --yds-snackbar-shadow: var(--yds-elevation-2);
+
+  /* Avatar */
+  --yds-avatar-sm: 32px;
+  --yds-avatar-md: 48px;
+  --yds-avatar-lg: 56px;
+  --yds-avatar-xl: 72px;
+
+  /* Search bar */
+  --yds-search-height: 44px;
+  --yds-search-radius: var(--yds-radius-pill);
+  --yds-search-bg: var(--yds-color-background);
+
+  /* Status chip */
+  --yds-status-chip-height: 26px;
+  --yds-status-chip-padding: 0 var(--yds-space-3);
+  --yds-status-chip-font-size: var(--yds-text-xs);
+
+  /* Skeleton */
+  --yds-skeleton-radius: var(--yds-radius-sm);
+  --yds-skeleton-highlight: rgba(255, 255, 255, 0.4);
+
+  /* Empty / error (extends base state tokens) */
+  --yds-empty-icon-size: var(--yds-icon-xl);
+  --yds-empty-max-width: 36ch;
+
+  /* Focus (WCAG) */
+  --yds-focus-ring-width: 3px;
+  --yds-focus-ring-color: var(--yds-primary-soft-strong);
+}
+
+html[data-yala-theme="dark"],
+.yala-theme--dark {
+  --yds-snackbar-bg: var(--yds-card);
+  --yds-snackbar-ink: var(--yds-ink);
+  --yds-skeleton-highlight: rgba(255, 255, 255, 0.08);
+}

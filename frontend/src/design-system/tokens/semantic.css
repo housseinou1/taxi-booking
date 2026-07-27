@@ -1,0 +1,60 @@
+/* =========================================================
+   YALA Design System — Semantic color roles
+   Maps product language to primitive --yds-* tokens.
+   ========================================================= */
+
+:root,
+.yds-root,
+[data-yala-theme] {
+  /* Brand roles */
+  --yds-color-primary: var(--yds-primary);
+  --yds-color-primary-variant: var(--yds-primary-strong);
+  --yds-color-secondary: var(--yds-lime);
+  --yds-color-on-primary: var(--yds-on-primary);
+
+  /* Surfaces */
+  --yds-color-background: var(--yds-canvas);
+  --yds-color-surface: var(--yds-card);
+  --yds-color-card: var(--yds-card);
+  --yds-color-divider: var(--yds-line);
+  --yds-color-divider-strong: var(--yds-line-strong);
+
+  /* Text */
+  --yds-color-text-primary: var(--yds-ink);
+  --yds-color-text-secondary: var(--yds-muted);
+  --yds-color-text-disabled: #94a3b8;
+
+  /* Feedback */
+  --yds-color-success: var(--yds-success);
+  --yds-color-warning: var(--yds-warn);
+  --yds-color-error: var(--yds-danger);
+  --yds-color-info: var(--yds-info);
+  --yds-color-disabled: var(--yds-color-text-disabled);
+  --yds-color-disabled-surface: rgba(100, 116, 139, 0.12);
+
+  /* Operational status (driver, documents, payouts) */
+  --yds-color-online: var(--yds-success);
+  --yds-color-online-soft: rgba(5, 150, 105, 0.14);
+  --yds-color-offline: var(--yds-muted);
+  --yds-color-offline-soft: rgba(100, 116, 139, 0.14);
+  --yds-color-pending: var(--yds-warn);
+  --yds-color-pending-soft: rgba(217, 119, 6, 0.14);
+  --yds-color-approved: var(--yds-success);
+  --yds-color-approved-soft: rgba(5, 150, 105, 0.14);
+  --yds-color-rejected: var(--yds-danger);
+  --yds-color-rejected-soft: rgba(220, 38, 38, 0.12);
+  --yds-color-expired: var(--yds-coral);
+  --yds-color-expired-soft: rgba(255, 107, 107, 0.14);
+}
+
+html[data-yala-theme="dark"],
+.yala-theme--dark {
+  --yds-color-text-disabled: #64748b;
+  --yds-color-disabled-surface: rgba(148, 163, 184, 0.12);
+  --yds-color-online-soft: rgba(5, 150, 105, 0.22);
+  --yds-color-offline-soft: rgba(148, 163, 184, 0.14);
+  --yds-color-pending-soft: rgba(217, 119, 6, 0.22);
+  --yds-color-approved-soft: rgba(5, 150, 105, 0.22);
+  --yds-color-rejected-soft: rgba(220, 38, 38, 0.2);
+  --yds-color-expired-soft: rgba(255, 107, 107, 0.2);
+}

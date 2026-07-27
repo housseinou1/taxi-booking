@@ -15,6 +15,7 @@ const ECOSYSTEM_ICONS = [
   "navigation",
   "documents",
   "warning",
+  "emergency",
 ];
 
 describe("YALA shared iconography", () => {

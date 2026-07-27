@@ -8,6 +8,22 @@ import "./tokens/index.css";
 import "./components.css";
 
 export * from "./tokens/colors";
+export * from "./tokens/spacing";
+export * from "./tokens/typography";
+export * from "./tokens/semantic";
+export {
+  yalaTokens,
+  themes as YALA_THEMES,
+  colors as YALA_TOKEN_COLORS,
+  themes,
+  typography,
+  componentTokens,
+  radii,
+  elevation,
+  iconSizes,
+  motion,
+  breakpoints,
+} from "./tokens/tokens";
 export * from "./utils/cx";
 export * from "./components";
 export { default as ThemeProvider, useYalaTheme } from "./ThemeProvider";

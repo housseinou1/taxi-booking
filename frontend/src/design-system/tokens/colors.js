@@ -29,6 +29,7 @@ export const YALA_COLORS = {
   onPrimary: "#ffffff",
 };
 
+/** @deprecated Use YALA_SEMANTIC_COLORS for role-based naming */
 export function getYalaColors() {
   return YALA_COLORS;
 }

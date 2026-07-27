@@ -23,7 +23,7 @@ export default function Input({
         {...rest}
       />
       {hint && !hasError ? <span className="yds-hint">{hint}</span> : null}
-      {hasError ? <span className="yds-hint" style={{ color: "var(--yds-danger)" }}>{error}</span> : null}
+      {hasError ? <span className="yds-hint" style={{ color: "var(--yds-color-error, var(--yds-danger))" }}>{error}</span> : null}
     </div>
   );
 }
