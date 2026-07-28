@@ -385,6 +385,19 @@ describe("DriverProfilePage release-readiness guards", () => {
     restoreLocation();
   });
 
+  it("shows a no-data marker for rates instead of invented percentages", async () => {
+    const restoreLocation = setupLocationMock();
+    await renderProfile(); // statsResponse has no rate fields
+
+    // Removed placeholder rates (92% / 96% / 4%) must not appear
+    expect(screen.queryByText("92%")).not.toBeInTheDocument();
+    expect(screen.queryByText("96%")).not.toBeInTheDocument();
+    expect(screen.getByText("Acceptance")).toBeInTheDocument();
+    // Unavailable rates render the no-data marker
+    expect(screen.getAllByText("—").length).toBeGreaterThanOrEqual(3);
+    restoreLocation();
+  });
+
   it("marks the active profile tab with aria-current", async () => {
     const restoreLocation = setupLocationMock();
     await renderProfile();

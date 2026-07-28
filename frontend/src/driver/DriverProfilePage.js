@@ -38,6 +38,13 @@ const isPlaceholderDisplayValue = (value) => {
 const displayValue = (...values) =>
   getValue(...values.filter((candidate) => !isPlaceholderDisplayValue(candidate))) || "Not provided";
 const formatMRU = (value) => `${Number(value || 0).toLocaleString()} MRU`;
+// Percentage rates are shown only when the backend supplies them; otherwise a
+// no-data marker is rendered rather than an invented figure.
+const formatRate = (value) => {
+  if (value === undefined || value === null || value === "") return "—";
+  const num = Number(value);
+  return Number.isFinite(num) ? `${num}%` : "—";
+};
 const titleCase = (value = "") =>
   String(value)
     .replace(/_/g, " ")
@@ -433,16 +440,22 @@ export default function DriverProfilePage({ onBack }) {
     base.wallet_balance,
     0
   );
-  const todayEarnings = getValue(stats.today_earnings, enhanced.today_earnings, 1250);
-  const weekEarnings = getValue(stats.week_earnings, enhanced.week_earnings, 8750);
-  const monthEarnings = getValue(stats.month_earnings, enhanced.month_earnings, 32500);
-  const acceptanceRate = getValue(stats.acceptance_rate, enhanced.acceptance_rate, base.acceptance_rate, 92);
-  const completionRate = getValue(stats.completion_rate, enhanced.completion_rate, base.completion_rate, 96);
-  const cancellationRate = getValue(stats.cancellation_rate, enhanced.cancellation_rate, base.cancellation_rate, 4);
-  const levelPoints = Number(getValue(enhanced.level?.points, stats.level_points, 780));
-  const nextLevelPoints = Number(getValue(enhanced.level?.next_level_points, stats.next_level_points, 1000));
-  const levelProgress = Math.max(0, Math.min(100, Math.round((levelPoints / nextLevelPoints) * 100)));
-  const nextLevel = titleCase(getValue(enhanced.level?.next_level, stats.next_level, "diamond"));
+  // Earnings default to a truthful 0 (a real "no earnings yet" value).
+  const todayEarnings = getValue(stats.today_earnings, enhanced.today_earnings, 0);
+  const weekEarnings = getValue(stats.week_earnings, enhanced.week_earnings, 0);
+  const monthEarnings = getValue(stats.month_earnings, enhanced.month_earnings, 0);
+  // Rates stay undefined when the backend omits them (rendered as a no-data marker).
+  const acceptanceRate = getValue(stats.acceptance_rate, enhanced.acceptance_rate, base.acceptance_rate);
+  const completionRate = getValue(stats.completion_rate, enhanced.completion_rate, base.completion_rate);
+  const cancellationRate = getValue(stats.cancellation_rate, enhanced.cancellation_rate, base.cancellation_rate);
+  const levelPoints = Number(getValue(enhanced.level?.points, stats.level_points, 0)) || 0;
+  const nextLevelPoints = Number(getValue(enhanced.level?.next_level_points, stats.next_level_points, 0)) || 0;
+  const hasLevelProgress = nextLevelPoints > 0;
+  const levelProgress = hasLevelProgress
+    ? Math.max(0, Math.min(100, Math.round((levelPoints / nextLevelPoints) * 100)))
+    : 0;
+  const nextLevelRaw = getValue(enhanced.level?.next_level, stats.next_level);
+  const nextLevel = nextLevelRaw ? titleCase(nextLevelRaw) : "";
 
   const documentsByType = DOCUMENT_TYPES.map((item) => ({
     item,
@@ -594,20 +607,24 @@ export default function DriverProfilePage({ onBack }) {
               <span className="dp-level-label">Driver Level</span>
               <strong className="dp-level-name">{titleCase(level)}</strong>
             </div>
-            <div className="dp-level-next">
-              <span className="dp-level-label">Next Level</span>
-              <strong className="dp-level-name">{nextLevel}</strong>
-            </div>
+            {nextLevel && (
+              <div className="dp-level-next">
+                <span className="dp-level-label">Next Level</span>
+                <strong className="dp-level-name">{nextLevel}</strong>
+              </div>
+            )}
           </div>
-          <div className="dp-level-progress-wrap">
-            <div className="dp-level-bar">
-              <div className="dp-level-bar-fill" style={{ width: `${levelProgress}%` }} />
+          {hasLevelProgress && (
+            <div className="dp-level-progress-wrap">
+              <div className="dp-level-bar">
+                <div className="dp-level-bar-fill" style={{ width: `${levelProgress}%` }} />
+              </div>
+              <div className="dp-level-points">
+                <span>{levelPoints} pts</span>
+                <span>{nextLevelPoints} pts needed</span>
+              </div>
             </div>
-            <div className="dp-level-points">
-              <span>{levelPoints} pts</span>
-              <span>{nextLevelPoints} pts needed</span>
-            </div>
-          </div>
+          )}
         </section>
 
         {/* Personal Information */}
@@ -774,15 +791,15 @@ export default function DriverProfilePage({ onBack }) {
           </div>
           <div className="dp-rates-grid">
             <div className="dp-rate-item">
-              <span className="dp-rate-value dp-rate-green">{acceptanceRate}%</span>
+              <span className="dp-rate-value dp-rate-green">{formatRate(acceptanceRate)}</span>
               <span className="dp-rate-label">Acceptance</span>
             </div>
             <div className="dp-rate-item">
-              <span className="dp-rate-value dp-rate-green">{completionRate}%</span>
+              <span className="dp-rate-value dp-rate-green">{formatRate(completionRate)}</span>
               <span className="dp-rate-label">Completion</span>
             </div>
             <div className="dp-rate-item">
-              <span className="dp-rate-value dp-rate-red">{cancellationRate}%</span>
+              <span className="dp-rate-value dp-rate-red">{formatRate(cancellationRate)}</span>
               <span className="dp-rate-label">Cancellation</span>
             </div>
           </div>
