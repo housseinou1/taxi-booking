@@ -3,6 +3,7 @@ import axios from "axios";
 
 import { API_URL } from "../apiConfig";
 import { getAppType, isDeliveryCourierApp } from "../native/platform";
+import { DriverLoadingState } from "./ui/DriverAppStates";
 import "./DriverProfileEditPage.css";
 
 const PERSONAL_FILES = [
@@ -148,7 +149,11 @@ export default function DriverProfileEditPage() {
   };
 
   if (loading) {
-    return <main className="driver-edit-state">Loading profile editor...</main>;
+    return (
+      <main className="driver-edit-state">
+        <DriverLoadingState title="Loading profile editor" message="Fetching your current details." />
+      </main>
+    );
   }
 
   return (
@@ -257,8 +262,31 @@ function EditSection({ title, description, children }) {
   return <section className="driver-edit-section"><header><h2>{title}</h2><p>{description}</p></header>{children}</section>;
 }
 
-function Field({ label, type = "text", ...props }) {
-  return <label className="driver-edit-field"><span>{label}</span><input type={type} {...props} /></label>;
+function Field({ label, type = "text", required = false, ...props }) {
+  return (
+    <label className="driver-edit-field">
+      <span>
+        {label}
+        {required ? <span className="driver-edit-required" aria-hidden="true"> *</span> : null}
+      </span>
+      <input type={type} required={required} aria-required={required || undefined} {...props} />
+    </label>
+  );
+}
+
+function FilePreview({ file }) {
+  const [url, setUrl] = useState("");
+  useEffect(() => {
+    if (file && typeof file.type === "string" && file.type.startsWith("image/")) {
+      const objectUrl = URL.createObjectURL(file);
+      setUrl(objectUrl);
+      return () => URL.revokeObjectURL(objectUrl);
+    }
+    setUrl("");
+    return undefined;
+  }, [file]);
+  if (!url) return null;
+  return <img className="driver-edit-file-preview" src={url} alt="Selected file preview" />;
 }
 
 function FileFields({ fields, files, onChange }) {
@@ -268,7 +296,8 @@ function FileFields({ fields, files, onChange }) {
         <label key={name}>
           <span>{label}</span>
           <input type="file" name={name} accept={accept} onChange={onChange} />
-          <small>{files[name]?.name || "Choose a new file"}</small>
+          <small>{files[name] ? `Selected: ${files[name].name}` : "Choose a new file"}</small>
+          <FilePreview file={files[name]} />
         </label>
       ))}
     </div>

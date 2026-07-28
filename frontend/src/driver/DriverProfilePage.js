@@ -371,6 +371,24 @@ export default function DriverProfilePage({ onBack }) {
   const plate = displayValue(vehicle.plate_number, base.vehicle_plate, base.plate_number);
   const contactPhone = displayValue(base.phone_number, enhanced.phone_number, user.phone_number);
   const contactEmail = displayValue(base.email, enhanced.email, user.email);
+  // Raw (unformatted) values for the structured details section — rows are hidden
+  // when the value is missing or a placeholder, never rendered as "Not provided".
+  const cityRaw = getValue(
+    base.city_name, base.city?.name, enhanced.city_name, enhanced.city?.name,
+    user.city_name, user.city?.name
+  );
+  const memberSinceRaw = getValue(base.date_joined, base.created_at, user.date_joined, user.created_at);
+  const memberSince = (() => {
+    if (!memberSinceRaw) return "";
+    const date = new Date(memberSinceRaw);
+    if (Number.isNaN(date.getTime())) return "";
+    try {
+      return date.toLocaleDateString(undefined, { year: "numeric", month: "long" });
+    } catch {
+      return "";
+    }
+  })();
+  const preferredLanguageRaw = getValue(base.preferred_language, enhanced.preferred_language, user.preferred_language);
   const walletBalance = getValue(
     stats.available_balance,
     stats.withdrawable_balance,
@@ -554,6 +572,30 @@ export default function DriverProfilePage({ onBack }) {
               <span>{nextLevelPoints} pts needed</span>
             </div>
           </div>
+        </section>
+
+        {/* Personal Information */}
+        <section className="dp-section-card">
+          <h3 className="dp-section-title">Personal information</h3>
+          <div className="dp-detail-list">
+            <DetailRow label="Phone" value={contactPhone} />
+            <DetailRow label="Email" value={contactEmail} />
+            <DetailRow label="City" value={cityRaw} />
+            <DetailRow label="Preferred language" value={titleCase(preferredLanguageRaw)} />
+            <DetailRow label="Member since" value={memberSince} />
+          </div>
+          <button
+            type="button"
+            className="dp-row-btn dp-detail-edit"
+            onClick={() => handleMenuAction("/driver/profile/edit")}
+          >
+            <span className="dp-row-icon">✏️</span>
+            <span className="dp-row-text">
+              <strong>Edit profile</strong>
+              <small>Update your personal and vehicle details</small>
+            </span>
+            <span className="dp-row-arrow">›</span>
+          </button>
         </section>
 
         {/* Wallet Section */}
@@ -812,6 +854,17 @@ export default function DriverProfilePage({ onBack }) {
         </button>
       </nav>
     </main>
+  );
+}
+
+function DetailRow({ label, value }) {
+  const text = String(value ?? "").trim();
+  if (!text || isPlaceholderDisplayValue(text)) return null;
+  return (
+    <div className="dp-detail-row">
+      <span className="dp-detail-label">{label}</span>
+      <span className="dp-detail-value">{text}</span>
+    </div>
   );
 }
 

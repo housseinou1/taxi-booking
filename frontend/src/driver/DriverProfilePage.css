@@ -781,6 +781,45 @@
   line-height: 1.45;
 }
 
+/* === Personal information details === */
+.dp-detail-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.dp-detail-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid #eef2f0;
+}
+
+.dp-detail-row:last-child {
+  border-bottom: 0;
+}
+
+.dp-detail-label {
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.dp-detail-value {
+  min-width: 0;
+  text-align: right;
+  font-size: 14px;
+  font-weight: 700;
+  color: #111827;
+  overflow-wrap: anywhere;
+}
+
+.dp-detail-edit {
+  margin-top: 12px;
+}
+
 /* === Account status card === */
 .dp-status-card {
   display: flex;

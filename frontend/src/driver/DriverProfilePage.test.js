@@ -218,3 +218,25 @@ describe("DriverProfilePage account status & fallbacks", () => {
     restoreLocation();
   });
 });
+
+describe("DriverProfilePage personal information details", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    Storage.prototype.getItem = jest.fn(() => "test-token");
+    Storage.prototype.removeItem = jest.fn();
+    mockProfileEndpoints();
+  });
+
+  it("shows a Personal information section and hides missing optional rows", async () => {
+    const restoreLocation = setupLocationMock();
+    await renderProfile();
+
+    expect(screen.getByText("Personal information")).toBeInTheDocument();
+    // Present optional value renders its labeled row
+    expect(screen.getByText("Email")).toBeInTheDocument();
+    // Missing optional values must not render as labeled detail rows
+    expect(screen.queryByText("Member since")).not.toBeInTheDocument();
+    expect(screen.queryByText("Preferred language")).not.toBeInTheDocument();
+    restoreLocation();
+  });
+});

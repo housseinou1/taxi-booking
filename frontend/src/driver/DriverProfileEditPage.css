@@ -221,3 +221,19 @@
     grid-template-columns: 1fr 1fr;
   }
 }
+
+/* Mission 6: required-field indicator + selected-file image preview */
+.driver-edit-required {
+  color: #dc2626;
+  font-weight: 800;
+}
+
+.driver-edit-file-preview {
+  display: block;
+  margin-top: 8px;
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+}
