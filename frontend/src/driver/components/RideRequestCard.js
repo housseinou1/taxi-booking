@@ -51,6 +51,25 @@ function getRideId(ride) {
   return ride?.id || ride?.ride_id;
 }
 
+function getRiderName(ride) {
+  return (
+    ride?.rider_name ||
+    [ride?.rider_first_name, ride?.rider_last_name].filter(Boolean).join(" ") ||
+    null
+  );
+}
+
+function getRiderRating(ride) {
+  const raw = ride?.rider_rating ?? ride?.rider_score ?? null;
+  const value = Number(raw);
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
+function getInitial(name) {
+  const trimmed = String(name || "").trim();
+  return trimmed ? trimmed.charAt(0).toUpperCase() : "🙂";
+}
+
 /**
  * YALA incoming ride request sheet with countdown and alert sounds.
  */
@@ -115,6 +134,8 @@ export default function RideRequestCard({
   const etaLabel = formatEtaMinutes(ride?.eta_to_pickup_seconds ?? ride?.driver_eta_seconds);
   const surgeMultiplier = ride?.surge_multiplier || ride?.price_multiplier || null;
   const driverEarning = ride?.driver_earning ?? ride?.driver_share ?? null;
+  const riderName = getRiderName(ride);
+  const riderRating = getRiderRating(ride);
 
   const content = expired ? (
     <div className="ride-request-overlay" role="alert" aria-live="assertive">
@@ -184,8 +205,27 @@ export default function RideRequestCard({
         </div>
         {driverEarning != null && (
           <p className="ride-request-sheet__earning">
-            Votre gain estimé : <strong>{formatMoney(driverEarning)}</strong>
+            Est. earnings: <strong>{formatMoney(driverEarning)}</strong>
           </p>
+        )}
+
+        {riderName && (
+          <div className="ride-request-sheet__passenger">
+            <span className="ride-request-sheet__passenger-avatar" aria-hidden="true">
+              {getInitial(riderName)}
+            </span>
+            <div className="ride-request-sheet__passenger-info">
+              <span className="ride-request-sheet__passenger-name">{riderName}</span>
+              {riderRating != null && (
+                <span
+                  className="ride-request-sheet__passenger-rating"
+                  aria-label={`Rider rating ${riderRating.toFixed(1)} out of 5`}
+                >
+                  <span aria-hidden="true">★</span> {riderRating.toFixed(1)}
+                </span>
+              )}
+            </div>
+          </div>
         )}
 
         <div className="ride-request-sheet__route">
