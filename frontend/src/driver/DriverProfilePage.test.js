@@ -110,16 +110,42 @@ describe("DriverProfilePage button behavior", () => {
     restoreLocation();
   });
 
-  it("clears auth storage and navigates to login on logout", async () => {
+  it("clears auth storage and navigates to login after confirming logout", async () => {
     const restoreLocation = setupLocationMock();
     await renderProfile();
 
+    // Logout is a two-step, confirmation-guarded action.
     fireEvent.click(screen.getByRole("button", { name: /Logout/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Log out" }));
 
     expect(Storage.prototype.removeItem).toHaveBeenCalledWith("access");
     expect(Storage.prototype.removeItem).toHaveBeenCalledWith("refresh");
     expect(Storage.prototype.removeItem).toHaveBeenCalledWith("user");
     expect(window.location.href).toBe("/login");
+    restoreLocation();
+  });
+
+  it("opens a confirmation dialog before logging out", async () => {
+    const restoreLocation = setupLocationMock();
+    await renderProfile();
+
+    fireEvent.click(screen.getByRole("button", { name: /Logout/i }));
+
+    expect(screen.getByText("Log out?")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Log out" })).toBeInTheDocument();
+    expect(Storage.prototype.removeItem).not.toHaveBeenCalled();
+    restoreLocation();
+  });
+
+  it("does not end the session when logout is cancelled", async () => {
+    const restoreLocation = setupLocationMock();
+    await renderProfile();
+
+    fireEvent.click(screen.getByRole("button", { name: /Logout/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(Storage.prototype.removeItem).not.toHaveBeenCalled();
+    expect(window.location.href).toBe("http://localhost/driver/profile");
     restoreLocation();
   });
 });

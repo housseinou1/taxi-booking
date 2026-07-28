@@ -4,7 +4,7 @@ import { navigateInApp } from "../navigation/inAppNavigation";
 
 import { API_URL } from "../apiConfig";
 import { isDriverYalaUI } from "./yalaColors";
-import { Badge } from "../design-system/components";
+import { Badge, ConfirmationDialog } from "../design-system/components";
 import { DriverLoadingState, DriverErrorState } from "./ui/DriverAppStates";
 import DocumentsUnderReviewBanner from "./components/DocumentsUnderReviewBanner";
 import DriverPayoutPanel from "./components/DriverPayoutPanel";
@@ -163,6 +163,8 @@ export default function DriverProfilePage({ onBack }) {
   const [successMessage, setSuccessMessage] = useState("");
   const [documentsUnderReview, setDocumentsUnderReview] = useState(false);
   const [activeTab, setActiveTab] = useState("profile");
+  const [logoutOpen, setLogoutOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const fileInputRef = useRef(null);
   const pendingDocumentType = useRef("");
   const documentsPanelRef = useRef(null);
@@ -310,6 +312,13 @@ export default function DriverProfilePage({ onBack }) {
     localStorage.removeItem("refresh");
     localStorage.removeItem("user");
     window.location.href = "/login";
+  };
+
+  // Confirm before ending the session; guard against duplicate submissions.
+  const confirmLogout = () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    handleLogout();
   };
 
   const handleDocumentsClick = () => {
@@ -913,11 +922,28 @@ export default function DriverProfilePage({ onBack }) {
         </section>
 
         {/* Logout */}
-        <button type="button" className="dp-logout-btn" onClick={handleLogout}>
-          <span>↪</span>
+        <button
+          type="button"
+          className="dp-logout-btn"
+          onClick={() => setLogoutOpen(true)}
+          aria-haspopup="dialog"
+        >
+          <span aria-hidden="true">↪</span>
           Logout
         </button>
       </div>
+
+      <ConfirmationDialog
+        open={logoutOpen}
+        danger
+        title="Log out?"
+        confirmLabel={loggingOut ? "Logging out…" : "Log out"}
+        cancelLabel="Cancel"
+        onConfirm={confirmLogout}
+        onCancel={() => setLogoutOpen(false)}
+      >
+        You&apos;ll need to sign in again to access your driver account on this device.
+      </ConfirmationDialog>
 
       {/* Bottom Navigation */}
       <nav className="dp-bottom-nav">
