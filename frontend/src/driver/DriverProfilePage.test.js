@@ -240,3 +240,102 @@ describe("DriverProfilePage personal information details", () => {
     restoreLocation();
   });
 });
+
+describe("DriverProfilePage vehicle & document summaries", () => {
+  const ALL_TYPES = [
+    "license", "national_id", "profile_photo", "insurance",
+    "carte_grise", "vignette", "plate_number_photo",
+  ];
+  const approvedDoc = (t) => ({ document_type: t, file: "f.jpg", status: "approved" });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    Storage.prototype.getItem = jest.fn(() => "test-token");
+    Storage.prototype.removeItem = jest.fn();
+  });
+
+  function mockWith({ vehicle, documents = [] }) {
+    axios.get.mockImplementation((url) => {
+      if (url.includes("/payments/payout-methods/")) return Promise.resolve({ data: [] });
+      if (url.includes("/payments/withdrawals/")) {
+        return Promise.resolve({ data: { available_balance: "0", withdrawals: [] } });
+      }
+      // status approved -> account-status card hidden, avoids text collisions
+      if (url.includes("/drivers/me/profile/")) {
+        return Promise.resolve({ data: { ...profileResponse, vehicle, status: "approved" } });
+      }
+      if (url.includes("/drivers/me/stats/")) return Promise.resolve({ data: statsResponse });
+      if (url.includes("/drivers/me/documents/")) return Promise.resolve({ data: { documents } });
+      if (url.includes("/drivers/me/feedback/reviews/")) return Promise.resolve({ data: { results: [] } });
+      if (url.includes("/drivers/me/achievements/")) return Promise.resolve({ data: { achievements: [] } });
+      if (url.includes("/drivers/me/")) return Promise.resolve({ data: baseResponse });
+      return Promise.resolve({ data: {} });
+    });
+  }
+
+  async function renderReady() {
+    await act(async () => { render(<DriverProfilePage />); });
+    await waitFor(() => { expect(screen.getByText("Ahmed Driver")).toBeInTheDocument(); });
+  }
+
+  it("renders a vehicle summary with complete data", async () => {
+    const restore = setupLocationMock();
+    mockWith({ vehicle: { make: "Toyota", model: "Corolla", color: "White", plate_number: "NKC-1234", car_type: "economy" } });
+    await renderReady();
+    expect(screen.getByLabelText("Vehicle summary")).toBeInTheDocument();
+    expect(screen.getByText("Color")).toBeInTheDocument();
+    expect(screen.getByText("White")).toBeInTheDocument();
+    expect(screen.getByText("Type")).toBeInTheDocument();
+    expect(screen.getByText("Economy")).toBeInTheDocument();
+    restore();
+  });
+
+  it("hides missing vehicle fields with partial data", async () => {
+    const restore = setupLocationMock();
+    mockWith({ vehicle: { make: "Toyota", model: "Corolla", plate_number: "NKC-1234" } });
+    await renderReady();
+    expect(screen.getByText("Make")).toBeInTheDocument();
+    expect(screen.queryByText("Color")).not.toBeInTheDocument();
+    expect(screen.queryByText("Type")).not.toBeInTheDocument();
+    restore();
+  });
+
+  it("shows an all-approved document summary", async () => {
+    const restore = setupLocationMock();
+    mockWith({ vehicle: profileResponse.vehicle, documents: ALL_TYPES.map(approvedDoc) });
+    await renderReady();
+    expect(screen.getByText("Document status")).toBeInTheDocument();
+    expect(screen.getByText("All approved")).toBeInTheDocument();
+    restore();
+  });
+
+  it("shows a pending document summary", async () => {
+    const restore = setupLocationMock();
+    const documents = ALL_TYPES.map((t) =>
+      t === "insurance" ? { document_type: t, file: "f.jpg", status: "pending_review" } : approvedDoc(t)
+    );
+    mockWith({ vehicle: profileResponse.vehicle, documents });
+    await renderReady();
+    expect(screen.getByText("Pending review")).toBeInTheDocument();
+    restore();
+  });
+
+  it("shows an expired document summary", async () => {
+    const restore = setupLocationMock();
+    const documents = [{ document_type: "license", file: "f.jpg", status: "approved", days_until_expiry: -3 }];
+    mockWith({ vehicle: profileResponse.vehicle, documents });
+    await renderReady();
+    expect(screen.getByText("Action needed")).toBeInTheDocument();
+    expect(screen.getByText("1 document expired")).toBeInTheDocument();
+    restore();
+  });
+
+  it("shows an incomplete summary when documents are missing", async () => {
+    const restore = setupLocationMock();
+    mockWith({ vehicle: profileResponse.vehicle, documents: [] });
+    await renderReady();
+    expect(screen.getByText("Incomplete")).toBeInTheDocument();
+    expect(screen.getByText("7 documents missing")).toBeInTheDocument();
+    restore();
+  });
+});

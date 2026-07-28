@@ -820,6 +820,24 @@
   margin-top: 12px;
 }
 
+/* === Document status summary === */
+.dp-doc-summary__warning {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 4px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #374151;
+}
+
+.dp-doc-summary__count {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
+}
+
 /* === Account status card === */
 .dp-status-card {
   display: flex;

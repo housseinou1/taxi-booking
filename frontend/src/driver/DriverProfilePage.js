@@ -106,6 +106,27 @@ const initials = (name) =>
     .map((part) => part.charAt(0).toUpperCase())
     .join("") || "YD";
 
+// Presentation-only summary of existing per-document statuses. Does not change
+// document/expiry logic — it only reads getDocumentStatus() results.
+const summarizeDocuments = (rows = []) => {
+  const statuses = rows.map(({ item, document }) => getDocumentStatus(document, item));
+  const count = (predicate) => statuses.filter(predicate).length;
+  const expired = count((s) => s === "expired");
+  const rejected = count((s) => s === "rejected");
+  const missing = count((s) => s === "missing");
+  const expiring = count((s) => s === "expiring_soon");
+  const pending = count((s) =>
+    ["pending", "pending_review", "needs_review", "under_review", "submitted"].includes(s)
+  );
+  const plural = (n) => (n > 1 ? "s" : "");
+  if (expired > 0) return { intent: "danger", label: "Action needed", warning: `${expired} document${plural(expired)} expired` };
+  if (rejected > 0) return { intent: "danger", label: "Action needed", warning: `${rejected} document${plural(rejected)} rejected` };
+  if (missing > 0) return { intent: "warning", label: "Incomplete", warning: `${missing} document${plural(missing)} missing` };
+  if (expiring > 0) return { intent: "warning", label: "Expiring soon", warning: `${expiring} document${plural(expiring)} expiring soon` };
+  if (pending > 0) return { intent: "warning", label: "Pending review", warning: `${pending} document${plural(pending)} pending review` };
+  return { intent: "success", label: "All approved", warning: "All documents are approved" };
+};
+
 // Presentation-only mapping of the existing backend-derived approval status to a
 // badge intent, icon, and human-readable label. Does not introduce new statuses,
 // infer verification, or alter gating.
@@ -369,6 +390,12 @@ export default function DriverProfilePage({ onBack }) {
   const make = displayValue(vehicle.make, base.vehicle_make, base.car_make);
   const model = displayValue(vehicle.model, base.vehicle_model, base.car_model);
   const plate = displayValue(vehicle.plate_number, base.vehicle_plate, base.plate_number);
+  // Raw vehicle values for the structured summary (rows hidden when absent).
+  const vehicleMakeRaw = getValue(vehicle.make, base.vehicle_make, base.car_make);
+  const vehicleModelRaw = getValue(vehicle.model, base.vehicle_model, base.car_model);
+  const vehicleColorRaw = getValue(vehicle.color, base.vehicle_color, base.car_color);
+  const vehiclePlateRaw = getValue(vehicle.plate_number, base.vehicle_plate, base.plate_number);
+  const vehicleTypeRaw = getValue(vehicle.car_type, base.car_type, enhanced.car_type);
   const contactPhone = displayValue(base.phone_number, enhanced.phone_number, user.phone_number);
   const contactEmail = displayValue(base.email, enhanced.email, user.email);
   // Raw (unformatted) values for the structured details section — rows are hidden
@@ -597,6 +624,70 @@ export default function DriverProfilePage({ onBack }) {
             <span className="dp-row-arrow">›</span>
           </button>
         </section>
+
+        {/* Vehicle Summary */}
+        <section className="dp-section-card" aria-label="Vehicle summary">
+          <div className="dp-section-header">
+            <h3 className="dp-section-title">Vehicle</h3>
+            {vehiclePlateRaw && !isPlaceholderDisplayValue(vehiclePlateRaw) && (
+              <span className="dp-plate-badge">{vehiclePlateRaw}</span>
+            )}
+          </div>
+          <div className="dp-detail-list">
+            <DetailRow label="Make" value={vehicleMakeRaw} />
+            <DetailRow label="Model" value={vehicleModelRaw} />
+            <DetailRow label="Color" value={titleCase(vehicleColorRaw)} />
+            <DetailRow label="Type" value={titleCase(vehicleTypeRaw)} />
+            <DetailRow label="Plate number" value={vehiclePlateRaw} />
+          </div>
+          <button
+            type="button"
+            className="dp-row-btn dp-detail-edit"
+            onClick={() => documentsPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+          >
+            <span className="dp-row-icon">🚗</span>
+            <span className="dp-row-text">
+              <strong>Vehicle &amp; documents</strong>
+              <small>View your vehicle documents</small>
+            </span>
+            <span className="dp-row-arrow">›</span>
+          </button>
+        </section>
+
+        {/* Document Status Summary */}
+        {(() => {
+          const docSummary = summarizeDocuments(documentsByType);
+          return (
+            <section
+              className="dp-section-card dp-doc-summary"
+              aria-label={`Document status: ${docSummary.label}`}
+            >
+              <div className="dp-section-header">
+                <h3 className="dp-section-title">Document status</h3>
+                <Badge intent={docSummary.intent}>{docSummary.label}</Badge>
+              </div>
+              <p className="dp-doc-summary__warning">
+                <span aria-hidden="true">{docSummary.intent === "success" ? "✓" : "⚠️"}</span>{" "}
+                {docSummary.warning}
+              </p>
+              <p className="dp-doc-summary__count">
+                {approvedDocuments}/{DOCUMENT_TYPES.length} documents approved
+              </p>
+              <button
+                type="button"
+                className="dp-row-btn dp-detail-edit"
+                onClick={() => documentsPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+              >
+                <span className="dp-row-icon">📄</span>
+                <span className="dp-row-text">
+                  <strong>Manage documents</strong>
+                  <small>View and update your documents</small>
+                </span>
+                <span className="dp-row-arrow">›</span>
+              </button>
+            </section>
+          );
+        })()}
 
         {/* Wallet Section */}
         <section className="dp-section-card">
