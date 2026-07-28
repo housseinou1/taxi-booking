@@ -3,8 +3,10 @@ import { cx } from "../utils/cx";
 
 /**
  * Canonical YALA button. Prefer named aliases (PrimaryButton, etc.) for clarity.
+ * Forwards refs to the underlying element so consumers can manage focus/scroll
+ * (e.g. `startRideButtonRef.current.scrollIntoView()`).
  */
-export default function Button({
+const Button = React.forwardRef(function Button({
   children,
   variant = "primary",
   size = "md",
@@ -17,7 +19,7 @@ export default function Button({
   as: Tag = "button",
   type = "button",
   ...rest
-}) {
+}, ref) {
   const variantClass = {
     primary: "yds-btn--primary",
     secondary: "yds-btn--secondary",
@@ -33,6 +35,7 @@ export default function Button({
 
   return (
     <Tag
+      ref={ref}
       type={Tag === "button" ? type : undefined}
       className={cx(
         "yds-btn",
@@ -51,27 +54,30 @@ export default function Button({
       {!isLoading && iconRight ? <span className="yds-btn__icon" aria-hidden="true">{iconRight}</span> : null}
     </Tag>
   );
-}
+});
 
-export function PrimaryButton(props) {
-  return <Button variant="primary" {...props} />;
-}
+export default Button;
 
-export function SecondaryButton(props) {
-  return <Button variant="secondary" {...props} />;
-}
+export const PrimaryButton = React.forwardRef(function PrimaryButton(props, ref) {
+  return <Button ref={ref} variant="primary" {...props} />;
+});
 
-export function OutlinedButton(props) {
-  return <Button variant="outlined" {...props} />;
-}
+export const SecondaryButton = React.forwardRef(function SecondaryButton(props, ref) {
+  return <Button ref={ref} variant="secondary" {...props} />;
+});
 
-export function TextButton(props) {
-  return <Button variant="text" {...props} />;
-}
+export const OutlinedButton = React.forwardRef(function OutlinedButton(props, ref) {
+  return <Button ref={ref} variant="outlined" {...props} />;
+});
 
-export function IconButton({ "aria-label": ariaLabel, children, icon, ...rest }) {
+export const TextButton = React.forwardRef(function TextButton(props, ref) {
+  return <Button ref={ref} variant="text" {...props} />;
+});
+
+export const IconButton = React.forwardRef(function IconButton({ "aria-label": ariaLabel, children, icon, ...rest }, ref) {
   return (
     <Button
+      ref={ref}
       variant="icon"
       aria-label={ariaLabel}
       {...rest}
@@ -79,11 +85,12 @@ export function IconButton({ "aria-label": ariaLabel, children, icon, ...rest })
       {icon || children}
     </Button>
   );
-}
+});
 
-export function FloatingActionButton({ "aria-label": ariaLabel, children, icon, ...rest }) {
+export const FloatingActionButton = React.forwardRef(function FloatingActionButton({ "aria-label": ariaLabel, children, icon, ...rest }, ref) {
   return (
     <Button
+      ref={ref}
       variant="fab"
       aria-label={ariaLabel}
       {...rest}
@@ -91,4 +98,4 @@ export function FloatingActionButton({ "aria-label": ariaLabel, children, icon, 
       {icon || children}
     </Button>
   );
-}
+});
