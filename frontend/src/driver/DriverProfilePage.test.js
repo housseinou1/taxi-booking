@@ -3,8 +3,12 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import axios from "axios";
 
 import DriverProfilePage from "./DriverProfilePage";
+import { navigateInApp } from "../navigation/inAppNavigation";
 
 jest.mock("axios");
+jest.mock("../navigation/inAppNavigation", () => ({
+  navigateInApp: jest.fn(),
+}));
 
 const baseResponse = {
   first_name: "Ahmed",
@@ -77,7 +81,7 @@ describe("DriverProfilePage button behavior", () => {
     const onBack = jest.fn();
     await renderProfile({ onBack });
 
-    fireEvent.click(screen.getByLabelText("Close profile"));
+    fireEvent.click(screen.getByLabelText("Back to driver dashboard"));
 
     expect(onBack).toHaveBeenCalledTimes(1);
     restoreLocation();
@@ -87,7 +91,7 @@ describe("DriverProfilePage button behavior", () => {
     const restoreLocation = setupLocationMock();
     await renderProfile();
 
-    fireEvent.click(screen.getByLabelText("Close profile"));
+    fireEvent.click(screen.getByLabelText("Back to driver dashboard"));
 
     expect(window.location.href).toBe("/driver");
     restoreLocation();
@@ -97,11 +101,11 @@ describe("DriverProfilePage button behavior", () => {
     const restoreLocation = setupLocationMock();
     await renderProfile();
 
-    fireEvent.click(screen.getByRole("button", { name: "Edit driver profile" }));
-    expect(window.location.href).toBe("/driver/profile/edit");
+    fireEvent.click(screen.getByRole("button", { name: /Account settings/i }));
+    expect(navigateInApp).toHaveBeenCalledWith("/driver/profile/edit");
 
-    fireEvent.click(screen.getByRole("button", { name: /Settings/i }));
-    expect(window.location.href).toBe("/settings");
+    fireEvent.click(screen.getByLabelText("Open driver settings"));
+    expect(navigateInApp).toHaveBeenCalledWith("/settings");
 
     restoreLocation();
   });
@@ -110,7 +114,7 @@ describe("DriverProfilePage button behavior", () => {
     const restoreLocation = setupLocationMock();
     await renderProfile();
 
-    fireEvent.click(screen.getByRole("button", { name: /Log out/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Logout/i }));
 
     expect(Storage.prototype.removeItem).toHaveBeenCalledWith("access");
     expect(Storage.prototype.removeItem).toHaveBeenCalledWith("refresh");

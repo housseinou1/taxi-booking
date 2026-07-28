@@ -28,7 +28,7 @@ import {
   redirectToDriverAgreement,
 } from "./utils/driverLegalGate";
 import { formatAvailabilityApiError } from "./utils/availabilityErrors";
-import { isDeliveryAppInstall, isDriverLyftUI, isNative } from "../native/platform";
+import { isDeliveryAppInstall, isDriverYalaUI, isNative } from "../native/platform";
 import { unregisterPushNotifications } from "../native/push";
 import { requestLocationPermission, stopBackgroundLocationTracking, watchForegroundLocation } from "../native/location";
 import { haversineKm } from "../delivery/deliveryPricing";
@@ -49,13 +49,15 @@ import { getNavigationDestination } from "./components/MultiStopProgress";
 import { mergeAvailableRidesFromServer, normalizeRideOfferId } from "./utils/mergeAvailableRides";
 import HamburgerMenu from "./components/HamburgerMenu";
 import RideRequestCard from "./components/RideRequestCard";
+import DriverDashboardContent from "./dashboard/DriverDashboardContent";
 import DriverProfilePage from "./DriverProfilePage";
 import RideStatusButtons from "../RideStatusButtons";
+import { PrimaryButton, Button } from "../design-system/components";
 import SafetyEmergencyPanel from "../safety/SafetyEmergencyPanel";
 import TripSafetyPrompt from "../safety/TripSafetyPrompt";
 import useTripSafetyMonitor from "../safety/useTripSafetyMonitor";
 import "./driver-tokens.css";
-import "./lyft-driver.css";
+import "./driver-theme.css";
 
 const DRIVER_SOUND_ENABLED_KEY = "driver_ride_sound_enabled";
 const HEATMAP_REFRESH_INTERVAL = 60000;
@@ -218,11 +220,11 @@ export default function DriverDashboardNew() {
     );
   }
 
-  return <DriverDashboardContent />;
+  return <DriverDashboardContentView />;
 }
 
-function DriverDashboardContent() {
-  const lyftUI = isDriverLyftUI();
+function DriverDashboardContentView() {
+  const yalaUI = isDriverYalaUI();
   const [isOnline, setIsOnline] = useState(false);
   const [toggleLoading, setToggleLoading] = useState(false);
   const [driverProfile, setDriverProfile] = useState(null);
@@ -1554,7 +1556,7 @@ function DriverDashboardContent() {
       className={[
         "driver-dashboard-new",
         "driver-dashboard-v2",
-        lyftUI ? "driver-dashboard-new--lyft" : "",
+        yalaUI ? "driver-dashboard-new--lyft" : "",
         isOnline ? "driver-dashboard-new--online" : "",
         activeRide ? "driver-dashboard-new--navigating" : "",
         incomingRide && !activeRide ? "driver-dashboard-new--incoming" : "",
@@ -1696,23 +1698,26 @@ function DriverDashboardContent() {
             />
             {activeRide.status === "driver_arrived" &&
             (activeRide.private_call_number || activeRide.rider_phone) ? (
-              <button
-                type="button"
-                className="driver-nav-sheet__cancel"
-                style={{ marginTop: 8, background: "#0f766e", borderColor: "#0f766e" }}
+              <PrimaryButton
+                fullWidth
+                size="sm"
+                iconLeft="📞"
                 onClick={() => logAndCallRider(activeRide)}
+                aria-label="Call rider"
               >
                 Call Rider
-              </button>
+              </PrimaryButton>
             ) : null}
             {canCancelActiveRide ? (
-              <button
-                type="button"
-                className="driver-nav-sheet__cancel"
+              <Button
+                variant="danger"
+                fullWidth
+                size="sm"
                 onClick={() => setDriverCancelOpen(true)}
+                aria-label="Cancel ride"
               >
                 Cancel ride
-              </button>
+              </Button>
             ) : null}
           </div>
         </section>

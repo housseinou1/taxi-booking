@@ -1,6 +1,7 @@
 import React from "react";
 import { formatMoney, MARKET } from "../../marketConfig";
 import { openExternalNavigation } from "../utils/externalNavigation";
+import { PrimaryButton, Button } from "../../design-system/components";
 import "./DriverLiveTripBar.css";
 
 function ProgressRing({ progress, label, sublabel, tone = "green", pulse = false }) {
@@ -74,13 +75,25 @@ export default function DriverLiveTripBar({
           </strong>
           <p>{distanceLabel ? `${distanceLabel} away · ${ride.pickup || ""}` : (ride.pickup || "En route to pickup")}</p>
           <div className="driver-live-bar__btn-row">
-            <button type="button" className="driver-live-bar__nav-btn" onClick={handleNavigate}>
-              🗺️ Navigate
-            </button>
+            <PrimaryButton
+              size="sm"
+              iconLeft="🗺️"
+              onClick={handleNavigate}
+              aria-label="Navigate to pickup"
+            >
+              Navigate
+            </PrimaryButton>
             {riderPhone && (
-              <a href={`tel:${riderPhone}`} className="driver-live-bar__nav-btn driver-live-bar__nav-btn--call">
-                📞 Call
-              </a>
+              <PrimaryButton
+                as="a"
+                href={`tel:${riderPhone}`}
+                size="sm"
+                iconLeft="📞"
+                className="driver-live-bar__nav-btn--call"
+                aria-label="Call rider"
+              >
+                Call
+              </PrimaryButton>
             )}
           </div>
         </div>
@@ -119,18 +132,27 @@ export default function DriverLiveTripBar({
           </p>
           <div className="driver-live-bar__btn-row">
             {riderPhone && (
-              <a href={`tel:${riderPhone}`} className="driver-live-bar__nav-btn driver-live-bar__nav-btn--call">
-                📞 Call Rider
-              </a>
+              <PrimaryButton
+                as="a"
+                href={`tel:${riderPhone}`}
+                size="sm"
+                iconLeft="📞"
+                className="driver-live-bar__nav-btn--call"
+                aria-label="Call rider"
+              >
+                Call Rider
+              </PrimaryButton>
             )}
             {liveState.noShowReady && onNoShow && (
-              <button
-                type="button"
-                className="driver-live-bar__nav-btn driver-live-bar__nav-btn--noshow"
+              <Button
+                variant="danger"
+                size="sm"
+                iconLeft="🚫"
                 onClick={onNoShow}
+                aria-label="Report rider absent"
               >
-                🚫 Rider Absent
-              </button>
+                Rider Absent
+              </Button>
             )}
           </div>
           {liveState.noShowReady ? (
@@ -155,9 +177,14 @@ export default function DriverLiveTripBar({
             <strong>{riderName ? `Trip with ${riderName}` : "Trip in progress"}</strong>
             <p>{distanceLabel ? `${distanceLabel} to destination` : (ride.destination || "Follow navigation")}</p>
           </div>
-          <button type="button" className="driver-live-bar__nav-btn" onClick={handleNavigate}>
-            🏁 Navigate
-          </button>
+          <PrimaryButton
+            size="sm"
+            iconLeft="🏁"
+            onClick={handleNavigate}
+            aria-label="Navigate to destination"
+          >
+            Navigate
+          </PrimaryButton>
         </div>
       </section>
     );

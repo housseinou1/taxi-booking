@@ -756,13 +756,13 @@ const pickupPinCardStyle = {
   display: "grid",
   gap: "8px",
   padding: "14px",
-  borderRadius: "14px",
+  borderRadius: "var(--yds-radius-md)",
   background: "#fff7ed",
-  border: "1px solid #fed7aa",
+  border: "1px solid var(--yds-warn)",
 };
 
 const pickupPinLabelStyle = {
-  color: "#9a3412",
+  color: "var(--yds-warn)",
   fontWeight: 950,
   fontSize: "0.82rem",
   textTransform: "uppercase",
@@ -772,10 +772,10 @@ const pickupPinInputStyle = {
   width: "100%",
   boxSizing: "border-box",
   minHeight: "52px",
-  borderRadius: "12px",
-  border: "2px solid #fb923c",
-  background: "#fff",
-  color: "#111827",
+  borderRadius: "var(--yds-radius-sm)",
+  border: "2px solid var(--yds-warn)",
+  background: "var(--yds-card)",
+  color: "var(--yds-ink)",
   textAlign: "center",
   fontSize: "1.5rem",
   fontWeight: 950,
@@ -783,7 +783,7 @@ const pickupPinInputStyle = {
 };
 
 const pickupPinHelpStyle = {
-  color: "#7c2d12",
+  color: "var(--yds-warn)",
   fontSize: "0.8rem",
   fontWeight: 750,
   lineHeight: 1.4,
@@ -791,10 +791,10 @@ const pickupPinHelpStyle = {
 
 const pinVerifiedStyle = {
   padding: "12px 14px",
-  borderRadius: "14px",
+  borderRadius: "var(--yds-radius-md)",
   background: "rgba(37, 99, 235, 0.12)",
   border: "1px solid rgba(37, 99, 235, 0.28)",
-  color: "#1d4ed8",
+  color: "var(--yds-info)",
   fontSize: "0.9rem",
   fontWeight: 800,
   textAlign: "center",
@@ -802,32 +802,32 @@ const pinVerifiedStyle = {
 
 const baseButtonStyle = {
   width: "100%",
-  minHeight: "48px",
+  minHeight: "var(--yds-touch)",
   border: "none",
-  borderRadius: "14px",
-  color: "white",
+  borderRadius: "var(--yds-radius-md)",
+  color: "var(--yds-on-primary)",
   fontWeight: 900,
   fontSize: "0.98rem",
   cursor: "pointer",
-  boxShadow: "0 12px 24px rgba(0, 0, 0, 0.18)",
+  boxShadow: "var(--yds-shadow-md)",
 };
 
 const primaryButtonStyle = {
   ...baseButtonStyle,
-  background: "#12b76a",
+  background: "var(--yds-primary)",
 };
 
 const navigationChoiceStyle = {
   display: "grid",
   gap: "8px",
   padding: "12px",
-  borderRadius: "14px",
+  borderRadius: "var(--yds-radius-md)",
   background: "rgba(17, 24, 39, 0.06)",
-  border: "1px solid rgba(17, 24, 39, 0.1)",
+  border: "1px solid var(--yds-line)",
 };
 
 const navigationTitleStyle = {
-  color: "#374151",
+  color: "var(--yds-muted)",
   fontSize: "0.78rem",
   fontWeight: 900,
   textTransform: "uppercase",
@@ -844,9 +844,9 @@ const navigationButtonStyle = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
-  borderRadius: "12px",
-  background: "#111827",
-  color: "white",
+  borderRadius: "var(--yds-radius-sm)",
+  background: "var(--yds-ink)",
+  color: "var(--yds-on-primary)",
   fontWeight: 900,
   textDecoration: "none",
   textAlign: "center",
@@ -854,14 +854,14 @@ const navigationButtonStyle = {
 };
 
 const wazeButtonStyle = {
-  background: "#0891b2",
+  background: "var(--yds-info)",
 };
 
 const navigationNoticeStyle = {
   padding: "12px",
-  borderRadius: "14px",
-  background: "#fef3c7",
-  color: "#92400e",
+  borderRadius: "var(--yds-radius-md)",
+  background: "var(--yds-color-pending-soft)",
+  color: "var(--yds-warn)",
   fontWeight: 800,
 };
 
@@ -869,13 +869,13 @@ const stopProgressStyle = {
   display: "grid",
   gap: "8px",
   padding: "12px",
-  borderRadius: "14px",
+  borderRadius: "var(--yds-radius-md)",
   background: "rgba(15, 143, 77, 0.08)",
   border: "1px solid rgba(15, 143, 77, 0.18)",
 };
 
 const stopProgressTitleStyle = {
-  color: "#111827",
+  color: "var(--yds-ink)",
   fontSize: "0.86rem",
 };
 
@@ -892,15 +892,15 @@ const stopProgressNumberStyle = {
   borderRadius: "50%",
   display: "grid",
   placeItems: "center",
-  background: "#0F8F4D",
-  color: "white",
+  background: "var(--yds-success)",
+  color: "var(--yds-on-primary)",
   fontWeight: 950,
 };
 
 const slideTrackStyle = {
   position: "relative",
   height: "58px",
-  borderRadius: "999px",
+  borderRadius: "var(--yds-radius-pill)",
   overflow: "hidden",
   border: "1px solid rgba(255, 255, 255, 0.18)",
   userSelect: "none",
@@ -921,7 +921,7 @@ const slideLabelStyle = {
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  color: "#111827",
+  color: "var(--yds-ink)",
   fontWeight: 950,
   fontSize: "0.98rem",
   pointerEvents: "none",
@@ -935,10 +935,10 @@ const slideKnobStyle = {
   borderRadius: "50%",
   display: "grid",
   placeItems: "center",
-  color: "white",
+  color: "var(--yds-on-primary)",
   fontWeight: 950,
   fontSize: "1.35rem",
-  boxShadow: "0 12px 24px rgba(15, 23, 42, 0.22)",
+  boxShadow: "var(--yds-shadow-lg)",
   transition: "left 120ms ease",
   pointerEvents: "none",
 };
@@ -952,15 +952,15 @@ const nativeActionButtonStyle = {
   width: "100%",
   minHeight: "56px",
   border: "none",
-  borderRadius: "14px",
-  color: "#fff",
+  borderRadius: "var(--yds-radius-md)",
+  color: "var(--yds-on-primary)",
   fontWeight: 900,
   fontSize: "1rem",
-  boxShadow: "0 10px 24px rgba(15, 23, 42, 0.2)",
+  boxShadow: "var(--yds-shadow-md)",
 };
 
 const nativeActionHintStyle = {
-  color: "#9ca3af",
+  color: "var(--yds-muted)",
   fontSize: "0.82rem",
   fontWeight: 700,
   textAlign: "center",
@@ -972,7 +972,7 @@ const stateTextStyle = {
   alignItems: "center",
   justifyContent: "center",
   minHeight: "44px",
-  borderRadius: "12px",
+  borderRadius: "var(--yds-radius-sm)",
   background: "rgba(255, 255, 255, 0.08)",
   color: "#d1d5db",
   fontWeight: 900,
@@ -980,10 +980,10 @@ const stateTextStyle = {
 
 const actionErrorStyle = {
   padding: "10px 14px",
-  borderRadius: "12px",
-  background: "rgba(239, 68, 68, 0.12)",
-  border: "1px solid rgba(239, 68, 68, 0.4)",
-  color: "#ef4444",
+  borderRadius: "var(--yds-radius-sm)",
+  background: "var(--yds-color-rejected-soft)",
+  border: "1px solid var(--yds-danger)",
+  color: "var(--yds-danger)",
   fontSize: "0.85rem",
   fontWeight: 700,
   textAlign: "center",

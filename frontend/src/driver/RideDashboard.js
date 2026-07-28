@@ -1,3 +1,8 @@
+/**
+ * @deprecated LEGACY — not mounted by App.js production routes.
+ * Production dashboard is `DriverDashboardNew.js`. This module is only
+ * referenced by legacy `DriverApp.js`. Do not delete until DriverApp is retired.
+ */
 import React, { useState } from "react";
 import { API_URL } from "../apiConfig";
 import RideStatusButtons from "../RideStatusButtons";
@@ -231,6 +236,10 @@ const printDriverReceipt = (ride) => {
 };
 
 // ─── Main Component ──────────────────────────────────────────────────────────
+/**
+ * @deprecated Legacy ride dashboard used only by DriverApp. Production ride
+ * presentation is owned by DriverDashboardNew.
+ */
 function RideDashboard({ rides = [], availableRides = [], isOnline, fetchRides }) {
   const [cancelTarget, setCancelTarget] = useState(null);
   const [cancelReason, setCancelReason] = useState("");
@@ -404,7 +413,7 @@ function RideDashboard({ rides = [], availableRides = [], isOnline, fetchRides }
         return (
         <div style={S.backdrop}>
           <div style={S.modal}>
-            <h3 style={S.modalTitle}>Cancel trip #{cancelTarget.id}?</h3>
+            <h3 style={S.modalTitle}>Cancel this trip?</h3>
             {cancelTarget.status === "driver_arrived" && (
               <p style={{ fontSize: 12, color: "#94a3b8", margin: "0 0 10px" }}>
                 If the rider hasn't shown up, select a no-show reason — your fee and score will be protected.
@@ -476,7 +485,7 @@ function Card({ ride, tag, tagColor, children }) {
     <article style={S.card}>
       <div style={S.cardHead}>
         <div>
-          <span style={S.rideId}>#{ride.id}</span>
+          <span style={S.rideId}>Ride request</span>
           <span style={S.fare}>{formatMoney(ride.fare)}</span>
         </div>
         <span style={{ ...S.tag, background: tagColor + "18", color: tagColor }}>{tag}</span>
@@ -599,7 +608,7 @@ function RiderRating({ ride, onRated }) {
   );
 }
 
-// ─── Styles (Uber/Lyft inspired) ────────────────────────────────────────────
+// ─── Legacy Driver styles ───────────────────────────────────────────────────
 const S = {
   root: { display: "flex", flexDirection: "column", gap: 16, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' },
 

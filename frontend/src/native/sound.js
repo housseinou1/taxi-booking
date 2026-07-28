@@ -54,8 +54,26 @@ let sharedAudioContext = null;
 let lastRideAlertAt = 0;
 const RIDE_ALERT_MIN_GAP_MS = 350;
 const RIDE_ALERT_SOUND_STYLE_KEY = "driver_notification_sound_style";
+/** @deprecated Prefer CLASSIC — storage backward compatibility */
 export const RIDE_ALERT_SOUND_STYLE_STANDARD = "standard";
+/** @deprecated Prefer PREMIUM — storage backward compatibility */
 export const RIDE_ALERT_SOUND_STYLE_LYFT = "lyft";
+export const RIDE_ALERT_SOUND_STYLE_CLASSIC = "classic";
+export const RIDE_ALERT_SOUND_STYLE_PREMIUM = "premium";
+export const RIDE_ALERT_SOUND_STYLE_EXPRESS = "express";
+export const RIDE_ALERT_SOUND_STYLE_PULSE = "pulse";
+export const RIDE_ALERT_SOUND_STYLE_SIGNATURE = "signature";
+
+export const RIDE_ALERT_SOUND_LABELS = {
+  [RIDE_ALERT_SOUND_STYLE_CLASSIC]: "YALA Classic",
+  [RIDE_ALERT_SOUND_STYLE_PREMIUM]: "YALA Premium",
+  [RIDE_ALERT_SOUND_STYLE_EXPRESS]: "YALA Express",
+  [RIDE_ALERT_SOUND_STYLE_PULSE]: "YALA Pulse",
+  [RIDE_ALERT_SOUND_STYLE_SIGNATURE]: "YALA Signature",
+  [RIDE_ALERT_SOUND_STYLE_STANDARD]: "YALA Classic",
+  [RIDE_ALERT_SOUND_STYLE_LYFT]: "YALA Premium",
+};
+
 let rideAlertSoundStyleCache = null;
 
 function getCapacitorAssetUrl(fileName) {
@@ -85,9 +103,25 @@ function getDeliveryNativeAudioAssetPaths() {
 }
 
 function normalizeRideAlertSoundStyle(style) {
-  return style === RIDE_ALERT_SOUND_STYLE_STANDARD
-    ? RIDE_ALERT_SOUND_STYLE_STANDARD
-    : RIDE_ALERT_SOUND_STYLE_LYFT;
+  if (style === RIDE_ALERT_SOUND_STYLE_STANDARD || style === RIDE_ALERT_SOUND_STYLE_CLASSIC) {
+    return RIDE_ALERT_SOUND_STYLE_CLASSIC;
+  }
+  if (style === RIDE_ALERT_SOUND_STYLE_LYFT || style === RIDE_ALERT_SOUND_STYLE_PREMIUM) {
+    return RIDE_ALERT_SOUND_STYLE_PREMIUM;
+  }
+  if (
+    style === RIDE_ALERT_SOUND_STYLE_EXPRESS ||
+    style === RIDE_ALERT_SOUND_STYLE_PULSE ||
+    style === RIDE_ALERT_SOUND_STYLE_SIGNATURE
+  ) {
+    return style;
+  }
+  return RIDE_ALERT_SOUND_STYLE_PREMIUM;
+}
+
+export function getRideAlertSoundLabel(style) {
+  const resolved = style === undefined ? getRideAlertSoundStyle() : style;
+  return RIDE_ALERT_SOUND_LABELS[normalizeRideAlertSoundStyle(resolved)] || "YALA Premium";
 }
 
 export function getRideAlertSoundStyle() {
@@ -99,7 +133,7 @@ export function getRideAlertSoundStyle() {
     const stored = window.localStorage.getItem(RIDE_ALERT_SOUND_STYLE_KEY);
     rideAlertSoundStyleCache = normalizeRideAlertSoundStyle(stored);
   } catch (error) {
-    rideAlertSoundStyleCache = RIDE_ALERT_SOUND_STYLE_LYFT;
+    rideAlertSoundStyleCache = RIDE_ALERT_SOUND_STYLE_PREMIUM;
   }
 
   return rideAlertSoundStyleCache;
@@ -305,12 +339,16 @@ export async function playRideAlertChime({ force = false } = {}) {
       await ctx.resume();
     }
 
-    const soundStyle = getRideAlertSoundStyle();
+    const soundStyle = normalizeRideAlertSoundStyle(getRideAlertSoundStyle());
+    const volumeByStyle = {
+      [RIDE_ALERT_SOUND_STYLE_CLASSIC]: 0.78,
+      [RIDE_ALERT_SOUND_STYLE_PREMIUM]: 0.88,
+      [RIDE_ALERT_SOUND_STYLE_EXPRESS]: 0.92,
+      [RIDE_ALERT_SOUND_STYLE_PULSE]: 0.8,
+      [RIDE_ALERT_SOUND_STYLE_SIGNATURE]: 0.86,
+    };
     const masterGain = ctx.createGain();
-    masterGain.gain.setValueAtTime(
-      soundStyle === RIDE_ALERT_SOUND_STYLE_STANDARD ? 0.78 : 0.88,
-      ctx.currentTime
-    );
+    masterGain.gain.setValueAtTime(volumeByStyle[soundStyle] ?? 0.88, ctx.currentTime);
     masterGain.connect(ctx.destination);
 
     const playNote = (freq, startTime, duration, gainLevel = 0.55) => {
@@ -328,10 +366,23 @@ export async function playRideAlertChime({ force = false } = {}) {
     };
 
     const now = ctx.currentTime;
-    if (soundStyle === RIDE_ALERT_SOUND_STYLE_STANDARD) {
+    if (soundStyle === RIDE_ALERT_SOUND_STYLE_CLASSIC) {
       playNote(1047, now, 0.18, 0.62);
       playNote(1319, now + 0.14, 0.2, 0.68);
       playNote(1568, now + 0.3, 0.28, 0.72);
+    } else if (soundStyle === RIDE_ALERT_SOUND_STYLE_EXPRESS) {
+      playNote(1319, now, 0.1, 0.7);
+      playNote(1568, now + 0.08, 0.1, 0.72);
+      playNote(1760, now + 0.16, 0.12, 0.74);
+      playNote(1976, now + 0.24, 0.14, 0.76);
+    } else if (soundStyle === RIDE_ALERT_SOUND_STYLE_PULSE) {
+      playNote(880, now, 0.12, 0.58);
+      playNote(880, now + 0.2, 0.12, 0.58);
+    } else if (soundStyle === RIDE_ALERT_SOUND_STYLE_SIGNATURE) {
+      playNote(784, now, 0.14, 0.64);
+      playNote(988, now + 0.12, 0.14, 0.68);
+      playNote(1175, now + 0.24, 0.14, 0.7);
+      playNote(1319, now + 0.36, 0.22, 0.74);
     } else {
       playNote(880, now, 0.16, 0.66);
       playNote(1109, now + 0.11, 0.18, 0.72);

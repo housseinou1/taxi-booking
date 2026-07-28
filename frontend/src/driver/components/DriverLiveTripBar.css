@@ -1,13 +1,21 @@
+@import '../driver-tokens.css';
+
 .driver-live-bar {
   display: flex;
   align-items: center;
-  gap: 14px;
-  margin: 0 0 12px;
-  padding: 12px 14px;
-  border-radius: 16px;
-  background: linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(30, 41, 59, 0.92));
+  gap: var(--yds-space-3);
+  margin: 0 0 var(--yds-space-3);
+  padding: var(--yds-space-3);
+  border-radius: var(--yds-radius-md);
+  background: var(--driver-navy-soft);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  animation: driver-live-bar-in 0.35s ease;
+  animation: driver-live-bar-in var(--yds-duration-slow) ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .driver-live-bar {
+    animation: none;
+  }
 }
 
 @keyframes driver-live-bar-in {
@@ -53,15 +61,15 @@
 }
 
 .driver-live-ring--green .driver-live-ring__fill {
-  stroke: #22c55e;
+  stroke: var(--yds-success);
 }
 
 .driver-live-ring--amber .driver-live-ring__fill {
-  stroke: #f59e0b;
+  stroke: var(--yds-warn);
 }
 
 .driver-live-ring--blue .driver-live-ring__fill {
-  stroke: #38bdf8;
+  stroke: var(--yds-info);
 }
 
 .driver-live-ring.is-pulse .driver-live-ring__fill {
@@ -86,103 +94,84 @@
   align-items: center;
   justify-content: center;
   text-align: center;
-  color: #f8fafc;
-  padding: 8px;
+  color: var(--driver-white);
+  padding: var(--yds-space-2);
 }
 
 .driver-live-ring__center strong {
-  font-size: 15px;
+  font-size: var(--yds-text-base);
   line-height: 1.1;
 }
 
 .driver-live-ring__center span {
   margin-top: 2px;
-  font-size: 10px;
-  font-weight: 700;
+  font-size: var(--yds-text-xs);
+  font-weight: var(--yds-weight-bold);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: rgba(248, 250, 252, 0.72);
+  color: rgba(255, 255, 255, 0.72);
 }
 
 .driver-live-bar__copy {
   flex: 1;
   min-width: 0;
-  color: #e2e8f0;
+  color: var(--driver-gray-100);
 }
 
 .driver-live-bar__copy strong {
   display: block;
-  font-size: 14px;
+  font-size: var(--yds-text-sm);
   margin-bottom: 4px;
 }
 
 .driver-live-bar__copy p {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--yds-text-xs);
   line-height: 1.45;
-  color: rgba(226, 232, 240, 0.78);
+  color: rgba(255, 255, 255, 0.78);
 }
 
 .driver-live-bar__copy--row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--yds-space-3);
   width: 100%;
-}
-
-.driver-live-bar__nav-btn {
-  margin-top: 8px;
-  padding: 8px 12px;
-  border: 0;
-  border-radius: 999px;
-  background: #00a651;
-  color: #fff;
-  font-size: 12px;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.driver-live-bar__copy--row .driver-live-bar__nav-btn {
-  margin-top: 0;
-  flex-shrink: 0;
-}
-
-.driver-live-bar__badge {
-  display: inline-flex;
-  margin-top: 8px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 800;
-}
-
-.driver-live-bar__badge--ready {
-  background: rgba(34, 197, 94, 0.18);
-  color: #86efac;
-}
-
-.driver-live-bar__badge--gps {
-  background: rgba(245, 158, 11, 0.18);
-  color: #fcd34d;
 }
 
 .driver-live-bar__btn-row {
   display: flex;
-  gap: 8px;
+  gap: var(--yds-space-2);
   flex-wrap: wrap;
-  margin-top: 8px;
+  margin-top: var(--yds-space-2);
 }
 
-.driver-live-bar__nav-btn--call {
-  background: #0369a1;
-  text-decoration: none;
-  color: #fff;
+.driver-live-bar__copy--row .driver-live-bar__btn-row,
+.driver-live-bar__copy--row .yds-btn {
+  margin-top: 0;
 }
 
-.driver-live-bar__nav-btn--noshow {
-  background: rgba(239, 68, 68, 0.18);
-  color: #fca5a5;
-  border: 1px solid rgba(239, 68, 68, 0.4);
-  animation: driver-live-ring-pulse 1.2s ease-in-out infinite;
+.driver-live-bar__badge {
+  display: inline-flex;
+  margin-top: var(--yds-space-2);
+  padding: 4px 10px;
+  border-radius: var(--yds-radius-pill);
+  font-size: var(--yds-text-xs);
+  font-weight: var(--yds-weight-extrabold);
+}
+
+.driver-live-bar__badge--ready {
+  background: var(--driver-green-soft);
+  color: var(--driver-green);
+}
+
+.driver-live-bar__badge--gps {
+  background: rgba(245, 158, 11, 0.18);
+  color: var(--yds-gold);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .driver-live-bar__nav-btn--noshow {
+    animation: none;
+  }
 }

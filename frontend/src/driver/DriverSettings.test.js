@@ -77,7 +77,7 @@ describe("DriverSettings", () => {
       renderWithProvider(<DriverSettings />);
     });
 
-    expect(screen.getByText("Loading settings...")).toBeInTheDocument();
+    expect(screen.getByText("Loading settings…")).toBeInTheDocument();
   });
 
   it("displays all settings sections after loading", async () => {
@@ -103,12 +103,19 @@ describe("DriverSettings", () => {
     expect(screen.getByText("Promotions")).toBeInTheDocument();
     expect(screen.getByText("System Alerts")).toBeInTheDocument();
 
+    // YALA notification sound branding (no competitor names)
+    expect(screen.getByText("YALA Classic")).toBeInTheDocument();
+    expect(screen.getByText("YALA Pulse")).toBeInTheDocument();
+    expect(screen.getByText("YALA Signature")).toBeInTheDocument();
+    expect(screen.getByText("YALA Express")).toBeInTheDocument();
+    expect(screen.queryByText(/Lyft/i)).not.toBeInTheDocument();
+
     // GPS section
     expect(screen.getByText("📍 GPS Accuracy")).toBeInTheDocument();
     expect(screen.getByText("High Accuracy")).toBeInTheDocument();
     expect(screen.getByText("Battery Saver")).toBeInTheDocument();
 
-    // Dark mode section
+    // Dark mode section (shown when commercial light UI flag is off in test env)
     expect(screen.getByText("🌙 Appearance")).toBeInTheDocument();
     expect(screen.getByText("Dark Mode")).toBeInTheDocument();
 
@@ -329,9 +336,8 @@ describe("DriverSettings", () => {
     });
 
     await waitFor(() => {
-      expect(
-        screen.getByText("Failed to load settings. Please try again.")
-      ).toBeInTheDocument();
+      expect(screen.getByText("Couldn’t load settings")).toBeInTheDocument();
+      expect(screen.getByText("Please try again.")).toBeInTheDocument();
     });
 
     expect(screen.getByText("Retry")).toBeInTheDocument();

@@ -3,7 +3,7 @@ import axios from "axios";
 import { navigateInApp } from "../navigation/inAppNavigation";
 
 import { API_URL } from "../apiConfig";
-import { isDriverLyftUI } from "./lyftColors";
+import { isDriverYalaUI } from "./yalaColors";
 import DocumentsUnderReviewBanner from "./components/DocumentsUnderReviewBanner";
 import DriverPayoutPanel from "./components/DriverPayoutPanel";
 import TrustedContactsSection from "../safety/TrustedContactsSection";
@@ -27,7 +27,14 @@ const DOCUMENT_TYPES = [
 ];
 
 const getValue = (...values) => values.find((value) => value !== undefined && value !== null && value !== "");
-const displayValue = (...values) => getValue(...values) || "Not provided";
+const isPlaceholderDisplayValue = (value) => {
+  const text = String(value || "").trim();
+  if (!text || text === "n/a" || text === "Not provided" || text === "Not assigned") return true;
+  if (/^TEMP\b/i.test(text) || /^TEMP[-_]/i.test(text)) return true;
+  return false;
+};
+const displayValue = (...values) =>
+  getValue(...values.filter((candidate) => !isPlaceholderDisplayValue(candidate))) || "Not provided";
 const formatMRU = (value) => `${Number(value || 0).toLocaleString()} MRU`;
 const titleCase = (value = "") =>
   String(value)
@@ -400,7 +407,7 @@ export default function DriverProfilePage({ onBack }) {
   };
 
   return (
-    <main className={`dp-shell${isDriverLyftUI() ? " dp-shell--lyft" : ""}`}>
+    <main className={`dp-shell${isDriverYalaUI() ? " dp-shell--lyft" : ""}`}>
       <input
         ref={fileInputRef}
         type="file"

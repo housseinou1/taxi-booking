@@ -1,3 +1,9 @@
+/**
+ * @deprecated LEGACY monolithic Driver UI — not mounted by App.js.
+ * Production path: `DriverDashboardNew` via App.js `/driver` routes.
+ * Retained for reference and isolated unit tests. Deletion criteria:
+ * zero App.js imports, RideDashboard migration complete, QA approval.
+ */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 
@@ -33,7 +39,7 @@ import {
   setRideAlertSoundStyle,
   vibrateNative,
   playRideAlertChime,
-  RIDE_ALERT_SOUND_STYLE_LYFT,
+  RIDE_ALERT_SOUND_STYLE_SIGNATURE,
   RIDE_ALERT_SOUND_STYLE_STANDARD,
 } from "../native/sound";
 
@@ -165,6 +171,10 @@ function MetricTile({ label, value }) {
   );
 }
 
+/**
+ * @deprecated Legacy orchestration shell. Production routing uses
+ * DriverDashboardNew directly. Retained until ride-state parity is verified.
+ */
 export default function DriverApp() {
   const [availableRides, setAvailableRides] = useState([]);
   const [driverRides, setDriverRides] = useState([]);
@@ -385,7 +395,7 @@ export default function DriverApp() {
 
     if (!soundEnabled) return;
 
-    // Use Lyft-style chime
+    // Use the YALA Signature chime.
     const played = await playRideAlertChime();
     if (played) return;
 
@@ -440,7 +450,7 @@ export default function DriverApp() {
       }
     }
 
-    // Subtle double pulse + two-chime cadence for a cleaner Lyft-like alert.
+    // Subtle double pulse + two-chime cadence for the YALA alert.
     await vibrateNative(true);
     await playNotificationSound();
     const followUpId = setTimeout(() => {
@@ -1318,20 +1328,20 @@ export default function DriverApp() {
               </span>
             </div>
             <p style={rideAlertCopyStyle}>
-              Lyft-style chime with vibration for new nearby ride requests.
+              YALA alert with vibration for new nearby ride requests.
             </p>
             <div style={rideAlertChoiceRowStyle}>
               <button
                 type="button"
-                onClick={() => chooseRideAlertSoundStyle(RIDE_ALERT_SOUND_STYLE_LYFT)}
+                onClick={() => chooseRideAlertSoundStyle(RIDE_ALERT_SOUND_STYLE_SIGNATURE)}
                 style={{
                   ...rideAlertChoiceButtonStyle,
-                  ...(rideAlertSoundStyle === RIDE_ALERT_SOUND_STYLE_LYFT
+                  ...(rideAlertSoundStyle === RIDE_ALERT_SOUND_STYLE_SIGNATURE
                     ? rideAlertChoiceActiveStyle
                     : {}),
                 }}
               >
-                Lyft style
+                YALA Signature
               </button>
               <button
                 type="button"
@@ -1343,7 +1353,7 @@ export default function DriverApp() {
                     : {}),
                 }}
               >
-                Classic
+                YALA Classic
               </button>
             </div>
             <div style={rideAlertActionRowStyle}>

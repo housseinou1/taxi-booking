@@ -38,7 +38,6 @@ function TripDetailRows({ ride }) {
       {ride.payment_status ? (
         <span>Payment: {String(ride.payment_status).replace(/_/g, " ")}</span>
       ) : null}
-      <span>Trip ID: #{ride.id}</span>
       <span>Completed: {formatDateTime(ride.completed_at || ride.created_at)}</span>
     </div>
   );
@@ -78,7 +77,7 @@ export default function DriverTripBreakdownList({ trips = [], onLoadMore, hasMor
         return (
           <article key={trip.id} className="earnings-hub__trip">
             <div className="earnings-hub__trip-head">
-              <span>{formatDateTime(trip.completed_at || trip.created_at)} · #{trip.id}</span>
+              <span>{formatDateTime(trip.completed_at || trip.created_at)}</span>
               <strong>{formatMoney(toAmount(trip.driver_earning ?? trip.fare))}</strong>
             </div>
             <div className="earnings-hub__trip-route">

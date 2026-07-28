@@ -6,12 +6,15 @@ import { API_URL } from "../apiConfig";
 import { languageOptions, normalizeLanguageCode } from "../i18n";
 import { getAppType, isDeliveryCourierApp } from "../native/platform";
 import { useDriverContext } from "./context/DriverContext";
-import { getDriverColors, isDriverLyftUI } from "./lyftColors";
+import { isDriverYalaUI } from "./yalaColors";
 import {
   getRideAlertSoundStyle,
   setRideAlertSoundStyle,
-  RIDE_ALERT_SOUND_STYLE_STANDARD,
-  RIDE_ALERT_SOUND_STYLE_LYFT,
+  RIDE_ALERT_SOUND_STYLE_CLASSIC,
+  RIDE_ALERT_SOUND_STYLE_PULSE,
+  RIDE_ALERT_SOUND_STYLE_SIGNATURE,
+  RIDE_ALERT_SOUND_STYLE_EXPRESS,
+  getRideAlertSoundLabel,
   playRideRequestAlert,
 } from "../native/sound";
 import {
@@ -24,17 +27,21 @@ import {
   setPreferredNavApp,
   setVoiceGuidanceEnabled,
 } from "./utils/driverNavigationPrefs";
+import { DRIVER_UI } from "./ui/driverFoundation";
+import { DriverErrorState, DriverLoadingState } from "./ui/DriverAppStates";
+import "./DriverSettings.css";
 
-// ─── Yala Branding Colors ───────────────────────────────────────────────────
+// Light commercial palette for Driver shell (Phase 0 contrast fix).
+// Legacy dark tokens remain only for non-Driver/embedded edge cases.
 const COLORS = {
-  primaryGreen: "#00A651",
+  primaryGreen: DRIVER_UI.color.primary,
   goldAccent: "#D4AF37",
-  darkNavy: "#0B1220",
-  white: "#FFFFFF",
-  lightGray: "rgba(255, 255, 255, 0.6)",
-  cardBg: "rgba(255, 255, 255, 0.06)",
-  cardBorder: "rgba(255, 255, 255, 0.1)",
-  errorRed: "#EF4444",
+  darkNavy: DRIVER_UI.color.canvas,
+  white: DRIVER_UI.color.ink,
+  lightGray: DRIVER_UI.color.muted,
+  cardBg: DRIVER_UI.color.card,
+  cardBorder: DRIVER_UI.color.line,
+  errorRed: DRIVER_UI.color.danger,
 };
 
 const GPS_OPTIONS = [
@@ -44,22 +51,31 @@ const GPS_OPTIONS = [
 
 const NOTIFICATION_SOUND_OPTIONS = [
   {
-    value: RIDE_ALERT_SOUND_STYLE_STANDARD,
-    label: "Standard",
-    description: "Classic notification chime",
+    value: RIDE_ALERT_SOUND_STYLE_CLASSIC,
+    label: "YALA Classic",
+    description: "Familiar notification chime",
   },
   {
-    value: RIDE_ALERT_SOUND_STYLE_LYFT,
-    label: "Lyft",
-    description: "Clean premium alert sound",
+    value: RIDE_ALERT_SOUND_STYLE_PULSE,
+    label: "YALA Pulse",
+    description: "Clear rhythmic alert",
+  },
+  {
+    value: RIDE_ALERT_SOUND_STYLE_SIGNATURE,
+    label: "YALA Signature",
+    description: "Distinctive YALA alert",
+  },
+  {
+    value: RIDE_ALERT_SOUND_STYLE_EXPRESS,
+    label: "YALA Express",
+    description: "Fast attention alert",
   },
 ];
 
 // ─── Main Component ─────────────────────────────────────────────────────────
 export default function DriverSettings({ deliveryOnly = false } = {}) {
   const isDeliveryCourier = deliveryOnly || isDeliveryCourierApp();
-  const lyftUI = isDeliveryCourier ? false : isDriverLyftUI();
-  const themeColors = getDriverColors();
+  const yalaUI = isDeliveryCourier ? false : isDriverYalaUI();
   const token = localStorage.getItem("access");
   const { t, i18n } = useTranslation();
   const { state } = useDriverContext();
@@ -70,7 +86,7 @@ export default function DriverSettings({ deliveryOnly = false } = {}) {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState(null);
   const [notificationSoundStyle, setNotificationSoundStyleState] = useState(
-    RIDE_ALERT_SOUND_STYLE_LYFT
+    RIDE_ALERT_SOUND_STYLE_CLASSIC
   );
   const [autoNavigation, setAutoNavigation] = useState(true);
   const [preferredNavApp, setPreferredNavAppState] = useState(NAV_APP_GOOGLE);
@@ -183,7 +199,7 @@ export default function DriverSettings({ deliveryOnly = false } = {}) {
       const normalized = setRideAlertSoundStyle(style);
       setNotificationSoundStyleState(normalized);
       await playRideRequestAlert({ force: true });
-      showToast(`Notification sound: ${normalized === "lyft" ? "Lyft" : "Standard"}`);
+      showToast(`Notification sound: ${getRideAlertSoundLabel(normalized)}`);
     },
     [showToast]
   );
@@ -213,11 +229,11 @@ export default function DriverSettings({ deliveryOnly = false } = {}) {
   // ─── Loading State ──────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div style={{ ...containerStyle, ...(lyftUI ? { backgroundColor: themeColors.darkNavy, minHeight: "auto", paddingTop: 12 } : null) }} className={lyftUI ? "driver-page--lyft" : undefined}>
-        <div style={loadingStyle}>
-          <span style={loadingSpinnerStyle}>⏳</span>
-          <p style={loadingTextStyle}>Loading settings...</p>
-        </div>
+      <div
+        className={`driver-settings-page${yalaUI ? " driver-page--lyft" : ""}${deliveryOnly ? " driver-settings-page--embedded" : ""}`}
+        style={deliveryOnly ? { padding: 0, background: "transparent" } : undefined}
+      >
+        <DriverLoadingState title="Loading settings…" />
       </div>
     );
   }
@@ -225,13 +241,16 @@ export default function DriverSettings({ deliveryOnly = false } = {}) {
   // ─── Error State ────────────────────────────────────────────────────────
   if (error) {
     return (
-      <div style={{ ...containerStyle, ...(lyftUI ? { backgroundColor: themeColors.darkNavy, minHeight: "auto", paddingTop: 12 } : null) }} className={lyftUI ? "driver-page--lyft" : undefined}>
-        <div style={errorCardStyle}>
-          <p style={errorTextStyle}>{error}</p>
-          <button style={retryButtonStyle} onClick={fetchSettings}>
-            Retry
-          </button>
-        </div>
+      <div
+        className={`driver-settings-page${yalaUI ? " driver-page--lyft" : ""}${deliveryOnly ? " driver-settings-page--embedded" : ""}`}
+        style={deliveryOnly ? { padding: 0, background: "transparent" } : undefined}
+      >
+        <DriverErrorState
+          title="Couldn’t load settings"
+          message="Please try again."
+          actionLabel="Retry"
+          onAction={fetchSettings}
+        />
       </div>
     );
   }
@@ -242,27 +261,23 @@ export default function DriverSettings({ deliveryOnly = false } = {}) {
 
   return (
     <div
-      className={lyftUI ? "driver-page--lyft" : undefined}
+      className={`driver-settings-page${yalaUI ? " driver-page--lyft" : ""}${deliveryOnly ? " driver-settings-page--embedded" : ""}`}
+      dir={currentLanguage === "ar" ? "rtl" : "ltr"}
       style={
         deliveryOnly
           ? { padding: 0, background: "transparent", minHeight: "auto" }
           : {
               ...containerStyle,
-              ...(lyftUI
-                ? {
-                    backgroundColor: themeColors.darkNavy,
-                    minHeight: "auto",
-                    paddingTop: 12,
-                    paddingBottom: 24,
-                  }
-                : null),
+              backgroundColor: COLORS.darkNavy,
+              color: COLORS.white,
+              minHeight: "auto",
+              paddingTop: 12,
+              paddingBottom: 24,
             }
       }
     >
-      {!lyftUI && !deliveryOnly ? <div style={mauritaniaAccentBarStyle} aria-hidden="true" /> : null}
-
-      {!lyftUI && !deliveryOnly ? (
-      <div style={headerStyle}>
+      {!deliveryOnly ? (
+      <div style={headerStyle} data-yds-duplicate-title="true">
         <h1 style={titleStyle}>⚙️ Settings</h1>
         <p style={subtitleStyle}>
           {isDeliveryCourier ? "Yala Delivery courier preferences" : "Customize your app experience"}
@@ -442,7 +457,7 @@ export default function DriverSettings({ deliveryOnly = false } = {}) {
       </SettingsSection>
 
       {/* Dark Mode Section */}
-      {!lyftUI && (
+      {!yalaUI && (
       <SettingsSection title="🌙 Appearance" description="Toggle dark mode">
         <ToggleRow
           label="Dark Mode"
@@ -576,7 +591,7 @@ function ToggleRow({ label, description, checked, onChange }) {
       <button
         style={{
           ...toggleButtonStyle,
-          backgroundColor: checked ? COLORS.primaryGreen : "#334155",
+          backgroundColor: checked ? COLORS.primaryGreen : "#cbd5e1",
         }}
         onClick={onChange}
         role="switch"
@@ -725,10 +740,11 @@ const retryButtonStyle = {
   borderRadius: "999px",
   border: "none",
   backgroundColor: COLORS.primaryGreen,
-  color: COLORS.white,
+  color: DRIVER_UI.color.onPrimary,
   fontWeight: 700,
   fontSize: "14px",
   cursor: "pointer",
+  minHeight: DRIVER_UI.touchMin,
 };
 
 // ─── Sections ───────────────────────────────────────────────────────────────
@@ -1083,10 +1099,10 @@ const toastStyle = {
   transform: "translateX(-50%)",
   padding: "12px 24px",
   borderRadius: "14px",
-  color: COLORS.white,
+  color: DRIVER_UI.color.onPrimary,
   fontWeight: 700,
   fontSize: "13px",
   zIndex: 2000,
-  boxShadow: "0 8px 24px rgba(0, 0, 0, 0.3)",
+  boxShadow: DRIVER_UI.shadow.md,
   animation: "fadeIn 200ms ease",
 };

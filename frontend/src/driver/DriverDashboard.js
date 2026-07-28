@@ -1,3 +1,9 @@
+/**
+ * @deprecated LEGACY — not mounted by App.js production routes.
+ * Production dashboard is `DriverDashboardNew.js` (lazy-loaded for `/driver`).
+ * Keep for reference/tests until Mission 3+ deletion criteria are met:
+ * no imports from App.js, no Cap sync dependency, QA signed off.
+ */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 
@@ -51,6 +57,11 @@ const toPoint = (lat, lng) => {
 };
 
 // ─── Main Component ─────────────────────────────────────────────────────────
+/**
+ * @deprecated Legacy dashboard retained for test coverage and migration
+ * reference. Production `/driver` routes render DriverDashboardNew.
+ * Do not add new UI here; migrate reusable behavior deliberately.
+ */
 export default function DriverDashboard() {
   const token = localStorage.getItem("access");
   const driverContext = useDriverContext();

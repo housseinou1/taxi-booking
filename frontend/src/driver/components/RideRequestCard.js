@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { formatMoney } from "../../marketConfig";
 import { startRideRequestAlertLoop, stopRideRequestAlertLoop } from "../../native/sound";
 import "./RideRequestCard.css";
+import { PrimaryButton, SecondaryButton, Badge, Chip } from "../../design-system/components";
 
 const RIDE_TYPE_ICONS = {
   Comfort:  "🚙",
@@ -25,9 +26,9 @@ function formatEtaMinutes(seconds) {
 function SurgeBadge({ multiplier }) {
   if (!multiplier || multiplier <= 1) return null;
   return (
-    <span className="ride-request-sheet__surge">
+    <Badge intent="warning" label="Surge multiplier" className="ride-request-sheet__surge">
       ⚡ {multiplier}x
-    </span>
+    </Badge>
   );
 }
 
@@ -51,7 +52,7 @@ function getRideId(ride) {
 }
 
 /**
- * Lyft/Uber-style incoming ride request sheet with countdown and alert sounds.
+ * YALA incoming ride request sheet with countdown and alert sounds.
  */
 export default function RideRequestCard({
   ride,
@@ -167,22 +168,22 @@ export default function RideRequestCard({
           </div>
           <div className="ride-request-sheet__meta">
             {etaLabel && (
-              <span className="ride-request-sheet__pill ride-request-sheet__pill--eta">
+              <Chip className="ride-request-sheet__pill ride-request-sheet__pill--eta">
                 📍 {etaLabel}
-              </span>
+              </Chip>
             )}
             {ride?.distance_km != null && (
-              <span className="ride-request-sheet__pill">{ride.distance_km} km</span>
+              <Chip className="ride-request-sheet__pill">{ride.distance_km} km</Chip>
             )}
             {stopCount > 0 && (
-              <span className="ride-request-sheet__pill ride-request-sheet__pill--stops">
+              <Chip className="ride-request-sheet__pill ride-request-sheet__pill--stops">
                 {stopCount} {stopCount === 1 ? "stop" : "stops"}
-              </span>
+              </Chip>
             )}
           </div>
         </div>
         {driverEarning != null && (
-          <p style={{ margin: "-6px 0 0", fontSize: 13, fontWeight: 700, color: "#059669" }}>
+          <p className="ride-request-sheet__earning">
             Votre gain estimé : <strong>{formatMoney(driverEarning)}</strong>
           </p>
         )}
@@ -210,24 +211,25 @@ export default function RideRequestCard({
         </div>
 
         <div className="ride-request-sheet__actions">
-          <button
-            type="button"
-            className="ride-request-sheet__accept"
-            onClick={onAccept}
+          <PrimaryButton
+            size="lg"
+            fullWidth
+            isLoading={accepting}
             disabled={accepting}
+            onClick={onAccept}
             aria-label="Accept ride request"
           >
             {accepting ? "Accepting..." : "Accept"}
-          </button>
-          <button
-            type="button"
-            className="ride-request-sheet__decline"
-            onClick={onDecline}
+          </PrimaryButton>
+          <SecondaryButton
+            size="lg"
+            fullWidth
             disabled={accepting}
+            onClick={onDecline}
             aria-label="Decline ride request"
           >
             Decline
-          </button>
+          </SecondaryButton>
         </div>
       </section>
     </div>

@@ -38,6 +38,7 @@ const mockRideWithStopCount = {
 describe("RideRequestCard", () => {
   beforeEach(() => {
     jest.useFakeTimers();
+    jest.clearAllMocks();
   });
 
   afterEach(() => {
