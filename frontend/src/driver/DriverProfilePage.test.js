@@ -365,3 +365,32 @@ describe("DriverProfilePage vehicle & document summaries", () => {
     restore();
   });
 });
+
+describe("DriverProfilePage release-readiness guards", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    Storage.prototype.getItem = jest.fn(() => "test-token");
+    Storage.prototype.removeItem = jest.fn();
+    mockProfileEndpoints();
+  });
+
+  it("never renders raw placeholder or debug values", async () => {
+    const restoreLocation = setupLocationMock();
+    await renderProfile();
+
+    expect(screen.queryByText(/undefined/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/\bnull\b/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/NaN/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^TEMP[-_ ]/)).not.toBeInTheDocument();
+    restoreLocation();
+  });
+
+  it("marks the active profile tab with aria-current", async () => {
+    const restoreLocation = setupLocationMock();
+    await renderProfile();
+
+    const activeTab = screen.getByRole("button", { current: "page" });
+    expect(activeTab).toHaveTextContent("Profile");
+    restoreLocation();
+  });
+});

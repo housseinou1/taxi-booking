@@ -965,8 +965,8 @@ export default function DriverProfilePage({ onBack }) {
           <span className="dp-nav-icon">💵</span>
           <span className="dp-nav-label">Earnings</span>
         </button>
-        <button type="button" className="dp-nav-tab dp-nav-tab--active">
-          <span className="dp-nav-icon">👤</span>
+        <button type="button" className="dp-nav-tab dp-nav-tab--active" aria-current="page">
+          <span className="dp-nav-icon" aria-hidden="true">👤</span>
           <span className="dp-nav-label">Profile</span>
         </button>
       </nav>
