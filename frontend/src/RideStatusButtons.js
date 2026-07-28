@@ -4,6 +4,7 @@ import authenticatedApi from "./auth/authenticatedApi";
 import WaitingFeeBanner from "./components/WaitingFeeBanner";
 import { isNative } from "./native/platform";
 import { ARRIVE_MAX_DISTANCE_M } from "./utils/rideGeo";
+import { PrimaryButton } from "./design-system/components";
 
 function RideStatusButtons({
   ride,
@@ -285,17 +286,16 @@ function RideStatusButtons({
         </div>
       ) : null}
       {ride.status === "requested" && (
-        <button
-          onClick={() => updateRideStatus("accept")}
+        <PrimaryButton
+          fullWidth
+          size="lg"
+          isLoading={workingAction === "accept"}
           disabled={Boolean(workingAction)}
-          style={{
-            ...primaryButtonStyle,
-            opacity: workingAction ? 0.72 : 1,
-            cursor: workingAction ? "wait" : "pointer",
-          }}
+          onClick={() => updateRideStatus("accept")}
+          aria-label="Accept trip"
         >
           {workingAction === "accept" ? "Accepting..." : "Accept trip"}
-        </button>
+        </PrimaryButton>
       )}
 
       {["accepted", "driver_arriving"].includes(ride.status) && (
@@ -352,40 +352,32 @@ function RideStatusButtons({
               <span style={pickupPinHelpStyle}>
                 Ask the rider for the PIN after confirming their identity.
               </span>
-              <button
-                type="button"
-                onClick={verifyPickupPin}
+              <PrimaryButton
+                fullWidth
+                size="lg"
+                isLoading={workingAction === "verify-pin"}
                 disabled={Boolean(workingAction) || pickupPin.length !== 4}
-                style={{
-                  ...primaryButtonStyle,
-                  background: "#F97316",
-                  opacity: workingAction || pickupPin.length !== 4 ? 0.72 : 1,
-                  cursor: workingAction || pickupPin.length !== 4 ? "wait" : "pointer",
-                }}
+                onClick={verifyPickupPin}
                 aria-label="Verify PIN"
               >
                 {workingAction === "verify-pin" ? "Verifying PIN..." : "Verify PIN"}
-              </button>
+              </PrimaryButton>
             </div>
           ) : (
             <>
               <div style={pinVerifiedStyle}>PIN verified — you can still cancel if needed.</div>
-              <button
+              <PrimaryButton
                 ref={startRideButtonRef}
-                type="button"
-                onClick={() => updateRideStatus("start")}
+                fullWidth
+                size="lg"
+                isLoading={workingAction === "start"}
                 disabled={Boolean(workingAction)}
-                style={{
-                  ...primaryButtonStyle,
-                  background: "#2563EB",
-                  opacity: workingAction ? 0.72 : 1,
-                  cursor: workingAction ? "wait" : "pointer",
-                  touchAction: "manipulation",
-                }}
+                onClick={() => updateRideStatus("start")}
                 aria-label="Start Ride"
+                style={{ touchAction: "manipulation" }}
               >
                 {workingAction === "start" ? "Starting ride..." : "Start Ride"}
-              </button>
+              </PrimaryButton>
             </>
           )}
         </>
@@ -798,23 +790,6 @@ const pinVerifiedStyle = {
   fontSize: "0.9rem",
   fontWeight: 800,
   textAlign: "center",
-};
-
-const baseButtonStyle = {
-  width: "100%",
-  minHeight: "var(--yds-touch)",
-  border: "none",
-  borderRadius: "var(--yds-radius-md)",
-  color: "var(--yds-on-primary)",
-  fontWeight: 900,
-  fontSize: "0.98rem",
-  cursor: "pointer",
-  boxShadow: "var(--yds-shadow-md)",
-};
-
-const primaryButtonStyle = {
-  ...baseButtonStyle,
-  background: "var(--yds-primary)",
 };
 
 const navigationChoiceStyle = {
