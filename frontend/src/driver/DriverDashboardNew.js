@@ -49,6 +49,7 @@ import { getNavigationDestination } from "./components/MultiStopProgress";
 import { mergeAvailableRidesFromServer, normalizeRideOfferId } from "./utils/mergeAvailableRides";
 import HamburgerMenu from "./components/HamburgerMenu";
 import RideRequestCard from "./components/RideRequestCard";
+import TripCompletionSummary from "./components/TripCompletionSummary";
 import DriverDashboardContent from "./dashboard/DriverDashboardContent";
 import DriverProfilePage from "./DriverProfilePage";
 import RideStatusButtons from "../RideStatusButtons";
@@ -236,6 +237,7 @@ function DriverDashboardContentView() {
   const [earningsDate, setEarningsDate] = useState(null);
   const [driverPerformance, setDriverPerformance] = useState(null);
   const [availableRides, setAvailableRides] = useState([]);
+  const [completedRideSummary, setCompletedRideSummary] = useState(null);
   const [driverRides, setDriverRides] = useState([]);
   const [routePath, setRoutePath] = useState([]);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -631,6 +633,16 @@ function DriverDashboardContentView() {
       if (!isTerminal) {
         activeRideSnapshotRef.current = { ...updated, id: rideId, status };
       } else {
+        // UI-only: capture the finished ride for the completion summary sheet
+        // before the active ride is cleared. Does not affect ride lifecycle.
+        if (status === "completed") {
+          const priorSnapshot = activeRideSnapshotRef.current;
+          if (priorSnapshot && String(priorSnapshot.id) === String(rideId)) {
+            setCompletedRideSummary({ ...priorSnapshot, ...updated, id: rideId, status });
+          } else {
+            setCompletedRideSummary({ ...updated, id: rideId, status });
+          }
+        }
         activeRideSnapshotRef.current = null;
       }
       setDriverRides((prev) => {
@@ -1733,6 +1745,14 @@ function DriverDashboardContentView() {
           onAccept={() => incomingRideId && acceptRide(incomingRideId)}
           onDecline={() => incomingRideId && declineRide(incomingRideId)}
           onExpired={() => incomingRideId && handleOfferExpired(incomingRideId)}
+        />
+      )}
+
+      {/* ─── Completed Trip Summary (UI-only) ────────────────── */}
+      {completedRideSummary && !activeRide && (
+        <TripCompletionSummary
+          ride={completedRideSummary}
+          onDismiss={() => setCompletedRideSummary(null)}
         />
       )}
 
