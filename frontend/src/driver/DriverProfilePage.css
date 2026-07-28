@@ -781,6 +781,91 @@
   line-height: 1.45;
 }
 
+/* === Account status card === */
+.dp-status-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid transparent;
+}
+
+.dp-status-card__icon {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: 16px;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.dp-status-card__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dp-status-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.dp-status-card__title {
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #6b7280;
+}
+
+.dp-status-card__notice {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.45;
+  color: #374151;
+}
+
+.dp-status-card__action {
+  align-self: flex-start;
+  min-height: 40px;
+  margin-top: 2px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  background: #dc2626;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.dp-status-card--warning {
+  border-color: #fde68a;
+  background: #fffbeb;
+}
+
+.dp-status-card--warning .dp-status-card__title { color: #92400e; }
+
+.dp-status-card--danger {
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.dp-status-card--danger .dp-status-card__notice { color: #7f1d1d; }
+
+.dp-status-card--neutral {
+  border-color: #e5e7eb;
+  background: #f9fafb;
+}
+
 /* === Loading / Error State === */
 .dp-state {
   min-height: 100vh;

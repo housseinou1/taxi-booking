@@ -4,6 +4,8 @@ import { navigateInApp } from "../navigation/inAppNavigation";
 
 import { API_URL } from "../apiConfig";
 import { isDriverYalaUI } from "./yalaColors";
+import { Badge } from "../design-system/components";
+import { DriverLoadingState, DriverErrorState } from "./ui/DriverAppStates";
 import DocumentsUnderReviewBanner from "./components/DocumentsUnderReviewBanner";
 import DriverPayoutPanel from "./components/DriverPayoutPanel";
 import TrustedContactsSection from "../safety/TrustedContactsSection";
@@ -103,6 +105,27 @@ const initials = (name) =>
     .slice(0, 2)
     .map((part) => part.charAt(0).toUpperCase())
     .join("") || "YD";
+
+// Presentation-only mapping of the existing backend-derived approval status to a
+// badge intent, icon, and human-readable label. Does not introduce new statuses,
+// infer verification, or alter gating.
+const getAccountStatusMeta = (status) => {
+  const key = String(status || "").toLowerCase();
+  const map = {
+    approved: { intent: "success", icon: "✓", label: "Approved" },
+    active: { intent: "success", icon: "✓", label: "Approved" },
+    pending: { intent: "warning", icon: "⏳", label: "Pending review" },
+    pending_review: { intent: "warning", icon: "⏳", label: "Pending review" },
+    under_review: { intent: "warning", icon: "⏳", label: "Under review" },
+    submitted: { intent: "warning", icon: "⏳", label: "Pending review" },
+    incomplete: { intent: "warning", icon: "📝", label: "Setup incomplete" },
+    rejected: { intent: "danger", icon: "✕", label: "Rejected" },
+    suspended: { intent: "danger", icon: "🚫", label: "Suspended" },
+    blocked: { intent: "danger", icon: "🚫", label: "Blocked" },
+    expired: { intent: "danger", icon: "⚠️", label: "Documents expired" },
+  };
+  return map[key] || { intent: "neutral", icon: "•", label: titleCase(status || "Pending") };
+};
 
 export default function DriverProfilePage({ onBack }) {
   const [data, setData] = useState({
@@ -297,9 +320,10 @@ export default function DriverProfilePage({ onBack }) {
   if (loading) {
     return (
       <main className="dp-shell dp-state">
-        <div className="dp-loader" />
-        <strong>Loading your driver profile</strong>
-        <span>Preparing profile, vehicle, documents, and rewards.</span>
+        <DriverLoadingState
+          title="Loading your driver profile"
+          message="Preparing profile, vehicle, documents, and rewards."
+        />
       </main>
     );
   }
@@ -307,11 +331,12 @@ export default function DriverProfilePage({ onBack }) {
   if (error && !data.base && !data.profile) {
     return (
       <main className="dp-shell dp-state">
-        <strong>Profile unavailable</strong>
-        <span>{error}</span>
-        <button type="button" className="dp-retry-btn" onClick={loadProfile}>
-          Try again
-        </button>
+        <DriverErrorState
+          title="Profile unavailable"
+          message={error}
+          actionLabel="Try again"
+          onAction={loadProfile}
+        />
         {String(error).toLowerCase().includes("not linked") && (
           <button
             type="button"
@@ -440,12 +465,37 @@ export default function DriverProfilePage({ onBack }) {
       <div className="dp-content">
         {error && <div className="dp-alert">{error}</div>}
         {successMessage && <div className="dp-success">{successMessage}</div>}
-        {approvalStatus !== "approved" && (
-          <div className="dp-alert" role="status">
-            <strong>Approval status: {titleCase(approvalStatus)}</strong>
-            <span>{approvalNotice}</span>
-          </div>
-        )}
+        {approvalStatus !== "approved" && (() => {
+          const meta = getAccountStatusMeta(approvalStatus);
+          const isProblem = meta.intent === "danger";
+          return (
+            <section
+              className={`dp-status-card dp-status-card--${meta.intent}`}
+              role={isProblem ? "alert" : "status"}
+              aria-label={`Account status: ${meta.label}`}
+            >
+              <span className="dp-status-card__icon" aria-hidden="true">{meta.icon}</span>
+              <div className="dp-status-card__body">
+                <div className="dp-status-card__head">
+                  <span className="dp-status-card__title">Account status</span>
+                  <Badge intent={meta.intent}>{meta.label}</Badge>
+                </div>
+                {approvalNotice && (
+                  <p className="dp-status-card__notice">{approvalNotice}</p>
+                )}
+                {isProblem && (
+                  <button
+                    type="button"
+                    className="dp-status-card__action"
+                    onClick={() => handleMenuAction("/driver/support")}
+                  >
+                    Get help
+                  </button>
+                )}
+              </div>
+            </section>
+          );
+        })()}
 
         {/* Hero Section */}
         <section className="dp-hero">
@@ -462,7 +512,16 @@ export default function DriverProfilePage({ onBack }) {
           <div className="dp-hero-info">
             <div className="dp-hero-name-row">
               <h2 className="dp-hero-name">{fullName}</h2>
-              <span className="dp-verified">✓</span>
+              {approvalStatus === "approved" && (
+                <span
+                  className="dp-verified"
+                  role="img"
+                  aria-label="Verified driver"
+                  title="Verified driver"
+                >
+                  ✓
+                </span>
+              )}
             </div>
             <p className="dp-hero-phone">{contactPhone}</p>
             <p className="dp-hero-email">{contactEmail}</p>

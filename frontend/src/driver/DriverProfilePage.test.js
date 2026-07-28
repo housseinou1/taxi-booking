@@ -123,3 +123,98 @@ describe("DriverProfilePage button behavior", () => {
     restoreLocation();
   });
 });
+
+describe("DriverProfilePage account status & fallbacks", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    Storage.prototype.getItem = jest.fn(() => "test-token");
+    Storage.prototype.removeItem = jest.fn();
+  });
+
+  function mockEndpointsWithStatus(status) {
+    axios.get.mockImplementation((url) => {
+      if (url.includes("/payments/payout-methods/")) return Promise.resolve({ data: [] });
+      if (url.includes("/payments/withdrawals/")) {
+        return Promise.resolve({ data: { available_balance: "0", withdrawals: [] } });
+      }
+      if (url.includes("/drivers/me/profile/")) {
+        return Promise.resolve({ data: { ...profileResponse, status } });
+      }
+      if (url.includes("/drivers/me/stats/")) return Promise.resolve({ data: statsResponse });
+      if (url.includes("/drivers/me/documents/")) return Promise.resolve({ data: { documents: [] } });
+      if (url.includes("/drivers/me/feedback/reviews/")) return Promise.resolve({ data: { results: [] } });
+      if (url.includes("/drivers/me/achievements/")) return Promise.resolve({ data: { achievements: [] } });
+      if (url.includes("/drivers/me/")) return Promise.resolve({ data: { ...baseResponse, status } });
+      return Promise.resolve({ data: {} });
+    });
+  }
+
+  async function renderWithStatus(status) {
+    mockEndpointsWithStatus(status);
+    await act(async () => {
+      render(<DriverProfilePage />);
+    });
+    await waitFor(() => {
+      expect(screen.getByText("Ahmed Driver")).toBeInTheDocument();
+    });
+  }
+
+  it("shows the verified badge for an approved driver", async () => {
+    const restoreLocation = setupLocationMock();
+    await renderWithStatus("approved");
+    expect(screen.getByLabelText("Verified driver")).toBeInTheDocument();
+    restoreLocation();
+  });
+
+  it("does not show the verified badge for a pending driver", async () => {
+    const restoreLocation = setupLocationMock();
+    await renderWithStatus("pending");
+    expect(screen.queryByLabelText("Verified driver")).not.toBeInTheDocument();
+    expect(screen.getByText("Pending review")).toBeInTheDocument();
+    restoreLocation();
+  });
+
+  it("does not show the verified badge for a rejected driver", async () => {
+    const restoreLocation = setupLocationMock();
+    await renderWithStatus("rejected");
+    expect(screen.queryByLabelText("Verified driver")).not.toBeInTheDocument();
+    expect(screen.getByText("Rejected")).toBeInTheDocument();
+    restoreLocation();
+  });
+
+  it("does not show the verified badge for a suspended driver", async () => {
+    const restoreLocation = setupLocationMock();
+    await renderWithStatus("suspended");
+    expect(screen.queryByLabelText("Verified driver")).not.toBeInTheDocument();
+    expect(screen.getByText("Suspended")).toBeInTheDocument();
+    restoreLocation();
+  });
+
+  it("falls back to initials when the driver has no photo", async () => {
+    const restoreLocation = setupLocationMock();
+    await renderWithStatus("approved");
+    // "Ahmed Driver" -> "AD" initials fallback (no photo in fixture)
+    expect(screen.getByText("AD")).toBeInTheDocument();
+    restoreLocation();
+  });
+
+  it("shows the DriverAppStates loading state while the profile is fetching", () => {
+    const restoreLocation = setupLocationMock();
+    axios.get.mockImplementation(() => new Promise(() => {})); // never resolves
+    render(<DriverProfilePage />);
+    expect(screen.getByText("Loading your driver profile")).toBeInTheDocument();
+    restoreLocation();
+  });
+
+  it("shows the DriverAppStates error state when the profile fetch fails", async () => {
+    const restoreLocation = setupLocationMock();
+    axios.get.mockRejectedValue({ response: { status: 500, data: {} } });
+    await act(async () => {
+      render(<DriverProfilePage />);
+    });
+    await waitFor(() => {
+      expect(screen.getByText("Profile unavailable")).toBeInTheDocument();
+    });
+    restoreLocation();
+  });
+});
