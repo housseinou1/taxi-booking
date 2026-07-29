@@ -121,9 +121,23 @@
 
 .ride-request-sheet__fare-row {
   display: flex;
-  align-items: baseline;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: space-between;
   gap: var(--yds-space-2);
+}
+
+.ride-request-sheet__fare-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ride-request-sheet__ride-type {
+  flex-shrink: 0;
+  font-size: 1.625rem;
+  line-height: 1;
 }
 
 .ride-request-sheet__fare {
@@ -204,9 +218,8 @@
   font-size: var(--yds-text-base);
   font-weight: var(--yds-weight-bold);
   color: var(--yds-ink);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .ride-request-sheet__passenger-rating {
@@ -269,6 +282,8 @@
   font-weight: var(--yds-weight-bold);
   line-height: 1.35;
   color: var(--yds-ink);
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .ride-request-sheet__route-label {
@@ -347,4 +362,39 @@
   margin: 8px 0 0;
   font-size: var(--yds-text-sm);
   color: var(--yds-muted);
+}
+
+@media (max-width: 390px) {
+  .ride-request-sheet {
+    gap: var(--yds-space-2);
+    padding: var(--yds-space-3) var(--yds-space-3) calc(var(--yds-space-3) + var(--yds-safe-bottom));
+  }
+
+  .ride-request-sheet__title {
+    font-size: var(--yds-text-xl);
+  }
+
+  .ride-request-sheet__fare {
+    font-size: var(--yds-text-2xl);
+  }
+
+  .ride-request-sheet__ride-type {
+    font-size: 1.375rem;
+  }
+
+  .ride-request-sheet__meta {
+    justify-content: flex-start;
+  }
+
+  .ride-request-sheet__passenger {
+    padding: var(--yds-space-2);
+  }
+
+  .ride-request-sheet__passenger-name {
+    font-size: var(--yds-text-sm);
+  }
+
+  .ride-request-sheet__route-text {
+    font-size: var(--yds-text-sm);
+  }
 }

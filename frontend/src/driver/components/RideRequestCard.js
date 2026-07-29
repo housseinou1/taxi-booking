@@ -27,7 +27,7 @@ function SurgeBadge({ multiplier }) {
   if (!multiplier || multiplier <= 1) return null;
   return (
     <Badge intent="warning" label="Surge multiplier" className="ride-request-sheet__surge">
-      ⚡ {multiplier}x
+      <span aria-hidden="true">⚡</span> {multiplier}x
     </Badge>
   );
 }
@@ -182,15 +182,15 @@ export default function RideRequestCard({
         </div>
 
         <div className="ride-request-sheet__fare-row">
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 26 }}>{rideTypeIcon}</span>
+          <div className="ride-request-sheet__fare-primary">
+            <span className="ride-request-sheet__ride-type" aria-hidden="true">{rideTypeIcon}</span>
             <strong className="ride-request-sheet__fare">{formatMoney(ride?.fare)}</strong>
             <SurgeBadge multiplier={surgeMultiplier} />
           </div>
           <div className="ride-request-sheet__meta">
             {etaLabel && (
               <Chip className="ride-request-sheet__pill ride-request-sheet__pill--eta">
-                📍 {etaLabel}
+                <span aria-hidden="true">📍</span> {etaLabel}
               </Chip>
             )}
             {ride?.distance_km != null && (
