@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { navigateInApp } from "../navigation/inAppNavigation";
+import { StatusChip } from "../design-system/components";
+import { DriverLoadingState, DriverErrorState } from "./ui/DriverAppStates";
 import { fetchPayoutMethods, fetchWalletData } from "./wallet/driverWalletApi";
 import {
   formatDateTime,
@@ -14,21 +16,20 @@ import DriverWalletCashOut from "./DriverWalletCashOut";
 import DriverWalletPayoutSheet from "./DriverWalletPayoutSheet";
 import "./DriverWallet.css";
 
-function WalletSkeleton() {
-  return (
-    <div className="dw__content">
-      <div className="dw-skeleton dw-skeleton--hero" />
-      <div className="dw-skeleton dw-skeleton--row" />
-      <div className="dw-skeleton dw-skeleton--row" />
-      <div className="dw-skeleton dw-skeleton--row" />
-    </div>
-  );
-}
-
 function StatusPill({ status }) {
   const normalized = String(status || "pending").toLowerCase();
   const label = WITHDRAWAL_STATUS_LABELS[normalized] || status;
-  return <span className={`dw-status-pill dw-status-pill--${normalized}`}>{label}</span>;
+  const intent =
+    normalized === "paid"
+      ? "success"
+      : normalized === "approved"
+        ? "info"
+        : normalized === "pending"
+          ? "warning"
+          : normalized === "rejected"
+            ? "danger"
+            : "neutral";
+  return <StatusChip intent={intent}>{label}</StatusChip>;
 }
 
 export default function DriverWallet({ withdrawMode = false, showHistoryOnLoad = false }) {
@@ -105,7 +106,7 @@ export default function DriverWallet({ withdrawMode = false, showHistoryOnLoad =
   if (loading) {
     return (
       <div className="dw">
-        <WalletSkeleton />
+        <DriverLoadingState title="Loading wallet..." />
       </div>
     );
   }
@@ -114,10 +115,12 @@ export default function DriverWallet({ withdrawMode = false, showHistoryOnLoad =
     return (
       <div className="dw">
         <div className="dw__content">
-          <div className="dw-error">{error}</div>
-          <button type="button" className="dw-btn-secondary" onClick={loadWallet}>
-            Try again
-          </button>
+          <DriverErrorState
+            title=""
+            message={error}
+            actionLabel="Try again"
+            onAction={loadWallet}
+          />
         </div>
       </div>
     );
@@ -158,6 +161,7 @@ export default function DriverWallet({ withdrawMode = false, showHistoryOnLoad =
         <button
           type="button"
           className="dw-btn-primary"
+          aria-label="Cash out"
           onClick={() => navigateInApp("/driver/wallet/withdraw")}
         >
           CASH OUT
@@ -166,6 +170,7 @@ export default function DriverWallet({ withdrawMode = false, showHistoryOnLoad =
         <button
           type="button"
           className="dw-btn-secondary"
+          aria-label="Manage payout method"
           onClick={() => setShowPayoutSheet(true)}
         >
           Manage payout method

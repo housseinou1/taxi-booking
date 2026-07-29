@@ -214,4 +214,29 @@ describe("DriverEarnings", () => {
     );
     expect(earningsCall?.[1]).toEqual({ suppressAuthRedirect: true });
   });
+
+  it("adds aria-pressed to chart-period tabs", async () => {
+    await act(async () => {
+      render(
+        <DriverProvider>
+          <DriverEarnings />
+        </DriverProvider>
+      );
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /daily/i })).toBeInTheDocument();
+    });
+
+    const weeklyTab = screen.getByRole("button", { name: /weekly/i });
+    expect(weeklyTab).toHaveAttribute("aria-pressed", "false");
+
+    await act(async () => {
+      fireEvent.click(weeklyTab);
+    });
+
+    await waitFor(() => {
+      expect(weeklyTab).toHaveAttribute("aria-pressed", "true");
+    });
+  });
 });

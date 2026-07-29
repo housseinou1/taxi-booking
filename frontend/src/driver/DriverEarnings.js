@@ -6,6 +6,7 @@ import { bindDriverTheme } from "./themeRefresh";
 import authenticatedApi from "../auth/authenticatedApi";
 import { ensureValidAccessToken } from "../auth/session";
 import { navigateInApp } from "../navigation/inAppNavigation";
+import { DriverLoadingState, DriverErrorState } from "./ui/DriverAppStates";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 const PERIODS = ["today", "week", "month", "year", "lifetime"];
@@ -173,6 +174,7 @@ function ChartPeriodTab({ label, active, onClick }) {
         backgroundColor: active ? COLORS.darkNavy : "transparent",
         color: active ? COLORS.white : COLORS.textMuted,
       }}
+      aria-pressed={active}
     >
       {label}
     </button>
@@ -185,7 +187,7 @@ function EarningsLineItem({ label, amount, icon }) {
   return (
     <div style={styles.lineItem}>
       <div style={styles.lineItemLeft}>
-        <span style={styles.lineItemIcon}>{icon}</span>
+        <span style={styles.lineItemIcon} aria-hidden="true">{icon}</span>
         <span style={styles.lineItemLabel}>{label}</span>
       </div>
       <span style={styles.lineItemAmount}>{formatEarningsMRU(amount)}</span>
@@ -306,7 +308,7 @@ function WithdrawalSheet({ onClose, onDone }) {
         <div style={{ width: 40, height: 4, background: COLORS.cardBorder, borderRadius: 99, margin: "0 auto 20px" }} />
 
         {step === "loading" && <p style={{ color: COLORS.lightGray, textAlign: "center" }}>Loading wallet...</p>}
-        {step === "error" && <p style={{ color: "#ef4444", textAlign: "center" }}>Could not load wallet. Try again.</p>}
+        {step === "error" && <p role="alert" aria-live="assertive" style={{ color: "#ef4444", textAlign: "center" }}>Could not load wallet. Try again.</p>}
 
         {step === "idle" && (
           <>
@@ -314,7 +316,7 @@ function WithdrawalSheet({ onClose, onDone }) {
             <p style={subStyle}>via {methodLabel}</p>
             <p style={balStyle}>{formatEarningsMRU(availableBalance)}</p>
             <p style={{ ...subStyle, marginBottom: 24 }}>Available balance</p>
-            {err && <p style={{ color: "#ef4444", fontSize: 13, marginBottom: 12 }}>{err}</p>}
+            {err && <p style={{ color: "#ef4444", fontSize: 13, marginBottom: 12 }} role="alert" aria-live="assertive">{err}</p>}
             {hasPending && <p style={{ color: "#f59e0b", fontSize: 13, marginBottom: 12 }}>You have a pending withdrawal under review.</p>}
             {!payoutMethod && <p style={{ color: "#ef4444", fontSize: 13, marginBottom: 12 }}>Add a payout method in your profile first.</p>}
             <button
@@ -333,7 +335,7 @@ function WithdrawalSheet({ onClose, onDone }) {
           <>
             <p style={titleStyle}>How much?</p>
             <p style={subStyle}>Available: {formatEarningsMRU(availableBalance)} · Min: {formatEarningsMRU(minWithdrawal)}</p>
-            {err && <p style={{ color: "#ef4444", fontSize: 13, marginBottom: 8 }}>{err}</p>}
+            {err && <p style={{ color: "#ef4444", fontSize: 13, marginBottom: 8 }} role="alert" aria-live="assertive">{err}</p>}
             <input
               type="number"
               style={inputStyle}
@@ -349,6 +351,7 @@ function WithdrawalSheet({ onClose, onDone }) {
               style={btnStyle(working || !amount || Number(amount) < minWithdrawal || Number(amount) > availableBalance)}
               disabled={working || !amount || Number(amount) < minWithdrawal || Number(amount) > availableBalance}
               onClick={sendOtp}
+              aria-busy={working}
             >
               {working ? "Sending code..." : "Continue"}
             </button>
@@ -360,7 +363,7 @@ function WithdrawalSheet({ onClose, onDone }) {
           <>
             <p style={titleStyle}>Verify it's you</p>
             <p style={subStyle}>Enter the 6-digit code sent to your phone to confirm {formatEarningsMRU(amount)} withdrawal.</p>
-            {err && <p style={{ color: "#ef4444", fontSize: 13, marginBottom: 8 }}>{err}</p>}
+            {err && <p style={{ color: "#ef4444", fontSize: 13, marginBottom: 8 }} role="alert" aria-live="assertive">{err}</p>}
             <input
               type="text"
               style={{ ...inputStyle, letterSpacing: 8, textAlign: "center" }}
@@ -376,6 +379,7 @@ function WithdrawalSheet({ onClose, onDone }) {
               style={btnStyle(working || otp.length < 4)}
               disabled={working || otp.length < 4}
               onClick={submitWithdrawal}
+              aria-busy={working}
             >
               {working ? "Submitting..." : `Confirm ${formatEarningsMRU(amount)}`}
             </button>
@@ -385,8 +389,8 @@ function WithdrawalSheet({ onClose, onDone }) {
 
         {step === "success" && (
           <>
-            <div style={{ textAlign: "center", padding: "20px 0" }}>
-              <div style={{ fontSize: 56, marginBottom: 16 }}>✅</div>
+            <div role="status" aria-live="polite" style={{ textAlign: "center", padding: "20px 0" }}>
+              <span aria-hidden="true" style={{ fontSize: 56, marginBottom: 16, display: "block" }}>✅</span>
               <p style={titleStyle}>Withdrawal submitted!</p>
               <p style={subStyle}>{formatEarningsMRU(amount)} is being processed. You'll receive it within 1-2 business days.</p>
             </div>
@@ -401,7 +405,7 @@ function WithdrawalSheet({ onClose, onDone }) {
 // ─── Main Earnings Center Component ─────────────────────────────────────────
 export default function DriverEarnings() {
   const { yalaUI } = syncDriverTheme();
-  const { COLORS, styles } = driverTheme;
+  const { styles } = driverTheme;
 
   const [activePeriod, setActivePeriod] = useState("today");
   const [chartPeriod, setChartPeriod] = useState("daily");
@@ -586,10 +590,7 @@ export default function DriverEarnings() {
   if (loading) {
     return (
       <div style={styles.container}>
-        <div style={styles.loadingContainer}>
-          <div style={styles.spinner} />
-          <p style={styles.loadingText}>Loading earnings...</p>
-        </div>
+        <DriverLoadingState title="Loading earnings..." />
       </div>
     );
   }
@@ -597,16 +598,12 @@ export default function DriverEarnings() {
   if (error && !earnings) {
     return (
       <div style={styles.container}>
-        <div style={styles.errorContainer}>
-          <p style={styles.errorText}>{error}</p>
-          <button
-            type="button"
-            onClick={() => fetchEarnings()}
-            style={styles.retryButton}
-          >
-            Retry
-          </button>
-        </div>
+        <DriverErrorState
+          title=""
+          message={error}
+          actionLabel="Retry"
+          onAction={() => fetchEarnings()}
+        />
       </div>
     );
   }
@@ -683,8 +680,10 @@ export default function DriverEarnings() {
         <button
           type="button"
           onClick={() => navigateInApp("/driver/wallet/withdraw")}
+          aria-label="Withdraw earnings"
           style={{
             marginTop: 20,
+            minHeight: 44,
             background: "rgba(255,255,255,0.2)",
             border: "2px solid rgba(255,255,255,0.6)",
             borderRadius: 999,
@@ -696,7 +695,8 @@ export default function DriverEarnings() {
             backdropFilter: "blur(4px)",
           }}
         >
-          💸 Withdraw
+          <span aria-hidden="true">💸 </span>
+          Withdraw
         </button>
       </div>
 
@@ -725,7 +725,7 @@ export default function DriverEarnings() {
         </div>
 
         {chartLoading ? (
-          <div style={styles.chartLoadingContainer}>
+          <div style={styles.chartLoadingContainer} role="status" aria-live="polite" aria-busy="true" aria-label="Loading chart">
             <div style={styles.spinnerSmall} />
           </div>
         ) : (
@@ -742,9 +742,11 @@ export default function DriverEarnings() {
       <button
         type="button"
         onClick={() => { navigateInApp("/driver"); }}
-        style={styles.backButton}
+        aria-label="Back to Dashboard"
+        style={{ ...styles.backButton, minHeight: 44 }}
       >
-        ← Back to Dashboard
+        <span aria-hidden="true">← </span>
+        Back to Dashboard
       </button>
       )}
     </div>
@@ -795,6 +797,7 @@ const theme = bindDriverTheme((COLORS) => ({
     fontSize: "13px",
     fontWeight: "700",
     cursor: "pointer",
+    minHeight: 44,
     whiteSpace: "nowrap",
     transition: "all 0.2s ease",
   },
@@ -817,6 +820,7 @@ const theme = bindDriverTheme((COLORS) => ({
     fontWeight: "800",
     color: COLORS.primaryGreen,
     margin: 0,
+    overflowWrap: "break-word",
   },
   weekTotalHint: {
     display: "block",
@@ -863,6 +867,7 @@ const theme = bindDriverTheme((COLORS) => ({
     fontSize: "14px",
     fontWeight: "600",
     color: COLORS.white,
+    overflowWrap: "break-word",
   },
   chartCard: {
     backgroundColor: COLORS.cardBg,
@@ -899,6 +904,7 @@ const theme = bindDriverTheme((COLORS) => ({
     fontSize: "12px",
     fontWeight: "700",
     cursor: "pointer",
+    minHeight: 44,
     transition: "all 0.2s ease",
   },
   chartContainer: {
@@ -973,29 +979,6 @@ const theme = bindDriverTheme((COLORS) => ({
     borderTopColor: COLORS.primaryGreen,
     borderRadius: "50%",
     animation: "spin 0.8s linear infinite",
-  },
-  errorContainer: {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    minHeight: "60vh",
-    gap: "16px",
-  },
-  errorText: {
-    color: "#EF4444",
-    fontSize: "14px",
-    textAlign: "center",
-  },
-  retryButton: {
-    padding: "10px 24px",
-    backgroundColor: COLORS.primaryGreen,
-    color: COLORS.white,
-    border: "none",
-    borderRadius: "999px",
-    fontSize: "14px",
-    fontWeight: "700",
-    cursor: "pointer",
   },
   backButton: {
     width: "100%",
