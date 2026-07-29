@@ -190,6 +190,8 @@ export default function DriverProfilePage({ onBack }) {
   const [error, setError] = useState("");
   const [uploadingType, setUploadingType] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [uploadError, setUploadError] = useState({ type: "", message: "" });
+  const [uploadSuccessType, setUploadSuccessType] = useState("");
   const [documentsUnderReview, setDocumentsUnderReview] = useState(false);
   const [activeTab, setActiveTab] = useState("profile");
   const [logoutOpen, setLogoutOpen] = useState(false);
@@ -300,6 +302,10 @@ export default function DriverProfilePage({ onBack }) {
 
   const startUpload = (documentType) => {
     pendingDocumentType.current = documentType;
+    setError("");
+    setSuccessMessage("");
+    setUploadError({ type: "", message: "" });
+    setUploadSuccessType("");
     fileInputRef.current?.click();
   };
 
@@ -307,10 +313,15 @@ export default function DriverProfilePage({ onBack }) {
     const file = event.target.files?.[0];
     const documentType = pendingDocumentType.current;
     event.target.value = "";
-    if (!file || !documentType) return;
+    if (!file || !documentType) {
+      setUploadError({ type: "", message: "" });
+      return;
+    }
 
     setError("");
     setSuccessMessage("");
+    setUploadError({ type: "", message: "" });
+    setUploadSuccessType("");
     setUploadingType(documentType);
     const form = new FormData();
     form.append("document_type", documentType);
@@ -323,13 +334,19 @@ export default function DriverProfilePage({ onBack }) {
           "Content-Type": "multipart/form-data",
         },
       });
-      if (uploadResponse?.data?.documents_under_review) {
-        setSuccessMessage(DOCUMENTS_UNDER_REVIEW_MESSAGE);
-        setDocumentsUnderReview(true);
-      }
+      const underReview = uploadResponse?.data?.documents_under_review;
+      setSuccessMessage(
+        underReview
+          ? DOCUMENTS_UNDER_REVIEW_MESSAGE
+          : "Document uploaded successfully."
+      );
+      setDocumentsUnderReview(underReview || false);
+      setUploadSuccessType(documentType);
       await loadProfile();
     } catch (uploadError) {
-      setError(uploadError.response?.data?.error || "Document upload failed. Please try again.");
+      const message = uploadError.response?.data?.error || "Document upload failed. Please try again.";
+      setError(message);
+      setUploadError({ type: documentType, message });
     } finally {
       setUploadingType("");
       pendingDocumentType.current = "";
@@ -558,8 +575,16 @@ export default function DriverProfilePage({ onBack }) {
       </header>
 
       <div className="dp-content">
-        {error && <div className="dp-alert">{error}</div>}
-        {successMessage && <div className="dp-success">{successMessage}</div>}
+        {error && (
+          <div className="dp-alert" role="alert" aria-live="assertive" aria-atomic="true">
+            {error}
+          </div>
+        )}
+        {successMessage && (
+          <div className="dp-success" role="status" aria-live="polite" aria-atomic="true">
+            {successMessage}
+          </div>
+        )}
         {approvalStatus !== "approved" && (() => {
           const meta = getAccountStatusMeta(approvalStatus);
           const isProblem = meta.intent === "danger";
@@ -887,6 +912,8 @@ export default function DriverProfilePage({ onBack }) {
                       document={document}
                       uploading={uploadingType === item.type}
                       onUpload={() => startUpload(item.type)}
+                      uploadError={uploadError}
+                      uploadSuccessType={uploadSuccessType}
                     />
                   ))}
               </div>
@@ -1044,7 +1071,7 @@ function DetailRow({ label, value }) {
   );
 }
 
-function DocumentRow({ item, document, uploading, onUpload }) {
+function DocumentRow({ item, document, uploading, onUpload, uploadError, uploadSuccessType }) {
   const status = getDocumentStatus(document, item);
   const meta = getDocumentStatusMeta(status);
 
@@ -1077,12 +1104,34 @@ function DocumentRow({ item, document, uploading, onUpload }) {
   })();
 
   const blocksOnline = item.required !== false && ["expired", "rejected", "missing"].includes(status);
+  const isUploading = uploading;
+  const isFailed = uploadError?.type === item.type;
+  const isSuccess = uploadSuccessType === item.type && !isUploading;
+  const actionLabel = isUploading
+    ? `Uploading ${item.label}`
+    : isFailed
+    ? `Retry upload for ${item.label}`
+    : document?.file
+    ? `Replace ${item.label}`
+    : `Upload ${item.label}`;
+  const actionText = isUploading ? "Uploading..." : isFailed ? "Retry" : document?.file ? "Replace" : "Upload";
+  const actionIcon = isUploading ? "⏳" : isFailed ? "↻" : document?.file ? "🔄" : "⬆️";
 
   return (
     <div className="dp-doc-row">
       <div className="dp-doc-row-info">
         <strong>{item.label}</strong>
         <small>{subtitle}</small>
+        {isSuccess && (
+          <span className="dp-doc-upload-success" aria-label="Upload successful">
+            Upload successful
+          </span>
+        )}
+        {isFailed && (
+          <span className="dp-doc-upload-error" aria-label="Upload failed">
+            {uploadError.message}
+          </span>
+        )}
         {blocksOnline && (
           <span className="dp-doc-block-note" aria-label="Required to go online">
             Required to go online
@@ -1106,12 +1155,14 @@ function DocumentRow({ item, document, uploading, onUpload }) {
         )}
         <button
           type="button"
-          className="dp-doc-upload-btn"
+          className={`dp-doc-upload-btn${isFailed ? " dp-doc-upload-btn--retry" : ""}`}
           onClick={onUpload}
-          disabled={uploading}
-          aria-label={document?.file ? `Replace ${item.label}` : `Upload ${item.label}`}
+          disabled={isUploading}
+          aria-label={actionLabel}
+          aria-busy={isUploading}
         >
-          {uploading ? "Uploading..." : document?.file ? "Replace" : "Upload"}
+          <span className="dp-doc-upload-btn__icon" aria-hidden="true">{actionIcon}</span>
+          <span className="dp-doc-upload-btn__text">{actionText}</span>
         </button>
       </div>
     </div>

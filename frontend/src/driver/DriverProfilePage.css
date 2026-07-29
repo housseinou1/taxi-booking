@@ -700,6 +700,51 @@
   font-size: 12px;
 }
 
+.dp-doc-upload-success,
+.dp-doc-upload-error {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.dp-doc-upload-success {
+  color: var(--yala-green, #0a7a44);
+}
+
+.dp-doc-upload-error {
+  color: var(--danger, #ef4444);
+}
+
+.dp-doc-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  min-width: 72px;
+  padding: 8px 12px;
+}
+
+.dp-doc-upload-btn__icon {
+  font-size: 13px;
+  line-height: 1;
+}
+
+.dp-doc-upload-btn--retry {
+  border-color: var(--danger, #ef4444);
+  background: var(--danger, #ef4444);
+  color: #fff;
+}
+
+@media (max-width: 360px) {
+  .dp-doc-row-actions {
+    flex-basis: 100%;
+    justify-content: flex-start;
+    margin-top: 8px;
+  }
+}
+
 /* === Logout Button === */
 .dp-logout-btn {
   width: 100%;

@@ -471,6 +471,114 @@ describe("DriverProfilePage vehicle & document summaries", () => {
     expect(screen.getAllByText("Required to go online").length).toBeGreaterThanOrEqual(1);
     restore();
   });
+
+  it("shows an uploading state while the document is being submitted", async () => {
+    const restore = setupLocationMock();
+    mockWith({ vehicle: profileResponse.vehicle, documents: [] });
+    axios.post.mockReturnValue(new Promise(() => {}));
+    await renderReady();
+
+    fireEvent.click(screen.getByRole("button", { name: /Upload Driver License/i }));
+    const fileInput = document.querySelector('input[type="file"]');
+    const file = new File(["content"], "license.jpg", { type: "image/jpeg" });
+    fireEvent.change(fileInput, { target: { files: [file] } });
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Uploading Driver License/i })).toBeInTheDocument();
+      expect(screen.getByText("Uploading...")).toBeInTheDocument();
+    });
+    restore();
+  });
+
+  it("displays a success message after a successful document upload", async () => {
+    const restore = setupLocationMock();
+    mockWith({ vehicle: profileResponse.vehicle, documents: [] });
+    axios.post.mockResolvedValueOnce({ data: { documents_under_review: false } });
+    await renderReady();
+
+    fireEvent.click(screen.getByRole("button", { name: /Upload Driver License/i }));
+    const fileInput = document.querySelector('input[type="file"]');
+    fireEvent.change(fileInput, { target: { files: [new File(["x"], "license.jpg", { type: "image/jpeg" })] } });
+
+    await waitFor(() => {
+      expect(screen.getByText("Document uploaded successfully.")).toBeInTheDocument();
+    });
+    restore();
+  });
+
+  it("displays the upload error and a retry action on failure", async () => {
+    const restore = setupLocationMock();
+    mockWith({ vehicle: profileResponse.vehicle, documents: [] });
+    axios.post.mockRejectedValueOnce({ response: { data: { error: "File too large" } } });
+    await renderReady();
+
+    fireEvent.click(screen.getByRole("button", { name: /Upload Driver License/i }));
+    const fileInput = document.querySelector('input[type="file"]');
+    fireEvent.change(fileInput, { target: { files: [new File(["x"], "license.jpg", { type: "image/jpeg" })] } });
+
+    await waitFor(() => {
+      expect(screen.getAllByText("File too large").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getByRole("button", { name: /Retry upload for Driver License/i })).toBeInTheDocument();
+    });
+    restore();
+  });
+
+  it("does not render a fake progress indicator", async () => {
+    const restore = setupLocationMock();
+    mockWith({ vehicle: profileResponse.vehicle, documents: [] });
+    axios.post.mockReturnValue(new Promise(() => {}));
+    await renderReady();
+
+    fireEvent.click(screen.getByRole("button", { name: /Upload Driver License/i }));
+    const fileInput = document.querySelector('input[type="file"]');
+    fireEvent.change(fileInput, { target: { files: [new File(["x"], "license.jpg", { type: "image/jpeg" })] } });
+
+    expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+    expect(screen.queryByText(/0%|50%|100%/)).not.toBeInTheDocument();
+    restore();
+  });
+
+  it("invokes the existing upload handler with the selected file", async () => {
+    const restore = setupLocationMock();
+    mockWith({ vehicle: profileResponse.vehicle, documents: [] });
+    axios.post.mockResolvedValueOnce({ data: { documents_under_review: false } });
+    await renderReady();
+
+    fireEvent.click(screen.getByRole("button", { name: /Upload Driver License/i }));
+    const fileInput = document.querySelector('input[type="file"]');
+    fireEvent.change(fileInput, { target: { files: [new File(["x"], "license.jpg", { type: "image/jpeg" })] } });
+
+    await waitFor(() => {
+      expect(axios.post).toHaveBeenCalledTimes(1);
+      expect(axios.post).toHaveBeenCalledWith(
+        expect.stringContaining("/drivers/me/documents/upload/"),
+        expect.any(FormData),
+        expect.objectContaining({
+          headers: expect.objectContaining({ Authorization: "Bearer test-token" }),
+        })
+      );
+    });
+    restore();
+  });
+
+  it("retry action submits the same document type again", async () => {
+    const restore = setupLocationMock();
+    mockWith({ vehicle: profileResponse.vehicle, documents: [] });
+    axios.post
+      .mockRejectedValueOnce({ response: { data: { error: "Network error" } } })
+      .mockResolvedValueOnce({ data: { documents_under_review: false } });
+    await renderReady();
+
+    const fileInput = document.querySelector('input[type="file"]');
+    fireEvent.click(screen.getByRole("button", { name: /Upload Driver License/i }));
+    fireEvent.change(fileInput, { target: { files: [new File(["x"], "license.jpg", { type: "image/jpeg" })] } });
+    await waitFor(() => expect(screen.getAllByText("Network error").length).toBeGreaterThanOrEqual(1));
+
+    fireEvent.click(screen.getByRole("button", { name: /Retry upload for Driver License/i }));
+    fireEvent.change(fileInput, { target: { files: [new File(["x"], "license.jpg", { type: "image/jpeg" })] } });
+    await waitFor(() => expect(axios.post).toHaveBeenCalledTimes(2));
+    restore();
+  });
 });
 
 describe("DriverProfilePage release-readiness guards", () => {
