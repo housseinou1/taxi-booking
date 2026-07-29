@@ -107,7 +107,7 @@ describe("DriverDashboardContent", () => {
     expect(screen.getByText("4")).toBeInTheDocument();
     expect(screen.getAllByText(/1,250\.50 MRU/).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/Rating/)).toBeInTheDocument();
-    expect(screen.getByText(/4\.7/)).toBeInTheDocument();
+    expect(screen.getAllByText(/4\.7/).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/Weekly earnings/)).toBeInTheDocument();
   });
 

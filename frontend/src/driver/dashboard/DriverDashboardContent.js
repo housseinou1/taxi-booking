@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import {
-  ProfileHeader,
+  Avatar,
+  Chip,
   QuickActionTile,
   StatCard,
   EarningsCard,
@@ -89,6 +90,24 @@ export default function DriverDashboardContent({
   const level = driverProfile?.driver_level || "bronze";
   const approved = driverProfile?.is_approved || driverProfile?.approval_status === "approved";
 
+  const levelLabel = level
+    ? `${String(level).charAt(0).toUpperCase()}${String(level).slice(1)}`
+    : "Driver";
+
+  const initials = useMemo(() => {
+    return String(name || "")
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("");
+  }, [name]);
+
+  const vehicleName =
+    driverProfile?.vehicle?.name ||
+    driverProfile?.vehicle_name ||
+    "";
+
   const rating = Number(
     driverPerformance?.average_rating ||
       driverProfile?.average_rating ||
@@ -99,6 +118,13 @@ export default function DriverDashboardContent({
   const onlineHours = Number(
     driverPerformance?.online_hours_today || driverProfile?.online_hours_today || 0
   );
+  const driverScore = Number(
+    driverPerformance?.driver_score || driverProfile?.driver_score || 0
+  );
+  const driverScoreLabel =
+    driverPerformance?.driver_score_label ||
+    driverProfile?.driver_score_label ||
+    "";
 
   const documentAlert = useMemo(
     () => getDocumentAlertProps(documentsAlertLevel, driverProfile),
@@ -141,18 +167,39 @@ export default function DriverDashboardContent({
     <ScreenContainer className="driver-dashboard-content">
       <div className="driver-dashboard-content__scroll">
         <header className="driver-dashboard-content__header">
-          <ProfileHeader
-            name={`${greeting}, ${name}`}
-            subtitle={level ? `Level ${String(level).charAt(0).toUpperCase() + String(level).slice(1)}` : "Driver"}
-            photoUrl={photoUrl}
-            badge={
-              approved ? (
-                <StatusChip intent="success" dot size="sm">Verified</StatusChip>
-              ) : (
-                <StatusChip intent="warning" dot size="sm">Pending approval</StatusChip>
-              )
-            }
-          />
+          <div className="driver-dashboard-content__hero">
+            <Avatar
+              src={photoUrl}
+              alt={name || "Driver"}
+              initials={initials || "?"}
+              size="lg"
+              className="driver-dashboard-content__avatar"
+            />
+            <div className="driver-dashboard-content__hero-info">
+              <h1 className="driver-dashboard-content__hero-name">
+                {greeting}, {name}
+              </h1>
+              <div className="driver-dashboard-content__hero-meta">
+                {approved ? (
+                  <StatusChip intent="success" dot size="sm">Verified</StatusChip>
+                ) : (
+                  <StatusChip intent="warning" dot size="sm">Pending approval</StatusChip>
+                )}
+                {level ? <Chip>{levelLabel}</Chip> : null}
+                {rating > 0 ? (
+                  <Chip aria-label={`Driver rating ${rating.toFixed(1)} out of 5`}>
+                    <span aria-hidden="true">⭐</span> {rating.toFixed(1)}
+                  </Chip>
+                ) : null}
+                {vehicleName ? <Chip>{vehicleName}</Chip> : null}
+              </div>
+              {driverScore > 0 && driverScoreLabel ? (
+                <p className="driver-dashboard-content__hero-score">
+                  Driver score {driverScore}/100 · {driverScoreLabel}
+                </p>
+              ) : null}
+            </div>
+          </div>
           <div className="driver-dashboard-content__header-actions">
             <IconButton
               aria-label="Open notifications"
@@ -167,7 +214,11 @@ export default function DriverDashboardContent({
           </div>
         </header>
 
-        <section className="driver-dashboard-content__availability" aria-label="Driver availability">
+        <section
+          className="driver-dashboard-content__availability"
+          aria-label="Driver availability"
+          aria-live="polite"
+        >
           <div className="driver-dashboard-content__status-row">
             <div>
               <h2 className="yds-type-title" style={{ margin: 0 }}>
@@ -213,7 +264,7 @@ export default function DriverDashboardContent({
         </section>
 
         {documentsAlert && documentAlert ? (
-          <section className="driver-dashboard-content__alerts" aria-label="Driver alerts">
+          <section className="driver-dashboard-content__alerts" aria-label="Driver alerts" role="alert">
             <div className={`driver-dashboard-content__alert driver-dashboard-content__alert--${documentAlert.intent}`}>
               <Icon name="warning" size="md" />
               <p className="yds-type-body" style={{ margin: 0 }}>{documentAlert.message}</p>

@@ -28,19 +28,58 @@
   padding-bottom: var(--yds-space-2);
 }
 
-.driver-dashboard-content__header h1,
-.driver-dashboard-content__header .yds-profile-header__name {
-  word-break: break-word;
-  overflow-wrap: break-word;
-}
-
-.driver-dashboard-content__header .yds-profile-header {
+.driver-dashboard-content__hero {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--yds-space-4);
   flex: 1;
   min-width: 0;
 }
 
+.driver-dashboard-content__avatar {
+  flex-shrink: 0;
+  width: 64px;
+  height: 64px;
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+
+.driver-dashboard-content__hero-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--yds-space-2);
+  flex: 1;
+  min-width: 0;
+}
+
+.driver-dashboard-content__hero-name {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 800;
+  line-height: 1.25;
+  color: var(--yds-color-text-primary);
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+.driver-dashboard-content__hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--yds-space-2);
+}
+
+.driver-dashboard-content__hero-score {
+  margin: 0;
+  font-size: var(--yds-text-sm);
+  color: var(--yds-color-text-secondary);
+}
+
 .driver-dashboard-content__header-actions {
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--yds-space-2);
 }
 
 .driver-dashboard-content__availability,
@@ -50,6 +89,14 @@
   border-radius: var(--yds-radius-lg);
   padding: var(--yds-space-4);
   box-shadow: var(--yds-elevation-1);
+}
+
+.driver-dashboard-content__availability[aria-live="polite"] {
+  transition: box-shadow 0.2s ease;
+}
+
+.driver-dashboard-content__availability .yds-online-status {
+  flex-shrink: 0;
 }
 
 .driver-dashboard-content__status-row {
@@ -73,6 +120,13 @@
   color: var(--yds-color-error);
   margin: var(--yds-space-3) 0 0;
   font-size: var(--yds-text-sm);
+}
+
+/* Ensure focus visibility for all dashboard controls */
+.driver-dashboard-content :focus-visible {
+  outline: 2px solid var(--yds-color-primary, #00A651);
+  outline-offset: 2px;
+  border-radius: var(--yds-radius-sm);
 }
 
 .driver-dashboard-content__alert {
@@ -122,7 +176,25 @@
   min-height: 44px;
 }
 
-@media (max-width: 359px) {
+@media (max-width: 390px) {
+  .driver-dashboard-content__hero {
+    gap: var(--yds-space-3);
+  }
+
+  .driver-dashboard-content__avatar {
+    width: 56px;
+    height: 56px;
+    font-size: 1.25rem;
+  }
+
+  .driver-dashboard-content__hero-name {
+    font-size: 1.125rem;
+  }
+
+  .driver-dashboard-content__header-actions {
+    flex-direction: column;
+  }
+
   .driver-dashboard-content__quick-actions {
     grid-template-columns: repeat(2, 1fr);
   }
