@@ -10,23 +10,39 @@
   --dw-green-dark: #007a3d;
   --dw-card-shadow: 0 12px 32px rgba(8, 17, 31, 0.08);
   --dw-radius: 20px;
+  min-height: 100vh;
+  max-width: 428px;
+  margin: 0 auto;
+  padding: 16px;
+  background: var(--dw-soft);
   color: var(--dw-ink);
   font-family: "Plus Jakarta Sans", Inter, system-ui, sans-serif;
+  box-sizing: border-box;
 }
 
-.dw__content {
-  padding: 16px 16px 28px;
+.dw *,
+.dw *::before,
+.dw *::after {
+  box-sizing: inherit;
 }
 
-.dw-balance-card {
+.dw-page-title {
+  margin: 0 0 16px;
+  font-size: 26px;
+  font-weight: 900;
+  color: var(--dw-navy);
+}
+
+.dw-hero {
   border-radius: 24px;
-  padding: 24px 22px;
+  padding: 28px 24px;
   background: linear-gradient(145deg, #08111f 0%, #12243d 100%);
   color: #fff;
   box-shadow: var(--dw-card-shadow);
+  text-align: center;
 }
 
-.dw-balance-card__label {
+.dw-hero__label {
   display: block;
   font-size: 13px;
   font-weight: 700;
@@ -35,10 +51,10 @@
   opacity: 0.72;
 }
 
-.dw-balance-card__amount {
+.dw-hero__amount {
   display: block;
-  margin-top: 8px;
-  font-size: 40px;
+  margin: 12px 0 20px;
+  font-size: 44px;
   font-weight: 900;
   letter-spacing: -0.03em;
   line-height: 1.05;
@@ -46,35 +62,15 @@
   overflow-wrap: break-word;
 }
 
-.dw-balance-card__meta {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+.dw-hero__actions {
+  display: flex;
+  flex-direction: column;
   gap: 10px;
-  margin-top: 22px;
-  padding-top: 18px;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
-}
-
-.dw-balance-card__meta-item small {
-  display: block;
-  font-size: 11px;
-  opacity: 0.68;
-  font-weight: 600;
-}
-
-.dw-balance-card__meta-item strong {
-  display: block;
-  margin-top: 4px;
-  font-size: 14px;
-  font-weight: 800;
-  word-break: break-word;
-  overflow-wrap: break-word;
 }
 
 .dw-btn-primary {
   width: 100%;
   min-height: 44px;
-  margin-top: 16px;
   border: 0;
   border-radius: 999px;
   background: linear-gradient(135deg, var(--dw-green) 0%, var(--dw-green-dark) 100%);
@@ -84,29 +80,86 @@
   letter-spacing: 0.05em;
   padding: 16px 20px;
   cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.dw-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(0, 166, 81, 0.25);
+}
+
+.dw-btn-primary:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(0, 166, 81, 0.35);
 }
 
 .dw-btn-primary:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
 .dw-btn-secondary {
   width: 100%;
   min-height: 44px;
-  margin-top: 10px;
-  border: 1px solid var(--dw-line);
+  border: 1px solid rgba(255, 255, 255, 0.35);
   border-radius: 999px;
-  background: #fff;
-  color: var(--dw-ink);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
   font-size: 14px;
   font-weight: 800;
   padding: 14px 18px;
   cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.dw-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.dw-btn-secondary:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.25);
+}
+
+.dw-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.dw-summary-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: #fff;
+  border: 1px solid var(--dw-line);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 4px 18px rgba(16, 24, 40, 0.04);
+}
+
+.dw-summary-card__label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--dw-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.dw-summary-card__amount {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--dw-navy);
+  line-height: 1.2;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .dw-section {
-  margin-top: 28px;
+  margin-top: 24px;
 }
 
 .dw-section__header {
@@ -139,6 +192,7 @@
   border-radius: var(--dw-radius);
   background: #fff;
   box-shadow: 0 4px 18px rgba(16, 24, 40, 0.04);
+  overflow: hidden;
 }
 
 .dw-activity-row,
@@ -156,6 +210,14 @@
   border-bottom: 0;
 }
 
+.dw-activity-row__main,
+.dw-history-row__main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
 .dw-activity-row__title,
 .dw-history-row__title {
   margin: 0;
@@ -168,7 +230,7 @@
 
 .dw-activity-row__meta,
 .dw-history-row__meta {
-  margin: 4px 0 0;
+  margin: 0;
   font-size: 12px;
   color: var(--dw-muted);
   font-weight: 600;
@@ -181,6 +243,7 @@
   font-size: 15px;
   font-weight: 900;
   text-align: right;
+  white-space: nowrap;
 }
 
 .dw-activity-row__amount.is-credit,
@@ -190,38 +253,6 @@
 
 .dw-activity-row__amount.is-debit,
 .dw-history-row__amount.is-debit {
-  color: #b42318;
-}
-
-.dw-status-pill {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 72px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 800;
-  text-transform: capitalize;
-}
-
-.dw-status-pill--pending {
-  background: #fff7ed;
-  color: #c2410c;
-}
-
-.dw-status-pill--approved {
-  background: #eff6ff;
-  color: #1d4ed8;
-}
-
-.dw-status-pill--paid {
-  background: #ecfdf3;
-  color: #027a48;
-}
-
-.dw-status-pill--rejected {
-  background: #fef3f2;
   color: #b42318;
 }
 
@@ -243,6 +274,18 @@
   color: #b42318;
 }
 
+.dw-status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 72px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: capitalize;
+}
+
 .dw-skeleton {
   border-radius: var(--dw-radius);
   background: linear-gradient(90deg, #eef2f6 25%, #f8fafc 50%, #eef2f6 75%);
@@ -262,6 +305,38 @@
 @keyframes dw-shimmer {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
+}
+
+@media (max-width: 359px) {
+  .dw-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .dw-hero__amount {
+    font-size: 38px;
+  }
+}
+
+@media (min-width: 360px) and (max-width: 767px) {
+  .dw-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 768px) {
+  .dw {
+    max-width: 680px;
+    padding: 24px;
+  }
+
+  .dw-summary {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .dw-activity-row,
+  .dw-history-row {
+    padding: 16px 20px;
+  }
 }
 
 /* Cash out flow */

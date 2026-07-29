@@ -130,4 +130,102 @@ describe("DriverWallet", () => {
       expect(zeros.length).toBeGreaterThanOrEqual(1);
     });
   });
+
+  it("displays the available balance as the hero value", async () => {
+    await act(async () => {
+      render(<DriverWallet />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Available to withdraw")).toBeInTheDocument();
+      expect(screen.getByText(/5,000 MRU/)).toBeInTheDocument();
+    });
+  });
+
+  it("renders supported summary cards", async () => {
+    await act(async () => {
+      render(<DriverWallet />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Pending")).toBeInTheDocument();
+      expect(screen.getByText("Today")).toBeInTheDocument();
+      expect(screen.getByText("This week")).toBeInTheDocument();
+      expect(screen.getByText("This month")).toBeInTheDocument();
+      expect(screen.getByText("Lifetime")).toBeInTheDocument();
+      expect(screen.getByText(/1,000 MRU/)).toBeInTheDocument();
+      expect(screen.getByText(/8,000 MRU/)).toBeInTheDocument();
+    });
+  });
+
+  it("shows em-dash for missing balances and does not invent summary cards", async () => {
+    fetchWalletData.mockResolvedValue({
+      available_balance: undefined,
+      ledger: [],
+      withdrawals: [],
+    });
+
+    await act(async () => {
+      render(<DriverWallet />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("—")).toBeInTheDocument();
+      expect(screen.queryByText("Pending")).not.toBeInTheDocument();
+      expect(screen.queryByText("Today")).not.toBeInTheDocument();
+    });
+  });
+
+  it("communicates credit and debit independently of color", async () => {
+    fetchWalletData.mockResolvedValue({
+      ...walletData,
+      ledger: [
+        {
+          id: "l1",
+          label: "Ride fare",
+          amount: 1500,
+          is_credit: true,
+          created_at: "2023-01-01T12:00:00Z",
+        },
+        {
+          id: "l2",
+          label: "Withdrawal",
+          amount: 500,
+          is_credit: false,
+          created_at: "2023-01-02T12:00:00Z",
+        },
+      ],
+    });
+
+    await act(async () => {
+      render(<DriverWallet />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/\+ 1,500 MRU/)).toBeInTheDocument();
+      expect(screen.getByText(/- 500 MRU/)).toBeInTheDocument();
+      expect(screen.getByLabelText("Credit")).toBeInTheDocument();
+      expect(screen.getByLabelText("Debit")).toBeInTheDocument();
+    });
+  });
+
+  it("limits the ledger to eight entries", async () => {
+    const many = Array.from({ length: 10 }, (_, i) => ({
+      id: `l${i}`,
+      label: `Trip ${i}`,
+      amount: 100,
+      is_credit: true,
+      created_at: "2023-01-01T12:00:00Z",
+    }));
+    fetchWalletData.mockResolvedValue({
+      ...walletData,
+      ledger: many,
+    });
+
+    const { container } = render(<DriverWallet />);
+
+    await waitFor(() => {
+      expect(container.querySelectorAll(".dw-activity-row").length).toBe(8);
+    });
+  });
 });
