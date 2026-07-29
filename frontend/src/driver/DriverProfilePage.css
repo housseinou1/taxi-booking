@@ -802,7 +802,7 @@
 
 .dp-eligibility-item__action {
   margin-left: auto;
-  padding: 6px 12px;
+  padding: 8px 12px;
   border-radius: 8px;
   border: 1px solid var(--yala-green, #0a7a44);
   background: transparent;
@@ -810,7 +810,7 @@
   font-weight: 700;
   font-size: 13px;
   cursor: pointer;
-  min-height: 36px;
+  min-height: 44px;
 }
 
 @media (max-width: 360px) {

@@ -194,7 +194,7 @@ export default function DriverProfilePage({ onBack }) {
   const [uploadError, setUploadError] = useState({ type: "", message: "" });
   const [uploadSuccessType, setUploadSuccessType] = useState("");
   const [documentsUnderReview, setDocumentsUnderReview] = useState(false);
-  const [activeTab, setActiveTab] = useState("profile");
+  const [, setActiveTab] = useState("profile");
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const fileInputRef = useRef(null);
@@ -665,7 +665,7 @@ export default function DriverProfilePage({ onBack }) {
             </StatusChip>
           </div>
           {hasBlockingDocs && (
-            <ul className="dp-eligibility-list" role="list" aria-label="Documents blocking online access">
+            <ul className="dp-eligibility-list" aria-label="Documents blocking online access">
               {blockingDocs.map((doc) => (
                 <li key={doc.key} className="dp-eligibility-item">
                   <span className="dp-eligibility-item__name">{doc.label}</span>
