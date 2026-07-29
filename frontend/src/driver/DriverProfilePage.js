@@ -31,7 +31,8 @@ const DOCUMENT_TYPES = [
 const getValue = (...values) => values.find((value) => value !== undefined && value !== null && value !== "");
 const isPlaceholderDisplayValue = (value) => {
   const text = String(value || "").trim();
-  if (!text || text === "n/a" || text === "Not provided" || text === "Not assigned") return true;
+  const lower = text.toLowerCase();
+  if (!text || lower === "n/a" || lower === "not provided" || lower === "not assigned") return true;
   if (/^TEMP\b/i.test(text) || /^TEMP[-_]/i.test(text)) return true;
   return false;
 };
@@ -83,6 +84,7 @@ const getProfileLoadError = (failures = []) => {
 
 const getDocumentStatus = (document, docType = {}) => {
   if (!document?.file) return "missing";
+  if (document.status === "rejected") return "rejected";
   const expirationStatus = getRequiredDocumentExpirationStatus(document, {
     required: docType.required !== false,
   });
@@ -153,6 +155,26 @@ const getAccountStatusMeta = (status) => {
     expired: { intent: "danger", icon: "⚠️", label: "Documents expired" },
   };
   return map[key] || { intent: "neutral", icon: "•", label: titleCase(status || "Pending") };
+};
+
+// Presentation-only mapping of per-document backend statuses to a shared
+// StatusChip intent/label. Does not introduce new statuses or business rules.
+const getDocumentStatusMeta = (status) => {
+  const key = String(status || "").toLowerCase();
+  const map = {
+    valid: { intent: "success", label: getDocumentMenuStatusLabel("valid") },
+    approved: { intent: "success", label: getDocumentMenuStatusLabel("valid") },
+    expiring_soon: { intent: "warning", label: getDocumentMenuStatusLabel("expiring_soon") },
+    pending: { intent: "warning", label: "Pending Review" },
+    pending_review: { intent: "warning", label: "Pending Review" },
+    needs_review: { intent: "warning", label: "Pending Review" },
+    under_review: { intent: "warning", label: "Pending Review" },
+    submitted: { intent: "warning", label: "Pending Review" },
+    rejected: { intent: "danger", label: "Rejected" },
+    expired: { intent: "danger", label: getDocumentMenuStatusLabel("expired") },
+    missing: { intent: "danger", label: getDocumentMenuStatusLabel("expired") },
+  };
+  return map[key] || { intent: "neutral", label: titleCase(status || "Pending") };
 };
 
 export default function DriverProfilePage({ onBack }) {
@@ -504,23 +526,6 @@ export default function DriverProfilePage({ onBack }) {
     data.documents
   );
 
-  const statusBadgeLabel = (status) => {
-    const map = {
-      valid: getDocumentMenuStatusLabel("valid"),
-      approved: getDocumentMenuStatusLabel("valid"),
-      expiring_soon: getDocumentMenuStatusLabel("expiring_soon"),
-      pending: "Pending Review",
-      pending_review: "Pending Review",
-      needs_review: "Pending Review",
-      under_review: "Pending Review",
-      submitted: "Pending Review",
-      rejected: "Rejected",
-      expired: getDocumentMenuStatusLabel("expired"),
-      missing: getDocumentMenuStatusLabel("expired"),
-    };
-    return map[status] || titleCase(status);
-  };
-
   return (
     <main className={`dp-shell${isDriverYalaUI() ? " dp-shell--lyft" : ""}`}>
       <input
@@ -847,21 +852,23 @@ export default function DriverProfilePage({ onBack }) {
             <span className="dp-doc-count">{approvedDocuments}/{DOCUMENT_TYPES.length} approved</span>
           </div>
           {documentsUnderReview && <DocumentsUnderReviewBanner />}
-          <div className="dp-doc-grid">
+          <div className="dp-doc-grid" role="list" aria-label="Document quick actions">
             {shortDocumentCards.map(({ type, label, icon, document }) => {
               const status = getDocumentStatus(document, { required: true });
+              const meta = getDocumentStatusMeta(status);
               return (
                 <button
                   type="button"
                   key={type}
                   className="dp-doc-card"
                   onClick={() => startUpload(type)}
+                  aria-label={`${label}: ${meta.label}`}
                 >
-                  <span className="dp-doc-icon">{icon}</span>
+                  <span className="dp-doc-icon" aria-hidden="true">{icon}</span>
                   <strong className="dp-doc-label">{label}</strong>
-                  <span className={`dp-doc-status dp-doc-status--${status}`}>
-                    {statusBadgeLabel(status)}
-                  </span>
+                  <StatusChip intent={meta.intent} dot>
+                    {meta.label}
+                  </StatusChip>
                 </button>
               );
             })}
@@ -1039,19 +1046,7 @@ function DetailRow({ label, value }) {
 
 function DocumentRow({ item, document, uploading, onUpload }) {
   const status = getDocumentStatus(document, item);
-  const labels = {
-    valid: getDocumentMenuStatusLabel("valid"),
-    approved: getDocumentMenuStatusLabel("valid"),
-    expiring_soon: getDocumentMenuStatusLabel("expiring_soon"),
-    pending: "Pending Review",
-    pending_review: "Pending Review",
-    needs_review: "Pending Review",
-    under_review: "Pending Review",
-    submitted: "Pending Review",
-    rejected: "Rejected",
-    expired: getDocumentMenuStatusLabel("expired"),
-    missing: getDocumentMenuStatusLabel("expired"),
-  };
+  const meta = getDocumentStatusMeta(status);
 
   const daysRemaining =
     document?.days_until_expiry ??
@@ -1062,29 +1057,61 @@ function DocumentRow({ item, document, uploading, onUpload }) {
         )
       : null);
 
+  const rejectionReason = document?.rejection_reason;
+  const lastUploadRaw = document?.uploaded_at || document?.updated_at || document?.created_at;
+  const lastUploadDate = (() => {
+    if (!lastUploadRaw) return "";
+    const date = new Date(lastUploadRaw);
+    return Number.isNaN(date.getTime()) ? "" : date.toLocaleDateString();
+  })();
+
+  const subtitle = (() => {
+    if (status === "rejected" && rejectionReason) return `Rejected: ${rejectionReason}`;
+    if (status === "expiring_soon" && daysRemaining !== null)
+      return `Expiring in ${daysRemaining} day${daysRemaining === 1 ? "" : "s"}`;
+    if (document?.expires_at) return `Expires ${document.expires_at}`;
+    if (status === "expired" && daysRemaining !== null && daysRemaining < 0)
+      return `Expired ${Math.abs(daysRemaining)} day${Math.abs(daysRemaining) === 1 ? "" : "s"} ago`;
+    if (lastUploadDate) return `Uploaded ${lastUploadDate}`;
+    return "No expiration date";
+  })();
+
+  const blocksOnline = item.required !== false && ["expired", "rejected", "missing"].includes(status);
+
   return (
     <div className="dp-doc-row">
       <div className="dp-doc-row-info">
         <strong>{item.label}</strong>
-        <small>
-          {status === "expiring_soon" && daysRemaining !== null
-            ? `Expiring in ${daysRemaining} day${daysRemaining === 1 ? "" : "s"}`
-            : document?.expires_at
-              ? `Expires ${document.expires_at}`
-              : "No expiry set"}
-        </small>
+        <small>{subtitle}</small>
+        {blocksOnline && (
+          <span className="dp-doc-block-note" aria-label="Required to go online">
+            Required to go online
+          </span>
+        )}
       </div>
-      <span className={`dp-doc-status dp-doc-status--${status}`}>
-        {labels[status] || titleCase(status)}
-      </span>
+      <StatusChip intent={meta.intent} dot>
+        {meta.label}
+      </StatusChip>
       <div className="dp-doc-row-actions">
         {document?.file && (
-          <a href={document.file} target="_blank" rel="noreferrer" className="dp-doc-preview-link">
-            Preview
+          <a
+            href={document.file}
+            target="_blank"
+            rel="noreferrer"
+            className="dp-doc-preview-link"
+            aria-label={`View ${item.label}`}
+          >
+            View
           </a>
         )}
-        <button type="button" className="dp-doc-upload-btn" onClick={onUpload} disabled={uploading}>
-          {uploading ? "Uploading..." : document?.file ? "Re-upload" : "Upload"}
+        <button
+          type="button"
+          className="dp-doc-upload-btn"
+          onClick={onUpload}
+          disabled={uploading}
+          aria-label={document?.file ? `Replace ${item.label}` : `Upload ${item.label}`}
+        >
+          {uploading ? "Uploading..." : document?.file ? "Replace" : "Upload"}
         </button>
       </div>
     </div>

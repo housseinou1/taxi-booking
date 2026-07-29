@@ -409,6 +409,68 @@ describe("DriverProfilePage vehicle & document summaries", () => {
     expect(screen.getByText("7 documents missing")).toBeInTheDocument();
     restore();
   });
+
+  it("renders shared StatusChip labels for document statuses", async () => {
+    const restore = setupLocationMock();
+    mockWith({
+      vehicle: profileResponse.vehicle,
+      documents: [
+        { document_type: "license", file: "f.jpg", status: "approved" },
+        { document_type: "insurance", file: "f.jpg", status: "rejected", rejection_reason: "Too blurry" },
+        { document_type: "national_id", file: "f.jpg", status: "pending_review" },
+      ],
+    });
+    await renderReady();
+    expect(screen.getAllByText(/Valid/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Rejected").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Pending Review").length).toBeGreaterThanOrEqual(1);
+    restore();
+  });
+
+  it("displays the backend rejection reason when provided", async () => {
+    const restore = setupLocationMock();
+    mockWith({
+      vehicle: profileResponse.vehicle,
+      documents: [{ document_type: "insurance", file: "f.jpg", status: "rejected", rejection_reason: "Too blurry" }],
+    });
+    await renderReady();
+    expect(screen.getByText("Rejected: Too blurry")).toBeInTheDocument();
+    restore();
+  });
+
+  it("shows expiration days for expiring soon documents", async () => {
+    const restore = setupLocationMock();
+    mockWith({
+      vehicle: profileResponse.vehicle,
+      documents: [{ document_type: "insurance", file: "f.jpg", status: "approved", days_until_expiry: 5 }],
+    });
+    await renderReady();
+    expect(screen.getByText("Expiring in 5 days")).toBeInTheDocument();
+    restore();
+  });
+
+  it("exposes accessible labels on document action buttons", async () => {
+    const restore = setupLocationMock();
+    mockWith({
+      vehicle: profileResponse.vehicle,
+      documents: [{ document_type: "license", file: "f.jpg", status: "approved" }],
+    });
+    await renderReady();
+    expect(screen.getByRole("link", { name: /View Driver License/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Replace Driver License/i })).toBeInTheDocument();
+    restore();
+  });
+
+  it("shows the required-to-go-online note for rejected documents", async () => {
+    const restore = setupLocationMock();
+    mockWith({
+      vehicle: profileResponse.vehicle,
+      documents: [{ document_type: "insurance", file: "f.jpg", status: "rejected", rejection_reason: "Too blurry" }],
+    });
+    await renderReady();
+    expect(screen.getAllByText("Required to go online").length).toBeGreaterThanOrEqual(1);
+    restore();
+  });
 });
 
 describe("DriverProfilePage release-readiness guards", () => {

@@ -663,6 +663,43 @@
   cursor: wait;
 }
 
+.dp-doc-row {
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.dp-doc-row-info {
+  min-width: 120px;
+}
+
+.dp-doc-row-info small {
+  overflow-wrap: anywhere;
+}
+
+.dp-doc-row .yds-status-chip,
+.dp-doc-card .yds-status-chip {
+  flex-shrink: 0;
+}
+
+.dp-doc-card .yds-status-chip {
+  margin-top: 6px;
+}
+
+.dp-doc-block-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--danger, #ef4444);
+}
+
+.dp-doc-block-note::before {
+  content: "⚠";
+  font-size: 12px;
+}
+
 /* === Logout Button === */
 .dp-logout-btn {
   width: 100%;
