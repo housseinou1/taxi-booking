@@ -13,6 +13,11 @@ jest.mock("../marketConfig", () => ({
   MARKET: { currency: "MRU" },
 }));
 
+jest.mock("./utils/driverReceipt", () => ({
+  printDriverReceipt: jest.fn(),
+  shareDriverReceipt: jest.fn(),
+}));
+
 const baseResponse = (overrides = {}) => ({
   count: 1,
   total_pages: 1,
@@ -307,5 +312,247 @@ describe("DriverRideHistory foundation", () => {
     expect(authenticatedApi.get).not.toHaveBeenCalledWith(
       expect.stringMatching(/\/rides\/\d+\//)
     );
+  });
+
+  describe("Ride detail expansion", () => {
+    it("expands a ride and fetches detail", async () => {
+      mockGet(baseResponse());
+      authenticatedApi.get.mockResolvedValueOnce({
+        data: {
+          id: 1,
+          pickup: "Central Market",
+          destination: "Airport",
+          pickup_address: "Central Market",
+          destination_address: "Airport",
+          fare: "500",
+          driver_earning: "400",
+          status: "completed",
+          ride_type: "regular",
+          distance_km: "5.5",
+          created_at: "2026-07-20T10:00:00Z",
+          completed_at: "2026-07-20T10:30:00Z",
+          waiting_fee: "50",
+          payment_tip_amount: "100",
+          app_fee: "60",
+          bonus: "25",
+          notes: "Great ride",
+          rider_name: "Ahmad",
+        },
+      });
+      render(<DriverRideHistory />);
+
+      await waitFor(() =>
+        expect(screen.getByText("Central Market")).toBeInTheDocument()
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: /show details/i }));
+
+      await waitFor(() =>
+        expect(screen.getByText("Ride details")).toBeInTheDocument()
+      );
+      expect(screen.getByText("Waiting fee")).toBeInTheDocument();
+      expect(screen.getByText("50 MRU")).toBeInTheDocument();
+      expect(screen.getByText("Tip")).toBeInTheDocument();
+      expect(screen.getByText("100 MRU")).toBeInTheDocument();
+      expect(screen.getByText("Commission")).toBeInTheDocument();
+      expect(screen.getByText("60 MRU")).toBeInTheDocument();
+      expect(screen.getByText("Bonus")).toBeInTheDocument();
+      expect(screen.getByText("25 MRU")).toBeInTheDocument();
+      expect(screen.getByText("Great ride")).toBeInTheDocument();
+
+      expect(authenticatedApi.get).toHaveBeenCalledWith(
+        expect.stringMatching(/\/rides\/1\//)
+      );
+    });
+
+    it("does not fetch details until expanded", async () => {
+      mockGet(baseResponse());
+      render(<DriverRideHistory />);
+
+      await waitFor(() =>
+        expect(screen.getByText("Central Market")).toBeInTheDocument()
+      );
+      expect(authenticatedApi.get).toHaveBeenCalledTimes(1);
+    });
+
+    it("caches the detail and avoids refetching", async () => {
+      mockGet(baseResponse());
+      authenticatedApi.get.mockResolvedValueOnce({
+        data: {
+          id: 1,
+          pickup: "Central Market",
+          destination: "Airport",
+          fare: "500",
+          driver_earning: "400",
+          status: "completed",
+          created_at: "2026-07-20T10:00:00Z",
+        },
+      });
+      render(<DriverRideHistory />);
+
+      await waitFor(() =>
+        expect(screen.getByText("Central Market")).toBeInTheDocument()
+      );
+      const toggle = screen.getByRole("button", { name: /show details/i });
+
+      fireEvent.click(toggle);
+      await waitFor(() =>
+        expect(screen.getByText("Ride details")).toBeInTheDocument()
+      );
+
+      fireEvent.click(toggle);
+      expect(screen.queryByText("Ride details")).not.toBeInTheDocument();
+
+      fireEvent.click(toggle);
+      expect(screen.getByText("Ride details")).toBeInTheDocument();
+
+      await new Promise((r) => setTimeout(r, 50));
+      expect(authenticatedApi.get).toHaveBeenCalledTimes(2);
+    });
+
+    it("shows detail loading state", async () => {
+      mockGet(baseResponse());
+      let resolveDetail;
+      authenticatedApi.get.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveDetail = resolve;
+          })
+      );
+      render(<DriverRideHistory />);
+
+      await waitFor(() =>
+        expect(screen.getByText("Central Market")).toBeInTheDocument()
+      );
+      fireEvent.click(screen.getByRole("button", { name: /show details/i }));
+      expect(screen.getByText("Loading details…")).toBeInTheDocument();
+
+      resolveDetail({
+        data: { id: 1, pickup: "Central Market", destination: "Airport" },
+      });
+      await waitFor(() =>
+        expect(screen.getByText("Ride details")).toBeInTheDocument()
+      );
+    });
+
+    it("shows detail error and supports retry", async () => {
+      mockGet(baseResponse());
+      authenticatedApi.get.mockRejectedValueOnce(new Error("Detail failed"));
+      render(<DriverRideHistory />);
+
+      await waitFor(() =>
+        expect(screen.getByText("Central Market")).toBeInTheDocument()
+      );
+      fireEvent.click(screen.getByRole("button", { name: /show details/i }));
+
+      await waitFor(() =>
+        expect(
+          screen.getByText(/Could not load ride details/)
+        ).toBeInTheDocument()
+      );
+      const retry = screen.getByRole("button", { name: "Try again" });
+      expect(retry).toBeInTheDocument();
+
+      authenticatedApi.get.mockResolvedValueOnce({
+        data: { id: 1, pickup: "Central Market", destination: "Airport" },
+      });
+      fireEvent.click(retry);
+
+      await waitFor(() =>
+        expect(screen.getByText("Ride details")).toBeInTheDocument()
+      );
+    });
+
+    it("disables receipt actions until detail is loaded", async () => {
+      mockGet(baseResponse());
+      render(<DriverRideHistory />);
+
+      await waitFor(() =>
+        expect(screen.getByText("Central Market")).toBeInTheDocument()
+      );
+      fireEvent.click(screen.getByRole("button", { name: /show details/i }));
+
+      const print = await screen.findByRole("button", { name: "Print receipt" });
+      const share = await screen.findByRole("button", { name: "Share receipt" });
+      expect(print).toBeDisabled();
+      expect(share).toBeDisabled();
+      expect(
+        screen.getByText("Receipt actions are available once details load.")
+      ).toBeInTheDocument();
+    });
+
+    it("reuses driverReceipt.js helpers for print and share", async () => {
+      const { printDriverReceipt, shareDriverReceipt } = require("./utils/driverReceipt");
+      mockGet(baseResponse());
+      const detailData = { id: 1, fare: "500", driver_earning: "400" };
+      authenticatedApi.get.mockResolvedValueOnce({ data: detailData });
+      render(<DriverRideHistory />);
+
+      await waitFor(() =>
+        expect(screen.getByText("Central Market")).toBeInTheDocument()
+      );
+      fireEvent.click(screen.getByRole("button", { name: /show details/i }));
+      await waitFor(() =>
+        expect(screen.getByText("Ride details")).toBeInTheDocument()
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: "Print receipt" }));
+      fireEvent.click(screen.getByRole("button", { name: "Share receipt" }));
+
+      expect(printDriverReceipt).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 1 })
+      );
+      expect(shareDriverReceipt).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 1 })
+      );
+    });
+
+    it("does not invent missing detail fields", async () => {
+      mockGet(baseResponse());
+      authenticatedApi.get.mockResolvedValueOnce({
+        data: {
+          id: 1,
+          pickup: "Central Market",
+          destination: "Airport",
+          fare: "500",
+          driver_earning: "400",
+          status: "completed",
+          created_at: "2026-07-20T10:00:00Z",
+          completed_at: "2026-07-20T10:30:00Z",
+        },
+      });
+      render(<DriverRideHistory />);
+
+      await waitFor(() =>
+        expect(screen.getByText("Central Market")).toBeInTheDocument()
+      );
+      fireEvent.click(screen.getByRole("button", { name: /show details/i }));
+      await waitFor(() =>
+        expect(screen.getByText("Ride details")).toBeInTheDocument()
+      );
+
+      expect(screen.queryByText("Waiting fee")).not.toBeInTheDocument();
+      expect(screen.queryByText("Commission")).not.toBeInTheDocument();
+      expect(screen.queryByText("Bonus")).not.toBeInTheDocument();
+    });
+
+    it("sets aria-expanded and aria-controls on the detail toggle", async () => {
+      mockGet(baseResponse());
+      authenticatedApi.get.mockResolvedValueOnce({ data: { id: 1 } });
+      render(<DriverRideHistory />);
+
+      await waitFor(() =>
+        expect(screen.getByText("Central Market")).toBeInTheDocument()
+      );
+      const toggle = screen.getByRole("button", { name: /show details/i });
+      expect(toggle).toHaveAttribute("aria-expanded", "false");
+      const controls = toggle.getAttribute("aria-controls");
+
+      fireEvent.click(toggle);
+      await waitFor(() =>
+        expect(toggle).toHaveAttribute("aria-expanded", "true")
+      );
+      expect(document.getElementById(controls)).toBeInTheDocument();
+    });
   });
 });

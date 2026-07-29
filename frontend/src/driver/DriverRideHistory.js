@@ -5,6 +5,7 @@ import { API_URL } from "../apiConfig";
 import StatusChip from "../design-system/components/StatusChip";
 import { formatMoney } from "../marketConfig";
 import { DriverErrorState, DriverLoadingState } from "./ui/DriverAppStates";
+import { printDriverReceipt, shareDriverReceipt } from "./utils/driverReceipt";
 import "./DriverRideHistory.css";
 
 const STATUS_OPTIONS = [
@@ -44,6 +45,211 @@ function isInvalidRange(dateFrom, dateTo) {
   return new Date(dateFrom) > new Date(dateTo);
 }
 
+function DetailRow({ label, value }) {
+  return (
+    <div className="drh-detail-row">
+      <span className="drh-detail-label">{label}</span>
+      <span className="drh-detail-value">{value}</span>
+    </div>
+  );
+}
+
+function RideCard({ ride, expanded, detail, loading, error, onExpand, onRetry }) {
+  const detailId = `drh-detail-${ride.id}`;
+  const display = detail || ride;
+  const canReceipt = !!detail && !!ride.id;
+
+  return (
+    <article className="drh-card" key={ride.id}>
+      <div className="drh-card-header">
+        <time className="drh-card-date" dateTime={ride.completed_at || ride.created_at}>
+          {formatRideDate(ride.completed_at || ride.created_at)}
+        </time>
+        <StatusChip intent={statusToIntent(ride.status)} dot>
+          {ride.status || "Unknown"}
+        </StatusChip>
+      </div>
+
+      <div className="drh-card-route">
+        <div className="drh-route-row">
+          <span className="drh-dot drh-dot--pickup" aria-hidden="true" />
+          <span className="drh-route-text">
+            {ride.pickup_address || ride.pickup || "—"}
+          </span>
+        </div>
+        <div className="drh-route-row">
+          <span className="drh-dot drh-dot--dropoff" aria-hidden="true" />
+          <span className="drh-route-text">
+            {ride.destination_address || ride.destination || "—"}
+          </span>
+        </div>
+      </div>
+
+      <div className="drh-card-meta">
+        {ride.rider_name ? (
+          <span className="drh-meta-item">Rider: {ride.rider_name}</span>
+        ) : null}
+        {ride.distance_km != null ? (
+          <span className="drh-meta-item">
+            {Number(ride.distance_km).toFixed(1)} km
+          </span>
+        ) : null}
+        {ride.ride_type ? (
+          <span className="drh-meta-item">{ride.ride_type}</span>
+        ) : null}
+        {ride.rating != null ? (
+          <span className="drh-meta-item">Rating: {ride.rating}</span>
+        ) : null}
+        {ride.stop_count > 0 ? (
+          <span className="drh-meta-item">
+            {ride.stop_count} {ride.stop_count === 1 ? "stop" : "stops"}
+          </span>
+        ) : null}
+      </div>
+
+      <div className="drh-card-footer">
+        <span className="drh-earning-label">Earning</span>
+        <strong className="drh-earning">{formatEarning(display)}</strong>
+      </div>
+
+      <div className="drh-card-toggle">
+        <button
+          type="button"
+          className="drh-detail-toggle"
+          onClick={onExpand}
+          aria-expanded={expanded}
+          aria-controls={detailId}
+          aria-label={`${expanded ? "Hide" : "Show"} details for ride on ${formatRideDate(ride.completed_at || ride.created_at)}`}
+        >
+          {expanded ? "Hide details" : "Show details"}
+        </button>
+      </div>
+
+      {expanded ? (
+        <div id={detailId} className="drh-detail" aria-live="polite">
+          {loading ? (
+            <div className="drh-detail-loading">Loading details…</div>
+          ) : error ? (
+            <div className="drh-detail-error" role="alert">
+              <p>{error}</p>
+              <button
+                type="button"
+                className="drh-detail-retry"
+                onClick={onRetry}
+              >
+                Try again
+              </button>
+            </div>
+          ) : (
+            <div className="drh-detail-body">
+              <h3 className="drh-detail-title">Ride details</h3>
+              <div className="drh-detail-grid">
+                <DetailRow
+                  label="Pickup"
+                  value={display.pickup_address || display.pickup || "—"}
+                />
+                <DetailRow
+                  label="Destination"
+                  value={display.destination_address || display.destination || "—"}
+                />
+                <DetailRow
+                  label="Fare"
+                  value={display.fare != null ? formatMoney(Number(display.fare)) : "—"}
+                />
+                <DetailRow
+                  label="Earning"
+                  value={
+                    display.driver_earning != null
+                      ? formatMoney(Number(display.driver_earning))
+                      : "—"
+                  }
+                />
+                <DetailRow
+                  label="Distance"
+                  value={
+                    display.distance_km != null
+                      ? `${Number(display.distance_km).toFixed(1)} km`
+                      : "—"
+                  }
+                />
+                <DetailRow label="Status" value={display.status || "—"} />
+                <DetailRow label="Ride type" value={display.ride_type || "—"} />
+                <DetailRow label="Created" value={formatRideDate(display.created_at)} />
+                <DetailRow label="Completed" value={formatRideDate(display.completed_at)} />
+                {display.waiting_fee ? (
+                  <DetailRow
+                    label="Waiting fee"
+                    value={formatMoney(Number(display.waiting_fee))}
+                  />
+                ) : null}
+                {display.payment_tip_amount ? (
+                  <DetailRow
+                    label="Tip"
+                    value={formatMoney(Number(display.payment_tip_amount))}
+                  />
+                ) : null}
+                {display.app_fee ? (
+                  <DetailRow
+                    label="Commission"
+                    value={formatMoney(Number(display.app_fee))}
+                  />
+                ) : null}
+                {display.bonus ? (
+                  <DetailRow
+                    label="Bonus"
+                    value={formatMoney(Number(display.bonus))}
+                  />
+                ) : null}
+                {display.notes ? (
+                  <DetailRow label="Notes" value={display.notes} />
+                ) : null}
+              </div>
+
+              {display.stops && display.stops.length > 0 ? (
+                <div className="drh-detail-stops">
+                  <h4 className="drh-detail-stops-title">Stops</h4>
+                  <ol className="drh-detail-stops-list">
+                    {display.stops.map((stop, index) => (
+                      <li key={stop.id || index} className="drh-detail-stop">
+                        {stop.location_name || `Stop ${index + 1}`}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              ) : null}
+
+              <div className="drh-receipt-actions">
+                <button
+                  type="button"
+                  className="drh-receipt-btn"
+                  onClick={() => printDriverReceipt(display)}
+                  disabled={!canReceipt}
+                >
+                  Print receipt
+                </button>
+                <button
+                  type="button"
+                  className="drh-receipt-btn"
+                  onClick={() => shareDriverReceipt(display)}
+                  disabled={!canReceipt}
+                >
+                  Share receipt
+                </button>
+              </div>
+
+              {!canReceipt ? (
+                <p className="drh-receipt-disabled">
+                  Receipt actions are available once details load.
+                </p>
+              ) : null}
+            </div>
+          )}
+        </div>
+      ) : null}
+    </article>
+  );
+}
+
 export default function DriverRideHistory() {
   const [rides, setRides] = useState([]);
   const [page, setPage] = useState(1);
@@ -59,6 +265,11 @@ export default function DriverRideHistory() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [validation, setValidation] = useState("");
+
+  const [expandedId, setExpandedId] = useState(null);
+  const [detailById, setDetailById] = useState({});
+  const [detailLoadingId, setDetailLoadingId] = useState(null);
+  const [detailErrorById, setDetailErrorById] = useState({});
 
   const fetchRides = useCallback(
     async ({ showLoading = true } = {}) => {
@@ -83,7 +294,7 @@ export default function DriverRideHistory() {
         const response = await authenticatedApi.get(
           `${API_URL}/drivers/me/rides/?${params.toString()}`
         );
-        const data = response.data || {};
+        const data = response?.data ?? {};
 
         const results = Array.isArray(data.results)
           ? data.results
@@ -107,6 +318,35 @@ export default function DriverRideHistory() {
       }
     },
     [page, statusFilter, dateFrom, dateTo]
+  );
+
+  const fetchDetail = useCallback(async (rideId) => {
+    setDetailLoadingId(rideId);
+    setDetailErrorById((prev) => ({ ...prev, [rideId]: "" }));
+    try {
+      const response = await authenticatedApi.get(`${API_URL}/rides/${rideId}/`);
+      setDetailById((prev) => ({ ...prev, [rideId]: response?.data ?? null }));
+    } catch (err) {
+      setDetailErrorById((prev) => ({
+        ...prev,
+        [rideId]: "Could not load ride details. Please try again.",
+      }));
+    } finally {
+      setDetailLoadingId(null);
+    }
+  }, []);
+
+  const handleExpand = useCallback(
+    (rideId) => {
+      setExpandedId((current) => {
+        if (current === rideId) return null;
+        if (!detailById[rideId]) {
+          fetchDetail(rideId);
+        }
+        return rideId;
+      });
+    },
+    [detailById, fetchDetail]
   );
 
   useEffect(() => {
@@ -249,58 +489,16 @@ export default function DriverRideHistory() {
         ) : (
           <div className="drh-list">
             {rides.map((ride) => (
-              <article className="drh-card" key={ride.id}>
-                <div className="drh-card-header">
-                  <time className="drh-card-date" dateTime={ride.completed_at || ride.created_at}>
-                    {formatRideDate(ride.completed_at || ride.created_at)}
-                  </time>
-                  <StatusChip intent={statusToIntent(ride.status)} dot>
-                    {ride.status || "Unknown"}
-                  </StatusChip>
-                </div>
-
-                <div className="drh-card-route">
-                  <div className="drh-route-row">
-                    <span className="drh-dot drh-dot--pickup" aria-hidden="true" />
-                    <span className="drh-route-text">
-                      {ride.pickup_address || ride.pickup || "—"}
-                    </span>
-                  </div>
-                  <div className="drh-route-row">
-                    <span className="drh-dot drh-dot--dropoff" aria-hidden="true" />
-                    <span className="drh-route-text">
-                      {ride.destination_address || ride.destination || "—"}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="drh-card-meta">
-                  {ride.rider_name ? (
-                    <span className="drh-meta-item">Rider: {ride.rider_name}</span>
-                  ) : null}
-                  {ride.distance_km != null ? (
-                    <span className="drh-meta-item">
-                      {Number(ride.distance_km).toFixed(1)} km
-                    </span>
-                  ) : null}
-                  {ride.ride_type ? (
-                    <span className="drh-meta-item">{ride.ride_type}</span>
-                  ) : null}
-                  {ride.rating != null ? (
-                    <span className="drh-meta-item">Rating: {ride.rating}</span>
-                  ) : null}
-                  {ride.stop_count > 0 ? (
-                    <span className="drh-meta-item">
-                      {ride.stop_count} {ride.stop_count === 1 ? "stop" : "stops"}
-                    </span>
-                  ) : null}
-                </div>
-
-                <div className="drh-card-footer">
-                  <span className="drh-earning-label">Earning</span>
-                  <strong className="drh-earning">{formatEarning(ride)}</strong>
-                </div>
-              </article>
+              <RideCard
+                key={ride.id}
+                ride={ride}
+                expanded={expandedId === ride.id}
+                detail={detailById[ride.id]}
+                loading={detailLoadingId === ride.id}
+                error={detailErrorById[ride.id]}
+                onExpand={() => handleExpand(ride.id)}
+                onRetry={() => fetchDetail(ride.id)}
+              />
             ))}
           </div>
         )}
