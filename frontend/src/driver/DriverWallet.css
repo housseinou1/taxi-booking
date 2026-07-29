@@ -565,17 +565,46 @@
   color: var(--dw-navy);
 }
 
+.dw-cashout__title {
+  margin: 20px 0 4px;
+  font-size: 20px;
+  font-weight: 900;
+  color: var(--dw-navy);
+}
+
+.dw-cashout .dw-btn-secondary {
+  border: 1px solid var(--dw-line);
+  background: #fff;
+  color: var(--dw-navy);
+}
+
+.dw-cashout .dw-btn-secondary:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(0, 166, 81, 0.25);
+}
+
 @keyframes dw-slide-up {
   from { transform: translateY(100%); }
   to { transform: translateY(0); }
 }
 
-@media (max-width: 420px) {
-  .dw-balance-card__meta {
+@media (max-width: 359px) {
+  .dw-amount-grid {
     grid-template-columns: 1fr;
   }
+}
 
-  .dw-balance-card__amount {
-    font-size: 34px;
+@media (min-width: 768px) {
+  .dw-cashout,
+  .dw-success {
+    max-width: 520px;
+    padding: 24px;
+  }
+
+  .dw-sheet {
+    max-width: 520px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
   }
 }

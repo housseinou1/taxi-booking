@@ -87,17 +87,19 @@ export default function DriverWalletPayoutSheet({ payoutMethods, onClose, onSave
               <button
                 key={method.id}
                 type="button"
+                aria-pressed={selectedMethodId === method.id}
+                aria-label={method.label}
                 className={`dw-method-card${selectedMethodId === method.id ? " is-selected" : ""}`}
                 onClick={() => setSelectedMethodId(method.id)}
               >
-                <span className="dw-method-card__icon">{method.icon}</span>
+                <span className="dw-method-card__icon" aria-hidden="true">{method.icon}</span>
                 <span>
                   <p className="dw-method-card__title">{method.label}</p>
                   <p className="dw-method-card__subtitle">
                     {saved ? maskPayoutMethod(saved) : "Not configured"}
                   </p>
                 </span>
-                {saved ? <span className="dw-method-card__badge">Verified · Edit</span> : null}
+                {saved?.is_default ? <span className="dw-method-card__badge">Default</span> : null}
               </button>
             );
           })}
@@ -113,6 +115,8 @@ export default function DriverWalletPayoutSheet({ payoutMethods, onClose, onSave
               onChange={(event) =>
                 setForm((current) => ({ ...current, account_holder_name: event.target.value }))
               }
+              aria-describedby={error ? "payout-form-error" : undefined}
+              aria-invalid={error ? "true" : undefined}
             />
           </label>
           {selectedMethodId === "bank_account" ? (
@@ -160,8 +164,8 @@ export default function DriverWalletPayoutSheet({ payoutMethods, onClose, onSave
           {savedMethod ? (
             <p className="driver-payout-help">Saved account: {maskPayoutMethod(savedMethod)}</p>
           ) : null}
-          {error ? <div className="dw-error" style={{ marginTop: 12 }}>{error}</div> : null}
-          <button type="submit" className="dw-btn-primary" disabled={saving}>
+          {error ? <div id="payout-form-error" className="dw-error" role="alert" aria-live="assertive" style={{ marginTop: 12 }}>{error}</div> : null}
+          <button type="submit" className="dw-btn-primary" disabled={saving} aria-busy={saving}>
             {saving ? "Saving..." : "Save payout method"}
           </button>
         </form>

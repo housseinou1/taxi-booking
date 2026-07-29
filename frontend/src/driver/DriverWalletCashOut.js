@@ -276,7 +276,7 @@ export default function DriverWalletCashOut() {
           <small>Minimum withdrawal: {formatWalletAmount(minimum)}</small>
         </div>
 
-        {formError ? <div className="dw-error" style={{ marginTop: 16 }}>{formError}</div> : null}
+        {formError ? <div id="cashout-form-error" className="dw-error" role="alert" aria-live="assertive" style={{ marginTop: 16 }}>{formError}</div> : null}
 
         {step === "amount" && (
           <>
@@ -285,6 +285,7 @@ export default function DriverWalletCashOut() {
                 <button
                   key={preset}
                   type="button"
+                  aria-pressed={amountChoice === String(preset)}
                   className={`dw-amount-chip${amountChoice === String(preset) ? " is-selected" : ""}`}
                   onClick={() => {
                     setAmountChoice(String(preset));
@@ -297,6 +298,7 @@ export default function DriverWalletCashOut() {
               ))}
               <button
                 type="button"
+                aria-pressed={amountChoice === "custom"}
                 className={`dw-amount-chip${amountChoice === "custom" ? " is-selected" : ""}`}
                 onClick={() => setAmountChoice("custom")}
               >
@@ -304,6 +306,7 @@ export default function DriverWalletCashOut() {
               </button>
               <button
                 type="button"
+                aria-pressed={amountChoice === "all"}
                 className={`dw-amount-chip${amountChoice === "all" ? " is-selected" : ""}`}
                 onClick={() => setAmountChoice("all")}
                 disabled={available < minimum}
@@ -319,12 +322,15 @@ export default function DriverWalletCashOut() {
                   id="custom-withdraw-amount"
                   className="dw-input"
                   type="number"
+                  inputMode="decimal"
                   min={minimum}
                   max={available || undefined}
                   step="1"
                   value={customAmount}
                   onChange={(event) => setCustomAmount(event.target.value)}
                   placeholder={`Minimum ${minimum}`}
+                  aria-describedby={formError ? "cashout-form-error" : undefined}
+                  aria-invalid={formError && amountChoice === "custom" ? "true" : undefined}
                 />
               </label>
             ) : null}
@@ -347,19 +353,21 @@ export default function DriverWalletCashOut() {
                   <button
                     key={method.id}
                     type="button"
+                    aria-pressed={selectedMethodId === method.id}
                     className={`dw-method-card${
                       selectedMethodId === method.id ? " is-selected" : ""
                     }${method.supported ? "" : " is-disabled"}`}
                     onClick={() => method.supported && setSelectedMethodId(method.id)}
                     disabled={!method.supported}
+                    aria-label={method.label}
                   >
-                    <span className="dw-method-card__icon">{method.icon}</span>
+                    <span className="dw-method-card__icon" aria-hidden="true">{method.icon}</span>
                     <span>
                       <p className="dw-method-card__title">{method.label}</p>
                       <p className="dw-method-card__subtitle">{masked}</p>
                     </span>
-                    {saved ? (
-                      <span className="dw-method-card__badge">Verified · Edit</span>
+                    {saved?.is_default ? (
+                      <span className="dw-method-card__badge">Default</span>
                     ) : null}
                   </button>
                 );
@@ -448,6 +456,7 @@ export default function DriverWalletCashOut() {
 
         {step === "confirm" && (
           <>
+            <h2 className="dw-cashout__title">Review withdrawal</h2>
             <div className="dw-confirm-card">
               <div className="dw-confirm-row">
                 <span>Withdrawal amount</span>
@@ -465,24 +474,13 @@ export default function DriverWalletCashOut() {
                     : maskAccount(payoutForm.phone_number)}
                 </strong>
               </div>
-              <div className="dw-confirm-row">
-                <span>Fee</span>
-                <strong>{formatWalletAmount(0)}</strong>
-              </div>
-              <div className="dw-confirm-row">
-                <span>Expected received</span>
-                <strong>{formatWalletAmount(resolvedAmount)}</strong>
-              </div>
-              <div className="dw-confirm-row">
-                <span>Processing time</span>
-                <strong>1-3 business days</strong>
-              </div>
             </div>
             <button
               type="button"
               className="dw-btn-primary"
               onClick={handleSendOtpAndConfirm}
               disabled={sendingOtp}
+              aria-busy={sendingOtp}
             >
               {sendingOtp ? "Sending code..." : "Confirm Cash Out"}
             </button>
@@ -503,15 +501,17 @@ export default function DriverWalletCashOut() {
                 id="withdraw-otp"
                 className="dw-input"
                 value={otpCode}
-                onChange={(event) => setOtpCode(event.target.value)}
+                onChange={(event) => setOtpCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
                 inputMode="numeric"
                 autoComplete="one-time-code"
                 maxLength={6}
                 placeholder="123456"
                 required
+                aria-describedby={formError ? "cashout-form-error" : undefined}
+                aria-invalid={formError ? "true" : undefined}
               />
             </label>
-            <button type="submit" className="dw-btn-primary" disabled={submitting}>
+            <button type="submit" className="dw-btn-primary" disabled={submitting} aria-busy={submitting}>
               {submitting ? "Submitting..." : "Confirm Cash Out"}
             </button>
             <button
