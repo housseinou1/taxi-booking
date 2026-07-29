@@ -129,6 +129,16 @@
   border-radius: var(--yds-radius-sm);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .driver-dashboard-content__quick-actions .yds-quick-tile,
+  .driver-dashboard-content__kpi,
+  .driver-dashboard-content__earnings-card,
+  .driver-dashboard-content__availability {
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
 .driver-dashboard-content__alert {
   display: flex;
   align-items: flex-start;
@@ -178,6 +188,16 @@
   border-radius: var(--yds-radius-lg);
   box-shadow: var(--yds-elevation-1);
   text-align: center;
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease;
+}
+
+.driver-dashboard-content__kpi:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--yds-elevation-2);
+  background: var(--yds-color-surface-hover, var(--yds-color-surface));
 }
 
 .driver-dashboard-content__kpi .yds-kpi__icon {
@@ -204,6 +224,16 @@
   justify-content: center;
   padding: var(--yds-space-3);
   text-align: center;
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease;
+}
+
+.driver-dashboard-content__earnings-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--yds-elevation-2);
+  background: var(--yds-color-surface-hover, var(--yds-color-surface));
 }
 
 .driver-dashboard-content__quick-actions {
@@ -212,8 +242,39 @@
   gap: var(--yds-space-3);
 }
 
-.driver-dashboard-content__quick-actions > * {
+.driver-dashboard-content__quick-actions .yds-quick-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--yds-space-1);
   min-height: 44px;
+  min-width: 72px;
+  padding: var(--yds-space-2) var(--yds-space-1);
+  border-radius: var(--yds-radius-lg);
+  background: var(--yds-color-surface);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: var(--yds-elevation-1);
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease;
+}
+
+.driver-dashboard-content__quick-actions .yds-quick-tile:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: var(--yds-elevation-2);
+  background: var(--yds-color-surface-hover, var(--yds-color-surface));
+}
+
+.driver-dashboard-content__quick-actions .yds-quick-tile:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: var(--yds-elevation-1);
+}
+
+.driver-dashboard-content__quick-actions .yds-quick-tile:focus-visible {
+  outline: 2px solid var(--yds-color-primary, #00A651);
+  outline-offset: 2px;
 }
 
 @media (max-width: 390px) {
