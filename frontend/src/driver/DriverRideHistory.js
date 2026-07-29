@@ -1,11 +1,15 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import authenticatedApi from "../auth/authenticatedApi";
 import { API_URL } from "../apiConfig";
 import StatusChip from "../design-system/components/StatusChip";
 import { formatMoney } from "../marketConfig";
 import { DriverErrorState, DriverLoadingState } from "./ui/DriverAppStates";
-import { printDriverReceipt, shareDriverReceipt } from "./utils/driverReceipt";
+import {
+  filterDriverHistoryRides,
+  printDriverReceipt,
+  shareDriverReceipt,
+} from "./utils/driverReceipt";
 import "./DriverRideHistory.css";
 
 const STATUS_OPTIONS = [
@@ -14,6 +18,8 @@ const STATUS_OPTIONS = [
   { key: "cancelled", label: "Cancelled" },
   { key: "in_progress", label: "In Progress" },
 ];
+
+const SEARCH_DEBOUNCE_MS = 250;
 
 function statusToIntent(status) {
   const normalized = String(status || "").toLowerCase();
@@ -43,6 +49,13 @@ function formatEarning(ride) {
 function isInvalidRange(dateFrom, dateTo) {
   if (!dateFrom || !dateTo) return false;
   return new Date(dateFrom) > new Date(dateTo);
+}
+
+function matchesClientSearch(ride, query) {
+  if (!query.trim()) return true;
+  if (filterDriverHistoryRides([ride], query).length > 0) return true;
+  const rideType = String(ride?.ride_type || "").toLowerCase();
+  return rideType.includes(query.trim().toLowerCase());
 }
 
 function DetailRow({ label, value }) {
@@ -266,6 +279,10 @@ export default function DriverRideHistory() {
   const [dateTo, setDateTo] = useState("");
   const [validation, setValidation] = useState("");
 
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const searchTimeoutRef = useRef(null);
+
   const [expandedId, setExpandedId] = useState(null);
   const [detailById, setDetailById] = useState({});
   const [detailLoadingId, setDetailLoadingId] = useState(null);
@@ -353,6 +370,24 @@ export default function DriverRideHistory() {
     fetchRides({ showLoading: true });
   }, [fetchRides]);
 
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      window.clearTimeout(searchTimeoutRef.current);
+    }
+    if (!search.trim()) {
+      setDebouncedSearch("");
+      return;
+    }
+    searchTimeoutRef.current = window.setTimeout(() => {
+      setDebouncedSearch(search.trim());
+    }, SEARCH_DEBOUNCE_MS);
+    return () => {
+      if (searchTimeoutRef.current) {
+        window.clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [search]);
+
   const handleStatusChange = (key) => {
     setStatusFilter(key);
     setPage(1);
@@ -368,15 +403,55 @@ export default function DriverRideHistory() {
     setPage(1);
   };
 
+  const handleSearch = (value) => {
+    setSearch(value);
+    setPage(1);
+  };
+
+  const clearSearch = () => {
+    setSearch("");
+    setPage(1);
+  };
+
+  const clearFilters = () => {
+    setSearch("");
+    setStatusFilter("");
+    setDateFrom("");
+    setDateTo("");
+    setPage(1);
+    setExpandedId(null);
+  };
+
+  const hasActiveFilters =
+    statusFilter || dateFrom || dateTo || search || debouncedSearch;
+
+  const visibleRides = useMemo(() => {
+    if (!debouncedSearch) return rides;
+    return rides.filter((ride) => matchesClientSearch(ride, debouncedSearch));
+  }, [rides, debouncedSearch]);
+
+  const visibleCount = visibleRides.length;
+
+  const activeFilterLabels = useMemo(() => {
+    const labels = [];
+    if (statusFilter) labels.push(`Status: ${statusFilter}`);
+    if (dateFrom) labels.push(`From: ${dateFrom}`);
+    if (dateTo) labels.push(`To: ${dateTo}`);
+    if (search) labels.push(`Search: "${search}"`);
+    return labels;
+  }, [statusFilter, dateFrom, dateTo, search]);
+
   const emptyTitle = useMemo(() => {
+    if (debouncedSearch) return "No rides match the current search.";
     if (statusFilter || dateFrom || dateTo) return "No rides match these filters.";
     return "No rides yet.";
-  }, [statusFilter, dateFrom, dateTo]);
+  }, [debouncedSearch, statusFilter, dateFrom, dateTo]);
 
   const emptyMessage = useMemo(() => {
+    if (debouncedSearch) return "Try a different search term.";
     if (statusFilter || dateFrom || dateTo) return "Try adjusting your filters.";
     return "Your completed and cancelled rides will appear here.";
-  }, [statusFilter, dateFrom, dateTo]);
+  }, [debouncedSearch, statusFilter, dateFrom, dateTo]);
 
   if (loading && rides.length === 0) {
     return (
@@ -406,6 +481,33 @@ export default function DriverRideHistory() {
       <h1 className="drh-title">Ride History</h1>
 
       <section className="drh-filters" aria-label="Filter rides">
+        <div className="drh-search">
+          <label className="drh-filter-label" htmlFor="drh-search-input">
+            Search rides
+          </label>
+          <div className="drh-search-field">
+            <input
+              id="drh-search-input"
+              type="search"
+              className="drh-search-input"
+              value={search}
+              onChange={(e) => handleSearch(e.target.value)}
+              placeholder="Pickup, destination, rider, status, type"
+              aria-label="Search rides"
+            />
+            {search ? (
+              <button
+                type="button"
+                className="drh-clear-search"
+                onClick={clearSearch}
+                aria-label="Clear search"
+              >
+                ×
+              </button>
+            ) : null}
+          </div>
+        </div>
+
         <div className="drh-filter-group">
           <span className="drh-filter-label" id="drh-status-label">
             Status
@@ -459,6 +561,26 @@ export default function DriverRideHistory() {
             {validation}
           </div>
         ) : null}
+
+        {hasActiveFilters ? (
+          <div className="drh-filters-toolbar">
+            <div className="drh-active-filters" aria-live="polite">
+              {activeFilterLabels.map((label) => (
+                <span key={label} className="drh-filter-chip">
+                  {label}
+                </span>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="drh-clear-filters"
+              onClick={clearFilters}
+              aria-label="Clear all filters"
+            >
+              Clear filters
+            </button>
+          </div>
+        ) : null}
       </section>
 
       {refreshing ? (
@@ -474,21 +596,30 @@ export default function DriverRideHistory() {
       ) : null}
 
       <section className="drh-results" aria-label="Ride results">
-        <p className="drh-count" aria-live="polite">
-          {count} {count === 1 ? "ride" : "rides"}
+        <p className="drh-count" aria-live="polite" aria-atomic="true">
+          Showing {visibleCount} {visibleCount === 1 ? "ride" : "rides"} · Page {currentPage} of {totalPages}
         </p>
 
-        {rides.length === 0 ? (
+        {visibleRides.length === 0 ? (
           <div className="drh-empty" role="status" aria-live="polite">
             <span className="drh-empty-icon" aria-hidden="true">
               🚗
             </span>
             <p className="drh-empty-title">{emptyTitle}</p>
             <p className="drh-empty-message">{emptyMessage}</p>
+            {hasActiveFilters ? (
+              <button
+                type="button"
+                className="drh-clear-filters"
+                onClick={clearFilters}
+              >
+                Clear all filters
+              </button>
+            ) : null}
           </div>
         ) : (
           <div className="drh-list">
-            {rides.map((ride) => (
+            {visibleRides.map((ride) => (
               <RideCard
                 key={ride.id}
                 ride={ride}
@@ -503,7 +634,7 @@ export default function DriverRideHistory() {
           </div>
         )}
 
-        {rides.length > 0 ? (
+        {visibleRides.length > 0 ? (
           <nav className="drh-pagination" aria-label="Pagination">
             <button
               type="button"

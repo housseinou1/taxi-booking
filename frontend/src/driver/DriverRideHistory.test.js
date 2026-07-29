@@ -14,6 +14,7 @@ jest.mock("../marketConfig", () => ({
 }));
 
 jest.mock("./utils/driverReceipt", () => ({
+  ...jest.requireActual("./utils/driverReceipt"),
   printDriverReceipt: jest.fn(),
   shareDriverReceipt: jest.fn(),
 }));
@@ -79,7 +80,7 @@ describe("DriverRideHistory foundation", () => {
     );
     expect(screen.getByText("Airport")).toBeInTheDocument();
     expect(screen.getByText("400 MRU")).toBeInTheDocument();
-    expect(screen.getByText("1 ride")).toBeInTheDocument();
+    expect(screen.getByText(/Showing 1 ride/i)).toBeInTheDocument();
     expect(authenticatedApi.get).toHaveBeenCalledWith(
       expect.stringMatching(/\/drivers\/me\/rides\/\?page=1/)
     );
@@ -553,6 +554,177 @@ describe("DriverRideHistory foundation", () => {
         expect(toggle).toHaveAttribute("aria-expanded", "true")
       );
       expect(document.getElementById(controls)).toBeInTheDocument();
+    });
+  });
+
+  describe("Search and filtering", () => {
+    const searchResponse = {
+      count: 2,
+      total_pages: 1,
+      current_page: 1,
+      page_size: 20,
+      results: [
+        {
+          id: 1,
+          pickup: "Central Market",
+          destination: "Airport",
+          pickup_address: "Central Market",
+          destination_address: "Airport",
+          fare: "500",
+          driver_earning: "400",
+          status: "completed",
+          ride_type: "regular",
+          distance_km: "5.5",
+          rating: 5,
+          created_at: "2026-07-20T10:00:00Z",
+          completed_at: "2026-07-20T10:30:00Z",
+          rider_name: "Ahmad",
+        },
+        {
+          id: 2,
+          pickup: "Train Station",
+          destination: "City Mall",
+          pickup_address: "Train Station",
+          destination_address: "City Mall",
+          fare: "300",
+          driver_earning: "250",
+          status: "cancelled",
+          ride_type: "premium",
+          distance_km: "3.2",
+          rating: null,
+          created_at: "2026-07-19T09:00:00Z",
+          completed_at: null,
+          rider_name: "Fatima",
+        },
+      ],
+    };
+
+    it("filters rides by search query", async () => {
+      authenticatedApi.get.mockResolvedValue({ data: searchResponse });
+      render(<DriverRideHistory />);
+
+      await waitFor(() =>
+        expect(screen.getByText("Rider: Ahmad")).toBeInTheDocument()
+      );
+      expect(screen.getByText("Rider: Fatima")).toBeInTheDocument();
+      expect(screen.getByText(/Showing 2 rides/i)).toBeInTheDocument();
+
+      fireEvent.change(screen.getByLabelText("Search rides"), {
+        target: { value: "Ahmad" },
+      });
+
+      await waitFor(() =>
+        expect(screen.queryByText("Rider: Fatima")).not.toBeInTheDocument()
+      );
+      expect(screen.getByText("Rider: Ahmad")).toBeInTheDocument();
+      expect(screen.getByText(/Showing 1 ride/i)).toBeInTheDocument();
+    });
+
+    it("filters by ride type", async () => {
+      authenticatedApi.get.mockResolvedValue({ data: searchResponse });
+      render(<DriverRideHistory />);
+
+      await waitFor(() =>
+        expect(screen.getByText("Rider: Ahmad")).toBeInTheDocument()
+      );
+
+      fireEvent.change(screen.getByLabelText("Search rides"), {
+        target: { value: "premium" },
+      });
+
+      await waitFor(() =>
+        expect(screen.queryByText("Rider: Ahmad")).not.toBeInTheDocument()
+      );
+      expect(screen.getByText("Rider: Fatima")).toBeInTheDocument();
+      expect(screen.getByText(/Showing 1 ride/i)).toBeInTheDocument();
+    });
+
+    it("clears search and restores the full list", async () => {
+      authenticatedApi.get.mockResolvedValue({ data: searchResponse });
+      render(<DriverRideHistory />);
+
+      await waitFor(() =>
+        expect(screen.getByText("Rider: Ahmad")).toBeInTheDocument()
+      );
+
+      fireEvent.change(screen.getByLabelText("Search rides"), {
+        target: { value: "Ahmad" },
+      });
+      await waitFor(() =>
+        expect(screen.queryByText("Rider: Fatima")).not.toBeInTheDocument()
+      );
+
+      fireEvent.click(screen.getByLabelText("Clear search"));
+
+      await waitFor(() =>
+        expect(screen.getByText("Rider: Fatima")).toBeInTheDocument()
+      );
+      expect(screen.getByText("Rider: Ahmad")).toBeInTheDocument();
+      expect(screen.getByText(/Showing 2 rides/i)).toBeInTheDocument();
+    });
+
+    it("clear filters resets status, dates, search and page", async () => {
+      authenticatedApi.get.mockResolvedValue({ data: searchResponse });
+      render(<DriverRideHistory />);
+
+      await waitFor(() =>
+        expect(screen.getByText("Rider: Ahmad")).toBeInTheDocument()
+      );
+
+      fireEvent.change(screen.getByLabelText("Search rides"), {
+        target: { value: "Ahmad" },
+      });
+      await waitFor(() =>
+        expect(screen.queryByText("Rider: Fatima")).not.toBeInTheDocument()
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: "Clear all filters" }));
+
+      await waitFor(() =>
+        expect(screen.getByText("Rider: Fatima")).toBeInTheDocument()
+      );
+      expect(screen.getByText("Rider: Ahmad")).toBeInTheDocument();
+      expect(screen.getByText(/Showing 2 rides/i)).toBeInTheDocument();
+      expect(screen.getByText(/Showing 2 rides/i)).toHaveTextContent(/Page 1 of 1/);
+    });
+
+    it("shows empty search state when no matches", async () => {
+      authenticatedApi.get.mockResolvedValue({ data: searchResponse });
+      render(<DriverRideHistory />);
+
+      await waitFor(() =>
+        expect(screen.getByText("Rider: Ahmad")).toBeInTheDocument()
+      );
+
+      fireEvent.change(screen.getByLabelText("Search rides"), {
+        target: { value: "zzzz" },
+      });
+
+      await waitFor(() =>
+        expect(screen.getByText("No rides match the current search.")).toBeInTheDocument()
+      );
+      expect(
+        screen.getByText("Try a different search term.")
+      ).toBeInTheDocument();
+    });
+
+    it("shows active filters and result summary", async () => {
+      authenticatedApi.get.mockResolvedValue({ data: searchResponse });
+      render(<DriverRideHistory />);
+
+      await waitFor(() =>
+        expect(screen.getByText("Rider: Ahmad")).toBeInTheDocument()
+      );
+      expect(screen.getByText(/Showing 2 rides/i)).toBeInTheDocument();
+      expect(screen.getByText(/Showing 2 rides/i)).toHaveTextContent(/Page 1 of 1/);
+
+      fireEvent.change(screen.getByLabelText("Search rides"), {
+        target: { value: "Ahmad" },
+      });
+
+      await waitFor(() =>
+        expect(screen.getByText(/Search: "Ahmad"/i)).toBeInTheDocument()
+      );
     });
   });
 });

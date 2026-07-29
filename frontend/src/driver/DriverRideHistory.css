@@ -476,6 +476,114 @@
   }
 }
 
+.drh-search {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.drh-search-field {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.drh-search-input {
+  flex: 1 1 0;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1.5px solid #d0d5dd;
+  border-radius: 12px;
+  background: #fff;
+  color: #101828;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: inherit;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.drh-search-input:focus {
+  outline: none;
+  border-color: #00a651;
+  box-shadow: 0 0 0 3px rgba(0, 166, 81, 0.15);
+}
+
+.drh-clear-search {
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1.5px solid #d0d5dd;
+  border-radius: 12px;
+  background: #fff;
+  color: #667085;
+  font-size: 20px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.drh-clear-search:hover,
+.drh-clear-search:focus {
+  outline: none;
+  border-color: #00a651;
+  color: #00a651;
+  box-shadow: 0 0 0 3px rgba(0, 166, 81, 0.25);
+}
+
+.drh-filters-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #f9fafb;
+}
+
+.drh-active-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.drh-filter-chip {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid #d0d5dd;
+  color: #667085;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.drh-clear-filters {
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 1.5px solid #d0d5dd;
+  border-radius: 12px;
+  background: #fff;
+  color: #101828;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.drh-clear-filters:hover,
+.drh-clear-filters:focus {
+  outline: none;
+  border-color: #00a651;
+  background: #ecfdf3;
+  color: #007c3b;
+  box-shadow: 0 0 0 3px rgba(0, 166, 81, 0.25);
+}
+
+.drh-empty .drh-clear-filters {
+  margin-top: 16px;
+}
+
 @media (min-width: 768px) {
   .drh-page {
     max-width: 680px;
