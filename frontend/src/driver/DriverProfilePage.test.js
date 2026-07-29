@@ -280,15 +280,15 @@ describe("DriverProfilePage vehicle & document summaries", () => {
     Storage.prototype.removeItem = jest.fn();
   });
 
-  function mockWith({ vehicle, documents = [] }) {
+  function mockWith({ vehicle, documents = [], status = "approved" }) {
     axios.get.mockImplementation((url) => {
       if (url.includes("/payments/payout-methods/")) return Promise.resolve({ data: [] });
       if (url.includes("/payments/withdrawals/")) {
         return Promise.resolve({ data: { available_balance: "0", withdrawals: [] } });
       }
-      // status approved -> account-status card hidden, avoids text collisions
+      // status controls account-status and eligibility cards
       if (url.includes("/drivers/me/profile/")) {
-        return Promise.resolve({ data: { ...profileResponse, vehicle, status: "approved" } });
+        return Promise.resolve({ data: { ...profileResponse, vehicle, status } });
       }
       if (url.includes("/drivers/me/stats/")) return Promise.resolve({ data: statsResponse });
       if (url.includes("/drivers/me/documents/")) return Promise.resolve({ data: { documents } });
@@ -577,6 +577,87 @@ describe("DriverProfilePage vehicle & document summaries", () => {
     fireEvent.click(screen.getByRole("button", { name: /Retry upload for Driver License/i }));
     fireEvent.change(fileInput, { target: { files: [new File(["x"], "license.jpg", { type: "image/jpeg" })] } });
     await waitFor(() => expect(axios.post).toHaveBeenCalledTimes(2));
+    restore();
+  });
+
+  it("shows eligible to go online when approved and documents are valid", async () => {
+    const restore = setupLocationMock();
+    mockWith({ vehicle: profileResponse.vehicle, documents: ALL_TYPES.map(approvedDoc), status: "approved" });
+    await renderReady();
+    expect(screen.getByText("Eligible to go online")).toBeInTheDocument();
+    expect(screen.getByText("All requirements are met. You can go online.")).toBeInTheDocument();
+    restore();
+  });
+
+  it("shows account approval pending when driver status is pending", async () => {
+    const restore = setupLocationMock();
+    mockWith({ vehicle: profileResponse.vehicle, documents: ALL_TYPES.map(approvedDoc), status: "pending" });
+    await renderReady();
+    expect(screen.getByText("Account approval pending")).toBeInTheDocument();
+    restore();
+  });
+
+  it("shows missing required documents when a required document is absent", async () => {
+    const restore = setupLocationMock();
+    mockWith({ vehicle: profileResponse.vehicle, documents: [], status: "approved" });
+    await renderReady();
+    expect(screen.getByText("Missing required documents")).toBeInTheDocument();
+    expect(screen.getAllByText("Driver License").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByRole("button", { name: /Driver License: Upload/i })).toBeInTheDocument();
+    restore();
+  });
+
+  it("shows expired required documents when a document is expired", async () => {
+    const restore = setupLocationMock();
+    const documents = ALL_TYPES.map((t) =>
+      t === "license"
+        ? { document_type: t, file: "f.jpg", status: "approved", days_until_expiry: -3 }
+        : approvedDoc(t)
+    );
+    mockWith({ vehicle: profileResponse.vehicle, documents, status: "approved" });
+    await renderReady();
+    expect(screen.getByText("Expired required documents")).toBeInTheDocument();
+    expect(screen.getAllByText("Driver License").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByRole("button", { name: /Driver License: Replace/i })).toBeInTheDocument();
+    restore();
+  });
+
+  it("shows rejected required documents when a document is rejected", async () => {
+    const restore = setupLocationMock();
+    const documents = ALL_TYPES.map((t) =>
+      t === "insurance"
+        ? { document_type: t, file: "f.jpg", status: "rejected", rejection_reason: "Too blurry" }
+        : approvedDoc(t)
+    );
+    mockWith({ vehicle: profileResponse.vehicle, documents, status: "approved" });
+    await renderReady();
+    expect(screen.getByText("Rejected required documents")).toBeInTheDocument();
+    expect(screen.getAllByText("Insurance").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByRole("button", { name: /Insurance: Retry/i })).toBeInTheDocument();
+    restore();
+  });
+
+  it("highlights blocked document cards", async () => {
+    const restore = setupLocationMock();
+    mockWith({ vehicle: profileResponse.vehicle, documents: [], status: "approved" });
+    await renderReady();
+    const card = document.querySelector(".dp-doc-card--blocked");
+    expect(card).toBeInTheDocument();
+    expect(card).toHaveClass("dp-doc-card--blocked");
+    restore();
+  });
+
+  it("drives eligibility from backend document status", async () => {
+    const restore = setupLocationMock();
+    const documents = ALL_TYPES.map((t) =>
+      t === "license"
+        ? { document_type: t, file: "f.jpg", status: "approved", days_until_expiry: -3 }
+        : approvedDoc(t)
+    );
+    mockWith({ vehicle: profileResponse.vehicle, documents, status: "approved" });
+    await renderReady();
+    expect(screen.getByText("Expired required documents")).toBeInTheDocument();
+    expect(screen.getByText("Expired — replace required")).toBeInTheDocument();
     restore();
   });
 });

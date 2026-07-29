@@ -11,6 +11,7 @@ import DriverPayoutPanel from "./components/DriverPayoutPanel";
 import TrustedContactsSection from "../safety/TrustedContactsSection";
 import {
   DOCUMENTS_UNDER_REVIEW_MESSAGE,
+  driverDocumentsBlockOnline,
   getDocumentMenuStatusLabel,
   getDriverApprovalNotice,
   getRequiredDocumentExpirationStatus,
@@ -543,6 +544,33 @@ export default function DriverProfilePage({ onBack }) {
     data.documents
   );
 
+  const profileForEligibility = { ...base, ...enhanced, status: approvalStatus, documents: data.documents };
+  const isOnlineBlockedByDocs = driverDocumentsBlockOnline(profileForEligibility);
+  const blockingDocs = documentsByType
+    .filter(({ item }) => item.required !== false)
+    .filter(({ item, document }) => ["expired", "rejected", "missing"].includes(getDocumentStatus(document, item)))
+    .map(({ item, document }) => ({
+      key: item.type,
+      label: item.label,
+      status: getDocumentStatus(document, item),
+      hasFile: Boolean(document?.file),
+    }));
+  const hasBlockingDocs = blockingDocs.length > 0;
+
+  const getEligibilityMeta = () => {
+    if (hasBlockingDocs) {
+      if (blockingDocs.some((d) => d.status === "expired")) return { intent: "danger", label: "Expired required documents", reason: "expired" };
+      if (blockingDocs.some((d) => d.status === "rejected")) return { intent: "danger", label: "Rejected required documents", reason: "rejected" };
+      if (blockingDocs.some((d) => d.status === "missing")) return { intent: "danger", label: "Missing required documents", reason: "missing" };
+    }
+    if (isOnlineBlockedByDocs) return { intent: "danger", label: "Missing required documents", reason: "missing" };
+    if (approvalStatus === "approved") return { intent: "success", label: "Eligible to go online", reason: "eligible" };
+    if (approvalStatus === "pending_review") return { intent: "warning", label: "Pending review", reason: "pending_review" };
+    if (approvalStatus === "rejected") return { intent: "danger", label: "Application rejected", reason: "rejected_account" };
+    return { intent: "warning", label: "Account approval pending", reason: "pending" };
+  };
+  const eligibilityMeta = getEligibilityMeta();
+
   return (
     <main className={`dp-shell${isDriverYalaUI() ? " dp-shell--lyft" : ""}`}>
       <input
@@ -616,6 +644,57 @@ export default function DriverProfilePage({ onBack }) {
             </section>
           );
         })()}
+
+        {/* Driver Eligibility Summary */}
+        <section
+          className={`dp-section-card dp-eligibility-card${
+            eligibilityMeta.intent === "danger"
+              ? " dp-eligibility-card--danger"
+              : eligibilityMeta.intent === "success"
+              ? " dp-eligibility-card--success"
+              : ""
+          }`}
+          role={eligibilityMeta.intent === "danger" ? "alert" : "status"}
+          aria-live={eligibilityMeta.intent === "danger" ? "assertive" : "polite"}
+          aria-label="Driver eligibility"
+        >
+          <div className="dp-section-header">
+            <h3 className="dp-section-title">Go online eligibility</h3>
+            <StatusChip intent={eligibilityMeta.intent} dot>
+              {eligibilityMeta.label}
+            </StatusChip>
+          </div>
+          {hasBlockingDocs && (
+            <ul className="dp-eligibility-list" role="list" aria-label="Documents blocking online access">
+              {blockingDocs.map((doc) => (
+                <li key={doc.key} className="dp-eligibility-item">
+                  <span className="dp-eligibility-item__name">{doc.label}</span>
+                  <span className="dp-eligibility-item__reason">
+                    {doc.status === "missing" && "Missing — upload required"}
+                    {doc.status === "expired" && "Expired — replace required"}
+                    {doc.status === "rejected" && "Rejected — retry required"}
+                  </span>
+                  <button
+                    type="button"
+                    className="dp-eligibility-item__action"
+                    onClick={() => startUpload(doc.key)}
+                    aria-label={`${doc.label}: ${
+                      doc.status === "missing" ? "Upload" : doc.status === "expired" ? "Replace" : "Retry"
+                    }`}
+                  >
+                    {doc.status === "missing" ? "Upload" : doc.status === "expired" ? "Replace" : "Retry"}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {!hasBlockingDocs && approvalStatus === "approved" && (
+            <p className="dp-eligibility-card__notice">All requirements are met. You can go online.</p>
+          )}
+          {!hasBlockingDocs && approvalStatus !== "approved" && approvalNotice && (
+            <p className="dp-eligibility-card__notice">{approvalNotice}</p>
+          )}
+        </section>
 
         {/* Hero Section */}
         <section className="dp-hero">
@@ -881,11 +960,12 @@ export default function DriverProfilePage({ onBack }) {
             {shortDocumentCards.map(({ type, label, icon, document }) => {
               const status = getDocumentStatus(document, { required: true });
               const meta = getDocumentStatusMeta(status);
+              const isBlocked = blockingDocs.some((d) => d.key === type);
               return (
                 <button
                   type="button"
                   key={type}
-                  className="dp-doc-card"
+                  className={`dp-doc-card${isBlocked ? " dp-doc-card--blocked" : ""}`}
                   onClick={() => startUpload(type)}
                   aria-label={`${label}: ${meta.label}`}
                 >
@@ -914,6 +994,7 @@ export default function DriverProfilePage({ onBack }) {
                       onUpload={() => startUpload(item.type)}
                       uploadError={uploadError}
                       uploadSuccessType={uploadSuccessType}
+                      isBlocked={blockingDocs.some((d) => d.key === item.type)}
                     />
                   ))}
               </div>
@@ -1071,7 +1152,7 @@ function DetailRow({ label, value }) {
   );
 }
 
-function DocumentRow({ item, document, uploading, onUpload, uploadError, uploadSuccessType }) {
+function DocumentRow({ item, document, uploading, onUpload, uploadError, uploadSuccessType, isBlocked }) {
   const status = getDocumentStatus(document, item);
   const meta = getDocumentStatusMeta(status);
 
@@ -1118,7 +1199,7 @@ function DocumentRow({ item, document, uploading, onUpload, uploadError, uploadS
   const actionIcon = isUploading ? "⏳" : isFailed ? "↻" : document?.file ? "🔄" : "⬆️";
 
   return (
-    <div className="dp-doc-row">
+    <div className={`dp-doc-row${isBlocked ? " dp-doc-row--blocked" : ""}`}>
       <div className="dp-doc-row-info">
         <strong>{item.label}</strong>
         <small>{subtitle}</small>
