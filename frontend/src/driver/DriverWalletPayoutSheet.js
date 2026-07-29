@@ -3,7 +3,6 @@ import React, { useEffect, useState } from "react";
 import { savePayoutMethod } from "./wallet/driverWalletApi";
 import {
   findSavedMethod,
-  maskAccount,
   maskPayoutMethod,
   PAYOUT_METHODS,
 } from "./wallet/walletUtils";
