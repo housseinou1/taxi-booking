@@ -21,10 +21,9 @@ export function formatRelativeTime(value, now = new Date()) {
   if (isNaN(date.getTime())) return "";
 
   const diff = now.getTime() - date.getTime();
-  const seconds = Math.floor(diff / 1000);
   const minutes = Math.floor(diff / (1000 * 60));
 
-  if (seconds < 60) return "Just now";
+  if (diff < 60_000) return "Just now";
   if (minutes < 60) return `${minutes} minute${minutes === 1 ? "" : "s"} ago`;
 
   const isSameDay = (a, b) => a.toDateString() === b.toDateString();
@@ -174,7 +173,7 @@ export default function DriverNotificationsPage() {
       const notifications = Array.isArray(data.items) ? data.items : [];
       setItems(notifications);
       if (!refresh) setError("");
-    } catch (err) {
+    } catch {
       if (refresh) {
         setActionError("Could not refresh. Try again.");
       } else {
