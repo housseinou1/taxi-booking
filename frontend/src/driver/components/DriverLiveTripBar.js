@@ -49,6 +49,11 @@ export default function DriverLiveTripBar({
   const riderName = ride.rider_name ||
     [ride.rider_first_name, ride.rider_last_name].filter(Boolean).join(" ") || null;
   const riderPhone = ride.rider_phone || ride.private_call_number || null;
+  const riderRating = (() => {
+    const raw = ride.rider_rating ?? ride.rider_score ?? null;
+    const value = Number(raw);
+    return Number.isFinite(value) && value > 0 ? value : null;
+  })();
 
   const handleNavigate = () => {
     const target = status === "in_progress" ? "destination" : "pickup";
@@ -71,7 +76,21 @@ export default function DriverLiveTripBar({
         />
         <div className="driver-live-bar__copy">
           <strong>
-            {riderName ? `Picking up ${riderName}` : "Arrival countdown"}
+            {riderName ? (
+              <>
+                Picking up {riderName}
+                {riderRating != null && (
+                  <span
+                    className="driver-live-bar__rider-rating"
+                    aria-label={`Rider rating ${riderRating.toFixed(1)} out of 5`}
+                  >
+                    <span aria-hidden="true">★</span> {riderRating.toFixed(1)}
+                  </span>
+                )}
+              </>
+            ) : (
+              "Arrival countdown"
+            )}
           </strong>
           <p>{distanceLabel ? `${distanceLabel} away · ${ride.pickup || ""}` : (ride.pickup || "En route to pickup")}</p>
           <div className="driver-live-bar__btn-row">
@@ -174,7 +193,23 @@ export default function DriverLiveTripBar({
       <section className="driver-live-bar driver-live-bar--trip" aria-live="polite">
         <div className="driver-live-bar__copy driver-live-bar__copy--row">
           <div>
-            <strong>{riderName ? `Trip with ${riderName}` : "Trip in progress"}</strong>
+            <strong>
+              {riderName ? (
+                <>
+                  Trip with {riderName}
+                  {riderRating != null && (
+                    <span
+                      className="driver-live-bar__rider-rating"
+                      aria-label={`Rider rating ${riderRating.toFixed(1)} out of 5`}
+                    >
+                      <span aria-hidden="true">★</span> {riderRating.toFixed(1)}
+                    </span>
+                  )}
+                </>
+              ) : (
+                "Trip in progress"
+              )}
+            </strong>
             <p>{distanceLabel ? `${distanceLabel} to destination` : (ride.destination || "Follow navigation")}</p>
           </div>
           <PrimaryButton
