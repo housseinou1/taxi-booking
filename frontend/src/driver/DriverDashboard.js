@@ -464,7 +464,11 @@ export default function DriverDashboard() {
           >
             Safety
           </button>
-          <button style={notificationButtonStyle} aria-label="Notifications">
+          <button
+            style={notificationButtonStyle}
+            aria-label="Notifications"
+            onClick={() => { window.location.href = "/driver/notifications"; }}
+          >
             <span style={bellIconStyle}>🔔</span>
             {unreadCount > 0 && (
               <span style={notificationBadgeStyle}>

@@ -117,7 +117,7 @@ function getBrandLogoSrc() {
 
 // Route filtering for native apps — only show relevant routes per app type
 const RIDER_ROUTES = ['/rider', '/rider-dashboard', '/rider/legal', '/rider-history', '/history', '/rider-reviews', '/saved-places', '/rider-profile', '/rider-payments', '/wallet', '/ride/share', '/delivery', '/merchant', '/merchant/register', '/services', '/login', '/register', '/settings', '/support', '/terms', '/privacy'];
-const DRIVER_ROUTES = ['/driver', '/driver/sign', '/driver/profile', '/driver/profile/edit', '/driver/documents', '/driver/code', '/driver/earnings', '/driver/wallet', '/driver/feedback', '/driver/support', '/driver/achievements', '/driver/hall-of-fame', '/driver/history', '/services', '/login', '/register', '/settings', '/support', '/terms', '/privacy', '/payment-setup', '/driver-vehicle-setup'];
+const DRIVER_ROUTES = ['/driver', '/driver/sign', '/driver/profile', '/driver/profile/edit', '/driver/documents', '/driver/code', '/driver/earnings', '/driver/wallet', '/driver/feedback', '/driver/support', '/driver/achievements', '/driver/hall-of-fame', '/driver/history', '/driver/notifications', '/services', '/login', '/register', '/settings', '/support', '/terms', '/privacy', '/payment-setup', '/driver-vehicle-setup'];
 const DELIVERY_ROUTES = ['/delivery/courier', '/delivery/account', '/delivery/bank', '/delivery/wallet', '/delivery/history', '/delivery/profile-setup', '/delivery/vehicle-setup', '/delivery/earnings', '/delivery/documents', '/delivery/profile/edit', '/delivery/support', '/delivery/settings', '/delivery/courier/terms', '/delivery/courier/sign', '/delivery/customer/terms', '/delivery/customer/settings', '/driver/deliveries', '/login', '/register', '/settings', '/support', '/terms', '/privacy'];
 
 const TAXI_DRIVER_ONLY_PAGES = new Set([
@@ -136,6 +136,7 @@ const TAXI_DRIVER_ONLY_PAGES = new Set([
   "driver-achievements",
   "driver-hall-of-fame",
   "driver-history",
+  "driver-notifications",
   "driver-vehicle-setup",
 ]);
 
@@ -225,6 +226,7 @@ const LazyDriverDashboardNew = React.lazy(() => import("./driver/DriverDashboard
 const LazyDriverProfilePage = React.lazy(() => import("./driver/DriverProfilePage"));
 const LazyDriverProfileEditPage = React.lazy(() => import("./driver/DriverProfileEditPage"));
 const LazyDriverWallet = React.lazy(() => import("./driver/DriverWallet"));
+const LazyDriverNotificationsPage = React.lazy(() => import("./driver/DriverNotificationsPage"));
 
 const driverPageFallback = (
   <div className="driver-shell-loading">Loading...</div>
@@ -423,6 +425,7 @@ function App() {
     else if (currentPath === "/driver/achievements") setPage("driver-achievements");
     else if (currentPath === "/driver/hall-of-fame") setPage("driver-hall-of-fame");
     else if (currentPath === "/driver/history") setPage("driver-history");
+    else if (currentPath === "/driver/notifications") setPage("driver-notifications");
     else if (currentPath === "/driver") {
       if (!isTaxiDriverContext()) {
         window.history.replaceState(null, "", "/delivery/courier");
@@ -1150,6 +1153,10 @@ function App() {
 
   if (page === "driver-history") {
     return withInstall(wrapDriverSecondaryPage("Ride History", <LazyDriverRideHistory />));
+  }
+
+  if (page === "driver-notifications") {
+    return withInstall(wrapDriverSecondaryPage("Notifications", <LazyDriverNotificationsPage />));
   }
 
   if (page === "driver-profile") {

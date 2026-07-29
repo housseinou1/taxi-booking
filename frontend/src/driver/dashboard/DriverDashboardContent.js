@@ -156,6 +156,11 @@ export default function DriverDashboardContent({
           />
           <div className="driver-dashboard-content__header-actions">
             <IconButton
+              aria-label="Open notifications"
+              icon={<Icon name="notifications" size="md" />}
+              onClick={() => navigateInApp("/driver/notifications")}
+            />
+            <IconButton
               aria-label="Open menu"
               icon={<Icon name="settings" size="md" />}
               onClick={onOpenMenu}
