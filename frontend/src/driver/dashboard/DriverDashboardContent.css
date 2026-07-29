@@ -14,10 +14,10 @@
   overscroll-behavior-y: contain;
   display: flex;
   flex-direction: column;
-  gap: var(--yds-space-4);
+  gap: var(--yds-space-5);
   padding: var(--yds-space-4);
-  padding-top: calc(var(--yds-space-4) + env(safe-area-inset-top, 0px));
-  padding-bottom: calc(var(--yds-space-6) + env(safe-area-inset-bottom, 0px));
+  padding-top: calc(var(--yds-space-5) + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(var(--yds-space-8) + env(safe-area-inset-bottom, 0px));
 }
 
 .driver-dashboard-content__header {
@@ -25,6 +25,13 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--yds-space-3);
+  padding-bottom: var(--yds-space-2);
+}
+
+.driver-dashboard-content__header h1,
+.driver-dashboard-content__header .yds-profile-header__name {
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .driver-dashboard-content__header .yds-profile-header {
@@ -47,6 +54,7 @@
 
 .driver-dashboard-content__status-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--yds-space-3);
@@ -106,13 +114,26 @@
 
 .driver-dashboard-content__quick-actions {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
   gap: var(--yds-space-3);
 }
 
-@media (max-width: 360px) {
+.driver-dashboard-content__quick-actions > * {
+  min-height: 44px;
+}
+
+@media (max-width: 359px) {
   .driver-dashboard-content__quick-actions {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .driver-dashboard-content__kpi-grid,
+  .driver-dashboard-content__earnings-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .driver-dashboard-content__status-row h2 {
+    font-size: 1.125rem;
   }
 }
 

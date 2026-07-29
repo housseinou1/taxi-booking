@@ -57,6 +57,7 @@ import { PrimaryButton, Button } from "../design-system/components";
 import SafetyEmergencyPanel from "../safety/SafetyEmergencyPanel";
 import TripSafetyPrompt from "../safety/TripSafetyPrompt";
 import useTripSafetyMonitor from "../safety/useTripSafetyMonitor";
+import { DriverLoadingState, DriverErrorState } from "./ui/DriverAppStates";
 import "./driver-tokens.css";
 import "./driver-theme.css";
 
@@ -214,10 +215,22 @@ export default function DriverDashboardNew() {
   }, [authReady]);
 
   if (!authReady) {
+    if (authGateError) {
+      return (
+        <main className="driver-dashboard-new" style={mapFirstShell}>
+          <DriverErrorState
+            title="Could not start driver session"
+            message={authGateError}
+            actionLabel="Try again"
+            onAction={() => window.location.reload()}
+          />
+        </main>
+      );
+    }
     return (
-      <div className="driver-shell-loading">
-        {authGateError || "Checking your driver session..."}
-      </div>
+      <main className="driver-dashboard-new" style={mapFirstShell}>
+        <DriverLoadingState title="Checking your driver session..." />
+      </main>
     );
   }
 

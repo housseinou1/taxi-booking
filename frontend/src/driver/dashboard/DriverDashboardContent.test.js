@@ -50,9 +50,10 @@ describe("DriverDashboardContent", () => {
     jest.clearAllMocks();
   });
 
-  it("shows loading skeleton while loading", () => {
+  it("shows loading state while loading", () => {
     render(<DriverDashboardContent {...baseProps} loading />);
-    expect(screen.getByText("Loading")).toBeInTheDocument();
+    expect(screen.getByText("Loading dashboard")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toBeInTheDocument();
   });
 
   it("shows error retry state when error is provided", () => {

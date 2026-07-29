@@ -12,9 +12,11 @@ import {
   IconButton,
   Section,
   ScreenContainer,
-  LoadingSkeleton,
-  EmptyState,
 } from "../../design-system";
+import {
+  DriverLoadingState,
+  DriverErrorState,
+} from "../ui/DriverAppStates";
 import { formatMoney } from "../../marketConfig";
 import { navigateInApp } from "../../navigation/inAppNavigation";
 import "./DriverDashboardContent.css";
@@ -117,7 +119,7 @@ export default function DriverDashboardContent({
   if (loading) {
     return (
       <ScreenContainer className="driver-dashboard-content driver-dashboard-content--loading">
-        <LoadingSkeleton lines={6} />
+        <DriverLoadingState title="Loading dashboard" />
       </ScreenContainer>
     );
   }
@@ -125,14 +127,11 @@ export default function DriverDashboardContent({
   if (error) {
     return (
       <ScreenContainer className="driver-dashboard-content driver-dashboard-content--error">
-        <EmptyState
+        <DriverErrorState
           title="Unable to load dashboard"
-          text={error}
-          action={
-            onRetry ? (
-              <PrimaryButton onClick={onRetry}>Try again</PrimaryButton>
-            ) : null
-          }
+          message={error}
+          actionLabel={onRetry ? "Try again" : ""}
+          onAction={onRetry}
         />
       </ScreenContainer>
     );
