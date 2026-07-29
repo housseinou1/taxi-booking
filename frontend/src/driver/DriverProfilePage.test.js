@@ -326,6 +326,51 @@ describe("DriverProfilePage vehicle & document summaries", () => {
     restore();
   });
 
+  it("omits Year and Category rows when the backend does not supply them", async () => {
+    const restore = setupLocationMock();
+    mockWith({ vehicle: { make: "Toyota", model: "Corolla", plate_number: "NKC-1234" } });
+    await renderReady();
+    expect(screen.queryByText("Year")).not.toBeInTheDocument();
+    expect(screen.queryByText("Category")).not.toBeInTheDocument();
+    restore();
+  });
+
+  it("shows a Verified badge only when the backend supplies an explicit verification boolean", async () => {
+    const restore = setupLocationMock();
+    mockWith({ vehicle: { make: "Toyota", model: "Corolla", plate_number: "NKC-1234", is_verified: true } });
+    await renderReady();
+    expect(screen.getByText("Verified")).toBeInTheDocument();
+    restore();
+  });
+
+  it("does not show a verification badge when the backend omits verification", async () => {
+    const restore = setupLocationMock();
+    mockWith({ vehicle: { make: "Toyota", model: "Corolla", plate_number: "NKC-1234" } });
+    await renderReady();
+    expect(screen.queryByText("Verified")).not.toBeInTheDocument();
+    expect(screen.queryByText("Pending")).not.toBeInTheDocument();
+    restore();
+  });
+
+  it("hides placeholder vehicle values such as n/a, Not assigned, or TEMP", async () => {
+    const restore = setupLocationMock();
+    mockWith({
+      vehicle: {
+        make: "TEMP_MAKE",
+        model: "Corolla",
+        color: "n/a",
+        category: "Not assigned",
+        plate_number: "NKC-1234",
+      },
+    });
+    await renderReady();
+    expect(screen.queryByText("Make")).not.toBeInTheDocument();
+    expect(screen.queryByText("Color")).not.toBeInTheDocument();
+    expect(screen.queryByText("Category")).not.toBeInTheDocument();
+    expect(screen.getByText("Model")).toBeInTheDocument();
+    restore();
+  });
+
   it("shows an all-approved document summary", async () => {
     const restore = setupLocationMock();
     mockWith({ vehicle: profileResponse.vehicle, documents: ALL_TYPES.map(approvedDoc) });

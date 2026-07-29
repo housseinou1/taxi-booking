@@ -4,7 +4,7 @@ import { navigateInApp } from "../navigation/inAppNavigation";
 
 import { API_URL } from "../apiConfig";
 import { isDriverYalaUI } from "./yalaColors";
-import { Badge, ConfirmationDialog } from "../design-system/components";
+import { Badge, StatusChip, ConfirmationDialog } from "../design-system/components";
 import { DriverLoadingState, DriverErrorState } from "./ui/DriverAppStates";
 import DocumentsUnderReviewBanner from "./components/DocumentsUnderReviewBanner";
 import DriverPayoutPanel from "./components/DriverPayoutPanel";
@@ -412,6 +412,29 @@ export default function DriverProfilePage({ onBack }) {
   const vehicleColorRaw = getValue(vehicle.color, base.vehicle_color, base.car_color);
   const vehiclePlateRaw = getValue(vehicle.plate_number, base.vehicle_plate, base.plate_number);
   const vehicleTypeRaw = getValue(vehicle.car_type, base.car_type, enhanced.car_type);
+  const vehicleYearRaw = getValue(vehicle.year, vehicle.vehicle_year, base.vehicle_year);
+  const vehicleCategoryRaw = getValue(
+    vehicle.category,
+    vehicle.vehicle_category,
+    base.vehicle_category,
+    base.category,
+    enhanced.vehicle_category,
+    enhanced.category
+  );
+  // Vehicle verification is shown only when the backend provides an explicit
+  // boolean — never inferred, so approval is never implied.
+  const vehicleVerified = getValue(
+    vehicle.is_verified,
+    vehicle.verified,
+    base.vehicle_verified,
+    enhanced.vehicle_verified
+  );
+  const vehicleVerifiedMeta =
+    vehicleVerified === true
+      ? { intent: "success", label: "Verified" }
+      : vehicleVerified === false
+      ? { intent: "warning", label: "Pending" }
+      : null;
   const contactPhone = displayValue(base.phone_number, enhanced.phone_number, user.phone_number);
   const contactEmail = displayValue(base.email, enhanced.email, user.email);
   // Raw (unformatted) values for the structured details section — rows are hidden
@@ -652,17 +675,29 @@ export default function DriverProfilePage({ onBack }) {
         </section>
 
         {/* Vehicle Summary */}
-        <section className="dp-section-card" aria-label="Vehicle summary">
-          <div className="dp-section-header">
-            <h3 className="dp-section-title">Vehicle</h3>
-            {vehiclePlateRaw && !isPlaceholderDisplayValue(vehiclePlateRaw) && (
-              <span className="dp-plate-badge">{vehiclePlateRaw}</span>
-            )}
+        <section className="dp-section-card dp-vehicle-card" aria-label="Vehicle summary">
+          <div className="dp-section-header dp-vehicle-card__header">
+            <div className="dp-vehicle-card__title-group">
+              <span className="dp-vehicle-card__icon" aria-hidden="true">🚗</span>
+              <h3 className="dp-section-title">Vehicle</h3>
+            </div>
+            <div className="dp-vehicle-card__badges">
+              {vehicleVerifiedMeta && (
+                <StatusChip intent={vehicleVerifiedMeta.intent} dot>
+                  {vehicleVerifiedMeta.label}
+                </StatusChip>
+              )}
+              {vehiclePlateRaw && !isPlaceholderDisplayValue(vehiclePlateRaw) && (
+                <span className="dp-plate-badge">{vehiclePlateRaw}</span>
+              )}
+            </div>
           </div>
           <div className="dp-detail-list">
             <DetailRow label="Make" value={vehicleMakeRaw} />
             <DetailRow label="Model" value={vehicleModelRaw} />
             <DetailRow label="Color" value={titleCase(vehicleColorRaw)} />
+            <DetailRow label="Year" value={vehicleYearRaw} />
+            <DetailRow label="Category" value={titleCase(vehicleCategoryRaw)} />
             <DetailRow label="Type" value={titleCase(vehicleTypeRaw)} />
             <DetailRow label="Plate number" value={vehiclePlateRaw} />
           </div>
