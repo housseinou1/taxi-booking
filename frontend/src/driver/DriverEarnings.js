@@ -7,10 +7,27 @@ import authenticatedApi from "../auth/authenticatedApi";
 import { ensureValidAccessToken } from "../auth/session";
 import { navigateInApp } from "../navigation/inAppNavigation";
 import { DriverLoadingState, DriverErrorState } from "./ui/DriverAppStates";
+import "./DriverEarnings.css";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 const PERIODS = ["today", "week", "month", "year", "lifetime"];
 const CHART_PERIODS = ["daily", "weekly", "monthly"];
+const BREAKDOWN_LABELS = {
+  ride_earnings: "Ride earnings",
+  waiting_fees: "Waiting fees",
+  bonus: "Bonus",
+  incentive: "Incentive",
+  referral: "Referral",
+  tip: "Tips",
+};
+const BREAKDOWN_ICONS = {
+  ride_earnings: "🚗",
+  waiting_fees: "⏱️",
+  bonus: "🎁",
+  incentive: "⚡",
+  referral: "🤝",
+  tip: "💵",
+};
 const MAX_RETRIES = 3;
 const RETRY_INTERVAL_MS = 5000;
 const EARNINGS_REFRESH_INTERVAL_MS = 10000;
@@ -50,12 +67,16 @@ function normalizeEarningsPayload(payload = {}) {
         year: mapBreakdown(breakdowns.year),
         lifetime: mapBreakdown(breakdowns.lifetime),
       },
+      trips: Array.isArray(payload.trips) ? payload.trips : [],
+      last_updated: payload.last_updated ?? payload.updated_at ?? null,
     };
   }
 
   // Legacy shape (already flat)
   return {
     ...payload,
+    trips: Array.isArray(payload.trips) ? payload.trips : [],
+    last_updated: payload.last_updated ?? payload.updated_at ?? null,
     today_earnings: toAmount(payload.today_earnings),
     week_earnings: toAmount(payload.week_earnings),
     month_earnings: toAmount(payload.month_earnings),
@@ -107,54 +128,42 @@ function EarningsBarChart({ data, labels, chartPeriod }) {
   const maxValue = Math.max(...data.map((d) => Number(d.value || 0)), 1);
   const CHART_HEIGHT = 160;
   const MIN_BAR_HEIGHT = 6; // baseline height for zero-value bars
-  const { styles, COLORS } = driverTheme;
 
   return (
-    <div style={styles.chartContainer} role="img" aria-label={`${chartPeriod} earnings bar chart`}>
-      <div style={styles.chartBars}>
-        {data.map((item, index) => {
-          const value = Number(item.value || 0);
-          const barHeight = value > 0
-            ? Math.max((value / maxValue) * CHART_HEIGHT, MIN_BAR_HEIGHT)
-            : MIN_BAR_HEIGHT;
-          const isZero = value === 0;
+    <div className="driver-earnings__chart-bars" role="img" aria-label={`${chartPeriod} earnings bar chart`}>
+      {data.map((item, index) => {
+        const value = Number(item.value || 0);
+        const barHeight = value > 0
+          ? Math.max((value / maxValue) * CHART_HEIGHT, MIN_BAR_HEIGHT)
+          : MIN_BAR_HEIGHT;
+        const isZero = value === 0;
 
-          return (
-            <div key={index} style={styles.barColumn}>
-              <div style={styles.barWrapper}>
-                <div
-                  style={{
-                    ...styles.bar,
-                    height: `${barHeight}px`,
-                    backgroundColor: isZero ? COLORS.barZero : COLORS.primaryGreen,
-                    opacity: isZero ? 0.5 : 1,
-                  }}
-                  title={`${labels[index] || item.label || ""}: ${formatEarningsMRU(value)}`}
-                  role="presentation"
-                />
-              </div>
-              <span style={styles.barLabel}>{labels[index] || item.label || ""}</span>
+        return (
+          <div key={index} className="driver-earnings__chart-column">
+            <div className="driver-earnings__chart-bar-wrap">
+              <div
+                className={`driver-earnings__chart-bar${isZero ? " driver-earnings__chart-bar--zero" : ""}`}
+                style={{ height: `${barHeight}px` }}
+                title={`${labels[index] || item.label || ""}: ${formatEarningsMRU(value)}`}
+                role="presentation"
+                tabIndex={0}
+              />
             </div>
-          );
-        })}
-      </div>
+            <span className="driver-earnings__chart-label">{labels[index] || item.label || ""}</span>
+          </div>
+        );
+      })}
     </div>
   );
 }
 
 // ─── Period Tab Button ──────────────────────────────────────────────────────
 function PeriodTab({ label, active, onClick }) {
-  const { styles, COLORS } = driverTheme;
   return (
     <button
       type="button"
       onClick={onClick}
-      style={{
-        ...styles.periodTab,
-        backgroundColor: active ? COLORS.primaryGreen : "transparent",
-        color: active ? COLORS.onPrimary : COLORS.lightGray,
-        borderColor: active ? COLORS.primaryGreen : COLORS.cardBorder,
-      }}
+      className={`driver-earnings__tab${active ? " driver-earnings__tab--active" : ""}`}
       aria-pressed={active}
     >
       {label}
@@ -164,16 +173,11 @@ function PeriodTab({ label, active, onClick }) {
 
 // ─── Chart Period Tab ───────────────────────────────────────────────────────
 function ChartPeriodTab({ label, active, onClick }) {
-  const { styles, COLORS } = driverTheme;
   return (
     <button
       type="button"
       onClick={onClick}
-      style={{
-        ...styles.chartPeriodTab,
-        backgroundColor: active ? COLORS.darkNavy : "transparent",
-        color: active ? COLORS.white : COLORS.textMuted,
-      }}
+      className={`driver-earnings__chart-tab${active ? " driver-earnings__chart-tab--active" : ""}`}
       aria-pressed={active}
     >
       {label}
@@ -183,14 +187,13 @@ function ChartPeriodTab({ label, active, onClick }) {
 
 // ─── Line Item Component ────────────────────────────────────────────────────
 function EarningsLineItem({ label, amount, icon }) {
-  const { styles } = driverTheme;
   return (
-    <div style={styles.lineItem}>
-      <div style={styles.lineItemLeft}>
-        <span style={styles.lineItemIcon} aria-hidden="true">{icon}</span>
-        <span style={styles.lineItemLabel}>{label}</span>
+    <div className="driver-earnings__breakdown-row">
+      <div className="driver-earnings__breakdown-left">
+        <span className="driver-earnings__breakdown-icon" aria-hidden="true">{icon}</span>
+        <span className="driver-earnings__breakdown-label">{label}</span>
       </div>
-      <span style={styles.lineItemAmount}>{formatEarningsMRU(amount)}</span>
+      <span className="driver-earnings__breakdown-amount">{formatEarningsMRU(amount)}</span>
     </div>
   );
 }
@@ -404,7 +407,7 @@ function WithdrawalSheet({ onClose, onDone }) {
 
 // ─── Main Earnings Center Component ─────────────────────────────────────────
 export default function DriverEarnings() {
-  const { yalaUI } = syncDriverTheme();
+  syncDriverTheme();
   const { styles } = driverTheme;
 
   const [activePeriod, setActivePeriod] = useState("today");
@@ -528,17 +531,31 @@ export default function DriverEarnings() {
     }
   };
 
-  // ─── Get bonus breakdown for active period ──────────────────────────────
-  const getBonusBreakdown = () => {
-    if (!earnings || !earnings.breakdown) {
-      return { bonus: 0, incentive: 0, referral: 0 };
-    }
-    const breakdown = earnings.breakdown[activePeriod] || earnings.breakdown || {};
-    return {
-      bonus: toAmount(breakdown.bonus ?? breakdown.bonus_earnings),
-      incentive: toAmount(breakdown.incentive ?? breakdown.incentive_earnings),
-      referral: toAmount(breakdown.referral ?? breakdown.referral_earnings),
-    };
+  // ─── Get bonus breakdown items for active period ────────────────────────
+  const getBreakdownItems = () => {
+    if (!earnings || !earnings.breakdown) return [];
+    const items = earnings.breakdown[activePeriod] || {};
+    return Object.entries(items).map(([key, value]) => {
+      const label =
+        BREAKDOWN_LABELS[key] ||
+        key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+      return {
+        key,
+        label,
+        amount: toAmount(value),
+        icon: BREAKDOWN_ICONS[key] || "•",
+      };
+    });
+  };
+
+  // ─── Get summary display value with fallback ────────────────────────────
+  const getSummaryDisplay = (periodKey) => {
+    if (!earnings) return "—";
+    const valueKey =
+      periodKey === "lifetime" ? "total_earnings" : `${periodKey}_earnings`;
+    const raw = earnings[valueKey];
+    if (raw === undefined || raw === null) return "—";
+    return formatEarningsMRU(toAmount(raw));
   };
 
   // ─── Prepare chart labels ──────────────────────────────────────────────
@@ -581,15 +598,29 @@ export default function DriverEarnings() {
   };
 
   // ─── Render ─────────────────────────────────────────────────────────────
-  const breakdown = getBonusBreakdown();
   const normalizedData = getNormalizedChartData();
   const chartLabels = getChartLabels();
   const weekTotal = getPeriodEarnings("week");
   const hasAnyEarnings = PERIODS.some((period) => getPeriodEarnings(period) > 0);
+  const activeAmount = getPeriodEarnings(activePeriod);
+  const activeLabel =
+    activePeriod === "today" ? "Today's Earnings" :
+    activePeriod === "week" ? "This Week" :
+    activePeriod === "month" ? "This Month" :
+    activePeriod === "year" ? "This Year" : "Lifetime Earnings";
+  const summaryPeriods = [
+    { key: "today", label: "Today" },
+    { key: "week", label: "This Week" },
+    { key: "month", label: "This Month" },
+    { key: "lifetime", label: "Lifetime" },
+  ];
+  const breakdownItems = getBreakdownItems();
+  const trips = Array.isArray(earnings?.trips) ? earnings.trips : [];
+  const lastUpdated = earnings?.last_updated || null;
 
   if (loading) {
     return (
-      <div style={styles.container}>
+      <div className="driver-earnings">
         <DriverLoadingState title="Loading earnings..." />
       </div>
     );
@@ -597,7 +628,7 @@ export default function DriverEarnings() {
 
   if (error && !earnings) {
     return (
-      <div style={styles.container}>
+      <div className="driver-earnings">
         <DriverErrorState
           title=""
           message={error}
@@ -609,13 +640,7 @@ export default function DriverEarnings() {
   }
 
   return (
-    <div
-      className={yalaUI ? "driver-page--lyft" : undefined}
-      style={{
-        ...styles.container,
-        ...(yalaUI ? { minHeight: "auto", paddingTop: 12 } : null),
-      }}
-    >
+    <main className="driver-earnings">
       {showWithdraw && (
         <WithdrawalSheet
           onClose={() => setShowWithdraw(false)}
@@ -623,23 +648,29 @@ export default function DriverEarnings() {
         />
       )}
 
-      {/* Header */}
-      {!yalaUI && (
-      <div style={styles.header}>
-        <h1 style={styles.title}>Earnings</h1>
-        {syncing && (
-          <span style={styles.syncBadge}>Syncing...</span>
-        )}
-      </div>
-      )}
-      {yalaUI && syncing && (
-        <div style={{ ...styles.header, marginBottom: 12 }}>
-          <span style={styles.syncBadge}>Syncing...</span>
+      <header className="driver-earnings__header">
+        <h1 className="driver-earnings__title">Earnings</h1>
+        <div className="driver-earnings__actions">
+          {syncing && <span className="driver-earnings__sync">Syncing...</span>}
+          <button
+            type="button"
+            className="driver-earnings__refresh"
+            aria-label="Refresh earnings"
+            onClick={() => fetchEarnings(true)}
+            disabled={syncing}
+          >
+            ↻
+          </button>
         </div>
+      </header>
+
+      {lastUpdated && (
+        <p className="driver-earnings__last-updated">
+          Last updated {new Date(lastUpdated).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+        </p>
       )}
 
-      {/* Period Tabs */}
-      <div style={styles.periodTabs} role="tablist" aria-label="Earnings period">
+      <div className="driver-earnings__tabs" role="tablist" aria-label="Earnings period">
         {PERIODS.map((period) => (
           <PeriodTab
             key={period}
@@ -650,30 +681,14 @@ export default function DriverEarnings() {
         ))}
       </div>
 
-      {/* Wallet / Withdraw Card — map-app style */}
-      <div style={{
-        ...styles.earningsCard,
-        background: "linear-gradient(135deg, #00A651 0%, #007a3d 100%)",
-        border: "none",
-        position: "relative",
-        overflow: "hidden",
-      }}>
-        <span style={{ ...styles.earningsLabel, color: "rgba(255,255,255,0.75)" }}>
-          {activePeriod === "today" ? "Today's Earnings" :
-           activePeriod === "week" ? "This Week" :
-           activePeriod === "month" ? "This Month" :
-           activePeriod === "year" ? "This Year" : "Lifetime Earnings"}
-        </span>
-        <h2 style={{ ...styles.earningsAmount, color: "#fff", fontSize: 38 }}>
-          {formatEarningsMRU(getPeriodEarnings(activePeriod))}
-        </h2>
+      <section className="driver-earnings__hero" aria-label={activeLabel}>
+        <span className="driver-earnings__hero-label">{activeLabel}</span>
+        <h2 className="driver-earnings__hero-amount">{formatEarningsMRU(activeAmount)}</h2>
         {!hasAnyEarnings && (
-          <span style={{ ...styles.weekTotalHint, color: "rgba(255,255,255,0.78)" }}>
-            No earnings yet.
-          </span>
+          <span className="driver-earnings__hero-hint">No earnings yet.</span>
         )}
-        {activePeriod !== "week" && (
-          <span style={{ ...styles.weekTotalHint, color: "rgba(255,255,255,0.65)" }}>
+        {activePeriod !== "week" && hasAnyEarnings && (
+          <span className="driver-earnings__hero-hint">
             Week total: {formatEarningsMRU(weekTotal)}
           </span>
         )}
@@ -681,38 +696,48 @@ export default function DriverEarnings() {
           type="button"
           onClick={() => navigateInApp("/driver/wallet/withdraw")}
           aria-label="Withdraw earnings"
-          style={{
-            marginTop: 20,
-            minHeight: 44,
-            background: "rgba(255,255,255,0.2)",
-            border: "2px solid rgba(255,255,255,0.6)",
-            borderRadius: 999,
-            color: "#fff",
-            fontWeight: 800,
-            fontSize: 15,
-            padding: "12px 32px",
-            cursor: "pointer",
-            backdropFilter: "blur(4px)",
-          }}
+          className="driver-earnings__withdraw"
         >
           <span aria-hidden="true">💸 </span>
           Withdraw
         </button>
-      </div>
+      </section>
 
-      {/* Bonus/Incentive/Referral Line Items */}
-      <div style={styles.breakdownCard}>
-        <h3 style={styles.breakdownTitle}>Breakdown</h3>
-        <EarningsLineItem label="Bonus" amount={breakdown.bonus} icon="🎁" />
-        <EarningsLineItem label="Incentive" amount={breakdown.incentive} icon="⚡" />
-        <EarningsLineItem label="Referral" amount={breakdown.referral} icon="🤝" />
-      </div>
+      <section className="driver-earnings__summary" aria-label="Earnings summary">
+        {summaryPeriods.map(({ key, label }) => {
+          const isActive = activePeriod === key;
+          return (
+            <article
+              key={key}
+              className={`driver-earnings__summary-card${isActive ? " driver-earnings__summary-card--active" : ""}`}
+            >
+              <span className="driver-earnings__summary-label">{label}</span>
+              <strong className="driver-earnings__summary-amount">{getSummaryDisplay(key)}</strong>
+            </article>
+          );
+        })}
+      </section>
 
-      {/* Chart Section */}
-      <div style={styles.chartCard}>
-        <div style={styles.chartHeader}>
-          <h3 style={styles.chartTitle}>Earnings Chart</h3>
-          <div style={styles.chartPeriodTabs}>
+      <section className="driver-earnings__section" aria-label="Earnings breakdown">
+        <h3 className="driver-earnings__section-title">Breakdown</h3>
+        {breakdownItems.length === 0 ? (
+          <div className="driver-earnings__empty">No breakdown data for this period.</div>
+        ) : (
+          breakdownItems.map((item) => (
+            <EarningsLineItem
+              key={item.key}
+              label={item.label}
+              amount={item.amount}
+              icon={item.icon}
+            />
+          ))
+        )}
+      </section>
+
+      <section className="driver-earnings__section" aria-label="Earnings chart">
+        <div className="driver-earnings__chart-header">
+          <h3 className="driver-earnings__chart-title">Earnings Chart</h3>
+          <div className="driver-earnings__chart-tabs" role="tablist" aria-label="Chart period">
             {CHART_PERIODS.map((period) => (
               <ChartPeriodTab
                 key={period}
@@ -725,7 +750,7 @@ export default function DriverEarnings() {
         </div>
 
         {chartLoading ? (
-          <div style={styles.chartLoadingContainer} role="status" aria-live="polite" aria-busy="true" aria-label="Loading chart">
+          <div className="driver-earnings__chart-loading" role="status" aria-live="polite" aria-busy="true" aria-label="Loading chart">
             <div style={styles.spinnerSmall} />
           </div>
         ) : (
@@ -735,21 +760,40 @@ export default function DriverEarnings() {
             chartPeriod={chartPeriod}
           />
         )}
-      </div>
+      </section>
 
-      {/* Back to Dashboard */}
-      {!yalaUI && (
+      <section className="driver-earnings__section" aria-label="Recent completed trips">
+        <h3 className="driver-earnings__section-title">Recent trips</h3>
+        {trips.length === 0 ? (
+          <div className="driver-earnings__empty">No completed trips yet.</div>
+        ) : (
+          trips.map((trip) => (
+            <article key={trip.id || trip.ride_id} className="driver-earnings__trip-row">
+              <div className="driver-earnings__trip-main">
+                <span className="driver-earnings__trip-name">{trip.pickup || trip.name || "Completed ride"}</span>
+                <span className="driver-earnings__trip-meta">
+                  {trip.completed_at ? new Date(trip.completed_at).toLocaleDateString() : trip.date || ""}
+                  {trip.status ? ` · ${trip.status}` : ""}
+                </span>
+              </div>
+              <span className="driver-earnings__trip-fare">
+                {trip.fare !== undefined ? formatEarningsMRU(trip.fare) : "—"}
+              </span>
+            </article>
+          ))
+        )}
+      </section>
+
       <button
         type="button"
         onClick={() => { navigateInApp("/driver"); }}
         aria-label="Back to Dashboard"
-        style={{ ...styles.backButton, minHeight: 44 }}
+        className="driver-earnings__back"
       >
         <span aria-hidden="true">← </span>
         Back to Dashboard
       </button>
-      )}
-    </div>
+    </main>
   );
 }
 
