@@ -3,7 +3,7 @@ import {
   Avatar,
   Chip,
   QuickActionTile,
-  StatCard,
+  Kpi,
   EarningsCard,
   PrimaryButton,
   SecondaryButton,
@@ -282,22 +282,32 @@ export default function DriverDashboardContent({
         <Section className="driver-dashboard-content__section" aria-label="Performance summary">
           <h3 className="yds-section-title">Today's performance</h3>
           <div className="driver-dashboard-content__kpi-grid">
-            <StatCard label="Trips" value={todayTripsCount} />
-            <StatCard label="Earnings" value={todayEarningsFormatted} />
-            <StatCard label="Acceptance" value={`${acceptanceRate}%`} />
-            {rating > 0 ? <StatCard label="Rating" value={rating.toFixed(1)} /> : null}
-            {completion > 0 ? <StatCard label="Completion" value={`${Math.round(completion)}%`} /> : null}
-            {onlineHours > 0 ? <StatCard label="Online" value={`${onlineHours}h`} /> : null}
-            {missedRides > 0 ? <StatCard label="Missed" value={missedRides} /> : null}
+            <Kpi icon="🚗" value={todayTripsCount} label="Trips" className="driver-dashboard-content__kpi" />
+            <Kpi icon="💰" value={todayEarningsFormatted} label="Earnings" className="driver-dashboard-content__kpi" />
+            <Kpi icon="✅" value={`${acceptanceRate}%`} label="Acceptance" className="driver-dashboard-content__kpi" />
+            {rating > 0 ? <Kpi icon="⭐" value={rating.toFixed(1)} label="Rating" className="driver-dashboard-content__kpi" /> : null}
+            {completion > 0 ? <Kpi icon="🎯" value={`${Math.round(completion)}%`} label="Completion" className="driver-dashboard-content__kpi" /> : null}
+            {onlineHours > 0 ? <Kpi icon="🕒" value={`${onlineHours}h`} label="Online" className="driver-dashboard-content__kpi" /> : null}
+            {missedRides > 0 ? <Kpi icon="🔔" value={missedRides} label="Missed" className="driver-dashboard-content__kpi" /> : null}
           </div>
         </Section>
 
         <Section className="driver-dashboard-content__section" aria-label="Earnings summary">
           <h3 className="yds-section-title">Earnings</h3>
           <div className="driver-dashboard-content__earnings-grid">
-            <EarningsCard title="Today" amount={todayEarningsFormatted} period="Today's earnings" />
+            <EarningsCard
+              title="Today"
+              amount={todayEarningsFormatted}
+              period="Today's earnings"
+              className="driver-dashboard-content__earnings-card"
+            />
             {weeklyEarnings > 0 ? (
-              <EarningsCard title="This week" amount={weeklyEarningsFormatted} period="Weekly earnings" />
+              <EarningsCard
+                title="This week"
+                amount={weeklyEarningsFormatted}
+                period="Weekly earnings"
+                className="driver-dashboard-content__earnings-card"
+              />
             ) : null}
           </div>
           <SecondaryButton
