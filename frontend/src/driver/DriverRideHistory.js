@@ -270,7 +270,6 @@ export default function DriverRideHistory() {
   const [totalPages, setTotalPages] = useState(1);
   const [hasPrevious, setHasPrevious] = useState(false);
   const [hasNext, setHasNext] = useState(false);
-  const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
@@ -322,7 +321,6 @@ export default function DriverRideHistory() {
         const current = Number(data.current_page) || page;
 
         setRides(results);
-        setCount(Number(data.count) || 0);
         setTotalPages(total);
         setCurrentPage(current);
         setHasPrevious(current > 1);
