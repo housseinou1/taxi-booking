@@ -126,6 +126,8 @@
   font-weight: var(--yds-weight-bold);
   color: var(--yds-ink);
   text-align: right;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .trip-summary__row-value--strong {
@@ -139,4 +141,41 @@
   font-size: var(--yds-text-sm);
   font-weight: var(--yds-weight-bold);
   color: var(--yds-primary);
+}
+
+@media (max-width: 390px) {
+  .trip-summary-sheet {
+    gap: var(--yds-space-2);
+    padding: var(--yds-space-3) var(--yds-space-3) calc(var(--yds-space-3) + var(--yds-safe-bottom));
+  }
+
+  .trip-summary__check {
+    width: 44px;
+    height: 44px;
+    font-size: var(--yds-text-xl);
+  }
+
+  .trip-summary__title {
+    font-size: var(--yds-text-xl);
+  }
+
+  .trip-summary__subtitle {
+    font-size: var(--yds-text-xs);
+  }
+
+  .trip-summary__fare {
+    font-size: var(--yds-text-2xl);
+  }
+
+  .trip-summary__row-label {
+    font-size: var(--yds-text-xs);
+  }
+
+  .trip-summary__row-value {
+    font-size: var(--yds-text-sm);
+  }
+
+  .trip-summary__ready {
+    font-size: var(--yds-text-xs);
+  }
 }

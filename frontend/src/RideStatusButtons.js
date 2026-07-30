@@ -731,6 +731,7 @@ function SlideRideAction({
           left: knobLeft,
           background: color,
         }}
+        aria-hidden="true"
       >
         {isWorking ? "..." : ">"}
       </span>
@@ -741,7 +742,7 @@ function SlideRideAction({
 const actionRowStyle = {
   display: "grid",
   gridTemplateColumns: "1fr",
-  gap: "10px",
+  gap: "12px",
 };
 
 const pickupPinCardStyle = {
@@ -810,12 +811,13 @@ const navigationTitleStyle = {
 
 const navigationButtonGridStyle = {
   display: "grid",
-  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
   gap: "8px",
 };
 
 const navigationButtonStyle = {
-  minHeight: "42px",
+  minHeight: "44px",
+  minWidth: "44px",
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
