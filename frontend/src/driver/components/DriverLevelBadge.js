@@ -44,9 +44,9 @@ export default function DriverLevelBadge({
   const progress = Math.min(100, Math.round((points / target) * 100));
 
   return (
-    <div style={styles.container}>
+    <div style={styles.container} aria-label={`${tier.name}: ${Number(points).toLocaleString()} of ${Number(target).toLocaleString()} points`}>
       <div style={styles.header}>
-        <span style={{ ...styles.levelMark, background: tier.softBg, color: tier.color }}>
+        <span style={{ ...styles.levelMark, background: tier.softBg, color: tier.color }} aria-hidden="true">
           {tier.code}
         </span>
         <div style={styles.info}>
@@ -59,7 +59,14 @@ export default function DriverLevelBadge({
           <span style={styles.rule}>3 points per 10 MRU earned</span>
         </div>
       </div>
-      <div style={styles.progressTrack}>
+      <div
+        style={styles.progressTrack}
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={progress}
+        aria-label={`${progress}% toward next level`}
+      >
         <div
           style={{
             ...styles.progressFill,

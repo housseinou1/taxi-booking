@@ -3,6 +3,7 @@ import axios from "axios";
 
 import { API_URL } from "../apiConfig";
 import { bindDriverTheme } from "./themeRefresh";
+import "./DriverAchievements.css";
 
 function buildStyles(COLORS) {
   return {
@@ -228,7 +229,14 @@ export default function DriverAchievements() {
               <div style={{ color: styles.pointsValueStyle.color, fontSize: 20, fontWeight: 900 }}>{dashboard.total_points}</div>
             </div>
           </div>
-          <div style={{ height: 8, borderRadius: 999, background: "rgba(148,163,184,0.2)", overflow: "hidden", marginBottom: 8 }}>
+          <div
+            style={{ height: 8, borderRadius: 999, background: "rgba(148,163,184,0.2)", overflow: "hidden", marginBottom: 8 }}
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(dashboard.progress_percent || 0)}
+            aria-label={`Progress to next level: ${Math.round(dashboard.progress_percent || 0)}%`}
+          >
             <div style={{ width: `${dashboard.progress_percent || 0}%`, height: "100%", background: "linear-gradient(90deg,#00A651,#fbbf24)" }} />
           </div>
           <div style={{ color: styles.cardDateStyle.color, fontSize: 12, marginBottom: 12 }}>
@@ -261,7 +269,14 @@ export default function DriverAchievements() {
                 <strong style={{ color: styles.cardTitleStyle.color }}>{c.name}</strong>
                 <span style={{ color: styles.cardDateStyle.color, fontSize: 11 }}>{c.status}</span>
               </div>
-              <div style={{ height: 6, borderRadius: 999, background: "rgba(148,163,184,0.2)", overflow: "hidden", margin: "8px 0" }}>
+              <div
+                style={{ height: 6, borderRadius: 999, background: "rgba(148,163,184,0.2)", overflow: "hidden", margin: "8px 0" }}
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={Math.round(c.progress_percent || 0)}
+                aria-label={`${c.name} progress: ${Math.round(c.progress_percent || 0)}%`}
+              >
                 <div style={{ width: `${c.progress_percent || 0}%`, height: "100%", background: "#fbbf24" }} />
               </div>
               <div style={{ fontSize: 11, color: styles.cardDateStyle.color }}>
@@ -287,7 +302,14 @@ export default function DriverAchievements() {
                 <span style={{ color: styles.cardDateStyle.color, fontSize: 11 }}>{c.status}</span>
               </div>
               <div style={{ color: styles.cardDateStyle.color, fontSize: 12, margin: "6px 0" }}>{c.description}</div>
-              <div style={{ height: 6, borderRadius: 999, background: "rgba(148,163,184,0.2)", overflow: "hidden" }}>
+              <div
+                style={{ height: 6, borderRadius: 999, background: "rgba(148,163,184,0.2)", overflow: "hidden" }}
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={Math.round(c.progress_percent || 0)}
+                aria-label={`${c.name} challenge progress: ${Math.round(c.progress_percent || 0)}%`}
+              >
                 <div style={{ width: `${c.progress_percent || 0}%`, height: "100%", background: "#00A651" }} />
               </div>
               <div style={{ fontSize: 11, color: styles.cardDateStyle.color, marginTop: 4 }}>

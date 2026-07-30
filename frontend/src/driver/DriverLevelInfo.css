@@ -1,0 +1,29 @@
+/* ─── DriverLevelInfo responsive overrides ────────────────────────────────── */
+
+.dli-metrics-grid,
+.dli-requirements-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+@media (min-width: 480px) {
+  .dli-metrics-grid,
+  .dli-requirements-grid {
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+  }
+}
+
+.dli-metric {
+  margin: 0;
+  text-align: center;
+}
+
+.dli-metric-value {
+  margin: 0;
+  font-weight: 900;
+}
+
+.dli-metric-label {
+  margin: 0;
+}

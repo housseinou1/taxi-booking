@@ -3,6 +3,7 @@ import axios from "axios";
 
 import { API_URL } from "../apiConfig";
 import { useDriverContext } from "./context/DriverContext";
+import "./DriverLevelInfo.css";
 import LevelBadge, {
   LevelProgressBar,
   DemotionWarning,
@@ -209,7 +210,7 @@ export default function DriverLevelInfo() {
 
         {/* Current Metrics */}
         {levelData && (
-          <div style={metricsGridStyle}>
+          <div className="dli-metrics-grid" style={metricsGridStyle}>
             <MetricItem
               label="Rides"
               value={levelData.total_rides_completed ?? 0}
@@ -254,13 +255,13 @@ export default function DriverLevelInfo() {
 
 function MetricItem({ label, value, target }) {
   return (
-    <div style={metricItemStyle}>
-      <span style={metricValueStyle}>{value}</span>
-      <span style={metricLabelStyle}>{label}</span>
+    <dl style={metricItemStyle} className="dli-metric">
+      <dd style={metricValueStyle} className="dli-metric-value">{value}</dd>
+      <dt style={metricLabelStyle} className="dli-metric-label">{label}</dt>
       {target !== null && target !== undefined && (
-        <span style={metricTargetStyle}>Need: {target}</span>
+        <dd style={metricTargetStyle} className="dli-metric-target">Need: {target}</dd>
       )}
-    </div>
+    </dl>
   );
 }
 
@@ -294,7 +295,7 @@ function LevelCard({ level, isCurrent, isUnlocked }) {
       {level !== "bronze" && (
         <div style={requirementsSectionStyle}>
           <span style={requirementsLabelStyle}>Requirements</span>
-          <div style={requirementsGridStyle}>
+          <div className="dli-requirements-grid" style={requirementsGridStyle}>
             <RequirementItem label="Rides" value={`${thresholds.rides}+`} />
             <RequirementItem label="Rating" value={`${thresholds.rating}+`} />
             <RequirementItem label="Acceptance" value={`${thresholds.acceptance}%+`} />
@@ -321,10 +322,10 @@ function LevelCard({ level, isCurrent, isUnlocked }) {
 
 function RequirementItem({ label, value }) {
   return (
-    <div style={requirementItemStyle}>
-      <span style={requirementValueStyle}>{value}</span>
-      <span style={requirementItemLabelStyle}>{label}</span>
-    </div>
+    <dl style={requirementItemStyle} className="dli-metric">
+      <dd style={requirementValueStyle} className="dli-metric-value">{value}</dd>
+      <dt style={requirementItemLabelStyle} className="dli-metric-label">{label}</dt>
+    </dl>
   );
 }
 
@@ -455,9 +456,6 @@ const nextLevelHintStyle = {
 // ─── Metrics Grid ───────────────────────────────────────────────────────────
 
 const metricsGridStyle = {
-  display: "grid",
-  gridTemplateColumns: "1fr 1fr 1fr 1fr",
-  gap: "12px",
   paddingTop: "14px",
   borderTop: `1px solid ${COLORS.cardBorder}`,
 };
@@ -553,8 +551,6 @@ const requirementsLabelStyle = {
 };
 
 const requirementsGridStyle = {
-  display: "grid",
-  gridTemplateColumns: "1fr 1fr 1fr 1fr",
   gap: "8px",
 };
 

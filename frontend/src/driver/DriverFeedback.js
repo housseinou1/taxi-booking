@@ -3,6 +3,8 @@ import axios from "axios";
 
 import { API_URL } from "../apiConfig";
 import { bindDriverTheme } from "./themeRefresh";
+import StarRating from "./components/StarRating";
+import "./DriverFeedback.css";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 const REVIEWS_PER_PAGE = 20;
@@ -13,31 +15,6 @@ const COMPLIMENT_CATEGORIES = [
   { key: "friendliness", label: "Friendliness", icon: "😊" },
   { key: "punctuality", label: "Punctuality", icon: "⏰" },
 ];
-
-// ─── Rating Stars Component ─────────────────────────────────────────────────
-function RatingStars({ rating, size = 20 }) {
-  const { COLORS, styles } = driverTheme;
-  const stars = [];
-  const roundedRating = Math.round(rating * 2) / 2; // round to nearest 0.5
-
-  for (let i = 1; i <= 5; i++) {
-    if (i <= Math.floor(roundedRating)) {
-      stars.push(
-        <span key={i} style={{ fontSize: `${size}px`, color: COLORS.starYellow }}>★</span>
-      );
-    } else if (i - 0.5 === roundedRating) {
-      stars.push(
-        <span key={i} style={{ fontSize: `${size}px`, color: COLORS.starYellow, opacity: 0.6 }}>★</span>
-      );
-    } else {
-      stars.push(
-        <span key={i} style={{ fontSize: `${size}px`, color: COLORS.textMuted }}>★</span>
-      );
-    }
-  }
-
-  return <div style={styles.starsContainer} aria-label={`${rating} out of 5 stars`}>{stars}</div>;
-}
 
 // ─── Line Chart Component (30-day rating history) ───────────────────────────
 function RatingHistoryChart({ data }) {
@@ -155,6 +132,14 @@ function RatingHistoryChart({ data }) {
         <span style={styles.chartXLabel}>30 days ago</span>
         <span style={styles.chartXLabel}>Today</span>
       </div>
+
+      <ol className="df-chart-data" aria-label="Rating history data">
+        {points.map((p, i) => (
+          <li key={i}>
+            {p.date}: {p.rating} out of 5
+          </li>
+        ))}
+      </ol>
     </div>
   );
 }
@@ -175,18 +160,17 @@ function ReviewCard({ review }) {
     : "";
 
   return (
-    <div style={styles.reviewCard}>
-      <div style={styles.reviewHeader}>
-        <RatingStars rating={rating} size={14} />
-        <span style={styles.reviewDate}>{formattedDate}</span>
-      </div>
-      {text && (
+    <article style={styles.reviewCard} aria-label={`${formattedDate} review, ${rating} out of 5 stars`}>
+      <header style={styles.reviewHeader}>
+        <StarRating rating={rating} size="small" />
+        {formattedDate && <time style={styles.reviewDate} dateTime={date}>{formattedDate}</time>}
+      </header>
+      {text ? (
         <p style={styles.reviewText}>{text.slice(0, 500)}</p>
-      )}
-      {!text && (
+      ) : (
         <p style={styles.reviewNoText}>No written review</p>
       )}
-    </div>
+    </article>
   );
 }
 
@@ -194,20 +178,20 @@ function ReviewCard({ review }) {
 function ComplimentCard({ icon, label, count }) {
   const { styles } = driverTheme;
   return (
-    <div style={styles.complimentCard}>
-      <span style={styles.complimentIcon}>{icon}</span>
+    <li style={styles.complimentCard} aria-label={`${label}: ${count}`}>
+      <span style={styles.complimentIcon} aria-hidden="true">{icon}</span>
       <div style={styles.complimentInfo}>
         <span style={styles.complimentLabel}>{label}</span>
         <span style={styles.complimentCount}>{count}</span>
       </div>
-    </div>
+    </li>
   );
 }
 
 // ─── Main Feedback Center Component ─────────────────────────────────────────
 export default function DriverFeedback() {
   const { yalaUI } = syncDriverTheme();
-  const { COLORS, styles } = driverTheme;
+  const { styles } = driverTheme;
   const token = localStorage.getItem("access");
 
   const [feedbackData, setFeedbackData] = useState(null);
@@ -381,7 +365,7 @@ export default function DriverFeedback() {
           <>
             <span style={styles.ratingLabel}>Your Average Rating</span>
             <h2 style={styles.ratingValue}>{formattedRating}</h2>
-            <RatingStars rating={Number(formattedRating)} size={24} />
+            <StarRating rating={Number(formattedRating)} size="large" />
           </>
         ) : (
           <div style={styles.emptyRatingState}>
@@ -403,7 +387,7 @@ export default function DriverFeedback() {
       {/* Compliment Categories */}
       <div style={styles.sectionCard}>
         <h3 style={styles.sectionTitle}>Compliments</h3>
-        <div style={styles.complimentsGrid}>
+        <ul style={styles.complimentsGrid} aria-label="Compliments">
           {COMPLIMENT_CATEGORIES.map((category) => (
             <ComplimentCard
               key={category.key}
@@ -412,7 +396,7 @@ export default function DriverFeedback() {
               count={complimentCounts[category.key] || 0}
             />
           ))}
-        </div>
+        </ul>
       </div>
 
       {/* Reviews Section */}
@@ -531,12 +515,6 @@ const theme = bindDriverTheme((COLORS) => ({
     color: COLORS.goldAccent,
     margin: "0 0 8px 0",
   },
-  starsContainer: {
-    display: "flex",
-    justifyContent: "center",
-    gap: "2px",
-  },
-
   // ─── Empty Rating State ─────────────────────────────────────────────────
   emptyRatingState: {
     display: "flex",
@@ -636,6 +614,9 @@ const theme = bindDriverTheme((COLORS) => ({
     display: "flex",
     flexDirection: "column",
     gap: "10px",
+    listStyle: "none",
+    margin: 0,
+    padding: 0,
   },
   complimentCard: {
     display: "flex",
