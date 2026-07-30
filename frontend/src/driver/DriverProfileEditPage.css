@@ -42,11 +42,19 @@
 .driver-edit-back {
   width: 42px;
   height: 42px;
+  min-width: 44px;
+  min-height: 44px;
   border: 1px solid #cbd6ce;
   border-radius: 12px;
   background: #fff;
   font-size: 22px;
   cursor: pointer;
+  outline: none;
+}
+
+.driver-edit-back:focus-visible {
+  outline: 2px solid #27ae60;
+  outline-offset: 2px;
 }
 
 .driver-edit-message {
@@ -121,9 +129,22 @@
 }
 
 .driver-edit-field input:focus,
-.driver-edit-field select:focus {
+.driver-edit-field select:focus,
+.driver-edit-field input:focus-visible,
+.driver-edit-field select:focus-visible {
   outline: 2px solid #27ae60;
   border-color: #27ae60;
+}
+
+.driver-edit-help {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #657168;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .driver-edit-files {
@@ -166,10 +187,17 @@
 }
 
 .driver-edit-actions button {
+  min-height: 44px;
   border-radius: 999px;
   padding: 12px 20px;
   font-weight: 800;
   cursor: pointer;
+  outline: none;
+}
+
+.driver-edit-actions button:focus-visible {
+  outline: 2px solid #27ae60;
+  outline-offset: 2px;
 }
 
 .driver-edit-cancel {
@@ -236,4 +264,16 @@
   object-fit: cover;
   border-radius: 10px;
   border: 1px solid #e5e7eb;
+}
+
+@media (max-width: 360px) {
+  .driver-edit-grid,
+  .driver-edit-files {
+    gap: 10px;
+  }
+
+  .driver-edit-field input,
+  .driver-edit-field select {
+    padding: 10px;
+  }
 }

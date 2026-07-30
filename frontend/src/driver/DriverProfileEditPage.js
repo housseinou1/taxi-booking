@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 
 import { API_URL } from "../apiConfig";
-import { getAppType, isDeliveryCourierApp } from "../native/platform";
+import { isDeliveryCourierApp } from "../native/platform";
 import { DriverLoadingState } from "./ui/DriverAppStates";
 import "./DriverProfileEditPage.css";
 
@@ -180,8 +180,8 @@ export default function DriverProfileEditPage() {
         </div>
       </header>
 
-      {success && <div className="driver-edit-message success" role="status">{success}</div>}
-      {error && <div className="driver-edit-message error" role="alert">{String(error)}</div>}
+      {success && <div className="driver-edit-message success" role="status" aria-live="polite">{success}</div>}
+      {error && <div className="driver-edit-message error" role="alert" aria-live="assertive">{String(error)}</div>}
 
       <form onSubmit={saveChanges}>
         <EditSection
@@ -223,14 +223,23 @@ export default function DriverProfileEditPage() {
             <Field label="Vehicle color" name="vehicle_color" value={form.vehicle_color} onChange={updateField} />
             <Field label="Plate number" name="vehicle_plate" value={form.vehicle_plate} onChange={updateField} />
             {!isDeliveryCourier ? (
-              <label className="driver-edit-field">
+              <label className="driver-edit-field" htmlFor="car-type-select">
                 <span>Vehicle category</span>
-                <select name="car_type" value={form.car_type} onChange={updateField}>
+                <select
+                  id="car-type-select"
+                  name="car_type"
+                  value={form.car_type}
+                  onChange={updateField}
+                  aria-describedby="car-type-help"
+                >
                   <option value="economy">Economy</option>
                   <option value="xl">XL</option>
                   <option value="comfort">Comfort</option>
                   <option value="delivery">Delivery</option>
                 </select>
+                <small id="car-type-help" className="driver-edit-help">
+                  This is the service class riders see when booking.
+                </small>
               </label>
             ) : null}
           </div>
@@ -262,14 +271,15 @@ function EditSection({ title, description, children }) {
   return <section className="driver-edit-section"><header><h2>{title}</h2><p>{description}</p></header>{children}</section>;
 }
 
-function Field({ label, type = "text", required = false, ...props }) {
+function Field({ label, type = "text", required = false, id, ...props }) {
+  const inputId = id || props.name;
   return (
-    <label className="driver-edit-field">
+    <label className="driver-edit-field" htmlFor={inputId}>
       <span>
         {label}
         {required ? <span className="driver-edit-required" aria-hidden="true"> *</span> : null}
       </span>
-      <input type={type} required={required} aria-required={required || undefined} {...props} />
+      <input id={inputId} type={type} required={required} aria-required={required || undefined} {...props} />
     </label>
   );
 }

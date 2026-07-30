@@ -468,6 +468,15 @@ export default function DriverProfilePage({ onBack }) {
       : vehicleVerified === false
       ? { intent: "warning", label: "Pending" }
       : null;
+
+  const vehicleName = [vehicleMakeRaw, vehicleModelRaw]
+    .filter((v) => !isPlaceholderDisplayValue(v) && v)
+    .join(" ");
+
+  const hasVehicle =
+    [vehicleMakeRaw, vehicleModelRaw, vehicleColorRaw, vehicleYearRaw, vehiclePlateRaw, vehicleCategoryRaw, vehicleTypeRaw]
+      .some((v) => !isPlaceholderDisplayValue(v) && v);
+
   const contactPhone = displayValue(base.phone_number, enhanced.phone_number, user.phone_number);
   const contactEmail = displayValue(base.email, enhanced.email, user.email);
   // Raw (unformatted) values for the structured details section — rows are hidden
@@ -789,26 +798,53 @@ export default function DriverProfilePage({ onBack }) {
                   {vehicleVerifiedMeta.label}
                 </StatusChip>
               )}
-              {vehiclePlateRaw && !isPlaceholderDisplayValue(vehiclePlateRaw) && (
-                <span className="dp-plate-badge">{vehiclePlateRaw}</span>
-              )}
+              <button
+                type="button"
+                className="dp-vehicle-card__edit"
+                onClick={() => handleMenuAction("/driver/profile/edit")}
+                aria-label="Edit vehicle details"
+              >
+                Edit
+              </button>
             </div>
           </div>
-          <div className="dp-detail-list" role="list">
-            <DetailRow label="Make" value={vehicleMakeRaw} />
-            <DetailRow label="Model" value={vehicleModelRaw} />
-            <DetailRow label="Color" value={titleCase(vehicleColorRaw)} />
-            <DetailRow label="Year" value={vehicleYearRaw} />
-            <DetailRow label="Category" value={titleCase(vehicleCategoryRaw)} />
-            <DetailRow label="Type" value={titleCase(vehicleTypeRaw)} />
-            <DetailRow label="Plate number" value={vehiclePlateRaw} />
+
+          <div className="dp-vehicle-identity">
+            {vehicleName ? (
+              <h4 className="dp-vehicle-identity__name">{vehicleName}</h4>
+            ) : hasVehicle ? (
+              <h4 className="dp-vehicle-identity__name">Vehicle details</h4>
+            ) : (
+              <h4 className="dp-vehicle-identity__name dp-vehicle-identity__name--empty">No vehicle on file</h4>
+            )}
+
+            {vehiclePlateRaw && !isPlaceholderDisplayValue(vehiclePlateRaw) && (
+              <div className="dp-vehicle-identity__meta" aria-label="Vehicle plate number">
+                <span className="dp-plate-badge">{vehiclePlateRaw}</span>
+              </div>
+            )}
           </div>
+
+          {hasVehicle ? (
+            <div className="dp-detail-list" role="list">
+              <DetailRow label="Make" value={vehicleMakeRaw} />
+              <DetailRow label="Model" value={vehicleModelRaw} />
+              <DetailRow label="Color" value={titleCase(vehicleColorRaw)} />
+              <DetailRow label="Year" value={vehicleYearRaw} />
+              <DetailRow label="Category" value={titleCase(vehicleCategoryRaw)} />
+              <DetailRow label="Type" value={titleCase(vehicleTypeRaw)} />
+              <DetailRow label="Plate number" value={vehiclePlateRaw} />
+            </div>
+          ) : (
+            <p className="dp-vehicle-empty">Add your vehicle details to go online.</p>
+          )}
+
           <button
             type="button"
             className="dp-row-btn dp-detail-edit"
             onClick={() => documentsPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
           >
-            <span className="dp-row-icon">🚗</span>
+            <span className="dp-row-icon" aria-hidden="true">🚗</span>
             <span className="dp-row-text">
               <strong>Vehicle &amp; documents</strong>
               <small>View your vehicle documents</small>
