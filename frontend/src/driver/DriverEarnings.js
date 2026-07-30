@@ -279,16 +279,18 @@ function WithdrawalSheet({ onClose, onDone }) {
     borderRadius: "24px 24px 0 0",
     padding: "28px 24px 40px",
     boxSizing: "border-box",
+    maxHeight: "90vh",
+    overflowY: "auto",
   };
-  const titleStyle = { fontSize: 20, fontWeight: 800, color: COLORS.white, marginBottom: 4 };
-  const subStyle = { fontSize: 13, color: COLORS.lightGray, marginBottom: 20 };
-  const balStyle = { fontSize: 36, fontWeight: 900, color: COLORS.primaryGreen, marginBottom: 2 };
+  const titleStyle = { fontSize: 22, lineHeight: 1.2, fontWeight: 800, color: COLORS.white, marginBottom: 4 };
+  const subStyle = { fontSize: 13, lineHeight: 1.4, color: COLORS.lightGray, marginBottom: 20 };
+  const balStyle = { fontSize: "clamp(28px, 8vw, 36px)", fontWeight: 900, color: COLORS.primaryGreen, marginBottom: 2, wordBreak: "break-word" };
   const inputStyle = {
     width: "100%", boxSizing: "border-box",
     background: "rgba(255,255,255,0.07)", border: `1px solid ${COLORS.cardBorder}`,
     borderRadius: 12, padding: "14px 16px",
     fontSize: 20, fontWeight: 700, color: COLORS.white,
-    marginBottom: 12, outline: "none",
+    marginBottom: 12, outline: "none", minHeight: 44,
   };
   const btnStyle = (disabled) => ({
     width: "100%", padding: "16px",
@@ -296,21 +298,26 @@ function WithdrawalSheet({ onClose, onDone }) {
     color: disabled ? COLORS.textMuted : "#fff",
     border: "none", borderRadius: 999,
     fontSize: 16, fontWeight: 800, cursor: disabled ? "not-allowed" : "pointer",
-    marginBottom: 10,
+    marginBottom: 10, minHeight: 44,
   });
   const cancelStyle = {
     width: "100%", padding: "14px",
     background: "transparent", color: COLORS.lightGray,
     border: `1px solid ${COLORS.cardBorder}`, borderRadius: 999,
-    fontSize: 14, fontWeight: 600, cursor: "pointer",
+    fontSize: 14, fontWeight: 600, cursor: "pointer", minHeight: 44,
   };
 
   return (
     <div style={overlayStyle} onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div style={sheetStyle}>
+      <div
+        style={sheetStyle}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Withdraw earnings"
+      >
         <div style={{ width: 40, height: 4, background: COLORS.cardBorder, borderRadius: 99, margin: "0 auto 20px" }} />
 
-        {step === "loading" && <p style={{ color: COLORS.lightGray, textAlign: "center" }}>Loading wallet...</p>}
+        {step === "loading" && <p role="status" aria-live="polite" style={{ color: COLORS.lightGray, textAlign: "center" }}>Loading wallet...</p>}
         {step === "error" && <p role="alert" aria-live="assertive" style={{ color: "#ef4444", textAlign: "center" }}>Could not load wallet. Try again.</p>}
 
         {step === "idle" && (
@@ -348,6 +355,7 @@ function WithdrawalSheet({ onClose, onDone }) {
               min={minWithdrawal}
               max={availableBalance}
               inputMode="decimal"
+              aria-label="Withdrawal amount"
             />
             <button
               type="button"
@@ -376,6 +384,7 @@ function WithdrawalSheet({ onClose, onDone }) {
               inputMode="numeric"
               autoComplete="one-time-code"
               maxLength={6}
+              aria-label="One-time verification code"
             />
             <button
               type="button"
