@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import DriverAvatar from "./DriverAvatar";
 import DriverLevelBadge from "./DriverLevelBadge";
 import "./HamburgerMenu.css";
 
@@ -51,12 +52,6 @@ export default function HamburgerMenu({
   } = driverProfile;
 
   const fullName = `${first_name} ${last_name}`.trim() || "Yala Driver";
-  const initials = fullName
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part.charAt(0).toUpperCase())
-    .join("");
 
   const levelTitle = {
     bronze: "Bronze", silver: "Silver", gold: "Gold",
@@ -118,25 +113,29 @@ export default function HamburgerMenu({
         <header className="hm-header">
           <button className="hm-close" onClick={onClose} aria-label="Close menu" type="button">×</button>
           <div className="hm-profile">
-            <div className="hm-avatar-wrap">
-              {profile_picture ? (
-                <img src={profile_picture} alt={fullName} className="hm-avatar" />
-              ) : (
-                <span className="hm-avatar hm-avatar--fallback">{initials || "YD"}</span>
-              )}
-              <span className={`hm-avatar-dot ${is_online ? "online" : ""}`} />
-            </div>
+            <DriverAvatar
+              src={profile_picture}
+              name={fullName}
+              isOnline={is_online}
+              wrapperClassName="hm-avatar-wrap"
+              ringClassName="hm-avatar"
+              imageClassName="driver-avatar__image"
+              initialsClassName="hm-avatar hm-avatar--fallback"
+              dotClassName="hm-avatar-dot"
+            />
             <div className="hm-profile-info">
               <div className="hm-name-row">
                 <h2 className="hm-name">{fullName}</h2>
-                <span className="hm-verified">✓</span>
+                <span className="hm-verified" aria-label="Verified driver" title="Verified driver" role="img">
+                  <span aria-hidden="true">✓</span>
+                </span>
               </div>
               <div className="hm-meta">
                 <span className="hm-level-badge">{levelTitle}</span>
                 {rating > 0 && <span className="hm-rating">★ {Number(rating).toFixed(1)}</span>}
               </div>
               <span className={`hm-status ${is_online ? "online" : ""}`}>
-                <span className="hm-status-dot" />
+                <span className="hm-status-dot" aria-hidden="true" />
                 {is_online ? "Online" : "Offline"}
               </span>
             </div>

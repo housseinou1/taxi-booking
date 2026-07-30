@@ -56,6 +56,8 @@
 .dp-topbar-btn {
   width: 40px;
   height: 40px;
+  min-width: 44px;
+  min-height: 44px;
   display: grid;
   place-items: center;
   border: 0;
@@ -66,6 +68,12 @@
   font-weight: 700;
   cursor: pointer;
   transition: background 0.15s;
+  outline: none;
+}
+
+.dp-topbar-btn:focus-visible {
+  outline: 2px solid var(--yala-green);
+  outline-offset: 2px;
 }
 
 .dp-topbar-btn:hover {
@@ -161,10 +169,9 @@
   font-weight: 950;
   letter-spacing: -0.03em;
   color: var(--ink);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  min-width: 0;
 }
 
 .dp-verified {
@@ -186,9 +193,9 @@
   font-size: 13px;
   color: var(--muted);
   font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  min-width: 0;
 }
 
 .dp-hero-vehicle {
@@ -374,6 +381,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  min-height: 44px;
   padding: 14px 4px;
   border: 0;
   border-bottom: 1px solid var(--line);
@@ -382,6 +390,12 @@
   cursor: pointer;
   text-align: left;
   transition: background 0.12s;
+  outline: none;
+}
+
+.dp-row-btn:focus-visible {
+  outline: 2px solid var(--yala-green);
+  outline-offset: -2px;
 }
 
 .dp-row-btn:last-child {
@@ -454,9 +468,9 @@
   font-weight: 950;
   color: var(--ink);
   letter-spacing: -0.03em;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  min-width: 0;
 }
 
 .dp-stat-item span {
@@ -941,13 +955,16 @@
 
 /* === Personal information details === */
 .dp-detail-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
 }
 
 .dp-detail-row {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
   padding: 10px 0;
@@ -972,6 +989,7 @@
   font-weight: 700;
   color: #111827;
   overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .dp-detail-edit {
@@ -1343,5 +1361,92 @@
   .dp-doc-upload-btn {
     background: var(--yala-green);
     border-color: var(--yala-green);
+  }
+}
+
+/* === Focus-visible for all interactive elements === */
+.dp-doc-card:focus-visible,
+.dp-doc-upload-btn:focus-visible,
+.dp-doc-preview-link:focus-visible,
+.dp-retry-btn:focus-visible,
+.dp-status-card__action:focus-visible,
+.dp-eligibility-item__action:focus-visible,
+.dp-nav-tab:focus-visible,
+.dp-logout-btn:focus-visible {
+  outline: 2px solid var(--yala-green);
+  outline-offset: 2px;
+}
+
+.dp-doc-card:focus-visible,
+.dp-doc-upload-btn:focus-visible,
+.dp-doc-preview-link:focus-visible,
+.dp-row-btn:focus-visible,
+.dp-nav-tab:focus-visible,
+.dp-logout-btn:focus-visible {
+  outline-offset: -2px;
+}
+
+/* === Extra small screens === */
+@media (max-width: 320px) {
+  .dp-content {
+    padding: 10px;
+  }
+
+  .dp-hero {
+    padding: 20px 14px;
+    gap: 14px;
+  }
+
+  .dp-photo-ring {
+    width: 72px;
+    height: 72px;
+  }
+
+  .dp-hero-name {
+    font-size: 18px;
+  }
+
+  .dp-hero-phone,
+  .dp-hero-email {
+    font-size: 12px;
+  }
+
+  .dp-detail-row {
+    flex-direction: column;
+    gap: 4px;
+    align-items: flex-start;
+  }
+
+  .dp-detail-value {
+    text-align: left;
+  }
+
+  .dp-stats-grid {
+    gap: 8px;
+  }
+
+  .dp-rates-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+}
+
+/* === Desktop screens === */
+@media (min-width: 768px) {
+  .dp-content {
+    max-width: 640px;
+  }
+
+  .dp-hero {
+    padding: 28px 24px;
+  }
+
+  .dp-hero-name {
+    font-size: 24px;
+  }
+
+  .dp-photo-ring {
+    width: 96px;
+    height: 96px;
   }
 }

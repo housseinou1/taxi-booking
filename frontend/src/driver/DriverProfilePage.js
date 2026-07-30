@@ -8,6 +8,7 @@ import { Badge, StatusChip, ConfirmationDialog } from "../design-system/componen
 import { DriverLoadingState, DriverErrorState } from "./ui/DriverAppStates";
 import DocumentsUnderReviewBanner from "./components/DocumentsUnderReviewBanner";
 import DriverPayoutPanel from "./components/DriverPayoutPanel";
+import DriverAvatar from "./components/DriverAvatar";
 import TrustedContactsSection from "../safety/TrustedContactsSection";
 import {
   DOCUMENTS_UNDER_REVIEW_MESSAGE,
@@ -107,14 +108,6 @@ const findDocumentByType = (documents, type) => {
   }
   return documents.find((doc) => doc.document_type === type) || null;
 };
-
-const initials = (name) =>
-  name
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part.charAt(0).toUpperCase())
-    .join("") || "YD";
 
 // Presentation-only summary of existing per-document statuses. Does not change
 // document/expiry logic — it only reads getDocumentStatus() results.
@@ -697,35 +690,35 @@ export default function DriverProfilePage({ onBack }) {
         </section>
 
         {/* Hero Section */}
-        <section className="dp-hero">
-          <div className="dp-hero-photo">
-            <div className="dp-photo-ring">
-              {driverPhoto ? (
-                <img src={driverPhoto} alt={fullName} />
-              ) : (
-                <span className="dp-photo-initials">{initials(fullName)}</span>
-              )}
-            </div>
-            <span className={`dp-online-dot ${isOnline ? "online" : ""}`} />
-          </div>
+        <section className="dp-hero" aria-label="Driver profile hero">
+          <DriverAvatar
+            src={driverPhoto}
+            name={fullName}
+            isOnline={isOnline}
+            wrapperClassName="dp-hero-photo"
+            ringClassName="dp-photo-ring"
+            imageClassName="driver-avatar__image"
+            initialsClassName="dp-photo-initials"
+            dotClassName="dp-online-dot"
+          />
           <div className="dp-hero-info">
             <div className="dp-hero-name-row">
               <h2 className="dp-hero-name">{fullName}</h2>
               {approvalStatus === "approved" && (
                 <span
                   className="dp-verified"
-                  role="img"
                   aria-label="Verified driver"
                   title="Verified driver"
+                  role="img"
                 >
-                  ✓
+                  <span aria-hidden="true">✓</span>
                 </span>
               )}
             </div>
             <p className="dp-hero-phone">{contactPhone}</p>
             <p className="dp-hero-email">{contactEmail}</p>
             <div className="dp-hero-vehicle">
-              <span className="dp-vehicle-icon">🚗</span>
+              <span className="dp-vehicle-icon" aria-hidden="true">🚗</span>
               <span>{make} {model}</span>
               <span className="dp-plate-badge">{plate}</span>
             </div>
@@ -762,7 +755,7 @@ export default function DriverProfilePage({ onBack }) {
         {/* Personal Information */}
         <section className="dp-section-card">
           <h3 className="dp-section-title">Personal information</h3>
-          <div className="dp-detail-list">
+          <div className="dp-detail-list" role="list">
             <DetailRow label="Phone" value={contactPhone} />
             <DetailRow label="Email" value={contactEmail} />
             <DetailRow label="City" value={cityRaw} />
@@ -801,7 +794,7 @@ export default function DriverProfilePage({ onBack }) {
               )}
             </div>
           </div>
-          <div className="dp-detail-list">
+          <div className="dp-detail-list" role="list">
             <DetailRow label="Make" value={vehicleMakeRaw} />
             <DetailRow label="Model" value={vehicleModelRaw} />
             <DetailRow label="Color" value={titleCase(vehicleColorRaw)} />
@@ -889,20 +882,20 @@ export default function DriverProfilePage({ onBack }) {
         {/* Activity Section */}
         <section className="dp-section-card">
           <h3 className="dp-section-title">Activity</h3>
-          <div className="dp-stats-grid">
-            <div className="dp-stat-item">
+          <div className="dp-stats-grid" role="list">
+            <div className="dp-stat-item" role="listitem">
               <strong>{Number(totalRides || 0).toLocaleString()}</strong>
               <span>Total Rides</span>
             </div>
-            <div className="dp-stat-item">
+            <div className="dp-stat-item" role="listitem">
               <strong>{formatMRU(todayEarnings)}</strong>
               <span>Today</span>
             </div>
-            <div className="dp-stat-item">
+            <div className="dp-stat-item" role="listitem">
               <strong>{formatMRU(weekEarnings)}</strong>
               <span>This Week</span>
             </div>
-            <div className="dp-stat-item">
+            <div className="dp-stat-item" role="listitem">
               <strong>{formatMRU(monthEarnings)}</strong>
               <span>This Month</span>
             </div>
@@ -1145,7 +1138,7 @@ function DetailRow({ label, value }) {
   const text = String(value ?? "").trim();
   if (!text || isPlaceholderDisplayValue(text)) return null;
   return (
-    <div className="dp-detail-row">
+    <div className="dp-detail-row" role="listitem">
       <span className="dp-detail-label">{label}</span>
       <span className="dp-detail-value">{text}</span>
     </div>
