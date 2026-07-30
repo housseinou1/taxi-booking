@@ -2,12 +2,12 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { API_URL } from "../apiConfig";
 import authenticatedApi from "../auth/authenticatedApi";
-import { getAppType, isDeliveryCourierApp } from "../native/platform";
+import { isDeliveryCourierApp } from "../native/platform";
+import "./DriverDocuments.css";
 import DocumentsUnderReviewBanner from "./components/DocumentsUnderReviewBanner";
 import {
   DOCUMENTS_UNDER_REVIEW_MESSAGE,
   DOCUMENT_EXPIRATION_ALERT_DAYS,
-  getDocumentMenuStatusLabel,
   getExpiredOrMissingDocuments,
   getExpiringSoonDocuments,
   getRequiredCourierDocumentTypes,
@@ -19,22 +19,6 @@ import {
 } from "./utils/documentReview";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
-
-const COLORS = {
-  primaryGreen: "#00A651",
-  goldAccent: "#D4AF37",
-  darkNavy: "#0B1220",
-  white: "#FFFFFF",
-  lightGray: "rgba(255, 255, 255, 0.6)",
-  cardBg: "rgba(255, 255, 255, 0.06)",
-  cardBorder: "rgba(255, 255, 255, 0.1)",
-  errorRed: "#EF4444",
-  warningOrange: "#F59E0B",
-  pendingBlue: "#3B82F6",
-  approvedGreen:
-   "#10B981",
-  rejectedRed: "#EF4444",
-};
 
 const ACCEPTED_FORMATS = ["image/jpeg", "image/png", "application/pdf"];
 const ACCEPTED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".pdf"];
@@ -312,12 +296,12 @@ export default function DriverDocuments() {
 
   if (loading) {
     return (
-      <div style={containerStyle}>
-        <div style={loadingStyle}>
-          <span style={loadingSpinnerStyle}>⏳</span>
-          <p style={loadingTextStyle}>Loading documents...</p>
+      <main className="dd-container">
+        <div className="dd-state" role="status" aria-live="polite">
+          <span className="dd-state__icon" aria-hidden="true">⏳</span>
+          <p className="dd-state__text">Loading documents...</p>
         </div>
-      </div>
+      </main>
     );
   }
 
@@ -325,41 +309,38 @@ export default function DriverDocuments() {
 
   if (error) {
     return (
-      <div style={containerStyle}>
-        <div style={errorContainerStyle}>
-          <p style={errorTextStyle}>{error}</p>
-          <button style={retryButtonStyle} onClick={fetchDocuments}>
+      <main className="dd-container">
+        <div className="dd-state">
+          <p className="dd-state__text">{error}</p>
+          <button type="button" className="dd-retry-btn" onClick={fetchDocuments}>
             Retry
           </button>
         </div>
-      </div>
+      </main>
     );
   }
 
   // ─── Render ─────────────────────────────────────────────────────────────
 
   return (
-    <div style={containerStyle}>
-      {/* Mauritania accent bar */}
-      <div style={mauritaniaAccentBarStyle} aria-hidden="true" />
+    <main className="dd-container">
+      <div className="dd-accent-bar" aria-hidden="true" />
 
-      {/* Hidden file input */}
       <input
         ref={fileInputRef}
         type="file"
         accept=".jpg,.jpeg,.png,.pdf"
-        style={{ display: "none" }}
+        className="dd-hidden-input"
         onChange={handleFileSelected}
         aria-label="Upload document file"
       />
 
-      {/* Red alert for expired/missing required documents */}
       {documentAlerts.length > 0 && (
-        <div style={expiredAlertStyle} role="alert" aria-live="assertive">
-          <span style={alertIconStyle}>●</span>
-          <div style={alertContentStyle}>
-            <strong style={alertTitleStyle}>Documents expired</strong>
-            <p style={alertMessageStyle}>
+        <div className="dd-alert dd-alert--danger" role="alert" aria-live="assertive">
+          <span className="dd-alert__icon" aria-hidden="true">●</span>
+          <div className="dd-alert__content">
+            <strong className="dd-alert__title">Action Required</strong>
+            <p className="dd-alert__message">
               Upload renewed documents before going online.{" "}
               {documentAlerts.map((alert, idx) => (
                 <span key={alert.key}>
@@ -372,15 +353,14 @@ export default function DriverDocuments() {
         </div>
       )}
 
-      {/* Orange alert for documents expiring within 15 days */}
       {documentAlerts.length === 0 && expiringSoonDocuments.length > 0 && (
-        <div style={expiringAlertStyle} role="status" aria-live="polite">
-          <span style={alertIconStyle}>⚠</span>
-          <div style={alertContentStyle}>
-            <strong style={{ ...alertTitleStyle, color: COLORS.warningOrange }}>
+        <div className="dd-alert dd-alert--warning" role="status" aria-live="polite">
+          <span className="dd-alert__icon" aria-hidden="true">⚠</span>
+          <div className="dd-alert__content">
+            <strong className="dd-alert__title dd-alert__title--warning">
               Documents expiring soon
             </strong>
-            <p style={alertMessageStyle}>
+            <p className="dd-alert__message">
               {expiringSoonDocuments.map((item, idx) => (
                 <span key={item.key}>
                   {item.label}: Expiring in {item.days_remaining} day
@@ -393,43 +373,44 @@ export default function DriverDocuments() {
         </div>
       )}
 
-      {/* Page Header */}
-      <div style={headerStyle}>
-        <h1 style={pageTitleStyle}>{isDeliveryCourier ? "📄 Courier documents" : "📄 Document Center"}</h1>
-        <p style={pageSubtitleStyle}>
+      <header className="dd-header">
+        <h1 className="dd-title">
+          <span aria-hidden="true">📄</span>
+          {isDeliveryCourier ? "Courier documents" : "Document Center"}
+        </h1>
+        <p className="dd-subtitle">
           {isBicycleCourierProfile
             ? "Upload your National ID. Profile photo is added during profile setup."
             : isMotorVehicleCourierProfile
             ? "Upload National ID, license, registration, and insurance for your courier type."
             : "Upload and manage your required documents"}
         </p>
-      </div>
+      </header>
 
       {documentsUnderReview && <DocumentsUnderReviewBanner />}
 
-      {/* Upload Feedback Messages */}
       {uploadError && (
-        <div style={uploadErrorStyle} role="alert">
-          <span>❌</span> {uploadError}
+        <div className="dd-feedback dd-feedback--error" role="status" aria-live="assertive">
+          <span aria-hidden="true">❌</span> {uploadError}
         </div>
       )}
       {uploadSuccess && (
-        <div style={uploadSuccessStyle} role="status">
-          <span>✅</span> {uploadSuccess}
+        <div className="dd-feedback dd-feedback--success" role="status" aria-live="polite">
+          <span aria-hidden="true">✅</span> {uploadSuccess}
         </div>
       )}
 
       {pendingUpload && (
-        <div style={uploadDetailsStyle}>
-          <strong style={uploadDetailsTitleStyle}>
+        <div className="dd-upload-details">
+          <strong className="dd-upload-details__title">
             Complete {documentTypes.find((item) => item.key === pendingUpload.docTypeKey)?.label}
           </strong>
-          <span style={uploadFileNameStyle}>{pendingUpload.file.name}</span>
-          <div style={uploadActionsStyle}>
+          <span className="dd-upload-details__file">{pendingUpload.file.name}</span>
+          <div className="dd-upload-details__actions">
             <button
               type="button"
               onClick={() => setPendingUpload(null)}
-              style={cancelUploadButtonStyle}
+              className="dd-btn dd-btn--outline"
             >
               Cancel
             </button>
@@ -437,7 +418,7 @@ export default function DriverDocuments() {
               type="button"
               onClick={submitPendingUpload}
               disabled={Boolean(uploadingType)}
-              style={confirmUploadButtonStyle}
+              className="dd-btn dd-btn--primary"
             >
               {uploadingType ? "Uploading..." : "Upload document"}
             </button>
@@ -445,8 +426,7 @@ export default function DriverDocuments() {
         </div>
       )}
 
-      {/* Document List */}
-      <div style={documentListStyle}>
+      <div className="dd-document-list">
         {documentTypes.map((docType) => {
           const doc = documentMap[docType.key];
           const daysRemaining = doc?.expires_at
@@ -472,7 +452,7 @@ export default function DriverDocuments() {
           );
         })}
       </div>
-    </div>
+    </main>
   );
 }
 
@@ -488,86 +468,72 @@ function DocumentCard({
   isUploading,
   onUpload,
 }) {
-  const status = doc
-    ? expirationStatus === "valid" && (doc.display_status === "approved" || doc.status === "approved")
-      ? "valid"
-      : expirationStatus === "expiring_soon"
-        ? "expiring_soon"
-        : expirationStatus === "expired"
-          ? "expired"
-          : doc.display_status || doc.status || null
-    : "missing";
+  const status = !doc
+    ? "missing"
+    : doc.display_status === "rejected" || doc.status === "rejected"
+      ? "rejected"
+      : expirationStatus === "expired"
+        ? "expired"
+        : expirationStatus === "expiring_soon"
+          ? "expiring_soon"
+          : (doc.display_status === "approved" || doc.status === "approved") && expirationStatus === "valid"
+            ? "valid"
+            : doc.display_status || doc.status || null;
+
+  const showExpiredBadge = isExpired && status !== "rejected";
 
   return (
-    <div style={documentCardStyle}>
-      <div style={documentCardHeaderStyle}>
-        <div style={documentInfoStyle}>
-          <span style={documentIconStyle}>
+    <div className="dd-document-card">
+      <div className="dd-document-card__header">
+        <div className="dd-document-info">
+          <span className="dd-document-icon" aria-hidden="true">
             {docType.icon}
-            {isExpired ? <span style={expiredDotStyle} aria-label="Expired document" /> : null}
+            {showExpiredBadge ? <span className="dd-document-icon__dot" aria-label="Expired document" /> : null}
           </span>
-          <div>
-            <h3 style={documentNameStyle}>{docType.label}</h3>
+          <div className="dd-document-meta">
+            <h3 className="dd-document-name">{docType.label}</h3>
             {doc && (
-              <>
-                <span style={uploadedDateStyle}>
-                  Uploaded: {new Date(doc.uploaded_at).toLocaleDateString()}
-                </span>
-                {doc.issued_at && (
-                  <span style={uploadedDateStyle}>Issued: {doc.issued_at}</span>
-                )}
-                {doc.expires_at && (
-                  <span style={uploadedDateStyle}>Expires: {doc.expires_at}</span>
-                )}
-              </>
+              <div className="dd-document-dates">
+                <span>Uploaded: {new Date(doc.uploaded_at).toLocaleDateString()}</span>
+                {doc.issued_at && <span>Issued: {doc.issued_at}</span>}
+                {doc.expires_at && <span>Expires: {doc.expires_at}</span>}
+              </div>
             )}
           </div>
         </div>
 
-        {/* Status Badge */}
         {(status || !doc) && <StatusBadge status={status} />}
       </div>
 
-      {/* Expiration Warning Badge */}
       {showExpirationWarning && (
-        <div style={expirationWarningStyle} role="status">
-          <span style={warningBadgeIconStyle}>⚠</span>
-          <span style={warningBadgeTextStyle}>
-            Expiring in {daysRemaining} day{daysRemaining !== 1 ? "s" : ""}
+        <div className="dd-expiration-warning" role="status" aria-live="polite">
+          <span aria-hidden="true">⚠</span>
+          <span>
+            Expires in {daysRemaining} day{daysRemaining !== 1 ? "s" : ""}
           </span>
         </div>
       )}
 
-      {/* Expired Badge */}
-      {isExpired && (
-        <div style={expiredBadgeStyle} role="alert">
-          <span style={warningBadgeIconStyle}>🚫</span>
-          <span style={expiredBadgeTextStyle}>Expired</span>
+      {showExpiredBadge && (
+        <div className="dd-expired-badge" aria-label="Expired">
+          <span aria-hidden="true">🚫</span>
+          <span>Expired</span>
         </div>
       )}
 
-      {/* Rejection Reason */}
       {status === "rejected" && doc?.rejection_reason && (
-        <div style={rejectionReasonStyle}>
-          <span style={rejectionLabelStyle}>Reason:</span>{" "}
-          {doc.rejection_reason}
+        <div className="dd-rejection-reason">
+          <strong>Reason:</strong> {doc.rejection_reason}
         </div>
       )}
 
-      {/* Upload/Replace Button */}
       <button
-        style={{
-          ...uploadButtonStyle,
-          opacity: isUploading ? 0.6 : 1,
-          cursor: isUploading ? "not-allowed" : "pointer",
-        }}
+        type="button"
+        className="dd-upload-btn"
         onClick={() => onUpload(docType.key)}
         disabled={isUploading}
-        aria-label={
-          doc
-            ? `Replace ${docType.label}`
-            : `Upload ${docType.label}`
-        }
+        aria-label={doc ? `Replace ${docType.label}` : `Upload ${docType.label}`}
+        aria-busy={isUploading}
       >
         {isUploading ? "Uploading..." : doc ? "Replace" : "Upload"}
       </button>
@@ -577,433 +543,28 @@ function DocumentCard({
 
 function StatusBadge({ status }) {
   const config = {
-    valid: {
-      label: getDocumentMenuStatusLabel("valid"),
-      color: COLORS.approvedGreen,
-      bgColor: "rgba(16, 185, 129, 0.15)",
-    },
-    expiring_soon: {
-      label: getDocumentMenuStatusLabel("expiring_soon"),
-      color: COLORS.warningOrange,
-      bgColor: "rgba(245, 158, 11, 0.15)",
-    },
-    pending_review: {
-      label: "Pending Review",
-      color: COLORS.pendingBlue,
-      bgColor: "rgba(59, 130, 246, 0.15)",
-    },
-    approved: {
-      label: getDocumentMenuStatusLabel("valid"),
-      color: COLORS.approvedGreen,
-      bgColor: "rgba(16, 185, 129, 0.15)",
-    },
-    rejected: {
-      label: "Rejected",
-      color: COLORS.rejectedRed,
-      bgColor: "rgba(239, 68, 68, 0.15)",
-    },
-    expired: {
-      label: getDocumentMenuStatusLabel("expired"),
-      color: COLORS.rejectedRed,
-      bgColor: "rgba(239, 68, 68, 0.15)",
-    },
-    missing: {
-      label: getDocumentMenuStatusLabel("expired"),
-      color: COLORS.rejectedRed,
-      bgColor: "rgba(239, 68, 68, 0.15)",
-    },
+    valid: { label: "Approved" },
+    approved: { label: "Approved" },
+    expiring_soon: { label: "Expiring Soon" },
+    pending_review: { label: "Pending Review" },
+    pending: { label: "Pending Review" },
+    needs_review: { label: "Pending Review" },
+    under_review: { label: "Pending Review" },
+    submitted: { label: "Pending Review" },
+    rejected: { label: "Rejected" },
+    expired: { label: "Expired" },
+    missing: { label: "Not Uploaded" },
   };
 
-  const statusConfig = config[status] || config.pending_review;
+  const statusKey = status || "missing";
+  const statusConfig = config[statusKey] || config.pending_review;
 
   return (
-    <span
-      style={{
-        ...statusBadgeBaseStyle,
-        color: statusConfig.color,
-        backgroundColor: statusConfig.bgColor,
-        borderColor: statusConfig.color,
-      }}
-      aria-label={`Status: ${statusConfig.label}`}
-    >
+    <span className={`dd-status-badge dd-status-badge--${statusKey}`}>
       {statusConfig.label}
     </span>
   );
 }
 
-// ─── Styles ─────────────────────────────────────────────────────────────────
 
-const containerStyle = {
-  position: "relative",
-  minHeight: "100vh",
-  backgroundColor: COLORS.darkNavy,
-  padding: "24px 16px 80px",
-  overflowY: "auto",
-};
-
-const mauritaniaAccentBarStyle = {
-  position: "absolute",
-  top: 0,
-  left: 0,
-  right: 0,
-  height: "3px",
-  background: `linear-gradient(90deg, ${COLORS.primaryGreen} 0%, ${COLORS.goldAccent} 50%, ${COLORS.primaryGreen} 100%)`,
-};
-
-// ─── Loading & Error ────────────────────────────────────────────────────────
-
-const loadingStyle = {
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "center",
-  minHeight: "60vh",
-};
-
-const loadingSpinnerStyle = {
-  fontSize: "32px",
-  marginBottom: "12px",
-};
-
-const loadingTextStyle = {
-  color: COLORS.lightGray,
-  fontSize: "14px",
-};
-
-const errorContainerStyle = {
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "center",
-  minHeight: "60vh",
-  gap: "16px",
-};
-
-const errorTextStyle = {
-  color: COLORS.errorRed,
-  fontSize: "14px",
-  textAlign: "center",
-};
-
-const retryButtonStyle = {
-  padding: "10px 24px",
-  borderRadius: "12px",
-  border: "none",
-  backgroundColor: COLORS.primaryGreen,
-  color: COLORS.white,
-  fontWeight: 700,
-  fontSize: "14px",
-  cursor: "pointer",
-};
-
-// ─── Dashboard Alert ────────────────────────────────────────────────────────
-
-const dashboardAlertStyle = {
-  display: "flex",
-  alignItems: "flex-start",
-  gap: "12px",
-  padding: "14px 16px",
-  backgroundColor: "rgba(239, 68, 68, 0.12)",
-  border: `1px solid ${COLORS.errorRed}`,
-  borderRadius: "12px",
-  marginBottom: "20px",
-  marginTop: "8px",
-};
-
-const expiredAlertStyle = dashboardAlertStyle;
-
-const expiringAlertStyle = {
-  ...dashboardAlertStyle,
-  backgroundColor: "rgba(245, 158, 11, 0.12)",
-  border: `1px solid ${COLORS.warningOrange}`,
-};
-
-const alertIconStyle = {
-  fontSize: "20px",
-  flexShrink: 0,
-  marginTop: "2px",
-};
-
-const alertContentStyle = {
-  flex: 1,
-};
-
-const alertTitleStyle = {
-  color: COLORS.errorRed,
-  fontSize: "14px",
-  fontWeight: 800,
-  display: "block",
-  marginBottom: "4px",
-};
-
-const alertMessageStyle = {
-  color: COLORS.lightGray,
-  fontSize: "12px",
-  margin: 0,
-  lineHeight: 1.4,
-};
-
-// ─── Header ─────────────────────────────────────────────────────────────────
-
-const headerStyle = {
-  marginBottom: "20px",
-  paddingTop: "12px",
-};
-
-const pageTitleStyle = {
-  color: COLORS.white,
-  fontSize: "22px",
-  fontWeight: 900,
-  margin: "0 0 4px 0",
-};
-
-const pageSubtitleStyle = {
-  color: COLORS.lightGray,
-  fontSize: "13px",
-  margin: 0,
-};
-
-// ─── Upload Feedback ────────────────────────────────────────────────────────
-
-const uploadErrorStyle = {
-  display: "flex",
-  alignItems: "center",
-  gap: "8px",
-  padding: "12px 14px",
-  backgroundColor: "rgba(239, 68, 68, 0.12)",
-  border: `1px solid ${COLORS.errorRed}`,
-  borderRadius: "10px",
-  color: COLORS.errorRed,
-  fontSize: "13px",
-  fontWeight: 600,
-  marginBottom: "16px",
-};
-
-const uploadSuccessStyle = {
-  display: "flex",
-  alignItems: "center",
-  gap: "8px",
-  padding: "12px 14px",
-  backgroundColor: "rgba(16, 185, 129, 0.12)",
-  border: `1px solid ${COLORS.approvedGreen}`,
-  borderRadius: "10px",
-  color: COLORS.approvedGreen,
-  fontSize: "13px",
-  fontWeight: 600,
-  marginBottom: "16px",
-};
-
-const uploadDetailsStyle = {
-  display: "grid",
-  gap: "12px",
-  padding: "16px",
-  marginBottom: "16px",
-  backgroundColor: COLORS.cardBg,
-  border: `1px solid ${COLORS.goldAccent}`,
-  borderRadius: "12px",
-};
-
-const uploadDetailsTitleStyle = {
-  color: COLORS.white,
-  fontSize: "15px",
-};
-
-const uploadFileNameStyle = {
-  color: COLORS.lightGray,
-  fontSize: "12px",
-};
-
-const uploadDateFieldStyle = {
-  display: "grid",
-  gap: "6px",
-  color: COLORS.white,
-  fontSize: "12px",
-  fontWeight: 700,
-};
-
-const uploadDateInputStyle = {
-  padding: "10px",
-  border: `1px solid ${COLORS.cardBorder}`,
-  borderRadius: "8px",
-  backgroundColor: COLORS.white,
-  color: COLORS.darkNavy,
-};
-
-const uploadActionsStyle = {
-  display: "flex",
-  justifyContent: "flex-end",
-  gap: "10px",
-};
-
-const cancelUploadButtonStyle = {
-  padding: "10px 14px",
-  border: `1px solid ${COLORS.cardBorder}`,
-  borderRadius: "8px",
-  backgroundColor: "transparent",
-  color: COLORS.white,
-  cursor: "pointer",
-};
-
-const confirmUploadButtonStyle = {
-  padding: "10px 14px",
-  border: "none",
-  borderRadius: "8px",
-  backgroundColor: COLORS.primaryGreen,
-  color: COLORS.white,
-  fontWeight: 800,
-  cursor: "pointer",
-};
-
-// ─── Document List ──────────────────────────────────────────────────────────
-
-const documentListStyle = {
-  display: "flex",
-  flexDirection: "column",
-  gap: "14px",
-};
-
-const documentCardStyle = {
-  backgroundColor: COLORS.cardBg,
-  border: `1px solid ${COLORS.cardBorder}`,
-  borderRadius: "16px",
-  padding: "16px",
-  backdropFilter: "blur(8px)",
-  transition: "border-color 0.2s ease",
-};
-
-const documentCardHeaderStyle = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  marginBottom: "8px",
-};
-
-const documentInfoStyle = {
-  display: "flex",
-  alignItems: "center",
-  gap: "12px",
-};
-
-const documentIconStyle = {
-  fontSize: "24px",
-  position: "relative",
-  display: "inline-flex",
-};
-
-const expiredDotStyle = {
-  position: "absolute",
-  top: -2,
-  right: -6,
-  width: 10,
-  height: 10,
-  borderRadius: "50%",
-  backgroundColor: "#ef4444",
-  border: "2px solid #0f172a",
-};
-
-const documentNameStyle = {
-  color: COLORS.white,
-  fontSize: "14px",
-  fontWeight: 700,
-  margin: 0,
-};
-
-const uploadedDateStyle = {
-  color: COLORS.lightGray,
-  fontSize: "11px",
-};
-
-// ─── Status Badge ───────────────────────────────────────────────────────────
-
-const statusBadgeBaseStyle = {
-  display: "inline-block",
-  padding: "4px 10px",
-  borderRadius: "20px",
-  fontSize: "11px",
-  fontWeight: 700,
-  border: "1px solid",
-  whiteSpace: "nowrap",
-};
-
-const notUploadedBadgeStyle = {
-  display: "inline-block",
-  padding: "4px 10px",
-  borderRadius: "20px",
-  fontSize: "11px",
-  fontWeight: 700,
-  color: COLORS.lightGray,
-  backgroundColor: "rgba(255, 255, 255, 0.08)",
-  border: "1px solid rgba(255, 255, 255, 0.2)",
-  whiteSpace: "nowrap",
-};
-
-// ─── Expiration Warning ─────────────────────────────────────────────────────
-
-const expirationWarningStyle = {
-  display: "flex",
-  alignItems: "center",
-  gap: "6px",
-  padding: "6px 10px",
-  backgroundColor: "rgba(245, 158, 11, 0.12)",
-  borderRadius: "8px",
-  marginBottom: "8px",
-};
-
-const warningBadgeIconStyle = {
-  fontSize: "14px",
-};
-
-const warningBadgeTextStyle = {
-  color: COLORS.warningOrange,
-  fontSize: "12px",
-  fontWeight: 700,
-};
-
-const expiredBadgeStyle = {
-  display: "flex",
-  alignItems: "center",
-  gap: "6px",
-  padding: "6px 10px",
-  backgroundColor: "rgba(239, 68, 68, 0.12)",
-  borderRadius: "8px",
-  marginBottom: "8px",
-};
-
-const expiredBadgeTextStyle = {
-  color: COLORS.errorRed,
-  fontSize: "12px",
-  fontWeight: 700,
-};
-
-// ─── Rejection Reason ───────────────────────────────────────────────────────
-
-const rejectionReasonStyle = {
-  padding: "8px 10px",
-  backgroundColor: "rgba(239, 68, 68, 0.08)",
-  borderRadius: "8px",
-  color: COLORS.lightGray,
-  fontSize: "12px",
-  marginBottom: "8px",
-  lineHeight: 1.4,
-};
-
-const rejectionLabelStyle = {
-  color: COLORS.rejectedRed,
-  fontWeight: 700,
-};
-
-// ─── Upload Button ──────────────────────────────────────────────────────────
-
-const uploadButtonStyle = {
-  width: "100%",
-  padding: "10px 16px",
-  borderRadius: "10px",
-  border: `1px solid ${COLORS.primaryGreen}`,
-  backgroundColor: "transparent",
-  color: COLORS.primaryGreen,
-  fontWeight: 700,
-  fontSize: "13px",
-  textAlign: "center",
-  transition: "background-color 0.2s ease, color 0.2s ease",
-  marginTop: "4px",
-};
+/* Presentation styles moved to DriverDocuments.css */

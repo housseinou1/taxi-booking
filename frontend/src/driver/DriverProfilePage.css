@@ -1114,10 +1114,49 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 8px 0 4px;
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0 0 12px;
   color: #374151;
+}
+
+.dp-doc-summary__breakdown {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 12px;
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.dp-doc-summary__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.dp-doc-summary__stat-value {
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.dp-doc-summary__stat-value--approved { color: var(--yala-green, #0a7a44); }
+.dp-doc-summary__stat-value--pending { color: #b45309; }
+.dp-doc-summary__stat-value--missing { color: #991b1b; }
+.dp-doc-summary__stat-value--rejected { color: #991b1b; }
+.dp-doc-summary__stat-value--expired { color: #991b1b; }
+.dp-doc-summary__stat-value--expiring { color: #b45309; }
+
+.dp-doc-summary__stat-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #6b7280;
+  text-align: center;
+  overflow-wrap: anywhere;
 }
 
 .dp-doc-summary__count {

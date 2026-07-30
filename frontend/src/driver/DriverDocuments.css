@@ -1,0 +1,462 @@
+/* DriverDocuments — scoped dark-theme document compliance experience */
+
+:root {
+  --dd-primary: #00a651;
+  --dd-gold: #d4af37;
+  --dd-navy: #0b1220;
+  --dd-white: #ffffff;
+  --dd-light: rgba(255, 255, 255, 0.6);
+  --dd-card-bg: rgba(255, 255, 255, 0.06);
+  --dd-card-border: rgba(255, 255, 255, 0.1);
+  --dd-error: #ef4444;
+  --dd-warning: #f59e0b;
+  --dd-info: #3b82f6;
+  --dd-success: #10b981;
+}
+
+.dd-container {
+  position: relative;
+  min-height: 100vh;
+  background: var(--dd-navy);
+  padding: 24px 16px 80px;
+  overflow-y: auto;
+  color: var(--dd-white);
+}
+
+.dd-accent-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--dd-primary) 0%, var(--dd-gold) 50%, var(--dd-primary) 100%);
+}
+
+.dd-hidden-input {
+  display: none;
+}
+
+/* === Alerts === */
+.dd-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  margin-top: 8px;
+}
+
+.dd-alert--danger {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid var(--dd-error);
+}
+
+.dd-alert--warning {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid var(--dd-warning);
+}
+
+.dd-alert__icon {
+  flex-shrink: 0;
+  font-size: 20px;
+  margin-top: 2px;
+}
+
+.dd-alert__content {
+  flex: 1;
+  min-width: 0;
+}
+
+.dd-alert__title {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--dd-error);
+}
+
+.dd-alert__title--warning {
+  color: var(--dd-warning);
+}
+
+.dd-alert__message {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--dd-light);
+}
+
+.dd-alert__message span {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* === Header === */
+.dd-header {
+  margin-bottom: 20px;
+  padding-top: 12px;
+}
+
+.dd-title {
+  margin: 0 0 4px;
+  font-size: 22px;
+  font-weight: 900;
+  color: var(--dd-white);
+  overflow-wrap: anywhere;
+}
+
+.dd-title [aria-hidden="true"] {
+  margin-right: 8px;
+}
+
+.dd-subtitle {
+  margin: 0;
+  font-size: 13px;
+  color: var(--dd-light);
+}
+
+/* === Upload feedback === */
+.dd-feedback {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.dd-feedback--error {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid var(--dd-error);
+  color: var(--dd-error);
+}
+
+.dd-feedback--success {
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid var(--dd-success);
+  color: var(--dd-success);
+}
+
+.dd-upload-details {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  background: var(--dd-card-bg);
+  border: 1px solid var(--dd-gold);
+  border-radius: 12px;
+}
+
+.dd-upload-details__title {
+  color: var(--dd-white);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.dd-upload-details__file {
+  color: var(--dd-light);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.dd-upload-details__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.dd-btn {
+  min-height: 44px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  outline: none;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.dd-btn:focus-visible {
+  outline: 2px solid var(--dd-primary);
+  outline-offset: 2px;
+}
+
+.dd-btn--outline {
+  border: 1px solid var(--dd-card-border);
+  background: transparent;
+  color: var(--dd-white);
+}
+
+.dd-btn--primary {
+  border: 1px solid var(--dd-primary);
+  background: var(--dd-primary);
+  color: var(--dd-white);
+}
+
+.dd-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+/* === Document list === */
+.dd-document-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.dd-document-card {
+  background: var(--dd-card-bg);
+  border: 1px solid var(--dd-card-border);
+  border-radius: 16px;
+  padding: 16px;
+  backdrop-filter: blur(8px);
+  transition: border-color 0.2s ease;
+}
+
+.dd-document-card:hover {
+  border-color: var(--dd-primary);
+}
+
+.dd-document-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.dd-document-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.dd-document-icon {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  font-size: 24px;
+}
+
+.dd-document-icon__dot {
+  position: absolute;
+  top: -2px;
+  right: -6px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--dd-error);
+  border: 2px solid var(--dd-navy);
+}
+
+.dd-document-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.dd-document-name {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--dd-white);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.dd-document-dates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font-size: 11px;
+  color: var(--dd-light);
+}
+
+.dd-document-dates span {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* === Status badge === */
+.dd-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.dd-status-badge--valid,
+.dd-status-badge--approved {
+  color: var(--dd-success);
+  background: rgba(16, 185, 129, 0.15);
+  border-color: var(--dd-success);
+}
+
+.dd-status-badge--expiring_soon {
+  color: var(--dd-warning);
+  background: rgba(245, 158, 11, 0.15);
+  border-color: var(--dd-warning);
+}
+
+.dd-status-badge--pending_review,
+.dd-status-badge--pending,
+.dd-status-badge--needs_review,
+.dd-status-badge--under_review,
+.dd-status-badge--submitted {
+  color: var(--dd-info);
+  background: rgba(59, 130, 246, 0.15);
+  border-color: var(--dd-info);
+}
+
+.dd-status-badge--rejected,
+.dd-status-badge--expired {
+  color: var(--dd-error);
+  background: rgba(239, 68, 68, 0.15);
+  border-color: var(--dd-error);
+}
+
+.dd-status-badge--missing {
+  color: var(--dd-light);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* === Expiration / rejection === */
+.dd-expiration-warning,
+.dd-expired-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.dd-expiration-warning {
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--dd-warning);
+}
+
+.dd-expired-badge {
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--dd-error);
+}
+
+.dd-rejection-reason {
+  padding: 8px 10px;
+  background: rgba(239, 68, 68, 0.08);
+  border-radius: 8px;
+  color: var(--dd-light);
+  font-size: 12px;
+  margin-bottom: 8px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.dd-rejection-reason strong {
+  color: var(--dd-error);
+  font-weight: 700;
+}
+
+/* === Upload button === */
+.dd-upload-btn {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--dd-primary);
+  background: transparent;
+  color: var(--dd-primary);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  cursor: pointer;
+  margin-top: 4px;
+  outline: none;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.dd-upload-btn:hover,
+.dd-upload-btn:focus-visible {
+  background: var(--dd-primary);
+  color: var(--dd-white);
+}
+
+.dd-upload-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+/* === Loading / error === */
+.dd-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  gap: 12px;
+  text-align: center;
+}
+
+.dd-state__icon {
+  font-size: 32px;
+}
+
+.dd-state__text {
+  color: var(--dd-light);
+  font-size: 14px;
+  max-width: 280px;
+}
+
+.dd-retry-btn {
+  min-height: 44px;
+  padding: 10px 24px;
+  border-radius: 12px;
+  border: none;
+  background: var(--dd-primary);
+  color: var(--dd-white);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  outline: none;
+}
+
+.dd-retry-btn:focus-visible {
+  outline: 2px solid var(--dd-white);
+  outline-offset: 2px;
+}
+
+/* === Responsive === */
+@media (max-width: 360px) {
+  .dd-container {
+    padding: 18px 12px 80px;
+  }
+
+  .dd-document-card__header {
+    flex-wrap: wrap;
+  }
+
+  .dd-document-info {
+    flex-basis: 100%;
+  }
+
+  .dd-status-badge {
+    margin-left: 36px;
+  }
+}

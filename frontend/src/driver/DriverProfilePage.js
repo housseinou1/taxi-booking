@@ -114,6 +114,7 @@ const findDocumentByType = (documents, type) => {
 const summarizeDocuments = (rows = []) => {
   const statuses = rows.map(({ item, document }) => getDocumentStatus(document, item));
   const count = (predicate) => statuses.filter(predicate).length;
+  const total = statuses.length;
   const expired = count((s) => s === "expired");
   const rejected = count((s) => s === "rejected");
   const missing = count((s) => s === "missing");
@@ -121,13 +122,15 @@ const summarizeDocuments = (rows = []) => {
   const pending = count((s) =>
     ["pending", "pending_review", "needs_review", "under_review", "submitted"].includes(s)
   );
+  const approved = count((s) => s === "valid");
   const plural = (n) => (n > 1 ? "s" : "");
-  if (expired > 0) return { intent: "danger", label: "Action needed", warning: `${expired} document${plural(expired)} expired` };
-  if (rejected > 0) return { intent: "danger", label: "Action needed", warning: `${rejected} document${plural(rejected)} rejected` };
-  if (missing > 0) return { intent: "warning", label: "Incomplete", warning: `${missing} document${plural(missing)} missing` };
-  if (expiring > 0) return { intent: "warning", label: "Expiring soon", warning: `${expiring} document${plural(expiring)} expiring soon` };
-  if (pending > 0) return { intent: "warning", label: "Pending review", warning: `${pending} document${plural(pending)} pending review` };
-  return { intent: "success", label: "All approved", warning: "All documents are approved" };
+  const counts = { total, approved, missing, pending, rejected, expired, expiring };
+  if (expired > 0) return { intent: "danger", label: "Action needed", warning: `${expired} document${plural(expired)} expired`, counts };
+  if (rejected > 0) return { intent: "danger", label: "Action needed", warning: `${rejected} document${plural(rejected)} rejected`, counts };
+  if (missing > 0) return { intent: "warning", label: "Incomplete", warning: `${missing} document${plural(missing)} missing`, counts };
+  if (expiring > 0) return { intent: "warning", label: "Expiring soon", warning: `${expiring} document${plural(expiring)} expiring soon`, counts };
+  if (pending > 0) return { intent: "warning", label: "Pending review", warning: `${pending} document${plural(pending)} pending review`, counts };
+  return { intent: "success", label: "All approved", warning: "All documents are approved", counts };
 };
 
 // Presentation-only mapping of the existing backend-derived approval status to a
@@ -165,8 +168,8 @@ const getDocumentStatusMeta = (status) => {
     under_review: { intent: "warning", label: "Pending Review" },
     submitted: { intent: "warning", label: "Pending Review" },
     rejected: { intent: "danger", label: "Rejected" },
-    expired: { intent: "danger", label: getDocumentMenuStatusLabel("expired") },
-    missing: { intent: "danger", label: getDocumentMenuStatusLabel("expired") },
+    expired: { intent: "danger", label: "Expired" },
+    missing: { intent: "danger", label: "Not uploaded" },
   };
   return map[key] || { intent: "neutral", label: titleCase(status || "Pending") };
 };
@@ -856,6 +859,7 @@ export default function DriverProfilePage({ onBack }) {
         {/* Document Status Summary */}
         {(() => {
           const docSummary = summarizeDocuments(documentsByType);
+          const { counts } = docSummary;
           return (
             <section
               className="dp-section-card dp-doc-summary"
@@ -869,6 +873,34 @@ export default function DriverProfilePage({ onBack }) {
                 <span aria-hidden="true">{docSummary.intent === "success" ? "✓" : "⚠️"}</span>{" "}
                 {docSummary.warning}
               </p>
+
+              <div className="dp-doc-summary__breakdown" role="list" aria-label="Document compliance breakdown">
+                <div className="dp-doc-summary__stat" role="listitem">
+                  <span className="dp-doc-summary__stat-value dp-doc-summary__stat-value--approved">{counts.approved}</span>
+                  <span className="dp-doc-summary__stat-label">Approved</span>
+                </div>
+                <div className="dp-doc-summary__stat" role="listitem">
+                  <span className="dp-doc-summary__stat-value dp-doc-summary__stat-value--pending">{counts.pending}</span>
+                  <span className="dp-doc-summary__stat-label">Under review</span>
+                </div>
+                <div className="dp-doc-summary__stat" role="listitem">
+                  <span className="dp-doc-summary__stat-value dp-doc-summary__stat-value--missing">{counts.missing}</span>
+                  <span className="dp-doc-summary__stat-label">Missing</span>
+                </div>
+                <div className="dp-doc-summary__stat" role="listitem">
+                  <span className="dp-doc-summary__stat-value dp-doc-summary__stat-value--rejected">{counts.rejected}</span>
+                  <span className="dp-doc-summary__stat-label">Rejections</span>
+                </div>
+                <div className="dp-doc-summary__stat" role="listitem">
+                  <span className="dp-doc-summary__stat-value dp-doc-summary__stat-value--expired">{counts.expired}</span>
+                  <span className="dp-doc-summary__stat-label">Expired</span>
+                </div>
+                <div className="dp-doc-summary__stat" role="listitem">
+                  <span className="dp-doc-summary__stat-value dp-doc-summary__stat-value--expiring">{counts.expiring}</span>
+                  <span className="dp-doc-summary__stat-label">Expiring soon</span>
+                </div>
+              </div>
+
               <p className="dp-doc-summary__count">
                 {approvedDocuments}/{DOCUMENT_TYPES.length} documents approved
               </p>
@@ -877,12 +909,12 @@ export default function DriverProfilePage({ onBack }) {
                 className="dp-row-btn dp-detail-edit"
                 onClick={() => documentsPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
               >
-                <span className="dp-row-icon">📄</span>
+                <span className="dp-row-icon" aria-hidden="true">📄</span>
                 <span className="dp-row-text">
                   <strong>Manage documents</strong>
                   <small>View and update your documents</small>
                 </span>
-                <span className="dp-row-arrow">›</span>
+                <span className="dp-row-arrow" aria-hidden="true">›</span>
               </button>
             </section>
           );
