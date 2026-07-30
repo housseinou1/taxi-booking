@@ -71,16 +71,26 @@ function RideCard({ ride, expanded, detail, loading, error, onExpand, onRetry })
   const detailId = `drh-detail-${ride.id}`;
   const display = detail || ride;
   const canReceipt = !!detail && !!ride.id;
+  const titleId = `drh-ride-title-${ride.id}`;
 
   return (
-    <article className="drh-card" key={ride.id}>
-      <div className="drh-card-header">
-        <time className="drh-card-date" dateTime={ride.completed_at || ride.created_at}>
-          {formatRideDate(ride.completed_at || ride.created_at)}
-        </time>
-        <StatusChip intent={statusToIntent(ride.status)} dot>
-          {ride.status || "Unknown"}
-        </StatusChip>
+    <article className="drh-card" aria-labelledby={titleId}>
+      <div className="drh-card-top">
+        <div className="drh-card-header">
+          <time
+            id={titleId}
+            className="drh-card-date"
+            dateTime={ride.completed_at || ride.created_at}
+          >
+            {formatRideDate(ride.completed_at || ride.created_at)}
+          </time>
+          <StatusChip intent={statusToIntent(ride.status)} dot>
+            {ride.status || "Unknown"}
+          </StatusChip>
+        </div>
+        {ride.rider_name ? (
+          <span className="drh-card-rider">Rider: {ride.rider_name}</span>
+        ) : null}
       </div>
 
       <div className="drh-card-route">
@@ -99,9 +109,6 @@ function RideCard({ ride, expanded, detail, loading, error, onExpand, onRetry })
       </div>
 
       <div className="drh-card-meta">
-        {ride.rider_name ? (
-          <span className="drh-meta-item">Rider: {ride.rider_name}</span>
-        ) : null}
         {ride.distance_km != null ? (
           <span className="drh-meta-item">
             {Number(ride.distance_km).toFixed(1)} km
@@ -454,7 +461,12 @@ export default function DriverRideHistory() {
   if (loading && rides.length === 0) {
     return (
       <main className="drh-page" aria-label="Ride history">
-        <h1 className="drh-title">Ride History</h1>
+        <header className="drh-hero">
+          <div className="drh-hero-text">
+            <h1 className="drh-title">Ride History</h1>
+            <p className="drh-subtitle">Track every trip, fare, and reward.</p>
+          </div>
+        </header>
         <DriverLoadingState title="Loading ride history..." />
       </main>
     );
@@ -463,7 +475,12 @@ export default function DriverRideHistory() {
   if (error && rides.length === 0) {
     return (
       <main className="drh-page" aria-label="Ride history">
-        <h1 className="drh-title">Ride History</h1>
+        <header className="drh-hero">
+          <div className="drh-hero-text">
+            <h1 className="drh-title">Ride History</h1>
+            <p className="drh-subtitle">Track every trip, fare, and reward.</p>
+          </div>
+        </header>
         <DriverErrorState
           title="Could not load ride history"
           message={error}
@@ -476,7 +493,17 @@ export default function DriverRideHistory() {
 
   return (
     <main className="drh-page" aria-label="Ride history">
-      <h1 className="drh-title">Ride History</h1>
+      <header className="drh-hero">
+        <div className="drh-hero-text">
+          <h1 className="drh-title">Ride History</h1>
+          <p className="drh-subtitle">Track every trip, fare, and reward.</p>
+        </div>
+        {visibleCount > 0 ? (
+          <span className="drh-total" aria-live="polite">
+            {visibleCount} {visibleCount === 1 ? "ride" : "rides"}
+          </span>
+        ) : null}
+      </header>
 
       <section className="drh-filters" aria-label="Filter rides">
         <div className="drh-search">

@@ -11,12 +11,6 @@
   box-sizing: border-box;
 }
 
-.drh-title {
-  margin: 0 0 20px;
-  font-size: 26px;
-  font-weight: 900;
-  color: #101828;
-}
 
 .drh-filters {
   display: flex;
@@ -584,9 +578,154 @@
   margin-top: 16px;
 }
 
+/* ─── Page hero ───────────────────────────────────────────────────────────── */
+.drh-hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.drh-hero-text {
+  min-width: 0;
+}
+
+.drh-title {
+  margin: 0 0 4px;
+  font-size: 26px;
+  font-weight: 900;
+  color: #101828;
+  letter-spacing: -0.02em;
+}
+
+.drh-subtitle {
+  margin: 0;
+  font-size: 14px;
+  color: #667085;
+  font-weight: 600;
+}
+
+.drh-total {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: #ecfdf3;
+  color: #007c3b;
+  font-size: 13px;
+  font-weight: 900;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ─── Trip card ───────────────────────────────────────────────────────────── */
+.drh-card-top {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.drh-card-rider {
+  font-size: 14px;
+  font-weight: 700;
+  color: #101828;
+}
+
+.drh-card-route {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.drh-route-text {
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #101828;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+.drh-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #f2f4f7;
+}
+
+.drh-earning {
+  font-size: 18px;
+  font-weight: 900;
+  color: #00a651;
+}
+
+/* ─── Focus visible rings (keyboard) ──────────────────────────────────────── */
+.drh-status-btn:focus-visible,
+.drh-date-input:focus-visible,
+.drh-search-input:focus-visible,
+.drh-page-btn:focus-visible,
+.drh-detail-toggle:focus-visible,
+.drh-receipt-btn:focus-visible,
+.drh-clear-search:focus-visible,
+.drh-clear-filters:focus-visible,
+.drh-detail-retry:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(0, 166, 81, 0.3);
+}
+
+.drh-status-btn:focus:not(:focus-visible),
+.drh-page-btn:focus:not(:focus-visible),
+.drh-detail-toggle:focus:not(:focus-visible),
+.drh-receipt-btn:focus:not(:focus-visible),
+.drh-clear-search:focus:not(:focus-visible),
+.drh-clear-filters:focus:not(:focus-visible),
+.drh-detail-retry:focus:not(:focus-visible) {
+  outline: none;
+  box-shadow: none;
+}
+
+/* ─── Responsive breakpoints ──────────────────────────────────────────────── */
+@media (min-width: 360px) {
+  .drh-page {
+    padding: 20px 16px 100px;
+  }
+}
+
+@media (min-width: 390px) {
+  .drh-title {
+    font-size: 28px;
+  }
+}
+
+@media (min-width: 480px) {
+  .drh-page {
+    max-width: 520px;
+    padding: 24px 20px 120px;
+  }
+
+  .drh-detail-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .drh-pagination {
+    flex-direction: row;
+    justify-content: space-between;
+  }
+}
+
 @media (min-width: 768px) {
   .drh-page {
-    max-width: 680px;
-    padding: 24px;
+    max-width: 720px;
+    padding: 28px 24px 120px;
+  }
+
+  .drh-detail-grid {
+    grid-template-columns: 1fr 1fr 1fr;
   }
 }
