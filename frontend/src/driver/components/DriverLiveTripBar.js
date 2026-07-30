@@ -136,14 +136,14 @@ export default function DriverLiveTripBar({
           pulse={liveState.noShowReady}
         />
         <div className="driver-live-bar__copy">
-          <strong>
+          <strong className="driver-live-bar__waiting-title">
             {liveState.inFreeWait
               ? `Free wait · ${liveState.formatCountdown(
                   Math.max(0, liveState.freeWaitSeconds - liveState.waitedSeconds)
                 )} left`
               : `Waiting fee · ${formatMoney(liveState.waitingFee)}`}
           </strong>
-          <p>
+          <p className="driver-live-bar__waiting-fee">
             {freeMins} min free · {MARKET.waiting?.perMinuteFee ?? 50} {MARKET.currency}/min
             {!liveState.noShowReady && (
               <> · No-show in {liveState.formatCountdown(remaining)}</>
@@ -169,18 +169,19 @@ export default function DriverLiveTripBar({
                 iconLeft="🚫"
                 onClick={onNoShow}
                 aria-label="Report rider absent"
+                aria-describedby="noshow-help"
               >
                 Rider Absent
               </Button>
             )}
           </div>
           {liveState.noShowReady ? (
-            <span className="driver-live-bar__badge driver-live-bar__badge--ready">
-              ⚠️ Rider no-show unlocked — tap above
+            <span id="noshow-help" className="driver-live-bar__badge driver-live-bar__badge--ready">
+              <span aria-hidden="true">⚠️</span> Rider no-show unlocked — tap above
             </span>
           ) : liveState.noShowUnlocked && !liveState.nearPickup ? (
             <span className="driver-live-bar__badge driver-live-bar__badge--gps">
-              📍 Move closer to pickup to confirm no-show
+              <span aria-hidden="true">📍</span> Move closer to pickup to confirm no-show
             </span>
           ) : null}
         </div>

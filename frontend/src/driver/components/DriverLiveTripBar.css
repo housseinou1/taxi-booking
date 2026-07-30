@@ -125,6 +125,18 @@
   margin-bottom: 4px;
 }
 
+.driver-live-bar__waiting-title {
+  color: var(--driver-white);
+}
+
+.driver-live-bar.is-billing .driver-live-bar__waiting-title {
+  color: var(--yds-gold);
+}
+
+.driver-live-bar__waiting-fee {
+  color: rgba(255, 255, 255, 0.78);
+}
+
 .driver-live-bar__copy p {
   margin: 0;
   font-size: var(--yds-text-xs);
@@ -175,11 +187,16 @@
 
 .driver-live-bar__badge {
   display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
   margin-top: var(--yds-space-2);
   padding: 4px 10px;
   border-radius: var(--yds-radius-pill);
   font-size: var(--yds-text-xs);
   font-weight: var(--yds-weight-extrabold);
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .driver-live-bar__badge--ready {
@@ -202,6 +219,19 @@
   .driver-live-bar {
     gap: var(--yds-space-2);
     padding: var(--yds-space-2);
+  }
+
+  .driver-live-bar__waiting-title {
+    font-size: var(--yds-text-sm);
+  }
+
+  .driver-live-bar__waiting-fee {
+    font-size: var(--yds-text-xs);
+  }
+
+  .driver-live-bar__badge {
+    padding: 6px 10px;
+    font-size: 0.7rem;
   }
 
   .driver-live-ring {
