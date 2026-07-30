@@ -767,20 +767,22 @@ export default function DriverEarnings() {
         {trips.length === 0 ? (
           <div className="driver-earnings__empty">No completed trips yet.</div>
         ) : (
-          trips.map((trip) => (
-            <article key={trip.id || trip.ride_id} className="driver-earnings__trip-row">
-              <div className="driver-earnings__trip-main">
-                <span className="driver-earnings__trip-name">{trip.pickup || trip.name || "Completed ride"}</span>
-                <span className="driver-earnings__trip-meta">
-                  {trip.completed_at ? new Date(trip.completed_at).toLocaleDateString() : trip.date || ""}
-                  {trip.status ? ` · ${trip.status}` : ""}
+          <ul className="driver-earnings__trip-list" role="list" aria-label="Recent trips list">
+            {trips.map((trip) => (
+              <li key={trip.id || trip.ride_id} className="driver-earnings__trip-row">
+                <div className="driver-earnings__trip-main">
+                  <span className="driver-earnings__trip-name">{trip.pickup || trip.name || "Completed ride"}</span>
+                  <span className="driver-earnings__trip-meta">
+                    {trip.completed_at ? new Date(trip.completed_at).toLocaleDateString() : trip.date || ""}
+                    {trip.status ? <span className="driver-earnings__trip-status"> · {trip.status}</span> : null}
+                  </span>
+                </div>
+                <span className="driver-earnings__trip-fare">
+                  {trip.fare !== undefined ? formatEarningsMRU(trip.fare) : "—"}
                 </span>
-              </div>
-              <span className="driver-earnings__trip-fare">
-                {trip.fare !== undefined ? formatEarningsMRU(trip.fare) : "—"}
-              </span>
-            </article>
-          ))
+              </li>
+            ))}
+          </ul>
         )}
       </section>
 

@@ -248,6 +248,8 @@
   color: #9aa4b2;
   font-size: 14px;
   font-weight: 600;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .driver-earnings__chart-header {
@@ -363,12 +365,18 @@
   width: 100%;
 }
 
+.driver-earnings__trip-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
 .driver-earnings__trip-row {
   display: grid;
   grid-template-columns: 1fr auto;
-  gap: 8px 12px;
-  align-items: center;
-  padding: 14px 0;
+  gap: 12px 16px;
+  align-items: flex-start;
+  padding: 16px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
@@ -384,25 +392,42 @@
 }
 
 .driver-earnings__trip-name {
+  display: block;
   font-size: 15px;
   font-weight: 800;
   color: #fff;
+  line-height: 1.35;
   word-break: break-word;
   overflow-wrap: break-word;
 }
 
 .driver-earnings__trip-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
   font-size: 12px;
   color: #9aa4b2;
   word-break: break-word;
   overflow-wrap: break-word;
 }
 
+.driver-earnings__trip-status {
+  font-size: 11px;
+  font-weight: 700;
+  color: #cbd5e1;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 .driver-earnings__trip-fare {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 900;
   color: #00a651;
   text-align: right;
+  line-height: 1.35;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .driver-earnings__back {
@@ -416,7 +441,7 @@
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
-  margin-top: 8px;
+  margin-top: 16px;
 }
 
 .driver-earnings__last-updated {
