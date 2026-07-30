@@ -56,7 +56,7 @@ export function formatRelativeTime(value, now = new Date()) {
   return full;
 }
 
-export function groupNotifications(items, now = new Date()) {
+export function groupNotifications(items, now = new Date(Date.now())) {
   if (!Array.isArray(items)) return [];
 
   const today = [];

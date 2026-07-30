@@ -1,0 +1,353 @@
+/* =========================================================
+   Driver Support — modern, scoped, accessible support UI
+   ========================================================= */
+
+.dsupport,
+.dsupport--lyft {
+  --dsup-ink: #f1f5f2;
+  --dsup-muted: #9ca3af;
+  --dsup-canvas: #0b1220;
+  --dsup-card: rgba(255, 255, 255, 0.06);
+  --dsup-card-solid: #111b26;
+  --dsup-line: rgba(255, 255, 255, 0.1);
+  --dsup-green: #00a651;
+  --dsup-green-soft: rgba(0, 166, 81, 0.15);
+  --dsup-gold: #d4af37;
+  --dsup-danger: #dc2626;
+  --dsup-blue: #3b82f6;
+  --dsup-touch: 48px;
+
+  position: relative;
+  width: min(100%, 720px);
+  margin-inline: auto;
+  min-height: 100vh;
+  padding: 24px 16px 96px;
+  background: var(--dsup-canvas) !important;
+  color: var(--dsup-ink) !important;
+  font-family: "Plus Jakarta Sans", Inter, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.dsupport--lyft {
+  --dsup-ink: #111827;
+  --dsup-muted: #6b7280;
+  --dsup-canvas: #f3f4f6;
+  --dsup-card: #ffffff;
+  --dsup-card-solid: #ffffff;
+  --dsup-line: #e5e7eb;
+}
+
+/* ─── Header ─────────────────────────────────────────────── */
+.dsupport > div > h1,
+.dsupport .dsup-header h1 {
+  margin: 0 0 4px;
+  font-size: 24px;
+  font-weight: 900;
+  color: var(--dsup-ink) !important;
+}
+
+.dsupport > div > p,
+.dsupport .dsup-header p {
+  margin: 0 0 20px;
+  font-size: 14px;
+  color: var(--dsup-muted) !important;
+}
+
+/* ─── Tab Navigation ─────────────────────────────────────── */
+.dsupport [role="tablist"] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.dsupport [role="tab"] {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--dsup-touch);
+  padding: 10px 14px;
+  border: 1px solid var(--dsup-line);
+  border-radius: 999px;
+  background: var(--dsup-card) !important;
+  color: var(--dsup-ink) !important;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.dsupport [role="tab"][aria-selected="true"] {
+  border-color: var(--dsup-green) !important;
+  background: var(--dsup-green-soft) !important;
+  box-shadow: 0 0 0 3px rgba(0, 166, 81, 0.12);
+}
+
+.dsupport [role="tab"]:focus-visible {
+  outline: 2px solid var(--dsup-green);
+  outline-offset: 2px;
+}
+
+/* ─── Tab Panel / Cards ──────────────────────────────────── */
+.dsupport [role="tabpanel"] > div {
+  margin-bottom: 16px;
+}
+
+.dsupport [role="tabpanel"] p:first-of-type {
+  color: var(--dsup-muted) !important;
+  font-size: 14px;
+  margin: 0 0 16px;
+}
+
+.dsupport .dsup-card,
+.dsupport [role="tabpanel"] div div div,
+.dsupport [role="tabpanel"] > div > div {
+  background: var(--dsup-card) !important;
+  border: 1px solid var(--dsup-line) !important;
+  border-radius: 16px;
+  padding: 14px;
+}
+
+/* ─── Help Categories ────────────────────────────────────── */
+.dsupport .dsup-category-grid,
+.dsupport div[style*="categoryGridStyle"] {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.dsupport button[aria-label^="View"] {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--dsup-touch);
+  padding: 14px 10px;
+  border: 1px solid var(--dsup-line);
+  border-radius: 14px;
+  background: var(--dsup-card) !important;
+  color: var(--dsup-ink) !important;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.dsupport button[aria-label^="View"]:hover,
+.dsupport button[aria-label^="View"]:focus-visible {
+  border-color: var(--dsup-green);
+  background: var(--dsup-green-soft) !important;
+  outline: none;
+}
+
+/* ─── Forms ──────────────────────────────────────────────── */
+.dsupport form,
+.dsupport .dsup-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dsupport label,
+.dsupport .dsup-form label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--dsup-ink) !important;
+}
+
+.dsupport input[type="text"],
+.dsupport textarea {
+  width: 100%;
+  min-height: var(--dsup-touch);
+  padding: 12px 14px;
+  border: 1px solid var(--dsup-line);
+  border-radius: 12px;
+  background: var(--dsup-card-solid) !important;
+  color: var(--dsup-ink) !important;
+  font: inherit;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.dsupport input:focus-visible,
+.dsupport textarea:focus-visible {
+  outline: 2px solid var(--dsup-green);
+  outline-offset: 2px;
+}
+
+.dsupport button[type="submit"],
+.dsupport .dsup-submit {
+  min-height: var(--dsup-touch);
+  padding: 12px 20px;
+  border: none;
+  border-radius: 999px;
+  background: var(--dsup-green);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+/* ─── FAQ Items ──────────────────────────────────────────── */
+.dsupport .dsup-faq-item,
+.dsupport div[style*="faqItemStyle"] {
+  border-bottom: 1px solid var(--dsup-line);
+}
+
+.dsupport .dsup-faq-item button,
+.dsupport div[style*="faqQuestionStyle"] {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--dsup-touch);
+  padding: 12px 0;
+  border: none;
+  background: transparent;
+  color: var(--dsup-ink) !important;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dsupport .dsup-faq-answer,
+.dsupport div[style*="faqAnswerStyle"] {
+  padding: 0 0 14px;
+  color: var(--dsup-muted) !important;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* ─── Safety ─────────────────────────────────────────────── */
+.dsupport .dsup-safety-banner,
+.dsupport div[style*="safetyEmergencyBannerStyle"] {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 16px;
+  background: rgba(220, 38, 38, 0.12) !important;
+  border: 1px solid rgba(220, 38, 38, 0.25) !important;
+  color: var(--dsup-ink) !important;
+}
+
+.dsupport .dsup-safety-banner strong,
+.dsupport div[style*="safetyEmergencyTitleStyle"] strong {
+  color: #f87171;
+}
+
+.dsupport h3,
+.dsupport h4 {
+  color: var(--dsup-ink) !important;
+}
+
+/* ─── Report Tiles ───────────────────────────────────────── */
+.dsupport .support-hub-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.dsupport .support-hub-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--dsup-touch);
+  padding: 14px 10px;
+  border: 1px solid var(--dsup-line);
+  border-radius: 14px;
+  background: var(--dsup-card) !important;
+  color: var(--dsup-ink) !important;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.dsupport .support-hub-tile--emergency {
+  border-color: rgba(220, 38, 38, 0.5);
+  background: rgba(220, 38, 38, 0.1) !important;
+  color: #f87171 !important;
+}
+
+/* ─── Live Chat ──────────────────────────────────────────── */
+.dsupport .dsup-chat-start,
+.dsupport button[aria-label="Start live chat with support agent"] {
+  min-height: var(--dsup-touch);
+  padding: 12px 20px;
+  border: none;
+  border-radius: 999px;
+  background: var(--dsup-blue);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+/* ─── Alert / Status Messages ────────────────────────────── */
+.dsupport [role="alert"],
+.dsupport [role="status"] {
+  padding: 12px 16px;
+  border-radius: 14px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff !important;
+}
+
+.dsupport [role="alert"] {
+  background: rgba(220, 38, 38, 0.15) !important;
+  border: 1px solid rgba(220, 38, 38, 0.3) !important;
+}
+
+.dsupport [role="status"] {
+  background: rgba(16, 185, 129, 0.15) !important;
+  border: 1px solid rgba(16, 185, 129, 0.3) !important;
+  color: #d1fae5 !important;
+}
+
+/* ─── Emergency Button ───────────────────────────────────── */
+.dsupport .emergency-support-btn,
+.dsupport button[aria-label="Emergency Support"] {
+  position: fixed;
+  bottom: 90px;
+  right: 16px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--dsup-danger) !important;
+  border: 3px solid #fff;
+  color: #fff;
+  font-size: 24px;
+  cursor: pointer;
+  z-index: 9999;
+}
+
+/* ─── Focus / Touch ──────────────────────────────────────── */
+.dsupport button:focus-visible,
+.dsupport a:focus-visible,
+.dsupport input:focus-visible,
+.dsupport textarea:focus-visible {
+  outline: 2px solid var(--dsup-green);
+  outline-offset: 2px;
+}
+
+/* ─── Responsive ─────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .dsupport,
+  .dsupport--lyft {
+    padding: 16px 12px 96px;
+  }
+
+  .dsupport [role="tablist"] {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  .dsupport [role="tab"] {
+    flex-shrink: 0;
+  }
+}

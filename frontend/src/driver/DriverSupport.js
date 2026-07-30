@@ -7,6 +7,7 @@ import { getDriverColors, isDriverYalaUI } from "./yalaColors";
 import SupportReportForm from "../support/SupportReportForm";
 import { DRIVER_REPORT_OPTIONS } from "../support/supportCategories";
 import "../support/support-mobile.css";
+import "./DriverSupport.css";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -733,7 +734,7 @@ export default function DriverSupport() {
 
   return (
     <div
-      className={yalaUI ? "driver-page--lyft driver-support--lyft" : undefined}
+      className={`dsupport${yalaUI ? " dsupport--lyft" : ""}`}
       style={{
         ...containerStyle,
         ...(yalaUI ? { backgroundColor: themeColors.darkNavy, minHeight: "auto", paddingTop: 12, paddingBottom: 24 } : null),

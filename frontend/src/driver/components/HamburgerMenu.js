@@ -187,9 +187,9 @@ export default function HamburgerMenu({
       {showLogoutConfirm && (
         <div className="hm-logout-overlay" role="presentation">
           <div className="hm-logout-backdrop" onClick={handleLogoutCancel} />
-          <div className="hm-logout-dialog" role="alertdialog" aria-modal="true" aria-labelledby="hm-logout-title">
+          <div className="hm-logout-dialog" role="alertdialog" aria-modal="true" aria-labelledby="hm-logout-title" aria-describedby="hm-logout-desc">
             <h3 id="hm-logout-title" className="hm-logout-title">Are you sure you want to logout?</h3>
-            <p className="hm-logout-desc">You will need to sign in again to go online and accept rides.</p>
+            <p id="hm-logout-desc" className="hm-logout-desc">You will need to sign in again to go online and accept rides.</p>
             <div className="hm-logout-actions">
               <button type="button" className="hm-logout-btn hm-logout-btn--cancel" onClick={handleLogoutCancel}>
                 Cancel

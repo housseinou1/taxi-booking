@@ -563,6 +563,35 @@
   background: #be1538;
 }
 
+.hm-logout-btn:focus-visible {
+  outline: 2px solid var(--hm-green);
+  outline-offset: 2px;
+}
+
+@media (max-width: 360px) {
+  .hm-logout-overlay {
+    padding: 16px;
+  }
+
+  .hm-logout-dialog {
+    padding: 22px 18px 18px;
+    border-radius: 16px;
+  }
+
+  .hm-logout-title {
+    font-size: 17px;
+  }
+
+  .hm-logout-actions {
+    gap: 10px;
+  }
+
+  .hm-logout-btn {
+    font-size: 14px;
+    min-height: 44px;
+  }
+}
+
 @media (prefers-color-scheme: dark) {
   .hm-logout-dialog {
     background: #1f2937;

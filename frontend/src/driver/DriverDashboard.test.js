@@ -194,7 +194,7 @@ describe("DriverDashboard", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText("Gold")).toBeInTheDocument();
+      expect(screen.getByLabelText("Driver level: Gold")).toBeInTheDocument();
     });
   });
 

@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { API_URL } from "../apiConfig";
 import { languageOptions, normalizeLanguageCode } from "../i18n";
-import { getAppType, isDeliveryCourierApp } from "../native/platform";
+import { isDeliveryCourierApp } from "../native/platform";
 import { useDriverContext } from "./context/DriverContext";
 import { isDriverYalaUI } from "./yalaColors";
 import {
@@ -612,11 +612,18 @@ function ToggleRow({ label, description, checked, onChange }) {
 function PinModal({ pinInput, setPinInput, pinError, onSave, onCancel, hasPinSet }) {
   return (
     <div style={modalOverlayStyle} onClick={onCancel}>
-      <div style={modalContentStyle} onClick={(e) => e.stopPropagation()}>
-        <h3 style={modalTitleStyle}>
+      <div
+        style={modalContentStyle}
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="ds-pin-title"
+        aria-describedby="ds-pin-desc"
+      >
+        <h3 id="ds-pin-title" style={modalTitleStyle}>
           {hasPinSet ? "Change PIN Lock" : "Set PIN Lock"}
         </h3>
-        <p style={modalDescStyle}>Enter a 4-6 digit numeric PIN</p>
+        <p id="ds-pin-desc" style={modalDescStyle}>Enter a 4-6 digit numeric PIN</p>
 
         <input
           type="password"
