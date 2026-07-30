@@ -659,7 +659,7 @@ export default function DriverEarnings() {
             onClick={() => fetchEarnings(true)}
             disabled={syncing}
           >
-            ↻
+            <span aria-hidden="true">↻</span>
           </button>
         </div>
       </header>
