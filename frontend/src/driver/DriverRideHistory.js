@@ -10,6 +10,7 @@ import {
   printDriverReceipt,
   shareDriverReceipt,
 } from "./utils/driverReceipt";
+import RouteTimeline, { buildLiveRoutePoints } from "../components/RouteTimeline";
 import "./DriverRideHistory.css";
 
 const STATUS_OPTIONS = [
@@ -61,16 +62,22 @@ function matchesClientSearch(ride, query) {
 function DetailRow({ label, value }) {
   return (
     <div className="drh-detail-row">
-      <span className="drh-detail-label">{label}</span>
-      <span className="drh-detail-value">{value}</span>
+      <dt className="drh-detail-label">{label}</dt>
+      <dd className="drh-detail-value">{value}</dd>
     </div>
   );
 }
 
 function RideCard({ ride, expanded, detail, loading, error, onExpand, onRetry }) {
   const detailId = `drh-detail-${ride.id}`;
+  const detailTitleId = `drh-detail-title-${ride.id}`;
   const display = detail || ride;
   const canReceipt = !!detail && !!ride.id;
+  const hasAdditional = !!(
+    display.waiting_fee ||
+    display.payment_tip_amount ||
+    display.bonus
+  );
   const titleId = `drh-ride-title-${ride.id}`;
 
   return (
@@ -161,81 +168,120 @@ function RideCard({ ride, expanded, detail, loading, error, onExpand, onRetry })
               </button>
             </div>
           ) : (
-            <div className="drh-detail-body">
-              <h3 className="drh-detail-title">Ride details</h3>
-              <div className="drh-detail-grid">
-                <DetailRow
-                  label="Pickup"
-                  value={display.pickup_address || display.pickup || "—"}
-                />
-                <DetailRow
-                  label="Destination"
-                  value={display.destination_address || display.destination || "—"}
-                />
-                <DetailRow
-                  label="Fare"
-                  value={display.fare != null ? formatMoney(Number(display.fare)) : "—"}
-                />
-                <DetailRow
-                  label="Earning"
-                  value={
-                    display.driver_earning != null
-                      ? formatMoney(Number(display.driver_earning))
-                      : "—"
-                  }
-                />
-                <DetailRow
-                  label="Distance"
-                  value={
-                    display.distance_km != null
-                      ? `${Number(display.distance_km).toFixed(1)} km`
-                      : "—"
-                  }
-                />
-                <DetailRow label="Status" value={display.status || "—"} />
-                <DetailRow label="Ride type" value={display.ride_type || "—"} />
-                <DetailRow label="Created" value={formatRideDate(display.created_at)} />
-                <DetailRow label="Completed" value={formatRideDate(display.completed_at)} />
-                {display.waiting_fee ? (
-                  <DetailRow
-                    label="Waiting fee"
-                    value={formatMoney(Number(display.waiting_fee))}
-                  />
-                ) : null}
-                {display.payment_tip_amount ? (
-                  <DetailRow
-                    label="Tip"
-                    value={formatMoney(Number(display.payment_tip_amount))}
-                  />
-                ) : null}
-                {display.app_fee ? (
-                  <DetailRow
-                    label="Commission"
-                    value={formatMoney(Number(display.app_fee))}
-                  />
-                ) : null}
-                {display.bonus ? (
-                  <DetailRow
-                    label="Bonus"
-                    value={formatMoney(Number(display.bonus))}
-                  />
-                ) : null}
-                {display.notes ? (
-                  <DetailRow label="Notes" value={display.notes} />
-                ) : null}
-              </div>
+            <div
+              className="drh-detail-body"
+              aria-labelledby={detailTitleId}
+            >
+              <h3 id={detailTitleId} className="drh-detail-title">
+                Ride details
+              </h3>
 
-              {display.stops && display.stops.length > 0 ? (
-                <div className="drh-detail-stops">
-                  <h4 className="drh-detail-stops-title">Stops</h4>
-                  <ol className="drh-detail-stops-list">
-                    {display.stops.map((stop, index) => (
-                      <li key={stop.id || index} className="drh-detail-stop">
-                        {stop.location_name || `Stop ${index + 1}`}
-                      </li>
-                    ))}
-                  </ol>
-                </div>
+              <section className="drh-detail-timeline" aria-label="Trip route">
+                <RouteTimeline
+                  points={buildLiveRoutePoints({
+                    ...display,
+                    pickup:
+                      display.pickup_address || display.pickup || "Pickup",
+                    destination:
+                      display.destination_address ||
+                      display.destination ||
+                      "Destination",
+                  })}
+                  compact
+                />
+              </section>
+
+              <section className="drh-detail-section">
+                <h4 className="drh-detail-section-title">Trip</h4>
+                <dl className="drh-detail-grid">
+                  <DetailRow
+                    label="Fare"
+                    value={
+                      display.fare != null
+                        ? formatMoney(Number(display.fare))
+                        : "—"
+                    }
+                  />
+                  <DetailRow
+                    label="Distance"
+                    value={
+                      display.distance_km != null
+                        ? `${Number(display.distance_km).toFixed(1)} km`
+                        : "—"
+                    }
+                  />
+                  <DetailRow
+                    label="Status"
+                    value={display.status || "—"}
+                  />
+                  <DetailRow
+                    label="Ride type"
+                    value={display.ride_type || "—"}
+                  />
+                  <DetailRow
+                    label="Created"
+                    value={formatRideDate(display.created_at)}
+                  />
+                  <DetailRow
+                    label="Completed"
+                    value={formatRideDate(display.completed_at)}
+                  />
+                </dl>
+              </section>
+
+              <section className="drh-detail-section">
+                <h4 className="drh-detail-section-title">Driver payout</h4>
+                <dl className="drh-detail-grid">
+                  <DetailRow
+                    label="Earning"
+                    value={
+                      display.driver_earning != null
+                        ? formatMoney(Number(display.driver_earning))
+                        : "—"
+                    }
+                  />
+                  {display.app_fee ? (
+                    <DetailRow
+                      label="Commission"
+                      value={formatMoney(Number(display.app_fee))}
+                    />
+                  ) : null}
+                </dl>
+              </section>
+
+              {hasAdditional ? (
+                <section className="drh-detail-section">
+                  <h4 className="drh-detail-section-title">
+                    Additional amounts
+                  </h4>
+                  <dl className="drh-detail-grid">
+                    {display.waiting_fee ? (
+                      <DetailRow
+                        label="Waiting fee"
+                        value={formatMoney(Number(display.waiting_fee))}
+                      />
+                    ) : null}
+                    {display.payment_tip_amount ? (
+                      <DetailRow
+                        label="Tip"
+                        value={formatMoney(Number(display.payment_tip_amount))}
+                      />
+                    ) : null}
+                    {display.bonus ? (
+                      <DetailRow
+                        label="Bonus"
+                        value={formatMoney(Number(display.bonus))}
+                      />
+                    ) : null}
+                  </dl>
+                </section>
+              ) : null}
+
+              {display.notes ? (
+                <section className="drh-detail-section">
+                  <h4 className="drh-detail-section-title">Notes</h4>
+                  <p className="drh-detail-notes">{display.notes}</p>
+                </section>
               ) : null}
 
               <div className="drh-receipt-actions">
@@ -244,7 +290,11 @@ function RideCard({ ride, expanded, detail, loading, error, onExpand, onRetry })
                   className="drh-receipt-btn"
                   onClick={() => printDriverReceipt(display)}
                   disabled={!canReceipt}
+                  aria-label="Print receipt"
                 >
+                  <span className="drh-receipt-icon" aria-hidden="true">
+                    🖨
+                  </span>
                   Print receipt
                 </button>
                 <button
@@ -252,7 +302,11 @@ function RideCard({ ride, expanded, detail, loading, error, onExpand, onRetry })
                   className="drh-receipt-btn"
                   onClick={() => shareDriverReceipt(display)}
                   disabled={!canReceipt}
+                  aria-label="Share receipt"
                 >
+                  <span className="drh-receipt-icon" aria-hidden="true">
+                    ↗
+                  </span>
                   Share receipt
                 </button>
               </div>

@@ -69,6 +69,7 @@
   display: grid;
   gap: 2px;
   padding-bottom: 14px;
+  min-width: 0;
 }
 
 .route-timeline__item--last .route-timeline__content {
@@ -95,6 +96,8 @@
   font-weight: var(--font-weight-semibold);
   color: var(--text-friendly);
   line-height: 1.35;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .route-timeline__status {
