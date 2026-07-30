@@ -9,8 +9,15 @@ function RingChip({ label, value, percent, color, sub }) {
   const pct = Math.max(0, Math.min(100, percent ?? 0));
   const offset = circ * (1 - pct / 100);
   return (
-    <div className="driver-perf-chip driver-perf-chip--ring">
-      <div className="driver-perf-chip__ring-wrap">
+    <div
+      className="driver-perf-chip driver-perf-chip--ring"
+      role="progressbar"
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={Math.round(pct)}
+      aria-label={`${label}: ${Math.round(pct)}%`}
+    >
+      <div className="driver-perf-chip__ring-wrap" aria-hidden="true">
         <svg width={64} height={64} style={{ transform: "rotate(-90deg)" }}>
           <circle cx={32} cy={32} r={R} fill="none" stroke="rgba(15,23,42,0.07)" strokeWidth={5} />
           <circle
@@ -35,7 +42,7 @@ function PlainChip({ label, value, icon, color }) {
   return (
     <div className="driver-perf-chip">
       <strong style={{ color: color || "#0f172a", fontSize: 18 }}>
-        {icon && <span style={{ marginRight: 3 }}>{icon}</span>}{value}
+        {icon && <span style={{ marginRight: 3 }} aria-hidden="true">{icon}</span>}{value}
       </strong>
       <span className="driver-perf-chip__label">{label}</span>
     </div>
@@ -47,7 +54,7 @@ function StreakBanner({ streak }) {
   if (!streak || streak < 2) return null;
   return (
     <div className="driver-perf-streak">
-      <span className="driver-perf-streak__fire">🔥</span>
+      <span className="driver-perf-streak__fire" aria-hidden="true">🔥</span>
       <div>
         <strong>{streak} ride streak!</strong>
         <span>Keep the momentum going</span>
