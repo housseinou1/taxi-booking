@@ -2,7 +2,7 @@
 
 **App name:** Yala Rider  
 **Category:** Travel & Local  
-**Privacy policy:** https://yalataxi.live/privacy  
+**Privacy policy:** https://www.yalataxi.live/privacy  
 **Contact:** support@yalataxi.live  
 
 ---

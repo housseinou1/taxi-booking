@@ -32,7 +32,7 @@ Available in Nouakchott, Mauritania. More cities coming soon.
 
 **Category:** Maps & Navigation
 **Content Rating:** Everyone
-**Privacy Policy URL:** https://yalataxi.live/privacy
+**Privacy Policy URL:** https://www.yalataxi.live/privacy
 
 ---
 
@@ -76,4 +76,4 @@ Available in Nouakchott, Mauritania. More cities coming soon.
 
 **Category:** Maps & Navigation
 **Content Rating:** Everyone
-**Privacy Policy URL:** https://yalataxi.live/privacy
+**Privacy Policy URL:** https://www.yalataxi.live/privacy

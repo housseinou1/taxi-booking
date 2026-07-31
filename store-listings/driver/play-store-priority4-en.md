@@ -2,7 +2,7 @@
 
 **App name:** Yala Driver  
 **Category:** Business  
-**Privacy policy:** https://yalataxi.live/privacy  
+**Privacy policy:** https://www.yalataxi.live/privacy  
 **Contact:** drivers@yala.mr  
 
 ---

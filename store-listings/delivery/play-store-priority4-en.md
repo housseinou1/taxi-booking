@@ -2,7 +2,7 @@
 
 **App name:** Yala Delivery  
 **Category:** Business  
-**Privacy policy:** https://yalataxi.live/privacy  
+**Privacy policy:** https://www.yalataxi.live/privacy  
 **Contact:** couriers@yala.mr  
 
 ---
