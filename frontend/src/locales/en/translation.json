@@ -242,7 +242,7 @@
     },
     "cancel": {
       "title": "Why are you cancelling?",
-      "description": "You can cancel before the trip starts. If a driver is already on the way, a 100 MRU cancellation fee may apply.",
+      "description": "Free cancellation for the first 2 minutes. If a driver is en route, a 50 MRU cancellation fee may apply. After the driver arrives and the free wait ends, a 75 MRU fee may apply.",
       "selectReason": "Select a reason",
       "tooFar": "Driver is too far",
       "changedPlans": "Changed my plans",

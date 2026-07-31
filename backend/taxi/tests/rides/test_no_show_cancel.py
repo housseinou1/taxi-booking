@@ -130,10 +130,10 @@ class LyftNoShowCancelTests(TestCase):
         self.assertEqual(response.status_code, 200, response.data)
         self.assertTrue(response.data.get("penalty_waived"))
         self.assertTrue(response.data.get("is_rider_no_show"))
-        self.assertEqual(Decimal(str(response.data.get("no_show_fee"))), Decimal("100"))
+        self.assertEqual(Decimal(str(response.data.get("no_show_fee"))), Decimal("75"))
         self.assertEqual(
             Decimal(str(response.data.get("no_show_driver_compensation"))),
-            Decimal("100"),
+            Decimal("75"),
         )
         self.ride.refresh_from_db()
         self.assertEqual(self.ride.status, "rider_no_show")

@@ -43,9 +43,19 @@ MARKET = {
     },
     "no_show": {
         # Fee charged to the rider when the driver completes a valid no-show cancel.
-        "rider_fee": Decimal("100"),
+        "rider_fee": Decimal("75"),
         # Driver compensation credited on a valid rider no-show.
-        "driver_compensation": Decimal("100"),
+        "driver_compensation": Decimal("75"),
+    },
+    "cancellation": {
+        # Free cancellation window from ride creation.
+        "free_window_minutes": 2,
+        # Fee charged to a rider who cancels after driver accepted / en route.
+        "en_route_fee": Decimal("50"),
+        # Fee charged to a rider who cancels after driver arrived and free wait expired.
+        "arrived_fee": Decimal("75"),
+        # Driver-side standard cancellation penalty (unchanged).
+        "driver_penalty": Decimal("150"),
     },
     "rewards": {
         # Driver reward points (Uber Pro / Lyft Rewards style).

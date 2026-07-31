@@ -1321,9 +1321,29 @@ def cancel_ride(request, ride_id):
     # Calculate cancellation fee / Lyft-style rider no-show
     cancellation_fee = Decimal("0")
 
+    cancellation_cfg = MARKET.get("cancellation", {})
+    free_window_seconds = int(cancellation_cfg.get("free_window_minutes", 2)) * 60
+    en_route_fee = Decimal(str(cancellation_cfg.get("en_route_fee", "50")))
+    arrived_fee = Decimal(str(cancellation_cfg.get("arrived_fee", "75")))
+    driver_penalty = Decimal(str(cancellation_cfg.get("driver_penalty", "150")))
+    free_wait_seconds = int(MARKET["waiting"]["free_minutes"]) * 60
+
     if cancelled_by == "rider" and ride.driver is not None:
-        if ride.status in ["driver_arriving", "driver_arrived"]:
-            cancellation_fee = Decimal("100")  # 100 MRU — rider cancels after driver assigned
+        created_seconds_ago = (now() - ride.created_at).total_seconds()
+        if created_seconds_ago <= free_window_seconds:
+            cancellation_fee = Decimal("0")
+        elif ride.status == "driver_arrived":
+            waited = 0
+            if ride.driver_arrived_at:
+                waited = (now() - ride.driver_arrived_at).total_seconds()
+            if waited > free_wait_seconds:
+                cancellation_fee = arrived_fee
+            else:
+                cancellation_fee = en_route_fee
+        elif ride.status in ["accepted", "driver_arriving"]:
+            cancellation_fee = en_route_fee
+        else:
+            cancellation_fee = en_route_fee
     elif cancelled_by == "driver" and ride.status in ["driver_arriving", "driver_arrived"]:
         wants_no_show = is_no_show_reason(cancellation_reason)
         if wants_no_show:
@@ -1361,7 +1381,7 @@ def cancel_ride(request, ride_id):
             is_rider_no_show = True
             cancellation_reason = CANONICAL_NO_SHOW_REASON
         else:
-            cancellation_fee = Decimal("150")  # driver-side cancel penalty
+            cancellation_fee = driver_penalty  # driver-side cancel penalty
 
     stamp = now()
     with transaction.atomic():

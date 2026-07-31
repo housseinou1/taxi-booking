@@ -131,14 +131,31 @@ export default function RideCancellationModal({
 
   const fee = useMemo(() => {
     const hasAssignedDriver = Boolean(ride?.driver || ride?.driver_name);
-    if (role === "rider" && hasAssignedDriver) {
-      return "A 100 MRU cancellation fee may apply.";
+    const noShowFee = Number(MARKET?.noShow?.riderFee || 75);
+    const noShowComp = Number(MARKET?.noShow?.driverCompensation || 75);
+    const enRouteFee = Number(MARKET?.cancellation?.enRouteFee || 50);
+    const arrivedFee = Number(MARKET?.cancellation?.arrivedFee || 75);
+    const freeWindowMinutes = Number(MARKET?.cancellation?.freeWindowMinutes || 2);
+
+    if (role === "rider") {
+      if (!hasAssignedDriver) {
+        return "No cancellation fee applies before a driver accepts.";
+      }
+      if (ride?.status === "accepted" || ride?.status === "driver_arriving") {
+        return `A ${enRouteFee} MRU cancellation fee will apply.`;
+      }
+      if (ride?.status === "driver_arrived") {
+        return noShowGate?.billingStarted
+          ? `A ${arrivedFee} MRU cancellation fee will apply.`
+          : `A ${enRouteFee} MRU cancellation fee will apply if you cancel before the free wait period ends.`;
+      }
+      return `Free cancellation is available for the first ${freeWindowMinutes} minutes after the ride is requested.`;
     }
     if (role === "driver") {
       if (selectedNoShow && noShowGate?.unlocked) {
         return (
-          `Rider no-show: rider may be charged ${noShowGate.riderFee} MRU. ` +
-          `You receive ${noShowGate.driverCompensation} MRU compensation. ` +
+          `Rider no-show: rider may be charged ${noShowFee} MRU. ` +
+          `You receive ${noShowComp} MRU compensation. ` +
           "Your acceptance rate and points are not reduced."
         );
       }
@@ -148,7 +165,7 @@ export default function RideCancellationModal({
       return "A 150 MRU driver cancellation penalty may apply. Your performance score may also be reduced.";
     }
     return "No cancellation fee applies before a driver accepts.";
-  }, [role, ride?.driver, ride?.driver_name, selectedNoShow, noShowGate]);
+  }, [role, ride?.driver, ride?.driver_name, ride?.status, selectedNoShow, noShowGate]);
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;

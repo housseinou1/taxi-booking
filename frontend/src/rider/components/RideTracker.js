@@ -635,7 +635,7 @@ function RideTracker({ ride, driverPosition, city = 'Nouakchott', onAddStop, onC
             </h2>
             <p className="ride-tracker__modal-fee">
               {ride.driver || ride.driver_name
-                ? 'A 100 MRU cancellation fee may apply because a driver accepted this ride.'
+                ? 'Free cancellation for the first 2 minutes. After that, up to a 75 MRU fee may apply depending on the driver status.'
                 : 'No cancellation fee applies before a driver accepts.'}
             </p>
 

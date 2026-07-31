@@ -231,8 +231,14 @@ export const MARKET = {
     noShowMaxDistanceM: 150,
   },
   noShow: {
-    riderFee: 100,
-    driverCompensation: 100,
+    riderFee: 75,
+    driverCompensation: 75,
+  },
+  cancellation: {
+    freeWindowMinutes: 2,
+    enRouteFee: 50,
+    arrivedFee: 75,
+    driverPenalty: 150,
   },
 };
 
