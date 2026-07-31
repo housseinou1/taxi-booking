@@ -1,6 +1,6 @@
 import React from 'react';
 import FareCard from './FareCard';
-import { calculateFare } from '../utils/fareCalculator';
+import { useFareEstimates } from '../hooks/useFareEstimates';
 import { MARKET } from '../../marketConfig';
 import './RideTypeSelector.css';
 
@@ -38,11 +38,13 @@ function formatEta(etaMinutes, rideType) {
  * - onSelect: callback invoked with the selected ride type key
  */
 function RideTypeSelector({ distance, etaMinutes, selectedType, onSelect }) {
+  const estimates = useFareEstimates(distance);
   return (
     <div className="ride-type-selector" role="radiogroup" aria-label="Select ride type">
       <div className="ride-type-selector__scroll">
         {RIDE_TYPES.map((type) => {
-          const fare = calculateFare(type.key, distance);
+          const estimate = estimates[type.key];
+          const fare = estimate ? Number(estimate.estimated_fare) : null;
           const eta = formatEta(etaMinutes, type.key);
           const isSelected = selectedType === type.key;
 

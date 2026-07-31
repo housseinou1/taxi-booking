@@ -27,7 +27,10 @@ export function getRideTypeIcon(rideType) {
  * @returns {string} Formatted fare string
  */
 export function formatFare(amount) {
-  return `${Math.round(amount)} MRU`;
+  if (amount == null || Number.isNaN(Number(amount))) {
+    return '— MRU';
+  }
+  return `${Math.round(Number(amount))} MRU`;
 }
 
 /**

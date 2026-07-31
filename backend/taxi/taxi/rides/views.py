@@ -133,6 +133,7 @@ def broadcast_ride_request_to_available_drivers(ride):
 
 OPEN_RIDE_STATUSES = ["requested", "scheduled", "driver_arriving", "driver_arrived", "in_progress"]
 DRIVER_ACTIVE_STATUSES = ["driver_arriving", "driver_arrived", "in_progress"]
+VALID_RIDE_TYPES = set(MARKET["fare"].keys())
 
 
 def approved_driver_error(user):
@@ -266,7 +267,13 @@ def request_ride(request):
     except (ValueError, TypeError) as exc:
         return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
-    ride_type = request.data.get("ride_type", "regular")
+    ride_type = str(request.data.get("ride_type", "regular")).lower().strip()
+    if ride_type not in VALID_RIDE_TYPES:
+        return Response(
+            {"detail": f"Unsupported ride type: {ride_type}."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
     city = resolve_city(
         city_id=request.data.get("city"),
         city_slug=request.data.get("city_slug"),
@@ -387,7 +394,13 @@ def schedule_ride(request):
         )
 
     distance_km = Decimal(str(request.data.get("distance_km", request.data.get("distance", 0))))
-    ride_type = request.data.get("ride_type", "regular")
+    ride_type = str(request.data.get("ride_type", "regular")).lower().strip()
+    if ride_type not in VALID_RIDE_TYPES:
+        return Response(
+            {"detail": f"Unsupported ride type: {ride_type}."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
     city = resolve_city(
         city_id=request.data.get("city"),
         city_slug=request.data.get("city_slug"),
@@ -459,6 +472,51 @@ def cancel_scheduled_ride(request, ride_id):
     ride.status = "cancelled"
     ride.save()
     return Response({"message": "Scheduled ride cancelled.", "ride_id": ride.id})
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def estimate_fare(request):
+    """Return a backend-computed fare estimate without creating a ride."""
+    ride_type = str(request.data.get("ride_type", "regular")).lower().strip()
+    if ride_type not in VALID_RIDE_TYPES:
+        return Response(
+            {"detail": f"Unsupported ride type: {ride_type}."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    city = resolve_city(
+        city_id=request.data.get("city"),
+        city_slug=request.data.get("city_slug"),
+        fallback_user=request.user,
+    )
+
+    distance_km = Decimal(str(request.data.get("distance_km", request.data.get("distance", 0))))
+    if distance_km < 0:
+        return Response(
+            {"detail": "distance_km must be non-negative."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    fare = calculate_city_fare(city, ride_type, distance_km)
+    pricing = MARKET["fare"][ride_type]
+    distance_charge = fare - pricing["base"]
+    app_fee = calculate_app_fee(fare)
+    driver_earning = fare - app_fee
+
+    return Response({
+        "ride_type": ride_type,
+        "estimated_fare": str(fare),
+        "base_fare": str(pricing["base"]),
+        "distance_km": str(distance_km),
+        "per_km": str(pricing["per_km"]),
+        "distance_charge": str(distance_charge),
+        "waiting_fee": "0",
+        "app_fee": str(app_fee),
+        "driver_earning": str(driver_earning),
+        "currency": MARKET["currency"],
+        "is_estimate": True,
+    })
 
 
 @api_view(["GET"])

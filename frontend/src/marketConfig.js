@@ -218,9 +218,9 @@ export const MARKET = {
     { city: "Toulel", label: "Toulel Road Stop", position: [15.4870, -12.8160] },
   ],
   fare: {
-    regular: { label: "Regular", base: 200, perKm: 20 },
-    xl: { label: "XL", base: 300, perKm: 30 },
-    comfort: { label: "Comfort", base: 350, perKm: 35 },
+    regular: { label: "Regular", base: 175, perKm: 20 },
+    xl: { label: "XL", base: 225, perKm: 25 },
+    comfort: { label: "Comfort", base: 275, perKm: 30 },
     share: { label: "Share", base: 150, perKm: 15 },
   },
   waiting: {

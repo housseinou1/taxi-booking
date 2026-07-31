@@ -27,9 +27,10 @@ MARKET = {
     "default_destination_lng": -15.9754,
     "app_fee_percent": get_app_fee_percent(),
     "fare": {
-        "regular": {"base": Decimal("200"), "per_km": Decimal("20")},
-        "xl": {"base": Decimal("300"), "per_km": Decimal("30")},
-        "comfort": {"base": Decimal("350"), "per_km": Decimal("35")},
+        # Base fares are also the minimum fares.
+        "regular": {"base": Decimal("175"), "per_km": Decimal("20")},
+        "xl": {"base": Decimal("225"), "per_km": Decimal("25")},
+        "comfort": {"base": Decimal("275"), "per_km": Decimal("30")},
         "share": {"base": Decimal("150"), "per_km": Decimal("15")},
     },
     "waiting": {
@@ -93,8 +94,9 @@ MARKET = {
 
 def calculate_fare(ride_type, distance_km):
     pricing = MARKET["fare"].get(str(ride_type).lower(), MARKET["fare"]["regular"])
-    distance = Decimal(str(distance_km or 0))
+    distance = max(Decimal(str(distance_km or 0)), Decimal("0"))
     fare = pricing["base"] + (distance * pricing["per_km"])
+    fare = max(fare, pricing["base"])
     return fare.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 

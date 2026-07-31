@@ -181,9 +181,9 @@ class CityPricing(models.Model):
         ]
 
     def calculate_fare(self, distance_km):
-        distance = Decimal(str(distance_km or 0))
+        distance = max(Decimal(str(distance_km or 0)), Decimal("0"))
         fare = self.base_fare + (distance * self.per_km)
-        fare = max(fare, self.minimum_fare)
+        fare = max(fare, self.base_fare, self.minimum_fare)
         return fare.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
     def __str__(self):

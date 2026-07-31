@@ -2,18 +2,18 @@ import { calculateFare } from './fareCalculator';
 
 describe('calculateFare', () => {
   it('calculates regular fare correctly', () => {
-    // base=200, perKm=20, distance=5 => 200 + 5*20 = 300
-    expect(calculateFare('regular', 5)).toBe(300);
+    // base=175, perKm=20, distance=5 => 175 + 5*20 = 275
+    expect(calculateFare('regular', 5)).toBe(275);
   });
 
   it('calculates xl fare correctly', () => {
-    // base=300, perKm=30, distance=10 => 300 + 10*30 = 600
-    expect(calculateFare('xl', 10)).toBe(600);
+    // base=225, perKm=25, distance=10 => 225 + 10*25 = 475
+    expect(calculateFare('xl', 10)).toBe(475);
   });
 
   it('calculates comfort fare correctly', () => {
-    // base=350, perKm=35, distance=3 => 350 + 3*35 = 455
-    expect(calculateFare('comfort', 3)).toBe(455);
+    // base=275, perKm=30, distance=3 => 275 + 3*30 = 365
+    expect(calculateFare('comfort', 3)).toBe(365);
   });
 
   it('calculates share fare correctly', () => {
@@ -22,20 +22,20 @@ describe('calculateFare', () => {
   });
 
   it('handles zero distance', () => {
-    // base=200, perKm=20, distance=0 => 200
-    expect(calculateFare('regular', 0)).toBe(200);
+    // base=175, perKm=20, distance=0 => 175
+    expect(calculateFare('regular', 0)).toBe(175);
   });
 
   it('handles fractional distances', () => {
-    // base=200, perKm=20, distance=2.5 => 200 + 2.5*20 = 250
-    expect(calculateFare('regular', 2.5)).toBe(250);
+    // base=175, perKm=20, distance=2.5 => 175 + 2.5*20 = 225
+    expect(calculateFare('regular', 2.5)).toBe(225);
   });
 
   it('falls back to regular pricing for unknown ride type', () => {
-    expect(calculateFare('unknown', 5)).toBe(300);
+    expect(calculateFare('unknown', 5)).toBe(275);
   });
 
   it('handles null distance as 0', () => {
-    expect(calculateFare('regular', null)).toBe(200);
+    expect(calculateFare('regular', null)).toBe(175);
   });
 });

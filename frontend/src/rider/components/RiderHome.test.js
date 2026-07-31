@@ -91,9 +91,9 @@ jest.mock('../../marketConfig', () => ({
       { city: 'Nouakchott', label: 'Toujounine', position: [18.0896, -15.9754] },
     ],
     fare: {
-      regular: { label: 'Regular', base: 200, perKm: 20 },
-      xl: { label: 'XL', base: 300, perKm: 30 },
-      comfort: { label: 'Comfort', base: 350, perKm: 35 },
+      regular: { label: 'Regular', base: 175, perKm: 20 },
+      xl: { label: 'XL', base: 225, perKm: 25 },
+      comfort: { label: 'Comfort', base: 275, perKm: 30 },
       share: { label: 'Share', base: 150, perKm: 15 },
     },
   },
@@ -108,9 +108,10 @@ jest.mock('../../marketConfig', () => ({
     return locations.filter((l) => l.city === city);
   },
   calculateFare: (rideType, distanceKm) => {
-    const pricing = { regular: { base: 200, perKm: 20 }, xl: { base: 300, perKm: 30 }, comfort: { base: 350, perKm: 35 }, share: { base: 150, perKm: 15 } };
+    const pricing = { regular: { base: 175, perKm: 20 }, xl: { base: 225, perKm: 25 }, comfort: { base: 275, perKm: 30 }, share: { base: 150, perKm: 15 } };
     const p = pricing[rideType] || pricing.regular;
-    return Math.round((p.base + distanceKm * p.perKm) * 100) / 100;
+    const d = Number(distanceKm) || 0;
+    return Math.round((p.base + d * p.perKm) * 100) / 100;
   },
   calculateDistanceKm: () => 5,
   isPointInServiceArea: () => true,

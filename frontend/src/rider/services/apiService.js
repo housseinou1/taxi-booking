@@ -170,6 +170,25 @@ export async function getRideHistory() {
 }
 
 /**
+ * Request an authoritative backend fare estimate for a category and distance.
+ * @param {object} params
+ * @param {string} params.ride_type
+ * @param {number} params.distance_km
+ * @returns {Promise<object>} Estimate with base_fare, distance_charge, estimated_fare, etc.
+ */
+export async function estimateFare(params) {
+  try {
+    const response = await riderApi.post(`${API_URL}/rides/estimate/`, {
+      ride_type: params.ride_type,
+      distance_km: params.distance_km,
+    });
+    return response.data;
+  } catch (error) {
+    throw handleError(error);
+  }
+}
+
+/**
  * Validate a promo code against an estimated fare.
  * @param {string} code - The promo code to validate.
  * @param {number} estimatedFare - The current estimated fare for discount calculation.
