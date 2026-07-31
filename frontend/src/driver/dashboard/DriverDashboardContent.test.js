@@ -65,22 +65,23 @@ describe("DriverDashboardContent", () => {
     expect(onRetry).toHaveBeenCalled();
   });
 
-  it("renders greeting, driver name and verification badge", () => {
+  it("renders compact top bar with driver name and actions", () => {
     render(<DriverDashboardContent {...baseProps} />);
-    expect(screen.getByText(/Amadou Diallo/)).toBeInTheDocument();
-    expect(screen.getByText(/Verified/)).toBeInTheDocument();
+    expect(screen.getByText("Amadou Diallo")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Open notifications" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Open menu" })).toBeInTheDocument();
   });
 
-  it("displays offline status and a large go-online control", () => {
+  it("displays offline status and a go-online control", () => {
     render(<DriverDashboardContent {...baseProps} isOnline={false} />);
     expect(screen.getByText(/You are offline/)).toBeInTheDocument();
-    expect(screen.getByText("Go Online")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /go online/i })).toBeInTheDocument();
   });
 
   it("displays online status and a go-offline control", () => {
     render(<DriverDashboardContent {...baseProps} isOnline />);
     expect(screen.getByText(/You are online/)).toBeInTheDocument();
-    expect(screen.getByText("Go Offline")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /go offline/i })).toBeInTheDocument();
   });
 
   it("calls onToggleAvailability when the main action is clicked", () => {
@@ -101,26 +102,47 @@ describe("DriverDashboardContent", () => {
     expect(screen.getByRole("button", { name: /review documents/i })).toBeInTheDocument();
   });
 
-  it("renders performance metrics and earnings cards", () => {
+  it("shows today's trips and earnings in the collapsed bottom sheet", () => {
     render(<DriverDashboardContent {...baseProps} />);
-    expect(screen.getByText("Trips")).toBeInTheDocument();
-    expect(screen.getByText("4")).toBeInTheDocument();
-    expect(screen.getAllByText(/1,250\.50 MRU/).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText(/Rating/)).toBeInTheDocument();
-    expect(screen.getAllByText(/4\.7/).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText(/Weekly earnings/)).toBeInTheDocument();
+    expect(screen.getAllByText("Trips").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Earnings").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("4").length).toBeGreaterThanOrEqual(1);
   });
 
-  it("renders quick actions with valid driver routes", () => {
+  it("expands the bottom sheet to reveal performance metrics", () => {
+    const { container } = render(<DriverDashboardContent {...baseProps} />);
+    const grip = screen.getByRole("button", { name: /expand dashboard/i });
+    const sheet = container.querySelector(".driver-dashboard-content__bottom-sheet");
+    fireEvent.click(grip);
+    expect(sheet.classList.contains("is-expanded")).toBe(true);
+    expect(screen.getByText("Today's performance")).toBeInTheDocument();
+    expect(screen.getByText("Acceptance")).toBeInTheDocument();
+    expect(screen.getByText("Completion")).toBeInTheDocument();
+    expect(screen.getByText("Quick actions")).toBeInTheDocument();
+  });
+
+  it("collapses the bottom sheet after expanding", () => {
+    const { container } = render(<DriverDashboardContent {...baseProps} />);
+    const grip = screen.getByRole("button", { name: /expand dashboard/i });
+    const sheet = container.querySelector(".driver-dashboard-content__bottom-sheet");
+    fireEvent.click(grip);
+    expect(sheet.classList.contains("is-expanded")).toBe(true);
+    fireEvent.click(grip);
+    expect(sheet.classList.contains("is-collapsed")).toBe(true);
+  });
+
+  it("renders quick actions with valid driver routes when expanded", () => {
     render(<DriverDashboardContent {...baseProps} />);
+    fireEvent.click(screen.getByRole("button", { name: /expand dashboard/i }));
     const actionLabels = ["Open earnings", "Open ride history", "Open documents", "Open support"];
     actionLabels.forEach((label) => {
       expect(screen.getByRole("button", { name: label })).toBeInTheDocument();
     });
   });
 
-  it("renders recent trips when data is available", () => {
+  it("renders recent trips when data is available in expanded view", () => {
     render(<DriverDashboardContent {...baseProps} />);
+    fireEvent.click(screen.getByRole("button", { name: /expand dashboard/i }));
     expect(screen.getByText("Teyarett")).toBeInTheDocument();
     expect(screen.getByText("Sebkha")).toBeInTheDocument();
     expect(screen.getByText("View all trips")).toBeInTheDocument();
@@ -128,6 +150,7 @@ describe("DriverDashboardContent", () => {
 
   it("omits the recent trips section when no completed rides", () => {
     render(<DriverDashboardContent {...baseProps} recentRides={[]} />);
+    fireEvent.click(screen.getByRole("button", { name: /expand dashboard/i }));
     expect(screen.queryByText("Recent trips")).not.toBeInTheDocument();
   });
 });
