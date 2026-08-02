@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.utils.safestring import mark_safe
 
 from .models import City, CityPricing, Commune, Department, Locality, Region
 
@@ -54,6 +55,34 @@ class CityAdmin(admin.ModelAdmin):
 
 @admin.register(CityPricing)
 class CityPricingAdmin(admin.ModelAdmin):
-    list_display = ("city", "ride_type", "base_fare", "per_km", "is_active")
+    list_display = (
+        "city",
+        "ride_type",
+        "base_fare",
+        "per_km",
+        "minimum_fare",
+        "status_chip",
+        "created_at",
+        "updated_at",
+    )
     list_filter = ("ride_type", "is_active", "city__region")
-    search_fields = ("city__name",)
+    search_fields = ("city__name", "city__region__name")
+    actions = ("activate_selected", "deactivate_selected")
+
+    @admin.display(description="Status")
+    def status_chip(self, obj):
+        color = "green" if obj.is_active else "red"
+        label = "Active" if obj.is_active else "Inactive"
+        return mark_safe(f'<span style="color:{color};font-weight:bold;">{label}</span>')
+
+    @admin.display(description="Override")
+    def override_indicator(self, obj):
+        return "Yes" if obj.is_active else "No"
+
+    @admin.action(description="Activate selected city pricing")
+    def activate_selected(self, request, queryset):
+        queryset.update(is_active=True)
+
+    @admin.action(description="Deactivate selected city pricing")
+    def deactivate_selected(self, request, queryset):
+        queryset.update(is_active=False)

@@ -1,5 +1,6 @@
 from decimal import Decimal, ROUND_HALF_UP
 
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.text import slugify
 
@@ -179,6 +180,17 @@ class CityPricing(models.Model):
         constraints = [
             models.UniqueConstraint(fields=["city", "ride_type"], name="unique_city_ride_pricing"),
         ]
+
+    def clean(self):
+        super().clean()
+        for field_name in ["base_fare", "per_km", "minimum_fare"]:
+            value = getattr(self, field_name, None) or Decimal("0.00")
+            if value < Decimal("0.00"):
+                raise ValidationError({field_name: "Must be non-negative."})
+        if self.minimum_fare < self.base_fare:
+            raise ValidationError(
+                {"minimum_fare": "Minimum fare must not be less than base fare."}
+            )
 
     def calculate_fare(self, distance_km):
         distance = max(Decimal(str(distance_km or 0)), Decimal("0"))

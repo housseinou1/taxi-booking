@@ -4,12 +4,14 @@ from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.utils import timezone
 
+from authapp.models import User
 from taxi.market import MARKET
 
 from .models import (
     CancellationFeeConfig,
     GlobalFareConfig,
     NoShowFeeConfig,
+    PricingAuditLog,
     RideCommissionConfig,
     WaitingFeeConfig,
 )
@@ -271,3 +273,96 @@ class ServiceFallbackTests(TestCase):
         commission = get_ride_commission_policy()
         self.assertEqual(commission["platform_percent"], MARKET["app_fee_percent"])
         self.assertEqual(commission["driver_percent"], Decimal("1.0000") - MARKET["app_fee_percent"])
+
+
+class PricingAdminDashboardTests(TestCase):
+    def setUp(self):
+        self.staff = User.objects.create_user(
+            email="pricing-admin@example.com",
+            password="StrongPass123",
+            is_staff=True,
+            is_superuser=True,
+        )
+        self.user = User.objects.create_user(
+            email="pricing-user@example.com",
+            password="StrongPass123",
+        )
+
+    def test_dashboard_requires_staff(self):
+        response = self.client.get("/admin/pricing/")
+        self.assertEqual(response.status_code, 302)  # redirects to login
+
+        self.client.force_login(self.user)
+        response = self.client.get("/admin/pricing/")
+        self.assertEqual(response.status_code, 302)
+
+    def test_dashboard_renders_for_staff(self):
+        self.client.force_login(self.staff)
+        response = self.client.get("/admin/pricing/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Pricing Management Dashboard")
+
+    def test_dashboard_shows_active_config_counts(self):
+        self.client.force_login(self.staff)
+        response = self.client.get("/admin/pricing/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Active Configs")
+
+
+class PricingAuditLogTests(TestCase):
+    def test_audit_log_created_on_global_fare_save(self):
+        from app_settings.admin import GlobalFareConfigAdmin
+
+        admin = GlobalFareConfigAdmin(GlobalFareConfig, None)
+        from django.contrib.auth import get_user_model
+
+        user = get_user_model().objects.create_user(
+            email="audit-user@example.com",
+            password="StrongPass123",
+            is_staff=True,
+        )
+        config = GlobalFareConfig(
+            ride_type="XL",
+            base_fare=Decimal("225.00"),
+            per_km=Decimal("25.00"),
+            minimum_fare=Decimal("225.00"),
+            is_active=True,
+        )
+        from django.forms import modelform_factory
+
+        Form = modelform_factory(
+            GlobalFareConfig,
+            fields=["ride_type", "base_fare", "per_km", "minimum_fare", "is_active"],
+        )
+        form = Form({
+            "ride_type": "XL",
+            "base_fare": "225.00",
+            "per_km": "25.00",
+            "minimum_fare": "225.00",
+            "is_active": True,
+        }, instance=config)
+        form.is_valid()
+        class Request:
+            user = user
+        admin.save_model(Request(), config, form, change=False)
+        self.assertTrue(PricingAuditLog.objects.filter(action="create").exists())
+
+    def test_minimum_fare_validation_on_global_fare(self):
+        config = GlobalFareConfig(
+            ride_type="Regular",
+            base_fare=Decimal("175.00"),
+            per_km=Decimal("20.00"),
+            minimum_fare=Decimal("100.00"),
+        )
+        with self.assertRaises(ValidationError):
+            config.full_clean()
+
+    def test_commission_sum_validation(self):
+        from .models import RideCommissionConfig
+
+        config = RideCommissionConfig(
+            platform_percent=Decimal("0.60"),
+            driver_percent=Decimal("0.60"),
+        )
+        with self.assertRaises(ValidationError):
+            config.full_clean()

@@ -123,6 +123,10 @@ class GlobalFareConfig(BaseConfigModel):
             value = getattr(self, field_name, None) or Decimal("0.00")
             if value < Decimal("0.00"):
                 raise ValidationError({field_name: "Must be non-negative."})
+        if self.minimum_fare < self.base_fare:
+            raise ValidationError(
+                {"minimum_fare": "Minimum fare must not be less than base fare."}
+            )
 
     def __str__(self):
         return f"{self.ride_type} — base {self.base_fare} / km {self.per_km} (min {self.minimum_fare})"
@@ -327,3 +331,42 @@ class RideCommissionConfig(BaseConfigModel):
 
     def __str__(self):
         return f"Commission: platform {self.platform_percent} | driver {self.driver_percent}"
+
+
+class PricingAuditLog(models.Model):
+    """Immutable audit trail for pricing configuration changes."""
+
+    ACTION_CHOICES = [
+        ("create", "Create"),
+        ("update", "Update"),
+        ("activate", "Activate"),
+        ("deactivate", "Deactivate"),
+        ("delete", "Delete"),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="pricing_audit_entries",
+    )
+    action = models.CharField(max_length=20, choices=ACTION_CHOICES)
+    model_name = models.CharField(max_length=80)
+    object_id = models.CharField(max_length=50)
+    object_repr = models.CharField(max_length=255, blank=True)
+    field_name = models.CharField(max_length=80, blank=True)
+    old_value = models.TextField(blank=True)
+    new_value = models.TextField(blank=True)
+    reason = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["model_name", "-created_at"], name="idx_pricingaudit_model"),
+            models.Index(fields=["user", "-created_at"], name="idx_pricingaudit_user"),
+        ]
+
+    def __str__(self):
+        return f"{self.action} {self.model_name} {self.object_id} @ {self.created_at}"

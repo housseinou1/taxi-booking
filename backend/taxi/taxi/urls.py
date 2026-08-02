@@ -33,6 +33,9 @@ urlpatterns = [
     path("api/admin/share/analytics/chart/", share_analytics_chart, name="share-analytics-chart"),
     path("support/ai/", support_ai, name="support-ai"),
 
+    # Pricing management dashboard (before the admin catch-all)
+    path("admin/pricing/", include("app_settings.urls")),
+
     path("admin/", admin.site.urls),
 
     path("auth/", include("authapp.urls")),
