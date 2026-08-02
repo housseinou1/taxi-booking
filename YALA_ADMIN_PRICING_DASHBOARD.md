@@ -104,7 +104,38 @@ The audit log is read-only, searchable, and filterable from `/admin/app_settings
 
 ---
 
-## 7. Safety Guarantees
+## 7. CEO Dashboard
+
+`/admin/pricing/` now presents a CEO-focused view:
+
+- Ride-type cards for Regular, XL, Comfort, and Share, each tagged `ACTIVE`, `SCHEDULED`, or `INACTIVE`.
+- Policy cards for waiting, cancellation, no-show, and commission with the same status tags.
+- KPIs for active configs, city overrides, and audit events.
+- Quick links to:
+  - `/admin/pricing/preview/`
+  - `/admin/pricing/city-comparison/`
+  - `/admin/pricing/export/csv/`
+  - `/admin/pricing/export/json/`
+
+## 8. Tools
+
+### Pricing Preview
+
+`/admin/pricing/preview/` — enter ride type, distance, and city; see the resolved fare, source, commission, and driver earning. No data is stored.
+
+### City Comparison
+
+`/admin/pricing/city-comparison/` — compare Nouakchott, Nouadhibou, Rosso, Kaédi, and Kiffa.
+
+### Export
+
+`/admin/pricing/export/csv/` and `/admin/pricing/export/json/` — download all pricing configurations.
+
+### Safe Activation
+
+`/admin/pricing/activate/?model=<label>&pk=<id>` — shows old vs new values, requires a reason, deactivates the current active record, and logs the change.
+
+## 9. Safety Guarantees
 
 - Changing a pricing configuration does **not** modify any existing `Ride`, `RidePricingSnapshot`, `Payment`, or settled commission.
 - Newly activated configurations only affect future ride requests.

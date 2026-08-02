@@ -190,16 +190,19 @@ Tests live in `taxi/rides/test_pricing_snapshot.py` and cover:
 
 ## 13. Commit 3 — Admin Pricing Dashboard
 
-Implemented in Mission 16 Commit 3 and documented in [YALA_ADMIN_PRICING_DASHBOARD.md](./YALA_ADMIN_PRICING_DASHBOARD.md):
+Implemented in Mission 16 Commit 3 and documented in [YALA_ADMIN_PRICING_DASHBOARD.md](./YALA_ADMIN_PRICING_DASHBOARD.md).
 
-- Staff-only `/admin/pricing/` dashboard.
-- Cards for global fares, waiting, cancellation, no-show, and commission.
-- City pricing list with search, filter, and bulk activation.
-- `PricingAuditLog` model captures who changed pricing, when, old/new values, and reason.
-- Validation rules: non-negative values, minimum >= base, commission sum <= 1.
-- No existing rides, snapshots, or payments are modified by pricing changes.
+## 14. Commit 4 — Final Pricing Platform
 
-## 14. Remaining Work
+Implemented in Mission 16 Commit 4 (final) and documented in [YALA_PRICING_PLATFORM_FINAL.md](./YALA_PRICING_PLATFORM_FINAL.md):
 
-- Performance/caching review if needed.
-- Additional pricing edge-case tests as QA discovers them.
+- CEO dashboard with active/scheduled/inactive cards for every ride type and policy.
+- Safe activation flow with old/new comparison and required reason.
+- Pricing preview tool.
+- City comparison for Nouakchott, Nouadhibou, Rosso, Kaédi, and Kiffa.
+- CSV and JSON export.
+- Role-based permissions (CEO, Super Admin, Pricing Administrator).
+- Enhanced audit for preview, export, activation, scheduling, and effective date changes.
+- No ride lifecycle, approved pricing, snapshots, payments, or historical rides changed.
+
+Mission 16 is complete.
