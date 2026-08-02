@@ -4,7 +4,7 @@
 
 **Branch:** `ui/design-system`  
 **Last updated:** 2026-08-01  
-**Status:** Phase 1 foundation complete, Commit 2 integration deferred
+**Status:** Phase 1 foundation and Commit 2 live integration complete — see [YALA_PRICING_LIVE_INTEGRATION.md](./YALA_PRICING_LIVE_INTEGRATION.md)
 
 ---
 
@@ -151,7 +151,7 @@ Database `UniqueConstraint`s with partial conditions enforce:
 - `get_no_show_policy()`
 - `get_ride_commission_policy()`
 
-Each function resolves from the active database record, falling back to `taxi.market.MARKET` when no active record exists. They are not yet wired into ride endpoints.
+Each function resolves from the active database record, falling back to `taxi.market.MARKET` when no active record exists. A new `resolve_ride_fare(city, ride_type, distance_km)` function centralizes fare resolution and is wired into `estimate_fare`, `request_ride`, `schedule_ride`, `calculate_city_fare`, waiting fees, cancellation fees, no-show fees, and payment authorization.
 
 ---
 
@@ -183,14 +183,21 @@ Tests are in `app_settings.tests`. They cover:
 
 ---
 
-## 9. Deferred to Commit 2
+## 9. Commit 2 Integration
 
-The following items are intentionally left for Mission 16 Commit 2:
+Implemented in Mission 16 Commit 2 and documented in [YALA_PRICING_LIVE_INTEGRATION.md](./YALA_PRICING_LIVE_INTEGRATION.md):
 
-- Switch `request_ride`, `schedule_ride`, and `estimate_fare` to `pricing_service`.
-- Switch waiting, cancellation, no-show, and payment calculations to `pricing_service`.
-- Add an Admin Pricing Dashboard (custom admin views).
-- Add audit logging for pricing configuration changes if a project-wide audit framework exists.
+- Centralized fare resolver `resolve_ride_fare`.
+- `RidePricingSnapshot` model and migration.
+- Estimate, request, and schedule endpoints use the resolver.
+- Waiting, cancellation, no-show, and payment calculations use the ride snapshot or active DB fallback.
+- Admin read-only snapshot inline.
+- Integration tests.
+
+### Deferred to Commit 3
+
+- Admin Pricing Dashboard (custom admin views).
+- Audit logging for pricing configuration changes if a project-wide audit framework exists.
 - Wire `SiteSettings` or remove its unused legacy pricing fields.
 
 ---
@@ -198,8 +205,7 @@ The following items are intentionally left for Mission 16 Commit 2:
 ## 10. What Was Not Changed
 
 - `market.py` values and functions.
-- `CityPricing` model, admin, and `calculate_city_fare` logic.
 - `Ride.RIDE_TYPES` and ride type choices.
-- `request_ride`, `schedule_ride`, `estimate_fare`, `start_ride`, `cancel_ride`, payment endpoints.
 - Rider and driver frontends.
-- All backend API contracts.
+- Core backend API contracts.
+- Approved prices (Commit 2 preserves exact approved values).
