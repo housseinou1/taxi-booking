@@ -3,15 +3,32 @@ from decimal import Decimal, ROUND_HALF_UP
 
 from django.utils import timezone
 
-from taxi.market import MARKET
+from app_settings.pricing_service import get_waiting_policy as get_db_waiting_policy
 
 
 def get_waiting_policy():
-    return MARKET["waiting"]
+    """Return the active waiting-fee policy from the database or market.py fallback."""
+    return get_db_waiting_policy()
 
 
-def calculate_waiting_fee(waited_seconds):
-    policy = get_waiting_policy()
+def _waiting_policy_for_ride(ride=None):
+    """Use the ride's snapshot waiting policy when available, otherwise the active policy."""
+    if ride is not None:
+        snapshot = getattr(ride, "pricing_snapshot", None)
+        if snapshot and snapshot.waiting_policy:
+            policy = snapshot.waiting_policy
+            return {
+                "free_minutes": int(policy.free_minutes),
+                "per_minute_fee": Decimal(policy.per_minute_fee),
+                "max_wait_minutes": int(policy.max_wait_minutes),
+                "arrive_max_distance_m": int(policy.arrive_max_distance_m),
+                "no_show_max_distance_m": int(policy.no_show_max_distance_m),
+            }
+    return get_waiting_policy()
+
+
+def calculate_waiting_fee(waited_seconds, ride=None):
+    policy = _waiting_policy_for_ride(ride)
     free_seconds = int(policy["free_minutes"]) * 60
     per_minute_fee = Decimal(str(policy["per_minute_fee"]))
 
@@ -25,7 +42,7 @@ def calculate_waiting_fee(waited_seconds):
 
 
 def get_waiting_status(ride, at=None):
-    policy = get_waiting_policy()
+    policy = _waiting_policy_for_ride(ride)
     free_minutes = int(policy["free_minutes"])
     free_seconds = free_minutes * 60
     max_wait_minutes = int(policy.get("max_wait_minutes", free_minutes))
@@ -49,7 +66,7 @@ def get_waiting_status(ride, at=None):
             "per_minute_fee": str(per_minute_fee),
             "estimated_fee": "0.00",
             "applied_fee": str(ride.waiting_fee or Decimal("0.00")),
-            "currency": MARKET["currency"],
+            "currency": "MRU",
         }
 
     reference_time = at or timezone.now()
@@ -79,5 +96,5 @@ def get_waiting_status(ride, at=None):
         "per_minute_fee": str(per_minute_fee),
         "estimated_fee": str(estimated_fee),
         "applied_fee": str(ride.waiting_fee or Decimal("0.00")),
-        "currency": MARKET["currency"],
+        "currency": "MRU",
     }

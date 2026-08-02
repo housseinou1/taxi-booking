@@ -34,7 +34,7 @@ from admin_2fa.integrity import require_integrity
 from locations.services import calculate_city_fare, resolve_city
 from legal.ride_terms import ensure_ride_legal_acceptance
 
-from .models import Ride, RideStop
+from .models import Ride, RidePricingSnapshot, RideStop
 from .serializers import RideSerializer
 from .broadcast import broadcast_ride_update
 from .distance_utils import resolve_ride_distance_km
@@ -150,8 +150,14 @@ def approved_driver_error(user):
 
 
 def calculate_money(ride):
+    from app_settings.pricing_service import (
+        calculate_ride_app_fee,
+        get_ride_commission_percent,
+    )
+
     fare = ride.fare or 0
-    app_fee = calculate_app_fee(fare)
+    commission_percent = get_ride_commission_percent(ride)
+    app_fee = calculate_ride_app_fee(fare, commission_percent)
     driver_earning = fare - app_fee
 
     ride.app_fee = app_fee
@@ -279,7 +285,11 @@ def request_ride(request):
         city_slug=request.data.get("city_slug"),
         fallback_user=request.user,
     )
-    fare = calculate_city_fare(city, ride_type, distance_km)
+
+    from app_settings.pricing_service import resolve_ride_fare
+
+    result = resolve_ride_fare(city, ride_type, distance_km)
+    fare = result.estimated_fare
 
     billing_source = (request.data.get("billing_source") or "personal").strip().lower()
     corporate_account = None
@@ -311,11 +321,34 @@ def request_ride(request):
                 distance_km=distance_km,
                 ride_type=ride_type,
                 fare=fare,
+                app_fee=result.app_fee,
+                driver_earning=result.driver_earning,
                 status="requested",
                 referral_code=referral_code,
                 billing_source=billing_source,
                 corporate_account=corporate_account,
                 cost_center=cost_center,
+            )
+            RidePricingSnapshot.objects.create(
+                ride=ride,
+                ride_type=result.ride_type,
+                source=result.source,
+                city_pricing_id=result.city_pricing_id,
+                global_fare_config_id=result.global_fare_config_id,
+                base_fare=result.base_fare,
+                per_km=result.per_km,
+                minimum_fare=result.minimum_fare,
+                billable_distance_km=result.billable_distance_km,
+                distance_charge=result.distance_charge,
+                estimated_fare=result.estimated_fare,
+                commission_percent=result.commission_percent,
+                commission_config_id=result.commission_config_id,
+                waiting_policy_id=result.waiting_policy_id,
+                cancellation_policy_id=result.cancellation_policy_id,
+                no_show_policy_id=result.no_show_policy_id,
+                effective_from=result.effective_from,
+                app_fee=result.app_fee,
+                driver_earning=result.driver_earning,
             )
             create_initial_stops(ride, request.data.get("stops", []))
     except ValueError as exc:
@@ -406,7 +439,11 @@ def schedule_ride(request):
         city_slug=request.data.get("city_slug"),
         fallback_user=request.user,
     )
-    fare = calculate_city_fare(city, ride_type, distance_km)
+
+    from app_settings.pricing_service import resolve_ride_fare
+
+    result = resolve_ride_fare(city, ride_type, distance_km)
+    fare = result.estimated_fare
 
     billing_source = (request.data.get("billing_source") or "personal").strip().lower()
     corporate_account = None
@@ -436,11 +473,34 @@ def schedule_ride(request):
                 distance_km=distance_km,
                 ride_type=ride_type,
                 fare=fare,
+                app_fee=result.app_fee,
+                driver_earning=result.driver_earning,
                 status="scheduled",
                 scheduled_at=scheduled_time,
                 billing_source=billing_source,
                 corporate_account=corporate_account,
                 cost_center=cost_center,
+            )
+            RidePricingSnapshot.objects.create(
+                ride=ride,
+                ride_type=result.ride_type,
+                source=result.source,
+                city_pricing_id=result.city_pricing_id,
+                global_fare_config_id=result.global_fare_config_id,
+                base_fare=result.base_fare,
+                per_km=result.per_km,
+                minimum_fare=result.minimum_fare,
+                billable_distance_km=result.billable_distance_km,
+                distance_charge=result.distance_charge,
+                estimated_fare=result.estimated_fare,
+                commission_percent=result.commission_percent,
+                commission_config_id=result.commission_config_id,
+                waiting_policy_id=result.waiting_policy_id,
+                cancellation_policy_id=result.cancellation_policy_id,
+                no_show_policy_id=result.no_show_policy_id,
+                effective_from=result.effective_from,
+                app_fee=result.app_fee,
+                driver_earning=result.driver_earning,
             )
             create_initial_stops(ride, request.data.get("stops", []))
     except ValueError as exc:
@@ -498,24 +558,25 @@ def estimate_fare(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    fare = calculate_city_fare(city, ride_type, distance_km)
-    pricing = MARKET["fare"][ride_type]
-    distance_charge = fare - pricing["base"]
-    app_fee = calculate_app_fee(fare)
-    driver_earning = fare - app_fee
+    from app_settings.pricing_service import resolve_ride_fare
+
+    result = resolve_ride_fare(city, ride_type, distance_km)
 
     return Response({
         "ride_type": ride_type,
-        "estimated_fare": str(fare),
-        "base_fare": str(pricing["base"]),
+        "estimated_fare": str(result.estimated_fare),
+        "base_fare": str(result.base_fare),
         "distance_km": str(distance_km),
-        "per_km": str(pricing["per_km"]),
-        "distance_charge": str(distance_charge),
+        "per_km": str(result.per_km),
+        "distance_charge": str(result.distance_charge),
+        "minimum_fare": str(result.minimum_fare),
         "waiting_fee": "0",
-        "app_fee": str(app_fee),
-        "driver_earning": str(driver_earning),
+        "app_fee": str(result.app_fee),
+        "driver_earning": str(result.driver_earning),
         "currency": MARKET["currency"],
         "is_estimate": True,
+        "pricing_source": result.source,
+        "city_override": result.source == "city",
     })
 
 
@@ -1065,12 +1126,18 @@ def start_ride(request, ride_id):
         waiting_fee = Decimal("0")
         if ride.driver_arrived_at:
             waited_seconds = int((now() - ride.driver_arrived_at).total_seconds())
-            waiting_fee = calculate_waiting_fee(waited_seconds)
+            waiting_fee = calculate_waiting_fee(waited_seconds, ride=ride)
 
         ride.waiting_fee = waiting_fee
         if waiting_fee > 0:
             ride.fare = ride.fare + waiting_fee
-            ride.app_fee = calculate_app_fee(ride.fare)
+            snapshot = getattr(ride, "pricing_snapshot", None)
+            commission_percent = (
+                snapshot.commission_percent if snapshot else None
+            )
+            from app_settings.pricing_service import calculate_ride_app_fee
+
+            ride.app_fee = calculate_ride_app_fee(ride.fare, commission_percent)
             ride.driver_earning = ride.fare - ride.app_fee
 
         ride.save(update_fields=["status", "waiting_fee", "fare", "app_fee", "driver_earning"])
@@ -1377,14 +1444,20 @@ def cancel_ride(request, ride_id):
     device_id = str(request.data.get("device_id") or "").strip()[:120]
 
     # Calculate cancellation fee / Lyft-style rider no-show
+    from app_settings.pricing_service import (
+        get_ride_cancellation_policy,
+        get_ride_waiting_policy,
+    )
+
     cancellation_fee = Decimal("0")
 
-    cancellation_cfg = MARKET.get("cancellation", {})
-    free_window_seconds = int(cancellation_cfg.get("free_window_minutes", 2)) * 60
-    en_route_fee = Decimal(str(cancellation_cfg.get("en_route_fee", "50")))
-    arrived_fee = Decimal(str(cancellation_cfg.get("arrived_fee", "75")))
-    driver_penalty = Decimal(str(cancellation_cfg.get("driver_penalty", "150")))
-    free_wait_seconds = int(MARKET["waiting"]["free_minutes"]) * 60
+    cancellation_cfg = get_ride_cancellation_policy(ride)
+    waiting_cfg = get_ride_waiting_policy(ride)
+    free_window_seconds = int(cancellation_cfg["free_window_minutes"]) * 60
+    en_route_fee = Decimal(str(cancellation_cfg["en_route_fee"]))
+    arrived_fee = Decimal(str(cancellation_cfg["arrived_fee"]))
+    driver_penalty = Decimal(str(cancellation_cfg["driver_penalty"]))
+    free_wait_seconds = int(waiting_cfg["free_minutes"]) * 60
 
     if cancelled_by == "rider" and ride.driver is not None:
         created_seconds_ago = (now() - ride.created_at).total_seconds()
@@ -1431,7 +1504,7 @@ def cancel_ride(request, ride_id):
                     },
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            fee_policy = get_no_show_fee_policy()
+            fee_policy = get_no_show_fee_policy(ride)
             no_show_fee = fee_policy["rider_fee"]
             driver_compensation = fee_policy["driver_compensation"]
             cancellation_fee = no_show_fee  # charged to rider, not driver

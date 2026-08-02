@@ -1,5 +1,30 @@
 from django.contrib import admin
-from .models import DispatchOfferLog, Ride, RideStop
+from .models import DispatchOfferLog, Ride, RidePricingSnapshot, RideStop
+
+
+class RidePricingSnapshotInline(admin.StackedInline):
+    model = RidePricingSnapshot
+    extra = 0
+    can_delete = False
+    readonly_fields = (
+        "ride_type",
+        "source",
+        "city_pricing",
+        "global_fare_config",
+        "base_fare",
+        "per_km",
+        "minimum_fare",
+        "billable_distance_km",
+        "distance_charge",
+        "estimated_fare",
+        "commission_percent",
+        "waiting_policy",
+        "cancellation_policy",
+        "no_show_policy",
+        "commission_policy",
+        "effective_from",
+        "created_at",
+    )
 
 
 class RideStopInline(admin.TabularInline):
@@ -51,7 +76,7 @@ class RideAdmin(admin.ModelAdmin):
         "driver_arrived_at",
         "search_started_at",
     )
-    inlines = [RideStopInline, DispatchOfferLogInline]
+    inlines = [RidePricingSnapshotInline, RideStopInline, DispatchOfferLogInline]
 
 
 @admin.register(RideStop)

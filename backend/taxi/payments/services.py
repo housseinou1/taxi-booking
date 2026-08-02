@@ -1,12 +1,15 @@
 import uuid
 from decimal import Decimal, ROUND_HALF_UP
 
-from taxi.market import calculate_app_fee
+from app_settings.pricing_service import (
+    calculate_ride_app_fee,
+    get_ride_commission_percent,
+)
 
 from .models import Payment, RiderPaymentMethod
 
 
-def calculate_payment_amounts(amount, tip_percentage=0, discount_amount=0):
+def calculate_payment_amounts(amount, tip_percentage=0, discount_amount=0, commission_percent=None):
     """
     Calculate payment breakdown amounts.
 
@@ -14,6 +17,7 @@ def calculate_payment_amounts(amount, tip_percentage=0, discount_amount=0):
         amount: The original fare amount (before discount).
         tip_percentage: Tip percentage to apply.
         discount_amount: Promo code discount amount to subtract from rider charge.
+        commission_percent: Optional platform commission percent override.
 
     Returns:
         Tuple of (charge_amount, app_fee, tip_percent, tip_amount, driver_earning, discount).
@@ -27,7 +31,7 @@ def calculate_payment_amounts(amount, tip_percentage=0, discount_amount=0):
     discount = Decimal(str(discount_amount or 0))
 
     # App fee and driver earning are always based on the ORIGINAL fare
-    app_fee = calculate_app_fee(ride_amount)
+    app_fee = calculate_ride_app_fee(ride_amount, commission_percent)
     tip_amount = (ride_amount * tip_percent / Decimal("100")).quantize(
         Decimal("0.01"),
         rounding=ROUND_HALF_UP,
@@ -71,8 +75,9 @@ def authorize_ride_payment(ride, discount_amount=0):
     default_method = get_default_payment_method(ride.rider)
     payment_method = default_method.payment_type if default_method else "test"
 
+    commission_percent = get_ride_commission_percent(ride)
     charge_amount, app_fee, tip_percent, tip_amount, driver_earning, discount = (
-        calculate_payment_amounts(ride.fare, 0, discount_amount)
+        calculate_payment_amounts(ride.fare, 0, discount_amount, commission_percent)
     )
 
     payment = Payment.objects.create(
@@ -105,8 +110,9 @@ def authorize_corporate_ride_payment(ride, discount_amount=0):
     if existing_payment:
         return existing_payment
 
+    commission_percent = get_ride_commission_percent(ride)
     charge_amount, app_fee, tip_percent, tip_amount, driver_earning, discount = (
-        calculate_payment_amounts(ride.fare, 0, discount_amount)
+        calculate_payment_amounts(ride.fare, 0, discount_amount, commission_percent)
     )
 
     payment = Payment.objects.create(

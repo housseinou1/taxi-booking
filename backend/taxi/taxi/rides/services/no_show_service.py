@@ -7,8 +7,10 @@ from decimal import Decimal
 
 from django.utils import timezone
 
-from taxi.market import MARKET
-from taxi.rides.services.waiting_service import get_waiting_policy
+from app_settings.pricing_service import (
+    get_ride_no_show_policy,
+    get_ride_waiting_policy,
+)
 
 # Canonical reason for Lyft-style rider no-show (plus nearby legacy aliases).
 NO_SHOW_REASON_KEYS = {
@@ -39,28 +41,28 @@ def waited_seconds_after_arrival(ride, at=None) -> int:
     return max(0, int((reference - ride.driver_arrived_at).total_seconds()))
 
 
-def free_wait_seconds() -> int:
-    return int(get_waiting_policy()["free_minutes"]) * 60
+def free_wait_seconds(ride=None) -> int:
+    return int(get_ride_waiting_policy(ride)["free_minutes"]) * 60
 
 
-def max_wait_seconds() -> int:
-    policy = get_waiting_policy()
+def max_wait_seconds(ride=None) -> int:
+    policy = get_ride_waiting_policy(ride)
     return int(policy.get("max_wait_minutes", policy["free_minutes"])) * 60
 
 
-def no_show_max_distance_m() -> float:
-    return float(get_waiting_policy().get("no_show_max_distance_m", 150))
+def no_show_max_distance_m(ride=None) -> float:
+    return float(get_ride_waiting_policy(ride).get("no_show_max_distance_m", 150))
 
 
-def arrive_max_distance_m() -> float:
-    return float(get_waiting_policy().get("arrive_max_distance_m", 350))
+def arrive_max_distance_m(ride=None) -> float:
+    return float(get_ride_waiting_policy(ride).get("arrive_max_distance_m", 350))
 
 
-def get_no_show_fee_policy() -> dict:
-    cfg = MARKET.get("no_show") or {}
+def get_no_show_fee_policy(ride=None) -> dict:
+    policy = get_ride_no_show_policy(ride)
     return {
-        "rider_fee": Decimal(str(cfg.get("rider_fee", "100"))),
-        "driver_compensation": Decimal(str(cfg.get("driver_compensation", "100"))),
+        "rider_fee": Decimal(str(policy["rider_fee"])),
+        "driver_compensation": Decimal(str(policy["driver_compensation"])),
     }
 
 
@@ -130,9 +132,9 @@ def evaluate_no_show_eligibility(
     - Driver GPS is within no_show_max_distance_m of pickup
     """
     waited = waited_seconds_after_arrival(ride, at=at)
-    free_secs = free_wait_seconds()
-    max_secs = max_wait_seconds()
-    max_dist = no_show_max_distance_m()
+    free_secs = free_wait_seconds(ride)
+    max_secs = max_wait_seconds(ride)
+    max_dist = no_show_max_distance_m(ride)
     calls = int(getattr(ride, "rider_call_attempt_count", 0) or 0)
 
     has_coords = driver_lat is not None and driver_lng is not None
