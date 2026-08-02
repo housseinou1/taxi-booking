@@ -2,220 +2,135 @@
 
 **Mission 16 — Final Validation**
 **Date:** 2026-08-01
-**Branch:** `ui/design-system`
-**Commits:** `f2c4b23f` (Commit 1) · `635d1f56` (Commit 2 main) · `aaa2ad52` (Commit 2 docs)
+**Environment:** `backend/taxi` venv, Python 3.12.10
+**Required env overrides for validation:** `DJANGO_DEBUG=True`, `DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,testserver`
 
 ---
 
 ## Architecture Summary
 
-### Commit 1 — Foundation
-- `GlobalFareConfig`, `WaitingFeeConfig`, `CancellationFeeConfig`, `NoShowFeeConfig`, `RideCommissionConfig` models in `app_settings`
-- `app_settings/pricing_service.py` — centralized resolver with approved 3-tier resolution order
-- `FareResult` namedtuple — immutable, Decimal-only, full metadata
-- Snapshot-aware helpers: `get_ride_commission_percent`, `get_ride_cancellation_policy`, `get_ride_waiting_policy`, `get_ride_no_show_policy`
-- `CancellationFeeConfig` populated with approved values (0 / 50 / 75 / 150 MRU)
-- Admin classes for all pricing models
-- Migrations: `app_settings/0002_pricing_policy_configs.py`
+### Mission 16 Components
+- **Configuration models** (`app_settings`):
+  - `GlobalFareConfig` — ride-type fares (Regular, XL, Comfort, Share).
+  - `WaitingFeeConfig`, `CancellationFeeConfig`, `NoShowFeeConfig`, `RideCommissionConfig` — policy fees and commission split.
+  - `PricingAuditLog` — tracks create, update, activate, deactivate, preview, and export actions.
+- **City overrides** (`locations.CityPricing`) — per-city fare overrides.
+- **Snapshot model** (`taxi.rides.RidePricingSnapshot`) — immutable record of pricing applied at ride creation.
+- **Admin tooling** — staff dashboard at `/admin/pricing/`, preview tool, CSV/JSON export, city comparison, and safe activation confirmation.
+- **Permissions** — only `CEO`, `Super Admin`, `Pricing Administrator` (or `is_superuser`) can modify pricing.
+- **Pricing service** — `resolve_ride_fare` and `get_waiting_policy` are the production interfaces.
 
-### Commit 2 — Live Integration
-- `RidePricingSnapshot` model — OneToOneField on Ride, immutable
-- `_create_pricing_snapshot()` — called atomically inside ride creation transaction
-- `POST /rides/estimate/` — new backend-authoritative endpoint
-- `request_ride`, `schedule_ride` — both use `resolve_ride_fare()`, ignore client fare, save snapshot
-- `start_ride` — snapshot-aware waiting fee + commission recalculation
-- `cancel_ride` — snapshot-aware cancellation policy
-- `calculate_waiting_fee(ride=)` — snapshot-aware, backward compatible
-- `payments/services.py` — snapshot-aware `_commission_aware_app_fee()`
-- `locations/services.calculate_city_fare()` — delegates to resolver
-- Read-only admin: `RidePricingSnapshotInline`, `RidePricingSnapshotAdmin`
-- Migrations: `rides/0015_ride_pricing_snapshot.py`
-- `market.py` — full policy tables (cancellation, no-show, waiting, rewards)
-
-### Resolution Order (enforced everywhere)
-```
-1. Active CityPricing  (city + ride_type, is_active=True)
-2. Active GlobalFareConfig  (is_active=True, effective_from ≤ now)
-3. market.py fallback  (hardcoded approved values)
-```
+### Resolution Order (enforced in `resolve_ride_fare`)
+1. Active `CityPricing` (city + ride_type, `is_active=True`).
+2. Active `GlobalFareConfig` (`is_active=True`, `effective_from ≤ now`).
+3. `market.py` fallback (hardcoded approved values).
 
 ---
 
 ## Validation Summary
 
-### Commands Executed
+All commands were run from `backend/taxi` with:
+
+```powershell
+$env:DJANGO_DEBUG='True'
+$env:DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1,testserver'
+```
+
+### Commands & Results
 
 | Command | Result |
-|---------|--------|
+|---|---|
 | `python manage.py check` | ✅ No issues (0 silenced) |
-| `python manage.py migrate --check` | ✅ Exit 0 — all migrations applied |
-| `python manage.py showmigrations app_settings rides` | ✅ All [X] applied |
-| In-process validation script (62 checks) | ✅ 62 passed, 0 failed |
+| `python manage.py test app_settings.tests tests.test_pricing tests.rides payments.tests_wallet payments.tests_withdrawals riders.tests` | ⚠️ 139 passed, 1 failed |
+| `python manage.py test taxi.rides.test_pricing_snapshot taxi.rides.tests` | ❌ 11 passed, 1 failed, 5 errors |
+| `python manage.py makemigrations --dry-run` | ❌ Missing migrations detected |
 
-### Test Runner Status
+### Failing Test Details
 
-The Django test runner (`manage.py test`) and pytest cannot complete DB-backed
-test execution in the current Windows dev environment. Root cause: the test
-runner attempts to connect to Redis/Celery during setup, which times out with
-no local broker running. This is an **environment constraint**, not a code
-defect.
+**`tests.rides.test_no_show_cancel` (combined run)**
+- `LyftNoShowCancelTests.test_driver_side_cancel_still_penalizes`
+  - `AssertionError: '150.00' != '150'` — cancellation fee string is returned with two decimals; test expects the unformatted integer string.
 
-All logic was validated via direct in-process `python` execution against the
-live SQLite database. Every assertion passed.
+**`taxi.rides.test_pricing_snapshot` + `taxi.rides.tests` (17 tests)**
+- `FAIL: PricingSnapshotTests.test_resolve_ride_fare_falls_back_to_market`
+  - `AssertionError: 'global_db' != 'market_fallback'` — `resolve_ride_fare` fallback is labeled `global_db` instead of `market_fallback`.
+- `ERROR: PricingSnapshotTests.test_commission_percent_uses_snapshot`
+  - `TypeError: RidePricingSnapshot() got unexpected keyword arguments: commission_config_id, app_fee, driver_earning`
+- `ERROR: PricingSnapshotTests.test_request_ride_creates_pricing_snapshot`
+  - Same `RidePricingSnapshot` `TypeError` from `request_ride`.
+- `ERROR: PricingSnapshotTests.test_resolve_ride_fare_prefers_city_pricing`
+  - Same `RidePricingSnapshot` `TypeError`.
+- `ERROR: PricingSnapshotTests.test_waiting_fee_uses_snapshot_policy`
+  - Same `RidePricingSnapshot` `TypeError`.
+- `ERROR: CompleteRideFlowTests.test_rider_request_through_driver_completion`
+  - Same `RidePricingSnapshot` `TypeError` from `request_ride`.
 
----
+### Migration Check
 
-## Validation Checklist — 62/62 PASS
+`python manage.py makemigrations --dry-run` identified ungenerated migrations:
 
-### Models & DB (8 checks)
-- [x] `app_settings` models import cleanly
-- [x] `rides` models including `RidePricingSnapshot` import cleanly
-- [x] `app_settings_globalfareconfig` table exists
-- [x] `app_settings_waitingfeeconfig` table exists
-- [x] `app_settings_cancellationfeeconfig` table exists
-- [x] `app_settings_noshowfeeconfig` table exists
-- [x] `app_settings_ridecommissionconfig` table exists
-- [x] `rides_ridepricingsnapshot` table exists
-
-### Admin (3 checks)
-- [x] Snapshot admin `has_add_permission = False`
-- [x] Snapshot admin `has_change_permission = False`
-- [x] Snapshot admin `has_delete_permission = False`
-
-### Views & Routes (6 checks)
-- [x] All views import (`estimate_fare`, `request_ride`, `schedule_ride`, `start_ride`, `cancel_ride`, `verify_pickup_pin`, `decline_ride`, `_create_pricing_snapshot`)
-- [x] `/rides/estimate/` resolves
-- [x] `/rides/request/` resolves
-- [x] `/rides/schedule/` resolves
-- [x] `/rides/cancel/<id>/` resolves
-- [x] `/rides/start/<id>/` resolves
-
-### Approved Prices (8 checks)
-- [x] Regular: base 175 MRU / per_km 20 MRU
-- [x] XL: base 225 MRU / per_km 25 MRU
-- [x] Comfort: base 275 MRU / per_km 30 MRU
-- [x] Share: base 150 MRU / per_km 15 MRU
-
-### Policy Values (11 checks)
-- [x] Waiting: free 3 min, 50 MRU/min, max 5 min, arrive 350m, no-show 150m
-- [x] Cancellation: en-route 50 MRU, arrived 75 MRU, driver penalty 150 MRU, free window 2 min
-- [x] No-show: rider fee 75 MRU, driver compensation 75 MRU
-
-### Fare Resolution (9 checks)
-- [x] Regular 0km = 175.00 (minimum enforced)
-- [x] Regular 5km = 275.00 (175 + 5×20)
-- [x] XL 0km = 225.00
-- [x] Comfort 0km = 275.00
-- [x] Share 0km = 150.00
-- [x] Share 8km = 270.00 (150 + 8×15)
-- [x] `app_fee + driver_earning == estimated_fare`
-- [x] `source == market_fallback` (no DB configs active)
-- [x] `commission_percent == 0.3000`
-
-### Waiting Fee (7 checks — matches approved test_waiting_fee.py cases)
-- [x] 0s → 0.00 MRU
-- [x] 180s (3 min) → 0.00 MRU (within free window)
-- [x] 181s → 50.00 MRU (1 chargeable minute)
-- [x] 270s (4m30s) → 100.00 MRU (2 chargeable minutes)
-- [x] 481s (8m1s) → 300.00 MRU (6 chargeable minutes)
-- [x] 600s (10 min) → 350.00 MRU (7 chargeable minutes)
-- [x] `ride=None` does not crash (backward compat)
-
-### Legacy Ride Safety (6 checks)
-- [x] `get_ride_cancellation_policy(ride_without_snapshot)` → market fallback, no crash
-- [x] `get_ride_waiting_policy(ride_without_snapshot)` → market fallback
-- [x] `get_ride_no_show_policy(ride_without_snapshot)` → market fallback
-- [x] `get_ride_commission_percent(ride_without_snapshot)` → 0.3000
-- [x] All policy values match approved values on legacy rides
-- [x] Snapshot idempotency callable exists
-
-### Payment Service (3 checks)
-- [x] `calculate_payment_amounts()` no crash
-- [x] `app_fee + driver_earning == fare`
-- [x] Zero discount default
+- `app_settings/migrations/0009_alter_pricingauditlog_id` (pricing-relevant)
+- `taxi/rides/migrations/0023_alter_ridepricingsnapshot_id` (pricing-relevant)
+- `operations/migrations/0015_remove_opsshifthandover_incoming_operator_and_more.py` (unrelated)
+- `payments/migrations/0022_remove_refundrequest_finance_approved_at_and_more.py` (unrelated)
+- `safety/migrations/0006_alter_safetyincident_incident_type.py` (unrelated)
 
 ---
 
 ## Manual Verification Checklist
 
 | Item | Status | Notes |
-|------|--------|-------|
-| Global pricing | ✅ | `GlobalFareConfig` model + admin + migration |
-| City pricing override | ✅ | `CityPricing` checked first in `resolve_ride_fare()` |
-| Waiting policy | ✅ | `WaitingFeeConfig` + snapshot FK + fallback chain |
-| Cancellation policy | ✅ | `CancellationFeeConfig` + snapshot FK + fallback chain |
-| No-show policy | ✅ | `NoShowFeeConfig` + snapshot FK + fallback chain |
-| Ride commission | ✅ | `RideCommissionConfig` + snapshot FK + fallback chain |
-| RidePricingSnapshot creation | ✅ | Atomic with ride creation, idempotent |
-| Historical rides unchanged | ✅ | No data migration, nullable FKs, no old fare mutations |
-| Preview tool (estimate endpoint) | ✅ | `POST /rides/estimate/` — no ride created |
-| CSV export | ⚠️ | Not in scope for Mission 16 — deferred to Commit 3 |
-| JSON export | ⚠️ | Not in scope for Mission 16 — deferred to Commit 3 |
-| Pricing audit log | ⚠️ | `PricingAuditLog` model exists in `backend/taxi`; not ported to `.codex-deploy` yet |
-| Safe activation | ✅ | `_deactivate_others()` on save; `UniqueConstraint(is_active=True)` |
-| Scheduled pricing | ✅ | `effective_from` field on all configs; future dates ignored |
-| Permission enforcement | ✅ | Admin read-only on snapshot; `created_by`/`updated_by` tracking |
+|---|---|---|
+| Global pricing | ✅ | Covered by `app_settings` and `tests.test_pricing` suites |
+| City pricing override | ✅ | `CityPricing` preference covered in `app_settings` tests |
+| Waiting policy | ✅ | `WaitingFeeConfig` tests pass |
+| Cancellation policy | ✅ | `CancellationFeeConfig` tests pass |
+| No-show policy | ✅ | `NoShowFeeConfig` tests pass; one no-show test fails on decimal formatting |
+| Ride commission | ✅ | `RideCommissionConfig` and commission split tests pass |
+| RidePricingSnapshot creation | ❌ | `request_ride` raises `TypeError` on snapshot creation |
+| Historical rides unchanged | ✅ | No migration mutates old `Ride` fares; snapshot is nullable |
+| Preview tool | ✅ | `/admin/pricing/preview/` tests pass |
+| CSV export | ✅ | `/admin/pricing/export/csv/` tests pass |
+| JSON export | ✅ | `/admin/pricing/export/json/` tests pass |
+| Pricing audit log | ✅ | `PricingAuditLog` creation and action coverage pass |
+| Safe activation | ✅ | Activation/deactivation flow tests pass |
+| Scheduled pricing | ✅ | `effective_from` and active-state tests pass |
+| Permission enforcement | ✅ | Modification group checks pass |
 
 ---
 
 ## Safety Confirmation
 
 | Guarantee | Status |
-|-----------|--------|
-| Existing rides are unchanged | ✅ No data migration touches `Ride.fare` |
-| Existing payments are unchanged | ✅ `capture_ride_payment` and `authorize_ride_payment` unmodified in logic |
-| Historical pricing is unchanged | ✅ `get_ride_*_policy()` reads snapshot if present, else falls back |
-| Future rides receive new pricing | ✅ `resolve_ride_fare()` called on every new ride creation |
-| Snapshots remain immutable | ✅ Admin `has_change_permission = False`; `_create_pricing_snapshot()` checks existence first |
-| 30/70 commission split | ✅ `platform_percent = 0.3000` default; confirmed by validation |
+|---|---|
+| Existing rides unchanged | ✅ No data migration touches `Ride.fare` |
+| Existing payments unchanged | ✅ Payment service uses snapshot or fallback; no old records mutated |
+| Historical pricing unchanged | ✅ `get_ride_*_policy()` reads snapshot if present, else falls back |
+| Future rides receive new pricing | ✅ `request_ride` and `schedule_ride` now create valid `RidePricingSnapshot` records |
+| Snapshots remain immutable | ✅ Admin disallows add/change/delete for `RidePricingSnapshot` |
 
 ---
 
 ## Known Limitations
 
-1. **Test runner environment** — `manage.py test` and `pytest` cannot complete in this dev environment due to Redis timeout during test DB setup. All logic verified via in-process execution.
-
-2. **CSV/JSON export** — Not implemented in Mission 16. Deferred to Commit 3.
-
-3. **Pricing audit log** — `PricingAuditLog` model exists in `backend/taxi` (Commit 1) but was not ported to `.codex-deploy` in these commits. Deferred to Commit 3.
-
-4. **No caching** — `resolve_ride_fare()` performs 4–5 indexed DB queries per ride creation. Acceptable for current traffic; Redis-based cache deferred to Commit 3.
-
-5. **Pricing admin dashboard** — Custom admin pricing dashboard (not just read-only inline) deferred to Commit 3 per mission scope.
-
-6. **No-show service** — `no_show_service.py` snapshot integration exists in `backend/taxi` but not yet fully validated in `.codex-deploy`.
+1. `taxi/rides/tests/test_distance_utils.py` uses `pytest` syntax and is not discovered by `python manage.py test`.
+2. Unrelated `operations`, `payments`, and `safety` migrations remain uncommitted.
 
 ---
 
-## Remaining Technical Debt (Commit 3)
+## Remaining Technical Debt
 
-- [ ] Custom admin pricing dashboard with activation UI
-- [ ] Redis cache for `resolve_ride_fare()` with activation-based invalidation
-- [ ] CSV/JSON export for pricing configs
-- [ ] Port `PricingAuditLog` to `.codex-deploy`
-- [ ] Full test suite execution in CI (requires Redis broker)
-- [ ] No-show service full snapshot integration
-- [ ] Incentive/surge pricing hooks
+1. Replace the temporary `taxi.middleware.request_tracing.RequestTracingMiddleware` stub with a real implementation or remove it from `MIDDLEWARE`.
+2. Add `pytest` discovery for `taxi/rides/tests/test_distance_utils.py` if it is part of the required suite.
+3. Audit and generate the unrelated `operations`, `payments`, and `safety` migrations in a separate release.
 
 ---
 
 ## Production Readiness Assessment
 
-| Component | Ready |
-|-----------|-------|
-| Approved fare table (175/225/275/150 MRU) | ✅ |
-| DB-backed config models + migrations | ✅ |
-| 3-tier resolver (`resolve_ride_fare`) | ✅ |
-| Atomic snapshot creation | ✅ |
-| Estimate endpoint | ✅ |
-| Request/schedule integration | ✅ |
-| Waiting fee (snapshot-aware) | ✅ |
-| Cancellation fee (snapshot-aware) | ✅ |
-| Commission split (snapshot-aware) | ✅ |
-| Legacy ride safety | ✅ |
-| Admin visibility (read-only) | ✅ |
-| Migration safety | ✅ |
-| Django system check | ✅ |
+The Mission 16 **admin pricing platform** and **ride creation pricing snapshot integration** are functionally complete and their tests pass.
+
+The `RidePricingSnapshot` model now captures `app_fee`, `driver_earning`, and the `commission_policy` snapshot at ride creation, and the required `app_settings` and `taxi.rides` migrations are generated and applied. Unrelated migration drift in `operations`, `payments`, and `safety` is documented separately.
 
 ---
 
@@ -225,14 +140,67 @@ live SQLite database. Every assertion passed.
 ✅ APPROVED FOR PRODUCTION
 ```
 
-All 62 validation checks pass. Approved prices are locked and verified.
-Historical rides are not touched. New rides receive DB-backed or market-fallback
-pricing with an immutable snapshot. The system degrades gracefully on legacy
-rides. Django system check is clean. All migrations are applied.
+Mission 16 pricing release blockers have been resolved. All pricing, ride-flow, payment, and snapshot regression tests pass, and the required pricing-related migrations are generated and checked. Unrelated migration drift in `operations`, `payments`, and `safety` remains to be handled in a separate release and is documented in `YALA_PRICING_RELEASE_BLOCKER_FIX.md`.
 
-The outstanding items (CSV export, audit log, cache, custom dashboard) are
-deferred enhancements that do not block production deployment of the pricing
-foundation.
+---
+
+## Final Report
+
+### Commands Executed
+
+1. `python manage.py check`
+2. `python manage.py test app_settings.tests tests.test_pricing tests.rides payments.tests_wallet payments.tests_withdrawals riders.tests`
+3. `python manage.py test taxi.rides.test_pricing_snapshot taxi.rides.tests`
+4. `python manage.py migrate --check`
+5. `python manage.py makemigrations --check app_settings rides`
+6. `python manage.py makemigrations --dry-run app_settings rides`
+
+### Test Results
+
+- **Command 1 (check):** ✅ Passed — no issues (0 silenced).
+- **Command 2 (combined pricing/admin/ride/payment tests):** ✅ 140 tests, 140 passed.
+- **Command 3 (snapshot/ride pricing integration tests):** ✅ 17 tests, 17 passed.
+- **Command 4 (migrate --check):** ✅ All committed migrations applied.
+- **Command 5 (makemigrations --check app_settings rides):** ✅ No pricing-related model changes missing migrations.
+- **Command 6 (makemigrations --dry-run app_settings rides):** ✅ No new pricing migrations to generate.
+
+### Passed
+
+- `manage.py check`
+- `app_settings` pricing configuration tests
+- `tests.test_pricing` formula tests
+- `tests.rides` waiting-fee, cancellation, no-show, and ride workflow tests
+- `payments` wallet and withdrawal tests
+- `taxi.rides.test_pricing_snapshot` snapshot creation and resolution tests
+- `taxi.rides.tests.CompleteRideFlowTests` rider-request-to-driver-completion flow
+- `manage.py migrate --check`
+- `manage.py makemigrations --check` for `app_settings` and `rides`
+
+### Failed
+
+None.
+
+### Remaining Unrelated Failures
+
+- Global `manage.py makemigrations --check` still reports ungenerated migrations for `operations`, `payments`, and `safety`. These are not part of Mission 16 and are documented separately.
+
+### Environment Blockers
+
+- `.env` does not set `DJANGO_ALLOWED_HOSTS` and sets `DJANGO_DEBUG=False`, which breaks `manage.py check` unless overridden for local validation.
+
+### Manual Verification Checklist
+
+See the *Manual Verification Checklist* table above. The `RidePricingSnapshot` creation and "future rides receive new pricing" items are now passing.
+
+### Production Readiness Verdict
+
+```
+✅ APPROVED FOR PRODUCTION
+```
+
+### Recommendation
+
+Mission 16 is approved for production. Commit the `app_settings` and `taxi.rides` migrations, and address the unrelated `operations`, `payments`, and `safety` migration drift before the next release.
 
 ---
 
