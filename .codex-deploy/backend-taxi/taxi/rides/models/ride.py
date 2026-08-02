@@ -9,6 +9,133 @@ def generate_pickup_pin():
     return f"{secrets.randbelow(10000):04d}"
 
 
+class RidePricingSnapshot(models.Model):
+    """Immutable record of the pricing applied when a ride was created.
+
+    Created once inside the ride creation transaction.  Must not be edited
+    after creation except for the final waiting_fee field set when the ride
+    starts (this is a clearly-defined mutable field).
+    """
+
+    SOURCE_CHOICES = [
+        ("city", "City Override"),
+        ("global_db", "Global DB"),
+        ("market_fallback", "Market Fallback"),
+    ]
+
+    ride = models.OneToOneField(
+        "rides.Ride",
+        on_delete=models.CASCADE,
+        related_name="pricing_snapshot",
+    )
+
+    ride_type = models.CharField(max_length=20)
+    source = models.CharField(
+        max_length=20,
+        choices=SOURCE_CHOICES,
+        default="market_fallback",
+    )
+
+    city_pricing = models.ForeignKey(
+        "locations.CityPricing",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="ride_snapshots",
+    )
+    global_fare_config = models.ForeignKey(
+        "app_settings.GlobalFareConfig",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="ride_snapshots",
+    )
+
+    base_fare = models.DecimalField(max_digits=10, decimal_places=2)
+    per_km = models.DecimalField(max_digits=10, decimal_places=2)
+    minimum_fare = models.DecimalField(max_digits=10, decimal_places=2)
+
+    billable_distance_km = models.DecimalField(
+        max_digits=6,
+        decimal_places=2,
+        default=Decimal("0.00"),
+    )
+    distance_charge = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal("0.00"),
+    )
+    estimated_fare = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+    )
+
+    commission_percent = models.DecimalField(
+        max_digits=5,
+        decimal_places=4,
+        default=Decimal("0.3000"),
+        help_text="Platform commission share at ride creation.",
+    )
+
+    waiting_policy = models.ForeignKey(
+        "app_settings.WaitingFeeConfig",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="ride_snapshots",
+    )
+    cancellation_policy = models.ForeignKey(
+        "app_settings.CancellationFeeConfig",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="ride_snapshots_cancellation",
+    )
+    no_show_policy = models.ForeignKey(
+        "app_settings.NoShowFeeConfig",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="ride_snapshots_no_show",
+    )
+    commission_policy = models.ForeignKey(
+        "app_settings.RideCommissionConfig",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="ride_snapshots_commission",
+    )
+
+    app_fee = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal("0.00"),
+    )
+    driver_earning = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal("0.00"),
+    )
+
+    effective_from = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Earliest effective timestamp of the applied configurations.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        app_label = "rides"
+        indexes = [
+            models.Index(fields=["ride"], name="ride_snapshot_ride_idx"),
+            models.Index(fields=["source"], name="ride_snapshot_source_idx"),
+        ]
+
+    def __str__(self):
+        return f"PricingSnapshot for Ride #{self.ride_id} ({self.source})"
+
+
 SHARE_PASSENGER_STATUS_CHOICES = [
     ("waiting_match", "Waiting for Match"),
     ("matched", "Matched"),

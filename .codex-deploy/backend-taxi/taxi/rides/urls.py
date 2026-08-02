@@ -1,6 +1,7 @@
 from django.urls import include, path
 
 from .views import (
+    estimate_fare,
     request_ride,
     schedule_ride,
     my_scheduled_rides,
@@ -44,6 +45,7 @@ from features.views import (
 from operations.views import complete_maintenance, maintenance_reminders
 
 urlpatterns = [
+    path("estimate/", estimate_fare),
     path("request/", request_ride),
     path("schedule/", schedule_ride),
     path("scheduled/", my_scheduled_rides),

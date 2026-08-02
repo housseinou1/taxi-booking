@@ -127,9 +127,20 @@ def approved_driver_error(user):
 
 
 def calculate_money(ride):
+    """Legacy fallback: recalculate app_fee/driver_earning from market.py.
+
+    Used for completed rides that predate the pricing snapshot.
+    For new rides, commission is read from the snapshot.
+    """
     fare = ride.fare or 0
-    app_fee = calculate_app_fee(fare)
-    driver_earning = fare - app_fee
+    try:
+        commission_percent = get_ride_commission_percent(ride)
+        app_fee = (Decimal(str(fare)) * commission_percent).quantize(
+            Decimal("0.01"), rounding=ROUND_HALF_UP
+        )
+    except Exception:
+        app_fee = calculate_app_fee(fare)
+    driver_earning = Decimal(str(fare)) - app_fee
 
     ride.app_fee = app_fee
     ride.driver_earning = driver_earning
@@ -174,6 +185,124 @@ def create_initial_stops(ride, stops):
             latitude=latitude,
             longitude=longitude,
         )
+
+
+VALID_RIDE_TYPES = {"regular", "xl", "comfort", "share"}
+
+
+def _create_pricing_snapshot(ride, fare_result):
+    """Persist the pricing applied at ride creation.
+
+    Called inside the same atomic transaction as ride creation so that
+    the fare and snapshot are always consistent.
+    Does nothing (safe) if a snapshot already exists for this ride.
+    """
+    if RidePricingSnapshot.objects.filter(ride=ride).exists():
+        return
+
+    from app_settings.models import (
+        GlobalFareConfig,
+        WaitingFeeConfig,
+        CancellationFeeConfig,
+        NoShowFeeConfig,
+        RideCommissionConfig,
+    )
+    from locations.models import CityPricing
+
+    city_pricing_obj = None
+    if fare_result.city_pricing_id:
+        city_pricing_obj = CityPricing.objects.filter(pk=fare_result.city_pricing_id).first()
+
+    global_config_obj = None
+    if fare_result.global_fare_config_id:
+        global_config_obj = GlobalFareConfig.objects.filter(pk=fare_result.global_fare_config_id).first()
+
+    waiting_obj = None
+    if fare_result.waiting_policy_id:
+        waiting_obj = WaitingFeeConfig.objects.filter(pk=fare_result.waiting_policy_id).first()
+
+    cancellation_obj = None
+    if fare_result.cancellation_policy_id:
+        cancellation_obj = CancellationFeeConfig.objects.filter(pk=fare_result.cancellation_policy_id).first()
+
+    no_show_obj = None
+    if fare_result.no_show_policy_id:
+        no_show_obj = NoShowFeeConfig.objects.filter(pk=fare_result.no_show_policy_id).first()
+
+    commission_obj = None
+    if fare_result.commission_config_id:
+        commission_obj = RideCommissionConfig.objects.filter(pk=fare_result.commission_config_id).first()
+
+    RidePricingSnapshot.objects.create(
+        ride=ride,
+        ride_type=fare_result.ride_type,
+        source=fare_result.source,
+        city_pricing=city_pricing_obj,
+        global_fare_config=global_config_obj,
+        base_fare=fare_result.base_fare,
+        per_km=fare_result.per_km,
+        minimum_fare=fare_result.minimum_fare,
+        billable_distance_km=fare_result.billable_distance_km,
+        distance_charge=fare_result.distance_charge,
+        estimated_fare=fare_result.estimated_fare,
+        commission_percent=fare_result.commission_percent,
+        waiting_policy=waiting_obj,
+        cancellation_policy=cancellation_obj,
+        no_show_policy=no_show_obj,
+        commission_policy=commission_obj,
+        app_fee=fare_result.app_fee,
+        driver_earning=fare_result.driver_earning,
+        effective_from=fare_result.effective_from,
+    )
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def estimate_fare(request):
+    """POST /rides/estimate/
+
+    Backend-authoritative fare estimate.  Returns pricing metadata using the
+    same resolution order as ride creation.  Does NOT create a ride.
+    """
+    ride_type = str(request.data.get("ride_type", "regular")).lower().strip()
+    if ride_type not in VALID_RIDE_TYPES:
+        return Response(
+            {"detail": f"Unsupported ride type '{ride_type}'. Valid types: {sorted(VALID_RIDE_TYPES)}."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        distance_km = Decimal(str(request.data.get("distance_km", request.data.get("distance", 0))))
+        if distance_km < Decimal("0") or distance_km > Decimal("200"):
+            raise ValueError("distance_km must be between 0 and 200.")
+    except (ValueError, TypeError) as exc:
+        return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+    city = resolve_city(
+        city_id=request.data.get("city"),
+        city_slug=request.data.get("city_slug"),
+        fallback_user=request.user,
+    )
+
+    fare_result = resolve_ride_fare(city, ride_type, distance_km)
+
+    return Response(
+        {
+            "ride_type": fare_result.ride_type,
+            "distance_km": str(fare_result.billable_distance_km),
+            "base_fare": str(fare_result.base_fare),
+            "per_km": str(fare_result.per_km),
+            "minimum_fare": str(fare_result.minimum_fare),
+            "distance_charge": str(fare_result.distance_charge),
+            "estimated_fare": str(fare_result.estimated_fare),
+            "pricing_source": fare_result.source,
+            "city_override": fare_result.source == "city",
+            "app_fee_estimate": str(fare_result.app_fee),
+            "driver_earning_estimate": str(fare_result.driver_earning),
+            "currency": MARKET["currency"],
+        },
+        status=status.HTTP_200_OK,
+    )
 
 
 @api_view(["POST"])
@@ -236,7 +365,11 @@ def request_ride(request):
         city_slug=request.data.get("city_slug"),
         fallback_user=request.user,
     )
-    fare = calculate_city_fare(city, ride_type, distance_km)
+
+    # Resolve pricing once using the approved resolution order.
+    # Ignore any client-submitted fare value.
+    fare_result = resolve_ride_fare(city, ride_type, distance_km)
+    fare = fare_result.estimated_fare
 
     referral_code = request.data.get("referral_code") or None
 
@@ -254,10 +387,14 @@ def request_ride(request):
                 distance_km=distance_km,
                 ride_type=ride_type,
                 fare=fare,
+                app_fee=fare_result.app_fee,
+                driver_earning=fare_result.driver_earning,
                 status="requested",
                 referral_code=referral_code,
             )
             create_initial_stops(ride, request.data.get("stops", []))
+            # Persist pricing snapshot atomically with ride creation
+            _create_pricing_snapshot(ride, fare_result)
     except ValueError as exc:
         return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -284,7 +421,11 @@ def request_ride(request):
         pass
 
     serializer = RideSerializer(ride, context={"request": request})
-    return Response(serializer.data, status=status.HTTP_201_CREATED)
+    data = serializer.data
+    data["app_fee"] = str(ride.app_fee)
+    data["driver_earning"] = str(ride.driver_earning)
+    data["pricing_source"] = fare_result.source
+    return Response(data, status=status.HTTP_201_CREATED)
 
 
 @api_view(["POST"])
@@ -335,7 +476,10 @@ def schedule_ride(request):
         city_slug=request.data.get("city_slug"),
         fallback_user=request.user,
     )
-    fare = calculate_city_fare(city, ride_type, distance_km)
+
+    # Resolve pricing once — ignore any client-submitted fare value.
+    fare_result = resolve_ride_fare(city, ride_type, distance_km)
+    fare = fare_result.estimated_fare
 
     try:
         with transaction.atomic():
@@ -351,15 +495,23 @@ def schedule_ride(request):
                 distance_km=distance_km,
                 ride_type=ride_type,
                 fare=fare,
+                app_fee=fare_result.app_fee,
+                driver_earning=fare_result.driver_earning,
                 status="scheduled",
                 scheduled_at=scheduled_time,
             )
             create_initial_stops(ride, request.data.get("stops", []))
+            # Persist pricing snapshot atomically with ride creation
+            _create_pricing_snapshot(ride, fare_result)
     except ValueError as exc:
         return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
     serializer = RideSerializer(ride, context={"request": request})
-    return Response(serializer.data, status=status.HTTP_201_CREATED)
+    data = serializer.data
+    data["app_fee"] = str(ride.app_fee)
+    data["driver_earning"] = str(ride.driver_earning)
+    data["pricing_source"] = fare_result.source
+    return Response(data, status=status.HTTP_201_CREATED)
 
 
 @api_view(["GET"])
@@ -650,12 +802,17 @@ def start_ride(request, ride_id):
     waiting_fee = Decimal("0")
     if ride.driver_arrived_at:
         waited_seconds = int((now() - ride.driver_arrived_at).total_seconds())
-        waiting_fee = calculate_waiting_fee(waited_seconds)
+        # Use snapshot-aware waiting policy (prefers ride's saved policy)
+        waiting_fee = calculate_waiting_fee(waited_seconds, ride=ride)
 
     ride.waiting_fee = waiting_fee
     if waiting_fee > 0:
         ride.fare = ride.fare + waiting_fee
-        ride.app_fee = calculate_app_fee(ride.fare)
+        # Recalculate split using the ride's commission (snapshot-aware)
+        commission_percent = get_ride_commission_percent(ride)
+        ride.app_fee = (ride.fare * commission_percent).quantize(
+            Decimal("0.01"), rounding=ROUND_HALF_UP
+        )
         ride.driver_earning = ride.fare - ride.app_fee
 
     ride.save(update_fields=["status", "pickup_pin_verified_at", "waiting_fee", "fare", "app_fee", "driver_earning"])
@@ -795,18 +952,18 @@ def cancel_ride(request, ride_id):
     else:
         cancelled_by = "driver"
 
-    # Calculate cancellation fee
-    # Rider cancellation: fee applies if driver was already assigned and arriving/arrived
-    # Driver cancellation: fee applies if rider was already waiting
+    # Calculate cancellation fee using snapshot-aware policy.
+    # Falls back to active DB policy → market.py for legacy rides.
     cancellation_fee = Decimal("0")
+    cancel_policy = get_ride_cancellation_policy(ride)
 
     if cancelled_by == "rider" and ride.driver is not None:
-        # Rider cancels after driver accepted — charge rider
         if ride.status in ["driver_arriving", "driver_arrived"]:
-            cancellation_fee = Decimal("100")  # 100 MRU cancellation fee
+            cancellation_fee = Decimal(cancel_policy["en_route_fee"])
+            if ride.status == "driver_arrived":
+                cancellation_fee = Decimal(cancel_policy["arrived_fee"])
     elif cancelled_by == "driver" and ride.status in ["driver_arriving", "driver_arrived"]:
-        # Driver cancels after accepting — charge driver
-        cancellation_fee = Decimal("150")  # 150 MRU penalty for driver
+        cancellation_fee = Decimal(cancel_policy["driver_penalty"])
 
     ride.status = "cancelled"
     ride.cancelled_at = now()
@@ -1057,3 +1214,62 @@ def driver_earnings_summary(request):
         },
         status=status.HTTP_200_OK,
     )
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def verify_pickup_pin(request, ride_id):
+    """Driver verifies the rider's pickup PIN without starting the ride yet."""
+    ride = get_object_or_404(Ride, id=ride_id, driver=request.user)
+
+    if ride.status != "driver_arrived":
+        return Response(
+            {"detail": "PIN can only be verified after driver has arrived."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    submitted_pin = str(request.data.get("pickup_pin", "")).strip()
+    if not submitted_pin:
+        return Response(
+            {"detail": "pickup_pin is required."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if not secrets.compare_digest(submitted_pin, ride.pickup_pin):
+        return Response(
+            {"detail": "Incorrect pickup PIN."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    return Response({"detail": "PIN verified.", "ride_id": ride.id})
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def decline_ride(request, ride_id):
+    """Driver declines a ride request (removes themselves, keeps ride open)."""
+    error = approved_driver_error(request.user)
+    if error:
+        return Response({"detail": error}, status=status.HTTP_403_FORBIDDEN)
+
+    ride = get_object_or_404(Ride, id=ride_id)
+
+    if ride.driver_id != request.user.id:
+        return Response(
+            {"detail": "You are not the assigned driver for this ride."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    if ride.status != "requested":
+        return Response(
+            {"detail": "Only requested rides can be declined."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Remove driver so the ride can be re-offered
+    ride.driver = None
+    ride.save(update_fields=["driver"])
+
+    DriverProfile.objects.filter(user=request.user).update(is_available=True)
+
+    return Response({"detail": "Ride declined.", "ride_id": ride.id})

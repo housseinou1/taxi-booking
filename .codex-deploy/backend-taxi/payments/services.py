@@ -6,7 +6,24 @@ from taxi.market import calculate_app_fee
 from .models import Payment, RiderPaymentMethod
 
 
-def calculate_payment_amounts(amount, tip_percentage=0, discount_amount=0):
+def _commission_aware_app_fee(fare, ride=None):
+    """Calculate the platform app fee, preferring the ride's snapshot commission.
+
+    Falls back to calculate_app_fee (market.py rate) for legacy rides and cases
+    where no ride is provided.
+    """
+    if ride is not None:
+        try:
+            from app_settings.pricing_service import get_ride_commission_percent
+            commission_percent = get_ride_commission_percent(ride)
+            amount = Decimal(str(fare or 0)) * commission_percent
+            return amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        except Exception:
+            pass
+    return calculate_app_fee(fare)
+
+
+def calculate_payment_amounts(amount, tip_percentage=0, discount_amount=0, ride=None):
     """
     Calculate payment breakdown amounts.
 
@@ -14,6 +31,8 @@ def calculate_payment_amounts(amount, tip_percentage=0, discount_amount=0):
         amount: The original fare amount (before discount).
         tip_percentage: Tip percentage to apply.
         discount_amount: Promo code discount amount to subtract from rider charge.
+        ride: Optional Ride instance.  When provided, the snapshot commission
+              percent is used instead of the market.py default.
 
     Returns:
         Tuple of (charge_amount, app_fee, tip_percent, tip_amount, driver_earning, discount).
@@ -26,8 +45,9 @@ def calculate_payment_amounts(amount, tip_percentage=0, discount_amount=0):
     tip_percent = Decimal(str(tip_percentage or 0))
     discount = Decimal(str(discount_amount or 0))
 
-    # App fee and driver earning are always based on the ORIGINAL fare
-    app_fee = calculate_app_fee(ride_amount)
+    # App fee and driver earning are always based on the ORIGINAL fare.
+    # Use snapshot-aware commission when a ride is available.
+    app_fee = _commission_aware_app_fee(ride_amount, ride=ride)
     tip_amount = (ride_amount * tip_percent / Decimal("100")).quantize(
         Decimal("0.01"),
         rounding=ROUND_HALF_UP,
@@ -72,7 +92,7 @@ def authorize_ride_payment(ride, discount_amount=0):
     payment_method = default_method.payment_type if default_method else "test"
 
     charge_amount, app_fee, tip_percent, tip_amount, driver_earning, discount = (
-        calculate_payment_amounts(ride.fare, 0, discount_amount)
+        calculate_payment_amounts(ride.fare, 0, discount_amount, ride=ride)
     )
 
     payment = Payment.objects.create(

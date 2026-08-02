@@ -27,17 +27,17 @@ def resolve_city(city_id=None, city_slug=None, fallback_user=None):
 
 
 def calculate_city_fare(city, ride_type, distance_km):
-    normalized_type = str(ride_type or "regular").lower()
-    pricing = None
-    if city:
-        pricing = CityPricing.objects.filter(
-            city=city,
-            ride_type=normalized_type,
-            is_active=True,
-        ).first()
-    if pricing:
-        return pricing.calculate_fare(distance_km)
-    return calculate_fare(normalized_type, Decimal(str(distance_km or 0)))
+    """Return the resolved estimated fare as a Decimal.
+
+    Delegates to the centralized resolver which follows the approved order:
+    1. Active CityPricing override
+    2. Active GlobalFareConfig
+    3. market.py fallback
+    """
+    from app_settings.pricing_service import resolve_ride_fare
+
+    result = resolve_ride_fare(city, ride_type, distance_km)
+    return result.estimated_fare
 
 
 def city_analytics(city=None):
