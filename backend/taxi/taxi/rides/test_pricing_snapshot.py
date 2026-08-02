@@ -13,7 +13,7 @@ from app_settings.models import (
     WaitingFeeConfig,
 )
 from app_settings.pricing_service import resolve_ride_fare, get_ride_commission_percent
-from locations.models import City, CityPricing
+from locations.models import City, CityPricing, Region
 from taxi.rides.models import Ride, RidePricingSnapshot
 from taxi.rides.services.waiting_service import calculate_waiting_fee
 
@@ -59,7 +59,8 @@ class PricingSnapshotTests(APITestCase):
         self.assertEqual(str(snapshot.driver_earning), response.data["driver_earning"])
 
     def test_resolve_ride_fare_prefers_city_pricing(self):
-        city = City.objects.create(name="Test City", slug="test-city")
+        region = Region.objects.create(name="Test Region")
+        city = City.objects.create(name="Test City", region=region)
         CityPricing.objects.create(
             city=city,
             ride_type="regular",
@@ -76,6 +77,8 @@ class PricingSnapshotTests(APITestCase):
         self.assertEqual(result.estimated_fare, Decimal("70.00"))
 
     def test_resolve_ride_fare_falls_back_to_market(self):
+        GlobalFareConfig.objects.all().update(is_active=False)
+        CityPricing.objects.all().update(is_active=False)
         result = resolve_ride_fare(None, "regular", 5)
         self.assertEqual(result.source, "market_fallback")
         self.assertGreater(result.estimated_fare, Decimal("0"))
@@ -84,7 +87,7 @@ class PricingSnapshotTests(APITestCase):
     def test_waiting_fee_uses_snapshot_policy(self):
         now = timezone.now()
         GlobalFareConfig.objects.create(
-            ride_type="regular",
+            ride_type="Regular",
             base_fare="50.00",
             per_km="2.00",
             minimum_fare="50.00",

@@ -182,7 +182,7 @@ class LyftNoShowCancelTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertFalse(response.data.get("penalty_waived"))
-        self.assertEqual(str(response.data.get("cancellation_fee")), "150")
+        self.assertEqual(str(response.data.get("cancellation_fee")), "150.00")
         self.ride.refresh_from_db()
         self.assertEqual(self.ride.status, "cancelled")
         self.assertFalse(self.ride.is_rider_no_show)
@@ -216,7 +216,7 @@ class LyftNoShowCancelTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data.get("cancelled_by"), "admin")
-        self.assertEqual(str(response.data.get("cancellation_fee")), "0")
+        self.assertEqual(str(response.data.get("cancellation_fee")), "0.00")
 
     def test_call_attempt_endpoint(self):
         self.ride.rider_call_attempt_count = 0

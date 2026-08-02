@@ -342,7 +342,7 @@ def request_ride(request):
                 distance_charge=result.distance_charge,
                 estimated_fare=result.estimated_fare,
                 commission_percent=result.commission_percent,
-                commission_config_id=result.commission_config_id,
+                commission_policy_id=result.commission_config_id,
                 waiting_policy_id=result.waiting_policy_id,
                 cancellation_policy_id=result.cancellation_policy_id,
                 no_show_policy_id=result.no_show_policy_id,
@@ -494,7 +494,7 @@ def schedule_ride(request):
                 distance_charge=result.distance_charge,
                 estimated_fare=result.estimated_fare,
                 commission_percent=result.commission_percent,
-                commission_config_id=result.commission_config_id,
+                commission_policy_id=result.commission_config_id,
                 waiting_policy_id=result.waiting_policy_id,
                 cancellation_policy_id=result.cancellation_policy_id,
                 no_show_policy_id=result.no_show_policy_id,
@@ -1679,11 +1679,11 @@ def cancel_ride(request, ride_id):
     data["cancellation_reason"] = cancellation_reason
     data["cancellation_reason_details"] = cancellation_reason_details
     data["cancelled_by"] = ride.cancelled_by
-    data["cancellation_fee"] = str(cancellation_fee)
+    data["cancellation_fee"] = str(cancellation_fee.quantize(Decimal("0.01")))
     data["penalty_waived"] = penalty_waived
     data["is_rider_no_show"] = is_rider_no_show
-    data["no_show_fee"] = str(no_show_fee)
-    data["no_show_driver_compensation"] = str(driver_compensation)
+    data["no_show_fee"] = str(no_show_fee.quantize(Decimal("0.01")))
+    data["no_show_driver_compensation"] = str(driver_compensation.quantize(Decimal("0.01")))
     data["no_show_at"] = ride.no_show_at.isoformat() if ride.no_show_at else None
     data["call_attempts"] = int(getattr(ride, "rider_call_attempt_count", 0) or 0)
     data["waited_seconds"] = waiver_details.get("waited_seconds") if waiver_details else None

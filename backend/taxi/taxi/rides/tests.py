@@ -47,9 +47,18 @@ class CompleteRideFlowTests(APITestCase):
             registration_status="approved",
         )
 
+    @patch("taxi.rides.services.ride_assignment_service.offer_ride_to_next_driver")
     @patch("taxi.rides.views.start_ride_request_timeout")
     @patch("taxi.rides.views.broadcast_ride_update")
-    def test_rider_request_through_driver_completion(self, _broadcast, _timeout):
+    def test_rider_request_through_driver_completion(self, _broadcast, _timeout, _offer):
+        def _offer_side_effect(ride):
+            ride.offered_driver = self.driver
+            ride.offer_sent_at = timezone.now()
+            ride.dispatch_status = "offered"
+            ride.save(update_fields=["offered_driver", "offer_sent_at", "dispatch_status"])
+            return True
+
+        _offer.side_effect = _offer_side_effect
         self.client.force_authenticate(self.rider)
         response = self.client.post(
             "/rides/request/",
@@ -69,11 +78,15 @@ class CompleteRideFlowTests(APITestCase):
         self.assertEqual(len(pickup_pin), 4)
 
         self.client.force_authenticate(self.driver)
-        for endpoint, expected_status in (
-            (f"/rides/accept/{ride_id}/", "driver_arriving"),
-            (f"/rides/arrived/{ride_id}/", "driver_arrived"),
+        for endpoint, expected_status, payload in (
+            (f"/rides/accept/{ride_id}/", "driver_arriving", {}),
+            (
+                f"/rides/arrived/{ride_id}/",
+                "driver_arrived",
+                {"lat": 18.0735, "lng": -15.9582},
+            ),
         ):
-            response = self.client.post(endpoint, {}, format="json")
+            response = self.client.post(endpoint, payload, format="json")
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.data["status"], expected_status)
             self.assertEqual(response.data["pickup_pin"], "")

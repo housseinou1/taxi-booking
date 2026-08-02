@@ -436,6 +436,20 @@ class RidePricingSnapshot(models.Model):
         decimal_places=2,
     )
 
+    app_fee = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        help_text="Platform fee captured at ride creation.",
+    )
+
+    driver_earning = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        help_text="Driver earning captured at ride creation.",
+    )
+
     commission_percent = models.DecimalField(
         max_digits=5,
         decimal_places=4,
