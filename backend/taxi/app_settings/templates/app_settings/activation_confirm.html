@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en" class="{% if dark_mode %}dark{% endif %}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title }}</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --text: #1e293b;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --primary: #16a34a;
+      --danger: #dc2626;
+      --radius: 12px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    html.dark {
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --border: #334155;
+      --primary: #4ade80;
+      --danger: #f87171;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); }
+    .container { max-width: 800px; margin: 0 auto; padding: 24px; }
+    h1 { margin: 0 0 16px; }
+    .muted { color: var(--muted); }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); margin-bottom: 20px; }
+    .card h2 { margin-top: 0; font-size: 1.1rem; }
+    .row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .row:last-child { border-bottom: none; }
+    .old { color: var(--danger); }
+    .new { color: var(--primary); font-weight: 700; }
+    .reason { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 16px; }
+    .actions { display: flex; gap: 12px; }
+    .btn { padding: 12px 24px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-secondary { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+    .error { background: var(--danger); color: #fff; padding: 12px; border-radius: 8px; margin-bottom: 16px; }
+    .success { background: var(--primary); color: #fff; padding: 12px; border-radius: 8px; margin-bottom: 16px; }
+    .back { display: inline-block; margin-top: 24px; color: var(--primary); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>{{ title }}</h1>
+    <p class="muted">This action only affects future rides. Historical rides and snapshots remain unchanged.</p>
+
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+
+    {% if success %}
+    <div class="success">Activation complete. {{ obj }} is now active.</div>
+    <a class="back" href="{% url 'pricing_dashboard' %}">&larr; Back to dashboard</a>
+    {% elif obj %}
+    <div class="card">
+      <h2>New configuration</h2>
+      <p class="new">{{ obj }}</p>
+      <p><strong>Effective from:</strong> {{ obj.effective_from|default:"now" }}</p>
+      <p><strong>Active flag:</strong> {{ obj.is_active }}</p>
+    </div>
+
+    <div class="card">
+      <h2>Currently active</h2>
+      {% if active %}
+      <p class="old">{{ active }}</p>
+      <p><strong>Effective from:</strong> {{ active.effective_from|default:"unspecified" }}</p>
+      <p>This record will be deactivated when the new one is activated.</p>
+      {% else %}
+      <p class="muted">No currently active record.</p>
+      {% endif %}
+    </div>
+
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="model" value="{{ model_name }}">
+      <input type="hidden" name="pk" value="{{ pk }}">
+      <p>
+        <label for="reason">Reason for activation</label>
+        <input id="reason" class="reason" name="reason" type="text" placeholder="Optional reason" required>
+      </p>
+      <div class="actions">
+        <button class="btn btn-primary" type="submit">Confirm activation</button>
+        <a class="btn btn-secondary" href="{% url 'pricing_dashboard' %}">Cancel</a>
+      </div>
+    </form>
+    {% endif %}
+  </div>
+</body>
+</html>

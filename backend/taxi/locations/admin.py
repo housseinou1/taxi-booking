@@ -1,6 +1,8 @@
 from django.contrib import admin
 from django.utils.safestring import mark_safe
 
+from app_settings.admin import _can_modify_pricing
+
 from .models import City, CityPricing, Commune, Department, Locality, Region
 
 
@@ -86,3 +88,15 @@ class CityPricingAdmin(admin.ModelAdmin):
     @admin.action(description="Deactivate selected city pricing")
     def deactivate_selected(self, request, queryset):
         queryset.update(is_active=False)
+
+    def has_view_permission(self, request, obj=None):
+        return request.user.is_staff
+
+    def has_add_permission(self, request):
+        return _can_modify_pricing(request.user)
+
+    def has_change_permission(self, request, obj=None):
+        return _can_modify_pricing(request.user)
+
+    def has_delete_permission(self, request, obj=None):
+        return _can_modify_pricing(request.user)

@@ -366,3 +366,89 @@ class PricingAuditLogTests(TestCase):
         )
         with self.assertRaises(ValidationError):
             config.full_clean()
+
+
+class PricingPreviewTests(TestCase):
+    def setUp(self):
+        self.staff = User.objects.create_user(
+            email="preview-staff@example.com",
+            password="StrongPass123",
+            is_staff=True,
+        )
+
+    def test_preview_renders_for_staff(self):
+        self.client.force_login(self.staff)
+        response = self.client.get("/admin/pricing/preview/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Pricing Preview")
+
+    def test_preview_calculates_fare(self):
+        self.client.force_login(self.staff)
+        response = self.client.get("/admin/pricing/preview/?ride_type=Regular&distance_km=10&preview=1")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Estimated fare")
+
+    def test_preview_requires_staff(self):
+        response = self.client.get("/admin/pricing/preview/")
+        self.assertEqual(response.status_code, 302)
+
+
+class PricingExportTests(TestCase):
+    def setUp(self):
+        self.staff = User.objects.create_user(
+            email="export-staff@example.com",
+            password="StrongPass123",
+            is_staff=True,
+        )
+
+    def test_export_json(self):
+        self.client.force_login(self.staff)
+        response = self.client.get("/admin/pricing/export/json/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/json")
+        data = json.loads(response.content)
+        self.assertIn("global_fares", data)
+
+    def test_export_csv(self):
+        self.client.force_login(self.staff)
+        response = self.client.get("/admin/pricing/export/csv/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "text/csv")
+
+    def test_export_unsupported_format(self):
+        self.client.force_login(self.staff)
+        response = self.client.get("/admin/pricing/export/xml/")
+        self.assertEqual(response.status_code, 400)
+
+
+class CityComparisonTests(TestCase):
+    def setUp(self):
+        self.staff = User.objects.create_user(
+            email="compare-staff@example.com",
+            password="StrongPass123",
+            is_staff=True,
+        )
+
+    def test_city_comparison_renders(self):
+        self.client.force_login(self.staff)
+        response = self.client.get("/admin/pricing/city-comparison/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Nouakchott")
+
+
+class PricingPermissionTests(TestCase):
+    def test_superuser_can_modify(self):
+        from .admin import _can_modify_pricing
+
+        superuser = User.objects.create_user(
+            email="super@example.com", password="StrongPass123", is_superuser=True
+        )
+        self.assertTrue(_can_modify_pricing(superuser))
+
+    def test_regular_staff_cannot_modify(self):
+        from .admin import _can_modify_pricing
+
+        staff = User.objects.create_user(
+            email="staff@example.com", password="StrongPass123", is_staff=True
+        )
+        self.assertFalse(_can_modify_pricing(staff))

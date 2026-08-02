@@ -13,6 +13,16 @@ from .models import (
 )
 
 
+def _can_modify_pricing(user):
+    if not user or not user.is_authenticated:
+        return False
+    if user.is_superuser:
+        return True
+    return user.groups.filter(
+        name__in=["CEO", "Super Admin", "Pricing Administrator"]
+    ).exists()
+
+
 class UserTrackingAdminMixin:
     def save_model(self, request, obj, form, change):
         if not change:
@@ -128,6 +138,18 @@ class BasePricingConfigAdmin(UserTrackingAdminMixin, admin.ModelAdmin):
     @admin.action(description="Deactivate selected configurations")
     def deactivate_selected(self, request, queryset):
         self._set_active(request, queryset, False)
+
+    def has_view_permission(self, request, obj=None):
+        return request.user.is_staff
+
+    def has_add_permission(self, request):
+        return _can_modify_pricing(request.user)
+
+    def has_change_permission(self, request, obj=None):
+        return _can_modify_pricing(request.user)
+
+    def has_delete_permission(self, request, obj=None):
+        return _can_modify_pricing(request.user)
 
 
 @admin.register(GlobalFareConfig)

@@ -88,6 +88,23 @@
     .kpi-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 24px; min-width: 160px; box-shadow: var(--shadow); }
     .kpi-box .label { color: var(--muted); font-size: 0.8rem; text-transform: uppercase; }
     .kpi-box .number { font-size: 1.4rem; font-weight: 700; }
+    .tools { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; }
+    .tool-link {
+      display: inline-block;
+      padding: 10px 16px;
+      border-radius: 8px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.9rem;
+      box-shadow: var(--shadow);
+    }
+    .tool-link:hover { background: var(--primary); color: #fff; }
+    .status.scheduled { background: #fef3c7; color: #92400e; }
+    html.dark .status.scheduled { color: #fde68a; }
+    .card h2 { margin: 0 0 12px; font-size: 1.1rem; display: flex; gap: 8px; align-items: center; }
     @media (max-width: 640px) {
       .grid { grid-template-columns: 1fr; }
       table, th, td { font-size: 0.8rem; }
@@ -117,6 +134,41 @@
       </div>
     </div>
 
+    <div class="tools">
+      <a class="tool-link" href="{% url 'pricing_preview' %}">🔍 Pricing Preview</a>
+      <a class="tool-link" href="{% url 'pricing_city_comparison' %}">🌆 City Comparison</a>
+      <a class="tool-link" href="{% url 'pricing_export' 'csv' %}">📥 Export CSV</a>
+      <a class="tool-link" href="{% url 'pricing_export' 'json' %}">📥 Export JSON</a>
+    </div>
+
+    <h2 class="section-title">Global Fares</h2>
+    <div class="grid">
+      {% for card in ride_cards %}
+      <div class="card">
+        <h2>{{ card.ride_type }}</h2>
+        {% if card.active %}
+          <p>Active</p>
+          <p class="value">{{ card.active.base_fare }} MRU + {{ card.active.per_km }}/km</p>
+          <p>Min {{ card.active.minimum_fare }} MRU</p>
+          <span class="status active">ACTIVE</span>
+        {% elif card.scheduled %}
+          <p>Scheduled</p>
+          <p class="value">{{ card.scheduled.base_fare }} MRU + {{ card.scheduled.per_km }}/km</p>
+          <p>Effective {{ card.scheduled.effective_from }}</p>
+          <span class="status scheduled">SCHEDULED</span>
+        {% else %}
+          <p>No active global fare.</p>
+          <span class="status inactive">INACTIVE</span>
+        {% endif %}
+        <p style="margin-top: 10px; font-size: 0.8rem;">{{ card.total }} record(s)</p>
+        {% if can_modify %}
+          <a class="btn" href="/admin/app_settings/globalfareconfig/">Manage</a>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+
+    <h2 class="section-title">Policies & Commission</h2>
     <div class="grid">
       {% for section in sections %}
       <div class="card">
@@ -124,13 +176,19 @@
         {% if section.active %}
           <p>Active since {{ section.active.effective_from|default:"unspecified" }}</p>
           <p class="value">{{ section.active }}</p>
-          <span class="status active">Active</span>
+          <span class="status active">ACTIVE</span>
+        {% elif section.scheduled %}
+          <p>Scheduled from {{ section.scheduled.effective_from }}</p>
+          <p class="value">{{ section.scheduled }}</p>
+          <span class="status scheduled">SCHEDULED</span>
         {% else %}
           <p>No active {{ section.title|lower }} found.</p>
-          <span class="status inactive">Inactive</span>
+          <span class="status inactive">INACTIVE</span>
         {% endif %}
         <p style="margin-top: 10px; font-size: 0.8rem;">{{ section.total }} total record(s)</p>
-        <a class="btn" href="{{ section.admin_url }}">Manage</a>
+        {% if can_modify %}
+          <a class="btn" href="{{ section.admin_url }}">Manage</a>
+        {% endif %}
       </div>
       {% endfor %}
 
@@ -138,7 +196,9 @@
         <h2>🌆 City Pricing</h2>
         <p>Active city overrides</p>
         <p class="value">{{ city_overrides }} / {{ city_total }}</p>
-        <a class="btn" href="{{ city_admin_url }}">Manage</a>
+        {% if can_modify %}
+          <a class="btn" href="{{ city_admin_url }}">Manage</a>
+        {% endif %}
       </div>
 
       <div class="card">

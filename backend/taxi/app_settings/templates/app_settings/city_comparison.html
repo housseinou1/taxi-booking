@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en" class="{% if dark_mode %}dark{% endif %}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title }}</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --text: #1e293b;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --primary: #16a34a;
+      --radius: 12px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    html.dark {
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --border: #334155;
+      --primary: #4ade80;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); }
+    .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+    h1 { margin: 0 0 16px; }
+    .muted { color: var(--muted); }
+    table { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); margin-bottom: 24px; }
+    th, td { text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+    th { background: var(--bg); color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 0.75rem; }
+    tr:last-child td { border-bottom: none; }
+    .badge { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; }
+    .override { background: #dcfce7; color: #166534; }
+    html.dark .override { color: #bbf7d0; }
+    .fallback { background: #fee2e2; color: #991b1b; }
+    html.dark .fallback { color: #fecaca; }
+    .back { display: inline-block; margin-top: 12px; color: var(--primary); text-decoration: none; }
+    @media (max-width: 640px) { .container { padding: 16px; } table, th, td { font-size: 0.8rem; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>{{ title }}</h1>
+    <p class="muted">Compare pricing across key YALA cities.</p>
+
+    {% for row in rows %}
+    <h2>{{ row.city }}</h2>
+    {% if row.exists %}
+    <table>
+      <thead>
+        <tr>
+          <th>Ride type</th>
+          <th>Base</th>
+          <th>Per km</th>
+          <th>Minimum</th>
+          <th>Override</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in row.pricing %}
+        <tr>
+          <td>{{ p.ride_type }}</td>
+          <td>{{ p.base_fare }} MRU</td>
+          <td>{{ p.per_km }} MRU</td>
+          <td>{{ p.minimum_fare }} MRU</td>
+          <td><span class="badge {% if p.override %}override{% else %}fallback{% endif %}">{% if p.override %}Active override{% else %}Fallback{% endif %}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="muted">No city record found in the database.</p>
+    {% endif %}
+    {% endfor %}
+
+    <a class="back" href="{% url 'pricing_dashboard' %}">&larr; Back to dashboard</a>
+  </div>
+</body>
+</html>

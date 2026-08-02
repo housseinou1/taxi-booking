@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en" class="{% if dark_mode %}dark{% endif %}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title }}</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --text: #1e293b;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --primary: #16a34a;
+      --radius: 12px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    html.dark {
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --border: #334155;
+      --primary: #4ade80;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); }
+    .container { max-width: 800px; margin: 0 auto; padding: 24px; }
+    h1 { margin: 0 0 16px; }
+    .form { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); margin-bottom: 24px; }
+    .row { margin-bottom: 16px; }
+    label { display: block; font-weight: 600; margin-bottom: 6px; }
+    input, select { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
+    .btn { padding: 12px 24px; border: none; border-radius: 8px; background: var(--primary); color: #fff; font-weight: 600; cursor: pointer; }
+    .result { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); }
+    .result h2 { margin-top: 0; }
+    .result p { margin: 8px 0; }
+    .muted { color: var(--muted); }
+    .back { display: inline-block; margin-top: 24px; color: var(--primary); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>{{ title }}</h1>
+    <p class="muted">Preview a fare without storing any data.</p>
+
+    <form class="form" method="get">
+      <div class="row">
+        <label for="ride_type">Ride type</label>
+        <select id="ride_type" name="ride_type">
+          {% for rt in ride_types %}
+          <option value="{{ rt }}" {% if rt == ride_type %}selected{% endif %}>{{ rt }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="row">
+        <label for="distance_km">Distance (km)</label>
+        <input id="distance_km" name="distance_km" type="number" step="0.1" value="{{ distance_km }}" required>
+      </div>
+      <div class="row">
+        <label for="city">City (optional)</label>
+        <input id="city" name="city" type="text" value="{{ city_name }}" placeholder="e.g. Nouakchott">
+      </div>
+      <input type="hidden" name="preview" value="1">
+      <button class="btn" type="submit">Preview</button>
+    </form>
+
+    {% if result %}
+    <div class="result">
+      <h2>Preview Result</h2>
+      <p><strong>Ride type:</strong> {{ result.ride_type }}</p>
+      <p><strong>Distance:</strong> {{ result.distance_km }} km</p>
+      <p><strong>Base fare:</strong> {{ result.base_fare }} MRU</p>
+      <p><strong>Per km:</strong> {{ result.per_km }} MRU</p>
+      <p><strong>Minimum fare:</strong> {{ result.minimum_fare }} MRU</p>
+      <p><strong>Distance charge:</strong> {{ result.distance_charge }} MRU</p>
+      <p><strong>Estimated fare:</strong> {{ result.estimated_fare }} MRU</p>
+      <p><strong>Pricing source:</strong> {{ result.source }}</p>
+      <p><strong>Commission:</strong> {{ result.commission_percent }}</p>
+      <p><strong>App fee:</strong> {{ result.app_fee }} MRU</p>
+      <p><strong>Driver earning:</strong> {{ result.driver_earning }} MRU</p>
+      {% if result.waiting_per_minute %}
+      <p><strong>Waiting per minute:</strong> {{ result.waiting_per_minute }} MRU</p>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <a class="back" href="{% url 'pricing_dashboard' %}">&larr; Back to dashboard</a>
+  </div>
+</body>
+</html>
