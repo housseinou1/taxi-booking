@@ -46,6 +46,12 @@ export function isNetworkRequestError(error) {
 async function capacitorRequest(method, url, data, config = {}) {
   const headers = { ...(config.headers || {}) };
   const timeoutMs = config.timeout || 15000;
+
+  // Ensure Content-Type is set for JSON bodies (Capacitor HTTP does not auto-detect)
+  if (data != null && method !== "get" && method !== "delete" && !headers["Content-Type"] && !headers["content-type"]) {
+    headers["Content-Type"] = "application/json";
+  }
+
   const options = {
     url,
     headers,
