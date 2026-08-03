@@ -72,6 +72,23 @@ Auto-refreshes every 30 seconds.
 
 ---
 
+## Modules Delivered (Commit 3)
+
+### Executive Finance & Analytics Center
+| Feature | Description |
+|---------|-------------|
+| Revenue KPIs | 10 cards: Today/Week/Month/Commission/Earnings/Withdrawals/Refunds/Wallets |
+| Bar Charts | Revenue trend (14-day), Trips per day — color-coded |
+| Performance Rates | Acceptance, Completion, Cancellation — progress bars |
+| Leaderboards | Top Drivers, Top Couriers, Recent Withdrawals, Recent Refunds |
+| CEO Insights | 6 trend cards with % change arrows |
+| Filters | Today, Yesterday, 7d, 30d, Quarter, Year |
+| Export | CSV, Excel, PDF buttons (UI ready) |
+| Route | `/admin/ops-center/finance` |
+| Design | Stripe/Power BI enterprise aesthetic |
+
+---
+
 ## Remaining Commits
 
 | Commit | Module |
