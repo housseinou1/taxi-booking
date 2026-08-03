@@ -7,8 +7,8 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("app_settings", "0007_ridecommissionconfig"),
-        ("locations", "0004_citypricing"),
+        ("app_settings", "0003_seed_pricing_configs"),
+        ("locations", "0004_repair_missing_location_tables"),
         ("rides", "0021_ride_corporate_billing"),
     ]
 

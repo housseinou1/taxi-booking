@@ -7,7 +7,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("app_settings", "0007_ridecommissionconfig"),
+        ("app_settings", "0003_seed_pricing_configs"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 

@@ -1,3 +1,4 @@
+import json
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError
@@ -342,9 +343,8 @@ class PricingAuditLogTests(TestCase):
             "is_active": True,
         }, instance=config)
         form.is_valid()
-        class Request:
-            user = user
-        admin.save_model(Request(), config, form, change=False)
+        request = type("Request", (), {"user": user})()
+        admin.save_model(request, config, form, change=False)
         self.assertTrue(PricingAuditLog.objects.filter(action="create").exists())
 
     def test_minimum_fare_validation_on_global_fare(self):
