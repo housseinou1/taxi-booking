@@ -120,10 +120,10 @@ export async function requestRide(params) {
       ride_type: params.ride_type || "regular",
       stops: params.stops || [],
       promo_code: params.promo_code || undefined,
-      ride_terms_accepted: params.ride_terms_accepted || params.rider_terms_accepted || true,
-      terms_accepted: params.terms_accepted || params.ride_terms_accepted || true,
-      privacy_accepted: params.privacy_accepted || params.privacy_policy_accepted || true,
-      privacy_policy_accepted: params.privacy_policy_accepted || params.privacy_accepted || true,
+      ride_terms_accepted: Boolean(params.ride_terms_accepted || params.rider_terms_accepted || params.terms_accepted),
+      terms_accepted: Boolean(params.terms_accepted || params.ride_terms_accepted || params.rider_terms_accepted),
+      privacy_accepted: Boolean(params.privacy_accepted || params.privacy_policy_accepted),
+      privacy_policy_accepted: Boolean(params.privacy_policy_accepted || params.privacy_accepted),
     });
 
     return response.data?.ride || response.data;
