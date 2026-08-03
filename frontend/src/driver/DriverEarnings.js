@@ -450,7 +450,7 @@ export default function DriverEarnings() {
 
     try {
       const response = await authenticatedApi.get(
-        `${API_URL}/drivers/me/earnings/`,
+        `${API_URL}/rides/driver/earnings/`,
         NON_REDIRECTING_AUTH_CONFIG
       );
       setEarnings(normalizeEarningsPayload(response.data || {}));
@@ -489,10 +489,10 @@ export default function DriverEarnings() {
 
     try {
       const response = await authenticatedApi.get(
-        `${API_URL}/drivers/me/earnings/chart/?period=${period}`,
+        `${API_URL}/rides/driver/earnings/?chart=${period}`,
         NON_REDIRECTING_AUTH_CONFIG
       );
-      setChartData(normalizeChartPayload(response.data));
+      setChartData(normalizeChartPayload(response.data?.charts?.[period] || response.data));
     } catch (err) {
       console.error("Chart data fetch error:", err);
       setChartData([]);
@@ -504,6 +504,17 @@ export default function DriverEarnings() {
   // ─── Initial Load ───────────────────────────────────────────────────────
   useEffect(() => {
     fetchEarnings();
+    // Safety: if loading hasn't completed in 15s, force show error
+    const safetyTimeout = setTimeout(() => {
+      setLoading((current) => {
+        if (current) {
+          setError("Earnings took too long to load. Please try again.");
+          return false;
+        }
+        return current;
+      });
+    }, 15000);
+    return () => clearTimeout(safetyTimeout);
   }, [fetchEarnings]);
 
   useEffect(() => () => {
