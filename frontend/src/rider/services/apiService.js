@@ -2,9 +2,12 @@ import { API_URL } from "../../apiConfig";
 import { calculateDistanceKm } from "../../marketConfig";
 import riderApi from "./authenticatedApi";
 
+const MIN_RIDE_DISTANCE_KM = 0.1;
+const MAX_RIDE_DISTANCE_KM = 500;
+
 function ensureRequestDistanceKm(params) {
   const direct = Number(params?.distance_km);
-  if (Number.isFinite(direct) && direct >= 0.1 && direct <= 200) {
+  if (Number.isFinite(direct) && direct >= MIN_RIDE_DISTANCE_KM && direct <= MAX_RIDE_DISTANCE_KM) {
     return Math.round(direct * 100) / 100;
   }
 
@@ -24,20 +27,20 @@ function ensureRequestDistanceKm(params) {
   );
 
   if (points.length < 2) {
-    return Math.max(0.1, direct || 0.1);
+    return Math.max(MIN_RIDE_DISTANCE_KM, direct || MIN_RIDE_DISTANCE_KM);
   }
 
   let total = 0;
   for (let index = 1; index < points.length; index += 1) {
     const segment = calculateDistanceKm(points[index - 1], points[index]);
     if (segment == null) {
-      return 0.1;
+      return MIN_RIDE_DISTANCE_KM;
     }
     total += segment;
   }
 
-  const resolved = Math.max(0.1, Math.round(total * 100) / 100);
-  return resolved <= 200 ? resolved : 0.1;
+  const resolved = Math.max(MIN_RIDE_DISTANCE_KM, Math.round(total * 100) / 100);
+  return resolved <= MAX_RIDE_DISTANCE_KM ? resolved : MIN_RIDE_DISTANCE_KM;
 }
 
 /**

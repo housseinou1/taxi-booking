@@ -6,7 +6,7 @@ import { calculateDistanceKm } from "../../marketConfig";
  */
 export function resolveBookingDistanceKm({ pickup, destination, stops, routeInfo }) {
   const routeDistance = Number(routeInfo?.distanceKm);
-  if (Number.isFinite(routeDistance) && routeDistance >= 0.1 && routeDistance <= 200) {
+  if (Number.isFinite(routeDistance) && routeDistance >= 0.1 && routeDistance <= 500) {
     return Math.round(routeDistance * 100) / 100;
   }
 
@@ -30,7 +30,7 @@ export function resolveBookingDistanceKm({ pickup, destination, stops, routeInfo
   }
 
   const resolved = Math.max(0.1, Math.round(total * 100) / 100);
-  return resolved <= 200 ? resolved : 0.1;
+  return resolved <= 500 ? resolved : 0.1;
 }
 
 /**

@@ -33,6 +33,7 @@ from .models import Ride, RideStop
 from .serializers import RideSerializer
 from .broadcast import broadcast_ride_update
 from .services.waiting_service import calculate_waiting_fee
+from .constants import MIN_RIDE_DISTANCE_KM, MAX_RIDE_DISTANCE_KM, DISTANCE_ERROR_MSG
 from .timeout import (
     cancel_ride_request_timeout,
     start_ride_request_timeout,
@@ -273,8 +274,8 @@ def estimate_fare(request):
 
     try:
         distance_km = Decimal(str(request.data.get("distance_km", request.data.get("distance", 0))))
-        if distance_km < Decimal("0") or distance_km > Decimal("200"):
-            raise ValueError("distance_km must be between 0 and 200.")
+        if distance_km < MIN_RIDE_DISTANCE_KM or distance_km > MAX_RIDE_DISTANCE_KM:
+            raise ValueError(DISTANCE_ERROR_MSG)
     except (ValueError, TypeError) as exc:
         return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -346,8 +347,8 @@ def request_ride(request):
 
     try:
         distance_km = Decimal(str(request.data.get("distance_km", request.data.get("distance", 0))))
-        if distance_km < Decimal("0.1") or distance_km > Decimal("200"):
-            raise ValueError("Ride distance must be between 0.1 and 200 km.")
+        if distance_km < MIN_RIDE_DISTANCE_KM or distance_km > MAX_RIDE_DISTANCE_KM:
+            raise ValueError(DISTANCE_ERROR_MSG)
         pickup_lat, pickup_lng = validate_coordinates(
             request.data.get("pickup_lat", MARKET["default_pickup_lat"]),
             request.data.get("pickup_lng", MARKET["default_pickup_lng"]),
