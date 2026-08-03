@@ -4,7 +4,6 @@ import { API_URL } from "../apiConfig";
 import { MARKET } from "../marketConfig";
 import { bindDriverTheme } from "./themeRefresh";
 import authenticatedApi from "../auth/authenticatedApi";
-import { ensureValidAccessToken } from "../auth/session";
 import { navigateInApp } from "../navigation/inAppNavigation";
 import { DriverLoadingState, DriverErrorState } from "./ui/DriverAppStates";
 import "./DriverEarnings.css";
@@ -440,18 +439,10 @@ export default function DriverEarnings() {
       setError(null);
     }
 
-    const access = await ensureValidAccessToken();
-    if (!access) {
-      setError("Unable to load earnings. Please try again.");
-      setLoading(false);
-      setSyncing(false);
-      return;
-    }
-
     try {
       const response = await authenticatedApi.get(
         `${API_URL}/rides/driver/earnings/`,
-        NON_REDIRECTING_AUTH_CONFIG
+        { timeout: 12000 }
       );
       setEarnings(normalizeEarningsPayload(response.data || {}));
       retryCountRef.current = 0;
@@ -479,18 +470,11 @@ export default function DriverEarnings() {
 
   // ─── Fetch Chart Data ───────────────────────────────────────────────────
   const fetchChartData = useCallback(async (period) => {
-    const access = await ensureValidAccessToken();
-    if (!access) {
-      setChartData([]);
-      return;
-    }
-
     setChartLoading(true);
-
     try {
       const response = await authenticatedApi.get(
         `${API_URL}/rides/driver/earnings/?chart=${period}`,
-        NON_REDIRECTING_AUTH_CONFIG
+        { timeout: 10000 }
       );
       setChartData(normalizeChartPayload(response.data?.charts?.[period] || response.data));
     } catch (err) {
