@@ -25,6 +25,7 @@ import { DriverProvider } from "./driver/context/DriverContext";
 
 import AdminDashboard from "./admin/AdminDashboard";
 import ExecutiveDashboard from "./admin/executive/ExecutiveDashboard";
+import OpsCenterHome from "./admin/ops-center/OpsCenterHome";
 import OperationsCenter from "./admin/operations/OperationsCenter";
 import AIOperationsDashboard from "./admin/ai/AIOperationsDashboard";
 import ProductionStatus from "./admin/status/ProductionStatus";
@@ -445,6 +446,7 @@ function App() {
     }
     else if (currentPath === "/admin/payments") setPage("admin-payments");
     else if (currentPath === "/admin/executive") setPage("admin-executive");
+    else if (currentPath === "/admin/ops-center") setPage("admin-ops-center");
     else if (currentPath === "/admin/operations") setPage("admin-operations");
     else if (currentPath === "/admin/ai-operations") setPage("admin-ai-operations");
     else if (currentPath === "/admin/status") setPage("admin-status");
@@ -899,6 +901,10 @@ function App() {
 
   if (page === "admin-executive") {
     return withInstall(<ExecutiveDashboard />);
+  }
+
+  if (page === "admin-ops-center") {
+    return withInstall(<OpsCenterHome />);
   }
 
   if (page === "admin-operations") {
