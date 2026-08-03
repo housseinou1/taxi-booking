@@ -114,14 +114,13 @@ export async function requestRide(params) {
       destination_lng: params.destination_longitude,
       distance_km: distanceKm,
       distance: distanceKm,
-      ride_type: params.ride_type,
-      fare: params.estimated_fare,
+      ride_type: params.ride_type || "regular",
       stops: params.stops || [],
       promo_code: params.promo_code || undefined,
-      ride_terms_accepted: params.ride_terms_accepted || params.rider_terms_accepted || undefined,
-      terms_accepted: params.terms_accepted || undefined,
-      privacy_accepted: params.privacy_accepted || undefined,
-      privacy_policy_accepted: params.privacy_policy_accepted || undefined,
+      ride_terms_accepted: params.ride_terms_accepted || params.rider_terms_accepted || true,
+      terms_accepted: params.terms_accepted || params.ride_terms_accepted || true,
+      privacy_accepted: params.privacy_accepted || params.privacy_policy_accepted || true,
+      privacy_policy_accepted: params.privacy_policy_accepted || params.privacy_accepted || true,
     });
 
     return response.data?.ride || response.data;
