@@ -27,6 +27,8 @@ import AdminDashboard from "./admin/AdminDashboard";
 import ExecutiveDashboard from "./admin/executive/ExecutiveDashboard";
 import OpsCenterHome from "./admin/ops-center/OpsCenterHome";
 import LiveOperationsCenter from "./admin/ops-center/LiveOperationsCenter";
+import FinanceAnalyticsCenter from "./admin/ops-center/FinanceAnalyticsCenter";
+import ExecutiveCommandCenter from "./admin/ops-center/ExecutiveCommandCenter";
 import OperationsCenter from "./admin/operations/OperationsCenter";
 import AIOperationsDashboard from "./admin/ai/AIOperationsDashboard";
 import ProductionStatus from "./admin/status/ProductionStatus";
@@ -449,6 +451,8 @@ function App() {
     else if (currentPath === "/admin/executive") setPage("admin-executive");
     else if (currentPath === "/admin/ops-center") setPage("admin-ops-center");
     else if (currentPath === "/admin/ops-center/live") setPage("admin-ops-live");
+    else if (currentPath === "/admin/ops-center/finance") setPage("admin-ops-finance");
+    else if (currentPath === "/admin/ops-center/command") setPage("admin-ops-command");
     else if (currentPath === "/admin/operations") setPage("admin-operations");
     else if (currentPath === "/admin/ai-operations") setPage("admin-ai-operations");
     else if (currentPath === "/admin/status") setPage("admin-status");
@@ -911,6 +915,14 @@ function App() {
 
   if (page === "admin-ops-live") {
     return withInstall(<LiveOperationsCenter />);
+  }
+
+  if (page === "admin-ops-finance") {
+    return withInstall(<FinanceAnalyticsCenter />);
+  }
+
+  if (page === "admin-ops-command") {
+    return withInstall(<ExecutiveCommandCenter />);
   }
 
   if (page === "admin-operations") {

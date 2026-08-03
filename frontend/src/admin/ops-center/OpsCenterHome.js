@@ -224,11 +224,13 @@ export default function OpsCenterHome() {
         <SectionHeader title="Modules" subtitle="Jump to a specific area" />
         <QuickNav items={[
           { href: "/admin/ops-center/live", icon: "🗺️", label: "Live Map" },
+          { href: "/admin/ops-center/finance", icon: "💰", label: "Finance" },
+          { href: "/admin/ops-center/command", icon: "⚡", label: "Command" },
           { href: "/admin/executive", icon: "📊", label: "Full Executive" },
           { href: "/admin/operations", icon: "⚙️", label: "Operations" },
-          { href: "/admin/finance-ops", icon: "💳", label: "Finance" },
+          { href: "/admin/finance-ops", icon: "💳", label: "Finance Ops" },
           { href: "/admin/ceo-master", icon: "🏢", label: "CEO Command" },
-          { href: "/admin/pricing", icon: "💰", label: "Pricing" },
+          { href: "/admin/pricing", icon: "🏷️", label: "Pricing" },
           { href: "/admin/drivers", icon: "🚗", label: "Drivers" },
           { href: "/admin/support", icon: "🎧", label: "Support" },
           { href: "/admin/security", icon: "🔒", label: "Security" },
