@@ -52,7 +52,23 @@ Auto-refreshes every 30 seconds.
 | Revenue | Today, This Week, This Month, Pending Withdrawals |
 | Action Required | Driver Approvals, Courier Approvals, Support Tickets, Cancellations |
 | System Health | Database, Redis, API status indicators |
-| Quick Navigation | 8 module links to existing admin areas |
+| Quick Navigation | 9 module links to existing admin areas |
+
+---
+
+## Modules Delivered (Commit 2)
+
+### Live Operations Center
+| Feature | Description |
+|---------|-------------|
+| Full-screen map | Leaflet with OpenStreetMap tiles |
+| Colored markers | Green (drivers), Orange (couriers), Blue (riders), Teal (trips), Amber (deliveries), Red (SOS) |
+| Sidebar panels | Active Rides, Deliveries, Drivers, Couriers, SOS — clickable |
+| Details panel | Opens on click — shows name, status, vehicle, phone, location |
+| Filters | Toggle categories on/off with color-coded buttons |
+| Auto-refresh | Every 12 seconds with timestamp |
+| Dark theme | Enterprise operations aesthetic |
+| Route | `/admin/ops-center/live` |
 
 ---
 
