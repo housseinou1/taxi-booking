@@ -39,7 +39,7 @@ import BetaDashboard from "./admin/beta/BetaDashboard";
 import BetaFeedbackCenter from "./admin/beta/BetaFeedbackCenter";
 import FleetPerformanceCenter from "./admin/fleet/FleetPerformanceCenter";
 import FinanceOperationsCenter from "./admin/finance/FinanceOperationsCenter";
-import LaunchCommandCenter from "./admin/command/LaunchCommandCenter";
+import LaunchCommandCenter from "./admin/ops-center/LaunchCommandCenter";
 import CeoMasterCommandCenter from "./admin/ceo/CeoMasterCommandCenter";
 import BoardReportingSuite from "./admin/board/BoardReportingSuite";
 import ComplianceGovernanceCenter from "./admin/compliance/ComplianceGovernanceCenter";
@@ -453,10 +453,10 @@ function App() {
     else if (currentPath === "/admin/ops-center/live") setPage("admin-ops-live");
     else if (currentPath === "/admin/ops-center/finance") setPage("admin-ops-finance");
     else if (currentPath === "/admin/ops-center/command") setPage("admin-ops-command");
+    else if (currentPath === "/admin/launch") setPage("admin-launch");
     else if (currentPath === "/admin/operations") setPage("admin-operations");
     else if (currentPath === "/admin/ai-operations") setPage("admin-ai-operations");
     else if (currentPath === "/admin/status") setPage("admin-status");
-    else if (currentPath === "/admin/launch") setPage("admin-launch");
     else if (currentPath === "/admin/business") setPage("admin-business");
     else if (currentPath === "/admin/beta") setPage("admin-beta");
     else if (currentPath === "/admin/business-accounts") setPage("admin-business-accounts");
@@ -925,6 +925,10 @@ function App() {
     return withInstall(<ExecutiveCommandCenter />);
   }
 
+  if (page === "admin-launch") {
+    return withInstall(<LaunchCommandCenter />);
+  }
+
   if (page === "admin-operations") {
     return withInstall(<OperationsCenter />);
   }
@@ -935,10 +939,6 @@ function App() {
 
   if (page === "admin-status") {
     return withInstall(<ProductionStatus />);
-  }
-
-  if (page === "admin-launch") {
-    return withInstall(<LaunchHub />);
   }
 
   if (page === "admin-business") {
