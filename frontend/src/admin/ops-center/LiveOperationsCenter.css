@@ -1,0 +1,300 @@
+/* Live Operations Center — Full-screen map + floating panels */
+
+.ops-live {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  background: #0f172a;
+  color: #f1f5f9;
+}
+
+.ops-live--loading {
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.ops-live__spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid #334155;
+  border-top-color: #10b981;
+  border-radius: 50%;
+  animation: ops-spin 0.8s linear infinite;
+}
+
+@keyframes ops-spin { to { transform: rotate(360deg); } }
+
+/* Top Bar */
+.ops-live__topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: rgba(15, 23, 42, 0.95);
+  border-bottom: 1px solid #1e293b;
+  z-index: 100;
+  flex-shrink: 0;
+}
+
+.ops-live__topbar-title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 800;
+  color: #f8fafc;
+}
+
+.ops-live__topbar-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.ops-live__topbar-count {
+  background: #1e293b;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-weight: 600;
+}
+
+/* Filter Bar */
+.ops-live__filters {
+  display: flex;
+  gap: 8px;
+  padding: 8px 20px;
+  background: rgba(15, 23, 42, 0.9);
+  border-bottom: 1px solid #1e293b;
+  overflow-x: auto;
+  flex-shrink: 0;
+  z-index: 99;
+}
+
+.ops-live__filter-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: 1px solid #334155;
+  border-radius: 20px;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.ops-live__filter-btn.is-active {
+  background: var(--filter-color, #10b981);
+  border-color: var(--filter-color, #10b981);
+  color: #ffffff;
+}
+
+.ops-live__filter-btn:focus-visible {
+  outline: 2px solid #10b981;
+  outline-offset: 2px;
+}
+
+.ops-live__filter-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--filter-color, #94a3b8);
+}
+
+.ops-live__filter-btn.is-active .ops-live__filter-dot {
+  background: #ffffff;
+}
+
+/* Layout */
+.ops-live__layout {
+  flex: 1;
+  display: flex;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Sidebar */
+.ops-live__sidebar {
+  width: 300px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  background: rgba(15, 23, 42, 0.97);
+  border-right: 1px solid #1e293b;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 50;
+}
+
+.ops-live__panel {
+  background: #1e293b;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.ops-live__panel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid #334155;
+}
+
+.ops-live__panel-icon { font-size: 1rem; }
+.ops-live__panel-title { margin: 0; font-size: 0.8125rem; font-weight: 700; flex: 1; color: #e2e8f0; }
+.ops-live__panel-count {
+  background: #334155;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #94a3b8;
+}
+
+.ops-live__panel-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.ops-live__panel-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  transition: background 0.12s ease;
+}
+
+.ops-live__panel-item:hover,
+.ops-live__panel-item.is-selected {
+  background: #334155;
+}
+
+.ops-live__panel-item:focus-visible {
+  outline: 2px solid #10b981;
+  outline-offset: -2px;
+}
+
+.ops-live__panel-item-name { color: #e2e8f0; font-weight: 600; }
+.ops-live__panel-item-status { color: #64748b; font-size: 0.6875rem; }
+
+/* Map */
+.ops-live__map-container {
+  flex: 1;
+  position: relative;
+}
+
+.ops-live__map {
+  width: 100%;
+  height: 100%;
+}
+
+/* Map markers */
+.ops-map-marker {
+  background: none !important;
+  border: none !important;
+}
+
+.ops-map-marker__dot {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+
+/* Details Panel */
+.ops-live__details {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 280px;
+  background: rgba(15, 23, 42, 0.97);
+  border: 1px solid #334155;
+  border-radius: 16px;
+  z-index: 60;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+
+.ops-live__details-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid #334155;
+}
+
+.ops-live__details-title { margin: 0; font-size: 0.9375rem; font-weight: 700; color: #f8fafc; }
+
+.ops-live__details-close {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+}
+
+.ops-live__details-close:hover { background: #334155; color: #f8fafc; }
+.ops-live__details-close:focus-visible { outline: 2px solid #10b981; }
+
+.ops-live__details-body { padding: 14px 16px; }
+
+.ops-live__details-photo {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-bottom: 12px;
+}
+
+.ops-live__details-dl {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 12px;
+  font-size: 0.75rem;
+}
+
+.ops-live__details-dl dt { color: #64748b; font-weight: 600; }
+.ops-live__details-dl dd { margin: 0; color: #e2e8f0; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .ops-live__sidebar { width: 220px; }
+  .ops-live__details { width: 240px; }
+}
+
+@media (max-width: 640px) {
+  .ops-live__layout { flex-direction: column; }
+  .ops-live__sidebar {
+    width: 100%;
+    max-height: 180px;
+    flex-direction: row;
+    overflow-x: auto;
+    border-right: none;
+    border-bottom: 1px solid #1e293b;
+  }
+  .ops-live__panel { min-width: 200px; }
+  .ops-live__details { width: calc(100% - 24px); right: 12px; left: 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ops-live__spinner { animation: none; }
+  .ops-live__filter-btn, .ops-live__panel-item { transition: none; }
+}

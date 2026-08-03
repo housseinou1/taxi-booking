@@ -223,6 +223,7 @@ export default function OpsCenterHome() {
       <section className="ops-section" aria-label="Quick navigation">
         <SectionHeader title="Modules" subtitle="Jump to a specific area" />
         <QuickNav items={[
+          { href: "/admin/ops-center/live", icon: "🗺️", label: "Live Map" },
           { href: "/admin/executive", icon: "📊", label: "Full Executive" },
           { href: "/admin/operations", icon: "⚙️", label: "Operations" },
           { href: "/admin/finance-ops", icon: "💳", label: "Finance" },
