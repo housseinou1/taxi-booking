@@ -186,15 +186,28 @@ function RideStatusButtons({
           body = arriveBodyOverride;
         } else if (arriveGate?.arriveBody) {
           body = arriveGate.arriveBody;
+        } else if (driverPosition && Array.isArray(driverPosition) && driverPosition.length >= 2) {
+          // Use current driver position from map/state as fallback
+          body = { lat: Number(driverPosition[0]), lng: Number(driverPosition[1]) };
         } else {
-          setActionError(
-            hasDriverCoords
-              ? `Move within ${Math.round(ARRIVE_MAX_DISTANCE_M)}m of pickup before marking arrived.`
-              : "Waiting for your location. Please enable GPS and try again."
-          );
-          actionInFlightRef.current = false;
-          setWorkingAction("");
-          return;
+          // Last resort: try a one-shot GPS fix
+          try {
+            const pos = await new Promise((resolve, reject) => {
+              navigator.geolocation.getCurrentPosition(
+                (p) => resolve({ lat: p.coords.latitude, lng: p.coords.longitude }),
+                (err) => reject(err),
+                { enableHighAccuracy: true, timeout: 8000, maximumAge: 10000 }
+              );
+            });
+            body = pos;
+          } catch (gpsErr) {
+            setActionError(
+              "Waiting for your location. Please enable GPS and try again."
+            );
+            actionInFlightRef.current = false;
+            setWorkingAction("");
+            return;
+          }
         }
       }
       const data = await postRideAction(endpoint, body);
