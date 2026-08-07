@@ -435,6 +435,75 @@ function ApplicationDetail({ application, type, onAction, onClose, isCeo }) {
   );
 }
 
+// ─── Approval History ─────────────────────────────────────────────────────────
+function ApprovalHistory() {
+  const [historyItems, setHistoryItems] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [historyPage, setHistoryPage] = useState(1);
+  const [historyTotalPages, setHistoryTotalPages] = useState(1);
+
+  useEffect(() => {
+    async function loadHistory() {
+      setHistoryLoading(true);
+      try {
+        const res = await authenticatedApi.get(`${API_URL}/admin/approvals/history/?page=${historyPage}&page_size=30`);
+        const data = res.data || {};
+        setHistoryItems(data.results || []);
+        setHistoryTotalPages(data.total_pages || 1);
+      } catch (err) {
+        console.error("Failed to load approval history:", err);
+        setHistoryItems([]);
+      } finally {
+        setHistoryLoading(false);
+      }
+    }
+    loadHistory();
+  }, [historyPage]);
+
+  if (historyLoading) return <div className="approval-queue__loading">Loading history...</div>;
+  if (historyItems.length === 0) return <div className="approval-queue__empty">No approval history yet.</div>;
+
+  return (
+    <div className="approval-queue">
+      <div className="approval-queue__table-wrap">
+        <table className="approval-queue__table">
+          <thead>
+            <tr>
+              <th>Admin</th>
+              <th>Action</th>
+              <th>Target Type</th>
+              <th>User ID</th>
+              <th>Reason</th>
+              <th>CEO Override</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {historyItems.map((item) => (
+              <tr key={item.id}>
+                <td><strong>{item.admin_name}</strong></td>
+                <td><StatusBadge status={item.action} /></td>
+                <td style={{ textTransform: "capitalize" }}>{item.target_type}</td>
+                <td>{item.target_user_id}</td>
+                <td>{item.reason || "—"}</td>
+                <td>{item.is_ceo_override ? "👔 Yes" : "No"}</td>
+                <td>{formatDateTime(item.created_at)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {historyTotalPages > 1 && (
+        <div className="approval-queue__pagination">
+          <button disabled={historyPage <= 1} onClick={() => setHistoryPage((p) => p - 1)}>← Prev</button>
+          <span>Page {historyPage} of {historyTotalPages}</span>
+          <button disabled={historyPage >= historyTotalPages} onClick={() => setHistoryPage((p) => p + 1)}>Next →</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Component ──────────────────────────────────────────────────────────
 export default function ApprovalCenter() {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -489,6 +558,11 @@ export default function ApprovalCenter() {
   useEffect(() => {
     fetchStats();
   }, [fetchStats]);
+
+  // Reset to page 1 when search/filter/sort changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, sortOrder]);
 
   useEffect(() => {
     if (activeTab !== "dashboard" && activeTab !== "history") {
@@ -593,6 +667,7 @@ export default function ApprovalCenter() {
 
         {(activeTab === "riders" || activeTab === "drivers" || activeTab === "couriers") && !selectedApplication && (
           <ApprovalQueue
+            key={activeTab}
             type={activeTab}
             items={items}
             loading={loading}
@@ -620,7 +695,7 @@ export default function ApprovalCenter() {
         )}
 
         {activeTab === "history" && (
-          <div className="approval-queue__empty">Approval history loading from /admin/approvals/history/...</div>
+          <ApprovalHistory />
         )}
       </div>
 

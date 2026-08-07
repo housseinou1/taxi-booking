@@ -89,15 +89,15 @@ def _serialize_rider(user):
     }
 
 
-def _serialize_driver(profile):
-    """Serialize a driver for the approval queue."""
+def _serialize_driver(profile, target_type="driver"):
+    """Serialize a driver/courier for the approval queue."""
     user = profile.user
     documents = DriverDocument.objects.filter(driver=profile).values(
         "id", "document_type", "file", "status", "rejection_reason", "expires_at"
     )
 
     history = ApprovalAction.objects.filter(
-        target_user=user, target_type="driver"
+        target_user=user, target_type=target_type
     ).values("action", "admin_name", "reason", "created_at")[:10]
 
     doc_list = []
@@ -349,7 +349,7 @@ def courier_queue(request):
     items = qs[start:start + page_size]
 
     return Response({
-        "results": [_serialize_driver(p) for p in items],
+        "results": [_serialize_driver(p, target_type="courier") for p in items],
         "count": total,
         "total_pages": max(1, (total + page_size - 1) // page_size),
         "page": page,

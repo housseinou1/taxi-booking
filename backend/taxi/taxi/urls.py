@@ -37,7 +37,7 @@ urlpatterns = [
     path("admin/pricing/", include("app_settings.urls")),
 
     # Admin Approval Center
-    path("api/admin/approvals/", include("taxi.admin_approvals.urls")),
+    path("admin/approvals/", include("taxi.admin_approvals.urls")),
 
     path("admin/", admin.site.urls),
 
