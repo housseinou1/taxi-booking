@@ -50,6 +50,7 @@ import GrowthExpansionDashboard from "./admin/growth/GrowthExpansionDashboard";
 import MultiCityOperationsCenter from "./admin/multicity/MultiCityOperationsCenter";
 import SmartPricingDispatchCenter from "./admin/pricing/SmartPricingDispatchCenter";
 import TrustSafetyCenter from "./admin/trust/TrustSafetyCenter";
+import ApprovalCenter from "./admin/approval/ApprovalCenter";
 import DriverIncentivesCenter from "./admin/incentives/DriverIncentivesCenter";
 import MerchantPlatformCenter from "./admin/merchant/MerchantPlatformCenter";
 import PartnerPlatformCenter from "./admin/partner/PartnerPlatformCenter";
@@ -467,6 +468,7 @@ function App() {
     else if (currentPath === "/admin/multi-city") setPage("admin-multi-city");
     else if (currentPath === "/admin/smart-pricing" || currentPath === "/admin/pricing-dispatch") setPage("admin-smart-pricing");
     else if (currentPath === "/admin/trust-safety" || currentPath === "/admin/safety") setPage("admin-trust-safety");
+    else if (currentPath === "/admin/approvals") setPage("admin-approvals");
     else if (currentPath === "/admin/incentives" || currentPath === "/admin/incentive-engine") setPage("admin-incentives");
     else if (currentPath === "/admin/merchant-platform" || currentPath === "/admin/merchants") setPage("admin-merchant-platform");
     else if (currentPath === "/admin/partner-platform" || currentPath === "/admin/partners") setPage("admin-partner-platform");
@@ -979,6 +981,10 @@ function App() {
 
   if (page === "admin-trust-safety") {
     return withInstall(<TrustSafetyCenter />);
+  }
+
+  if (page === "admin-approvals") {
+    return withInstall(<ApprovalCenter />);
   }
 
   if (page === "admin-incentives") {

@@ -77,6 +77,7 @@ INSTALLED_APPS = [
     "loyalty",
     "operations",
     "health",
+    "taxi.admin_approvals",
     "django_celery_beat",
     "admin_2fa",
     "api_gateway",
