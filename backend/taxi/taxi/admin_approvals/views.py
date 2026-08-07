@@ -7,9 +7,16 @@ Provides endpoints for:
 - Individual actions (approve, reject, suspend, reactivate, request_info)
 - Bulk actions
 - Approval history
+
+Security:
+- CEO Decision Protection: Normal admins cannot override a CEO decision.
+  Only another CEO can override a previous CEO action.
+- Concurrent Approval Protection: Action endpoints use database transactions
+  with select_for_update() to prevent race conditions and duplicate audit entries.
 """
 import logging
 
+from django.db import transaction
 from django.db.models import Q, Count
 from django.utils import timezone
 
@@ -24,6 +31,9 @@ from .models import ApprovalAction
 
 logger = logging.getLogger(__name__)
 
+# Actions that represent a decisive CEO override (not just info requests)
+CEO_DECISIVE_ACTIONS = {"approve", "reject", "suspend", "reactivate"}
+
 
 def _is_ceo(user):
     """CEO = superuser or has ceo role marker."""
@@ -35,6 +45,65 @@ def _get_client_ip(request):
     if forwarded:
         return forwarded.split(",")[0].strip()
     return request.META.get("REMOTE_ADDR")
+
+
+def _check_ceo_protection(request, target_user, target_type):
+    """
+    Enforce CEO decision protection.
+
+    If the most recent decisive action on this application was made by a CEO,
+    a normal admin cannot override it. Returns an error Response if blocked,
+    or None if the action is allowed.
+    """
+    if _is_ceo(request.user):
+        # CEOs can always override
+        return None
+
+    last_ceo_action = (
+        ApprovalAction.objects.filter(
+            target_user=target_user,
+            target_type=target_type,
+            is_ceo_override=True,
+            action__in=CEO_DECISIVE_ACTIONS,
+        )
+        .order_by("-created_at")
+        .first()
+    )
+
+    if not last_ceo_action:
+        return None
+
+    # Check if there's a more recent non-CEO action that supersedes it
+    # (this shouldn't happen if protection is working, but handle gracefully)
+    last_any_action = (
+        ApprovalAction.objects.filter(
+            target_user=target_user,
+            target_type=target_type,
+            action__in=CEO_DECISIVE_ACTIONS,
+        )
+        .order_by("-created_at")
+        .first()
+    )
+
+    # If the most recent decisive action was by a CEO, block normal admins
+    if last_any_action and last_any_action.id == last_ceo_action.id:
+        return Response(
+            {
+                "detail": (
+                    f"This application was {last_ceo_action.action}d by CEO "
+                    f"({last_ceo_action.admin_name}) on "
+                    f"{last_ceo_action.created_at.strftime('%b %d, %Y at %H:%M')}. "
+                    f"Only a CEO can override this decision."
+                ),
+                "code": "ceo_decision_protected",
+                "ceo_action": last_ceo_action.action,
+                "ceo_admin": last_ceo_action.admin_name,
+                "ceo_date": last_ceo_action.created_at.isoformat(),
+            },
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    return None
 
 
 def _log_action(request, target_user, target_type, action, reason=""):
@@ -359,44 +428,58 @@ def courier_queue(request):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated, IsAdminUser])
 def rider_action(request, user_id, action):
-    """Execute an approval action on a rider."""
+    """Execute an approval action on a rider.
+
+    Protected by:
+    - Database transaction with select_for_update() (prevents concurrent modifications)
+    - CEO decision protection (normal admins cannot override CEO decisions)
+    """
     valid_actions = {"approve", "reject", "suspend", "reactivate", "request_info"}
     if action not in valid_actions:
         return Response({"detail": f"Invalid action: {action}"}, status=status.HTTP_400_BAD_REQUEST)
 
-    try:
-        user = User.objects.get(id=user_id, user_type="rider")
-    except User.DoesNotExist:
-        return Response({"detail": "Rider not found."}, status=status.HTTP_404_NOT_FOUND)
-
     reason = request.data.get("reason", "")
 
-    if action == "approve":
-        user.rider_status = "approved"
-        user.rider_rejection_reason = ""
-    elif action == "reject":
-        if not reason:
-            return Response({"detail": "Reason is required for rejection."}, status=status.HTTP_400_BAD_REQUEST)
-        user.rider_status = "rejected"
-        user.rider_rejection_reason = reason
-    elif action == "suspend":
-        if not reason:
-            return Response({"detail": "Reason is required for suspension."}, status=status.HTTP_400_BAD_REQUEST)
-        user.is_active = False
-        user.rider_status = "rejected"
-        user.rider_rejection_reason = f"Suspended: {reason}"
-    elif action == "reactivate":
-        user.is_active = True
-        user.rider_status = "approved"
-        user.rider_rejection_reason = ""
-    elif action == "request_info":
-        user.rider_status = "pending"
-        user.rider_rejection_reason = reason or "Additional information required."
+    # Validate reason requirements before acquiring lock
+    if action in ("reject", "suspend") and not reason:
+        return Response(
+            {"detail": f"Reason is required for {action}."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
-    user.save()
-    _log_action(request, user, "rider", action, reason)
+    with transaction.atomic():
+        try:
+            user = User.objects.select_for_update().get(id=user_id, user_type="rider")
+        except User.DoesNotExist:
+            return Response({"detail": "Rider not found."}, status=status.HTTP_404_NOT_FOUND)
 
-    # Send notification
+        # CEO decision protection
+        ceo_block = _check_ceo_protection(request, user, "rider")
+        if ceo_block is not None:
+            return ceo_block
+
+        if action == "approve":
+            user.rider_status = "approved"
+            user.rider_rejection_reason = ""
+        elif action == "reject":
+            user.rider_status = "rejected"
+            user.rider_rejection_reason = reason
+        elif action == "suspend":
+            user.is_active = False
+            user.rider_status = "rejected"
+            user.rider_rejection_reason = f"Suspended: {reason}"
+        elif action == "reactivate":
+            user.is_active = True
+            user.rider_status = "approved"
+            user.rider_rejection_reason = ""
+        elif action == "request_info":
+            user.rider_status = "pending"
+            user.rider_rejection_reason = reason or "Additional information required."
+
+        user.save()
+        _log_action(request, user, "rider", action, reason)
+
+    # Send notification outside the transaction (non-blocking)
     try:
         from notifications.push import send_push_to_user
         titles = {
@@ -423,48 +506,62 @@ def rider_action(request, user_id, action):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated, IsAdminUser])
 def driver_action(request, user_id, action):
-    """Execute an approval action on a driver."""
+    """Execute an approval action on a driver.
+
+    Protected by:
+    - Database transaction with select_for_update() (prevents concurrent modifications)
+    - CEO decision protection (normal admins cannot override CEO decisions)
+    """
     valid_actions = {"approve", "reject", "suspend", "reactivate", "request_info"}
     if action not in valid_actions:
         return Response({"detail": f"Invalid action: {action}"}, status=status.HTTP_400_BAD_REQUEST)
 
-    try:
-        profile = DriverProfile.objects.select_related("user").get(user_id=user_id)
-    except DriverProfile.DoesNotExist:
-        return Response({"detail": "Driver not found."}, status=status.HTTP_404_NOT_FOUND)
-
     reason = request.data.get("reason", "")
-    user = profile.user
 
-    if action == "approve":
-        profile.status = "approved"
-        profile.application_rejection_reason = ""
-        profile.account_under_review = False
-    elif action == "reject":
-        if not reason:
-            return Response({"detail": "Reason is required for rejection."}, status=status.HTTP_400_BAD_REQUEST)
-        profile.status = "rejected"
-        profile.application_rejection_reason = reason
-    elif action == "suspend":
-        if not reason:
-            return Response({"detail": "Reason is required for suspension."}, status=status.HTTP_400_BAD_REQUEST)
-        profile.account_under_review = True
-        profile.account_risk_reason = reason
-        profile.is_available = False
-    elif action == "reactivate":
-        profile.account_under_review = False
-        profile.account_risk_reason = ""
-        if profile.status == "rejected":
+    if action in ("reject", "suspend") and not reason:
+        return Response(
+            {"detail": f"Reason is required for {action}."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    with transaction.atomic():
+        try:
+            profile = DriverProfile.objects.select_for_update().select_related("user").get(user_id=user_id)
+        except DriverProfile.DoesNotExist:
+            return Response({"detail": "Driver not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        user = profile.user
+
+        # CEO decision protection
+        ceo_block = _check_ceo_protection(request, user, "driver")
+        if ceo_block is not None:
+            return ceo_block
+
+        if action == "approve":
             profile.status = "approved"
             profile.application_rejection_reason = ""
-    elif action == "request_info":
-        profile.status = "pending"
-        profile.application_rejection_reason = reason or "Additional documents or information required."
+            profile.account_under_review = False
+        elif action == "reject":
+            profile.status = "rejected"
+            profile.application_rejection_reason = reason
+        elif action == "suspend":
+            profile.account_under_review = True
+            profile.account_risk_reason = reason
+            profile.is_available = False
+        elif action == "reactivate":
+            profile.account_under_review = False
+            profile.account_risk_reason = ""
+            if profile.status == "rejected":
+                profile.status = "approved"
+                profile.application_rejection_reason = ""
+        elif action == "request_info":
+            profile.status = "pending"
+            profile.application_rejection_reason = reason or "Additional documents or information required."
 
-    profile.save()
-    _log_action(request, user, "driver", action, reason)
+        profile.save()
+        _log_action(request, user, "driver", action, reason)
 
-    # Send notification
+    # Send notification outside the transaction
     try:
         from notifications.push import send_push_to_user
         titles = {
@@ -491,55 +588,69 @@ def driver_action(request, user_id, action):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated, IsAdminUser])
 def courier_action(request, user_id, action):
-    """Execute an approval action on a courier (same as driver action with courier target_type)."""
+    """Execute an approval action on a courier.
+
+    Protected by:
+    - Database transaction with select_for_update() (prevents concurrent modifications)
+    - CEO decision protection (normal admins cannot override CEO decisions)
+    """
     valid_actions = {"approve", "reject", "suspend", "reactivate", "request_info"}
     if action not in valid_actions:
         return Response({"detail": f"Invalid action: {action}"}, status=status.HTTP_400_BAD_REQUEST)
 
-    try:
-        profile = DriverProfile.objects.select_related("user").get(user_id=user_id)
-    except DriverProfile.DoesNotExist:
-        return Response({"detail": "Courier not found."}, status=status.HTTP_404_NOT_FOUND)
-
     reason = request.data.get("reason", "")
-    user = profile.user
 
-    if action == "approve":
-        profile.status = "approved"
-        profile.application_rejection_reason = ""
-        profile.account_under_review = False
-    elif action == "reject":
-        if not reason:
-            return Response({"detail": "Reason is required."}, status=status.HTTP_400_BAD_REQUEST)
-        profile.status = "rejected"
-        profile.application_rejection_reason = reason
-    elif action == "suspend":
-        if not reason:
-            return Response({"detail": "Reason is required."}, status=status.HTTP_400_BAD_REQUEST)
-        profile.account_under_review = True
-        profile.account_risk_reason = reason
-        profile.is_available = False
-        # Also suspend delivery settings
-        from deliveries.models import DriverDeliverySettings
-        DriverDeliverySettings.objects.filter(driver=profile).update(
-            is_suspended=True, suspension_reason=reason
+    if action in ("reject", "suspend") and not reason:
+        return Response(
+            {"detail": f"Reason is required for {action}."},
+            status=status.HTTP_400_BAD_REQUEST,
         )
-    elif action == "reactivate":
-        profile.account_under_review = False
-        profile.account_risk_reason = ""
-        if profile.status == "rejected":
+
+    with transaction.atomic():
+        try:
+            profile = DriverProfile.objects.select_for_update().select_related("user").get(user_id=user_id)
+        except DriverProfile.DoesNotExist:
+            return Response({"detail": "Courier not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        user = profile.user
+
+        # CEO decision protection
+        ceo_block = _check_ceo_protection(request, user, "courier")
+        if ceo_block is not None:
+            return ceo_block
+
+        if action == "approve":
             profile.status = "approved"
-        from deliveries.models import DriverDeliverySettings
-        DriverDeliverySettings.objects.filter(driver=profile).update(
-            is_suspended=False, suspension_reason=""
-        )
-    elif action == "request_info":
-        profile.status = "pending"
-        profile.application_rejection_reason = reason or "Additional documents required."
+            profile.application_rejection_reason = ""
+            profile.account_under_review = False
+        elif action == "reject":
+            profile.status = "rejected"
+            profile.application_rejection_reason = reason
+        elif action == "suspend":
+            profile.account_under_review = True
+            profile.account_risk_reason = reason
+            profile.is_available = False
+            from deliveries.models import DriverDeliverySettings
+            DriverDeliverySettings.objects.filter(driver=profile).update(
+                is_suspended=True, suspension_reason=reason
+            )
+        elif action == "reactivate":
+            profile.account_under_review = False
+            profile.account_risk_reason = ""
+            if profile.status == "rejected":
+                profile.status = "approved"
+            from deliveries.models import DriverDeliverySettings
+            DriverDeliverySettings.objects.filter(driver=profile).update(
+                is_suspended=False, suspension_reason=""
+            )
+        elif action == "request_info":
+            profile.status = "pending"
+            profile.application_rejection_reason = reason or "Additional documents required."
 
-    profile.save()
-    _log_action(request, user, "courier", action, reason)
+        profile.save()
+        _log_action(request, user, "courier", action, reason)
 
+    # Send notification outside the transaction
     try:
         from notifications.push import send_push_to_user
         send_push_to_user(
@@ -558,7 +669,11 @@ def courier_action(request, user_id, action):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated, IsAdminUser])
 def bulk_action(request, target_type):
-    """Execute bulk actions on multiple applications."""
+    """Execute bulk actions on multiple applications.
+
+    Each item is processed in its own transaction with select_for_update().
+    CEO-protected items are skipped (counted as blocked, not failed).
+    """
     ids = request.data.get("ids", [])
     action = request.data.get("action", "")
     reason = request.data.get("reason", "")
@@ -570,32 +685,49 @@ def bulk_action(request, target_type):
         return Response({"detail": "Reason is required for bulk reject/suspend."}, status=status.HTTP_400_BAD_REQUEST)
 
     success = 0
+    blocked = 0
+
     for user_id in ids:
         try:
-            if target_type == "riders":
-                user = User.objects.get(id=user_id, user_type="rider")
-                if action == "approve":
-                    user.rider_status = "approved"
-                elif action == "reject":
-                    user.rider_status = "rejected"
-                    user.rider_rejection_reason = reason
-                user.save()
-                _log_action(request, user, "rider", action, reason)
-            else:
-                profile = DriverProfile.objects.get(user_id=user_id)
-                t_type = "courier" if target_type == "couriers" else "driver"
-                if action == "approve":
-                    profile.status = "approved"
-                elif action == "reject":
-                    profile.status = "rejected"
-                    profile.application_rejection_reason = reason
-                profile.save()
-                _log_action(request, profile.user, t_type, action, reason)
-            success += 1
+            with transaction.atomic():
+                if target_type == "riders":
+                    user = User.objects.select_for_update().get(id=user_id, user_type="rider")
+                    # CEO protection check
+                    if _check_ceo_protection(request, user, "rider") is not None:
+                        blocked += 1
+                        continue
+                    if action == "approve":
+                        user.rider_status = "approved"
+                        user.rider_rejection_reason = ""
+                    elif action == "reject":
+                        user.rider_status = "rejected"
+                        user.rider_rejection_reason = reason
+                    user.save()
+                    _log_action(request, user, "rider", action, reason)
+                else:
+                    profile = DriverProfile.objects.select_for_update().select_related("user").get(user_id=user_id)
+                    t_type = "courier" if target_type == "couriers" else "driver"
+                    # CEO protection check
+                    if _check_ceo_protection(request, profile.user, t_type) is not None:
+                        blocked += 1
+                        continue
+                    if action == "approve":
+                        profile.status = "approved"
+                        profile.application_rejection_reason = ""
+                    elif action == "reject":
+                        profile.status = "rejected"
+                        profile.application_rejection_reason = reason
+                    profile.save()
+                    _log_action(request, profile.user, t_type, action, reason)
+                success += 1
         except Exception:
             continue
 
-    return Response({"detail": f"Bulk {action} completed.", "success_count": success, "total": len(ids)})
+    detail = f"Bulk {action} completed."
+    if blocked > 0:
+        detail += f" {blocked} item(s) skipped due to CEO decision protection."
+
+    return Response({"detail": detail, "success_count": success, "blocked_count": blocked, "total": len(ids)})
 
 
 @api_view(["GET"])
