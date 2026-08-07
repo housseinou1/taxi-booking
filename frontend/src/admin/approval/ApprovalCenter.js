@@ -13,7 +13,7 @@
  * - CEO override capabilities
  * - Mobile responsive
  */
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import authenticatedApi from "../../auth/authenticatedApi";
 import { API_URL } from "../../apiConfig";
 import "./ApprovalCenter.css";
