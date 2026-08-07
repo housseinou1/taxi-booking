@@ -225,6 +225,8 @@
       "cancelled": "Cancelled"
     },
     "timeline": {
+      "findingDriverTitle": "Finding a driver",
+      "findingDriverText": "Searching for nearby drivers...",
       "driverArrivingTitle": "Driver arriving",
       "driverArrivingText": "Your driver is on the way.",
       "driverArrivedTitle": "Driver arrived",
@@ -254,6 +256,8 @@
       "chooseReasonTitle": "Choose a cancellation reason",
       "chooseReasonText": "Please tell us why you are cancelling before we close this request.",
       "cancelledTitle": "Ride cancelled",
+      "driverCancelledTitle": "Your driver cancelled the ride",
+      "driverCancelledText": "You can request a new ride anytime.",
       "refundReleased": "Authorization released or no charge captured",
       "failedTitle": "Cancellation failed"
     },

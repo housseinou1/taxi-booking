@@ -225,6 +225,8 @@
       "cancelled": "ملغاة"
     },
     "timeline": {
+      "findingDriverTitle": "البحث عن سائق",
+      "findingDriverText": "جارٍ البحث عن سائقين بالقرب منك...",
       "driverArrivingTitle": "السائق في الطريق",
       "driverArrivingText": "سائقك قادم إليك.",
       "driverArrivedTitle": "وصل السائق",
@@ -254,6 +256,8 @@
       "chooseReasonTitle": "اختر سبب الإلغاء",
       "chooseReasonText": "أخبرنا لماذا تلغي قبل إغلاق الطلب.",
       "cancelledTitle": "تم إلغاء الرحلة",
+      "driverCancelledTitle": "ألغى السائق الرحلة",
+      "driverCancelledText": "يمكنك طلب رحلة جديدة في أي وقت.",
       "refundReleased": "تم تحرير التفويض أو لم يتم خصم أي مبلغ",
       "failedTitle": "فشل الإلغاء"
     },

@@ -226,7 +226,7 @@ function RiderHome() {
     setRideStatusMessage('Ride cancelled');
     window.setTimeout(() => {
       setRideStatusMessage((current) => (current === 'Ride cancelled' ? '' : current));
-    }, 5000);
+    }, 3000);
   }, []);
 
   const refreshActiveRide = useCallback(

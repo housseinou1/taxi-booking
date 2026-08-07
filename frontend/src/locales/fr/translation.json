@@ -225,6 +225,8 @@
       "cancelled": "Annulee"
     },
     "timeline": {
+      "findingDriverTitle": "Recherche d'un chauffeur",
+      "findingDriverText": "Recherche de chauffeurs à proximité...",
       "driverArrivingTitle": "Chauffeur en route",
       "driverArrivingText": "Votre chauffeur arrive.",
       "driverArrivedTitle": "Chauffeur arrive",
@@ -254,6 +256,8 @@
       "chooseReasonTitle": "Choisissez une raison",
       "chooseReasonText": "Dites-nous pourquoi vous annulez avant de fermer la demande.",
       "cancelledTitle": "Course annulee",
+      "driverCancelledTitle": "Votre chauffeur a annulé la course",
+      "driverCancelledText": "Vous pouvez demander une nouvelle course à tout moment.",
       "refundReleased": "Autorisation liberee ou aucun montant capture",
       "failedTitle": "Annulation echouee"
     },

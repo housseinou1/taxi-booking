@@ -86,6 +86,7 @@ const getStatusLabel = (status, t) => {
 };
 
 const rideStatusSteps = [
+  { key: "finding_driver", titleKey: "findingDriverTitle", textKey: "findingDriverText" },
   { key: "driver_arriving", titleKey: "driverArrivingTitle", textKey: "driverArrivingText" },
   { key: "driver_arrived", titleKey: "driverArrivedTitle", textKey: "driverArrivedText" },
   { key: "in_progress", titleKey: "inProgressTitle", textKey: "inProgressText" },
@@ -93,11 +94,11 @@ const rideStatusSteps = [
 ];
 
 const getStatusStepIndex = (status) => {
-  if (["requested", "pending"].includes(status)) return -1;
-  if (["accepted", "driver_arriving"].includes(status)) return 0;
-  if (status === "driver_arrived") return 1;
-  if (status === "in_progress") return 2;
-  if (status === "completed") return 3;
+  if (["requested", "pending"].includes(status)) return 0; // Finding Driver
+  if (["accepted", "driver_arriving"].includes(status)) return 1; // Driver Arriving
+  if (status === "driver_arrived") return 2;
+  if (status === "in_progress") return 3;
+  if (status === "completed") return 4;
   return -1;
 };
 
@@ -528,6 +529,21 @@ export default function RiderDashboard() {
         const recentCompleted = !activeRide
           ? response.data.find((ride) => ride.status === "completed")
           : null;
+
+        // Detect if a previously active ride was cancelled by the driver
+        const cancelledRide = response.data.find((ride) => ride.status === "cancelled");
+        if (!activeRide && !recentCompleted && cancelledRide) {
+          // Ride was cancelled (likely by driver) — clear all ride state
+          setCurrentRide(null);
+          setRoutePath([]);
+          setRouteInfo(null);
+          setLiveDriverRoute([]);
+          setLiveDriverRouteInfo(null);
+          setDriverPosition(null);
+          setAnimatedDriverPosition(null);
+          return;
+        }
+
         setCurrentRide(activeRide || recentCompleted || null);
         if ((activeRide || recentCompleted) && (activeRide || recentCompleted).status !== "requested") {
           setRequestMessage("");
@@ -596,12 +612,36 @@ export default function RiderDashboard() {
     const unsub = subscribeRideUpdates((msg) => {
       if (msg && (msg.type === "ride_update" || msg.status || msg.ride_id)) {
         setRequestMessage("");
+
+        // Handle driver-initiated cancellation from WebSocket
+        if (msg.status === "cancelled" || msg.type === "ride_cancelled") {
+          setCurrentRide(null);
+          setRoutePath([]);
+          setRouteInfo(null);
+          setLiveDriverRoute([]);
+          setLiveDriverRouteInfo(null);
+          setDriverPosition(null);
+          setAnimatedDriverPosition(null);
+          setLastCancellation({
+            tone: "success",
+            title: t("riderDashboard.cancel.driverCancelledTitle"),
+            text: t("riderDashboard.cancel.driverCancelledText"),
+          });
+          // Auto-dismiss after 3 seconds
+          setTimeout(() => {
+            setLastCancellation((current) =>
+              current?.tone === "success" ? null : current
+            );
+          }, 3000);
+          return;
+        }
+
         fetchCurrentRide();
       }
     });
 
     return () => { clearInterval(interval); unsub(); };
-  }, [fetchCurrentRide, fetchRiderIdentity]);
+  }, [fetchCurrentRide, fetchRiderIdentity, t]);
 
   // GPS Auto-fill for Pickup Location (Task 1)
   useEffect(() => {
@@ -866,9 +906,26 @@ export default function RiderDashboard() {
         fee: response.data.cancellation_fee || "0.00",
         reason: cancelReason.trim(),
       });
+
+      // Clear all ride-related state immediately
       setCurrentRide(null);
+      setRoutePath([]);
+      setRouteInfo(null);
+      setLiveDriverRoute([]);
+      setLiveDriverRouteInfo(null);
+      setDriverPosition(null);
+      setAnimatedDriverPosition(null);
       setCancelModalOpen(false);
       setCancelReason("");
+      setRequestMessage("");
+
+      // Auto-dismiss the cancellation banner after 3 seconds
+      setTimeout(() => {
+        setLastCancellation((current) =>
+          current?.tone === "success" ? null : current
+        );
+      }, 3000);
+
       fetchCurrentRide();
     } catch (error) {
       const cancelError =
@@ -881,6 +938,13 @@ export default function RiderDashboard() {
         title: t("riderDashboard.cancel.failedTitle"),
         text: cancelError,
       });
+
+      // Auto-dismiss error banner after 5 seconds
+      setTimeout(() => {
+        setLastCancellation((current) =>
+          current?.tone === "error" ? null : current
+        );
+      }, 5000);
     } finally {
       setCancelSaving(false);
     }
@@ -986,9 +1050,9 @@ export default function RiderDashboard() {
           ].filter(Boolean)}
           markers={mapMarkers}
           polylines={[
-            {
+            routePath.length > 0 && {
               id: "rider-route",
-              path: routePath.length ? routePath : [pickupPosition, destinationPosition],
+              path: routePath,
               color: "#111827",
               weight: 5,
               opacity: 0.82,

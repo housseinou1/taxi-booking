@@ -140,8 +140,9 @@ describe('RideTracker component', () => {
   });
 
   describe('Progress indicator', () => {
-    it('renders all 4 progress steps', () => {
+    it('renders all 5 progress steps', () => {
       render(<RideTracker ride={makeRide()} />);
+      expect(screen.getByText('Finding Driver')).toBeInTheDocument();
       expect(screen.getByText('Driver Arriving')).toBeInTheDocument();
       expect(screen.getByText('Arrived')).toBeInTheDocument();
       expect(screen.getByText('In Progress')).toBeInTheDocument();
@@ -153,10 +154,12 @@ describe('RideTracker component', () => {
         <RideTracker ride={makeRide({ status: 'driver_arrived' })} />
       );
       const steps = container.querySelectorAll('.ride-tracker__step');
-      // Step 0 (Driver Arriving) should be completed
+      // Step 0 (Finding Driver) should be completed
       expect(steps[0]).toHaveClass('ride-tracker__step--completed');
-      // Step 1 (Arrived) should be active
-      expect(steps[1]).toHaveClass('ride-tracker__step--active');
+      // Step 1 (Driver Arriving) should be completed
+      expect(steps[1]).toHaveClass('ride-tracker__step--completed');
+      // Step 2 (Arrived) should be active
+      expect(steps[2]).toHaveClass('ride-tracker__step--active');
     });
 
     it('marks in_progress step as active', () => {
@@ -166,7 +169,8 @@ describe('RideTracker component', () => {
       const steps = container.querySelectorAll('.ride-tracker__step');
       expect(steps[0]).toHaveClass('ride-tracker__step--completed');
       expect(steps[1]).toHaveClass('ride-tracker__step--completed');
-      expect(steps[2]).toHaveClass('ride-tracker__step--active');
+      expect(steps[2]).toHaveClass('ride-tracker__step--completed');
+      expect(steps[3]).toHaveClass('ride-tracker__step--active');
     });
   });
 

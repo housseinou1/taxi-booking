@@ -27,13 +27,31 @@ const CANCEL_REASONS = [
 /**
  * Progress steps displayed in the step-by-step indicator.
  * Maps status progression to user-friendly labels.
+ * Step 0: Finding Driver (searching phase)
+ * Step 1: Driver Arriving (driver accepted, en route to pickup)
+ * Step 2: Arrived (driver at pickup location)
+ * Step 3: In Progress (trip ongoing)
+ * Step 4: Completed (trip finished)
  */
 const PROGRESS_STEPS = [
+  { key: 'finding_driver', label: 'Finding Driver' },
   { key: 'driver_arriving', label: 'Driver Arriving' },
   { key: 'driver_arrived', label: 'Arrived' },
   { key: 'in_progress', label: 'In Progress' },
   { key: 'completed', label: 'Completed' },
 ];
+
+/**
+ * Maximum reasonable ETA in minutes (2 hours).
+ * Anything above this is likely a data error.
+ */
+const MAX_ETA_MINUTES = 120;
+
+/**
+ * Maximum reasonable distance in km (200 km).
+ * Anything above this is likely a data error.
+ */
+const MAX_DISTANCE_KM = 200;
 
 /**
  * RideTracker component for real-time ride status tracking.
@@ -127,7 +145,10 @@ function getCoordinatePair(lat, lng) {
 }
 
 function RideTracker({ ride, driverPosition, city = 'Nouakchott', onAddStop, onChat, onShare, onSOS, onPayRate, onCancelSuccess }) {
-  const [eta, setEta] = useState(ride.eta_minutes);
+  // Don't initialize ETA if no driver is assigned yet
+  const initialEta = PRE_ASSIGNMENT_STATUSES.has(ride.status) ? null
+    : (ride.eta_minutes != null && Number(ride.eta_minutes) <= MAX_ETA_MINUTES ? Number(ride.eta_minutes) : null);
+  const [eta, setEta] = useState(initialEta);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [cancelOtherText, setCancelOtherText] = useState('');
@@ -141,7 +162,11 @@ function RideTracker({ ride, driverPosition, city = 'Nouakchott', onAddStop, onC
   useEffect(() => {
     const unsubscribe = wsService.subscribeRideUpdates((data) => {
       if (data.eta_minutes != null && (data.ride_id === ride.id || data.ride_id == null)) {
-        setEta(data.eta_minutes);
+        const incoming = Number(data.eta_minutes);
+        // Only accept reasonable ETA values
+        if (incoming > 0 && incoming <= MAX_ETA_MINUTES) {
+          setEta(incoming);
+        }
       }
     });
 
@@ -151,11 +176,18 @@ function RideTracker({ ride, driverPosition, city = 'Nouakchott', onAddStop, onC
   // Sync ETA from prop when it changes
   useEffect(() => {
     if (ride.eta_minutes != null) {
-      setEta(ride.eta_minutes);
+      const incoming = Number(ride.eta_minutes);
+      if (incoming > 0 && incoming <= MAX_ETA_MINUTES) {
+        setEta(incoming);
+      }
     }
   }, [ride.eta_minutes]);
 
   useEffect(() => {
+    // Only calculate ETA once a driver has accepted — prevents impossible values
+    // when no driver position is reliably known yet.
+    if (PRE_ASSIGNMENT_STATUSES.has(ride.status)) return;
+
     const effectiveDriverPosition =
       driverPosition ||
       getCoordinatePair(ride.driver_current_lat, ride.driver_current_lng) ||
@@ -172,7 +204,13 @@ function RideTracker({ ride, driverPosition, city = 'Nouakchott', onAddStop, onC
         : getCoordinatePair(ride.pickup_lat, ride.pickup_lng) || ride.pickup?.position;
 
     if (Array.isArray(target) && target.every((coordinate) => Number.isFinite(Number(coordinate)))) {
-      setEta(estimateEtaMinutes(effectiveDriverPosition, target.map(Number)));
+      const calculated = estimateEtaMinutes(effectiveDriverPosition, target.map(Number));
+      // Cap to reasonable maximum — anything above is a data error
+      if (calculated != null && calculated <= MAX_ETA_MINUTES) {
+        setEta(calculated);
+      } else if (calculated != null) {
+        setEta(null); // Don't show impossible ETA
+      }
     }
   }, [
     driverPosition,
@@ -192,20 +230,23 @@ function RideTracker({ ride, driverPosition, city = 'Nouakchott', onAddStop, onC
 
   /**
    * Get the current step index for the progress indicator.
-   * Maps ride status to the 4-step display (0-3).
+   * Maps ride status to the 5-step display (0-4).
+   * 0 = Finding Driver, 1 = Driver Arriving, 2 = Arrived, 3 = In Progress, 4 = Completed
    */
   const getCurrentStepIndex = useCallback(() => {
     const statusIndex = getStatusStepIndex(ride.status);
-    // Map the full status index to our 4-step progress:
-    // driver_arriving (index 3) → step 0
-    // driver_arrived (index 4) → step 1
-    // in_progress (index 5) → step 2
-    // completed (index 6) → step 3
-    if (statusIndex >= 6) return 3; // completed
-    if (statusIndex >= 5) return 2; // in_progress
-    if (statusIndex >= 4) return 1; // driver_arrived
-    if (statusIndex >= 3) return 0; // driver_arriving
-    return 0; // default to first step for earlier statuses
+    // Map the full status index to our 5-step progress:
+    // requested/pending (index 0-1) → step 0 (Finding Driver)
+    // accepted (index 2) → step 1 (Driver Arriving)
+    // driver_arriving (index 3) → step 1 (Driver Arriving)
+    // driver_arrived (index 4) → step 2 (Arrived)
+    // in_progress (index 5) → step 3 (In Progress)
+    // completed (index 6) → step 4 (Completed)
+    if (statusIndex >= 6) return 4; // completed
+    if (statusIndex >= 5) return 3; // in_progress
+    if (statusIndex >= 4) return 2; // driver_arrived
+    if (statusIndex >= 2) return 1; // accepted or driver_arriving
+    return 0; // requested/pending → Finding Driver
   }, [ride.status]);
 
   const currentStep = getCurrentStepIndex();
@@ -253,10 +294,15 @@ function RideTracker({ ride, driverPosition, city = 'Nouakchott', onAddStop, onC
         ? getCoordinatePair(nextPendingStop.latitude, nextPendingStop.longitude)
         : getCoordinatePair(ride.destination_lat, ride.destination_lng) || ride.destination?.position
       : getCoordinatePair(ride.pickup_lat, ride.pickup_lng) || ride.pickup?.position;
-  const movementDistanceKm =
-    effectiveDriverPosition && Array.isArray(targetPosition)
-      ? estimateDistanceKm(effectiveDriverPosition, targetPosition.map(Number))
-      : null;
+  const movementDistanceKm = useMemo(() => {
+    // Only show distance once a driver is assigned
+    if (!driverAssigned) return null;
+    if (!effectiveDriverPosition || !Array.isArray(targetPosition)) return null;
+    const raw = estimateDistanceKm(effectiveDriverPosition, targetPosition.map(Number));
+    // Cap to reasonable maximum — anything above is a data error
+    if (raw != null && raw > MAX_DISTANCE_KM) return null;
+    return raw;
+  }, [driverAssigned, effectiveDriverPosition, targetPosition]);
   const routePoints = buildLiveRoutePoints(ride);
   const stopCount = Array.isArray(ride.stops) ? ride.stops.length : 0;
   const progressSteps = useMemo(() => {
@@ -274,8 +320,24 @@ function RideTracker({ ride, driverPosition, city = 'Nouakchott', onAddStop, onC
           : step
       );
     }
+    // While searching, update the label to reflect dispatch state
+    if (!driverAssigned && PRE_ASSIGNMENT_STATUSES.has(ride.status)) {
+      return PROGRESS_STEPS.map((step) =>
+        step.key === 'finding_driver'
+          ? {
+              ...step,
+              label:
+                ride.dispatch_status === 'no_driver_found'
+                  ? 'No driver found'
+                  : ride.dispatch_round >= 2
+                    ? 'Searching...'
+                    : 'Finding Driver',
+            }
+          : step
+      );
+    }
     return PROGRESS_STEPS;
-  }, [ride.status, nextPendingStop]);
+  }, [ride.status, ride.dispatch_status, ride.dispatch_round, nextPendingStop, driverAssigned]);
   const canAddMoreStops = canEditStops(ride.status) && stopCount < MAX_STOPS && Boolean(onAddStop);
 
   const handleAddStopSelect = useCallback(
@@ -520,8 +582,8 @@ function RideTracker({ ride, driverPosition, city = 'Nouakchott', onAddStop, onC
 
       {ride.status === 'driver_arrived' && <WaitingFeeBanner ride={ride} audience="rider" />}
 
-      {/* Progress Indicator */}
-      {driverAssigned && <div className="ride-tracker__progress" role="progressbar" aria-valuenow={currentStep + 1} aria-valuemin={1} aria-valuemax={4}>
+      {/* Progress Indicator — always visible to show current phase */}
+      <div className="ride-tracker__progress" role="progressbar" aria-valuenow={currentStep + 1} aria-valuemin={1} aria-valuemax={5}>
         {progressSteps.map((step, index) => {
           const isCompleted = index < currentStep;
           const isActive = index === currentStep;
@@ -539,24 +601,26 @@ function RideTracker({ ride, driverPosition, city = 'Nouakchott', onAddStop, onC
             </div>
           );
         })}
-      </div>}
-
-      {/* ETA and PIN */}
-      <div className="ride-tracker__info">
-        <div className="ride-tracker__eta">
-          <span className="ride-tracker__eta-label">ETA</span>
-          <span className="ride-tracker__eta-pill">
-            {eta != null ? `Arriving in ${eta} min` : 'Searching for ETA'}
-          </span>
-          <span className="ride-tracker__eta-value">
-            {eta != null ? `${eta} min` : '—'}
-          </span>
-        </div>
-        <div className="ride-tracker__pin">
-          <span className="ride-tracker__pin-label">Ride PIN</span>
-          <span className="ride-tracker__pin-value">{pinCode || '—'}</span>
-        </div>
       </div>
+
+      {/* ETA and PIN — only show once a driver has been assigned */}
+      {driverAssigned && (
+        <div className="ride-tracker__info">
+          <div className="ride-tracker__eta">
+            <span className="ride-tracker__eta-label">ETA</span>
+            <span className="ride-tracker__eta-pill">
+              {eta != null ? `Arriving in ${eta} min` : 'Calculating ETA...'}
+            </span>
+            <span className="ride-tracker__eta-value">
+              {eta != null ? `${eta} min` : '—'}
+            </span>
+          </div>
+          <div className="ride-tracker__pin">
+            <span className="ride-tracker__pin-label">Ride PIN</span>
+            <span className="ride-tracker__pin-value">{pinCode || '—'}</span>
+          </div>
+        </div>
+      )}
 
       {/* Action Buttons */}
       <div className="ride-tracker__actions">
