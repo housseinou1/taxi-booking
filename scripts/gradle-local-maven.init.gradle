@@ -1,0 +1,28 @@
+allprojects {
+  buildscript {
+    repositories {
+      mavenLocal()
+      maven { url uri("C:/Users/Housseinou/.m2/repository") }
+      google()
+      mavenCentral()
+    }
+  }
+  repositories {
+    mavenLocal()
+    maven { url uri("C:/Users/Housseinou/.m2/repository") }
+    google()
+    mavenCentral()
+  }
+}
+
+settingsEvaluated { settings ->
+  settings.pluginManagement {
+    repositories {
+      mavenLocal()
+      maven { url uri("C:/Users/Housseinou/.m2/repository") }
+      google()
+      mavenCentral()
+      gradlePluginPortal()
+    }
+  }
+}

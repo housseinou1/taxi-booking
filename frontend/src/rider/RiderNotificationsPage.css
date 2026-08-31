@@ -1,0 +1,113 @@
+.rider-notifications-page {
+  min-height: 100%;
+  padding: 16px 16px 120px;
+  background: #f8fafc;
+}
+
+.rider-notifications-page__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.rider-notifications-page__head span {
+  display: block;
+  color: #b45309;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.rider-notifications-page__head h1 {
+  margin: 4px 0;
+  font-size: 28px;
+  color: #0f172a;
+}
+
+.rider-notifications-page__head p {
+  margin: 0;
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.rider-notifications-page__refresh {
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #fff;
+  color: #0f172a;
+  padding: 10px 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.rider-notifications-page .sx-notification-center--inline {
+  width: 100%;
+}
+
+.rider-notifications-page .sx-notification-panel {
+  position: static;
+  width: 100%;
+  max-height: none;
+  box-shadow: none;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #0f172a;
+}
+
+.rider-notifications-page .sx-notification-head span,
+.rider-notifications-page .sx-notification-copy em {
+  color: #b45309;
+}
+
+.rider-notifications-page .sx-notification-copy small {
+  color: #64748b;
+}
+
+.rider-notifications-page .sx-notification-item {
+  background: #f8fafc;
+  color: #0f172a;
+  border-color: #e2e8f0;
+}
+
+.rider-notifications-page .sx-notification-item.unread {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
+.rider-notifications-page .sx-notification-empty,
+.rider-notifications-page .sx-notification-error {
+  border-color: #cbd5e1;
+  color: #64748b;
+}
+
+.rider-notifications-page .sx-notification-category {
+  color: #334155;
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+}
+
+.rider-notifications-page .sx-notification-category.active {
+  color: #92400e;
+  background: rgba(245, 158, 11, 0.15);
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
+.rider-notifications-page .sx-push-card {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+.rider-notifications-page .sx-push-card span {
+  color: #64748b;
+}
+
+.rider-notifications-page .sx-notification-head button,
+.rider-notifications-page .sx-push-card button {
+  background: #0f172a;
+  color: #fff;
+  border-color: transparent;
+}

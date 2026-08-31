@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import BookingConfirmation from './BookingConfirmation';
 import PromoCodeInput from './PromoCodeInput';
 
@@ -102,6 +102,7 @@ describe('BookingConfirmation component', () => {
     routeInfo: { distanceKm: 5, etaMinutes: 10 },
     promoError: undefined,
     promoLoading: false,
+    legalCompliant: true,
   };
 
   beforeEach(() => {
@@ -132,12 +133,33 @@ describe('BookingConfirmation component', () => {
 
   it('displays ride type', () => {
     render(<BookingConfirmation {...defaultProps} rideType="comfort" />);
-    expect(screen.getByText('Comfort')).toBeInTheDocument();
+    expect(screen.getAllByText('Comfort').length).toBeGreaterThan(0);
   });
 
   it('displays fare amount in MRU', () => {
     render(<BookingConfirmation {...defaultProps} fare={500} />);
     expect(screen.getByText('500 MRU')).toBeInTheDocument();
+  });
+
+  it('displays complete fare estimate details', () => {
+    render(
+      <BookingConfirmation
+        {...defaultProps}
+        rideType="xl"
+        routeInfo={{ distanceKm: 7.25, etaMinutes: 12, durationMinutes: 18 }}
+        paymentMethod="bankily"
+      />
+    );
+
+    const estimateDetails = within(screen.getByLabelText('Fare estimate details'));
+    expect(estimateDetails.getByText('Estimated arrival')).toBeInTheDocument();
+    expect(estimateDetails.getByText('12 min')).toBeInTheDocument();
+    expect(estimateDetails.getByText('Distance')).toBeInTheDocument();
+    expect(estimateDetails.getByText('7.3 km')).toBeInTheDocument();
+    expect(estimateDetails.getByText('Duration')).toBeInTheDocument();
+    expect(estimateDetails.getByText('18 min')).toBeInTheDocument();
+    expect(estimateDetails.getByText('XL')).toBeInTheDocument();
+    expect(estimateDetails.getByText('Bankily')).toBeInTheDocument();
   });
 
   it('displays discounted fare with original struck through', () => {

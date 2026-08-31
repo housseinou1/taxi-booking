@@ -8,6 +8,12 @@ import {
 } from "./paymentApi";
 import "../delivery/delivery-uber.css";
 
+function sumTransactions(history, predicate) {
+  return history
+    .filter(predicate)
+    .reduce((total, tx) => total + Number(tx.amount || 0), 0);
+}
+
 export default function WalletPage({ onBack }) {
   const [wallet, setWallet] = useState(null);
   const [history, setHistory] = useState([]);
@@ -50,6 +56,19 @@ export default function WalletPage({ onBack }) {
     }
   };
 
+  const credits = sumTransactions(history, (tx) => tx.is_credit);
+  const promoCredits = sumTransactions(
+    history,
+    (tx) => tx.is_credit && String(tx.transaction_type || "").includes("promo")
+  );
+  const pendingRefunds = sumTransactions(
+    history,
+    (tx) =>
+      tx.is_credit &&
+      String(tx.transaction_type || "").includes("refund") &&
+      String(tx.status || "").toLowerCase() === "pending"
+  );
+
   return (
     <div style={{ maxWidth: 640, margin: "0 auto", padding: 16 }}>
       {onBack ? (
@@ -60,6 +79,25 @@ export default function WalletPage({ onBack }) {
       <div className="delivery-uber__earnings-card is-highlight" style={{ marginBottom: 16 }}>
         <small>Available balance</small>
         <strong>{wallet?.balance || "0"} MRU</strong>
+      </div>
+      <div className="delivery-uber__panel" style={{ marginBottom: 16 }}>
+        <h3>Wallet summary</h3>
+        <div className="delivery-uber__list-item">
+          <strong>Credits</strong>
+          <div>{credits.toFixed(2)} MRU</div>
+        </div>
+        <div className="delivery-uber__list-item">
+          <strong>Promo credits</strong>
+          <div>{promoCredits.toFixed(2)} MRU</div>
+        </div>
+        <div className="delivery-uber__list-item">
+          <strong>Pending refunds</strong>
+          <div>{pendingRefunds.toFixed(2)} MRU</div>
+        </div>
+        <div className="delivery-uber__list-item">
+          <strong>Pending balance</strong>
+          <div>{wallet?.pending_balance || "0"} MRU</div>
+        </div>
       </div>
 
       <form className="delivery-uber__form delivery-uber__panel" onSubmit={handleTopUp}>

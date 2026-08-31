@@ -1,0 +1,76 @@
+.sos-countdown {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.72);
+  backdrop-filter: blur(6px);
+}
+
+.sos-countdown__card {
+  width: min(420px, 100%);
+  border-radius: 20px;
+  background: #fff;
+  padding: 22px;
+  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.28);
+}
+
+.sos-countdown__eyebrow {
+  display: block;
+  color: #dc2626;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sos-countdown__card h2 {
+  margin: 8px 0;
+  font-size: 24px;
+  color: #0f172a;
+}
+
+.sos-countdown__card p {
+  margin: 0 0 16px;
+  color: #64748b;
+  line-height: 1.5;
+  font-size: 14px;
+}
+
+.sos-countdown__timer {
+  margin-bottom: 16px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #fef2f2;
+  color: #991b1b;
+  font-weight: 800;
+  text-align: center;
+}
+
+.sos-countdown__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.sos-countdown__cancel,
+.sos-countdown__confirm {
+  min-height: 46px;
+  border-radius: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.sos-countdown__cancel {
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #0f172a;
+}
+
+.sos-countdown__confirm {
+  border: 0;
+  background: #dc2626;
+  color: #fff;
+}

@@ -28,6 +28,79 @@ function getLogoForApp() {
   return logoSrc;
 }
 
+/**
+ * Compresses an image file to fit within maxSizeKB (default 600KB).
+ * Returns a new File object with reduced dimensions and quality.
+ * Non-image files (PDFs) are returned unchanged.
+ */
+function compressImage(file, maxSizeKB = 600, maxDimension = 1024) {
+  return new Promise((resolve) => {
+    if (!file || !file.type.startsWith("image/")) {
+      resolve(file);
+      return;
+    }
+    // If already small enough, skip compression
+    if (file.size <= maxSizeKB * 1024) {
+      resolve(file);
+      return;
+    }
+
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+
+      // Scale down if exceeds max dimension
+      if (width > maxDimension || height > maxDimension) {
+        const ratio = Math.min(maxDimension / width, maxDimension / height);
+        width = Math.round(width * ratio);
+        height = Math.round(height * ratio);
+      }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, width, height);
+
+      // Try progressively lower quality until under maxSizeKB
+      let quality = 0.7;
+      const outputType = "image/jpeg";
+
+      const tryCompress = () => {
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              resolve(file);
+              return;
+            }
+            if (blob.size > maxSizeKB * 1024 && quality > 0.3) {
+              quality -= 0.1;
+              tryCompress();
+            } else {
+              const compressedFile = new File(
+                [blob],
+                file.name.replace(/\.[^.]+$/, ".jpg"),
+                { type: outputType }
+              );
+              resolve(compressedFile);
+            }
+          },
+          outputType,
+          quality
+        );
+      };
+      tryCompress();
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(file); // Fall back to original if compression fails
+    };
+    img.src = url;
+  });
+}
+
 export function getRegistrationAppContext() {
   const appType = getAppType();
   // Native / stamped app type always wins — never inherit courier UI in Rider/Driver.
@@ -128,6 +201,7 @@ function Register() {
   const [profilePicture, setProfilePicture] = useState(null);
   const [nationalIdDocument, setNationalIdDocument] = useState(null);
   const [errorMessage, setErrorMessage] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
   const [verificationCode, setVerificationCode] = useState("");
   const [verificationStep, setVerificationStep] = useState(false);
   const [debugCode, setDebugCode] = useState("");
@@ -211,11 +285,20 @@ function Register() {
       ...formData,
       [event.target.name]: event.target.value,
     });
+    // Clear field-specific error when user edits that field
+    if (fieldErrors[event.target.name]) {
+      setFieldErrors((prev) => {
+        const updated = { ...prev };
+        delete updated[event.target.name];
+        return updated;
+      });
+    }
   };
 
   const registerUser = async (event) => {
     event.preventDefault();
     setErrorMessage("");
+    setFieldErrors({});
 
     if (!formData.city) {
       setErrorMessage("Please select your city.");
@@ -250,24 +333,18 @@ function Register() {
       setLoading(true);
 
       const lockedUserType = getLockedRegistrationUserType();
-      const payload = new FormData();
-      Object.entries({ ...formData, user_type: lockedUserType }).forEach(([key, value]) => {
-        payload.append(key, value);
-      });
-
-      if (profilePicture) {
-        payload.append("profile_picture", profilePicture);
-      }
-
-      if (nationalIdDocument) {
-        payload.append("national_id_document", nationalIdDocument);
-      }
 
       const postWithFallback = async (path, data, config = {}) => {
         let lastError = null;
+        const headers = { ...(config.headers || {}) };
+        // Ensure Content-Type for JSON bodies on native (Capacitor HTTP doesn't auto-detect)
+        if (data && !(data instanceof FormData) && !headers["Content-Type"] && !headers["content-type"]) {
+          headers["Content-Type"] = "application/json";
+        }
+        const mergedConfig = { ...config, headers };
         for (const endpoint of getApiCandidates(path)) {
           try {
-            return await axios.post(endpoint, data, config);
+            return await axios.post(endpoint, data, mergedConfig);
           } catch (error) {
             lastError = error;
             if (error?.response) {
@@ -277,6 +354,24 @@ function Register() {
         }
         throw lastError || new Error("Network request failed");
       };
+
+      // --- Registration request (multipart with files) ---
+      // Compress images before upload to avoid nginx 413 errors
+      const compressedProfilePic = profilePicture ? await compressImage(profilePicture, 600, 1024) : null;
+      const compressedNationalId = nationalIdDocument ? await compressImage(nationalIdDocument, 600, 1024) : null;
+
+      const payload = new FormData();
+      Object.entries({ ...formData, user_type: lockedUserType }).forEach(([key, value]) => {
+        payload.append(key, String(value ?? ""));
+      });
+
+      if (compressedProfilePic) {
+        payload.append("profile_picture", compressedProfilePic);
+      }
+
+      if (compressedNationalId) {
+        payload.append("national_id_document", compressedNationalId);
+      }
 
       await postWithFallback("/auth/register/", payload, {
         headers: {
@@ -321,25 +416,59 @@ function Register() {
       setVerificationStep(true);
       return;
     } catch (error) {
+      const status = error.response?.status;
       const response = error.response?.data || {};
-      const message =
-        response.email?.[0] ||
-        response.first_name?.[0] ||
-        response.last_name?.[0] ||
-        response.gender?.[0] ||
-        response.national_id_number?.[0] ||
-        response.city?.[0] ||
-        response.password?.[0] ||
-        response.user_type?.[0] ||
-        response.phone_number?.[0] ||
-        response.profile_picture ||
-        response.national_id_document ||
-        response.app_type?.[0] ||
-        response.detail ||
-        response.error ||
-        (error.response ? JSON.stringify(response) : `Network error: ${error.message}`);
 
-      setErrorMessage(Array.isArray(message) ? message[0] : message);
+      // Detect nginx HTML error pages (413 Request Entity Too Large, 502, etc.)
+      const responseStr = typeof response === "string" ? response : "";
+      if (status === 413 || responseStr.includes("413") || responseStr.includes("Request Entity Too Large")) {
+        setErrorMessage("Files are too large. Please use smaller photos (under 2MB each).");
+        setFieldErrors({});
+      } else if (typeof response === "string" && response.includes("<html")) {
+        // Server returned HTML error page instead of JSON
+        setErrorMessage(`Server error (${status || "unknown"}). Please try again.`);
+        setFieldErrors({});
+      } else {
+        // Build field-specific errors map from DRF response
+        const knownFields = [
+          "email", "first_name", "last_name", "gender", "national_id_number",
+          "city", "password", "user_type", "phone_number", "profile_picture",
+          "national_id_document", "app_type",
+        ];
+        const newFieldErrors = {};
+        for (const field of knownFields) {
+          const val = response[field];
+          if (val) {
+            newFieldErrors[field] = Array.isArray(val) ? val[0] : val;
+          }
+        }
+        setFieldErrors(newFieldErrors);
+
+        // Also set a top-level summary message
+        const fieldErrorMessages = Object.values(newFieldErrors);
+        if (fieldErrorMessages.length > 0) {
+          setErrorMessage(fieldErrorMessages[0]);
+        } else if (response.non_field_errors?.[0]) {
+          setErrorMessage(response.non_field_errors[0]);
+        } else if (response.detail) {
+          setErrorMessage(response.detail);
+        } else if (response.error) {
+          setErrorMessage(response.error);
+        } else if (error.response && typeof response === "object" && Object.keys(response).length > 0) {
+          const firstKey = Object.keys(response)[0];
+          const firstVal = response[firstKey];
+          const errorText = Array.isArray(firstVal) ? firstVal[0] : firstVal;
+          setErrorMessage(`${firstKey}: ${errorText}`);
+        } else if (error.response) {
+          // Empty response body — show status code and raw data for debugging
+          const statusCode = error.response.status || "unknown";
+          const rawData = error.response.data;
+          const debugInfo = rawData ? (typeof rawData === "string" ? rawData.substring(0, 100) : JSON.stringify(rawData).substring(0, 100)) : "no body";
+          setErrorMessage(`Error (${statusCode}): ${debugInfo}`);
+        } else {
+          setErrorMessage(`Network error: ${error.message}`);
+        }
+      }
     } finally {
       setLoading(false);
     }
@@ -515,21 +644,27 @@ function Register() {
           </>
         ) : <>
         <div className="auth-register-grid">
-          <input
-            name="first_name"
-            placeholder={t("auth.firstName")}
-            value={formData.first_name}
-            onChange={handleChange}
-            autoComplete="given-name"
-          />
+          <div>
+            <input
+              name="first_name"
+              placeholder={t("auth.firstName")}
+              value={formData.first_name}
+              onChange={handleChange}
+              autoComplete="given-name"
+            />
+            {fieldErrors.first_name && <span className="auth-register-field-error">{fieldErrors.first_name}</span>}
+          </div>
 
-          <input
-            name="last_name"
-            placeholder={t("auth.lastName")}
-            value={formData.last_name}
-            onChange={handleChange}
-            autoComplete="family-name"
-          />
+          <div>
+            <input
+              name="last_name"
+              placeholder={t("auth.lastName")}
+              value={formData.last_name}
+              onChange={handleChange}
+              autoComplete="family-name"
+            />
+            {fieldErrors.last_name && <span className="auth-register-field-error">{fieldErrors.last_name}</span>}
+          </div>
         </div>
 
         <input
@@ -540,21 +675,28 @@ function Register() {
           onChange={handleChange}
           autoComplete="email"
         />
+        {fieldErrors.email && <span className="auth-register-field-error">{fieldErrors.email}</span>}
 
         <div className="auth-register-grid">
-          <select name="gender" value={formData.gender} onChange={handleChange}>
-            <option value="Male">{t("auth.male")}</option>
-            <option value="Female">{t("auth.female")}</option>
-          </select>
+          <div>
+            <select name="gender" value={formData.gender} onChange={handleChange}>
+              <option value="Male">{t("auth.male")}</option>
+              <option value="Female">{t("auth.female")}</option>
+            </select>
+            {fieldErrors.gender && <span className="auth-register-field-error">{fieldErrors.gender}</span>}
+          </div>
 
-          <input
-            name="phone_number"
-            type="tel"
-            placeholder={t("auth.phonePlaceholder")}
-            value={formData.phone_number}
-            onChange={handleChange}
-            autoComplete="tel"
-          />
+          <div>
+            <input
+              name="phone_number"
+              type="tel"
+              placeholder={t("auth.phonePlaceholder")}
+              value={formData.phone_number}
+              onChange={handleChange}
+              autoComplete="tel"
+            />
+            {fieldErrors.phone_number && <span className="auth-register-field-error">{fieldErrors.phone_number}</span>}
+          </div>
         </div>
 
         <input
@@ -563,6 +705,7 @@ function Register() {
           value={formData.national_id_number}
           onChange={handleChange}
         />
+        {fieldErrors.national_id_number && <span className="auth-register-field-error">{fieldErrors.national_id_number}</span>}
 
         <label className="auth-register-city">
           <strong>City</strong>
@@ -587,6 +730,7 @@ function Register() {
               </optgroup>
             ))}
           </select>
+          {fieldErrors.city && <span className="auth-register-field-error">{fieldErrors.city}</span>}
         </label>
 
         {formData.user_type === "rider" && (
@@ -598,6 +742,7 @@ function Register() {
               {profilePicture && !["image/jpeg", "image/png", "image/webp"].includes(profilePicture.type) && (
                 <span style={{fontSize: "12px", color: "#f87171", fontWeight: 700}}>⚠ Invalid file type. Please choose a JPG, PNG, or WebP image.</span>
               )}
+              {fieldErrors.profile_picture && <span className="auth-register-field-error">{fieldErrors.profile_picture}</span>}
               <input
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
@@ -613,6 +758,7 @@ function Register() {
               {nationalIdDocument && !["image/jpeg", "image/png", "image/webp", "application/pdf"].includes(nationalIdDocument.type) && (
                 <span style={{fontSize: "12px", color: "#f87171", fontWeight: 700}}>⚠ Invalid file type: {nationalIdDocument.type || "unknown"}. Please choose a PDF, JPG, PNG, or WebP file.</span>
               )}
+              {fieldErrors.national_id_document && <span className="auth-register-field-error">{fieldErrors.national_id_document}</span>}
               <input
                 type="file"
                 accept="image/jpeg,image/png,image/webp,application/pdf"
@@ -631,6 +777,7 @@ function Register() {
           onChange={handleChange}
           autoComplete="new-password"
         />
+        {fieldErrors.password && <span className="auth-register-field-error">{fieldErrors.password}</span>}
         </>}
 
         <button className="auth-register-primary" type="submit" disabled={loading}>
@@ -789,6 +936,16 @@ function AuthRegisterStyles() {
         background: rgba(127, 29, 29, 0.28);
         color: #fecaca;
         font-weight: 800;
+      }
+
+      .auth-register-field-error {
+        display: block;
+        margin: -8px 0 10px 2px;
+        padding: 0;
+        color: #f87171;
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1.3;
       }
 
       .auth-register-verification-copy {
@@ -1019,6 +1176,10 @@ function AuthRegisterStyles() {
         color: #991b1b;
         font-size: 14px;
         line-height: 1.35;
+      }
+
+      .auth-register-page--delivery .auth-register-field-error {
+        color: #dc2626;
       }
 
       .auth-register-page--delivery .auth-register-card input,

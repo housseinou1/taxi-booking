@@ -1,0 +1,155 @@
+# YALA Pilot / UAT stack — isolated from production
+#
+# Usage:
+#   cp backend/taxi/.env.pilot.template backend/taxi/.env.pilot
+#   # edit secrets in .env.pilot
+#   docker compose -f docker-compose.pilot.yml --env-file backend/taxi/.env.pilot -p yala-pilot up -d --build
+#   docker compose -p yala-pilot exec django python manage.py migrate
+#   docker compose -p yala-pilot exec django python manage.py configure_soft_launch --pilot-uat
+#   docker compose -p yala-pilot exec django python manage.py seed_pilot_uat
+#
+# NEVER point this compose file at production volumes or production DATABASE_URL.
+
+name: yala-pilot
+
+services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "${PILOT_HTTP_PORT:-8088}:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./frontend/build:/usr/share/nginx/html:ro
+      - pilot_static:/usr/share/nginx/static
+      - pilot_media:/usr/share/nginx/media
+    depends_on:
+      django:
+        condition: service_healthy
+    restart: unless-stopped
+    labels:
+      - "yala.environment=pilot"
+
+  django:
+    build:
+      context: ./backend/taxi
+      dockerfile: Dockerfile
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --noinput &&
+             daphne -b 0.0.0.0 -p 8000 taxi.asgi:application"
+    volumes:
+      - pilot_media:/app/media
+    env_file:
+      - ./backend/taxi/.env.pilot
+    environment:
+      YALA_ENVIRONMENT: pilot
+      YALA_PILOT_BANNER: "PILOT — NOT PRODUCTION"
+      DJANGO_DEBUG: "${PILOT_DEBUG:-False}"
+      DATABASE_URL: postgres://yala_pilot:${POSTGRES_PASSWORD}@postgres:5432/yala_pilot_db
+      DATABASE_SSL_REQUIRE: "False"
+      REDIS_URL: redis://redis:6379/1
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health/ready/', timeout=5)\""]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+    labels:
+      - "yala.environment=pilot"
+
+  postgres:
+    image: postgres:15-alpine
+    volumes:
+      - pilot_postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: yala_pilot_db
+      POSTGRES_USER: yala_pilot
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    restart: unless-stopped
+    expose:
+      - "5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U yala_pilot -d yala_pilot_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    labels:
+      - "yala.environment=pilot"
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - pilot_redis_data:/data
+    restart: unless-stopped
+    expose:
+      - "6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    labels:
+      - "yala.environment=pilot"
+
+  celery-worker:
+    build:
+      context: ./backend/taxi
+      dockerfile: Dockerfile
+    command: sh -c "celery -A taxi.celery worker --loglevel=info --concurrency=2"
+    env_file:
+      - ./backend/taxi/.env.pilot
+    environment:
+      YALA_ENVIRONMENT: pilot
+      DATABASE_URL: postgres://yala_pilot:${POSTGRES_PASSWORD}@postgres:5432/yala_pilot_db
+      DATABASE_SSL_REQUIRE: "False"
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    labels:
+      - "yala.environment=pilot"
+
+  celery-beat:
+    build:
+      context: ./backend/taxi
+      dockerfile: Dockerfile
+    command: sh -c "celery -A taxi.celery beat --loglevel=info"
+    env_file:
+      - ./backend/taxi/.env.pilot
+    environment:
+      YALA_ENVIRONMENT: pilot
+      DATABASE_URL: postgres://yala_pilot:${POSTGRES_PASSWORD}@postgres:5432/yala_pilot_db
+      DATABASE_SSL_REQUIRE: "False"
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    labels:
+      - "yala.environment=pilot"
+
+volumes:
+  pilot_postgres_data:
+  pilot_redis_data:
+  pilot_media:
+  pilot_static:

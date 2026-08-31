@@ -1,0 +1,360 @@
+.driver-safety-center {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #f6f8f7 0%, #ffffff 45%, #f4f6f5 100%);
+  color: #0f172a;
+  font-family: "Plus Jakarta Sans", Inter, system-ui, sans-serif;
+  padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+}
+
+.driver-safety-center__topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  gap: 8px;
+  padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid #e6ebe8;
+}
+
+.driver-safety-center__topbar h1 {
+  margin: 2px 0 0;
+  font-size: 20px;
+}
+
+.driver-safety-center__eyebrow {
+  font-size: 11px;
+  font-weight: 800;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.driver-safety-center__back,
+.driver-safety-center__refresh {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 999px;
+  background: #f6f8f7;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.driver-safety-center__content {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 16px;
+  display: grid;
+  gap: 16px;
+}
+
+.driver-safety-center__banner {
+  padding: 12px 14px;
+  border-radius: 14px;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.driver-safety-center__banner--warn {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.driver-safety-center__banner--error {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.driver-safety-center__banner--success {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.driver-safety-center__status,
+.driver-safety-center__card,
+.driver-safety-center__sos-card {
+  border: 1px solid #e6ebe8;
+  border-radius: 20px;
+  background: #fff;
+  padding: 16px;
+  box-shadow: 0 2px 12px rgba(16, 24, 39, 0.04);
+}
+
+.driver-safety-center__status span {
+  display: block;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.driver-safety-center__status strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 22px;
+}
+
+.driver-safety-center__status p {
+  margin: 8px 0 0;
+  color: #64748b;
+}
+
+.driver-safety-center__status--good strong {
+  color: #087a45;
+}
+
+.driver-safety-center__status--alert strong {
+  color: #b45309;
+}
+
+.driver-safety-center__status--warning strong {
+  color: #b91c1c;
+}
+
+.driver-safety-center__sos-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-color: rgba(220, 38, 38, 0.18);
+  background: linear-gradient(180deg, rgba(220, 38, 38, 0.06), #fff);
+}
+
+.driver-safety-center__sos-card h2,
+.driver-safety-center__card h3 {
+  margin: 0 0 8px;
+}
+
+.driver-safety-center__sos-card p,
+.driver-safety-center__empty {
+  margin: 0;
+  color: #64748b;
+}
+
+.driver-safety-center__sos-btn {
+  min-width: 140px;
+  min-height: 52px;
+  border: 0;
+  border-radius: 16px;
+  background: #dc2626;
+  color: #fff;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(220, 38, 38, 0.28);
+}
+
+.driver-safety-center__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.driver-safety-center__links {
+  display: grid;
+  gap: 8px;
+}
+
+.driver-safety-center__link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  font: inherit;
+}
+
+.driver-safety-center__link strong,
+.driver-safety-center__link span {
+  display: block;
+}
+
+.driver-safety-center__link span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.driver-safety-center__report {
+  display: grid;
+  gap: 12px;
+}
+
+.driver-safety-center__categories {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.driver-safety-center__category {
+  display: grid;
+  gap: 4px;
+  justify-items: start;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  cursor: pointer;
+  text-align: left;
+}
+
+.driver-safety-center__category.is-active {
+  border-color: #087a45;
+  background: rgba(8, 122, 69, 0.08);
+}
+
+.driver-safety-center__report textarea {
+  min-height: 96px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid #cbd5e1;
+  resize: vertical;
+  font: inherit;
+}
+
+.driver-safety-center__report button[type="submit"] {
+  min-height: 46px;
+  border: 0;
+  border-radius: 14px;
+  background: #087a45;
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.driver-safety-center__card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.driver-safety-center__card-header button {
+  border: 0;
+  background: transparent;
+  color: #087a45;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.driver-safety-center__incidents {
+  display: grid;
+  gap: 8px;
+}
+
+.driver-safety-center__incident {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #f8fafc;
+}
+
+.driver-safety-center__incident strong,
+.driver-safety-center__incident span {
+  display: block;
+}
+
+.driver-safety-center__incident span {
+  color: #64748b;
+  font-size: 12px;
+  text-transform: capitalize;
+}
+
+.driver-safety-center__status-pill {
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  background: #e2e8f0;
+}
+
+.driver-safety-center__status-pill--open,
+.driver-safety-center__status-pill--acknowledged,
+.driver-safety-center__status-pill--investigating {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.driver-safety-center__status-pill--resolved,
+.driver-safety-center__status-pill--dismissed {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.driver-safety-center__tips {
+  display: grid;
+  gap: 10px;
+}
+
+.driver-safety-center__tips article {
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #f8fafc;
+}
+
+.driver-safety-center__tips p,
+.driver-safety-center__guidelines {
+  margin: 6px 0 0;
+  color: #64748b;
+}
+
+.driver-safety-center__guidelines {
+  padding-left: 18px;
+}
+
+.driver-safety-center__modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.62);
+}
+
+.driver-safety-center__modal-card {
+  width: min(420px, 100%);
+  padding: 18px;
+  border-radius: 18px;
+  background: #fff;
+}
+
+.driver-safety-center__modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.driver-safety-center__modal-actions button {
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  cursor: pointer;
+}
+
+@media (max-width: 720px) {
+  .driver-safety-center__grid,
+  .driver-safety-center__categories {
+    grid-template-columns: 1fr;
+  }
+
+  .driver-safety-center__sos-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

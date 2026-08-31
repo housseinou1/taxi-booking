@@ -1,0 +1,250 @@
+/* BI & Growth Center — executive analytics theme */
+
+.bi-growth {
+  --bg: #0b0f14;
+  --card: #111827;
+  --border: #1f2937;
+  --text: #f8fafc;
+  --muted: #94a3b8;
+  --accent: #0ea5e9;
+  --gold: #d4af37;
+  --green: #22c55e;
+  --red: #ef4444;
+  --orange: #f97316;
+  min-height: 100vh;
+  background: radial-gradient(circle at top, #0f172a 0%, var(--bg) 50%);
+  color: var(--text);
+  padding: 24px;
+  font-family: "Plus Jakarta Sans", Inter, system-ui, sans-serif;
+}
+
+.bi-growth--light {
+  --bg: #f8fafc;
+  --card: #ffffff;
+  --border: #e2e8f0;
+  --text: #0f172a;
+  --muted: #64748b;
+  background: linear-gradient(180deg, #fff 0%, #f1f5f9 100%);
+}
+
+.bi-growth__header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.bi-growth__header h1 {
+  margin: 0;
+  font-size: 1.75rem;
+  letter-spacing: -0.02em;
+}
+
+.bi-growth__subtitle {
+  color: var(--muted);
+  margin: 6px 0 0;
+}
+
+.bi-growth__back {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.82rem;
+  display: inline-block;
+  margin-bottom: 8px;
+}
+
+.bi-growth__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.bi-growth__toolbar button,
+.bi-growth__toolbar select {
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 9px 14px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.bi-growth__nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 24px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  padding: 8px 0;
+  background: color-mix(in srgb, var(--bg) 90%, transparent);
+  backdrop-filter: blur(6px);
+}
+
+.bi-growth__nav a {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.78rem;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+
+.bi-growth__nav a:hover,
+.bi-growth__nav a.active {
+  color: var(--text);
+  border-color: var(--border);
+  background: var(--card);
+}
+
+.bi-growth__section {
+  margin-bottom: 36px;
+  scroll-margin-top: 64px;
+}
+
+.bi-growth__section-title {
+  margin: 0 0 14px;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.bi-growth__grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
+}
+
+.bi-growth__card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+
+.bi-growth__card--wide {
+  grid-column: 1 / -1;
+}
+
+.bi-growth__card h3 {
+  margin: 0 0 10px;
+  font-size: 0.92rem;
+}
+
+.bi-growth__label {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.bi-growth__value {
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.bi-growth__value--gold { color: var(--gold); }
+.bi-growth__value--green { color: var(--green); }
+.bi-growth__value--red { color: var(--red); }
+.bi-growth__value--orange { color: var(--orange); }
+
+.bi-growth__map {
+  position: relative;
+  height: 300px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background:
+    linear-gradient(rgba(14, 165, 233, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(14, 165, 233, 0.06) 1px, transparent 1px),
+    #0b1220;
+  overflow: hidden;
+}
+
+.bi-growth__heat {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(212, 175, 55, 0.45);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.bi-growth__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.bi-growth__table th,
+.bi-growth__table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+
+.bi-growth__table th {
+  color: var(--muted);
+}
+
+.bi-growth__alert {
+  border-left: 3px solid var(--orange);
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background: color-mix(in srgb, var(--orange) 10%, var(--card));
+  border-radius: 0 8px 8px 0;
+  font-size: 0.88rem;
+}
+
+.bi-growth__alert--critical {
+  border-left-color: var(--red);
+  background: color-mix(in srgb, var(--red) 10%, var(--card));
+}
+
+.bi-growth__export-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.bi-growth__export-row button {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.bi-growth__chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 120px;
+}
+
+.bi-growth__bar {
+  flex: 1;
+  background: linear-gradient(180deg, var(--accent), #0369a1);
+  border-radius: 4px 4px 0 0;
+  min-height: 4px;
+}
+
+.bi-growth__message {
+  padding: 10px 14px;
+  border-radius: 10px;
+  margin-bottom: 14px;
+}
+
+.bi-growth__message--error {
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--red);
+}
+
+@media (max-width: 640px) {
+  .bi-growth { padding: 16px; }
+  .bi-growth__grid { grid-template-columns: repeat(2, 1fr); }
+}

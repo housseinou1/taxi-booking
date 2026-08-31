@@ -5,6 +5,7 @@ import { API_URL } from "../apiConfig";
 import { formatMoney } from "../marketConfig";
 import { isRiderLyftUI } from "../native/platform";
 import PostRidePayRate from "../rider/components/PostRidePayRate";
+import { submitRidePayment } from "./ridePaymentService";
 
 const PAYMENT_METHODS = [
   {
@@ -269,37 +270,26 @@ function PaymentPage({ ride }) {
 
   const makePayment = async (method) => {
     try {
-      const token = localStorage.getItem("access");
+      const result = await submitRidePayment({
+        rideId: ride.id,
+        method,
+        tipPercentage,
+      });
 
-      const response = await axios.post(
-        `${API_URL}/payments/create/`,
-        {
-          ride_id: ride.id,
-          amount: ride.fare || 0,
-          tip_percentage: tipPercentage,
-          method,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      setPayment(response.data.payment);
-      setNotice(response.data.message || t("riderPayments.messages.paymentCreated"));
+      setPayment(result.payment);
+      setNotice(result.message || t("riderPayments.messages.paymentCreated"));
       fetchPaymentHistory();
     } catch (error) {
-      const existingPayment = error.response?.data?.payment;
+      const existingPayment = error.data?.payment || error.response?.data?.payment;
 
       if (existingPayment) {
         setPayment(existingPayment);
-        setNotice(error.response.data.error || t("riderPayments.messages.paymentExists"));
+        setNotice(error.message || t("riderPayments.messages.paymentExists"));
         return;
       }
 
-      console.log("Payment error:", error.response?.data || error);
-      setNotice(error.response?.data?.error || t("riderPayments.messages.paymentFailed"));
+      console.log("Payment error:", error.data || error.response?.data || error);
+      setNotice(error.message || t("riderPayments.messages.paymentFailed"));
     }
   };
 

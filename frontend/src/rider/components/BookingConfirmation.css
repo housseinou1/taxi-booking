@@ -119,6 +119,73 @@
   color: var(--yala-green);
 }
 
+.booking-confirmation__estimate-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-sm);
+  margin: 0;
+}
+
+.booking-confirmation__estimate-item {
+  min-width: 0;
+  padding: var(--space-sm);
+  border: 1px solid var(--yala-gray-100);
+  border-radius: var(--radius-sm);
+  background: var(--surface-warm);
+}
+
+.booking-confirmation__estimate-item dt {
+  margin: 0 0 2px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-muted);
+}
+
+.booking-confirmation__estimate-item dd {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--yala-navy);
+  overflow-wrap: anywhere;
+}
+
+.booking-confirmation__payment-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.booking-confirmation__payment-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.booking-confirmation__payment-option {
+  min-height: var(--tap-target-min);
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--yala-gray-300);
+  border-radius: var(--radius-pill);
+  background: var(--yala-white);
+  color: var(--yala-navy);
+  font-family: var(--font-family);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.booking-confirmation__payment-option--active {
+  border-color: var(--yala-green);
+  background: var(--yala-green-soft);
+  color: var(--yala-green-strong);
+}
+
+.booking-confirmation__payment-option:focus-visible {
+  outline: 2px solid var(--yala-green);
+  outline-offset: 2px;
+}
+
 /* Promo code input styling */
 .promo-code-input {
   display: flex;

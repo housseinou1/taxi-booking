@@ -2,13 +2,15 @@ import React, { useEffect, useState } from "react";
 import { API_URL } from "../../apiConfig";
 import authenticatedApi from "../../auth/authenticatedApi";
 import { formatMoney } from "../../marketConfig";
+import { submitRidePayment } from "../../payments/ridePaymentService";
+import { readStoredPaymentMethod, storePaymentMethod } from "../utils/paymentMethods";
 import "./PostRidePayRate.css";
 
 const PAYMENT_METHODS = [
   { id: "cash", label: "Cash", hint: "Pay driver directly" },
   { id: "bankily", label: "Bankily", hint: "Mobile wallet" },
-  { id: "masrvi", label: "Masrvi", hint: "Local wallet" },
-  { id: "seddad", label: "Seddad", hint: "Mobile wallet" },
+  { id: "masrvi", label: "Masravi", hint: "Local wallet" },
+  { id: "seddad", label: "Sedad", hint: "Mobile wallet" },
   { id: "card", label: "Card", hint: "Saved card" },
 ];
 
@@ -43,7 +45,7 @@ function getDriverPhoto(ride) {
 export default function PostRidePayRate({ ride, onDone }) {
   const [payment, setPayment] = useState(null);
   const [tipPercentage, setTipPercentage] = useState(15);
-  const [selectedMethod, setSelectedMethod] = useState("cash");
+  const [selectedMethod, setSelectedMethod] = useState(() => readStoredPaymentMethod());
   const [rating, setRating] = useState(5);
   const [compliment, setCompliment] = useState("");
   const [review, setReview] = useState("");
@@ -81,17 +83,14 @@ export default function PostRidePayRate({ ride, onDone }) {
   }, [ride?.id]);
 
   const makePayment = async () => {
-    const response = await authenticatedApi.post(
-      `${API_URL}/payments/create/`,
-      {
-        ride_id: ride.id,
-        amount: ride.fare || 0,
-        tip_percentage: tipPercentage,
-        method: selectedMethod,
-      }
-    );
-    setPayment(response.data.payment);
-    setNotice("Payment confirmed.");
+    const result = await submitRidePayment({
+      rideId: ride.id,
+      method: selectedMethod,
+      tipPercentage,
+    });
+    storePaymentMethod(selectedMethod);
+    setPayment(result.payment);
+    setNotice(result.message || "Payment request submitted.");
   };
 
   const handleSubmit = async () => {
@@ -103,12 +102,7 @@ export default function PostRidePayRate({ ride, onDone }) {
         try {
           await makePayment();
         } catch (error) {
-          const existingPayment = error.response?.data?.payment;
-          if (existingPayment) {
-            setPayment(existingPayment);
-          } else {
-            throw error;
-          }
+          throw error;
         }
       }
 

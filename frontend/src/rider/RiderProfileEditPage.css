@@ -1,0 +1,93 @@
+.rider-profile-edit {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 8px 0 24px;
+}
+
+.rider-profile-edit__header h1 {
+  margin: 0 0 8px;
+  font-size: 1.6rem;
+}
+
+.rider-profile-edit__header p,
+.rider-profile-edit__form label {
+  color: #64748b;
+}
+
+.rider-profile-edit__form {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.rider-profile-edit__form label {
+  display: grid;
+  gap: 6px;
+  font-weight: 700;
+}
+
+.rider-profile-edit__form input,
+.rider-profile-edit__form select {
+  min-height: 44px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 0 12px;
+  font: inherit;
+}
+
+.rider-profile-edit__photo-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.rider-profile-edit__photo-row img,
+.rider-profile-edit__photo-placeholder {
+  width: 72px;
+  height: 72px;
+  border-radius: 18px;
+  object-fit: cover;
+  background: #f3f4f6;
+}
+
+.rider-profile-edit__photo-placeholder {
+  display: grid;
+  place-items: center;
+  font-size: 1.5rem;
+  color: #9ca3af;
+}
+
+.rider-profile-edit__actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.rider-profile-edit__primary,
+.rider-profile-edit__secondary {
+  min-height: 44px;
+  border-radius: 999px;
+  padding: 0 18px;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.rider-profile-edit__primary {
+  border: 0;
+  background: #111827;
+  color: #fff;
+}
+
+.rider-profile-edit__secondary {
+  border: 1px solid #e5e7eb;
+  background: #fff;
+}
+
+.rider-profile-edit__error {
+  color: #b91c1c;
+}
+
+.rider-profile-edit__success {
+  color: #15803d;
+}

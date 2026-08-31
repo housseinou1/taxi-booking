@@ -14,6 +14,24 @@ const RIDE_TYPE_LABELS = {
   share: 'Share',
 };
 
+const PAYMENT_OPTIONS = [
+  { id: 'cash', label: 'Cash' },
+  { id: 'bankily', label: 'Bankily' },
+  { id: 'masrvi', label: 'Masravi' },
+  { id: 'seddad', label: 'Sedad' },
+  { id: 'card', label: 'Card' },
+];
+
+function formatDistance(distanceKm) {
+  const distance = Number(distanceKm);
+  return Number.isFinite(distance) && distance > 0 ? `${distance.toFixed(1)} km` : 'Calculating';
+}
+
+function formatMinutes(minutes, fallback = 'Calculating') {
+  const value = Number(minutes);
+  return Number.isFinite(value) && value > 0 ? `${Math.round(value)} min` : fallback;
+}
+
 /**
  * BookingConfirmation component — displays booking summary and handles ride submission.
  *
@@ -33,6 +51,8 @@ const RIDE_TYPE_LABELS = {
  * - routeInfo: optional route info { distanceKm, etaMinutes }
  * - promoError: optional error from promo validation
  * - promoLoading: optional loading state for promo validation
+ * - paymentMethod: selected payment method id
+ * - onPaymentMethodChange: (methodId) => void
  * - legalCompliant: whether rider already accepted current terms
  * - termsChecked / privacyChecked / onTermsChange / onPrivacyChange
  */
@@ -53,6 +73,8 @@ function BookingConfirmation({
   routeInfo,
   promoError,
   promoLoading,
+  paymentMethod = 'cash',
+  onPaymentMethodChange,
   legalCompliant = false,
   termsChecked = false,
   privacyChecked = false,
@@ -65,6 +87,14 @@ function BookingConfirmation({
   const displayFare = hasDiscount ? discountedFare : fare;
   const routePoints = buildBookingRoutePoints({ pickup, stops, destination });
   const legalReady = legalCompliant || (termsChecked && privacyChecked);
+  const selectedPayment = PAYMENT_OPTIONS.find((option) => option.id === paymentMethod);
+  const estimateItems = [
+    ['Estimated arrival', formatMinutes(routeInfo?.etaMinutes)],
+    ['Distance', formatDistance(routeInfo?.distanceKm)],
+    ['Duration', formatMinutes(routeInfo?.durationMinutes ?? routeInfo?.etaMinutes)],
+    ['Vehicle category', RIDE_TYPE_LABELS[rideType] || rideType],
+    ['Payment method', selectedPayment?.label || 'Cash'],
+  ];
 
   const handleConfirm = useCallback(async () => {
     // Prevent duplicate submissions
@@ -126,6 +156,34 @@ function BookingConfirmation({
               {Math.round(displayFare)} MRU
             </span>
           </div>
+        </div>
+
+        <dl className="booking-confirmation__estimate-grid" aria-label="Fare estimate details">
+          {estimateItems.map(([label, value]) => (
+            <div className="booking-confirmation__estimate-item" key={label}>
+              <dt>{label}</dt>
+              <dd>{value}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+
+      <div className="booking-confirmation__payment-section" role="group" aria-label="Payment method">
+        <span className="booking-confirmation__detail-label">Payment method</span>
+        <div className="booking-confirmation__payment-options">
+          {PAYMENT_OPTIONS.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              className={`booking-confirmation__payment-option${
+                paymentMethod === option.id ? ' booking-confirmation__payment-option--active' : ''
+              }`}
+              aria-pressed={paymentMethod === option.id}
+              onClick={() => onPaymentMethodChange?.(option.id)}
+            >
+              {option.label}
+            </button>
+          ))}
         </div>
       </div>
 

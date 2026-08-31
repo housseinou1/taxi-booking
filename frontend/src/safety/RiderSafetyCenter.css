@@ -1,0 +1,234 @@
+.rider-safety-center {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #f6f8f7 0%, #ffffff 45%, #f4f6f5 100%);
+  color: #0f172a;
+  font-family: "Plus Jakarta Sans", Inter, system-ui, sans-serif;
+  padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+}
+
+.rider-safety-center__topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  gap: 8px;
+  padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid #e6ebe8;
+}
+
+.rider-safety-center__topbar h1 {
+  margin: 2px 0 0;
+  font-size: 20px;
+}
+
+.rider-safety-center__eyebrow {
+  font-size: 11px;
+  font-weight: 800;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.rider-safety-center__back,
+.rider-safety-center__refresh {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 999px;
+  background: #f6f8f7;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.rider-safety-center__content {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 16px;
+  display: grid;
+  gap: 16px;
+}
+
+.rider-safety-center__banner {
+  padding: 12px 14px;
+  border-radius: 14px;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.rider-safety-center__banner--warn { background: #fef3c7; color: #92400e; }
+.rider-safety-center__banner--error { background: #fee2e2; color: #991b1b; }
+.rider-safety-center__banner--success { background: #dcfce7; color: #166534; }
+
+.rider-safety-center__status,
+.rider-safety-center__card {
+  border: 1px solid #e6ebe8;
+  border-radius: 20px;
+  background: #fff;
+  padding: 16px;
+  box-shadow: 0 2px 12px rgba(16, 24, 39, 0.04);
+}
+
+.rider-safety-center__status span {
+  display: block;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.rider-safety-center__status strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 22px;
+}
+
+.rider-safety-center__status p,
+.rider-safety-center__empty,
+.rider-safety-center__gps {
+  margin: 8px 0 0;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.rider-safety-center__status--good { border-color: #bbf7d0; }
+.rider-safety-center__status--alert { border-color: #fecaca; }
+.rider-safety-center__status--warning { border-color: #fde68a; }
+
+.rider-safety-center__verification {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e6ebe8;
+  display: grid;
+  gap: 4px;
+}
+
+.rider-safety-center__verification span {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.rider-safety-center__actions-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.rider-safety-center__action {
+  min-height: 52px;
+  border: 1px solid #e6ebe8;
+  border-radius: 16px;
+  background: #fff;
+  font-weight: 800;
+  cursor: pointer;
+  text-align: left;
+  padding: 0 16px;
+}
+
+.rider-safety-center__action--sos {
+  background: #dc2626;
+  border-color: #dc2626;
+  color: #fff;
+}
+
+.rider-safety-center__links {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.rider-safety-center__link {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #f8fafc;
+  color: inherit;
+  text-decoration: none;
+}
+
+.rider-safety-center__tips {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  color: #334155;
+  display: grid;
+  gap: 8px;
+}
+
+.rider-safety-center__report {
+  display: grid;
+  gap: 10px;
+}
+
+.rider-safety-center__categories {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.rider-safety-center__category {
+  flex-shrink: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  background: #fff;
+  padding: 8px 12px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.rider-safety-center__category.active {
+  background: #ecfdf5;
+  border-color: #087a45;
+  color: #065f46;
+}
+
+.rider-safety-center__report textarea {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  padding: 12px;
+  resize: vertical;
+}
+
+.rider-safety-center__report button[type="submit"] {
+  min-height: 44px;
+  border: 0;
+  border-radius: 12px;
+  background: #087a45;
+  color: #fff;
+  font-weight: 800;
+}
+
+.rider-safety-center__incidents {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.rider-safety-center__incident {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px;
+  display: grid;
+  gap: 4px;
+}
+
+.rider-safety-center__incident span,
+.rider-safety-center__incident em {
+  color: #64748b;
+  font-size: 12px;
+  font-style: normal;
+}
+
+.rider-safety-center__incident p {
+  margin: 0;
+  color: #334155;
+  font-size: 13px;
+}
+
+.rider-safety-center__card h3 {
+  margin: 0;
+}

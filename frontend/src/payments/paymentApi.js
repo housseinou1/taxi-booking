@@ -13,9 +13,19 @@ async function paymentRequest(path, options = {}) {
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(data.error || data.detail || "Payment request failed.");
+    const error = new Error(data.error || data.detail || "Payment request failed.");
+    error.status = response.status;
+    error.data = data;
+    throw error;
   }
   return data;
+}
+
+function normalizeRidePaymentMethod(method = "cash") {
+  const value = String(method || "cash").toLowerCase();
+  if (value === "masravi") return "masrvi";
+  if (value === "sedad") return "seddad";
+  return value;
 }
 
 export function fetchWallet() {
@@ -53,6 +63,52 @@ export function payMerchantOrder(orderId, payload) {
 
 export function fetchPaymentRecords() {
   return paymentRequest("/records/");
+}
+
+export function fetchMyPayments() {
+  return paymentRequest("/my-payments/");
+}
+
+export function createRidePayment({ rideId, method = "cash", tipPercentage = 0 }) {
+  return paymentRequest("/create/", {
+    method: "POST",
+    body: JSON.stringify({
+      ride_id: rideId,
+      method: normalizeRidePaymentMethod(method),
+      tip_percentage: tipPercentage,
+    }),
+  });
+}
+
+export function markRidePaid(rideId) {
+  return paymentRequest(`/mark-paid/${rideId}/`, {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
+
+export function payRideWithWallet(rideId, tipPercentage = 0) {
+  return paymentRequest(`/wallet/pay-ride/${rideId}/`, {
+    method: "POST",
+    body: JSON.stringify({
+      tip_percentage: tipPercentage,
+    }),
+  });
+}
+
+export async function withPaymentRetry(operation, { retries = 1 } = {}) {
+  let lastError;
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error;
+      const retryable = error?.status === 0 || error?.status === 429 || error?.status >= 500;
+      if (!retryable || attempt >= retries) break;
+      await new Promise((resolve) => window.setTimeout(resolve, 500 * (attempt + 1)));
+    }
+  }
+  throw lastError;
 }
 
 export function fetchCourierWalletSummary() {
