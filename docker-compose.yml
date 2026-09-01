@@ -34,7 +34,9 @@ services:
       # do not depend on a correct value in .env.production. Use True only with
       # an external managed DATABASE_URL (see backend/taxi/.env.production.template).
       DATABASE_SSL_REQUIRE: "False"
-      REDIS_URL: redis://redis:6379/1
+      # CHANNEL_LAYERS and CACHES both read REDIS_URL. Every Daphne replica
+      # and Celery worker must share this DB so WebSocket fan-out works.
+      REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
     depends_on:
