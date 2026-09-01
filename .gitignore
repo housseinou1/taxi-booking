@@ -68,3 +68,7 @@ backend/taxi/media/
 
 # Logs
 *.log
+
+# Extra mobile build artifacts tracked during prior builds
+rider-app/rider-apk/
+release/device-qa*
