@@ -1,0 +1,108 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend critical tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: backend/taxi
+
+    env:
+      DJANGO_DEBUG: "True"
+      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,testserver
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/taxi/requirements.txt
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run critical backend tests
+        run: |
+          python -m pytest -q --tb=short \
+            tests/authapp/test_auth.py \
+            authapp/test_role_login_response.py \
+            taxi/rides/tests.py \
+            tests/rides/test_ride_workflow.py \
+            tests/rides/test_arrived.py \
+            tests/rides/test_no_show_cancel.py \
+            tests/rides/test_ride_timeout.py \
+            tests/rides/test_waiting_fee.py \
+            tests/rides/test_step2_driver_cancellation_performance.py \
+            taxi/drivers/test_availability.py \
+            tests/drivers_app/test_drivers.py \
+            tests/drivers_app/test_document_views.py \
+            tests/drivers_app/test_document_service.py
+
+  frontend:
+    name: Frontend unit tests and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: frontend
+
+    env:
+      CI: "true"
+      REACT_APP_API_URL: http://localhost:8000
+      REACT_APP_WS_URL: ws://localhost:8000/ws/rides/
+      REACT_APP_DELIVERY_WS_URL: ws://localhost:8000/ws/deliveries/
+      REACT_APP_GOOGLE_MAPS_API_KEY: dummy-maps-key
+      REACT_APP_TYPE: web
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install npm dependencies
+        run: npm ci --prefer-offline
+
+      - name: Run stable unit tests
+        run: npx react-scripts test --watchAll=false --testPathPattern='rideStatus.test|fareCalculator.test|session.test'
+
+      # Full CRA build with job-level CI=true treats existing eslint/CSS-order
+      # warnings as errors. Compile-check only; do not fail on those warnings.
+      - name: Production build
+        env:
+          CI: "false"
+        run: npm run build
+
+  docker-config:
+    name: Docker Compose config validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate Docker Compose
+        env:
+          POSTGRES_PASSWORD: ci
+        run: |
+          touch backend/taxi/.env.production
+          docker compose -f docker-compose.yml config

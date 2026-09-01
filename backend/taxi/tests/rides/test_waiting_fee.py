@@ -3,6 +3,7 @@ Tests for rider waiting fee policy.
 """
 from datetime import timedelta
 from decimal import Decimal
+from unittest.mock import patch
 
 import pytest
 from django.utils import timezone
@@ -38,6 +39,7 @@ def _login(email, password="Pass1234!"):
     return response.data["access"]
 
 
+@pytest.mark.django_db
 @pytest.mark.parametrize(
     "waited_seconds,expected_fee",
     [
@@ -99,11 +101,15 @@ def test_start_ride_applies_waiting_fee_without_cap():
         format="json",
     )
     assert verify.status_code == 200
-    response = client.post(
-        f"/rides/start/{ride.id}/",
-        {},
-        format="json",
-    )
+    # Freeze wait at exactly 10 minutes so login/verify latency cannot
+    # add an extra chargeable minute to the fee assertion.
+    start_at = arrived_at + timedelta(minutes=10)
+    with patch("taxi.rides.views.now", return_value=start_at):
+        response = client.post(
+            f"/rides/start/{ride.id}/",
+            {},
+            format="json",
+        )
 
     assert response.status_code == 200
     assert response.data["status"] == "in_progress"

@@ -22,6 +22,7 @@ from rest_framework.test import APIClient
 from faker import Faker
 
 from taxi.drivers.models import DriverProfile, DriverDocument
+from taxi.drivers.services.document_service import REQUIRED_DOCUMENT_TYPES
 
 client = APIClient()
 faker = Faker()
@@ -205,9 +206,12 @@ class TestDriverDocumentListView:
         assert response.status_code == 200
 
         data = response.data
-        # All required documents should be missing.
-        assert len(data["alerts"]) == 7
+        # Registration seeds TEMP-PLATE on DriverProfile, which satisfies
+        # plate_number_photo via legacy fields. Remaining required types
+        # should still be reported as missing.
+        missing_types = {alert["document_type"] for alert in data["alerts"]}
         assert all(alert["reason"] == "missing" for alert in data["alerts"])
+        assert missing_types == set(REQUIRED_DOCUMENT_TYPES) - {"plate_number_photo"}
 
     def test_returns_expiring_documents(self):
         payload, token = _register_driver()

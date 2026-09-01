@@ -174,15 +174,14 @@ class TestHandleTimeout:
         mock_broadcast.assert_called_once_with(ride.id, driver_user.id)
 
     def test_attempts_reassignment(self, ride, driver_user):
-        """After expiration, reassignment is attempted."""
+        """After expiration, missed-offer handling reassigns to another driver."""
         with patch("taxi.rides.timeout._broadcast_ride_expired"), \
-             patch("taxi.rides.timeout._attempt_reassignment") as mock_reassign:
+             patch(
+                 "taxi.rides.services.ride_assignment_service.handle_missed_offer"
+             ) as mock_reassign:
             _handle_timeout(ride.id, driver_user.id)
 
-        mock_reassign.assert_called_once()
-        # Verify excluded driver is passed
-        call_args = mock_reassign.call_args
-        assert call_args.kwargs["excluded_driver_user_id"] == driver_user.id
+        mock_reassign.assert_called_once_with(ride.id, driver_user.id)
 
     def test_noop_if_ride_already_accepted(self, ride, driver_user):
         """If ride is no longer 'requested', timeout is a no-op."""
