@@ -17,7 +17,8 @@ logger = logging.getLogger(__name__)
 class RideStatusService:
     """Manages Share ride state transitions and broadcasts."""
 
-    # All possible statuses for a Share ride session
+    # ShareRideSession statuses (not Ride.STATUS_CHOICES). Extra pickup/drop-off
+    # values are required for multi-passenger routing and must stay on the session.
     SHARE_RIDE_STATUSES = [
         "requested",
         "matching",

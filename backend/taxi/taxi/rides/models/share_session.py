@@ -5,11 +5,19 @@ from django.db import models
 class ShareRideSession(models.Model):
     """Groups multiple Share rides assigned to the same driver."""
 
+    # Session-level Share state machine — intentionally distinct from
+    # Ride.STATUS_CHOICES (regular 1:1 rides). Multi-passenger pickup/drop-off
+    # needs extra states. Keep these values; do not rename onto Ride.
+    # Must stay aligned with RideStatusService.SHARE_RIDE_STATUSES.
     STATUS_CHOICES = [
+        ("requested", "Requested"),
         ("matching", "Matching"),
         ("driver_assigned", "Driver Assigned"),
         ("driver_arriving", "Driver Arriving"),
+        ("passenger_pickup", "Passenger Pickup"),
+        ("additional_pickup", "Additional Pickup"),
         ("in_progress", "In Progress"),
+        ("drop_off_stop", "Drop-off Stop"),
         ("completed", "Completed"),
         ("cancelled", "Cancelled"),
     ]

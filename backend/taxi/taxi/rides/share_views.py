@@ -17,7 +17,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from taxi.rides.models import Ride, ShareRideSession, ShareSessionStop
+from app_settings.pricing_service import resolve_ride_fare
+from locations.services import resolve_city
+from taxi.rides.models import Ride, RidePricingSnapshot, ShareRideSession, ShareSessionStop
 from taxi.rides.services.matching_service import MatchingService
 from taxi.rides.services.pricing_engine import PricingEngine
 from taxi.rides.services.ride_status_service import RideStatusService
@@ -31,10 +33,41 @@ SERVICE_AREA_LAT_MAX = 18.2
 SERVICE_AREA_LNG_MIN = -16.1
 SERVICE_AREA_LNG_MAX = -15.8
 
-# ─── Fare constants ───────────────────────────────────────────────────────────
-BASE_FARE_MRU = Decimal("50")
-PER_KM_FARE_MRU = Decimal("30")
+# Share-specific similarity used at request time; PricingEngine discount is
+# applied on top of canonical resolve_ride_fare("share") (not hardcoded 50/30).
 DEFAULT_SIMILARITY_SCORE = 0.7
+
+
+def _canonical_share_base_fare(city, distance_km):
+    """Return (FareResult, rounded_base_mru) from CityPricing / GlobalFareConfig / market.py."""
+    result = resolve_ride_fare(city, "share", distance_km)
+    rounded = result.estimated_fare.quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+    return result, rounded
+
+
+def _snapshot_share_pricing(ride, fare_result):
+    """Record the canonical (pre-discount) share fare used as the economy baseline."""
+    RidePricingSnapshot.objects.create(
+        ride=ride,
+        ride_type=fare_result.ride_type,
+        source=fare_result.source,
+        city_pricing_id=fare_result.city_pricing_id,
+        global_fare_config_id=fare_result.global_fare_config_id,
+        base_fare=fare_result.base_fare,
+        per_km=fare_result.per_km,
+        minimum_fare=fare_result.minimum_fare,
+        billable_distance_km=fare_result.billable_distance_km,
+        distance_charge=fare_result.distance_charge,
+        estimated_fare=fare_result.estimated_fare,
+        commission_percent=fare_result.commission_percent,
+        commission_policy_id=fare_result.commission_config_id,
+        waiting_policy_id=fare_result.waiting_policy_id,
+        cancellation_policy_id=fare_result.cancellation_policy_id,
+        no_show_policy_id=fare_result.no_show_policy_id,
+        effective_from=fare_result.effective_from,
+        app_fee=fare_result.app_fee,
+        driver_earning=fare_result.driver_earning,
+    )
 
 
 def _validate_service_area(lat, lng):
@@ -219,18 +252,22 @@ class ShareRideRequestView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Calculate economy fare: base + per_km * distance
-        economy_fare = BASE_FARE_MRU + PER_KM_FARE_MRU * distance_km
-        economy_fare = economy_fare.quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+        city = resolve_city(
+            city_id=data.get("city"),
+            city_slug=data.get("city_slug"),
+            fallback_user=request.user,
+        )
 
-        # Calculate share fare using PricingEngine
+        # Canonical share base (CityPricing / GlobalFareConfig / market.py 150/15).
+        # PricingEngine then applies similarity discount and seat multiplier.
+        fare_result, economy_fare = _canonical_share_base_fare(city, distance_km)
+
         pricing_engine = PricingEngine()
         share_fare = pricing_engine.calculate_share_fare(
             economy_fare=economy_fare,
             similarity_score=DEFAULT_SIMILARITY_SCORE,
             seats=seats,
         )
-        savings = pricing_engine.calculate_savings(economy_fare, share_fare)
 
         # Create the ride
         ride = Ride.objects.create(
@@ -241,6 +278,7 @@ class ShareRideRequestView(APIView):
             pickup_lng=pickup_lng,
             destination_lat=destination_lat,
             destination_lng=destination_lng,
+            city=city,
             ride_type="Share",
             distance_km=distance_km,
             fare=share_fare,
@@ -249,6 +287,7 @@ class ShareRideRequestView(APIView):
             status="requested",
             share_status="waiting_match",
         )
+        _snapshot_share_pricing(ride, fare_result)
 
         # Trigger matching
         matching_service = MatchingService()
@@ -325,7 +364,8 @@ class ShareRideCancelView(APIView):
     Cancel a Share ride with fee logic based on current status:
     - Free cancellation: requested, matching, driver_assigned
     - Cancellation with fee: driver_arriving
-    - Rejected: in_progress, completed, cancelled
+    - Rejected: passenger_pickup, additional_pickup, in_progress,
+      drop_off_stop, completed, cancelled
     """
 
     permission_classes = [IsAuthenticated]
@@ -338,10 +378,17 @@ class ShareRideCancelView(APIView):
             rider=request.user,
         )
 
-        # Determine cancellation eligibility
+        # Session statuses (RideStatusService), not Ride.STATUS_CHOICES.
         free_cancel_statuses = ["requested", "matching", "driver_assigned"]
         fee_cancel_statuses = ["driver_arriving"]
-        reject_statuses = ["in_progress", "completed", "cancelled"]
+        reject_statuses = [
+            "passenger_pickup",
+            "additional_pickup",
+            "in_progress",
+            "drop_off_stop",
+            "completed",
+            "cancelled",
+        ]
 
         # Check session status for the ride
         effective_status = ride.status
