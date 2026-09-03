@@ -1,7 +1,8 @@
 """Legal compliance API endpoints."""
 
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
+from django.views.decorators.http import require_GET
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
@@ -45,6 +46,12 @@ from legal.services import (
 )
 from merchants.models import Merchant
 from security.services.audit_service import log_from_request
+
+
+@require_GET
+def account_deletion_page(request):
+    """Public Play Store account-deletion instructions. No login required to view."""
+    return render(request, "legal/account_deletion.html")
 
 
 @api_view(["GET"])

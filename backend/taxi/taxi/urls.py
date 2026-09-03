@@ -4,6 +4,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
+from legal.views import account_deletion_page
 from taxi.drivers.urls import admin_document_urlpatterns, admin_qr_urlpatterns
 from taxi.drivers.views_verification import VerifyDriverView
 from taxi.rides.share_admin_views import share_analytics, share_analytics_chart
@@ -15,6 +16,7 @@ from payments.withdrawal_accounts_views import admin_withdrawal_accounts_view
 urlpatterns = [
     path("health/", readiness, name="health"),
     path("api/health/", include("health.urls")),
+    path("yala-account-deletion/", account_deletion_page, name="yala-account-deletion"),
 
     # Admin document review endpoints (before Django admin catch-all)
     path("admin/documents/", include(admin_document_urlpatterns)),
