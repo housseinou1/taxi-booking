@@ -107,11 +107,11 @@ Rejoignez Yala Driver — **Gagnez plus • Conduisez intelligemment • Livrez 
 
 ---
 
-## 3. Release notes (v1.1.3)
+## 3. Release notes (v1.3.1)
 
 **English (497 chars):**
 ```
-What's new in Yala Driver 1.1.3
+What's new in Yala Driver 1.3.1
 
 • Improved earnings dashboard and daily analytics
 • Faster trip and delivery request alerts
@@ -127,7 +127,7 @@ Thank you for driving with Yala — Earn more • Drive smart • Deliver safely
 
 **French:**
 ```
-Nouveautés Yala Driver 1.1.3
+Nouveautés Yala Driver 1.3.1
 
 • Tableau de bord des gains et analyses quotidiennes améliorés
 • Alertes de courses et livraisons plus rapides

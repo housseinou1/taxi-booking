@@ -103,11 +103,11 @@ Téléchargez Yala Delivery — **Livraison rapide • Suivi live • Remise sé
 
 ---
 
-## 3. Release notes (v1.0.1)
+## 3. Release notes (v1.1.3)
 
 **English (499 chars):**
 ```
-What's new in Yala Delivery 1.0.1
+What's new in Yala Delivery 1.1.3
 
 • Improved courier dashboard with earnings summary and analytics
 • More reliable delivery completion and status updates
@@ -123,7 +123,7 @@ Thank you for delivering with Yala — Fast delivery • Live tracking • Secur
 
 **French:**
 ```
-Nouveautés Yala Delivery 1.0.1
+Nouveautés Yala Delivery 1.1.3
 
 • Tableau de bord coursier amélioré avec gains et analyses
 • Achèvement de livraison et statuts plus fiables

@@ -173,7 +173,7 @@ function PrivacyPolicy() {
             <ul style={listStyle}>
               <li>Email: support@yalataxi.live</li>
               <li>Support: https://yalataxi.live</li>
-              <li>Account deletion: https://yalataxi.live/account-deletion</li>
+              <li>Account deletion: https://api.yalataxi.live/yala-account-deletion/</li>
               <li>Phone: {MARKET.phonePrefix}45000001</li>
             </ul>
           </article>

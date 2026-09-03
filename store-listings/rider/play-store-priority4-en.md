@@ -95,11 +95,11 @@ Téléchargez Yala Rider — mobilité **Rapide • Sûre • Fiable**.
 
 ---
 
-## 3. Release notes (v1.2.2)
+## 3. Release notes (v1.3.1)
 
 **English (498 chars):**
 ```
-What's new in Yala Rider 1.2.2
+What's new in Yala Rider 1.3.1
 
 • Improved delivery request flow from the rider app
 • Password reset — recover your account securely by email
@@ -113,7 +113,7 @@ Thank you for riding with Yala — Fast • Safe • Reliable.
 
 **French:**
 ```
-Nouveautés Yala Rider 1.2.2
+Nouveautés Yala Rider 1.3.1
 
 • Flux de demande de livraison amélioré depuis l'app passager
 • Réinitialisation du mot de passe par e-mail

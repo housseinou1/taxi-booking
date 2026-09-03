@@ -530,6 +530,40 @@ export default function DriverSettings({ deliveryOnly = false } = {}) {
           checked={settings?.privacy_show_vehicle ?? true}
           onChange={() => handleToggle("privacy_show_vehicle")}
         />
+        <div style={securityRowStyle}>
+          <div style={securityInfoStyle}>
+            <span style={securityLabelStyle}>Privacy Policy</span>
+            <span style={securityDescStyle}>
+              How Yala Technologies uses your data
+            </span>
+          </div>
+          <a
+            href="https://www.yalataxi.live/privacy"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={securityButtonStyle}
+            aria-label="View privacy policy"
+          >
+            View
+          </a>
+        </div>
+        <div style={securityRowStyle}>
+          <div style={securityInfoStyle}>
+            <span style={securityLabelStyle}>Delete account</span>
+            <span style={securityDescStyle}>
+              Request deletion of your Yala account and personal data
+            </span>
+          </div>
+          <a
+            href="https://api.yalataxi.live/yala-account-deletion/"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={securityButtonStyle}
+            aria-label="Request account deletion"
+          >
+            Request
+          </a>
+        </div>
       </SettingsSection>
 
       {/* PIN Modal */}

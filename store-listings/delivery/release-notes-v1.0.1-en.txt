@@ -1,4 +1,4 @@
-What's new in Yala Delivery 1.0.1
+What's new in Yala Delivery 1.1.3
 
 • Improved courier dashboard with earnings summary and analytics
 • More reliable delivery completion and status updates

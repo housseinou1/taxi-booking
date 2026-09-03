@@ -28,6 +28,16 @@ const SETTINGS = [
     description: "Courier agreement, delivery rules, and signed policies.",
     path: "/delivery/courier/sign",
   },
+  {
+    title: "Privacy Policy",
+    description: "How Yala Technologies uses your Delivery account data.",
+    href: "https://www.yalataxi.live/privacy",
+  },
+  {
+    title: "Delete account",
+    description: "Request deletion of your Yala Delivery account and personal data.",
+    href: "https://api.yalataxi.live/yala-account-deletion/",
+  },
 ];
 
 export default function DeliveryCourierSettingsPanel() {
@@ -41,11 +51,15 @@ export default function DeliveryCourierSettingsPanel() {
       <div className="delivery-uber__history-list">
         {SETTINGS.map((item) => (
           <button
-            key={item.path}
+            key={item.path || item.href}
             type="button"
             className="delivery-uber__history-item"
             style={{ width: "100%", textAlign: "left", cursor: "pointer" }}
             onClick={() => {
+              if (item.href) {
+                window.open(item.href, "_blank", "noopener,noreferrer");
+                return;
+              }
               window.location.href = item.path;
             }}
           >

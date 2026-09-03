@@ -71,13 +71,13 @@ function SettingsPage({ onLogout, riderMode = false }) {
       title: t("settings.privacy"),
       description: t("settings.privacyDescription"),
       value: t("settings.viewPolicy"),
-      action: () => { window.location.href = "/privacy"; },
+      action: () => window.open("https://www.yalataxi.live/privacy", "_blank", "noopener,noreferrer"),
     },
     {
       title: "Delete account",
       description: "Request deletion of your Yala account and associated personal data.",
       value: "Deletion request",
-      action: () => window.open("https://yalataxi.live/account-deletion", "_blank", "noopener,noreferrer"),
+      action: () => window.open("https://api.yalataxi.live/yala-account-deletion/", "_blank", "noopener,noreferrer"),
     },
     {
       title: t("settings.helpSupport"),

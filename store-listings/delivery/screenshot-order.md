@@ -38,7 +38,7 @@ Upload screenshots in this order. First screenshot = lead image in search and br
 - [ ] 10-inch tablet screenshots 1–4 in order above
 - [ ] Short description from `play-store-priority4-en.md`
 - [ ] Full description from `play-store-priority4-en.md`
-- [ ] Release notes v1.0.1 from `play-store-priority4-en.md`
+- [ ] Release notes v1.1.3 from `play-store-priority4-en.md`
 
 ## Narrative flow
 

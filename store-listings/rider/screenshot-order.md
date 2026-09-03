@@ -38,7 +38,7 @@ Upload screenshots in this order. Each row is the sequence Google Play shows lef
 - [ ] 10-inch tablet screenshots 1–4 in order above
 - [ ] Short description from `play-store-priority4-en.md`
 - [ ] Full description from `play-store-priority4-en.md`
-- [ ] Release notes v1.2.2 from `play-store-priority4-en.md`
+- [ ] Release notes v1.3.1 from `play-store-priority4-en.md`
 
 ## Narrative flow
 
