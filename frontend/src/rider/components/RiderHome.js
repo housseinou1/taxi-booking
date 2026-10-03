@@ -22,6 +22,7 @@ import apiService from '../services/apiService';
 import { calculateFare } from '../utils/fareCalculator';
 import { buildRideRequest } from '../utils/buildRideRequest';
 import { fetchLegalStatus, acceptRideLegal } from '../../legal/legalApi';
+import { readStoredPaymentMethod, storePaymentMethod } from '../utils/paymentMethods';
 import { redirectIfLegalResignRequired } from '../../legal/legalVersionGate';
 import { useRiderLegalAcceptance } from '../../legal/components/RiderTermsAcceptance';
 import { MARKET } from '../../marketConfig';
@@ -116,6 +117,9 @@ function RiderHome() {
   const [rideStatusMessage, setRideStatusMessage] = useState('');
   const [legalCompliant, setLegalCompliant] = useState(false);
   const [requiresResign, setRequiresResign] = useState(false);
+  // Payment method selection for the booking confirmation screen.
+  // Internal IDs match the backend payment types: cash | bankily | masrvi | seddad | card.
+  const [paymentMethod, setPaymentMethod] = useState(() => readStoredPaymentMethod());
   const {
     termsChecked,
     privacyChecked,
@@ -226,7 +230,7 @@ function RiderHome() {
     setRideStatusMessage('Ride cancelled');
     window.setTimeout(() => {
       setRideStatusMessage((current) => (current === 'Ride cancelled' ? '' : current));
-    }, 3000);
+    }, 5000);
   }, []);
 
   const refreshActiveRide = useCallback(
@@ -776,6 +780,13 @@ function RiderHome() {
     [dispatch, routeInfo]
   );
 
+  const handlePaymentMethodChange = useCallback((methodId) => {
+    if (!methodId) return;
+    setPaymentMethod(methodId);
+    // Persist the rider's choice so it is the default next time.
+    storePaymentMethod(methodId);
+  }, []);
+
   const handleConfirmBooking = useCallback(async () => {
     if (!pickup || !destination) return;
     if (!hasValidLocation(pickup) || !hasValidLocation(destination)) {
@@ -1115,6 +1126,8 @@ function RiderHome() {
             routeInfo={routeInfo}
             promoError={promoError}
             promoLoading={promoLoading}
+            paymentMethod={paymentMethod}
+            onPaymentMethodChange={handlePaymentMethodChange}
             legalCompliant={legalCompliant && !requiresResign}
             termsChecked={termsChecked}
             privacyChecked={privacyChecked}

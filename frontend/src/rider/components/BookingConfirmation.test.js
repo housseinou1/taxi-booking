@@ -233,4 +233,64 @@ describe('BookingConfirmation component', () => {
     fireEvent.click(screen.getByRole('button', { name: /apply promo code/i }));
     expect(defaultProps.onPromoApply).toHaveBeenCalledWith('TEST');
   });
+
+  // -----------------------------------------------------------------
+  // Payment method selector
+  // -----------------------------------------------------------------
+  describe('payment method selector', () => {
+    const paymentGroup = () =>
+      within(screen.getByRole('group', { name: /payment method/i }));
+
+    it('renders all five payment options', () => {
+      render(<BookingConfirmation {...defaultProps} />);
+      const group = paymentGroup();
+      ['Cash', 'Bankily', 'Masravi', 'Sedad', 'Card'].forEach((label) => {
+        expect(group.getByRole('button', { name: label })).toBeInTheDocument();
+      });
+    });
+
+    it('marks the selected payment method as pressed (defaults to cash)', () => {
+      render(<BookingConfirmation {...defaultProps} />);
+      const group = paymentGroup();
+      expect(group.getByRole('button', { name: 'Cash' })).toHaveAttribute('aria-pressed', 'true');
+      expect(group.getByRole('button', { name: 'Bankily' })).toHaveAttribute('aria-pressed', 'false');
+    });
+
+    it('reflects a non-default selected payment method via the paymentMethod prop', () => {
+      render(<BookingConfirmation {...defaultProps} paymentMethod="masrvi" />);
+      const group = paymentGroup();
+      expect(group.getByRole('button', { name: 'Masravi' })).toHaveAttribute('aria-pressed', 'true');
+      expect(group.getByRole('button', { name: 'Cash' })).toHaveAttribute('aria-pressed', 'false');
+    });
+
+    it('calls onPaymentMethodChange with the backend-compatible internal id when a method is clicked', () => {
+      const onPaymentMethodChange = jest.fn();
+      render(
+        <BookingConfirmation
+          {...defaultProps}
+          paymentMethod="cash"
+          onPaymentMethodChange={onPaymentMethodChange}
+        />
+      );
+      const group = paymentGroup();
+
+      fireEvent.click(group.getByRole('button', { name: 'Bankily' }));
+      expect(onPaymentMethodChange).toHaveBeenCalledWith('bankily');
+
+      fireEvent.click(group.getByRole('button', { name: 'Masravi' }));
+      expect(onPaymentMethodChange).toHaveBeenCalledWith('masrvi');
+
+      fireEvent.click(group.getByRole('button', { name: 'Sedad' }));
+      expect(onPaymentMethodChange).toHaveBeenCalledWith('seddad');
+
+      fireEvent.click(group.getByRole('button', { name: 'Card' }));
+      expect(onPaymentMethodChange).toHaveBeenCalledWith('card');
+    });
+
+    it('does not throw when onPaymentMethodChange is omitted', () => {
+      render(<BookingConfirmation {...defaultProps} />);
+      const group = paymentGroup();
+      expect(() => fireEvent.click(group.getByRole('button', { name: 'Bankily' }))).not.toThrow();
+    });
+  });
 });
