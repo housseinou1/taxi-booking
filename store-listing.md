@@ -77,3 +77,33 @@ Available in Nouakchott, Mauritania. More cities coming soon.
 **Category:** Maps & Navigation
 **Content Rating:** Everyone
 **Privacy Policy URL:** https://www.yalataxi.live/privacy
+
+---
+
+## Yala Delivery
+
+**App Name:** Yala Delivery
+**Short Description (80 chars):**
+Courier app for Mauritania. Fast delivery, live tracking & secure PIN handoff.
+
+**Full Description:**
+Yala Delivery is the courier app for Yala's delivery network in Mauritania. Pick up, track, and deliver packages, documents, food, and essentials with secure PIN handoff.
+
+**Features:**
+• Go online/offline on your schedule
+• Accept delivery requests with payout and distance
+• Real-time navigation and tracking
+• PIN verification at pickup and drop-off
+• Proof-of-delivery photo capture
+• Earnings dashboard for couriers
+• Multi-language support (French, Arabic, English)
+
+**Requirements:**
+• Valid identification
+• Smartphone with GPS
+
+Available in Nouakchott, Mauritania. More cities coming soon.
+
+**Category:** Business
+**Content Rating:** Everyone
+**Privacy Policy URL:** https://www.yalataxi.live/privacy
