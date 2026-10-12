@@ -248,10 +248,16 @@
 
 .delivery-uber--eats .cce-topbar__notify .sx-notification-panel {
   top: calc(100% + 12px);
-  right: 0;
-  left: auto;
+  /* The notify anchor (.cce-topbar__notify) is a zero-width box pinned to the
+     LEFT of the screen (left: 18px). Opening the panel with right:0 anchored it
+     to that left point, pushing a 340px-wide panel off the left edge — the panel
+     looked "hidden on the left side". Open it rightward from the left anchor and
+     clamp the width so it stays fully on-screen on small Android devices. */
+  left: 0;
+  right: auto;
   bottom: auto;
-  width: min(340px, calc(100vw - 28px));
+  width: min(340px, calc(100vw - 36px));
+  max-width: calc(100vw - 36px);
 }
 
 /* ── Bottom sheet panel ── */

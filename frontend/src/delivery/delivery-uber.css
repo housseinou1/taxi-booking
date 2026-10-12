@@ -1013,10 +1013,32 @@
 
 /* Onboarding / secondary pages */
 .delivery-uber-page {
+  /* Re-declare the --du-* tokens here. The dashboard shell (.delivery-uber)
+     defines them, but subpages such as Settings render inside
+     .delivery-uber-page WITHOUT that ancestor, so without these the
+     var() fallbacks were undefined and the page fell back to a dark ambient
+     background with unreadable text. Scoped to delivery subpages only. */
+  --du-black: #000000;
+  --du-white: #ffffff;
+  --du-orange: #f58220;
+  --du-orange-light: #ffb800;
+  --du-brown: #3c2415;
+  --du-cream: #fff8e8;
+  --du-gray-50: #f6f6f6;
+  --du-gray-100: #eeeeee;
+  --du-gray-200: #e2e2e2;
+  --du-gray-400: #9ca3af;
+  --du-gray-600: #6b7280;
+  --du-gray-900: #111827;
+  --du-green: #06c167;
+  --du-red: #cd0930;
+  --du-blue: #276ef1;
+  --du-safe-bottom: env(safe-area-inset-bottom, 0px);
+
   min-height: 100vh;
   min-height: 100dvh;
-  background: var(--du-gray-50);
-  color: var(--du-gray-900);
+  background: var(--du-gray-50, #f6f6f6);
+  color: var(--du-gray-900, #111827);
   padding-bottom: calc(24px + var(--du-safe-bottom));
 }
 
@@ -1028,8 +1050,8 @@
   align-items: center;
   gap: 12px;
   padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px;
-  background: var(--du-white);
-  border-bottom: 1px solid var(--du-gray-200);
+  background: var(--du-white, #ffffff);
+  border-bottom: 1px solid var(--du-gray-200, #e2e2e2);
 }
 
 .delivery-uber-page__header h1 {
@@ -1045,11 +1067,12 @@
 }
 
 .delivery-uber-card {
-  background: var(--du-white);
+  background: var(--du-white, #ffffff);
   border-radius: 12px;
   padding: 16px;
   margin-bottom: 12px;
-  border: 1px solid var(--du-gray-200);
+  border: 1px solid var(--du-gray-200, #e2e2e2);
+  color: var(--du-gray-900, #111827);
 }
 
 .delivery-uber-card h2 {
@@ -1061,7 +1084,7 @@
 
 .delivery-uber-card p {
   margin: 0;
-  color: var(--du-gray-600);
+  color: var(--du-gray-600, #6b7280);
   font-size: 14px;
   line-height: 1.45;
 }
@@ -2419,8 +2442,9 @@
   gap: 12px;
   padding: 12px 14px;
   border-radius: 14px;
-  background: var(--du-white);
-  border: 1px solid var(--du-gray-200);
+  background: var(--du-white, #ffffff);
+  border: 1px solid var(--du-gray-200, #e2e2e2);
+  color: var(--du-gray-900, #111827);
 }
 
 .delivery-uber__history-item p {
