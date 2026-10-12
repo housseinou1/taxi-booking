@@ -32,7 +32,7 @@ export function persistAuthTokens({ access, refresh, user } = {}) {
   }
 }
 
-async function hydrateTokensFromSecureStorage() {
+export async function hydrateTokensFromSecureStorage() {
   try {
     const [secureAccess, secureRefresh] = await Promise.all([
       getToken("access"),
@@ -49,6 +49,21 @@ async function hydrateTokensFromSecureStorage() {
   } catch {
     // Secure storage is optional on web builds.
   }
+}
+
+/**
+ * Returns true if valid credentials exist in EITHER localStorage OR secure
+ * storage. On native Android the WebView can evict localStorage between
+ * launches while the Keychain/Keystore copy survives; this hydrates the
+ * secure copy back into localStorage first so a valid session is not wrongly
+ * treated as missing (and then destroyed by clearAuthSession).
+ */
+export async function hasRestorableAuthCredentials() {
+  if (hasStoredAuthCredentials()) {
+    return true;
+  }
+  await hydrateTokensFromSecureStorage();
+  return hasStoredAuthCredentials();
 }
 
 export function isJwtUsable(token) {

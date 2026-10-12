@@ -10,6 +10,7 @@ import authenticatedApi, { resetAuthRedirectFlag } from "../auth/authenticatedAp
 import {
   clearAuthSession,
   getStoredUser,
+  hasRestorableAuthCredentials,
   hasStoredAuthCredentials,
   isDriverAccount,
   redirectToLogin,
@@ -143,10 +144,14 @@ export default function DriverDashboardNew() {
     let timeoutId = null;
     let gateResolved = false;
 
-    const allowCachedSessionOrLogin = () => {
+    const allowCachedSessionOrLogin = async () => {
       if (cancelled || gateResolved) return;
       gateResolved = true;
-      if (hasStoredAuthCredentials()) {
+      // Recover any secure-storage tokens the WebView may have evicted from
+      // localStorage before concluding the session is gone.
+      const restorable = await hasRestorableAuthCredentials();
+      if (cancelled) return;
+      if (restorable) {
         setAuthGateError("");
         setAuthReady(true);
         return;

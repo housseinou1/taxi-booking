@@ -9,6 +9,7 @@ import {
   clearAuthSession,
   getRequiredRoleForApp,
   getStoredUser,
+  hasRestorableAuthCredentials,
   hasStoredAuthCredentials,
   isDriverAccount,
   restoreAuthSession,
@@ -525,7 +526,14 @@ function App() {
     }, 12000);
 
     const restoreSession = async () => {
-      if (!hasStoredAuthCredentials()) {
+      // Hydrate from secure storage (Keychain/Keystore) BEFORE deciding the
+      // session is missing. On native Android the WebView can evict
+      // localStorage between launches while the secure copy survives; checking
+      // localStorage alone here previously caused clearAuthSession() to delete
+      // the surviving secure tokens and force a re-login on every reopen.
+      const restorable = await hasRestorableAuthCredentials();
+      if (!isMounted) return;
+      if (!restorable) {
         clearAuthSession();
         finishSessionCheck(false);
         return;
