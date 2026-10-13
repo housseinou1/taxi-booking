@@ -16,8 +16,12 @@ try {
 
 /**
  * Parses a deep link URL into an internal route path.
- * Handles both custom schemes (yala-rider://, yala-driver://)
- * and universal links (https://yala.mr/rider/*, https://yala.mr/driver/*).
+ * Handles the custom schemes (yala-rider://, yala-driver://).
+ *
+ * The legacy https://yala.mr/* universal links were removed: the yala.mr domain
+ * is decommissioned (no DNS, no Digital Asset Links), the production domain is
+ * yalataxi.live, and no app ships an https App Link intent-filter, so those URLs
+ * could never be delivered to the app.
  *
  * @param {string} url - The deep link URL to parse
  * @returns {string|null} Internal route path or null if URL is invalid
@@ -30,26 +34,6 @@ export function parseDeepLink(url) {
   if (schemeMatch) {
     const path = schemeMatch[2].replace(/^\//, '');
     return '/' + path;
-  }
-
-  // Universal link: https://yala.mr/rider/dashboard → /rider-dashboard
-  const universalMatch = url.match(/^https:\/\/yala\.mr\/(rider|driver)\/(.*)$/);
-  if (universalMatch) {
-    const type = universalMatch[1];
-    const path = universalMatch[2].replace(/\/$/, ''); // trim trailing slash
-
-    if (type === 'rider') {
-      return path ? `/rider-${path}` : '/rider-dashboard';
-    }
-    if (type === 'driver') {
-      return path ? `/driver/${path}` : '/driver';
-    }
-  }
-
-  // Universal link without subpath: https://yala.mr/rider/ or https://yala.mr/driver/
-  const baseMatch = url.match(/^https:\/\/yala\.mr\/(rider|driver)\/?$/);
-  if (baseMatch) {
-    return baseMatch[1] === 'rider' ? '/rider-dashboard' : '/driver';
   }
 
   return null;
