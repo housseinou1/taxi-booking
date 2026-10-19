@@ -1,0 +1,201 @@
+/*
+ * Riders Management module styling.
+ *
+ * The reused admin component library (adminComponents.css) is driven entirely
+ * by the `--admin-*` CSS variables, which are declared ONLY on `.admin-shell`.
+ * The legacy AdminDashboard renders OUTSIDE `.admin-shell`, so we re-declare the
+ * same dark-green brand tokens (copied from AdminShell.css dark theme) scoped to
+ * `.riders-management` so the library components render on-brand here without
+ * adding the full shell class or editing AdminShell.css.
+ */
+.riders-management {
+  --admin-bg: #0a1410;
+  --admin-panel: rgba(15, 33, 25, 0.92);
+  --admin-border: rgba(110, 231, 183, 0.22);
+  --admin-text: #f8fafc;
+  --admin-text-muted: #cbd5e1;
+  --admin-accent: #00a651;
+  --admin-accent-soft: rgba(110, 231, 183, 0.14);
+  --admin-danger: #fecaca;
+
+  color: var(--admin-text);
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.riders-management__header h2 {
+  margin: 0 0 4px;
+  font-size: 1.3rem;
+}
+
+.riders-management__header p {
+  margin: 0;
+  color: var(--admin-text-muted);
+  font-size: 0.9rem;
+}
+
+/* Summary cards grid (requirement 2). */
+.riders-management__summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+/* Rider cell: avatar + identity. */
+.riders-rider-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.riders-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--admin-accent-soft);
+}
+
+.riders-avatar--fallback {
+  display: grid;
+  place-items: center;
+  background: var(--admin-accent);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.riders-rider-cell__name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.riders-rider-cell__fullname {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.riders-rider-cell__sub {
+  font-size: 0.75rem;
+  color: var(--admin-text-muted);
+}
+
+.riders-contact {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.85rem;
+}
+
+.riders-contact__verified {
+  color: #34d399;
+  font-size: 0.72rem;
+}
+
+.riders-contact__unverified {
+  color: var(--admin-text-muted);
+  font-size: 0.72rem;
+}
+
+.riders-cell-hint {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--admin-text-muted);
+  margin-top: 2px;
+}
+
+.riders-na {
+  color: var(--admin-text-muted);
+}
+
+/* Row action menu. */
+.riders-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Details drawer. */
+.riders-detail__section {
+  margin-bottom: 18px;
+}
+
+.riders-detail__section h4 {
+  margin: 0 0 8px;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--admin-text-muted);
+}
+
+.riders-detail__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 16px;
+}
+
+.riders-detail__field dt {
+  font-size: 0.72rem;
+  color: var(--admin-text-muted);
+}
+
+.riders-detail__field dd {
+  margin: 2px 0 0;
+  font-size: 0.9rem;
+  word-break: break-word;
+}
+
+.riders-detail__photo {
+  width: 96px;
+  height: 96px;
+  border-radius: 12px;
+  object-fit: cover;
+}
+
+.riders-detail__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.riders-detail__empty {
+  margin: 0;
+  color: var(--admin-text-muted);
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+.riders-detail__doc-link {
+  color: var(--admin-accent);
+}
+
+.riders-detail__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Responsive (requirement 8). */
+@media (max-width: 1024px) {
+  .riders-management__summary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .riders-management__summary {
+    grid-template-columns: 1fr;
+  }
+  .riders-detail__grid {
+    grid-template-columns: 1fr;
+  }
+}

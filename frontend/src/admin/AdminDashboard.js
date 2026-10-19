@@ -7,6 +7,7 @@ import AnalyticsDashboard from "./AnalyticsDashboard";
 import SafetyAdminPanel from "./SafetyAdminPanel";
 import HallOfFameAdminPanel from "./HallOfFameAdminPanel";
 import DeliveryAdminPanel from "../delivery/DeliveryAdminPanel";
+import RidersManagement from "./riders/RidersManagement";
 
 const MARKET_OWNER_PERCENT = MARKET.ownerCommissionPercent;
 const logoSrc = "/yala-admin-logo.png";
@@ -944,8 +945,6 @@ function AdminDashboard() {
     )
   );
   const pendingRiders = riders.filter((user) => user.rider_status === "pending");
-  const approvedRiders = riders.filter((user) => user.rider_status === "approved");
-  const rejectedRiders = riders.filter((user) => user.rider_status === "rejected");
   const platformDrivers = sortAlphabetically(
     users.filter(
       (user) => (user.is_driver || user.user_type === "driver") && !user.is_staff
@@ -1062,14 +1061,6 @@ function AdminDashboard() {
   };
   const currentViewTitle =
     menuItems.find((item) => item.key === page)?.label || "Admin";
-  const filteredRiders = riders.filter((user) =>
-    matchesSearch(user, searchQuery, [
-      "full_name",
-      "email",
-      "phone_number",
-      "national_id_number",
-    ])
-  );
   const filteredPlatformDrivers = platformDrivers.filter((user) =>
     matchesSearch(user, searchQuery, [
       "full_name",
@@ -1484,42 +1475,15 @@ function AdminDashboard() {
 
         {page === "riders" && (
           <div style={card}>
-            <SectionTitle
-              title="Riders list"
-              subtitle="Manage rider accounts, rider quality scores, and account access."
+            <RidersManagement
+              riders={riders}
+              rides={rides}
+              getFileUrl={getFileUrl}
+              onApproveRider={(id) => updateRiderApproval(id, "approve")}
+              onRejectRider={(id) => updateRiderApproval(id, "reject")}
+              onBlockUser={setUserBlocked}
+              onDeleteRider={deleteRider}
             />
-
-            <div style={statsGrid}>
-              <StatCard title="Total Riders" value={riders.length} />
-              <StatCard title="Showing" value={filteredRiders.length} />
-              <StatCard title="Pending Approval" value={pendingRiders.length} />
-              <StatCard title="Approved Riders" value={approvedRiders.length} />
-              <StatCard title="Rejected Riders" value={rejectedRiders.length} />
-              <StatCard
-                title="Blocked Riders"
-                value={riders.filter((user) => !user.is_active).length}
-              />
-              <StatCard
-                title="Rated Riders"
-                value={riders.filter((user) => Number(user.rider_rating_count || 0) > 0).length}
-              />
-            </div>
-
-            {filteredRiders.length === 0 ? (
-              <p>No riders found.</p>
-            ) : (
-              filteredRiders.map((user) => (
-                <UserAccessCard
-                  key={user.id}
-                  user={user}
-                  setUserBlocked={setUserBlocked}
-                  updateRiderApproval={updateRiderApproval}
-                  deleteRider={deleteRider}
-                  showApprovalActions
-                />
-              ))
-            )}
-
           </div>
         )}
 
