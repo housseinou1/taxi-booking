@@ -135,8 +135,10 @@ export function isTestAccount(rider) {
   if (!email && !name) return false;
   if (email.endsWith("@example.com")) return true;
   if (email.includes("+test")) return true;
+  // Match test/qa/tester only as DELIMITED tokens (not arbitrary substrings) to
+  // avoid mislabeling legitimate accounts (e.g. "contestant", "mustaqa", a name
+  // like "Contest"). Delimiters: start/end or . _ + @ - boundaries.
   if (/(^|[._+@-])(test|qa|tester)([._+@-]|$)/.test(email)) return true;
-  if (email.includes("test") || email.includes("qa")) return true;
-  if (name.includes("test")) return true;
+  if (/(^|\s)(test|qa|tester)(\s|$)/.test(name)) return true;
   return false;
 }

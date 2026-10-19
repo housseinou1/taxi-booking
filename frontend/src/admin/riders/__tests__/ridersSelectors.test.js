@@ -152,4 +152,12 @@ describe("isTestAccount (display-only heuristic)", () => {
     expect(isTestAccount({ email: "amina@mail.com", full_name: "Amina Diallo" })).toBe(false);
     expect(isTestAccount({})).toBe(false);
   });
+
+  test("does not mislabel legitimate accounts containing test/qa as substrings", () => {
+    // Previously the bare includes('test')/includes('qa') fallback would have
+    // wrongly flagged these; the delimited-token match must NOT.
+    expect(isTestAccount({ email: "mustaqa@mail.com", full_name: "Mustaqa Ba" })).toBe(false);
+    expect(isTestAccount({ email: "protestor@mail.com" })).toBe(false);
+    expect(isTestAccount({ email: "a@b.com", full_name: "Contestant Winner" })).toBe(false);
+  });
 });

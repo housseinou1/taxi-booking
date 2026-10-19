@@ -197,6 +197,30 @@ test("row Details opens the details drawer", () => {
   expect(screen.getByRole("dialog")).toBeInTheDocument();
 });
 
+test("suspending from inside the drawer closes the drawer so dialogs do not stack", () => {
+  const onBlockUser = jest.fn();
+  renderModule({ onBlockUser });
+  // Open the details drawer for Amina.
+  const aminaRow = screen.getByText("Amina Diallo").closest("tr");
+  fireEvent.click(within(aminaRow).getByRole("button", { name: /view details for amina/i }));
+  expect(screen.getByRole("dialog")).toBeInTheDocument(); // drawer only
+
+  // Click "Suspend account" inside the drawer.
+  fireEvent.click(screen.getByRole("button", { name: "Suspend account" }));
+
+  // Exactly ONE modal surface should be present now: the confirmation dialog,
+  // NOT the drawer stacked beneath it.
+  const dialogs = screen.getAllByRole("dialog");
+  expect(dialogs).toHaveLength(1);
+  // The remaining dialog is the suspend confirmation (has the Suspend/Cancel actions).
+  expect(screen.getByRole("button", { name: "Suspend" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
+
+  // Confirm still calls the handler with the right args.
+  fireEvent.click(screen.getByRole("button", { name: "Suspend" }));
+  expect(onBlockUser).toHaveBeenCalledWith(1, true);
+});
+
 test("loading state renders the table skeleton (no rows)", () => {
   renderModule({ loading: true });
   expect(screen.queryByText("Amina Diallo")).not.toBeInTheDocument();

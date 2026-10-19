@@ -119,6 +119,29 @@ export default function RidersManagement({
   const handleDelete = (rider) => onDeleteRider?.(rider);
   const requestSuspendToggle = (rider) => setSuspendTarget(rider);
 
+  // Actions invoked from WITHIN the details drawer must first close the drawer,
+  // so a confirmation surface (the in-module Suspend dialog, or the injected
+  // approve/reject/delete confirm/prompt) is never stacked on top of the
+  // drawer's own aria-modal + focus trap. Two modal surfaces at once breaks
+  // keyboard focus and confuses assistive tech; closing the drawer leaves a
+  // single clean modal and lets focus return correctly afterward.
+  const handleDrawerApprove = (rider) => {
+    setSelectedRider(null);
+    handleApprove(rider);
+  };
+  const handleDrawerReject = (rider) => {
+    setSelectedRider(null);
+    handleReject(rider);
+  };
+  const handleDrawerDelete = (rider) => {
+    setSelectedRider(null);
+    handleDelete(rider);
+  };
+  const handleDrawerSuspendToggle = (rider) => {
+    setSelectedRider(null);
+    requestSuspendToggle(rider);
+  };
+
   const confirmSuspendToggle = () => {
     if (suspendTarget) onBlockUser?.(suspendTarget.id, suspendTarget.is_active);
     setSuspendTarget(null);
@@ -328,10 +351,10 @@ export default function RidersManagement({
         rides={rides}
         getFileUrl={getFileUrl}
         onClose={() => setSelectedRider(null)}
-        onApprove={handleApprove}
-        onReject={handleReject}
-        onSuspendToggle={requestSuspendToggle}
-        onDelete={handleDelete}
+        onApprove={handleDrawerApprove}
+        onReject={handleDrawerReject}
+        onSuspendToggle={handleDrawerSuspendToggle}
+        onDelete={handleDrawerDelete}
       />
 
       <ConfirmationDialog
