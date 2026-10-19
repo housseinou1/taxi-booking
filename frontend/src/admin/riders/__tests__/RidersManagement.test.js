@@ -2,6 +2,26 @@ import React from "react";
 import { render, screen, fireEvent, within } from "@testing-library/react";
 
 import RidersManagement from "../RidersManagement";
+import {
+  getRiderActivity,
+  getRiderAuditLogs,
+  getRiderPayments,
+  getRiderRideHistory,
+} from "../ridersApi";
+
+// The details drawer now fetches rider data from ridersApi on open; mock it so
+// opening the drawer in these list-level tests resolves to empty sections
+// without hitting the network. (Drawer-specific rendering is covered in
+// RiderDetailsDrawer.test.js.) Implementations are set in beforeEach because
+// CRA's jest config enables resetMocks, which clears them between tests.
+jest.mock("../ridersApi");
+
+beforeEach(() => {
+  getRiderRideHistory.mockResolvedValue({ count: 0, total_pages: 1, results: [], summary: null });
+  getRiderPayments.mockResolvedValue({ results: [], refunds: [] });
+  getRiderActivity.mockResolvedValue({ last_login: null, last_seen: null, last_seen_device: null });
+  getRiderAuditLogs.mockResolvedValue([]);
+});
 
 // DataTable's export toolbar reads usePermissions via AdminActionGuard — mock
 // the permission context so the module renders without a provider.

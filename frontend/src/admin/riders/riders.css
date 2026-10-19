@@ -184,6 +184,62 @@
   gap: 8px;
 }
 
+/* Error state for async drawer sections (distinct from the italic empty state). */
+.riders-detail__error {
+  margin: 0;
+  color: var(--admin-danger);
+  font-size: 0.85rem;
+}
+
+/* Scrollable wrapper for the ride/payment/refund tables in the drawer. */
+.riders-detail__table-wrap {
+  overflow-x: auto;
+}
+
+.riders-detail__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.riders-detail__table th,
+.riders-detail__table td {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--admin-border);
+  vertical-align: top;
+}
+
+.riders-detail__table th {
+  color: var(--admin-text-muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.riders-detail__pager {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.riders-detail__reviews,
+.riders-detail__activity {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.riders-detail__review,
+.riders-detail__activity-item {
+  font-size: 0.85rem;
+  border-left: 2px solid var(--admin-border);
+  padding-left: 10px;
+}
+
 /* Responsive (requirement 8). */
 @media (max-width: 1024px) {
   .riders-management__summary {
