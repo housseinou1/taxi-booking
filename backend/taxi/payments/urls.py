@@ -30,6 +30,7 @@ from .wallet_views import (
     admin_payment_records,
     admin_refund_queue,
     admin_reject_refund,
+    admin_rider_payments,
     courier_wallet_summary,
     create_refund_request,
     merchant_payout_history,
@@ -88,5 +89,6 @@ urlpatterns = [
     path("admin/refunds/<int:refund_id>/approve/", admin_approve_refund),
     path("admin/refunds/<int:refund_id>/reject/", admin_reject_refund),
     path("admin/merchant-payouts/<int:payout_id>/approve/", admin_approve_merchant_payout),
+    path("admin/rider/<int:rider_id>/payments/", admin_rider_payments),
     path("webhooks/stripe/", stripe_webhook),
 ]

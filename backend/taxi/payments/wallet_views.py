@@ -1,8 +1,11 @@
 from decimal import Decimal
 
+from django.contrib.auth import get_user_model
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 
@@ -10,7 +13,11 @@ from deliveries.models import Delivery
 from merchants.models import MerchantOrder
 from merchants.permissions import IsMerchantOwner
 
-from .models import MerchantWithdrawalRequest, PaymentRecord, RefundRequest
+from .admin_rider_serializers import (
+    AdminRiderPaymentSerializer,
+    AdminRiderRefundSerializer,
+)
+from .models import MerchantWithdrawalRequest, Payment, PaymentRecord, RefundRequest
 from .serializers import (
     MerchantWithdrawalRequestSerializer,
     PaymentRecordSerializer,
@@ -244,3 +251,77 @@ def admin_approve_merchant_payout(request, payout_id):
         return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
     return Response(MerchantWithdrawalRequestSerializer(payout).data)
+
+
+class AdminRiderPaymentsPagination(PageNumberPagination):
+    """Server-side pagination for the admin rider payment-history endpoint."""
+
+    page_size = 25
+    page_size_query_param = "page_size"
+    max_page_size = 100
+
+
+@api_view(["GET"])
+@permission_classes([IsAdminUser])
+def admin_rider_payments(request, rider_id):
+    """Admin-only payment history + refunds for a single rider.
+
+    Returns ONLY Payment rows where Payment.rider_id == rider_id (strict data
+    isolation), server-side paginated with an optional ?status= filter, plus a
+    top-level `refunds` key holding the rider's RefundRequest rows.
+
+    Serialized payloads NEVER include payment tokens or full card data
+    (AdminRiderPaymentSerializer / AdminRiderRefundSerializer whitelist fields).
+
+    Additive endpoint only: it does not touch any existing view, serializer,
+    route, or auth behavior.
+    """
+    User = get_user_model()
+    user = get_object_or_404(User, id=rider_id)
+
+    # "Not a rider" rule (identical to FEAT-001): treat the target as NOT a rider
+    # (and return 404) when the user is staff/superuser or has a DriverProfile.
+    # Only genuine rider accounts are exposed through this admin endpoint.
+    if user.is_staff or user.is_superuser or hasattr(user, "driver_profile"):
+        return Response(
+            {"detail": "Not found."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    qs = Payment.objects.filter(rider_id=rider_id).order_by("-created_at")
+
+    # Optional status filter: validate against the model's status choices.
+    # An unknown status value is ignored (no filtering applied), documented here.
+    status_filter = request.query_params.get("status")
+    if status_filter:
+        valid_statuses = [c[0] for c in Payment.PAYMENT_STATUS_CHOICES]
+        if status_filter in valid_statuses:
+            qs = qs.filter(status=status_filter)
+
+    # Refunds for this rider only (customer_id == rider_id). currency is derived
+    # from the related PaymentRecord inside the serializer; the PaymentRecord
+    # (and its provider_token) is never serialized.
+    refunds = AdminRiderRefundSerializer(
+        RefundRequest.objects.filter(customer_id=rider_id)
+        .select_related("payment_record")
+        .order_by("-created_at"),
+        many=True,
+    ).data
+
+    paginator = AdminRiderPaymentsPagination()
+    page = paginator.paginate_queryset(qs, request)
+    serializer = AdminRiderPaymentSerializer(page, many=True)
+
+    page_number = paginator.page.number
+    page_size = paginator.get_page_size(request)
+    return Response(
+        {
+            "count": paginator.page.paginator.count,
+            "page": page_number,
+            "page_size": page_size,
+            "total_pages": paginator.page.paginator.num_pages,
+            "results": serializer.data,
+            "refunds": refunds,
+        },
+        status=status.HTTP_200_OK,
+    )
