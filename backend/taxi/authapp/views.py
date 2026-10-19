@@ -3,6 +3,7 @@ import threading
 
 from django.contrib.auth import get_user_model
 from django.db.models import Avg
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
 from rest_framework import generics, status
@@ -744,5 +745,41 @@ def delete_rider(request, user_id):
         )
 
     user_email = user.email
+    log_from_request(
+        request,
+        action="admin_action",
+        entity_type="customer",
+        entity_id=user.id,
+        summary=f"Rider deleted: {user.email}",
+        details={"email": user.email},
+    )
     user.delete()
     return Response({"message": f"Rider {user_email} deleted."})
+
+
+@api_view(["GET"])
+@permission_classes([IsAdminUser])
+def admin_rider_activity(request, rider_id):
+    """Admin-only last-login / last-seen activity for a single rider.
+
+    Exposes authentication last_login (from AbstractUser) and the newest
+    DeviceSession.last_seen_at as DISTINCT fields. Values are null when
+    unavailable and are never fabricated. serialize_user is intentionally
+    left unchanged.
+    """
+    user = get_object_or_404(User, id=rider_id)
+
+    # Same "not a rider" rule used by the admin rider ride-history / payment
+    # endpoints: staff, superusers, and driver accounts return 404 here.
+    if user.is_staff or user.is_superuser or DriverProfile.objects.filter(user=user).exists():
+        return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+
+    latest_session = (
+        DeviceSession.objects.filter(user=user).order_by("-last_seen_at").first()
+    )
+
+    return Response({
+        "last_login": user.last_login,
+        "last_seen": latest_session.last_seen_at if latest_session else None,
+        "last_seen_device": latest_session.device_name if latest_session else None,
+    })

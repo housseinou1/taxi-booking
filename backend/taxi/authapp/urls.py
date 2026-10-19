@@ -3,6 +3,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 
 from .views import (
     RegisterView,
+    admin_rider_activity,
     approve_rider,
     block_user,
     delete_rider,
@@ -38,6 +39,7 @@ urlpatterns = [
     path("users/<int:user_id>/delete-rider/", delete_rider),
     path("users/<int:user_id>/block/", block_user),
     path("users/<int:user_id>/unblock/", unblock_user),
+    path("admin/rider/<int:rider_id>/activity/", admin_rider_activity),
     # Email verification
     path("email/send-verification/", send_verification_email),
     path("email/verify/", verify_email),

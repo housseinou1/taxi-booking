@@ -1,5 +1,6 @@
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from django.utils.dateparse import parse_date
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
@@ -268,6 +269,35 @@ def admin_audit_logs(request):
         logs = logs.filter(action=action)
     if entity_type:
         logs = logs.filter(entity_type=entity_type)
+
+    # Optional, backward-compatible rider/entity and date-range filters. When none
+    # of these params are supplied the endpoint behaves exactly as before.
+    entity_id = request.query_params.get("entity_id")
+    if entity_id:
+        logs = logs.filter(entity_id=str(entity_id))
+
+    # DECISION: a malformed date returns HTTP 400 (not silent-ignore), consistent
+    # with the admin rider ride-history/payment endpoints (FEAT-001/FEAT-002).
+    date_from_raw = request.query_params.get("date_from")
+    if date_from_raw:
+        date_from = parse_date(date_from_raw)
+        if date_from is None:
+            return Response(
+                {"detail": "Invalid date_from; expected YYYY-MM-DD."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        logs = logs.filter(created_at__date__gte=date_from)
+
+    date_to_raw = request.query_params.get("date_to")
+    if date_to_raw:
+        date_to = parse_date(date_to_raw)
+        if date_to is None:
+            return Response(
+                {"detail": "Invalid date_to; expected YYYY-MM-DD."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        logs = logs.filter(created_at__date__lte=date_to)
+
     limit = min(int(request.query_params.get("limit", 100)), 500)
     return Response(AuditLogSerializer(logs[:limit], many=True).data)
 
