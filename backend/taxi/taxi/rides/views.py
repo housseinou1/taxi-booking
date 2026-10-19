@@ -6,9 +6,11 @@ import secrets
 import sys
 import threading
 
+from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
-from django.db.models import Q, Sum
+from django.db.models import Avg, Count, Q, Sum
 from django.db import transaction
+from django.utils.dateparse import parse_date
 from django.utils.timezone import now
 from django.utils import timezone
 
@@ -16,7 +18,8 @@ from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 
@@ -35,7 +38,7 @@ from locations.services import calculate_city_fare, resolve_city
 from legal.ride_terms import ensure_ride_legal_acceptance
 
 from .models import Ride, RidePricingSnapshot, RideStop
-from .serializers import RideSerializer
+from .serializers import AdminRiderRideSerializer, RideSerializer
 from .broadcast import broadcast_ride_update
 from .distance_utils import resolve_ride_distance_km
 from .services.waiting_service import calculate_waiting_fee
@@ -1932,6 +1935,121 @@ def driver_earnings_summary(request):
                 "weekly": weekly_chart,
                 "monthly": monthly_chart,
             },
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+class AdminRiderHistoryPagination(PageNumberPagination):
+    """Server-side pagination for the admin rider ride-history endpoint."""
+
+    page_size = 25
+    page_size_query_param = "page_size"
+    max_page_size = 100
+
+
+@api_view(["GET"])
+@permission_classes([IsAdminUser])
+def admin_rider_ride_history(request, rider_id):
+    """Admin-only ride history + statistics for a single rider.
+
+    Returns ONLY rides where Ride.rider_id == rider_id (strict data isolation),
+    server-side paginated with optional ?status=, ?date_from=, ?date_to= filters.
+    A `summary` object is computed over the rider's FULL history (ignoring the
+    status/date list filters) using Decimal-safe ORM aggregates.
+
+    Additive endpoint only: it does not touch any existing view, serializer,
+    route, or auth behavior.
+    """
+    User = get_user_model()
+    user = get_object_or_404(User, id=rider_id)
+
+    # "Not a rider" rule: treat the target as NOT a rider (and return 404) when the
+    # user is staff/superuser or has a DriverProfile. Only genuine rider accounts
+    # are exposed through this admin endpoint.
+    if user.is_staff or user.is_superuser or hasattr(user, "driver_profile"):
+        return Response(
+            {"detail": "Not found."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    qs = (
+        Ride.objects.filter(rider_id=rider_id)
+        .select_related("driver")
+        .order_by("-created_at")
+    )
+
+    # Optional status filter: validate against the model's STATUS_CHOICES.
+    # An unknown status value is ignored (no filtering applied), documented here.
+    status_filter = request.query_params.get("status")
+    if status_filter:
+        valid_statuses = [c[0] for c in Ride.STATUS_CHOICES]
+        if status_filter in valid_statuses:
+            qs = qs.filter(status=status_filter)
+
+    # Optional date filters applied against created_at__date.
+    # DECISION: a malformed date returns HTTP 400 (not silent-ignore) and this
+    # must stay consistent across FEAT-002/FEAT-003.
+    date_from_raw = request.query_params.get("date_from")
+    if date_from_raw:
+        date_from = parse_date(date_from_raw)
+        if date_from is None:
+            return Response(
+                {"detail": "Invalid date_from; expected YYYY-MM-DD."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        qs = qs.filter(created_at__date__gte=date_from)
+
+    date_to_raw = request.query_params.get("date_to")
+    if date_to_raw:
+        date_to = parse_date(date_to_raw)
+        if date_to is None:
+            return Response(
+                {"detail": "Invalid date_to; expected YYYY-MM-DD."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        qs = qs.filter(created_at__date__lte=date_to)
+
+    # Summary is computed over the rider's FULL history, deliberately IGNORING the
+    # status/date list filters above, so the dashboard totals stay stable.
+    # Decimal-safe: Sum/Avg over a Decimal(10,2) column return Decimal/None; we
+    # serialize them as strings and leave them null when there are no completed rides.
+    summary_agg = Ride.objects.filter(rider_id=rider_id).aggregate(
+        total_rides=Count("id"),
+        completed_rides=Count("id", filter=Q(status="completed")),
+        cancelled_rides=Count("id", filter=Q(status="cancelled")),
+        total_spend_mru=Sum("fare", filter=Q(status="completed")),
+        average_fare_mru=Avg("fare", filter=Q(status="completed")),
+    )
+
+    total_spend = summary_agg["total_spend_mru"]
+    average_fare = summary_agg["average_fare_mru"]
+    summary = {
+        "total_rides": summary_agg["total_rides"],
+        "completed_rides": summary_agg["completed_rides"],
+        "cancelled_rides": summary_agg["cancelled_rides"],
+        "total_spend_mru": str(total_spend) if total_spend is not None else None,
+        "average_fare_mru": str(average_fare) if average_fare is not None else None,
+    }
+
+    paginator = AdminRiderHistoryPagination()
+    page = paginator.paginate_queryset(qs, request)
+    serializer = AdminRiderRideSerializer(
+        page,
+        many=True,
+        context={"request": request},
+    )
+
+    page_number = paginator.page.number
+    page_size = paginator.get_page_size(request)
+    return Response(
+        {
+            "count": paginator.page.paginator.count,
+            "page": page_number,
+            "page_size": page_size,
+            "total_pages": paginator.page.paginator.num_pages,
+            "results": serializer.data,
+            "summary": summary,
         },
         status=status.HTTP_200_OK,
     )

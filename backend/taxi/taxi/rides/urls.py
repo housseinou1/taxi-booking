@@ -22,6 +22,7 @@ from .views import (
     rate_rider,
     driver_earnings_summary,
     record_rider_call_attempt,
+    admin_rider_ride_history,
 )
 from .views_stops import (
     RideStopListCreateView,
@@ -98,6 +99,9 @@ urlpatterns = [
     path("analytics/admin/activity-heatmap/", admin_activity_heatmap),
     path("analytics/admin/dispatch/", admin_dispatch_dashboard),
     path("analytics/admin/dispatch/<int:ride_id>/", admin_dispatch_ride_history),
+
+    # Admin rider ride history + statistics (additive, IsAdminUser-gated)
+    path("admin/rider/<int:rider_id>/history/", admin_rider_ride_history),
 
     # Share Ride endpoints
     path("share/", include("taxi.rides.share_urls")),

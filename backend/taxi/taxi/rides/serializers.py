@@ -356,6 +356,59 @@ class RideSerializer(serializers.ModelSerializer):
         return obj.stops.count()
 
 
+class AdminRiderRideSerializer(serializers.ModelSerializer):
+    """Trimmed, read-only ride serializer for the admin rider ride-history endpoint.
+
+    Deliberately NOT derived from RideSerializer so that changes here never touch
+    the existing RideSerializer contract used by the mobile apps.
+    """
+
+    driver_name = serializers.SerializerMethodField()
+    driver_email = serializers.SerializerMethodField()
+    payment_status = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Ride
+        fields = [
+            "id",
+            "pickup",
+            "destination",
+            "driver_name",
+            "driver_email",
+            "status",
+            "fare",
+            "payment_status",
+            "created_at",
+            "completed_at",
+            "rating",
+            "review",
+            "driver_rating",
+            "driver_review",
+        ]
+        read_only_fields = fields
+
+    def get_driver_name(self, obj):
+        if obj.driver:
+            return f"{obj.driver.first_name} {obj.driver.last_name}".strip() or None
+        return None
+
+    def get_driver_email(self, obj):
+        return obj.driver.email if obj.driver else None
+
+    def get_payment_status(self, obj):
+        # Reuse the latest-Payment lookup pattern from RideSerializer.get_payment_status.
+        # Import locally to avoid an import cycle (payments imports from rides).
+        try:
+            from payments.models import Payment
+
+            payment = (
+                Payment.objects.filter(ride_id=obj.id).order_by("-created_at").first()
+            )
+        except Exception:
+            return None
+        return payment.status if payment else None
+
+
 class RideStopSerializer(serializers.ModelSerializer):
     class Meta:
         model = RideStop
