@@ -1,4 +1,4 @@
-import React, { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import React, { Suspense, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { useTranslation } from "react-i18next";
 
@@ -22,8 +22,27 @@ import SavedPlaces from "./rider/SavedPlaces";
 import DriverSignup from "./driver/DriverSignup";
 import DriverLegalSignRoute from "./driver/DriverLegalSignRoute";
 import RiderLegalAcceptRoute from "./rider/RiderLegalAcceptRoute";
+import PrivacyPolicy from "./legal/PrivacyPolicy";
 import { DriverProvider } from "./driver/context/DriverContext";
 
+import AdminModuleHub from "./admin/modules/AdminModuleHub";
+import RidesManagement from "./admin/rides/RidesManagement";
+import "./admin/rides/rides.css";
+import DeliveryManagement from "./admin/delivery/DeliveryManagement";
+import CouriersManagement from "./admin/delivery/CouriersManagement";
+import MerchantsDirectory from "./admin/delivery/MerchantsDirectory";
+import DeliveriesDirectory from "./admin/delivery/DeliveriesDirectory";
+import CityAnalytics from "./admin/delivery/CityAnalytics";
+import "./admin/delivery/delivery.css";
+import WithdrawalsMonitoring from "./admin/finance/WithdrawalsMonitoring";
+import "./admin/finance/withdrawals.css";
+import CeoControlCenter from "./admin/ceo/CeoControlCenter";
+import "./admin/ceo/CeoControlCenter.css";
+import CeoReportingCenter from "./admin/ceo/CeoReportingCenter";
+import "./admin/ceo/CeoReportingCenter.css";
+import RolesPermissionsCenter from "./admin/roles/RolesPermissionsCenter";
+import SecurityOperationsCenter from "./admin/security/SecurityOperationsCenter";
+import { AdminShellPage } from "./admin/layouts/AdminShell";
 import AdminDashboard from "./admin/AdminDashboard";
 import ExecutiveDashboard from "./admin/executive/ExecutiveDashboard";
 import OpsCenterHome from "./admin/ops-center/OpsCenterHome";
@@ -39,9 +58,19 @@ import BusinessAccountsCenter from "./admin/business/BusinessAccountsCenter";
 import BetaDashboard from "./admin/beta/BetaDashboard";
 import BetaFeedbackCenter from "./admin/beta/BetaFeedbackCenter";
 import FleetPerformanceCenter from "./admin/fleet/FleetPerformanceCenter";
+import VehicleManagementCenter from "./admin/fleet/VehicleManagementCenter";
+import CityManagementCenter from "./admin/city/CityManagementCenter";
+import EmployeeManagementCenter from "./admin/employees/EmployeeManagementCenter";
+import AttendanceManagementCenter from "./admin/employees/AttendanceManagementCenter";
+import HrManagementCenter from "./admin/employees/HrManagementCenter";
+import VerificationCenter from "./admin/employees/VerificationCenter";
+import BreakNotificationCenter from "./admin/employees/BreakNotificationCenter";
 import FinanceOperationsCenter from "./admin/finance/FinanceOperationsCenter";
 import LaunchCommandCenter from "./admin/ops-center/LaunchCommandCenter";
 import CeoMasterCommandCenter from "./admin/ceo/CeoMasterCommandCenter";
+import CeoExecutiveDashboard from "./admin/ceo/CeoExecutiveDashboard";
+import PlatformWithdrawalAccounts from "./components/PlatformWithdrawalAccounts";
+import HallOfFameAdminPanel from "./admin/HallOfFameAdminPanel";
 import BoardReportingSuite from "./admin/board/BoardReportingSuite";
 import ComplianceGovernanceCenter from "./admin/compliance/ComplianceGovernanceCenter";
 import BIAnalyticsCenter from "./admin/bi/BIAnalyticsCenter";
@@ -93,6 +122,8 @@ import MerchantApp from "./merchant/MerchantApp";
 import MerchantRegister from "./merchant/MerchantRegister";
 import WalletPage from "./payments/WalletPage";
 import AdminPaymentDashboard from "./admin/AdminPaymentDashboard";
+import DriversDashboard from "./admin/drivers/DriversDashboard";
+import RidersDashboard from "./admin/riders/RidersDashboard";
 import LaunchServices from "./services/LaunchServices";
 import { API_URL } from "./apiConfig";
 import { MARKET } from "./marketConfig";
@@ -172,9 +203,6 @@ function normalizeRouteContext(value) {
 function getRouteAppType() {
   if (isDeliveryNativeApp()) return "delivery";
   const builtAppType = getAppType();
-  if (builtAppType === "rider" || builtAppType === "driver" || builtAppType === "delivery" || builtAppType === "admin") {
-    return builtAppType;
-  }
 
   const params = new URLSearchParams(window.location.search || "");
   const pathname = normalizeRouteContext(window.location.pathname);
@@ -189,16 +217,27 @@ function getRouteAppType() {
       pathname
   );
 
+  const routeIsAdmin =
+    route === "/admin" ||
+    route === "/admin-dashboard" ||
+    route.startsWith("/admin/");
+
+  // An explicit admin destination wins over the build-time REACT_APP_TYPE so a
+  // rider/driver-built dev server still routes an admin login to /admin (the
+  // "web" branch of handleLoginSuccess reads ?next= and lands on /admin). Native
+  // admin builds resolve via builtAppType below. Rider/driver/delivery flows are
+  // unaffected when no admin route is present.
+  if (routeIsAdmin) {
+    return "web";
+  }
+
+  if (builtAppType === "rider" || builtAppType === "driver" || builtAppType === "delivery" || builtAppType === "admin") {
+    return builtAppType;
+  }
+
   if (route === "/delivery/courier" || route.startsWith("/delivery/courier")) return "delivery";
   if (isDeliveryCourierPath(route)) return "delivery";
   if (route === "/driver" || route.startsWith("/driver/")) return "driver";
-  if (
-    route === "/admin" ||
-    route === "/admin-dashboard" ||
-    route.startsWith("/admin/")
-  ) {
-    return "web";
-  }
   if (
     route === "/rider" ||
     route === "/rider-dashboard" ||
@@ -262,7 +301,6 @@ function App() {
   const [selectedRide, setSelectedRide] = useState(null);
   const [sessionChecked, setSessionChecked] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const sessionCheckStarted = useRef(false);
   const [, forceUpdate] = useState(0);
 
   // Listen for pushState-based navigation (SPA tab switches)
@@ -463,6 +501,13 @@ function App() {
     else if (currentPath === "/admin/beta") setPage("admin-beta");
     else if (currentPath === "/admin/business-accounts") setPage("admin-business-accounts");
     else if (currentPath === "/admin/fleet") setPage("admin-fleet");
+    else if (currentPath === "/admin/vehicles") setPage("admin-vehicles");
+    else if (currentPath === "/admin/cities") setPage("admin-cities");
+    else if (currentPath === "/admin/employees") setPage("admin-employees");
+  else if (currentPath === "/admin/attendance") setPage("admin-attendance");
+    else if (currentPath === "/admin/hr") setPage("admin-hr");
+    else if (currentPath === "/admin/verification") setPage("admin-verification");
+    else if (currentPath === "/admin/break-notifications") setPage("admin-break-notifications");
     else if (currentPath === "/admin/finance-ops") setPage("admin-finance-ops");
     else if (currentPath === "/admin/command" || currentPath === "/admin/operations-command") setPage("admin-command");
     else if (currentPath === "/admin/growth") setPage("admin-growth");
@@ -474,13 +519,35 @@ function App() {
     else if (currentPath === "/admin/merchant-platform" || currentPath === "/admin/merchants") setPage("admin-merchant-platform");
     else if (currentPath === "/admin/partner-platform" || currentPath === "/admin/partners") setPage("admin-partner-platform");
     else if (currentPath === "/admin/customer-growth" || currentPath === "/admin/loyalty") setPage("admin-customer-growth");
-    else if (currentPath === "/admin/ceo-master" || currentPath === "/admin/ceo") setPage("admin-ceo-master");
+    else if (currentPath === "/admin/ceo-master") setPage("admin-ceo-master");
+  else if (currentPath === "/admin/ceo") setPage("admin-ceo");
+    else if (currentPath === "/admin/ceo-control") setPage("admin-ceo-control");
+    else if (currentPath === "/admin/ceo-reports") setPage("admin-ceo-reports");
     else if (currentPath === "/admin/board-reports") setPage("admin-board-reports");
     else if (currentPath === "/admin/compliance-governance") setPage("admin-compliance-governance");
     else if (currentPath === "/admin/bi" || currentPath === "/admin/business-intelligence") setPage("admin-bi");
     else if (currentPath === "/admin/api-gateway" || currentPath === "/admin/integration") setPage("admin-api-gateway");
     else if (currentPath === "/admin/academy") setPage("admin-academy");
     else if (currentPath === "/admin/beta-feedback" || currentPath === "/admin/support") setPage("admin-support");
+    else if (currentPath === "/admin/rides") setPage("admin-rides");
+    else if (currentPath === "/admin/rides/live") setPage("admin-ops-live");
+    else if (currentPath === "/admin/rides/reports") setPage("admin-rides-reports");
+    else if (currentPath === "/admin/drivers") setPage("admin-drivers");
+    else if (currentPath === "/admin/riders") setPage("admin-riders");
+    // Dedicated overview dashboards (distinct from the management hubs above).
+    else if (currentPath === "/admin/drivers/dashboard") setPage("admin-drivers-dashboard");
+    else if (currentPath === "/admin/riders/dashboard") setPage("admin-riders-dashboard");
+    else if (currentPath === "/admin/delivery") setPage("admin-delivery");
+    else if (currentPath === "/admin/delivery/support") setPage("admin-delivery-support");
+    else if (currentPath === "/admin/delivery/directory") setPage("admin-delivery-directory");
+    else if (currentPath === "/admin/delivery/cities") setPage("admin-delivery-cities");
+    else if (currentPath === "/admin/delivery/couriers") setPage("admin-delivery-couriers");
+    else if (currentPath === "/admin/delivery/merchants") setPage("admin-delivery-merchants");
+    else if (currentPath === "/admin/security" || currentPath === "/admin/security/audit" || currentPath === "/admin/security/fraud") setPage("admin-security");
+    else if (currentPath === "/admin/withdrawals") setPage("admin-withdrawals");
+  else if (currentPath === "/admin/withdrawal-accounts") setPage("admin-withdrawal-accounts");
+  else if (currentPath === "/admin/hall-of-fame") setPage("admin-hall-of-fame");
+    else if (currentPath === "/admin/roles") setPage("admin-roles");
     else if (currentPath === "/settings") setPage("settings");
     else if (currentPath === "/terms") setPage("terms");
     else if (currentPath === "/privacy") setPage("privacy");
@@ -509,9 +576,15 @@ function App() {
   }, [isAuthenticated]);
 
   useEffect(() => {
-    if (sessionCheckStarted.current) return;
-    sessionCheckStarted.current = true;
-
+    // NOTE: intentionally no run-once ref guard here. A persistent ref guard
+    // combined with the per-run `isMounted` cleanup flag deadlocks under React
+    // 18 StrictMode in local dev: the first (immediately unmounted) pass sets
+    // the guard and flips isMounted=false in cleanup, then the StrictMode
+    // remount short-circuits on the guard and never re-runs — so
+    // setSessionChecked(true) never fires and the app hangs on the
+    // "Checking your secure session..." screen. Relying on the isMounted
+    // pattern alone lets the remount re-run the check cleanly. In a production
+    // build (no StrictMode double-invoke) the effect still runs exactly once.
     let isMounted = true;
 
     const finishSessionCheck = (authenticated) => {
@@ -564,8 +637,17 @@ function App() {
       }
 
       try {
+        // The required role must follow the ACTUAL route the user opened, not
+        // the build-time REACT_APP_TYPE. On a rider/driver-built dev server
+        // getRequiredRoleForApp() returns "rider"/"driver", so an admin landing
+        // on /admin would be validated against the wrong role and
+        // restoreAuthSession would clearAuthSession() + fail — bouncing the
+        // admin back to /login?next=/rider-dashboard. When the route is admin,
+        // require the admin role so the admin session restores correctly.
+        // Rider/driver flows (wantsAdmin === false) keep their existing role.
+        const requiredRole = wantsAdmin ? "admin" : getRequiredRoleForApp();
         const result = await restoreAuthSession({
-          requiredRole: getRequiredRoleForApp(),
+          requiredRole,
         });
         if (!isMounted) return;
         finishSessionCheck(result.authenticated);
@@ -916,127 +998,530 @@ function App() {
   }
 
   if (page === "admin-executive") {
-    return withInstall(<ExecutiveDashboard />);
+    // Phase C - unified shell (pre-checked: does not self-wrap).
+    return withInstall(
+      <AdminShellPage pathname="/admin/executive" title="Executive Dashboard">
+        <ExecutiveDashboard />
+      </AdminShellPage>
+    );
   }
 
   if (page === "admin-ops-center") {
-    return withInstall(<OpsCenterHome />);
+    // Phase C - unified shell (pre-checked: does not self-wrap).
+    return withInstall(
+      <AdminShellPage pathname="/admin/ops-center" title="Ops Center Home">
+        <OpsCenterHome />
+      </AdminShellPage>
+    );
   }
 
   if (page === "admin-ops-live") {
-    return withInstall(<LiveOperationsCenter />);
+    // Phase C - unified shell (pre-checked: does not self-wrap).
+    return withInstall(
+      <AdminShellPage pathname="/admin/ops-center/live" title="Live Operations Center">
+        <LiveOperationsCenter />
+      </AdminShellPage>
+    );
   }
 
   if (page === "admin-ops-finance") {
-    return withInstall(<FinanceAnalyticsCenter />);
+    // Phase C - unified shell (pre-checked: does not self-wrap).
+    return withInstall(
+      <AdminShellPage pathname="/admin/ops-center/finance" title="Financial Overview">
+        <FinanceAnalyticsCenter />
+      </AdminShellPage>
+    );
   }
 
   if (page === "admin-ops-command") {
-    return withInstall(<ExecutiveCommandCenter />);
+    // Phase C - unified shell (pre-checked: does not self-wrap).
+    return withInstall(
+      <AdminShellPage pathname="/admin/ops-center/command" title="Executive Command Center">
+        <ExecutiveCommandCenter />
+      </AdminShellPage>
+    );
   }
 
   if (page === "admin-launch") {
-    return withInstall(<LaunchCommandCenter />);
+    // Phase C - unified shell (pre-checked: does not self-wrap).
+    return withInstall(
+      <AdminShellPage pathname="/admin/launch" title="Launch Command Center">
+        <LaunchCommandCenter />
+      </AdminShellPage>
+    );
   }
 
   if (page === "admin-operations") {
-    return withInstall(<OperationsCenter />);
+    // The Operations Center renders its own professional page header, so the
+    // shell passes an empty title and does not add a second <h1>.
+    // Requirement: ONE page title, ONE header, ONE sidebar.
+    return withInstall(
+      <AdminShellPage pathname="/admin/operations" title="">
+        <OperationsCenter />
+      </AdminShellPage>
+    );
   }
 
   if (page === "admin-ai-operations") {
-    return withInstall(<AIOperationsDashboard />);
+    // Phase C - unified shell (pre-checked: does not self-wrap).
+    return withInstall(
+      <AdminShellPage pathname="/admin/ai-operations" title="AIOperations Dashboard">
+        <AIOperationsDashboard />
+      </AdminShellPage>
+    );
   }
 
   if (page === "admin-status") {
-    return withInstall(<ProductionStatus />);
+    // Phase C - unified shell (pre-checked: does not self-wrap).
+    return withInstall(
+      <AdminShellPage pathname="/admin/status" title="Production Status">
+        <ProductionStatus />
+      </AdminShellPage>
+    );
   }
 
   if (page === "admin-business") {
-    return withInstall(<BusinessHub />);
+    // Phase C - unified shell (pre-checked: does not self-wrap).
+    return withInstall(
+      <AdminShellPage pathname="/admin/business" title="Business Hub">
+        <BusinessHub />
+      </AdminShellPage>
+    );
   }
 
   if (page === "admin-beta") {
-    return withInstall(<BetaDashboard />);
+    // Phase C - unified shell (pre-checked: does not self-wrap).
+    return withInstall(
+      <AdminShellPage pathname="/admin/beta" title="Beta Dashboard">
+        <BetaDashboard />
+      </AdminShellPage>
+    );
   }
 
   if (page === "admin-business-accounts") {
-    return withInstall(<BusinessAccountsCenter />);
+    // Phase C — unified shell. This page previously rendered bare: no sidebar, header,
+    // breadcrumbs, city selector or dark-green theme. It neither wraps itself nor calls
+    // usePermissions(), so applying AdminShellPage here is safe — no nested shell and no
+    // duplicate PermissionProvider.
+    return withInstall(
+      <AdminShellPage pathname="/admin/business-accounts" title="Business Accounts">
+        <BusinessAccountsCenter />
+      </AdminShellPage>
+    );
+  }
+
+  if (page === "admin-vehicles") {
+    // Vehicle Management (Fleet). Reads the read-only GET /operations/vehicles/ endpoint, which
+    // is derived entirely from the existing DriverProfile vehicle fields — no new model, no
+    // migration. Document approval and driver eligibility remain with the existing Fleet
+    // document endpoints, so those permissions are unchanged.
+    return withInstall(
+      <AdminShellPage pathname="/admin/vehicles" title="Vehicle Management">
+        <VehicleManagementCenter />
+      </AdminShellPage>
+    );
+  }
+
+  if (page === "admin-cities") {
+    // City Management (CEO Command Center). Backed by /cities/management/ — read access for
+    // executive/operations roles, write access for the Founder/CEO and authorized
+    // administrators. Opening live operations and activating live pricing are Founder/CEO-only
+    // on the server. Adding a city is dynamic: no source change and no redeploy, and a new city
+    // is never live. cities.City stays the single canonical service-city registry.
+    return withInstall(
+      <AdminShellPage pathname="/admin/cities" title="City Management">
+        <CityManagementCenter />
+      </AdminShellPage>
+    );
   }
 
   if (page === "admin-fleet") {
-    return withInstall(<FleetPerformanceCenter />);
+    // Phase C - unified shell (pre-checked: does not self-wrap).
+    return withInstall(
+      <AdminShellPage pathname="/admin/fleet" title="Fleet Performance Center">
+        <FleetPerformanceCenter />
+      </AdminShellPage>
+    );
+  }
+
+  // ── Phase 1/2: section pages ─────────────────────────────────────────────
+  if (page === "admin-rides") {
+    return withInstall(<RidesManagement pathname="/admin/rides" />);
+  }
+  if (page === "admin-delivery") {
+    return withInstall(<DeliveryManagement pathname="/admin/delivery" />);
+  }
+  if (page === "admin-delivery-couriers") {
+    return withInstall(<CouriersManagement pathname="/admin/delivery/couriers" />);
+  }
+  if (page === "admin-delivery-merchants") {
+    return withInstall(<MerchantsDirectory pathname="/admin/delivery/merchants" />);
+  }
+  if (page === "admin-delivery-directory") {
+    return withInstall(<DeliveriesDirectory pathname="/admin/delivery/directory" />);
+  }
+  if (page === "admin-delivery-cities") {
+    return withInstall(<CityAnalytics pathname="/admin/delivery/cities" />);
+  }
+  if (page === "admin-delivery-support") {
+    // `/admin/delivery/support` used to render the Delivery Dashboard, so the URL advertised
+    // a support surface that did not exist. The delivery support tooling is already built into
+    // the legacy delivery section (disputes + chat safety), so redirect there rather than
+    // duplicating a second support page. Same pattern as the `delivery-admin` redirect below.
+    window.location.replace("/admin?section=deliveries&tab=disputes");
+    return null;
+  }
+  if (page === "admin-withdrawal-accounts") {
+    // Phase E - Legacy Admin Hub integration: the platform settlement accounts section,
+    // surfaced read-only in the unified Admin interface.
+    //
+    // Security note: this uses PlatformWithdrawalAccounts, which calls the READ-ONLY
+    // endpoint GET /payments/withdrawal-accounts/ (@api_view(["GET"]) + IsAuthenticated,
+    // documented "read-only for drivers and couriers"). The WRITE endpoint
+    // (PUT /admin/withdrawal-accounts/, staff/superuser gated) can change where Yala
+    // settlements are sent, so it is deliberately NOT exposed here - redirecting
+    // settlement money is a financially sensitive action and real payouts stay disabled.
+    return withInstall(
+      <AdminShellPage pathname="/admin/withdrawal-accounts" title="Platform Withdrawal Accounts">
+        <div className="admin-finance-page">
+          <section
+            className="admin-finance-page__section"
+            aria-labelledby="settlement-accounts-heading"
+          >
+            <h2 className="admin-finance-page__heading" id="settlement-accounts-heading">
+              Settlement Accounts
+            </h2>
+            <p className="admin-finance-page__note">
+              Read-only view of the settlement destinations configured for Yala Technologies.
+              Identifiers are masked by default — use “Show full reference” to reveal one. No
+              account can be created, edited or removed from this screen.
+            </p>
+          </section>
+          <PlatformWithdrawalAccounts
+            title="Platform settlement accounts"
+            subtitle="Settlement references currently configured for Yala Technologies."
+            maskDestination
+          />
+        </div>
+      </AdminShellPage>
+    );
+  }
+
+  if (page === "admin-hall-of-fame") {
+    // Phase E - Legacy Admin Hub integration: the Hall of Fame recognition programme,
+    // surfaced inside the unified Admin interface.
+    //
+    // Backend: GET /drivers/hall-of-fame/admin/ (drivers/views_hall_of_fame.py,
+    // AdminHallOfFameView) is gated by IsAdminUser, so only authenticated staff reach it.
+    // This panel is READ-ONLY: it displays recognitions that the backend already computed
+    // (sync_monthly_rankings / sync_lifetime_milestones) and never invents or writes
+    // rankings. No new endpoint was added - the existing one is reused as-is.
+    //
+    // `title=""` suppresses the shell's <h1>: HallOfFameAdminPanel renders its own
+    // header ("YALA Hall of Fame" + description + reporting period), and passing a
+    // title here would put two <h1> elements on the page.
+    return withInstall(
+      <AdminShellPage pathname="/admin/hall-of-fame" title="">
+        <HallOfFameAdminPanel />
+      </AdminShellPage>
+    );
+  }
+
+  if (page === "admin-withdrawals") {
+    return withInstall(<WithdrawalsMonitoring pathname="/admin/withdrawals" />);
+  }
+  if (page === "admin-ceo-control") {
+    return withInstall(<CeoControlCenter pathname="/admin/ceo-control" />);
+  }
+  if (page === "admin-ceo-reports") {
+    return withInstall(<CeoReportingCenter pathname="/admin/ceo-reports" />);
+  }
+  if (page === "admin-roles") {
+    return withInstall(<RolesPermissionsCenter pathname="/admin/roles" />);
+  }
+  if (page === "admin-security") {
+    return withInstall(<SecurityOperationsCenter pathname="/admin/security" />);
+  }
+  if (page === "admin-rides-reports") {
+    return withInstall(
+      <AdminShellPage pathname="/admin/rides/reports" title="Ride Reports">
+        <AdminModuleHub hubKey="rides" />
+      </AdminShellPage>
+    );
+  }
+  // Dedicated overview dashboards. These are real dashboards backed by the
+  // existing fleet / rider services — they are NOT the management hubs renamed.
+  if (page === "admin-drivers-dashboard") {
+    return withInstall(
+      <AdminShellPage pathname="/admin/drivers/dashboard" title="Drivers Dashboard">
+        <DriversDashboard />
+      </AdminShellPage>
+    );
+  }
+  if (page === "admin-riders-dashboard") {
+    return withInstall(
+      <AdminShellPage pathname="/admin/riders/dashboard" title="Riders Dashboard">
+        <RidersDashboard />
+      </AdminShellPage>
+    );
+  }
+  const MODULE_HUB_PAGES = {
+    "admin-drivers": { hubKey: "drivers", pathname: "/admin/drivers", title: "Drivers Management" },
+    "admin-riders": { hubKey: "riders", pathname: "/admin/riders", title: "Riders Management" },
+    // "admin-delivery" is intentionally absent: `/admin/delivery` is served by
+    // DeliveryManagement (the `page === "admin-delivery"` branch above), which already renders
+    // the AdminModuleHub itself. An entry here was unreachable dead code.
+    "admin-security": { hubKey: "security", pathname: "/admin/security", title: "Security" },
+  };
+  if (MODULE_HUB_PAGES[page]) {
+    const hubPage = MODULE_HUB_PAGES[page];
+    return withInstall(
+      <AdminShellPage pathname={hubPage.pathname} title={hubPage.title}>
+        <AdminModuleHub hubKey={hubPage.hubKey} />
+      </AdminShellPage>
+    );
+  }
+  if (page === "admin-attendance") {
+    // Employees & HR -> Attendance Management (office + remote).
+    //
+    // Backend: employees/views_attendance.py. Clock-in supports the employee portal, an
+    // authorized office tablet, and an employee ID-card QR scan — a scan alone never
+    // authenticates the employee (the endpoint requires a staff session), and no GPS,
+    // camera or facial recognition is used anywhere.
+    return withInstall(
+      <AdminShellPage pathname="/admin/attendance" title="Attendance Management">
+        <AttendanceManagementCenter />
+      </AdminShellPage>
+    );
+  }
+
+  if (page === "admin-hr") {
+    // Employees & HR -> HR Management (Phase 3).
+    //
+    // Backend: employees/views_hr.py. Exit permission, absence notification, discipline,
+    // performance, training, recognition and policy acknowledgment. Every action is a
+    // named human step — nothing is approved, disciplined, scored or paid automatically,
+    // and the backend enforces the HR Staff / HR Manager / Administrator tiers.
+    return withInstall(
+      <AdminShellPage pathname="/admin/hr" title="HR Management">
+        <HrManagementCenter />
+      </AdminShellPage>
+    );
+  }
+
+  if (page === "admin-verification") {
+    // Employees & HR -> Hourly Employee Verification (Phase 4).
+    //
+    // Backend: employees/views_verification_api.py + services/verification_service.py.
+    // The code is generated server-side, stored only as a salted hash, expires in five
+    // minutes, is single-use and is NEVER returned to this client. Automatic timed
+    // issuance requires the background scheduler; this view exposes the manual sweep for
+    // local development and testing.
+    return withInstall(
+      <AdminShellPage pathname="/admin/verification" title="Employee Verification">
+        <VerificationCenter />
+      </AdminShellPage>
+    );
+  }
+
+  if (page === "admin-break-notifications") {
+    // Employees & HR -> Break Notifications & Clock-out Reminders (Phase 4).
+    //
+    // Backend: employees/views_break_notifications.py + services/break_notification_service.py.
+    // Notifications never create or modify a break record and never clock anyone out.
+    return withInstall(
+      <AdminShellPage pathname="/admin/break-notifications" title="Break Notifications">
+        <BreakNotificationCenter />
+      </AdminShellPage>
+    );
+  }
+
+  if (page === "admin-employees") {
+    return withInstall(<EmployeeManagementCenter />);
   }
 
   if (page === "admin-finance-ops") {
-    return withInstall(<FinanceOperationsCenter />);
+    // Phase C — unified shell (see the business-accounts branch above for the rationale).
+    return withInstall(
+      <AdminShellPage pathname="/admin/finance-ops" title="Finance Operations Center">
+        <FinanceOperationsCenter />
+      </AdminShellPage>
+    );
   }
 
   if (page === "admin-command") {
-    return withInstall(<LaunchCommandCenter />);
+    // Phase C - unified shell (pre-checked: does not self-wrap).
+    return withInstall(
+      <AdminShellPage pathname="/admin/operations-command" title="Launch Command Center">
+        <LaunchCommandCenter />
+      </AdminShellPage>
+    );
   }
 
   if (page === "admin-growth") {
-    return withInstall(<GrowthExpansionDashboard />);
+    // Phase C - unified shell (pre-checked: does not self-wrap).
+    return withInstall(
+      <AdminShellPage pathname="/admin/growth" title="Growth Expansion Dashboard">
+        <GrowthExpansionDashboard />
+      </AdminShellPage>
+    );
   }
 
   if (page === "admin-multi-city") {
-    return withInstall(<MultiCityOperationsCenter />);
+    // Phase C - unified shell (pre-checked: does not self-wrap).
+    return withInstall(
+      <AdminShellPage pathname="/admin/multi-city" title="Multi City Operations Center">
+        <MultiCityOperationsCenter />
+      </AdminShellPage>
+    );
   }
 
   if (page === "admin-smart-pricing") {
-    return withInstall(<SmartPricingDispatchCenter />);
+    // Phase C - unified shell (pre-checked: does not self-wrap).
+    return withInstall(
+      <AdminShellPage pathname="/admin/pricing-dispatch" title="Smart Pricing Dispatch Center">
+        <SmartPricingDispatchCenter />
+      </AdminShellPage>
+    );
   }
 
   if (page === "admin-trust-safety") {
-    return withInstall(<TrustSafetyCenter />);
+    // Phase C - unified shell (pre-checked: does not self-wrap).
+    return withInstall(
+      <AdminShellPage pathname="/admin/safety" title="Trust Safety Center">
+        <TrustSafetyCenter />
+      </AdminShellPage>
+    );
   }
 
   if (page === "admin-approvals") {
-    return withInstall(<ApprovalCenter />);
+    // Phase C - unified shell (pre-checked: does not self-wrap).
+    return withInstall(
+      <AdminShellPage pathname="/admin/approvals" title="Approval Center">
+        <ApprovalCenter />
+      </AdminShellPage>
+    );
   }
 
   if (page === "admin-incentives") {
-    return withInstall(<DriverIncentivesCenter />);
+    // Phase C - unified shell (pre-checked: does not self-wrap).
+    return withInstall(
+      <AdminShellPage pathname={currentPath} title="Driver Incentives Center">
+        <DriverIncentivesCenter />
+      </AdminShellPage>
+    );
   }
 
   if (page === "admin-merchant-platform") {
-    return withInstall(<MerchantPlatformCenter />);
+    // Phase C - unified shell (pre-checked: does not self-wrap).
+    return withInstall(
+      <AdminShellPage pathname="/admin/merchants" title="Merchant Platform Center">
+        <MerchantPlatformCenter />
+      </AdminShellPage>
+    );
   }
 
   if (page === "admin-partner-platform") {
-    return withInstall(<PartnerPlatformCenter />);
+    // Phase C - unified shell (pre-checked: does not self-wrap).
+    return withInstall(
+      <AdminShellPage pathname="/admin/partners" title="Partner Platform Center">
+        <PartnerPlatformCenter />
+      </AdminShellPage>
+    );
   }
 
   if (page === "admin-customer-growth") {
-    return withInstall(<CustomerGrowthCenter />);
+    // Phase C - unified shell (pre-checked: does not self-wrap).
+    return withInstall(
+      <AdminShellPage pathname="/admin/loyalty" title="Customer Growth Center">
+        <CustomerGrowthCenter />
+      </AdminShellPage>
+    );
+  }
+
+  if (page === "admin-ceo") {
+    // Phase D - de-duplicate the CEO navigation. The sidebar "Executive Overview" entry
+    // (/admin/ceo) previously opened the Master Command Center, duplicating
+    // /admin/ceo-master, and the purpose-built CeoExecutiveDashboard was unreachable dead
+    // code. Each entry now opens its own page; both routes and deep links are preserved.
+    return withInstall(
+      <AdminShellPage pathname="/admin/ceo" title="Executive Overview">
+        <CeoExecutiveDashboard />
+      </AdminShellPage>
+    );
   }
 
   if (page === "admin-ceo-master") {
-    return withInstall(<CeoMasterCommandCenter />);
+    // Single, authoritative shell for the CEO Command Center. CeoMasterCommandCenter
+    // renders only its page content (the nine dashboard tabs); this route owns the
+    // AdminShellPage, exactly like the other unified-shell admin routes.
+    // The shell must be declared ONCE: when both App.js and the page rendered it,
+    // the admin UI showed two headers, two sidebars and two page headings nested
+    // inside each other. pathname must be the real route (/admin/ceo-master) so
+    // breadcrumbs, sidebar highlighting and adminRouteAccess RBAC all resolve
+    // against the CEO module instead of the /admin/ceo "Executive Overview" module.
+    return withInstall(
+      <AdminShellPage pathname="/admin/ceo-master" title="CEO Command Center">
+        <CeoMasterCommandCenter />
+      </AdminShellPage>
+    );
   }
 
   if (page === "admin-board-reports") {
-    return withInstall(<BoardReportingSuite />);
+    // Phase C - unified shell (pre-checked: does not self-wrap).
+    return withInstall(
+      <AdminShellPage pathname="/admin/board-reports" title="Board Reporting Suite">
+        <BoardReportingSuite />
+      </AdminShellPage>
+    );
   }
 
   if (page === "admin-compliance-governance") {
-    return withInstall(<ComplianceGovernanceCenter />);
+    // Phase C - unified shell (pre-checked: does not self-wrap).
+    return withInstall(
+      <AdminShellPage pathname="/admin/compliance-governance" title="Compliance Governance Center">
+        <ComplianceGovernanceCenter />
+      </AdminShellPage>
+    );
   }
 
   if (page === "admin-bi") {
-    return withInstall(<BIAnalyticsCenter />);
+    // Phase C - unified shell (pre-checked: does not self-wrap).
+    return withInstall(
+      <AdminShellPage pathname="/admin/business-intelligence" title="BIAnalytics Center">
+        <BIAnalyticsCenter />
+      </AdminShellPage>
+    );
   }
 
   if (page === "admin-api-gateway") {
-    return withInstall(<APIGatewayCenter />);
+    // Phase C - unified shell (pre-checked: does not self-wrap).
+    return withInstall(
+      <AdminShellPage pathname="/admin/integration" title="APIGateway Center">
+        <APIGatewayCenter />
+      </AdminShellPage>
+    );
   }
 
   if (page === "admin-academy") {
-    return withInstall(<AcademyCenter />);
+    // Phase C - unified shell (pre-checked: does not self-wrap).
+    // `title=""` suppresses the shell's <h1> because AcademyCenter renders its own
+    // header ("YALA Academy" + description + actions). Passing a title here would
+    // produce two <h1> elements on the page.
+    return withInstall(
+      <AdminShellPage pathname="/admin/academy" title="">
+        <AcademyCenter />
+      </AdminShellPage>
+    );
   }
 
   if (page === "admin-support") {
-    return withInstall(<BetaFeedbackCenter />);
+    // Phase C - unified shell (pre-checked: does not self-wrap).
+    return withInstall(
+      <AdminShellPage pathname="/admin/support" title="Beta Feedback Center">
+        <BetaFeedbackCenter />
+      </AdminShellPage>
+    );
   }
 
   if (page === "payment-setup") {
@@ -1230,7 +1715,14 @@ function App() {
   }
 
   if (page === "admin") {
-    return withInstall(<AdminDashboard />);
+    // ONE Admin platform: the legacy Operations Console now renders inside the
+    // unified AdminShell (single sidebar, header, theme and sign-out), so there is
+    // no second Admin application chrome. No module or feature is removed.
+    return withInstall(
+      <AdminShellPage pathname="/admin" title="Operations Console">
+        <AdminDashboard embedded />
+      </AdminShellPage>
+    );
   }
 
   if (page === "settings") {
@@ -1317,7 +1809,12 @@ function App() {
       return withInstall(<RiderApp />);
     }
     if (getAppType() === 'admin') {
-      return withInstall(<AdminDashboard />, { showNotifications: false });
+      return withInstall(
+        <AdminShellPage pathname="/admin" title="Operations Console">
+          <AdminDashboard embedded />
+        </AdminShellPage>,
+        { showNotifications: false }
+      );
     }
     return withInstall(<RiderApp />);
   }
@@ -3712,6 +4209,15 @@ function SettingsStyles() {
 }
 
 function LegalPage({ page }) {
+  // The Privacy Policy is rendered by the dedicated, store-compliant component in
+  // frontend/src/legal/PrivacyPolicy.js. Keeping one source of truth prevents this
+  // copy from drifting out of date: the previous inline version omitted the
+  // background-location disclosure that Google Play requires for Yala Driver and
+  // Yala Delivery, so the published policy was not compliant.
+  if (page === "privacy") {
+    return <PrivacyPolicy />;
+  }
+
   const content = {
     terms: {
       title: "Terms and Conditions",
@@ -3751,42 +4257,6 @@ function LegalPage({ page }) {
           title: "Emergency and support use",
           text:
             "Users should follow local laws, use emergency numbers only for real emergencies, and contact support or the admin for safety or account concerns. The app can provide emergency contact shortcuts, but it does not replace police, ambulance, fire, or official emergency services.",
-        },
-      ],
-    },
-    privacy: {
-      title: "Privacy Policy",
-      subtitle: "Data protection rules for user, trip, document, and payment information.",
-      sections: [
-        {
-          title: "Information collected",
-          text:
-            "The app stores account details, phone numbers, trip pickup and drop-off locations, driver documents, National ID information, ratings, payment method details, and payout method details.",
-        },
-        {
-          title: "How information is used",
-          text:
-            "Information is used to match riders with drivers, verify identity and driver documents, process payment records, calculate commission, support withdrawals, improve safety, and help admin manage the platform.",
-        },
-        {
-          title: "Access control",
-          text:
-            "Riders see assigned driver details after acceptance. Drivers see active rider trip information. Admin can review users, documents, payouts, ratings, and account status for platform operations.",
-        },
-        {
-          title: "Data protection rules",
-          text:
-            "Sensitive information should be accessed only by users who need it for a real platform purpose. Admin access should be limited to trusted staff. Driver documents, National ID documents, payout details, and payment records should not be shared outside support, verification, payment, safety, or legal needs.",
-        },
-        {
-          title: "Security requirements",
-          text:
-            "Before public launch, the production app should use HTTPS, private API keys, a strong Django secret key, protected database credentials, limited admin accounts, regular backups, provider webhook verification, and secure hosting. Real payment credentials must not be stored in frontend code.",
-        },
-        {
-          title: "Retention and correction",
-          text:
-            "Users should be able to request correction of inaccurate account, identity, vehicle, or payout information. Trip, payment, rating, and safety records may be retained for operations, dispute handling, fraud prevention, accounting, and legal compliance.",
         },
       ],
     },

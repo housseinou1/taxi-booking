@@ -12,8 +12,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
-import authenticatedApi from "../../auth/authenticatedApi";
-import { API_URL } from "../../apiConfig";
+import { fetchOpsDashboard } from "./opsDashboardApi";
 import "./LiveOperationsCenter.css";
 
 // ─── Map Icons ───────────────────────────────────────────────────────────────
@@ -52,8 +51,7 @@ const DEFAULT_ZOOM = 13;
 
 async function fetchLiveData() {
   try {
-    const response = await authenticatedApi.get(`${API_URL}/operations/admin/dashboard/`);
-    return response.data;
+    return await fetchOpsDashboard();
   } catch {
     return null;
   }

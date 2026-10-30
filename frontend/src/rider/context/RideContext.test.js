@@ -190,6 +190,8 @@ describe('RideContext', () => {
       const result = rideReducer(stateTracking, { type: 'RIDE_COMPLETED', payload: { fare: 500 } });
       expect(result.currentRide).toEqual({ id: 1, fare: 500, status: 'completed' });
       expect(result.driverPosition).toBeNull();
+      // The reducer stays on 'tracking' so RideTracker renders its completed view
+      // (trip total + "Rate your driver"); that action routes to /rider-payments.
       expect(result.bookingStep).toBe('tracking');
     });
 

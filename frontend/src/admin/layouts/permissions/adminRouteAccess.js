@@ -1,4 +1,4 @@
-﻿/** Route ΓåÆ required module id for AdminRouteGuard */
+/** Route ΓåÆ required module id for AdminRouteGuard */
 
 export const PATH_MODULE_MAP = {
   "/admin/home/ceo": "home",
@@ -10,6 +10,8 @@ export const PATH_MODULE_MAP = {
   "/admin/home/analytics": "home",
   "/admin/home/system": "home",
   "/admin/ceo-master": "ceo",
+  "/admin/ceo-control": "ceo",
+  "/admin/ceo-reports": "ceo",
   "/admin/ceo": "ceo",
   "/admin/board-reports": "ceo",
   "/admin/ops-control": "ops",
@@ -19,6 +21,38 @@ export const PATH_MODULE_MAP = {
   "/admin/ai-operations": "ops",
   "/admin/smart-pricing": "ops",
   "/admin/pricing-dispatch": "ops",
+  // Rides Management
+  "/admin/rides": "rides",
+  "/admin/rides/live": "rides",
+  "/admin/rides/reports": "rides",
+  // Drivers Management
+  "/admin/drivers": "drivers",
+  "/admin/approvals": "drivers",
+  "/admin/hall-of-fame": "drivers",
+  "/admin/cities": "ceo",
+  "/admin/vehicles": "drivers",
+  // Riders Management
+  "/admin/riders": "riders",
+  // Dedicated overview dashboards (new routes, same modules)
+  "/admin/drivers/dashboard": "drivers",
+  "/admin/riders/dashboard": "riders",
+  // Yala Delivery
+  "/admin/delivery": "delivery",
+  "/admin/delivery/directory": "delivery",
+  "/admin/delivery/cities": "delivery",
+  "/admin/delivery/couriers": "delivery",
+  "/admin/delivery/merchants": "delivery",
+  "/admin/delivery/support": "delivery",
+  "/admin/merchants": "merchants",
+  // Employees & HR
+  "/admin/roles": "employees",
+  // Security
+  "/admin/security": "security",
+  "/admin/security/audit": "security",
+  "/admin/security/fraud": "security",
+  // Finance
+  "/admin/withdrawals": "finance",
+  "/admin/withdrawal-accounts": "finance",
   "/admin/finance-ops": "finance",
   "/admin/payments": "finance",
   "/admin/incentives": "finance",
@@ -27,6 +61,11 @@ export const PATH_MODULE_MAP = {
   "/admin/beta": "support",
   "/admin/fleet": "drivers",
   "/admin/academy": "drivers",
+  "/admin/employees": "employees",
+  "/admin/attendance": "employees",
+  "/admin/hr": "employees",
+  "/admin/verification": "employees",
+  "/admin/break-notifications": "employees",
   "/admin/launch-growth": "marketing",
   "/admin/growth-sprint": "marketing",
   "/admin/customer-growth": "marketing",
@@ -50,18 +89,33 @@ export const PATH_MODULE_MAP = {
   "/admin/legacy": "home",
   "/admin": "home",
   "/admin-dashboard": "home",
+  // Routed pages the sidebar links to that had no module mapping. Without these
+  // `canAccessPath` default-denied them for every non-elevated role even though
+  // the page is registered in App.js. The module must still be granted in
+  // `permissions.modules`, so no access is widened by accident.
+  "/admin/executive": "ceo",
+  "/admin/ops-center": "ops",
+  "/admin/ops-center/live": "ops",
+  "/admin/ops-center/command": "ops",
+  "/admin/ops-center/finance": "finance",
+  "/admin/share-analytics": "analytics",
 };
 
 export const MODULE_LABELS = {
   home: "Home",
-  ceo: "CEO Command",
+  ceo: "CEO Command Center",
   ops: "Operations",
+  rides: "Rides Management",
+  drivers: "Drivers Management",
+  riders: "Riders Management",
+  delivery: "Yala Delivery",
+  merchants: "Merchants & Stores",
+  security: "Security",
   finance: "Finance",
-  support: "Support",
-  drivers: "Driver Operations",
+  support: "Customer Support",
   marketing: "Marketing",
-  analytics: "Analytics",
-  system: "System Admin",
+  analytics: "Reports & Analytics",
+  system: "Settings",
   trust_safety: "Trust & Safety",
   launch: "Launch Hub",
   business: "Business",
@@ -70,6 +124,7 @@ export const MODULE_LABELS = {
   bi_growth: "Growth Intelligence",
   fleet: "Fleet",
   academy: "Academy",
+  employees: "Employees & HR",
 };
 
 export function getModuleForPath(pathname) {
@@ -77,6 +132,24 @@ export function getModuleForPath(pathname) {
   if (PATH_MODULE_MAP[normalized]) return PATH_MODULE_MAP[normalized];
   if (normalized.startsWith("/admin/home/")) return "home";
   return null;
+}
+
+/**
+ * Resolve a backend-advertised `home_route` to a destination that actually exists.
+ *
+ * `HOME_ROUTES` (operations/admin_permissions_service.py) advertises `/admin/home/<role>`
+ * for nine of its ten roles, but App.js registers none of those paths. An unmatched admin
+ * path falls through to `<LandingPage />` (App.js), so following the advertised route would
+ * drop an authenticated administrator on the public landing page. `/admin` is the real
+ * registered admin home (Operations Console inside AdminShell).
+ *
+ * Any other advertised route is preserved, so the registered `hr` home
+ * (`/admin/employees`) keeps working.
+ */
+export function resolveRegisteredAdminHome(homeRoute) {
+  if (typeof homeRoute !== "string" || !homeRoute) return "/admin";
+  if (homeRoute.startsWith("/admin/home/")) return "/admin";
+  return homeRoute;
 }
 
 export function canAccessPath(permissions, pathname) {

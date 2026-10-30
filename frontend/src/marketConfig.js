@@ -298,9 +298,24 @@ export function calculateFare(rideType, distanceKm) {
 }
 
 export function formatMoney(amount) {
-  const value = Number(amount || 0);
-  return `${value.toLocaleString("en-US", {
-    minimumFractionDigits: value % 1 === 0 ? 0 : 2,
-    maximumFractionDigits: 2,
-  })} ${MARKET.currency || "MRU"}`;
+  // Decimal-safe MRU formatting.
+  //
+  // Financial values arrive from the API as decimal strings (Django DecimalField). They
+  // are formatted from the *string* rather than through Number(), so money never passes
+  // through binary floating point — that is what produced artefacts such as
+  // "563.520000000000 MRU". Two decimals are shown when the amount has a fractional part,
+  // none for whole amounts, and thousands are grouped.
+  const currency = MARKET.currency || "MRU";
+  const raw = amount === null || amount === undefined || amount === "" ? "0" : String(amount).trim();
+  const match = /^(-?)(\d+)(?:\.(\d*))?$/.exec(raw);
+  if (!match) {
+    // Not a plain decimal (already formatted, or non-numeric): show it untouched rather
+    // than printing NaN.
+    return `${raw} ${currency}`;
+  }
+  const [, sign, intPart, fracRaw = ""] = match;
+  const grouped = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  const frac = fracRaw.replace(/0+$/, "");
+  if (!frac) return `${sign}${grouped} ${currency}`;
+  return `${sign}${grouped}.${fracRaw.slice(0, 2).padEnd(2, "0")} ${currency}`;
 }

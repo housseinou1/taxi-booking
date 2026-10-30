@@ -1,6 +1,14 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import RideTypeSelector from './RideTypeSelector';
+import { estimateFare } from '../services/apiService';
+
+// Pricing is authoritative on the backend: the selector renders whatever
+// estimateFare() returns and must not compute fares client-side.
+jest.mock('../services/apiService', () => ({
+  __esModule: true,
+  estimateFare: jest.fn(),
+}));
 
 describe('RideTypeSelector component', () => {
   const defaultProps = {
@@ -12,6 +20,8 @@ describe('RideTypeSelector component', () => {
 
   beforeEach(() => {
     defaultProps.onSelect.mockClear();
+    // resetMocks clears implementations, so every test needs a settled promise.
+    estimateFare.mockResolvedValue({ ride_type: 'regular', estimated_fare: 0 });
   });
 
   it('renders four fare cards for all ride types', () => {
@@ -28,17 +38,32 @@ describe('RideTypeSelector component', () => {
     expect(screen.getByText('Share')).toBeInTheDocument();
   });
 
-  it('calculates and displays fares based on distance', () => {
-    // distance = 5km
-    // regular: base 200 + 5*20 = 300
-    // xl: base 300 + 5*30 = 450
-    // comfort: base 350 + 5*35 = 525
-    // share: base 150 + 5*15 = 225
+  it('displays the backend fare estimate for each ride type', async () => {
+    // distance = 5km; the backend returns the authoritative fare per category.
+    const fares = { regular: 300, xl: 450, comfort: 525, share: 225 };
+    estimateFare.mockImplementation(({ ride_type }) =>
+      Promise.resolve({ ride_type, estimated_fare: fares[ride_type] })
+    );
+
     render(<RideTypeSelector {...defaultProps} />);
-    expect(screen.getByText('300 MRU')).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByText('300 MRU')).toBeInTheDocument();
+    });
     expect(screen.getByText('450 MRU')).toBeInTheDocument();
     expect(screen.getByText('525 MRU')).toBeInTheDocument();
     expect(screen.getByText('225 MRU')).toBeInTheDocument();
+  });
+
+  it('shows — MRU rather than inventing a fare when pricing is unavailable', async () => {
+    estimateFare.mockRejectedValue(new Error('pricing unavailable'));
+
+    render(<RideTypeSelector {...defaultProps} />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText('— MRU')).toHaveLength(4);
+    });
+    expect(screen.queryByText('0 MRU')).not.toBeInTheDocument();
   });
 
   it('highlights only the selected card', () => {

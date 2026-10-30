@@ -1,0 +1,237 @@
+/* =============================================================================
+   YALA Admin — Vehicle Management (/admin/vehicles)
+   Page-specific styling layered on the shared fleet UI kit (fleetUi.css).
+   All colours come from the --admin-* design tokens, so light and dark themes are
+   both handled by the shell. The previous implementation relied on a light-theme
+   stylesheet from another module that was never imported here, which produced
+   white cards with near-invisible white text inside the dark shell.
+   ============================================================================= */
+
+/* ── Breadcrumb ─────────────────────────────────────────────────────────────── */
+
+.veh-crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--admin-text-muted, #94a3b8);
+}
+
+.veh-crumbs a {
+  color: var(--admin-accent, #00a651);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.veh-crumbs a:hover {
+  text-decoration: underline;
+}
+
+.veh-crumbs span[aria-hidden="true"] {
+  opacity: 0.5;
+}
+
+.veh-crumbs span[aria-current="page"] {
+  color: var(--admin-text, #f8fafc);
+  font-weight: 600;
+}
+
+/* ── Derived-data note ──────────────────────────────────────────────────────── */
+
+.veh-note {
+  padding: 11px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--admin-border, #1f2937);
+  background: var(--admin-accent-soft, rgba(0, 166, 81, 0.12));
+  color: var(--admin-text-muted, #94a3b8);
+  font-size: 0.8rem;
+  line-height: 1.55;
+}
+
+.veh-note strong {
+  color: var(--admin-text, #f8fafc);
+}
+
+/* ── Table: wider than the fleet tables, so it scrolls instead of squashing ─── */
+
+.veh-table {
+  min-width: 1080px;
+}
+
+/* Subtle alternating rows keep long vehicle/driver lists readable. */
+.veh-table tbody tr:nth-child(even) {
+  background: var(--admin-surface-muted, rgba(148, 163, 184, 0.05));
+}
+
+.veh-table tbody tr:hover {
+  background: var(--admin-surface-alt, rgba(148, 163, 184, 0.12));
+}
+
+/* ── Vehicle name / plate cells ─────────────────────────────────────────────── */
+
+.veh-name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.veh-name__primary {
+  font-weight: 600;
+  color: var(--admin-text, #f8fafc);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 22ch;
+}
+
+.veh-name__meta {
+  font-size: 0.72rem;
+  color: var(--admin-text-muted, #94a3b8);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 22ch;
+}
+
+.veh-plate {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--admin-border, #334155);
+  background: var(--admin-surface-muted, #0f172a);
+  color: var(--admin-text, #f8fafc);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+/* ── Document cell ──────────────────────────────────────────────────────────── */
+
+.veh-doc {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.veh-doc__date {
+  font-size: 0.7rem;
+  color: var(--admin-text-muted, #94a3b8);
+  white-space: nowrap;
+}
+
+/* ── Details drawer ─────────────────────────────────────────────────────────── */
+
+.veh-drawer__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  min-width: 0;
+}
+
+.veh-drawer__col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 14px;
+  border-radius: 10px;
+  border: 1px solid var(--admin-border, #1f2937);
+  background: var(--admin-surface, #111827);
+}
+
+.veh-drawer__heading {
+  margin: 0;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--admin-text, #f8fafc);
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--admin-border, #1f2937);
+}
+
+.veh-drawer__note {
+  margin: 0;
+  font-size: 0.74rem;
+  line-height: 1.5;
+  color: var(--admin-text-muted, #94a3b8);
+}
+
+.veh-doc-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.veh-doc-list__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--admin-border, #1f2937);
+  background: var(--admin-surface-muted, #0f172a);
+  min-width: 0;
+}
+
+.veh-doc-list__label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--admin-text, #f8fafc);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.veh-doc-list__value {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* ── Accessibility ──────────────────────────────────────────────────────────── */
+
+.veh-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────────────── */
+
+@media (max-width: 1100px) {
+  .veh-drawer__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .veh-table {
+    min-width: 900px;
+  }
+
+  .veh-name__primary,
+  .veh-name__meta {
+    max-width: 16ch;
+  }
+
+  .veh-doc-list__row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .veh-doc-list__value {
+    justify-content: flex-start;
+  }
+}

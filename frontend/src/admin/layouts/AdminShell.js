@@ -14,6 +14,7 @@ import {
 import { AdminPageLoader } from "./loading/AdminLoaders";
 import { AdminThemeProvider } from "./theme/AdminThemeContext";
 import { PermissionProvider, usePermissions } from "../permissions/PermissionContext";
+import { resolveRegisteredAdminHome } from "./permissions/adminRouteAccess";
 import { ToastProvider } from "../components/library";
 import "./AdminShell.css";
 
@@ -31,11 +32,12 @@ function AdminShellInner({ pathname, title, children }) {
   } = usePermissions();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
 
   const crumbs = buildBreadcrumbs(pathname);
   const goHome = useCallback(() => {
-    window.location.href = permissions?.home_route || "/admin/home/ops";
+    // Never follow the backend `home_route` blindly: it advertises `/admin/home/<role>`,
+    // which App.js does not register. See resolveRegisteredAdminHome.
+    window.location.href = resolveRegisteredAdminHome(permissions?.home_route);
   }, [permissions]);
 
   useEffect(() => {
@@ -110,18 +112,10 @@ function AdminShellInner({ pathname, title, children }) {
             aria-label="Global search"
             onClick={(e) => e.stopPropagation()}
           >
-            <label className="admin-shell__search-modal-label">
-              Global search
-              <input
-                autoFocus
-                type="search"
-                value={searchQuery}
-                placeholder="Ride ID, phone, ticket #…"
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </label>
+            <p className="admin-shell__search-modal-label">Global search</p>
             <p className="admin-shell__search-hint">
-              Sprint 1 stub — full search ships Sprint 4. Query: {searchQuery || "—"}
+              Global search is <strong>not implemented yet</strong> — no records are searched
+              here. Use the module pages (Rides, Riders, Support, Finance…) to find records.
             </p>
             <button type="button" className="admin-shell__btn admin-shell__btn--ghost" onClick={() => setSearchOpen(false)}>
               Close

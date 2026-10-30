@@ -291,9 +291,6 @@ export default function SystemAdminDashboard() {
             rows={serviceRows}
             searchable
           />
-          <p className="fin-dash__hint">
-            External providers show configured / not_configured from environment — live provider success is never invented.
-          </p>
         </section>
       )}
 
@@ -456,7 +453,7 @@ export default function SystemAdminDashboard() {
       {tab === "settings" && (
         <section className="fin-dash__panel">
           <h2>Platform settings</h2>
-          <p className="fin-dash__hint">Critical keys require dual approval. Values come from PlatformSetting — not hard-coded rates.</p>
+          <p className="fin-dash__hint">Critical keys require dual approval.</p>
           {(settings?.pending_approvals || []).length ? (
             <div className="fin-dash__panel" style={{ marginBottom: 12 }}>
               <h3>Pending dual approvals</h3>

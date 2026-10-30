@@ -6,6 +6,7 @@ import { useAdminTheme } from "./theme/AdminThemeContext";
 const CITIES = [
   { id: "", label: "All cities" },
   { id: "nouakchott", label: "Nouakchott" },
+  { id: "nouadhibou", label: "Nouadhibou" },
 ];
 
 export default function AdminHeader({ onOpenMobileNav, onOpenSearch }) {
@@ -43,15 +44,21 @@ export default function AdminHeader({ onOpenMobileNav, onOpenSearch }) {
           <img src="/yala-admin-logo.png" alt="" className="admin-shell__logo" />
           <div>
             <div className="admin-shell__brand-title">YALA Admin</div>
-            <div className="admin-shell__brand-sub">Operations Platform</div>
+            <div className="admin-shell__brand-sub">YALA Technologies</div>
           </div>
         </div>
       </div>
 
       <div className="admin-shell__header-center">
-        <button type="button" className="admin-shell__search" onClick={onOpenSearch}>
+        <button
+          type="button"
+          className="admin-shell__search admin-shell__search--pending"
+          onClick={onOpenSearch}
+          title="Global search is not available yet"
+        >
           <span aria-hidden="true">🔍</span>
-          <span>Search rides, riders, tickets…</span>
+          <span className="admin-shell__search-label">Global search</span>
+          <span className="admin-shell__search-soon">Soon</span>
           <kbd>Ctrl K</kbd>
         </button>
       </div>

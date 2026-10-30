@@ -1,72 +1,247 @@
+/* ─── CEO Master Command Center — Enterprise Redesign ───────────────────────── */
+
+.ceo-master-container {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Page Header - Single Title Only */
+.ceo-master-page-header {
+  margin-bottom: 20px;
+}
+
+.ceo-master-page-title {
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0;
+  color: #00a651;
+  line-height: 1.2;
+}
+
+/* Status Messages */
+.ceo-master-error {
+  padding: 14px 18px;
+  border-radius: 10px;
+  border-left: 4px solid #dc2626;
+  background: rgba(220, 38, 38, 0.1);
+  color: #991b1b;
+  margin-bottom: 20px;
+}
+
+.ceo-master-success {
+  padding: 14px 18px;
+  border-radius: 10px;
+  border-left: 4px solid #059669;
+  background: rgba(5, 150, 105, 0.1);
+  color: #047857;
+  margin-bottom: 20px;
+}
+
+.ceo-master-loading {
+  padding: 24px;
+  text-align: center;
+  color: #6b7280;
+}
+
+/* Tabs */
 .ceo-master-tabs {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin: 1rem 0;
-  border-bottom: 1px solid #e5e7eb;
-  padding-bottom: 0.5rem;
+  margin-bottom: 24px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(17, 24, 39, 0.1);
 }
 
 .ceo-master-tab {
-  padding: 8px 14px;
-  border: 1px solid #e5e7eb;
-  background: #fff;
-  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border: 1px solid rgba(17, 24, 39, 0.15);
+  background: #ffffff;
+  border-radius: 10px;
   cursor: pointer;
-  font-weight: 500;
-  color: #374151;
-  transition: background 0.15s, color 0.15s;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #1f2937;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .ceo-master-tab:hover {
-  background: #f3f4f6;
+  background: #f9fafb;
+  border-color: rgba(0, 166, 81, 0.4);
+  transform: translateY(-1px);
 }
 
 .ceo-master-tab--active {
-  background: #2563eb;
-  color: #fff;
-  border-color: #2563eb;
+  background: #00a651;
+  color: #ffffff;
+  border-color: #00a651;
+  box-shadow: 0 2px 8px rgba(0, 166, 81, 0.3);
 }
 
+/* :hover outranks --active by specificity; keep the active tab legible while hovered. */
+.ceo-master-tab--active:hover {
+  background: #00a651;
+  color: #ffffff;
+  border-color: #00a651;
+}
+
+.ceo-master-tab-icon {
+  font-size: 1.1rem;
+}
+
+.ceo-master-tab-label {
+  white-space: nowrap;
+}
+
+/* Content */
 .ceo-master-content {
-  margin-top: 1rem;
+  background: #f8fbf9;
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(17, 24, 39, 0.08);
+  padding: 32px;
 }
 
+/* Section */
+.ceo-master-section {
+  margin-bottom: 32px;
+}
+
+.ceo-master-section-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin: 0 0 24px 0;
+  color: #00a651;
+  letter-spacing: -0.01em;
+  border-bottom: 2px solid rgba(0, 166, 81, 0.3);
+  padding-bottom: 8px;
+}
+
+/* Grid */
 .ceo-master-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
 }
 
-.ceo-master-panel {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 1rem;
-  margin-bottom: 1rem;
+/* KPI Cards */
+.ceo-master-card {
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  background: linear-gradient(180deg, #f8fbf9 0%, #f2f7f4 100%);
 }
 
-.ceo-master-panel h3 {
-  margin-top: 0;
-  margin-bottom: 0.75rem;
-  font-size: 1.1rem;
-  color: #111827;
+.ceo-master-card--critical {
+  border: 1px solid rgba(220, 38, 38, 0.3);
+  background: linear-gradient(180deg, #fef2f2 0%, #fee2e2 100%);
 }
 
-.ceo-master-critical .beta__card-value {
-  color: #dc2626;
+.ceo-master-card-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6b7280;
+  margin-bottom: 6px;
 }
 
+.ceo-master-card-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.ceo-master-card-sub {
+  font-size: 0.82rem;
+  color: #4b5563;
+  margin-top: 4px;
+}
+
+.ceo-master-card-skeleton {
+  height: 88px;
+  background: linear-gradient(90deg, rgba(0, 166, 81, 0.05) 25%, rgba(0, 166, 81, 0.1) 50%, rgba(0, 166, 81, 0.05) 75%);
+  background-size: 200% 100%;
+  animation: admin-shimmer 1.2s infinite;
+  border-radius: 12px;
+}
+
+/* Score */
 .ceo-master-score {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 1rem;
-  margin-bottom: 1rem;
   text-align: center;
+  padding: 24px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 166, 81, 0.2);
+  background: linear-gradient(135deg, rgba(0, 166, 81, 0.2) 0%, rgba(0, 166, 81, 0.08) 100%);
 }
 
+.ceo-master-score h3 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0;
+  color: #0f172a;
+}
+
+/* Notes */
+.ceo-master-note {
+  margin: 0 0 20px 0;
+  font-size: 0.85rem;
+  color: #6b7280;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: rgba(0, 166, 81, 0.05);
+  border-left: 3px solid #00a651;
+  line-height: 1.5;
+}
+
+.ceo-master-note code {
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.1);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78rem;
+}
+
+/* Empty State */
+.ceo-master-empty {
+  text-align: center;
+  padding: 48px 24px;
+  border-radius: 12px;
+  border: 1px dashed rgba(17, 24, 39, 0.15);
+  background: #f8fbf9;
+}
+
+.ceo-master-empty-text {
+  font-size: 1rem;
+  color: #374151;
+  margin: 0;
+}
+
+/* Alert */
+.ceo-master-alert {
+  padding: 16px 20px;
+  border-radius: 12px;
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  background: rgba(254, 242, 242, 0.8);
+  color: #991b1b;
+}
+
+.ceo-master-alert p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.ceo-master-alert strong {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 1rem;
+}
+
+/* Lists */
 .ceo-master-list {
   list-style: none;
   padding: 0;
@@ -74,87 +249,287 @@
 }
 
 .ceo-master-list li {
-  padding: 8px 0;
-  border-bottom: 1px solid #f3f4f6;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(17, 24, 39, 0.05);
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .ceo-master-list li:last-child {
   border-bottom: none;
 }
 
-.ceo-master-alert {
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  border-radius: 6px;
-  padding: 1rem;
-  color: #991b1b;
+.ceo-master-list strong {
+  color: #0f172a;
+  font-weight: 600;
+  min-width: 160px;
 }
 
+.ceo-master-subheading {
+  margin: 20px 0 8px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+[data-admin-theme="dark"] .ceo-master-subheading {
+  color: #ffffff;
+}
+
+/* Design-system empty states inside the CEO panel: readable on both themes. */
+.ceo-master-container .yds-empty {
+  padding: 20px 16px;
+}
+
+.ceo-master-container .yds-empty__text {
+  margin: 0;
+  color: #4b5563;
+}
+
+[data-admin-theme="dark"] .ceo-master-container .yds-empty__text {
+  color: #cbd5e1;
+}
+
+/* Forms */
 .ceo-master-form {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  max-width: 500px;
+  gap: 12px;
+  max-width: 600px;
 }
 
 .ceo-master-form input,
 .ceo-master-form select,
 .ceo-master-form textarea {
-  padding: 8px 10px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
+  padding: 12px 14px;
+  border: 1px solid rgba(17, 24, 39, 0.15);
+  border-radius: 10px;
   font-size: 0.95rem;
+  background: white;
+  color: #122319;
+}
+
+.ceo-master-form input:focus,
+.ceo-master-form select:focus,
+.ceo-master-form textarea:focus {
+  outline: none;
+  border-color: #00a651;
+  box-shadow: 0 0 0 3px rgba(0, 166, 81, 0.1);
 }
 
 .ceo-master-form textarea {
-  min-height: 80px;
+  min-height: 100px;
   resize: vertical;
 }
 
-.ceo-master-form button {
-  padding: 10px 16px;
-  background: #2563eb;
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 500;
-}
-
-.ceo-master-form button.danger {
-  background: #dc2626;
-}
-
-.ceo-master-form button:hover {
-  opacity: 0.92;
-}
-
+/* Buttons */
 .ceo-master-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem;
+  gap: 12px;
   align-items: center;
+}
+
+.ceo-master-action-btn {
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.ceo-master-action-btn--primary {
+  background: #00a651;
+  color: #fff;
+}
+
+.ceo-master-action-btn--primary:hover {
+  background: #008a44;
+}
+
+.ceo-master-action-btn--secondary {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.ceo-master-action-btn--secondary:hover {
+  background: #e5e7eb;
+}
+
+.ceo-master-action-btn--danger {
+  background: #dc2626;
+  color: #fff;
+}
+
+.ceo-master-action-btn--danger:hover {
+  background: #b91c1c;
+}
+
+.ceo-master-action-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .ceo-master-button {
   display: inline-block;
-  padding: 10px 16px;
-  background: #059669;
+  padding: 12px 20px;
+  background: #00a651;
   color: #fff;
   text-decoration: none;
-  border-radius: 6px;
-  font-weight: 500;
+  border-radius: 10px;
+  font-weight: 600;
+  transition: all 0.2s ease;
 }
 
 .ceo-master-button:hover {
-  opacity: 0.92;
+  background: #008a44;
 }
 
-.beta__success {
+/* Status Messages */
+.ceo-master-error {
+  padding: 14px 18px;
+  border-radius: 10px;
+  border-left: 4px solid #dc2626;
+  background: rgba(220, 38, 38, 0.1);
+  color: #991b1b;
+  margin-bottom: 20px;
+}
+
+.ceo-master-success {
+  padding: 14px 18px;
+  border-radius: 10px;
+  border-left: 4px solid #059669;
+  background: rgba(5, 150, 105, 0.1);
   color: #047857;
-  background: #d1fae5;
-  border: 1px solid #a7f3d0;
-  border-radius: 6px;
-  padding: 0.75rem 1rem;
-  margin-bottom: 1rem;
+  margin-bottom: 20px;
+}
+
+.ceo-master-loading {
+  padding: 24px;
+  text-align: center;
+  color: #6b7280;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .ceo-master-tabs {
+    flex-direction: column;
+  }
+
+  .ceo-master-tab {
+    width: 100%;
+    justify-content: center;
+    gap: 12px;
+  }
+
+  .ceo-master-content {
+    padding: 20px;
+  }
+
+  .ceo-master-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ceo-master-title {
+    font-size: 1.4rem;
+  }
+}
+
+/* Dark theme support */
+[data-admin-theme="dark"] .ceo-master-card {
+  background: rgba(15, 33, 25, 0.8);
+  border-color: rgba(110, 231, 183, 0.15);
+}
+
+[data-admin-theme="dark"] .ceo-master-card--critical {
+  background: rgba(59, 13, 13, 0.6);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+[data-admin-theme="dark"] .ceo-master-card-label {
+  color: #9ca3af;
+}
+
+[data-admin-theme="dark"] .ceo-master-card-value {
+  color: #f8fafc;
+}
+
+[data-admin-theme="dark"] .ceo-master-card-sub,
+[data-admin-theme="dark"] .ceo-master-subtitle,
+[data-admin-theme="dark"] .ceo-master-empty-text,
+[data-admin-theme="dark"] .ceo-master-note,
+[data-admin-theme="dark"] .ceo-master-list strong {
+  color: #cbd5e1;
+}
+
+[data-admin-theme="dark"] .ceo-master-list li {
+  border-bottom-color: rgba(148, 163, 184, 0.1);
+}
+
+[data-admin-theme="dark"] .ceo-master-form input,
+[data-admin-theme="dark"] .ceo-master-form select,
+[data-admin-theme="dark"] .ceo-master-form textarea {
+  background: rgba(15, 33, 25, 0.8);
+  border-color: rgba(110, 231, 183, 0.2);
+  color: #f8fafc;
+}
+
+[data-admin-theme="dark"] .ceo-master-tab {
+  background: rgba(15, 33, 25, 0.6);
+  border-color: rgba(110, 231, 183, 0.15);
+  color: #f8fafc;
+}
+
+[data-admin-theme="dark"] .ceo-master-tab:hover {
+  background: rgba(0, 166, 81, 0.1);
+}
+
+[data-admin-theme="dark"] .ceo-master-content,
+[data-admin-theme="dark"] .ceo-master-empty,
+[data-admin-theme="dark"] .ceo-master-score {
+  background: rgba(15, 33, 25, 0.8);
+}
+
+[data-admin-theme="dark"] .ceo-master-section-title {
+  color: #ffffff;
+  border-bottom-color: rgba(255, 255, 255, 0.3);
+}
+
+[data-admin-theme="dark"] .ceo-master-score h3 {
+  color: #f8fafc;
+}
+
+[data-admin-theme="dark"] .ceo-master-error {
+  color: #fca5a5;
+  background: rgba(220, 38, 38, 0.15);
+}
+
+/* Override design system section title for CEO Command Center */
+[data-admin-theme="dark"] .ceo-master-container .yds-section-title {
+  color: #ffffff !important;
+}
+
+[data-admin-theme="dark"] .ceo-master-container .yds-section-header {
+  border-bottom-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Light theme override for design system section title */
+.ceo-master-container .yds-section-title {
+  color: #0f172a !important;
+}
+
+.ceo-master-container .yds-section-header {
+  border-bottom-color: rgba(0, 166, 81, 0.3) !important;
+}
+
+/* Consistent spacing between design-system sections inside the CEO content panel */
+.ceo-master-container .yds-section + .yds-section {
+  margin-top: 32px;
+}
+
+.ceo-master-container .yds-section > .yds-card__header {
+  margin-bottom: 16px;
 }

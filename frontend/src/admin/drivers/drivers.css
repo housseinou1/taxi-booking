@@ -1,0 +1,421 @@
+/*
+ * Drivers Management module styling.
+ *
+ * The reused admin component library (adminComponents.css) is driven entirely
+ * by the `--admin-*` CSS variables, which are declared ONLY on `.admin-shell`.
+ * The legacy AdminDashboard renders OUTSIDE `.admin-shell`, so we re-declare the
+ * same dark-green brand tokens (copied from AdminShell.css dark theme) scoped to
+ * `.drivers-management` so the library components render on-brand here without
+ * adding the full shell class or editing AdminShell.css.
+ */
+.drivers-management {
+  --admin-bg: #0a1410;
+  --admin-panel: rgba(15, 33, 25, 0.92);
+  --admin-border: rgba(110, 231, 183, 0.22);
+  --admin-text: #f8fafc;
+  --admin-text-muted: #cbd5e1;
+  --admin-accent: #00a651;
+  --admin-accent-soft: rgba(110, 231, 183, 0.14);
+  --admin-danger: #fecaca;
+
+  color: var(--admin-text);
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.drivers-management__header h2 {
+  margin: 0 0 4px;
+  font-size: 1.3rem;
+}
+
+.drivers-management__header p {
+  margin: 0;
+  color: var(--admin-text-muted);
+  font-size: 0.9rem;
+}
+
+/* Summary cards grid (requirement 2). */
+.drivers-management__summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+/* Driver cell: avatar + identity. */
+.drivers-driver-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.drivers-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--admin-accent-soft);
+}
+
+.drivers-avatar--fallback {
+  display: grid;
+  place-items: center;
+  background: var(--admin-accent);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.drivers-driver-cell__name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.drivers-driver-cell__fullname {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.drivers-driver-cell__sub {
+  font-size: 0.75rem;
+  color: var(--admin-text-muted);
+}
+
+.drivers-contact {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.85rem;
+}
+
+.drivers-cell-hint {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--admin-text-muted);
+  margin-top: 2px;
+}
+
+.drivers-na {
+  color: var(--admin-text-muted);
+}
+
+/* Document-status badge row inside the verification column. */
+.drivers-doc-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+/* Row action cluster. Keep on one line so actions never wrap and inflate the
+   row height; the table scroll container handles overflow horizontally. */
+.drivers-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  align-items: center;
+}
+
+/* Clearly-visible primary Details button (requirement 4). */
+.drivers-actions .drivers-details-btn {
+  background: var(--admin-accent);
+  border-color: var(--admin-accent);
+  color: #fff;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.drivers-actions .drivers-details-btn:hover {
+  filter: brightness(1.08);
+}
+
+/* ─── Compact, professional table (requirements 1, 2) ──────────────────────
+   Scoped to .drivers-management so the shared DataTable and the Riders table
+   are unaffected. Tightens row height and keeps cells single-line. */
+.drivers-management .admin-table {
+  font-size: 0.85rem;
+  min-width: 1100px; /* gives columns room; wrapper scrolls horizontally */
+}
+
+.drivers-management .admin-table th,
+.drivers-management .admin-table td {
+  padding: 6px 10px;
+  vertical-align: middle;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.drivers-management .admin-table th {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Allow the two stacked-text cells to stay tight without growing the row. */
+.drivers-management .drivers-contact {
+  gap: 0;
+  line-height: 1.2;
+}
+
+.drivers-management .drivers-driver-cell__sub,
+.drivers-management .drivers-cell-hint {
+  margin-top: 0;
+}
+
+/* Smaller avatar = shorter rows. */
+.drivers-management .drivers-avatar {
+  width: 30px;
+  height: 30px;
+}
+
+/* Keep the verification document badges compact and on one line. */
+.drivers-management .drivers-doc-badges {
+  flex-wrap: nowrap;
+  gap: 3px;
+  margin-top: 3px;
+}
+
+.drivers-management .drivers-doc-badges .admin-status-chip,
+.drivers-management .admin-table td .admin-status-chip {
+  font-size: 0.65rem;
+  padding: 1px 6px;
+}
+
+/* ─── Horizontal scroll / responsiveness (requirement 3) ──────────────────── */
+.drivers-management .admin-table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.drivers-management .admin-table-scroll::-webkit-scrollbar {
+  height: 8px;
+}
+
+.drivers-management .admin-table-scroll::-webkit-scrollbar-thumb {
+  background: var(--admin-accent-soft);
+  border-radius: 4px;
+}
+
+/* ─── Driver Details drawer polish ─────────────────────────────────────────
+   The drawer is the SHARED library Drawer (.admin-drawer), also used by Riders
+   and other admin modals. To avoid changing that global component, these rules
+   are scoped with :has(.drivers-detail-root) so they apply ONLY to the drivers
+   drawer (the marker class lives on the drivers drawer content wrapper).
+   Chrome (the local dev target) supports :has(); other admin drawers are
+   completely unaffected. */
+
+/* Wider panel (600–700px desktop), full height, collapses to ~full width on
+   mobile via the min() with 96vw (requirements 1, 7). */
+.admin-drawer:has(.drivers-detail-root) {
+  width: min(680px, 96vw);
+  max-height: 100vh;
+}
+
+/* Fully OPAQUE dark-green background so the table never shows through
+   (requirements 2, 3). The shared token --admin-panel is semi-transparent
+   (0.92 alpha); override with a solid colour on the panel, head, and body. */
+.admin-drawer:has(.drivers-detail-root),
+.admin-drawer:has(.drivers-detail-root) .admin-drawer__head,
+.admin-drawer:has(.drivers-detail-root) .admin-drawer__body {
+  background: #0f2119;
+}
+
+/* Darken the overlay behind the drivers drawer for extra separation. */
+.admin-drawer-overlay:has(.drivers-detail-root) {
+  background: rgba(0, 0, 0, 0.72);
+}
+
+/* Keep the body vertically scrollable within the viewport (requirement 6);
+   the head stays pinned at the top. */
+.admin-drawer:has(.drivers-detail-root) {
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-drawer:has(.drivers-detail-root) .admin-drawer__head {
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.admin-drawer:has(.drivers-detail-root) .admin-drawer__body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Clearly visible Close (X) button (requirement 4). The shared Drawer already
+   renders a ✕ button in the head; make it prominent in the drivers drawer. */
+.admin-drawer:has(.drivers-detail-root) .admin-drawer__head .admin-lib-btn {
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 6px 12px;
+  border: 1px solid var(--admin-border);
+  background: var(--admin-accent-soft);
+  color: var(--admin-text);
+}
+
+.admin-drawer:has(.drivers-detail-root) .admin-drawer__head .admin-lib-btn:hover {
+  background: var(--admin-accent);
+  color: #fff;
+}
+
+.admin-drawer:has(.drivers-detail-root) .admin-drawer__head h3 {
+  font-size: 1.05rem;
+  margin: 0;
+}
+
+/* Details drawer. */
+.drivers-detail__section {
+  margin-bottom: 18px;
+}
+
+.drivers-detail__section h4 {
+  margin: 0 0 8px;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--admin-text-muted);
+}
+
+.drivers-detail__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 16px;
+}
+
+.drivers-detail__field dt {
+  font-size: 0.72rem;
+  color: var(--admin-text-muted);
+}
+
+.drivers-detail__field dd {
+  margin: 2px 0 0;
+  font-size: 0.9rem;
+  word-break: break-word;
+}
+
+.drivers-detail__photo {
+  width: 96px;
+  height: 96px;
+  border-radius: 12px;
+  object-fit: cover;
+}
+
+/* Agreement signature preview — white backing so the ink is visible on the
+   dark-green drawer, mirroring the legacy AdminDashboard rendering. */
+.drivers-detail__signature {
+  display: block;
+  max-height: 80px;
+  max-width: 100%;
+  margin-top: 8px;
+  background: #fff;
+  border-radius: 8px;
+  padding: 4px;
+}
+
+.drivers-detail__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.drivers-detail__empty {
+  margin: 0;
+  color: var(--admin-text-muted);
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+.drivers-detail__doc-link {
+  color: var(--admin-accent);
+}
+
+.drivers-detail__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Error marker (distinct from the italic empty state). */
+.drivers-detail__error {
+  margin: 0;
+  color: var(--admin-danger);
+  font-size: 0.85rem;
+}
+
+/* Responsive (requirement 8). */
+@media (max-width: 1024px) {
+  .drivers-management__summary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .drivers-management__summary {
+    grid-template-columns: 1fr;
+  }
+  .drivers-detail__grid {
+    grid-template-columns: 1fr;
+  }
+  /* On phones the table scrolls horizontally (min-width is preserved); keep the
+     action buttons compact so the row stays a single line. */
+  .drivers-management .admin-table th,
+  .drivers-management .admin-table td {
+    padding: 5px 8px;
+  }
+  .drivers-actions .admin-lib-btn {
+    padding: 4px 8px;
+    font-size: 0.78rem;
+  }
+}
+
+/* ─── Stage 2: earnings / ride-history / payout tables in the drawer ────────
+   Additive only. Tables scroll horizontally inside the drawer so long rows
+   never push the opaque panel wider than the viewport. */
+.drivers-detail__table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-top: 8px;
+}
+
+.drivers-detail__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.drivers-detail__table th,
+.drivers-detail__table td {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--admin-border);
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+.drivers-detail__table th {
+  color: var(--admin-text-muted);
+  font-weight: 600;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.drivers-detail__pager {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}

@@ -65,8 +65,16 @@ export default function PostRidePayRate({ ride, onDone }) {
     [ride?.vehicle_make, ride?.vehicle_model].filter(Boolean).join(" ") ||
     ride?.vehicle ||
     "Yala ride";
+  // `destination` may arrive as a display string or as a { label, position }
+  // location object. Rendering the object directly throws
+  // "Objects are not valid as a React child" and blanks the pay-and-rate screen.
+  const destinationLocation = ride?.destination;
   const destination =
-    ride?.destination || ride?.destination_address || "Your destination";
+    (typeof destinationLocation === "string"
+      ? destinationLocation
+      : destinationLocation?.label) ||
+    ride?.destination_address ||
+    "Your destination";
 
   useEffect(() => {
     const loadPayment = async () => {

@@ -14,6 +14,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { formatMoney } from "../../marketConfig";
 import authenticatedApi from "../../auth/authenticatedApi";
 import { API_URL } from "../../apiConfig";
+import { fetchOpsDashboard } from "./opsDashboardApi";
 import "./OpsCenterHome.css";
 
 // ─── Data fetching ───────────────────────────────────────────────────────────
@@ -23,12 +24,12 @@ async function fetchOpsCenterData() {
     const [health, analytics, finance] = await Promise.allSettled([
       authenticatedApi.get(`${API_URL}/health/`),
       authenticatedApi.get(`${API_URL}/rides/analytics/admin/`),
-      authenticatedApi.get(`${API_URL}/operations/admin/dashboard/`),
+      fetchOpsDashboard(),
     ]);
     return {
       health: health.status === "fulfilled" ? health.value.data : null,
       analytics: analytics.status === "fulfilled" ? analytics.value.data : null,
-      finance: finance.status === "fulfilled" ? finance.value.data : null,
+      finance: finance.status === "fulfilled" ? finance.value : null,
     };
   } catch {
     return { health: null, analytics: null, finance: null };
@@ -148,21 +149,30 @@ export default function OpsCenterHome() {
   const finance = data?.finance || {};
   const health = data?.health || {};
 
-  // Extract metrics (safe defaults)
-  const activeDrivers = analytics.active_drivers ?? finance.active_drivers ?? 0;
-  const activeCouriers = finance.active_couriers ?? 0;
-  const onlineRiders = analytics.active_riders ?? 0;
-  const activeTrips = analytics.active_rides ?? analytics.in_progress_rides ?? 0;
-  const activeDeliveries = finance.active_deliveries ?? 0;
-  const todayRevenue = finance.today_revenue ?? analytics.today_revenue ?? 0;
-  const weekRevenue = finance.week_revenue ?? 0;
-  const monthRevenue = finance.month_revenue ?? 0;
-  const pendingWithdrawals = finance.pending_withdrawals ?? 0;
-  const pendingDriverApprovals = finance.pending_driver_approvals ?? 0;
-  const pendingCourierApprovals = finance.pending_courier_approvals ?? 0;
-  const supportTickets = finance.open_support_tickets ?? 0;
-  const completedToday = analytics.completed_rides ?? 0;
-  const cancelledToday = analytics.cancelled_rides ?? 0;
+  // ── Data-accuracy contract ────────────────────────────────────────────────
+  //   0     -> the backend confirmed the value IS zero
+  //   —     -> the metric is unavailable / not provided by any endpoint
+  //   Error -> the request failed (the error state above renders instead)
+  // An absent field is therefore never coerced to 0, and no number is invented.
+  const show = (value) => (value === undefined || value === null ? "—" : value);
+  const showMoney = (value) =>
+    value === undefined || value === null ? "—" : formatMoney(value);
+
+  const activeDrivers = analytics.active_drivers ?? finance.active_drivers;
+  const activeCouriers = finance.active_couriers;
+  const onlineRiders = analytics.active_riders;
+  const activeTrips = analytics.active_rides ?? analytics.in_progress_rides;
+  const activeDeliveries = finance.active_deliveries;
+  const todayRevenue = finance.today_revenue ?? analytics.today_revenue;
+  // Not reported by any existing endpoint -> shown as "—", never as 0.
+  const weekRevenue = finance.week_revenue;
+  const monthRevenue = finance.month_revenue;
+  const pendingWithdrawals = finance.pending_withdrawals;
+  const pendingDriverApprovals = finance.pending_driver_approvals;
+  const pendingCourierApprovals = finance.pending_courier_approvals;
+  const supportTickets = finance.open_support_tickets;
+  const completedToday = analytics.completed_rides;
+  const cancelledToday = analytics.cancelled_rides;
 
   return (
     <div className="ops-center">
@@ -188,12 +198,12 @@ export default function OpsCenterHome() {
       <section className="ops-section" aria-label="Live metrics">
         <SectionHeader title="Live Operations" subtitle="Real-time platform activity" />
         <div className="ops-kpi-grid ops-kpi-grid--live">
-          <KpiCard icon="🚗" label="Active Drivers" value={activeDrivers} tone="green" />
-          <KpiCard icon="📦" label="Active Couriers" value={activeCouriers} tone="orange" />
-          <KpiCard icon="👤" label="Online Riders" value={onlineRiders} tone="blue" />
-          <KpiCard icon="🛣️" label="Active Trips" value={activeTrips} tone="green" />
-          <KpiCard icon="🚚" label="Active Deliveries" value={activeDeliveries} tone="orange" />
-          <KpiCard icon="✅" label="Completed Today" value={completedToday} tone="neutral" />
+          <KpiCard icon="🚗" label="Active Drivers" value={show(activeDrivers)} tone="green" />
+          <KpiCard icon="📦" label="Active Couriers" value={show(activeCouriers)} tone="orange" />
+          <KpiCard icon="👤" label="Online Riders" value={show(onlineRiders)} tone="blue" />
+          <KpiCard icon="🛣️" label="Active Trips" value={show(activeTrips)} tone="green" />
+          <KpiCard icon="🚚" label="Active Deliveries" value={show(activeDeliveries)} tone="orange" />
+          <KpiCard icon="✅" label="Completed Today" value={show(completedToday)} tone="neutral" />
         </div>
       </section>
 
@@ -201,10 +211,10 @@ export default function OpsCenterHome() {
       <section className="ops-section" aria-label="Revenue">
         <SectionHeader title="Revenue" subtitle="Platform earnings" />
         <div className="ops-kpi-grid ops-kpi-grid--revenue">
-          <KpiCard icon="💰" label="Today" value={formatMoney(todayRevenue)} tone="green" />
-          <KpiCard icon="📊" label="This Week" value={formatMoney(weekRevenue)} tone="neutral" />
-          <KpiCard icon="📈" label="This Month" value={formatMoney(monthRevenue)} tone="neutral" />
-          <KpiCard icon="⏳" label="Pending Withdrawals" value={pendingWithdrawals} tone={pendingWithdrawals > 0 ? "amber" : "neutral"} />
+          <KpiCard icon="💰" label="Today" value={showMoney(todayRevenue)} tone="green" />
+          <KpiCard icon="📊" label="This Week" value={showMoney(weekRevenue)} tone="neutral" />
+          <KpiCard icon="📈" label="This Month" value={showMoney(monthRevenue)} tone="neutral" />
+          <KpiCard icon="⏳" label="Pending Withdrawals" value={show(pendingWithdrawals)} tone={pendingWithdrawals > 0 ? "amber" : "neutral"} />
         </div>
       </section>
 
@@ -212,10 +222,10 @@ export default function OpsCenterHome() {
       <section className="ops-section" aria-label="Pending actions">
         <SectionHeader title="Action Required" subtitle="Items needing attention" />
         <div className="ops-kpi-grid ops-kpi-grid--actions">
-          <KpiCard icon="🪪" label="Driver Approvals" value={pendingDriverApprovals} tone={pendingDriverApprovals > 0 ? "amber" : "neutral"} />
-          <KpiCard icon="📋" label="Courier Approvals" value={pendingCourierApprovals} tone={pendingCourierApprovals > 0 ? "amber" : "neutral"} />
-          <KpiCard icon="🎫" label="Support Tickets" value={supportTickets} tone={supportTickets > 0 ? "amber" : "neutral"} />
-          <KpiCard icon="❌" label="Cancelled Today" value={cancelledToday} tone={cancelledToday > 5 ? "red" : "neutral"} />
+          <KpiCard icon="🪪" label="Driver Approvals" value={show(pendingDriverApprovals)} tone={pendingDriverApprovals > 0 ? "amber" : "neutral"} />
+          <KpiCard icon="📋" label="Courier Approvals" value={show(pendingCourierApprovals)} tone={pendingCourierApprovals > 0 ? "amber" : "neutral"} />
+          <KpiCard icon="🎫" label="Support Tickets" value={show(supportTickets)} tone={supportTickets > 0 ? "amber" : "neutral"} />
+          <KpiCard icon="❌" label="Cancelled Today" value={show(cancelledToday)} tone={cancelledToday > 5 ? "red" : "neutral"} />
         </div>
       </section>
 

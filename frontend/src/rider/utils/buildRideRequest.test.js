@@ -105,7 +105,10 @@ describe('buildRideRequest', () => {
   });
 
   it('falls back to coordinate distance when route distance is too large', () => {
-    const state = { ...validState, routeInfo: { distanceKm: 250, etaMinutes: 1 } };
+    // The transform accepts routed distances up to 500 km (see
+    // resolveBookingDistanceKm / Property 4, which exercises 0–500 km), so the
+    // out-of-range scenario must exceed that cap to be "too large".
+    const state = { ...validState, routeInfo: { distanceKm: 600, etaMinutes: 1 } };
     const payload = buildRideRequest(state);
     expect(payload.distance_km).toBeGreaterThanOrEqual(0.1);
     expect(payload.distance_km).toBeLessThanOrEqual(200);

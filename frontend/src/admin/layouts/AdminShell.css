@@ -1,15 +1,32 @@
 .admin-shell {
   --admin-bg: #0a1410;
   --admin-panel: rgba(15, 33, 25, 0.92);
+  /* Card/panel surfaces. These were referenced across the admin modules
+     (--admin-surface / --admin-surface-alt / --admin-surface-muted) but never
+     defined, so every `var(--admin-surface, #fff)` fell back to white and produced
+     white cards with near-invisible light text on the dark theme. */
+  --admin-surface: rgba(15, 33, 25, 0.72);
+  --admin-surface-alt: rgba(148, 163, 184, 0.1);
+  --admin-surface-muted: rgba(148, 163, 184, 0.08);
   --admin-border: rgba(110, 231, 183, 0.22);
   --admin-text: #f8fafc;
   --admin-text-muted: #cbd5e1;
   --admin-accent: #00a651;
   --admin-accent-soft: rgba(110, 231, 183, 0.14);
   --admin-danger: #fecaca;
+  --admin-success: #34d399;
+  --admin-warning: #fbbf24;
+  --admin-info: #93c5fd;
   --admin-header-h: 64px;
-  --admin-sidebar-w: 240px;
+  --admin-sidebar-w: 260px;
   --admin-sidebar-collapsed-w: 72px;
+
+  /* YALA enterprise sidebar palette — dark green */
+  --admin-sidebar-bg: #071b14;
+  --admin-sidebar-hover: #123b2b;
+  --admin-sidebar-active: #00a651;
+  --admin-sidebar-text: #ffffff;
+  --admin-sidebar-text-muted: #b8d0c4;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -21,10 +38,17 @@
 [data-admin-theme="light"] .admin-shell {
   --admin-bg: #f4f7f5;
   --admin-panel: #ffffff;
+  --admin-surface: #ffffff;
+  --admin-surface-alt: #f1f5f9;
+  --admin-surface-muted: #f8fafc;
   --admin-border: rgba(0, 166, 81, 0.2);
   --admin-text: #0f172a;
   --admin-text-muted: #475569;
   --admin-accent-soft: rgba(0, 166, 81, 0.08);
+  --admin-danger: #b91c1c;
+  --admin-success: #047857;
+  --admin-warning: #b45309;
+  --admin-info: #1d4ed8;
 }
 
 .admin-shell__header {
@@ -90,15 +114,27 @@
 
 .admin-shell__sidebar {
   width: var(--admin-sidebar-w);
-  background: var(--admin-panel);
+  flex: 0 0 var(--admin-sidebar-w);
+  background: var(--admin-sidebar-bg);
+  color: var(--admin-sidebar-text);
   border-right: 1px solid var(--admin-border);
   display: flex;
   flex-direction: column;
-  transition: width 0.2s ease;
+  min-height: 0;
+  /* Keep the rail on screen and let its own <nav> scroll: the shell uses
+     `min-height: 100vh`, so without a cap the sidebar stretched to its full
+     content height (measured 1565px in a 900px viewport) and never scrolled
+     independently. */
+  position: sticky;
+  top: var(--admin-header-h);
+  align-self: flex-start;
+  max-height: calc(100vh - var(--admin-header-h));
+  transition: width 0.22s ease, flex-basis 0.22s ease;
 }
 
 .admin-shell__sidebar--collapsed {
   width: var(--admin-sidebar-collapsed-w);
+  flex-basis: var(--admin-sidebar-collapsed-w);
 }
 
 .admin-shell__sidebar-head {
@@ -113,15 +149,19 @@
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--admin-text-muted);
+  color: var(--admin-sidebar-text-muted);
 }
 
 .admin-shell__nav {
-  padding: 8px;
+  padding: 8px 8px 20px;
   display: flex;
   flex-direction: column;
   gap: 4px;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
 }
 
 .admin-shell__nav-item {
@@ -133,22 +173,32 @@
   border: none;
   border-radius: 10px;
   background: transparent;
-  color: var(--admin-text);
+  color: var(--admin-sidebar-text);
   cursor: pointer;
   text-align: left;
   width: 100%;
+  font: inherit;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
-.admin-shell__nav-item:hover,
+.admin-shell__nav-item:hover {
+  background: var(--admin-sidebar-hover);
+  color: var(--admin-sidebar-text);
+}
+
 .admin-shell__nav-item:focus-visible {
-  background: var(--admin-accent-soft);
+  background: var(--admin-sidebar-hover);
   outline: 2px solid var(--admin-accent);
-  outline-offset: 1px;
+  outline-offset: -2px;
 }
 
-.admin-shell__nav-item--active {
-  background: var(--admin-accent-soft);
-  border: 1px solid var(--admin-border);
+/* Active page: YALA green fill with dark text keeps contrast ≈7:1 (WCAG AA). */
+.admin-shell__nav-item--active,
+.admin-shell__nav-item--active:hover {
+  background: var(--admin-sidebar-active);
+  color: #06231a;
+  font-weight: 600;
+  box-shadow: inset 3px 0 0 0 #ffffff;
 }
 
 .admin-shell__nav-icon {
@@ -157,9 +207,63 @@
   flex-shrink: 0;
 }
 
+.admin-shell__nav-section {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.admin-shell__nav-section + .admin-shell__nav-section {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--admin-border);
+}
+
+.admin-shell__nav-section-title {
+  margin: 0 0 4px;
+  padding: 0 10px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--admin-text-muted);
+  opacity: 0.85;
+}
+
 .admin-shell__sidebar--collapsed .admin-shell__nav-label,
-.admin-shell__sidebar--collapsed .admin-shell__sidebar-title {
+.admin-shell__sidebar--collapsed .admin-shell__sidebar-title,
+.admin-shell__sidebar--collapsed .admin-shell__nav-caret {
   display: none;
+}
+
+/* Collapsed rail: tooltips so every icon stays identifiable. */
+.admin-shell__sidebar--collapsed [data-tooltip] {
+  position: relative;
+}
+
+.admin-shell__sidebar--collapsed [data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: #06231a;
+  color: var(--admin-sidebar-text);
+  border: 1px solid var(--admin-accent);
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  z-index: 60;
+}
+
+.admin-shell__sidebar--collapsed [data-tooltip]:hover::after,
+.admin-shell__sidebar--collapsed [data-tooltip]:focus-visible::after {
+  opacity: 1;
 }
 
 .admin-shell__main {
@@ -248,6 +352,26 @@
   margin-left: auto;
   font-size: 0.7rem;
   opacity: 0.7;
+}
+
+/* Honest global-search affordance: visible, but clearly not yet available. */
+.admin-shell__search--pending {
+  cursor: default;
+}
+
+.admin-shell__search-label {
+  white-space: nowrap;
+}
+
+.admin-shell__search-soon {
+  margin-left: 4px;
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--admin-border);
+  color: var(--admin-sidebar-text-muted);
 }
 
 .admin-shell__role-badge {
@@ -596,6 +720,109 @@
   color: var(--admin-text);
 }
 
+
+/* ── Module hub (Phase 1 section landing pages) ───────────────────────────── */
+.admin-hub {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.admin-hub__head {
+  border-bottom: 1px solid var(--admin-border, #e5e7eb);
+  padding-bottom: 12px;
+}
+
+.admin-hub__title {
+  margin: 0 0 4px;
+  font-size: 1.35rem;
+  font-weight: 600;
+}
+
+.admin-hub__subtitle {
+  margin: 0;
+  color: var(--admin-text-muted, #6b7280);
+  font-size: 0.95rem;
+}
+
+.admin-hub__section-title {
+  margin: 0 0 12px;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.admin-hub__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.admin-hub__card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  border: 1px solid var(--admin-border, #e5e7eb);
+  border-radius: 10px;
+  background: var(--admin-surface, #ffffff);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.admin-hub__card:hover,
+.admin-hub__card:focus-visible {
+  border-color: var(--admin-accent, #2563eb);
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.08);
+  outline: none;
+}
+
+.admin-hub__card-label {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.admin-hub__card-description {
+  font-size: 0.85rem;
+  color: var(--admin-text-muted, #6b7280);
+}
+
+.admin-hub__endpoints {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin-hub__endpoint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--admin-border, #e5e7eb);
+  border-radius: 8px;
+  background: var(--admin-surface-muted, #f9fafb);
+}
+
+.admin-hub__endpoint-path {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.82rem;
+}
+
+.admin-hub__endpoint-note {
+  font-size: 0.82rem;
+  color: var(--admin-text-muted, #6b7280);
+}
+
+@media (max-width: 640px) {
+  .admin-hub__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .admin-shell__search-hint {
   font-size: 0.85rem;
   color: var(--admin-text-muted);
@@ -689,3 +916,112 @@
   margin-top: 16px;
   flex-wrap: wrap;
 }
+
+/* ── Finance pages (unified) ────────────────────────────────────────────────────
+ * Shared container + note styling for the finance surfaces (/admin/payments,
+ * /admin/withdrawals, /admin/finance-ops, /admin/business-accounts) so they sit on the
+ * same dark-theme shell as the rest of Yala Admin instead of the legacy white layout.
+ */
+
+.admin-finance-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  color: var(--admin-text);
+}
+
+.admin-finance-page__note {
+  margin: 0;
+  padding: 10px 14px;
+  border: 1px solid var(--admin-border);
+  border-left: 3px solid var(--admin-accent);
+  border-radius: 8px;
+  background: var(--admin-surface-alt);
+  color: var(--admin-text-muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.admin-finance-page .admin-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+/* ── Payment Management Center ──────────────────────────────────────────────── */
+
+.admin-finance-page__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-finance-page__period {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: var(--admin-text-muted);
+}
+
+.admin-finance-page__period select {
+  padding: 6px 10px;
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  background: var(--admin-surface);
+  color: var(--admin-text);
+  font-size: 0.82rem;
+}
+
+.admin-finance-page__section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--admin-border);
+  border-radius: 10px;
+  background: var(--admin-surface);
+}
+
+.admin-finance-page__heading {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--admin-text);
+}
+
+.admin-finance-page__actions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.admin-finance-page__actions li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-finance-page__actions a.admin-lib-btn {
+  text-decoration: none;
+}
+
+.admin-finance-page__actions button.admin-lib-btn[disabled] {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.admin-finance-page__action-note {
+  flex: 1 1 320px;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--admin-text-muted);
+}
+
+

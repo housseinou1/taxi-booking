@@ -54,11 +54,15 @@ export default function DeliveryAdminPanel({ embedded = false }) {
 
       const [analyticsRes, deliveriesRes, disputesRes] = await Promise.all([
         apiRequest(`${API_URL}/deliveries/admin/analytics/${query}`),
-        apiRequest(`${API_URL}/deliveries/mine/`),
+        // Administrative orders must come from the admin directory, not the shared
+        // `/deliveries/mine/` view (which is the customer/courier endpoint and returns the
+        // whole table unpaginated). page_size=100 is the endpoint's documented maximum, so the
+        // existing client-side status filter still sees a full working set.
+        apiRequest(`${API_URL}/deliveries/admin/deliveries/?page_size=100`),
         apiRequest(`${API_URL}/deliveries/admin/disputes/`).catch(() => []),
       ]);
       setAnalytics(analyticsRes);
-      setDeliveries(deliveriesRes);
+      setDeliveries(deliveriesRes?.results || []);
       setDisputes(disputesRes);
     } catch (err) {
       setError(err.message);
@@ -258,14 +262,21 @@ export default function DeliveryAdminPanel({ embedded = false }) {
               )}
             </div>
 
-            {analytics?.avg_delivery_minutes ? (
+            {analytics?.avg_delivery_minutes != null || analytics?.dispute_count != null ? (
               <div className="delivery-admin-uber__panel">
                 <h3>Performance</h3>
                 <p>
-                  Average delivery time: <strong>{analytics.avg_delivery_minutes} min</strong>
+                  Average delivery time:{" "}
+                  <strong>
+                    {analytics.avg_delivery_minutes != null
+                      ? `${analytics.avg_delivery_minutes} min`
+                      : "—"}
+                  </strong>
                 </p>
                 <p>
-                  Open disputes: <strong>{analytics.dispute_count || 0}</strong>
+                  {/* A missing API value must never render as a zero; a real 0 still shows. */}
+                  Open disputes:{" "}
+                  <strong>{analytics.dispute_count != null ? analytics.dispute_count : "—"}</strong>
                 </p>
               </div>
             ) : null}

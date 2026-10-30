@@ -1,6 +1,6 @@
 import axios from "axios";
+import { getToken } from "../../native/storage";
 import {
-  getToken,
   requestRide,
   cancelRide,
   getRideHistory,
@@ -41,15 +41,17 @@ describe("apiService", () => {
   });
 
   // ─── getToken ───────────────────────────────────────────────────────────
+  // `getToken` is no longer exported by apiService: it lives in `native/storage`
+  // and is async + keyed, so these tests now exercise the real current contract.
 
   describe("getToken", () => {
-    it("returns the token from localStorage", () => {
-      expect(getToken()).toBe("test-jwt-token");
+    it("returns the token from localStorage", async () => {
+      await expect(getToken("access")).resolves.toBe("test-jwt-token");
     });
 
-    it("returns null when no token exists", () => {
+    it("returns null when no token exists", async () => {
       localStorage.removeItem("access");
-      expect(getToken()).toBeNull();
+      await expect(getToken("access")).resolves.toBeNull();
     });
   });
 
@@ -84,11 +86,16 @@ describe("apiService", () => {
           destination_lng: -15.96,
           ride_type: "regular",
           distance_km: 3.5,
-          fare: 250,
           stops: [],
         }),
         expect.objectContaining({ headers: { Authorization: "Bearer test-jwt-token" } })
       );
+
+      // The backend prices the ride itself (resolve_ride_fare(city, ride_type,
+      // distance_km)); the client must not send a fare it could tamper with.
+      const sentPayload = axios.post.mock.calls[0][1];
+      expect(sentPayload).not.toHaveProperty("fare");
+      expect(sentPayload).not.toHaveProperty("estimated_fare");
       expect(result).toEqual(rideData);
     });
 
@@ -232,13 +239,30 @@ describe("apiService", () => {
   // ─── getActiveRide ──────────────────────────────────────────────────────
 
   describe("getActiveRide", () => {
-    it("returns the first active ride from history", async () => {
+    it("returns the active ride from the dedicated /rides/active/ endpoint", async () => {
+      axios.get.mockResolvedValueOnce({
+        data: { ride: { id: 2, status: "in_progress" } },
+      });
+
+      const result = await getActiveRide();
+
+      expect(axios.get).toHaveBeenCalledWith(
+        "http://localhost:8000/rides/active/",
+        expect.objectContaining({ headers: { Authorization: "Bearer test-jwt-token" } })
+      );
+      expect(result).toEqual({ id: 2, status: "in_progress" });
+    });
+
+    it("falls back to a history scan when /rides/active/ errors (non-404)", async () => {
       const rides = [
         { id: 1, status: "completed" },
         { id: 2, status: "in_progress" },
         { id: 3, status: "accepted" },
       ];
-      axios.get.mockResolvedValueOnce({ data: rides });
+      axios.get
+        .mockRejectedValueOnce({ response: { status: 500 } }) // /rides/active/
+        .mockResolvedValueOnce({ data: rides }) // /rides/history/
+        .mockResolvedValueOnce({ data: { id: 2, status: "in_progress" } }); // /rides/2/
 
       const result = await getActiveRide();
       expect(result).toEqual({ id: 2, status: "in_progress" });

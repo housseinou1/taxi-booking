@@ -318,7 +318,7 @@ export default function MarketingCenter() {
             Create draft
           </ProtectedActionButton>
         </div>
-        <p className="fin-dash__hint">SMS channel is not offered unless backend SMS delivery exists. Delivery is never marked successful without API confirmation.</p>
+        <p className="fin-dash__hint">SMS delivery is not enabled.</p>
       </section>
 
       <section className="fin-dash__panel">
@@ -363,7 +363,6 @@ export default function MarketingCenter() {
             Create promo
           </ProtectedActionButton>
         </div>
-        <p className="fin-dash__hint">Eligibility and discount amounts remain backend-authoritative. Driver incentives require separate authorization surfaces.</p>
       </section>
 
       <section className="fin-dash__panel">

@@ -94,6 +94,7 @@ function RideHistory() {
 
   return (
     <div className="ride-history ride-history--lyft">
+      <h1 className="ride-history__title">Ride history</h1>
       <div className="ride-history__list" role="list">
         {trips.map((trip) => (
           <div key={trip.id} role="listitem">

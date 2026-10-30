@@ -4,7 +4,8 @@ import { API_URL } from "../apiConfig";
 
 const METHOD_OPTIONS = [
   { id: "card", label: "Card" },
-  { id: "cash", label: "Cash" },
+  // Phase 11 — Yala is 100% cashless: the cash option was removed here.
+  // Cash is rejected server-side too (payments/cashless.py).
   { id: "bankily", label: "Bankily" },
   { id: "masrvi", label: "Masravi" },
   { id: "seddad", label: "Seddad" },

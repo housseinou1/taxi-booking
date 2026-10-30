@@ -9,6 +9,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { formatMoney } from "../../marketConfig";
 import authenticatedApi from "../../auth/authenticatedApi";
 import { API_URL } from "../../apiConfig";
+import { fetchOpsDashboard } from "./opsDashboardApi";
 import "./FinanceAnalyticsCenter.css";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -33,11 +34,11 @@ const EXPORT_FORMATS = [
 async function fetchFinanceData(period) {
   try {
     const [finance, analytics] = await Promise.allSettled([
-      authenticatedApi.get(`${API_URL}/operations/admin/dashboard/`, { params: { period } }),
+      fetchOpsDashboard({ period }),
       authenticatedApi.get(`${API_URL}/rides/analytics/admin/`, { params: { period } }),
     ]);
     return {
-      finance: finance.status === "fulfilled" ? finance.value.data : {},
+      finance: finance.status === "fulfilled" ? finance.value : {},
       analytics: analytics.status === "fulfilled" ? analytics.value.data : {},
     };
   } catch {
@@ -227,12 +228,14 @@ export default function FinanceAnalyticsCenter() {
     <div className="fin-center">
       {/* Header */}
       <header className="fin-center__header">
-        <div>
-          <h1 className="fin-center__title">Finance & Analytics</h1>
-          <p className="fin-center__subtitle">Platform financial intelligence</p>
+        <div className="fin-center__heading">
+          {/* The shell owns the single page title ("Financial Overview"). */}
+          <p className="fin-center__subtitle">
+            Monitor platform revenue, financial activity, settlements, and payment performance.
+          </p>
         </div>
         <div className="fin-center__actions">
-          <nav className="fin-center__periods" aria-label="Time period">
+          <nav className="fin-center__periods" aria-label="Date range">
             {PERIODS.map((p) => (
               <button
                 key={p.id}
@@ -244,6 +247,15 @@ export default function FinanceAnalyticsCenter() {
               </button>
             ))}
           </nav>
+          <button
+            type="button"
+            className="fin-refresh-btn"
+            onClick={load}
+            disabled={loading}
+            aria-label="Refresh financial overview"
+          >
+            {loading ? "Refreshing…" : "Refresh"}
+          </button>
           <div className="fin-center__exports">
             {EXPORT_FORMATS.map((fmt) => (
               <button
@@ -260,21 +272,70 @@ export default function FinanceAnalyticsCenter() {
         </div>
       </header>
 
-      {/* Revenue KPIs */}
-      <section className="fin-section" aria-label="Revenue metrics">
-        <h2 className="fin-section__title">Revenue</h2>
+      {/* FINANCIAL SUMMARY — grouped so distinct concepts are never conflated. */}
+      <section className="fin-section" aria-label="Revenue">
+        <h2 className="fin-section__title">A. Revenue</h2>
         <div className="fin-kpi-grid">
-          <KpiCard icon="💰" label="Today" value={formatMoney(revenueToday)} tone="green" />
-          <KpiCard icon="📊" label="This Week" value={formatMoney(revenueWeek)} tone="green" />
-          <KpiCard icon="📈" label="This Month" value={formatMoney(revenueMonth)} tone="green" />
-          <KpiCard icon="🏦" label="Platform Commission" value={formatMoney(platformCommission)} tone="blue" />
-          <KpiCard icon="🚗" label="Driver Earnings" value={formatMoney(driverEarnings)} tone="neutral" />
-          <KpiCard icon="📦" label="Courier Earnings" value={formatMoney(courierEarnings)} tone="orange" />
-          <KpiCard icon="⏳" label="Pending Withdrawals" value={pendingWithdrawals} tone="amber" />
-          <KpiCard icon="✅" label="Completed Withdrawals" value={completedWithdrawals} tone="neutral" />
-          <KpiCard icon="↩️" label="Refunds" value={formatMoney(refunds)} tone="red" />
-          <KpiCard icon="💳" label="Wallet Balances" value={formatMoney(walletBalances)} tone="blue" />
+          <KpiCard icon="💰" label="Revenue (today)" value={formatMoney(revenueToday)} tone="green" />
+          <KpiCard icon="📊" label="Revenue (this week)" value={formatMoney(revenueWeek)} tone="green" />
+          <KpiCard icon="📈" label="Revenue (this month)" value={formatMoney(revenueMonth)} tone="green" />
+          <KpiCard
+            icon="🏦"
+            label="Platform commission"
+            value={formatMoney(platformCommission)}
+            tone="blue"
+            subtitle="Retained by Yala — not driver or courier earnings"
+          />
         </div>
+        <p className="fin-unavailable">
+          Gross transaction value, ride revenue and delivery revenue are not reported by this
+          endpoint — see <strong>Payment Management</strong> and <strong>Finance Operations</strong>.
+        </p>
+      </section>
+
+      <section className="fin-section" aria-label="Driver and courier finances">
+        <h2 className="fin-section__title">B. Driver &amp; Courier Finances</h2>
+        <div className="fin-kpi-grid">
+          <KpiCard
+            icon="🚗"
+            label="Driver earnings"
+            value={formatMoney(driverEarnings)}
+            tone="green"
+            subtitle="Payable to drivers — distinct from platform commission"
+          />
+          <KpiCard
+            icon="📦"
+            label="Courier earnings"
+            value={formatMoney(courierEarnings)}
+            tone="green"
+            subtitle="Payable to couriers — distinct from platform commission"
+          />
+          <KpiCard icon="⏳" label="Pending payouts" value={pendingWithdrawals} tone="amber" />
+          <KpiCard icon="✅" label="Completed payouts" value={completedWithdrawals} tone="neutral" />
+        </div>
+      </section>
+
+      <section className="fin-section" aria-label="Payments">
+        <h2 className="fin-section__title">C. Payments</h2>
+        <div className="fin-kpi-grid">
+          <KpiCard icon="↩️" label="Refunds" value={formatMoney(refunds)} tone="red" />
+        </div>
+        <p className="fin-unavailable">
+          Successful and failed transaction counts and pending refunds are not reported by this
+          endpoint — see <strong>Payment Management</strong> (Transactions) and{" "}
+          <strong>Finance Operations</strong> (Failed Transactions).
+        </p>
+      </section>
+
+      <section className="fin-section" aria-label="Wallets">
+        <h2 className="fin-section__title">D. Wallets</h2>
+        <div className="fin-kpi-grid">
+          <KpiCard icon="💳" label="Wallet balances" value={formatMoney(walletBalances)} tone="blue" />
+        </div>
+        <p className="fin-unavailable">
+          Wallet deposits and wallet withdrawals are not reported by this endpoint — see{" "}
+          <strong>Finance Operations</strong> (Daily Reconciliation → Wallets).
+        </p>
       </section>
 
       {/* Charts */}
@@ -350,17 +411,17 @@ export default function FinanceAnalyticsCenter() {
           <InsightCard
             label="Revenue vs last week"
             current={revenueWeek}
-            previous={fin.last_week_revenue || revenueWeek * 0.9}
+            previous={fin.last_week_revenue}
           />
           <InsightCard
             label="Revenue vs last month"
             current={revenueMonth}
-            previous={fin.last_month_revenue || revenueMonth * 0.85}
+            previous={fin.last_month_revenue}
           />
           <InsightCard
             label="Ride growth"
             current={analytics.total_rides || analytics.completed_rides || 0}
-            previous={analytics.prev_total_rides || (analytics.total_rides || 0) * 0.9}
+            previous={analytics.prev_total_rides}
             unit="trips"
           />
           <InsightCard

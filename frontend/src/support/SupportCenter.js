@@ -802,6 +802,40 @@ function SupportStyles() {
         color: #991b1b;
         font-size: 1.4rem;
       }
+
+      /* Light-mode fix: the "Report a problem" tiles use dark-theme defaults
+         (translucent white fill + border) from support-mobile.css, which are
+         invisible on the white rider page. Repaint them to match the rider
+         quick-action tiles so cards, borders, labels and the emergency tile
+         are clearly legible in light mode. */
+      .sx-support-page--rider .support-hub-section-title {
+        color: #111827;
+      }
+
+      .sx-support-page--rider .support-hub-tile {
+        border: 1px solid #e5e7eb;
+        background: #f9fafb;
+        color: #111827;
+      }
+
+      .sx-support-page--rider .support-hub-tile strong {
+        color: #111827;
+      }
+
+      .sx-support-page--rider .support-hub-tile span {
+        color: #111827;
+      }
+
+      .sx-support-page--rider .support-hub-tile--emergency {
+        border-color: #fecaca;
+        background: #fef2f2;
+        color: #991b1b;
+      }
+
+      .sx-support-page--rider .support-hub-tile--emergency strong,
+      .sx-support-page--rider .support-hub-tile--emergency span {
+        color: #991b1b;
+      }
     `}</style>
   );
 }

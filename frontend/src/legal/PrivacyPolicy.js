@@ -26,8 +26,8 @@ function PrivacyPolicy() {
         <h1 style={titleStyle}>Privacy Policy</h1>
         <p style={subtitleStyle}>
           This privacy policy explains how Yala collects, uses, shares, and
-          protects your personal information when you use our ride-hailing
-          platform in {MARKET.country}.
+          protects your personal information when you use the Yala Rider, Yala
+          Driver, or Yala Delivery app in {MARKET.country}.
         </p>
 
         <div style={sectionGridStyle}>
@@ -94,6 +94,29 @@ function PrivacyPolicy() {
           </article>
 
           <article style={sectionStyle}>
+            <h2 style={sectionTitleStyle}>
+              Location and Background Location
+            </h2>
+            <p style={textStyle}>
+              Yala Rider uses your location only while the app is open, to show
+              nearby drivers, set your pickup point, and follow your trip. Yala
+              Rider does not request background location.
+            </p>
+            <p style={textStyle}>
+              Yala Driver and Yala Delivery use location while a trip or delivery
+              is active, including when the app is minimised or the screen is
+              locked, so riders and delivery customers can follow the trip or
+              delivery in real time. On Android this runs as a location
+              foreground service and shows a permanent notification ("Yala Driver
+              is tracking your location" or "Yala Delivery is tracking your
+              location"). Tracking stops as soon as the trip or delivery is
+              completed or cancelled, or when the user signs out. Background
+              location is never used for advertising or for any purpose unrelated
+              to an active trip or delivery.
+            </p>
+          </article>
+
+          <article style={sectionStyle}>
             <h2 style={sectionTitleStyle}>Data Sharing</h2>
             <ul style={listStyle}>
               <li>
@@ -157,10 +180,10 @@ function PrivacyPolicy() {
           <article style={sectionStyle}>
             <h2 style={sectionTitleStyle}>Security</h2>
             <p style={textStyle}>
-              We use HTTPS encryption, secure token storage (Keychain on iOS,
-              Keystore on Android), and access controls to protect your data.
-              Payment credentials are never stored in frontend code. Admin
-              access is limited to authorized staff.
+              We use HTTPS encryption, secure token storage (Android Keystore),
+              and access controls to protect your data. Payment credentials are
+              never stored in frontend code. Admin access is limited to
+              authorized staff.
             </p>
           </article>
 
@@ -180,8 +203,8 @@ function PrivacyPolicy() {
         </div>
 
         <p style={footerStyle}>
-          Last updated: June 2026. This policy applies to Yala Rider and
-          Yala Driver apps available on iOS and Android.
+          Last updated: October 2026. This policy applies to the Yala Rider,
+          Yala Driver, and Yala Delivery apps available on Android.
         </p>
       </section>
     </main>

@@ -185,37 +185,44 @@ export async function watchForegroundLocation({
 }
 
 /**
- * Starts background location tracking. Sends location updates via the provided
- * WebSocket connection. Designed for driver apps.
+ * Starts BACKGROUND location tracking for the duration of an active trip or delivery.
  *
- * @param {WebSocket} wsConnection - Active WebSocket connection to send location updates
+ * Runs the native foreground service (@capacitor-community/background-geolocation), so
+ * position fixes continue while the app is minimised or the screen is locked. The caller owns
+ * the lifecycle — start when a trip/delivery becomes active, stop as soon as it ends — and
+ * receives every fix through `onLocation`, exactly like `watchForegroundLocation`. That reuses
+ * the app's existing backend reporting path (the driver posts to
+ * `/drivers/location/update/`, the courier to `/deliveries/courier/location/`) instead of
+ * introducing a second transport.
+ *
+ * No-ops on web, where no background service exists.
  */
-export async function startBackgroundLocationTracking(wsConnection) {
+export async function startBackgroundLocationTracking({ onLocation } = {}) {
   if (!isNative() || !BackgroundGeolocation) return;
+
+  // Never stack watchers if this is called again for the same trip.
+  if (watcherId) return;
 
   try {
     const isDeliveryApp = isDeliveryCourierApp();
     watcherId = await BackgroundGeolocation.addWatcher(
       {
         backgroundMessage: isDeliveryApp
-          ? 'Yala Delivery is tracking your location'
-          : 'Yala Driver is tracking your location',
-        backgroundTitle: isDeliveryApp ? 'Yala Delivery' : 'Location Active',
+          ? "Yala Delivery is tracking your location"
+          : "Yala Driver is tracking your location",
+        backgroundTitle: isDeliveryApp ? "Yala Delivery" : "Yala Driver",
         requestPermissions: true,
         stale: false,
         distanceFilter: 10, // meters
       },
       (location, error) => {
         if (error) return;
-        if (wsConnection && wsConnection.readyState === WebSocket.OPEN) {
-          wsConnection.send(
-            JSON.stringify({
-              type: 'location_update',
-              latitude: location.latitude,
-              longitude: location.longitude,
-              timestamp: new Date().toISOString(),
-            })
-          );
+        if (location && onLocation) {
+          onLocation({
+            lat: location.latitude,
+            lng: location.longitude,
+            accuracy: location.accuracy,
+          });
         }
       }
     );

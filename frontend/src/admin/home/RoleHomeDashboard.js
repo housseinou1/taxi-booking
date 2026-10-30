@@ -8,8 +8,8 @@ const ROLE_COPY = {
     title: "CEO Command Home",
     blurb: "Executive command center with live KPIs, map, alerts, and approvals.",
     links: [
-      { href: "/admin/ceo-master", label: "CEO Master (legacy)" },
-      { href: "/admin/ops-control", label: "Operations Center" },
+      { href: "/admin/ceo-master", label: "CEO Master Command Center" },
+      { href: "/admin/operations", label: "Operations Center" },
       { href: "/admin/finance-ops", label: "Finance Ops" },
     ],
   },
@@ -17,7 +17,7 @@ const ROLE_COPY = {
     title: "Operations Home",
     blurb: "Live Operations Control Center with dispatch, map, incidents, and shift handover.",
     links: [
-      { href: "/admin/ops-control", label: "Operations Control Center (legacy modules)" },
+      { href: "/admin/operations", label: "Operations Center" },
       { href: "/admin/fleet", label: "Fleet Performance" },
       { href: "/admin/launch", label: "Launch Hub" },
     ],
@@ -34,7 +34,7 @@ const ROLE_COPY = {
     title: "Finance Home",
     blurb: "Finance dashboard with KPIs, refunds, payouts, and reports.",
     links: [
-      { href: "/admin/finance-ops", label: "Finance Operations (legacy)" },
+      { href: "/admin/finance-ops", label: "Finance Operations" },
       { href: "/admin/payments", label: "Payments Admin" },
     ],
   },
@@ -43,14 +43,17 @@ const ROLE_COPY = {
     blurb: "Approvals, documents, performance, and compliance.",
     links: [
       { href: "/admin/fleet", label: "Fleet Center" },
-      { href: "/admin/legacy", label: "Driver Verification (legacy hub)" },
+      // Was "/admin/legacy", which is not a registered route (it rendered the
+      // public landing page). Driver verification is performed in Approvals.
+      { href: "/admin/approvals", label: "Driver Approvals & Verification" },
     ],
   },
   marketing: {
     title: "Marketing Home",
     blurb: "Campaigns, promos, and growth.",
     links: [
-      { href: "/admin/launch-growth", label: "Launch Growth Center" },
+      // Was "/admin/launch-growth", which is not a registered route.
+      { href: "/admin/growth", label: "Growth Expansion" },
       { href: "/admin/customer-growth", label: "Customer Growth" },
     ],
   },
@@ -59,22 +62,24 @@ const ROLE_COPY = {
     blurb: "BI warehouse and growth intelligence.",
     links: [
       { href: "/admin/bi", label: "BI Analytics" },
-      { href: "/admin/bi-growth", label: "BI Growth Center" },
+      // Was "/admin/bi-growth", which is not a registered route.
+      { href: "/admin/business-intelligence", label: "BI Growth Center" },
     ],
   },
   system_admin: {
     title: "System Admin Home",
     blurb: "Platform health, security, audit, settings, backups, and disaster recovery.",
     links: [
-      { href: "/admin/home/system", label: "System Administration Console" },
-      { href: "/admin/status", label: "Production Status (legacy)" },
+      // Was "/admin/home/system", which is not a registered route.
+      { href: "/admin/security", label: "Security Operations" },
+      { href: "/admin/status", label: "Production Status" },
       { href: "/admin/api-gateway", label: "API Gateway" },
     ],
   },
   staff: {
     title: "Staff Home",
     blurb: "Default workspace for staff without a mapped role group.",
-    links: [{ href: "/admin/ops-control", label: "Operations Center" }],
+    links: [{ href: "/admin/operations", label: "Operations Center" }],
   },
 };
 

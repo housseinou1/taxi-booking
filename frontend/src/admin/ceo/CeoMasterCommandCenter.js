@@ -1,14 +1,15 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 import { formatMoney } from "../../marketConfig";
+import { fetchExecutiveMetrics } from "./executiveMetricsApi";
 import {
   ceoMasterReportUrl,
   fetchCeoMasterAiInsights,
-  fetchCeoMasterDashboard,
   fetchCeoMasterFinance,
   fetchCeoMasterFleet,
   fetchCeoMasterGrowth,
   fetchCeoMasterOperations,
+  fetchCeoMasterOverview,
   fetchCeoMasterReadiness,
   postCeoApproveIncentive,
   postCeoApproveOnboarding,
@@ -16,48 +17,59 @@ import {
   postCeoBroadcast,
   postCeoFreeze,
 } from "./ceoMasterApi";
-import "../beta/BetaDashboard.css";
+import { EmptyState, Section } from "../../design-system/components";
 import "./CeoMasterCommandCenter.css";
 
 const TABS = [
-  { id: "overview", label: "Executive Overview" },
-  { id: "finance", label: "Financial Overview" },
-  { id: "operations", label: "Operations" },
-  { id: "growth", label: "Growth" },
-  { id: "fleet", label: "Fleet" },
-  { id: "ai", label: "AI Insights" },
-  { id: "readiness", label: "Launch Readiness" },
-  { id: "reports", label: "Executive Reports" },
-  { id: "actions", label: "Executive Actions" },
+  { id: "overview", label: "Executive Overview", icon: "📊" },
+  { id: "finance", label: "Financial Overview", icon: "💰" },
+  { id: "operations", label: "Operations", icon: "⚙️" },
+  { id: "growth", label: "Growth", icon: "📈" },
+  { id: "fleet", label: "Fleet", icon: "🚗" },
+  { id: "ai", label: "AI Insights", icon: "🤖" },
+  { id: "readiness", label: "Launch Readiness", icon: "✅" },
+  { id: "reports", label: "Executive Reports", icon: "📋" },
+  { id: "actions", label: "Executive Actions", icon: "⚡" },
 ];
 
 const REPORT_TYPES = ["daily", "weekly", "monthly", "quarterly", "annual"];
 
-function MetricCard({ label, value, sub, critical = false }) {
-  return (
-    <div className={`beta__card ${critical ? "ceo-master-critical" : ""}`}>
-      <div className="beta__card-label">{label}</div>
-      <div className="beta__card-value">{value ?? "—"}</div>
-      {sub ? <div className="beta__card-sub">{sub}</div> : null}
-    </div>
-  );
-}
+// Tabs backed by their own section endpoint. Overview, Reports and Actions need no detail fetch.
+const TAB_DETAIL_LOADERS = {
+  finance: fetchCeoMasterFinance,
+  operations: fetchCeoMasterOperations,
+  growth: fetchCeoMasterGrowth,
+  fleet: fetchCeoMasterFleet,
+  ai: fetchCeoMasterAiInsights,
+  readiness: fetchCeoMasterReadiness,
+};
 
-function Section({ title, children }) {
+function KPICard({ label, value, sub, critical = false, loading }) {
+  if (loading) {
+    return (
+      <div className={`ceo-master-card ${critical ? "ceo-master-card--critical" : ""}`}>
+        <div className="ceo-master-card-skeleton" />
+      </div>
+    );
+  }
   return (
-    <section className="ceo-master-panel">
-      <h3>{title}</h3>
-      {children}
-    </section>
+    <div className={`ceo-master-card ${critical ? "ceo-master-card--critical" : ""}`}>
+      <div className="ceo-master-card-label">{label}</div>
+      <div className="ceo-master-card-value">{value ?? "—"}</div>
+      {sub ? <div className="ceo-master-card-sub">{sub}</div> : null}
+    </div>
   );
 }
 
 export default function CeoMasterCommandCenter() {
   const [tab, setTab] = useState("overview");
   const [data, setData] = useState(null);
+  const [metrics, setMetrics] = useState(null);
   const [detail, setDetail] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [overviewLoading, setOverviewLoading] = useState(true);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [error, setError] = useState("");
+  const detailRequestSeq = useRef(0);
   const [message, setMessage] = useState("");
 
   const [broadcastForm, setBroadcastForm] = useState({
@@ -74,28 +86,64 @@ export default function CeoMasterCommandCenter() {
     campaign_id: "",
   });
 
-  const load = useCallback(async () => {
-    try {
-      setError("");
-      const dashboard = await fetchCeoMasterDashboard();
-      setData(dashboard);
+  // Performance: the overview tab only renders executive_overview + readiness, so it loads those
+  // two sections (plus canonical metrics) in parallel instead of the full /ceo-master/ payload,
+  // which builds all seven sections server-side. It loads once on mount, not on every tab switch,
+  // so clicking through tabs no longer stacks concurrent full-dashboard requests on the backend.
+  useEffect(() => {
+    let cancelled = false;
+    setOverviewLoading(true);
+    Promise.all([
+      fetchCeoMasterOverview(),
+      fetchCeoMasterReadiness(),
+      // Canonical executive metrics — the single authoritative KPI source.
+      fetchExecutiveMetrics({ period: "last_30_days" }).catch(() => null),
+    ])
+      .then(([executiveOverview, readinessStatus, executiveMetrics]) => {
+        if (cancelled) return;
+        setData({ executive_overview: executiveOverview, readiness: readinessStatus });
+        setMetrics(executiveMetrics);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setError(err?.response?.data?.detail || err?.message || "Failed to load CEO Master Command Center");
+      })
+      .finally(() => {
+        if (!cancelled) setOverviewLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-      if (tab === "finance") setDetail(await fetchCeoMasterFinance());
-      if (tab === "operations") setDetail(await fetchCeoMasterOperations());
-      if (tab === "growth") setDetail(await fetchCeoMasterGrowth());
-      if (tab === "fleet") setDetail(await fetchCeoMasterFleet());
-      if (tab === "ai") setDetail(await fetchCeoMasterAiInsights());
-      if (tab === "readiness") setDetail(await fetchCeoMasterReadiness());
-    } catch (err) {
-      setError(err?.response?.data?.detail || err?.message || "Failed to load CEO Master Command Center");
-    } finally {
-      setLoading(false);
+  // Tab detail: only the active tab's endpoint is requested. Responses from a tab the user has
+  // already left are discarded so a slow earlier request cannot overwrite the current tab.
+  useEffect(() => {
+    const loader = TAB_DETAIL_LOADERS[tab];
+    const seq = ++detailRequestSeq.current;
+    setError("");
+    setMessage("");
+    setDetail(null);
+    if (!loader) {
+      setDetailLoading(false);
+      return;
     }
+    setDetailLoading(true);
+    loader()
+      .then((result) => {
+        if (seq === detailRequestSeq.current) setDetail(result);
+      })
+      .catch((err) => {
+        if (seq === detailRequestSeq.current) {
+          setError(err?.response?.data?.detail || err?.message || "Failed to load CEO Master Command Center");
+        }
+      })
+      .finally(() => {
+        if (seq === detailRequestSeq.current) setDetailLoading(false);
+      });
   }, [tab]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  const loading = tab === "overview" ? overviewLoading : detailLoading;
 
   const handleBroadcast = async (e) => {
     e.preventDefault();
@@ -159,69 +207,206 @@ export default function CeoMasterCommandCenter() {
   };
 
   const overview = data?.executive_overview || {};
+  const readiness = data?.readiness || {};
 
-  const renderOverview = () => (
-    <>
-      <div className="ceo-master-grid">
-        <MetricCard label="Revenue Today" value={formatMoney(overview.total_revenue_today)} />
-        <MetricCard label="Revenue This Week" value={formatMoney(overview.total_revenue_week)} />
-        <MetricCard label="Revenue This Month" value={formatMoney(overview.total_revenue_month)} />
-        <MetricCard label="Active Riders" value={overview.active_riders} />
-        <MetricCard label="Active Drivers" value={overview.active_drivers} />
-        <MetricCard label="Active Couriers" value={overview.active_couriers} />
-        <MetricCard label="Active Merchants" value={overview.active_merchants} />
-        <MetricCard label="Completed Rides Today" value={overview.completed_rides_today} />
-        <MetricCard label="Completed Deliveries Today" value={overview.completed_deliveries_today} />
-        <MetricCard label="Cancellation Rate" value={`${overview.cancellation_rate_pct}%`} />
-        <MetricCard label="Driver Acceptance Rate" value={`${overview.driver_acceptance_rate_pct}%`} />
-        <MetricCard label="Customer Satisfaction" value={overview.customer_satisfaction} />
-        <MetricCard
-          label="Platform Health Score"
-          value={overview.platform_health_score}
-          critical={overview.platform_health_score < 70}
-        />
-      </div>
-      {data?.readiness && (
-        <Section title="Launch Readiness Snapshot">
-          <p>
-            <strong>Overall Launch Score:</strong> {data.readiness.overall_launch_score}/100
-          </p>
-          <div className="ceo-master-grid" style={{ marginTop: "1rem" }}>
-            {Object.entries(data.readiness.statuses || {}).map(([key, status]) => (
-              <MetricCard
-                key={key}
-                label={key.replace(/_/g, " ")}
-                value={status.ready ? "Ready" : "Pending"}
-                critical={!status.ready}
-              />
-            ))}
+  const renderOverview = () => {
+    const isMetricsAvailable = !!metrics;
+    const fleet = metrics?.fleet || {};
+    const activity = metrics?.activity || {};
+    const money = metrics?.money || {};
+
+    return (
+      <>
+        {/* Executive Overview Cards */}
+        <Section title="Executive Overview">
+          <div className="ceo-master-grid">
+            <KPICard label="Revenue Today" value={formatMoney(overview.total_revenue_today)} loading={loading} />
+            <KPICard label="Revenue This Week" value={formatMoney(overview.total_revenue_week)} loading={loading} />
+            <KPICard label="Revenue This Month" value={formatMoney(overview.total_revenue_month)} loading={loading} />
+            <KPICard
+              label="Total Riders"
+              value={metrics?.riders?.total ?? overview.active_riders}
+              loading={loading}
+            />
+            <KPICard
+              label="Total Drivers"
+              value={fleet?.total_drivers ?? overview.active_drivers}
+              loading={loading}
+            />
+            <KPICard
+              label="Total Couriers"
+              value={fleet?.total_couriers ?? overview.active_couriers}
+              loading={loading}
+            />
+            <KPICard
+              label="Active Drivers Online"
+              value={fleet?.online_drivers}
+              loading={loading}
+            />
+            <KPICard
+              label="Active Couriers Online"
+              value={fleet?.online_couriers}
+              loading={loading}
+            />
+            <KPICard
+              label="Active Merchants"
+              value={overview.active_merchants}
+              loading={loading}
+            />
+            <KPICard
+              label="Completed Rides Today"
+              value={activity?.completed_rides ?? overview.completed_rides_today}
+              loading={loading}
+            />
+            <KPICard
+              label="Completed Deliveries Today"
+              value={activity?.completed_deliveries ?? overview.completed_deliveries_today}
+              loading={loading}
+            />
+            <KPICard
+              label="Cancellation Rate"
+              value={overview.cancellation_rate_pct ? `${overview.cancellation_rate_pct}%` : "—"}
+              loading={loading}
+            />
           </div>
         </Section>
-      )}
-    </>
-  );
+
+        {/* Launch Readiness */}
+        {readiness && Object.keys(readiness.statuses || {}).length > 0 && (
+          <Section title="Launch Readiness Snapshot">
+            <div className="ceo-master-score">
+              <h3>Overall Launch Score: {readiness.overall_launch_score || 0}/100</h3>
+            </div>
+            <div className="ceo-master-grid">
+              {Object.entries(readiness.statuses || {}).map(([key, status]) => (
+                <KPICard
+                  key={key}
+                  label={key.replace(/_/g, " ")}
+                  value={status.ready ? "Ready" : "Pending"}
+                  critical={!status.ready}
+                  loading={loading}
+                />
+              ))}
+            </div>
+          </Section>
+        )}
+
+        {/* Canonical Executive Metrics */}
+        {isMetricsAvailable && (
+          <Section title={`Canonical Executive Metrics — ${metrics.period?.label || "Last 30 Days"}`}>
+            <p className="ceo-master-note">
+              Authoritative platform figures. Drivers and couriers are counted separately and are
+              never added together.
+            </p>
+            <div className="ceo-master-grid">
+              <KPICard
+                label="Gross Transaction Value"
+                value={formatMoney(money?.gross_transaction_value)}
+                loading={loading}
+              />
+              <KPICard
+                label="Platform Revenue (Settled)"
+                value={formatMoney(money?.platform_revenue)}
+                sub="From settled payment ledger"
+                loading={loading}
+              />
+              <KPICard
+                label="Completed Rides"
+                value={activity?.completed_rides}
+                loading={loading}
+              />
+              <KPICard
+                label="Completed Deliveries"
+                value={activity?.completed_deliveries}
+                loading={loading}
+              />
+              <KPICard
+                label="Cancellations"
+                value={activity?.cancellations}
+                loading={loading}
+              />
+              <KPICard
+                label="Wallet Liabilities"
+                value={formatMoney(metrics?.liabilities?.wallet_liabilities?.value)}
+                sub="Not revenue"
+                loading={loading}
+              />
+              <KPICard
+                label="Wallet Pending Balance"
+                value={formatMoney(metrics?.liabilities?.wallet_pending_balance?.value)}
+                sub="Not revenue"
+                loading={loading}
+              />
+              <KPICard
+                label="Merchant Payables"
+                value={formatMoney(metrics?.liabilities?.merchant_payables?.value)}
+                sub="Not revenue"
+                loading={loading}
+              />
+            </div>
+          </Section>
+        )}
+      </>
+    );
+  };
 
   const renderFinance = () => {
     const f = detail || {};
     const cashFlow = f.cash_flow || {};
+    const hasData = Object.keys(f).length > 0;
+
+    if (!hasData) {
+      return <EmptyState text="Financial data unavailable for the selected period." />;
+    }
+
     return (
       <>
-        <div className="ceo-master-grid">
-          <MetricCard label="Wallet Balance" value={formatMoney(f.wallet_balance)} />
-          <MetricCard label="Pending Withdrawals" value={formatMoney(f.pending_withdrawals?.amount)} sub={`${f.pending_withdrawals?.count} requests`} critical />
-          <MetricCard label="Completed Withdrawals" value={formatMoney(f.completed_withdrawals?.amount)} sub={`${f.completed_withdrawals?.count} processed`} />
-          <MetricCard label="Merchant Settlements" value={formatMoney(f.merchant_settlements_pending)} />
-          <MetricCard label="Partner Settlements" value={formatMoney(f.partner_settlements_pending)} />
-          <MetricCard label="Daily Profit" value={formatMoney(f.daily_profit)} />
-          <MetricCard label="Monthly Profit" value={formatMoney(f.monthly_profit)} />
-          <MetricCard label="Outstanding Refunds" value={formatMoney(f.outstanding_refunds?.amount)} sub={`${f.outstanding_refunds?.count} requests`} critical />
-        </div>
+        <Section title="Financial Snapshot">
+          <div className="ceo-master-grid">
+            <KPICard
+              label="Wallet Balance"
+              value={formatMoney(f.wallet_balance)}
+              loading={loading}
+            />
+            <KPICard
+              label="Pending Withdrawals"
+              value={formatMoney(f.pending_withdrawals?.amount)}
+              sub={`${f.pending_withdrawals?.count} requests`}
+              critical={f.pending_withdrawals?.count > 0}
+              loading={loading}
+            />
+            <KPICard
+              label="Completed Withdrawals"
+              value={formatMoney(f.completed_withdrawals?.amount)}
+              sub={`${f.completed_withdrawals?.count} processed`}
+              loading={loading}
+            />
+            <KPICard
+              label="Merchant Settlements"
+              value={formatMoney(f.merchant_settlements_pending)}
+              loading={loading}
+            />
+            <KPICard
+              label="Partner Settlements"
+              value={formatMoney(f.partner_settlements_pending)}
+              loading={loading}
+            />
+            <KPICard
+              label="Outstanding Refunds"
+              value={formatMoney(f.outstanding_refunds?.amount)}
+              sub={`${f.outstanding_refunds?.count} requests`}
+              critical={f.outstanding_refunds?.count > 0}
+              loading={loading}
+            />
+          </div>
+        </Section>
+
         <Section title="Cash Flow">
           <div className="ceo-master-grid">
-            <MetricCard label="Today In" value={formatMoney(cashFlow.today_in)} />
-            <MetricCard label="Today Out" value={formatMoney(cashFlow.today_out)} />
-            <MetricCard label="Month In" value={formatMoney(cashFlow.month_in)} />
-            <MetricCard label="Month Out" value={formatMoney(cashFlow.month_out)} />
+            <KPICard label="Today In" value={formatMoney(cashFlow.today_in)} loading={loading} />
+            <KPICard label="Today Out" value={formatMoney(cashFlow.today_out)} loading={loading} />
+            <KPICard label="Month In" value={formatMoney(cashFlow.month_in)} loading={loading} />
+            <KPICard label="Month Out" value={formatMoney(cashFlow.month_out)} loading={loading} />
           </div>
         </Section>
       </>
@@ -230,65 +415,135 @@ export default function CeoMasterCommandCenter() {
 
   const renderOperations = () => {
     const o = detail || {};
+    const hasData = Object.keys(o).length > 0;
+
+    if (!hasData) {
+      return <EmptyState text="Operations data unavailable for the selected period." />;
+    }
+
+    const hasIssues = o.open_incidents > 0 || o.emergency_cases > 0 || o.sos_events_24h > 0;
+
     return (
       <>
-        <div className="ceo-master-grid">
-          <MetricCard label="Open Incidents" value={o.open_incidents} critical={o.open_incidents > 0} />
-          <MetricCard label="Emergency Cases" value={o.emergency_cases} critical={o.emergency_cases > 0} />
-          <MetricCard label="SOS Events (24h)" value={o.sos_events_24h} critical={o.sos_events_24h > 0} />
-          <MetricCard label="Support Queue" value={o.support_queue} />
-          <MetricCard label="Driver Verification Queue" value={o.driver_verification_queue} />
-          <MetricCard label="Merchant Approval Queue" value={o.merchant_approval_queue} />
-          <MetricCard label="Courier Approval Queue" value={o.courier_approval_queue} />
-          <MetricCard label="Partner Approval Queue" value={o.partner_approval_queue} />
-        </div>
+        <Section title="Operations Snapshot">
+          <div className="ceo-master-grid">
+            <KPICard
+              label="Open Incidents"
+              value={o.open_incidents}
+              critical={o.open_incidents > 0}
+              loading={loading}
+            />
+            <KPICard
+              label="Emergency Cases"
+              value={o.emergency_cases}
+              critical={o.emergency_cases > 0}
+              loading={loading}
+            />
+            <KPICard
+              label="SOS Events (24h)"
+              value={o.sos_events_24h}
+              critical={o.sos_events_24h > 0}
+              loading={loading}
+            />
+            <KPICard
+              label="Support Queue"
+              value={o.support_queue}
+              loading={loading}
+            />
+            <KPICard
+              label="Driver Verification Queue"
+              value={o.driver_verification_queue}
+              loading={loading}
+            />
+            <KPICard
+              label="Merchant Approval Queue"
+              value={o.merchant_approval_queue}
+              loading={loading}
+            />
+            <KPICard
+              label="Courier Approval Queue"
+              value={o.courier_approval_queue}
+              loading={loading}
+            />
+            <KPICard
+              label="Partner Approval Queue"
+              value={o.partner_approval_queue}
+              loading={loading}
+            />
+          </div>
+        </Section>
+
+        {hasIssues && (
+          <Section title="Operational Alerts">
+            <div className="ceo-master-alert">
+              <p>
+                <strong>Active operational issues detected.</strong> Please review the metrics above
+                and take appropriate action.
+              </p>
+            </div>
+          </Section>
+        )}
       </>
     );
   };
 
   const renderGrowth = () => {
     const g = detail || {};
+    const hasData = g.new_riders_week || g.new_drivers_week || g.new_merchants_week;
+
+    if (!hasData) {
+      return <EmptyState text="Growth data unavailable for the selected period." />;
+    }
+
     return (
       <>
-        <div className="ceo-master-grid">
-          <MetricCard label="New Riders (7d)" value={g.new_riders_week} />
-          <MetricCard label="New Drivers (7d)" value={g.new_drivers_week} />
-          <MetricCard label="New Merchants (7d)" value={g.new_merchants_week} />
-          <MetricCard label="Rider Referrals (7d)" value={g.referral_growth?.rider_referrals_week} />
-          <MetricCard label="Driver Referrals (7d)" value={g.referral_growth?.driver_referrals_week} />
-          <MetricCard label="Retention Rate" value={`${g.retention_rate_pct}%`} />
-        </div>
-        <Section title="Marketing Campaign Performance">
-          <ul className="ceo-master-list">
-            {Object.entries(g.marketing_campaign_performance || {}).length ? (
-              Object.entries(g.marketing_campaign_performance).map(([key, val]) => (
-                <li key={key}>
-                  <strong>{key.replace(/_/g, " ")}:</strong> {typeof val === "object" ? JSON.stringify(val) : String(val)}
+        <Section title="Growth Metrics (7 Days)">
+          <div className="ceo-master-grid">
+            <KPICard label="New Riders" value={g.new_riders_week} loading={loading} />
+            <KPICard label="New Drivers" value={g.new_drivers_week} loading={loading} />
+            <KPICard label="New Merchants" value={g.new_merchants_week} loading={loading} />
+            <KPICard
+              label="Rider Referrals"
+              value={g.referral_growth?.rider_referrals_week}
+              loading={loading}
+            />
+            <KPICard
+              label="Driver Referrals"
+              value={g.referral_growth?.driver_referrals_week}
+              loading={loading}
+            />
+            <KPICard
+              label="Retention Rate"
+              value={g.retention_rate_pct ? `${g.retention_rate_pct}%` : "—"}
+              loading={loading}
+            />
+          </div>
+        </Section>
+
+        {g.top_cities && g.top_cities.length > 0 && (
+          <Section title="Top Performing Cities">
+            <ul className="ceo-master-list">
+              {g.top_cities.slice(0, 10).map((city) => (
+                <li key={`city-${city.city_id}`}>
+                  <strong>{city.name || `City ${city.city_id}`}</strong> — {city.completed_rides} rides
                 </li>
-              ))
-            ) : (
-              <li>No active campaign data</li>
-            )}
-          </ul>
-        </Section>
-        <Section title="Top Cities">
-          <ul className="ceo-master-list">
-            {(g.top_cities || []).map((city) => (
-              <li key={city.city_id}>
-                {city.name} — {city.completed_rides} rides
-              </li>
-            ))}
-          </ul>
-        </Section>
-        <Section title="Expansion Opportunities">
-          <ul className="ceo-master-list">
-            {(g.expansion_opportunities || []).map((opp, idx) => (
-              <li key={idx}>
-                {opp.label || opp.city_id} — {opp.suggested_action}
-              </li>
-            ))}
-          </ul>
-        </Section>
+              ))}
+            </ul>
+          </Section>
+        )}
+
+        {g.expansion_opportunities && g.expansion_opportunities.length > 0 && (
+          <Section title="Expansion Opportunities">
+            <ul className="ceo-master-list">
+              {g.expansion_opportunities.slice(0, 10).map((opp, idx) => (
+                // Opportunities are either a city (city_id) or a demand zone (lat/lng); neither has an id.
+                <li key={opp.city_id != null ? `city-${opp.city_id}` : `zone-${opp.lat},${opp.lng}-${idx}`}>
+                  <strong>{opp.label || `Opportunity ${idx + 1}`}</strong>: {opp.suggested_action}
+                </li>
+              ))}
+            </ul>
+          </Section>
+        )}
       </>
     );
   };
@@ -296,87 +551,199 @@ export default function CeoMasterCommandCenter() {
   const renderFleet = () => {
     const f = detail || {};
     const supply = f.supply_demand || {};
+    const hasData = f.drivers_online || f.drivers_offline;
+
+    if (!hasData) {
+      return <EmptyState text="Fleet data unavailable for the selected period." />;
+    }
+
     return (
       <>
-        <div className="ceo-master-grid">
-          <MetricCard label="Drivers Online" value={f.drivers_online} />
-          <MetricCard label="Drivers Offline" value={f.drivers_offline} />
-          <MetricCard label="Fleet Utilization" value={`${f.fleet_utilization_pct}%`} />
-          <MetricCard label="Average Wait Time" value={`${f.average_wait_time_minutes} min`} critical={f.average_wait_time_minutes > 10} />
-          <MetricCard label="Waiting Riders" value={supply.waiting_riders} />
-          <MetricCard label="Driver Density" value={supply.driver_density} />
-        </div>
-        <Section title="Peak Demand Areas">
-          <ul className="ceo-master-list">
-            {(f.peak_demand_areas || []).slice(0, 10).map((area, idx) => (
-              <li key={idx}>
-                {area.label || area.name || `Area ${idx + 1}`} — demand: {area.demand ?? area.weight ?? "—"}
-              </li>
-            ))}
-          </ul>
+        <Section title="Fleet Overview">
+          <div className="ceo-master-grid">
+            <KPICard label="Drivers Online" value={f.drivers_online} loading={loading} />
+            <KPICard label="Drivers Offline" value={f.drivers_offline} loading={loading} />
+            <KPICard
+              label="Fleet Utilization"
+              value={f.fleet_utilization_pct ? `${f.fleet_utilization_pct}%` : "—"}
+              loading={loading}
+            />
+            <KPICard
+              label="Average Wait Time"
+              value={f.average_wait_time_minutes ? `${f.average_wait_time_minutes} min` : "—"}
+              critical={f.average_wait_time_minutes > 10}
+              loading={loading}
+            />
+            <KPICard label="Waiting Riders" value={supply.waiting_riders} loading={loading} />
+            <KPICard label="Driver Density" value={supply.driver_density} loading={loading} />
+          </div>
         </Section>
-        <Section title="Supply vs Demand">
-          <ul className="ceo-master-list">
-            {(supply.shortage_areas || []).map((area, idx) => (
-              <li key={`short-${idx}`}>Shortage: {area.label || JSON.stringify(area)}</li>
-            ))}
-            {(supply.long_eta_areas || []).map((area, idx) => (
-              <li key={`eta-${idx}`}>Long ETA: {area.label || JSON.stringify(area)}</li>
-            ))}
-          </ul>
-        </Section>
-        <Section title="Vehicle Categories">
-          <ul className="ceo-master-list">
-            {(f.vehicle_categories || []).map((v) => (
-              <li key={v.vehicle_type}>
-                {v.vehicle_type}: {v.count}
-              </li>
-            ))}
-          </ul>
-        </Section>
+
+        {f.vehicle_categories && f.vehicle_categories.length > 0 && (
+          <Section title="Vehicle Categories">
+            <ul className="ceo-master-list">
+              {/* The backend groups by DriverProfile.car_type ({car_type, count}). Reading the
+                  non-existent vehicle_type gave every <li> key={undefined} (React key warning)
+                  and a blank label. String() keeps null and "" groups distinct. */}
+              {f.vehicle_categories.map((v) => (
+                <li key={`car-type-${String(v.car_type)}`}>
+                  <strong>{v.car_type || "Unspecified"}</strong>: {v.count}
+                </li>
+              ))}
+            </ul>
+          </Section>
+        )}
       </>
     );
   };
 
   const renderAi = () => {
     const a = detail || {};
+    // Only fields the backend actually returns (build_ai_insights_summary). Nothing is inferred.
+    const forecast = a.revenue_forecast || {};
+    const demand = a.demand_forecast || {};
+    const demandSummary = demand.demand_ratio_summary || {};
+    const peakHours = demand.peak_hours || [];
+    const health = a.fleet_health || {};
+    const perf = a.driver_performance || {};
+    const perfSummary = perf.summary || {};
+    const rankedDrivers = perf.drivers || [];
+    const fraudAlerts = a.fraud_alerts || [];
+    const recommendations = a.performance_recommendations || [];
+    const hasData =
+      a.biggest_operational_issue ||
+      a.fastest_growing_area ||
+      Object.keys(forecast).length > 0 ||
+      Object.keys(health).length > 0 ||
+      rankedDrivers.length > 0 ||
+      fraudAlerts.length > 0 ||
+      recommendations.length > 0;
+
+    if (!hasData) {
+      return <EmptyState text="No AI insights are available yet. Insights appear once rides, drivers and payments generate activity." />;
+    }
+
+    // Backend sorts drivers by score (desc); take both ends for the CEO view.
+    const topDrivers = rankedDrivers.slice(0, 5);
+    const attentionDrivers = rankedDrivers.length > 5 ? rankedDrivers.slice(-5).reverse() : [];
+
+    const driverRow = (d) => (
+      <li key={`driver-${d.driver_id}`}>
+        <strong>{d.driver_name || d.driver_email}</strong>
+        <span>
+          Score {d.score} · {d.category} · {d.completed_rides} completed · {d.cancellation_rate}% cancellations
+        </span>
+      </li>
+    );
+
     return (
       <>
-        <Section title="Biggest Operational Issue">
-          {a.biggest_operational_issue ? (
+        {a.biggest_operational_issue && (
+          <Section title="Biggest Operational Issue">
             <div className="ceo-master-alert">
-              <strong>{a.biggest_operational_issue.message}</strong>
+              <p>{a.biggest_operational_issue.message}</p>
               <p>Severity: {a.biggest_operational_issue.severity}</p>
             </div>
-          ) : (
-            <p>No high-severity issues detected.</p>
-          )}
-        </Section>
-        <Section title="Forecasts">
+          </Section>
+        )}
+
+        <Section title="AI Forecasts">
+          <p className="ceo-master-note">
+            Trend-based estimates from the last 7 days of settled payments. No automatic financial actions are taken.
+          </p>
           <div className="ceo-master-grid">
-            <MetricCard label="Fastest Growing Area" value={a.fastest_growing_area} />
-            <MetricCard label="Daily Revenue Forecast" value={formatMoney(a.revenue_forecast?.daily)} />
-            <MetricCard label="Weekly Revenue Forecast" value={formatMoney(a.revenue_forecast?.weekly)} />
-            <MetricCard label="Monthly Revenue Forecast" value={formatMoney(a.revenue_forecast?.monthly)} />
+            {a.fastest_growing_area && (
+              <KPICard label="Fastest Growing Area" value={a.fastest_growing_area} loading={loading} />
+            )}
+            <KPICard label="Daily Revenue Forecast" value={formatMoney(forecast.daily_revenue)} loading={loading} />
+            <KPICard label="Weekly Revenue Forecast" value={formatMoney(forecast.weekly_revenue)} loading={loading} />
+            <KPICard label="Expected Withdrawals" value={formatMoney(forecast.expected_withdrawals)} loading={loading} />
+            <KPICard label="Expected Refunds" value={formatMoney(forecast.expected_refunds)} loading={loading} />
           </div>
         </Section>
-        <Section title="Fraud Alerts">
-          <ul className="ceo-master-list">
-            {(a.fraud_alerts || []).length ? (
-              a.fraud_alerts.map((alert, idx) => (
-                <li key={idx}>{alert.message || JSON.stringify(alert)}</li>
-              ))
-            ) : (
-              <li>No fraud alerts</li>
-            )}
-          </ul>
+
+        <Section title="Demand Monitor (Last Hour)">
+          <div className="ceo-master-grid">
+            <KPICard label="High-Demand Zones" value={demandSummary.high_demand_zones} loading={loading} />
+            <KPICard label="Riders Waiting in Zones" value={demandSummary.total_waiting} loading={loading} />
+            <KPICard
+              label="Peak Hours"
+              value={peakHours.length ? peakHours.join(", ") : "—"}
+              sub={peakHours.length ? null : "No peak hours detected"}
+              loading={loading}
+            />
+          </div>
         </Section>
+
+        <Section title="Fleet Health">
+          <div className="ceo-master-grid">
+            <KPICard label="Approved Drivers" value={health.total_drivers} loading={loading} />
+            <KPICard label="Online" value={health.online} sub={`${health.online_pct ?? 0}% of fleet`} loading={loading} />
+            <KPICard label="Busy" value={health.busy} sub={`${health.busy_pct ?? 0}% of fleet`} loading={loading} />
+            <KPICard label="Idle" value={health.idle} sub={`${health.idle_pct ?? 0}% of fleet`} loading={loading} />
+            <KPICard label="Offline" value={health.offline} sub={`${health.offline_pct ?? 0}% of fleet`} loading={loading} />
+            <KPICard
+              label="Expired Documents"
+              value={health.expired_documents}
+              critical={health.expired_documents > 0}
+              loading={loading}
+            />
+            <KPICard label="Low-Performing Drivers" value={health.low_performing_drivers} loading={loading} />
+            <KPICard label="Active Trips / Deliveries" value={`${health.active_trips ?? 0} / ${health.active_deliveries ?? 0}`} loading={loading} />
+          </div>
+        </Section>
+
+        <Section title="Driver Performance">
+          <div className="ceo-master-grid">
+            <KPICard label="Excellent" value={perfSummary.excellent} loading={loading} />
+            <KPICard label="Good" value={perfSummary.good} loading={loading} />
+            <KPICard label="Needs Attention" value={perfSummary.needs_attention} loading={loading} />
+            <KPICard label="At Risk" value={perfSummary.at_risk} critical={perfSummary.at_risk > 0} loading={loading} />
+          </div>
+          {rankedDrivers.length === 0 ? (
+            <EmptyState text="No approved drivers to score yet." />
+          ) : (
+            <>
+              <h3 className="ceo-master-subheading">Highest scores</h3>
+              <ul className="ceo-master-list">{topDrivers.map(driverRow)}</ul>
+              {attentionDrivers.length > 0 && (
+                <>
+                  <h3 className="ceo-master-subheading">Lowest scores</h3>
+                  <ul className="ceo-master-list">{attentionDrivers.map(driverRow)}</ul>
+                </>
+              )}
+            </>
+          )}
+        </Section>
+
+        <Section title="Fraud Alerts">
+          {fraudAlerts.length > 0 ? (
+            <ul className="ceo-master-list">
+              {fraudAlerts.slice(0, 10).map((alert) => (
+                <li key={alert.id}>
+                  <strong>{alert.severity}</strong>
+                  <span>{alert.message}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <EmptyState text="No open fraud alerts." />
+          )}
+        </Section>
+
         <Section title="Performance Recommendations">
-          <ul className="ceo-master-list">
-            {(a.performance_recommendations || []).map((rec, idx) => (
-              <li key={idx}>{rec.message || JSON.stringify(rec)}</li>
-            ))}
-          </ul>
+          {recommendations.length > 0 ? (
+            <ul className="ceo-master-list">
+              {recommendations.slice(0, 10).map((rec) => (
+                <li key={`rec-${rec.id}`}>
+                  <strong>{rec.title}</strong>
+                  <span>{rec.summary}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <EmptyState text="No pending dispatch, fleet or pricing recommendations." />
+          )}
         </Section>
       </>
     );
@@ -384,37 +751,49 @@ export default function CeoMasterCommandCenter() {
 
   const renderReadiness = () => {
     const r = detail || {};
+    const hasData = r.overall_launch_score || Object.keys(r.statuses || {}).length > 0;
+
+    if (!hasData) {
+      return <EmptyState text="Launch readiness data unavailable." />;
+    }
+
     return (
       <>
-        <div className="ceo-master-score">
-          <h2>Overall Launch Score: {r.overall_launch_score}/100</h2>
-        </div>
-        <div className="ceo-master-grid">
-          {Object.entries(r.statuses || {}).map(([key, status]) => (
-            <MetricCard
-              key={key}
-              label={key.replace(/_/g, " ")}
-              value={status.ready ? "Ready" : "Pending"}
-              sub={`Weight ${status.weight}`}
-              critical={!status.ready}
-            />
-          ))}
-        </div>
-        <Section title="Notes">
-          <ul className="ceo-master-list">
-            {Object.entries(r.notes || {}).map(([key, note]) => (
-              <li key={key}>
-                <strong>{key.replace(/_/g, " ")}:</strong> {note}
-              </li>
+        <Section title="Launch Readiness">
+          <div className="ceo-master-score">
+            <h3>Overall Launch Score: {r.overall_launch_score || 0}/100</h3>
+          </div>
+          <div className="ceo-master-grid">
+            {Object.entries(r.statuses || {}).map(([key, status]) => (
+              <KPICard
+                key={key}
+                label={key.replace(/_/g, " ")}
+                value={status.ready ? "Ready" : "Pending"}
+                sub={`Weight ${status.weight}`}
+                critical={!status.ready}
+                loading={loading}
+              />
             ))}
-          </ul>
+          </div>
         </Section>
+
+        {r.notes && Object.keys(r.notes).length > 0 && (
+          <Section title="Launch Notes">
+            <ul className="ceo-master-list">
+              {Object.entries(r.notes).map(([key, note]) => (
+                <li key={key}>
+                  <strong>{key.replace(/_/g, " ")}:</strong> {note}
+                </li>
+              ))}
+            </ul>
+          </Section>
+        )}
       </>
     );
   };
 
   const renderReports = () => (
-    <Section title="One-Click Export">
+    <Section title="Executive Reports">
       <p className="beta__subtitle">Download CEO reports as CSV for board and investor review.</p>
       <div className="ceo-master-actions">
         {REPORT_TYPES.map((type) => (
@@ -462,7 +841,9 @@ export default function CeoMasterCommandCenter() {
             <option value="couriers">Couriers</option>
             <option value="staff">Staff</option>
           </select>
-          <button type="submit">Send Broadcast</button>
+          <button type="submit" className="ceo-master-action-btn ceo-master-action-btn--primary">
+            Send Broadcast
+          </button>
         </form>
       </Section>
 
@@ -475,10 +856,18 @@ export default function CeoMasterCommandCenter() {
             onChange={(e) => setFreezeReason(e.target.value)}
           />
           <div className="ceo-master-actions">
-            <button type="button" onClick={() => handleFreeze(true)} className="danger">
+            <button
+              type="button"
+              onClick={() => handleFreeze(true)}
+              className="ceo-master-action-btn ceo-master-action-btn--danger"
+            >
               Freeze Platform
             </button>
-            <button type="button" onClick={() => handleFreeze(false)}>
+            <button
+              type="button"
+              onClick={() => handleFreeze(false)}
+              className="ceo-master-action-btn ceo-master-action-btn--secondary"
+            >
               Unfreeze Platform
             </button>
           </div>
@@ -509,7 +898,9 @@ export default function CeoMasterCommandCenter() {
             value={actionForm.note}
             onChange={(e) => setActionForm({ ...actionForm, note: e.target.value })}
           />
-          <button type="submit">Approve</button>
+          <button type="submit" className="ceo-master-action-btn ceo-master-action-btn--primary">
+            Approve
+          </button>
         </form>
       </Section>
 
@@ -528,7 +919,9 @@ export default function CeoMasterCommandCenter() {
             value={actionForm.note}
             onChange={(e) => setActionForm({ ...actionForm, note: e.target.value })}
           />
-          <button type="submit">Approve Payout</button>
+          <button type="submit" className="ceo-master-action-btn ceo-master-action-btn--primary">
+            Approve Payout
+          </button>
         </form>
       </Section>
 
@@ -547,13 +940,23 @@ export default function CeoMasterCommandCenter() {
             value={actionForm.note}
             onChange={(e) => setActionForm({ ...actionForm, note: e.target.value })}
           />
-          <button type="submit">Activate Campaign</button>
+          <button type="submit" className="ceo-master-action-btn ceo-master-action-btn--primary">
+            Activate Campaign
+          </button>
         </form>
       </Section>
     </>
   );
 
   const renderTab = () => {
+    // While a tab's own section is still loading, say so rather than flashing "data unavailable".
+    if (TAB_DETAIL_LOADERS[tab] && detailLoading && !detail) {
+      return (
+        <p className="ceo-master-loading" role="status">
+          Loading {TABS.find((item) => item.id === tab)?.label}…
+        </p>
+      );
+    }
     switch (tab) {
       case "overview":
         return renderOverview();
@@ -579,20 +982,13 @@ export default function CeoMasterCommandCenter() {
   };
 
   return (
-    <div className="beta__container">
-      <header className="beta__header">
-        <div>
-          <h1 className="beta__title">CEO Master Command Center</h1>
-          <p className="beta__subtitle">
-            Unified executive view across revenue, operations, growth, fleet, AI insights, readiness, and actions.
-          </p>
-        </div>
-      </header>
+    <div className="ceo-master-container">
+      {/* Status Messages */}
+      {error && <p className="ceo-master-error">{error}</p>}
+      {message && <p className="ceo-master-success">{message}</p>}
+      {loading && !data && <p className="ceo-master-loading">Loading CEO Command Center…</p>}
 
-      {error ? <p className="beta__error">{error}</p> : null}
-      {message ? <p className="beta__success">{message}</p> : null}
-      {loading && !data ? <p>Loading CEO Master Command Center…</p> : null}
-
+      {/* Tabs */}
       <div className="ceo-master-tabs">
         {TABS.map((item) => (
           <button
@@ -600,12 +996,17 @@ export default function CeoMasterCommandCenter() {
             type="button"
             className={`ceo-master-tab ${tab === item.id ? "ceo-master-tab--active" : ""}`}
             onClick={() => setTab(item.id)}
+            aria-current={tab === item.id ? "page" : undefined}
           >
-            {item.label}
+            <span className="ceo-master-tab-icon" aria-hidden="true">
+              {item.icon}
+            </span>
+            <span className="ceo-master-tab-label">{item.label}</span>
           </button>
         ))}
       </div>
 
+      {/* Content */}
       <div className="ceo-master-content">{renderTab()}</div>
     </div>
   );

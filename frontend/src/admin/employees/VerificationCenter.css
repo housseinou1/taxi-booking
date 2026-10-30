@@ -1,0 +1,347 @@
+/* Hourly Employee Verification (Phase 4) */
+
+.vc {
+  padding: 1.25rem 1.5rem 3rem;
+  color: var(--admin-text, #e8ecf3);
+}
+
+.vc__head h2 {
+  margin: 0 0 0.25rem;
+  font-size: 1.35rem;
+  font-weight: 600;
+}
+
+.vc__sub {
+  margin: 0;
+  max-width: 74ch;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  opacity: 0.72;
+}
+
+.vc__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 1.1rem 0;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.vc__tab {
+  padding: 0.45rem 0.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.vc__tab.is-active {
+  background: #f5b301;
+  border-color: #f5b301;
+  color: #14181f;
+  font-weight: 600;
+}
+
+.vc__alert {
+  margin: 0 0 0.9rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+
+.vc__alert--error {
+  background: rgba(220, 68, 68, 0.14);
+  border: 1px solid rgba(220, 68, 68, 0.45);
+}
+
+.vc__alert--ok {
+  background: rgba(46, 160, 92, 0.14);
+  border: 1px solid rgba(46, 160, 92, 0.45);
+}
+
+.vc__alert--info {
+  background: rgba(90, 140, 220, 0.14);
+  border: 1px solid rgba(90, 140, 220, 0.4);
+}
+
+.vc__loading {
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
+.vc__state {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.85rem 1rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  font-size: 0.85rem;
+}
+
+.vc__state--locked {
+  background: rgba(220, 68, 68, 0.14);
+  border-color: rgba(220, 68, 68, 0.45);
+}
+
+.vc__state--ok {
+  background: rgba(46, 160, 92, 0.12);
+  border-color: rgba(46, 160, 92, 0.4);
+}
+
+.vc__challenge {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.vc__countdown {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+}
+
+.vc__countdown-label {
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.65;
+}
+
+.vc__countdown-value {
+  font-size: 2rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #f5b301;
+}
+
+.vc__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.4rem;
+  margin: 0.75rem 0 1rem;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8rem;
+  opacity: 0.85;
+}
+
+.vc__form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
+}
+
+.vc__form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+  opacity: 0.85;
+}
+
+.vc__code {
+  width: 190px;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  color: inherit;
+  font-size: 1.3rem;
+  letter-spacing: 0.35em;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.vc__btn {
+  padding: 0.5rem 1.1rem;
+  border: none;
+  border-radius: 7px;
+  background: #f5b301;
+  color: #14181f;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.vc__btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.vc__btn--secondary {
+  background: rgba(255, 255, 255, 0.1);
+  color: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.vc__actions {
+  margin-top: 0.9rem;
+}
+
+.vc__actions button {
+  padding: 0.42rem 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.06);
+  color: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.vc__recovery {
+  margin-top: 1.25rem;
+  padding: 1rem;
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+  border-radius: 10px;
+}
+
+.vc__recovery h3 {
+  margin: 0 0 0.4rem;
+  font-size: 0.95rem;
+}
+
+.vc__recovery input {
+  width: 100%;
+  max-width: 420px;
+  margin: 0.5rem 0 0.75rem;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 7px;
+  background: rgba(0, 0, 0, 0.25);
+  color: inherit;
+  font-size: 0.84rem;
+}
+
+.vc__hint {
+  margin: 0.2rem 0 0.6rem;
+  max-width: 76ch;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  opacity: 0.68;
+}
+
+.vc__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.vc__cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.7rem;
+  margin-bottom: 1.25rem;
+}
+
+.vc__card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.85rem 0.95rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.vc__card-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.vc__card-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.65;
+}
+
+.vc__tablewrap {
+  overflow-x: auto;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+.vc__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.vc__table th {
+  padding: 0.6rem 0.7rem;
+  text-align: left;
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  opacity: 0.7;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  white-space: nowrap;
+}
+
+.vc__table td {
+  padding: 0.55rem 0.7rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  vertical-align: top;
+}
+
+.vc__empty {
+  padding: 1.1rem;
+  text-align: center;
+  opacity: 0.6;
+}
+
+.vc__muted {
+  opacity: 0.6;
+  font-size: 0.78rem;
+}
+
+.vc__pill {
+  display: inline-block;
+  margin-right: 0.3rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
+.vc__pill--verified {
+  background: rgba(46, 160, 92, 0.25);
+}
+
+.vc__pill--missed {
+  background: rgba(220, 68, 68, 0.25);
+}
+
+.vc__pill--pending {
+  background: rgba(245, 179, 1, 0.28);
+}
+
+.vc__pill--exempt {
+  background: rgba(90, 140, 220, 0.25);
+}
+
+@media (max-width: 700px) {
+  .vc {
+    padding: 1rem 0.85rem 2.5rem;
+  }
+  .vc__code {
+    width: 100%;
+  }
+  .vc__form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

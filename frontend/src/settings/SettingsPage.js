@@ -71,7 +71,7 @@ function SettingsPage({ onLogout, riderMode = false }) {
       title: t("settings.privacy"),
       description: t("settings.privacyDescription"),
       value: t("settings.viewPolicy"),
-      action: () => window.open("https://www.yalataxi.live/privacy", "_blank", "noopener,noreferrer"),
+      action: () => window.open("https://yalataxi.live/privacy-policy", "_blank", "noopener,noreferrer"),
     },
     {
       title: "Delete account",

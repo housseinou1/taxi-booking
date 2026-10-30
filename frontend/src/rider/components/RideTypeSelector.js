@@ -44,7 +44,16 @@ function RideTypeSelector({ distance, etaMinutes, selectedType, onSelect }) {
       <div className="ride-type-selector__scroll">
         {RIDE_TYPES.map((type) => {
           const estimate = estimates[type.key];
-          const fare = estimate ? Number(estimate.estimated_fare) : null;
+          // The backend is authoritative for pricing. A missing or failed
+          // estimate must render as "unavailable" (— MRU) and never as 0, which
+          // would invent a fare the server never quoted.
+          const rawFare = estimate ? estimate.estimated_fare : null;
+          const hasFare =
+            rawFare !== null &&
+            rawFare !== undefined &&
+            rawFare !== '' &&
+            !Number.isNaN(Number(rawFare));
+          const fare = hasFare ? Number(rawFare) : null;
           const eta = formatEta(etaMinutes, type.key);
           const isSelected = selectedType === type.key;
 

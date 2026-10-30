@@ -22,12 +22,18 @@ export default function YalaAppFooter({ showLegalLinks = true }) {
       {versionLabel ? <span className="yala-app-footer__version">{versionLabel}</span> : null}
       {showLegalLinks ? (
         <nav className="yala-app-footer__links" aria-label="Legal">
-          <a href="/privacy">Privacy</a>
+          <a
+            href="https://yalataxi.live/privacy-policy"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Privacy
+          </a>
           <span aria-hidden="true">·</span>
           <a href="/terms">Terms</a>
           <span aria-hidden="true">·</span>
           <a
-            href="https://yalataxi.live/account-deletion"
+            href="https://api.yalataxi.live/yala-account-deletion/"
             target="_blank"
             rel="noopener noreferrer"
           >

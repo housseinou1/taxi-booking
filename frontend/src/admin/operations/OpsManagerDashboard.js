@@ -563,7 +563,6 @@ export default function OpsManagerDashboard() {
                 />
               ))}
           </LiveMap>
-          <p className="ops-md__hint">Service boundary polygons are not exposed by the map API (see known gaps).</p>
         </section>
       </div>
 

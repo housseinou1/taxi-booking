@@ -78,6 +78,17 @@ function getLoginErrorMessage(error, t, context = "web") {
     return `${t("auth.loginFailed")} (HTTP ${error.response.status})`;
   }
 
+  const rawMessage = String(error?.message || error?.code || "").toLowerCase();
+  if (
+    rawMessage.includes("chain validation")
+    || rawMessage.includes("certpath")
+    || rawMessage.includes("certificate")
+    || rawMessage.includes("sslhandshake")
+    || rawMessage.includes("trust anchor")
+  ) {
+    return "Secure connection failed. The Yala Delivery website certificate is expired or blocked. Renew HTTPS on yalataxi.live, or disable antivirus HTTPS scanning, then try again.";
+  }
+
   if (error?.request) {
     const apiTarget = API_URL || process.env.REACT_APP_API_URL || "the API server";
     const code = String(error?.code || "");
@@ -143,9 +154,6 @@ function getNextRouteFromSearch() {
 
 function getLoginContext() {
   const builtAppType = getAppType();
-  if (builtAppType === "rider" || builtAppType === "driver" || builtAppType === "delivery" || builtAppType === "admin") {
-    return builtAppType;
-  }
 
   const path = window.location.pathname || "";
   const next = getNextRouteFromSearch();
@@ -158,12 +166,24 @@ function getLoginContext() {
       path
   );
 
-  if (
+  const routeIsAdmin =
     route === "/admin" ||
     route === "/admin-dashboard" ||
-    route.startsWith("/admin/")
-  ) {
+    route.startsWith("/admin/");
+
+  // An explicit admin destination (?next=/admin or an /admin path) wins over the
+  // build-time REACT_APP_TYPE. The login page is shared, so when the user is
+  // being sent to /admin we must show Yala Admin branding even on a dev server
+  // built as rider/driver (REACT_APP_TYPE=rider). Native admin builds still
+  // resolve via builtAppType below. This does NOT affect the rider/driver/
+  // delivery experience: those return their own app type when no admin route is
+  // present.
+  if (routeIsAdmin) {
     return "admin";
+  }
+
+  if (builtAppType === "rider" || builtAppType === "driver" || builtAppType === "delivery" || builtAppType === "admin") {
+    return builtAppType;
   }
 
   if (isDeliveryCourierPath(route)) {

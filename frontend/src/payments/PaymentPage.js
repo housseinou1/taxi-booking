@@ -8,12 +8,8 @@ import PostRidePayRate from "../rider/components/PostRidePayRate";
 import { submitRidePayment } from "./ridePaymentService";
 
 const PAYMENT_METHODS = [
-  {
-    id: "cash",
-    titleKey: "cash",
-    subtitleKey: "cashSubtitle",
-    badgeKey: "confirmWithDriver",
-  },
+  // Phase 11 — Yala is 100% cashless: cash was removed from checkout and is
+  // rejected server-side (payments/cashless.py). Card is the new default.
   {
     id: "card",
     titleKey: "card",
@@ -208,7 +204,7 @@ function PaymentPage({ ride }) {
   const { t } = useTranslation();
   const [payment, setPayment] = useState(null);
   const [tipPercentage, setTipPercentage] = useState(10);
-  const [selectedMethod, setSelectedMethod] = useState("cash");
+  const [selectedMethod, setSelectedMethod] = useState("card");
   const [paymentHistory, setPaymentHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [notice, setNotice] = useState("");

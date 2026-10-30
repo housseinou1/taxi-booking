@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import { formatMoney } from "../../marketConfig";
 import {
@@ -85,8 +85,16 @@ export default function BIAnalyticsCenter() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const params = { period };
-  if (cityId) params.city_id = cityId;
+  // Memoised so the fetch callback (and the effect that calls it) keeps a stable
+  // identity. The lint rule flagged `params` as a missing useCallback dependency;
+  // because `params` was a fresh object literal on every render it could not be
+  // added safely — doing so would have retriggered the fetch on every render.
+  // Memoising it makes the dependency declarable with identical behaviour.
+  const params = useMemo(() => {
+    const next = { period };
+    if (cityId) next.city_id = cityId;
+    return next;
+  }, [period, cityId]);
 
   const load = useCallback(async () => {
     try {
@@ -104,7 +112,7 @@ export default function BIAnalyticsCenter() {
     } finally {
       setLoading(false);
     }
-  }, [tab, period, cityId]);
+  }, [tab, params]);
 
   useEffect(() => {
     load();

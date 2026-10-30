@@ -1,0 +1,126 @@
+/* ── Rides Management (Phase 2) ──────────────────────────────────────────── */
+.admin-rides {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.admin-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.admin-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.admin-filters__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.8rem;
+  color: var(--admin-text-muted, #6b7280);
+}
+
+.admin-filters__field select,
+.admin-filters__field input {
+  padding: 6px 8px;
+  border: 1px solid var(--admin-border, #e5e7eb);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  background: var(--admin-surface, #fff);
+  color: inherit;
+}
+
+.admin-filters__field select:focus-visible,
+.admin-filters__field input:focus-visible {
+  outline: 2px solid var(--admin-accent, #2563eb);
+  outline-offset: 1px;
+}
+
+/* ── Ride / record details drawer ────────────────────────────────────────── */
+.admin-drawer__overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  justify-content: flex-end;
+  z-index: 60;
+}
+
+.admin-drawer {
+  width: min(520px, 100%);
+  height: 100%;
+  background: var(--admin-surface, #fff);
+  display: flex;
+  flex-direction: column;
+  box-shadow: -4px 0 24px rgba(15, 23, 42, 0.18);
+}
+
+.admin-drawer__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid var(--admin-border, #e5e7eb);
+}
+
+.admin-drawer__title {
+  margin: 0 0 4px;
+  font-size: 1.05rem;
+}
+
+.admin-drawer__body {
+  padding: 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.admin-drawer__state {
+  color: var(--admin-text-muted, #6b7280);
+  font-size: 0.9rem;
+}
+
+.admin-drawer__section h3 {
+  margin: 0 0 8px;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--admin-text-muted, #6b7280);
+}
+
+.admin-drawer__field {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--admin-border, #eef1f5);
+  font-size: 0.88rem;
+}
+
+.admin-drawer__field-label {
+  color: var(--admin-text-muted, #6b7280);
+}
+
+.admin-drawer__field-value {
+  text-align: right;
+  font-weight: 500;
+  word-break: break-word;
+}
+
+@media (max-width: 640px) {
+  .admin-drawer {
+    width: 100%;
+  }
+  .admin-kpi-row {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
+}

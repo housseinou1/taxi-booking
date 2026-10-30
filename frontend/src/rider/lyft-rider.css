@@ -287,6 +287,19 @@
   border-bottom: 1px solid #f3f4f6;
 }
 
+/* Light-mode fix: the base ProfilePages dark theme paints these rows/tiles
+   with a near-black fill (rgba(5,7,13,0.5)) and light text (white/yellow/gray).
+   The --lyft light theme styled layout but never reset those surfaces/colors,
+   leaving muddy dark cards and low-contrast text on the white panels. Reset
+   them to transparent surfaces with dark text for a readable light profile. */
+.sx-profile-page--lyft .sx-info-row,
+.sx-profile-page--lyft .sx-method-row,
+.sx-profile-page--lyft .sx-trip-row,
+.sx-profile-page--lyft .sx-info-tile,
+.sx-profile-page--lyft .sx-empty-state {
+  background: transparent;
+}
+
 .sx-profile-page--lyft .sx-info-row span,
 .sx-profile-page--lyft .sx-method-row span {
   color: #6b7280;
@@ -299,6 +312,29 @@
   font-size: 14px;
   font-weight: 600;
   text-align: right;
+}
+
+/* Trip-history rows: base theme leaves these white/gray (invisible on white). */
+.sx-profile-page--lyft .sx-trip-row strong {
+  color: #111827;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.sx-profile-page--lyft .sx-trip-row span,
+.sx-profile-page--lyft .sx-empty-state p {
+  color: #6b7280;
+  font-size: 14px;
+}
+
+/* Trip-summary stat labels: base theme colors these yellow (#facc15). */
+.sx-profile-page--lyft .sx-info-tile span,
+.sx-profile-page--lyft .sx-info-row span {
+  color: #6b7280;
+}
+
+.sx-profile-page--lyft .sx-info-tile strong {
+  color: #111827;
 }
 
 .sx-profile-page--lyft .sx-settings-list {

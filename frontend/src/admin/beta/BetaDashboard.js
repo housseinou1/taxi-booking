@@ -55,8 +55,8 @@ function CeoPrintReport({ ceo, overview, generatedAt }) {
 
       <h2>Revenue</h2>
       <p>
-        Gross today: {formatMoney(ceo.revenue?.gross_today_mru)} MRU · Refunds:{" "}
-        {formatMoney(ceo.revenue?.refunds_today_mru)} MRU
+        Gross today: {formatMoney(ceo.revenue?.gross_today_mru)} · Refunds:{" "}
+        {formatMoney(ceo.revenue?.refunds_today_mru)}
       </p>
 
       <h2>Trips</h2>

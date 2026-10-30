@@ -1,0 +1,128 @@
+/**
+ * YALA Admin — Security Operations Center styles (Phase 11).
+ * Scoped to `.sec-console`; reuses the shared library tokens/classes.
+ */
+.sec-console {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.sec-console__kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
+}
+
+.sec-console__section {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.sec-console__heading {
+  margin: 0 0 10px;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.sec-console__summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin: 4px 0 12px;
+  font-size: 0.82rem;
+  color: #374151;
+}
+
+.sec-console__flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.sec-console__issues {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sec-console__issue {
+  border: 1px solid #e5e7eb;
+  border-left: 4px solid #2563eb;
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.sec-console__issue-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.sec-console__issue-severity {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6b7280;
+}
+
+.sec-console__issue-summary {
+  margin: 8px 0;
+  font-size: 0.85rem;
+  color: #374151;
+}
+
+.sec-console__checks {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sec-console__checks li {
+  display: grid;
+  grid-template-columns: 90px 220px 1fr;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 0.8rem;
+}
+
+.sec-console__check-state {
+  font-weight: 600;
+  color: #166534;
+}
+
+.sec-console__check-state--attention {
+  color: #9a3412;
+}
+
+.sec-console__check-name {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: #111827;
+}
+
+.sec-console__check-detail {
+  color: #4b5563;
+}
+
+.sec-console__issue-action {
+  margin: 8px 0 4px;
+  font-size: 0.82rem;
+  color: #7f1d1d;
+}
+
+.sec-console__issue-evidence {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #6b7280;
+}
+
+.sec-console__muted {
+  color: #6b7280;
+  font-size: 0.85rem;
+}

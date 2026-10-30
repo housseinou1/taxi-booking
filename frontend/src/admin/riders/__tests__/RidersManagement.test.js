@@ -5,6 +5,7 @@ import RidersManagement from "../RidersManagement";
 import {
   getRiderActivity,
   getRiderAuditLogs,
+  getRiderSupport,
   getRiderPayments,
   getRiderRideHistory,
 } from "../ridersApi";
@@ -21,6 +22,7 @@ beforeEach(() => {
   getRiderPayments.mockResolvedValue({ results: [], refunds: [] });
   getRiderActivity.mockResolvedValue({ last_login: null, last_seen: null, last_seen_device: null });
   getRiderAuditLogs.mockResolvedValue([]);
+  getRiderSupport.mockResolvedValue({ count: 0, open_count: 0, results: [] });
 });
 
 // DataTable's export toolbar reads usePermissions via AdminActionGuard — mock
@@ -83,7 +85,6 @@ function renderModule(props = {}) {
       onApproveRider={jest.fn()}
       onRejectRider={jest.fn()}
       onBlockUser={jest.fn()}
-      onDeleteRider={jest.fn()}
       {...props}
     />
   );
@@ -182,32 +183,35 @@ test("Reject routes through the reason-prompting injected handler", () => {
   expect(onRejectRider).toHaveBeenCalledWith(2);
 });
 
-test("Suspend requires explicit confirmation before calling the handler", () => {
+test("Deactivate requires explicit confirmation before calling the handler", () => {
   const onBlockUser = jest.fn();
   renderModule({ onBlockUser });
   const aminaRow = screen.getByText("Amina Diallo").closest("tr");
-  fireEvent.click(within(aminaRow).getByRole("button", { name: /suspend account for amina/i }));
+  fireEvent.click(within(aminaRow).getByRole("button", { name: /deactivate account for amina/i }));
   // Not called yet — confirmation dialog is open.
   expect(onBlockUser).not.toHaveBeenCalled();
-  fireEvent.click(screen.getByRole("button", { name: "Suspend" }));
+  fireEvent.click(screen.getByRole("button", { name: "Deactivate Account" }));
+  // onBlockUser(id, isActive) — isActive true means "deactivate" (block).
   expect(onBlockUser).toHaveBeenCalledWith(1, true);
 });
 
-test("Suspend cancel does not call the handler", () => {
+test("Deactivate cancel does not call the handler", () => {
   const onBlockUser = jest.fn();
   renderModule({ onBlockUser });
   const aminaRow = screen.getByText("Amina Diallo").closest("tr");
-  fireEvent.click(within(aminaRow).getByRole("button", { name: /suspend account for amina/i }));
+  fireEvent.click(within(aminaRow).getByRole("button", { name: /deactivate account for amina/i }));
   fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
   expect(onBlockUser).not.toHaveBeenCalled();
 });
 
-test("Delete calls the injected handler (its own confirm lives in the handler)", () => {
-  const onDeleteRider = jest.fn();
-  renderModule({ onDeleteRider });
+test("there is NO permanent Delete action in the riders table (deactivate only)", () => {
+  renderModule();
+  // The dangerous hard-delete button was replaced by Deactivate Account.
+  expect(screen.queryByRole("button", { name: /delete account for/i })).not.toBeInTheDocument();
   const aminaRow = screen.getByText("Amina Diallo").closest("tr");
-  fireEvent.click(within(aminaRow).getByRole("button", { name: /delete account for amina/i }));
-  expect(onDeleteRider).toHaveBeenCalledWith(expect.objectContaining({ id: 1 }));
+  expect(
+    within(aminaRow).getByRole("button", { name: /deactivate account for amina/i })
+  ).toBeInTheDocument();
 });
 
 test("row Details opens the details drawer", () => {
@@ -217,7 +221,7 @@ test("row Details opens the details drawer", () => {
   expect(screen.getByRole("dialog")).toBeInTheDocument();
 });
 
-test("suspending from inside the drawer closes the drawer so dialogs do not stack", () => {
+test("suspending from inside the drawer keeps a single modal surface (no stacking)", () => {
   const onBlockUser = jest.fn();
   renderModule({ onBlockUser });
   // Open the details drawer for Amina.
@@ -228,17 +232,20 @@ test("suspending from inside the drawer closes the drawer so dialogs do not stac
   // Click "Suspend account" inside the drawer.
   fireEvent.click(screen.getByRole("button", { name: "Suspend account" }));
 
-  // Exactly ONE modal surface should be present now: the confirmation dialog,
-  // NOT the drawer stacked beneath it.
+  // Phase 4: the reason dialog renders INSIDE the drawer, so there is still
+  // exactly ONE modal surface (the drawer) and no stacked confirmation dialog.
   const dialogs = screen.getAllByRole("dialog");
   expect(dialogs).toHaveLength(1);
-  // The remaining dialog is the suspend confirmation (has the Suspend/Cancel actions).
-  expect(screen.getByRole("button", { name: "Suspend" })).toBeInTheDocument();
+  expect(screen.getByText("Suspend rider account")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Confirm" })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
 
-  // Confirm still calls the handler with the right args.
-  fireEvent.click(screen.getByRole("button", { name: "Suspend" }));
-  expect(onBlockUser).toHaveBeenCalledWith(1, true);
+  // A reason is mandatory: confirming with an empty reason surfaces the rule
+  // and does NOT call the backend.
+  fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+  expect(
+    screen.getByText("A clear reason (5+ characters) is required.")
+  ).toBeInTheDocument();
 });
 
 test("loading state renders the table skeleton (no rows)", () => {

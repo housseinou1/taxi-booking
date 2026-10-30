@@ -5,6 +5,7 @@ import RiderDetailsDrawer from "../RiderDetailsDrawer";
 import {
   getRiderActivity,
   getRiderAuditLogs,
+  getRiderSupport,
   getRiderPayments,
   getRiderRideHistory,
 } from "../ridersApi";
@@ -117,6 +118,7 @@ function resolveAll() {
   getRiderPayments.mockResolvedValue(PAYMENTS);
   getRiderActivity.mockResolvedValue(ACTIVITY);
   getRiderAuditLogs.mockResolvedValue(AUDIT);
+  getRiderSupport.mockResolvedValue({ count: 0, open_count: 0, results: [] });
 }
 
 function renderDrawer(props = {}) {
@@ -130,7 +132,6 @@ function renderDrawer(props = {}) {
       onApprove={jest.fn()}
       onReject={jest.fn()}
       onSuspendToggle={jest.fn()}
-      onDelete={jest.fn()}
       {...props}
     />
   );
@@ -206,6 +207,7 @@ test("shows an error state when the ride-history fetch rejects", async () => {
   getRiderPayments.mockResolvedValue(PAYMENTS);
   getRiderActivity.mockResolvedValue(ACTIVITY);
   getRiderAuditLogs.mockResolvedValue(AUDIT);
+  getRiderSupport.mockResolvedValue({ count: 0, open_count: 0, results: [] });
   renderDrawer();
   // The history error surfaces in every history-backed section (statistics,
   // ride history, ratings & reviews), so assert at least one error node.
@@ -218,6 +220,7 @@ test("shows an error state when the payments fetch rejects", async () => {
   getRiderPayments.mockRejectedValue(new Error("payments boom"));
   getRiderActivity.mockResolvedValue(ACTIVITY);
   getRiderAuditLogs.mockResolvedValue(AUDIT);
+  getRiderSupport.mockResolvedValue({ count: 0, open_count: 0, results: [] });
   renderDrawer();
   // The payments error surfaces in both the payment and refund sub-sections.
   const errors = await screen.findAllByText("payments boom");
@@ -228,6 +231,7 @@ test("never renders a sensitive payment field (provider_token / card) even if pr
   getRiderRideHistory.mockResolvedValue(HISTORY);
   getRiderActivity.mockResolvedValue(ACTIVITY);
   getRiderAuditLogs.mockResolvedValue(AUDIT);
+  getRiderSupport.mockResolvedValue({ count: 0, open_count: 0, results: [] });
   // Defensive: even if the API leaked a token, the drawer must not surface it.
   getRiderPayments.mockResolvedValue({
     ...PAYMENTS,
@@ -251,6 +255,7 @@ test("shows empty states when all sections return no records", async () => {
   getRiderPayments.mockResolvedValue({ count: 0, page: 1, page_size: 25, total_pages: 1, results: [], refunds: [] });
   getRiderActivity.mockResolvedValue({ last_login: null, last_seen: null, last_seen_device: null });
   getRiderAuditLogs.mockResolvedValue([]);
+  getRiderSupport.mockResolvedValue({ count: 0, open_count: 0, results: [] });
   renderDrawer();
   expect(await screen.findByText("No rides found for this rider.")).toBeInTheDocument();
   expect(screen.getByText("No payments found for this rider.")).toBeInTheDocument();

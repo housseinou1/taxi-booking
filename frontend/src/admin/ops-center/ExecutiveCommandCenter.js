@@ -4,11 +4,9 @@
  *
  * No backend business logic changes. UI integration only.
  */
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 
-import authenticatedApi from "../../auth/authenticatedApi";
-import { API_URL } from "../../apiConfig";
-import { formatMoney } from "../../marketConfig";
+import { fetchOpsDashboard } from "./opsDashboardApi";
 import "./ExecutiveCommandCenter.css";
 
 // ─── Tabs ────────────────────────────────────────────────────────────────────
@@ -192,11 +190,8 @@ export default function ExecutiveCommandCenter() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await authenticatedApi.get(
-        `${API_URL}/operations/admin/dashboard/`,
-        { timeout: 12000 }
-      );
-      setData(response.data || {});
+      const dashboard = await fetchOpsDashboard();
+      setData(dashboard || {});
     } catch {
       setData({});
     } finally {

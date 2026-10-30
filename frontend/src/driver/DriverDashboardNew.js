@@ -31,7 +31,12 @@ import {
 import { formatAvailabilityApiError } from "./utils/availabilityErrors";
 import { isDeliveryAppInstall, isDriverYalaUI, isNative } from "../native/platform";
 import { unregisterPushNotifications } from "../native/push";
-import { requestLocationPermission, stopBackgroundLocationTracking, watchForegroundLocation } from "../native/location";
+import {
+  requestLocationPermission,
+  startBackgroundLocationTracking,
+  stopBackgroundLocationTracking,
+  watchForegroundLocation,
+} from "../native/location";
 import { haversineKm } from "../delivery/deliveryPricing";
 import { computeArriveGate, parseGeoCoord } from "../utils/rideGeo";
 import { getStableDeviceId } from "../native/deviceId";
@@ -891,6 +896,27 @@ function DriverDashboardContentView() {
       if (isAuthError(error)) { sendToLogin(); }
     }
   }, [isAuthError, sendToLogin]);
+
+  /**
+   * DECISION 1 — keep reporting the driver's position while the app is minimised or the screen
+   * is locked, but ONLY for the duration of an active trip. The native foreground service
+   * starts when a trip becomes active and is stopped the moment it ends, so the
+   * background-location permission is never used outside a trip.
+   *
+   * Reuses `updateDriverLocation` — the same HTTP path used in the foreground
+   * (`POST /drivers/location/update/`) — so there is no second transport. No-ops on web.
+   */
+  useEffect(() => {
+    if (!activeRide) return undefined;
+
+    startBackgroundLocationTracking({
+      onLocation: ({ lat, lng }) => updateDriverLocation([lat, lng]),
+    }).catch(() => {});
+
+    return () => {
+      stopBackgroundLocationTracking().catch(() => {});
+    };
+  }, [activeRide, updateDriverLocation]);
 
   // ─── Ride Request Handling ──────────────────────────────────────────────────
 

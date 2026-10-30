@@ -8,6 +8,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import authenticatedApi from "../../auth/authenticatedApi";
 import { API_URL } from "../../apiConfig";
+import { fetchOpsDashboard } from "./opsDashboardApi";
 import { formatMoney } from "../../marketConfig";
 import "./LaunchCommandCenter.css";
 
@@ -95,10 +96,10 @@ export default function LaunchCommandCenter() {
   const load = useCallback(async () => {
     try {
       const [dashRes, healthRes] = await Promise.allSettled([
-        authenticatedApi.get(`${API_URL}/operations/admin/dashboard/`, { timeout: 12000 }),
+        fetchOpsDashboard(),
         authenticatedApi.get(`${API_URL}/health/`, { timeout: 8000 }),
       ]);
-      if (dashRes.status === "fulfilled") setData(dashRes.value.data);
+      if (dashRes.status === "fulfilled") setData(dashRes.value);
       if (healthRes.status === "fulfilled") setHealth(healthRes.value.data);
       setLastUpdated(new Date());
     } catch { /* silent */ }

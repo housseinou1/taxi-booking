@@ -463,9 +463,9 @@ export default function LandingPage() {
             </div>
             <div className="footer-col">
               <h4>Legal</h4>
-              <button onClick={() => go("/privacy")}>Privacy Policy</button>
+              <button onClick={() => window.open("https://yalataxi.live/privacy-policy", "_blank", "noopener,noreferrer")}>Privacy Policy</button>
               <button onClick={() => go("/terms")}>Terms of Service</button>
-              <a href="https://housseinou1.github.io/yala-driver/delete-account.html" target="_blank" rel="noopener noreferrer">Account Deletion</a>
+              <a href="https://api.yalataxi.live/yala-account-deletion/" target="_blank" rel="noopener noreferrer">Account Deletion</a>
             </div>
             <div className="footer-col">
               <h4>Support</h4>

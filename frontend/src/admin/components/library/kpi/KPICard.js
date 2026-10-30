@@ -16,6 +16,7 @@ export default function KPICard({
   value,
   subtitle,
   tone,
+  icon,
   format = "auto",
   trend,
   trendLabel,
@@ -61,6 +62,11 @@ export default function KPICard({
   const content = (
     <>
       <div className="admin-kpi__head">
+        {icon ? (
+          <span className="admin-kpi__icon" aria-hidden="true">
+            {icon}
+          </span>
+        ) : null}
         <div className="admin-kpi__label">{label}</div>
         {onRefresh ? (
           <button

@@ -77,3 +77,133 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ── Settlement reference status + reveal control ─────────────────────────── */
+
+.platform-withdrawal-accounts__status {
+  justify-self: start;
+  padding: 2px 8px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: 999px;
+}
+
+.platform-withdrawal-accounts__status.is-configured {
+  color: #047857;
+  background: rgba(16, 185, 129, 0.16);
+}
+
+.platform-withdrawal-accounts__status.is-missing {
+  color: #b45309;
+  background: rgba(245, 158, 11, 0.16);
+}
+
+.platform-withdrawal-accounts__reveal {
+  justify-self: start;
+  margin-top: 6px;
+  padding: 5px 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #f8fafc;
+  background: rgba(248, 250, 252, 0.12);
+  border: 1px solid rgba(248, 250, 252, 0.3);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+/* =============================================================================
+   Admin presentation (token-based).
+   Scoped to `.admin-finance-page` because the driver and courier payout panels
+   render this same component and must keep their existing look.
+   ============================================================================= */
+
+.admin-finance-page .platform-withdrawal-accounts {
+  gap: 14px;
+  margin: 0;
+  padding: 18px;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: 12px;
+}
+
+.admin-finance-page .platform-withdrawal-accounts__header h4 {
+  color: var(--admin-text);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.admin-finance-page .platform-withdrawal-accounts__header p {
+  color: var(--admin-text-muted);
+  font-size: 0.875rem;
+}
+
+.admin-finance-page .platform-withdrawal-accounts__choice {
+  background: var(--admin-surface-alt);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+  font-weight: 600;
+}
+
+.admin-finance-page .platform-withdrawal-accounts__choice:hover {
+  background: var(--admin-surface-muted);
+}
+
+.admin-finance-page .platform-withdrawal-accounts__choice.is-selected {
+  border-color: var(--admin-accent);
+  background: var(--admin-accent-soft);
+  box-shadow: inset 0 0 0 1px var(--admin-accent);
+  color: var(--admin-text);
+}
+
+.admin-finance-page .platform-withdrawal-accounts__choice:focus-visible {
+  outline: 2px solid var(--admin-accent);
+  outline-offset: 2px;
+}
+
+.admin-finance-page .platform-withdrawal-accounts__destination {
+  background: var(--admin-surface-alt);
+  color: var(--admin-text);
+  border: 1px solid var(--admin-border);
+}
+
+.admin-finance-page .platform-withdrawal-accounts__destination small {
+  color: var(--admin-text-muted);
+}
+
+.admin-finance-page .platform-withdrawal-accounts__destination strong {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.admin-finance-page .platform-withdrawal-accounts__status.is-configured {
+  color: var(--admin-success);
+  background: rgba(52, 211, 153, 0.16);
+}
+
+.admin-finance-page .platform-withdrawal-accounts__status.is-missing {
+  color: var(--admin-warning);
+  background: rgba(245, 158, 11, 0.16);
+}
+
+.admin-finance-page .platform-withdrawal-accounts__reveal {
+  color: var(--admin-text);
+  background: var(--admin-surface-muted);
+  border-color: var(--admin-border);
+}
+
+.admin-finance-page .platform-withdrawal-accounts__error {
+  color: var(--admin-danger);
+}
+
+.admin-finance-page .platform-withdrawal-accounts__loading {
+  color: var(--admin-text-muted);
+}
+
+@media (max-width: 720px) {
+  .admin-finance-page .platform-withdrawal-accounts__choices {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+

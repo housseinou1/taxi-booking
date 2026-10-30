@@ -1,4 +1,4 @@
-import { getAppType, isTaxiDriverContext } from "../native/platform";
+import { getAppType } from "../native/platform";
 
 const ADMIN_PAGES = new Set(["admin", "admin-share-analytics", "delivery-admin", "admin-payments", "admin-executive", "admin-operations", "admin-ai-operations", "admin-status", "admin-launch", "admin-beta", "admin-fleet", "admin-finance-ops", "admin-command", "admin-growth", "admin-multi-city", "admin-smart-pricing", "admin-trust-safety", "admin-incentives", "admin-merchant-platform", "admin-partner-platform", "admin-customer-growth", "admin-ceo-master", "admin-board-reports", "admin-compliance-governance", "admin-bi", "admin-academy", "admin-business-accounts", "admin-support", "admin-beta-feedback"]);
 
@@ -84,15 +84,27 @@ export function getUserRole(user = {}) {
 export function getDashboardPath(user) {
   const role = getUserRole(user);
   const appType = getAppType();
-  if (role === "merchant") return "/merchant";
-  if (appType === "delivery") return "/delivery/courier";
+
+  // Founder/CEO decision (Yala Driver and Yala Delivery are separate applications):
+  //   Yala Rider    -> Rider Dashboard
+  //   Yala Driver   -> Driver Dashboard
+  //   Yala Delivery -> Courier Dashboard
+  //   Yala Admin    -> Admin Dashboard
+  //
+  // Two rules follow from that:
+  //  1. Admin is resolved first, so an administrator can always reach the Admin dashboard
+  //     even from the Driver or Delivery builds (no admin is locked out by the app shell).
+  //  2. A driver is NEVER sent to the Courier dashboard. The previous ordering returned
+  //     "/delivery/courier" for every driver on the web/Rider build, because
+  //     `isTaxiDriverContext()` inspects the *current* path — which is empty at login — so
+  //     the check could not succeed and drivers were misrouted to the wrong application.
   if (role === "admin") return "/admin";
-  if (role === "driver") {
-    if (isTaxiDriverContext()) {
-      return "/driver";
-    }
-    return "/delivery/courier";
-  }
+  if (role === "merchant") return "/merchant";
+
+  // The dedicated Delivery build IS the courier application.
+  if (appType === "delivery") return "/delivery/courier";
+
+  if (role === "driver") return "/driver";
   return "/rider-dashboard";
 }
 

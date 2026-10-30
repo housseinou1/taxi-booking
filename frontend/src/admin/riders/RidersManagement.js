@@ -18,6 +18,7 @@ import {
   isTestAccount,
   sortRidersByDate,
 } from "./ridersSelectors";
+import { reactivateRider, suspendRider } from "./ridersApi";
 import "./riders.css";
 
 const PAGE_SIZE = 25;
@@ -86,7 +87,7 @@ export default function RidersManagement({
   onApproveRider,
   onRejectRider,
   onBlockUser,
-  onDeleteRider,
+  onRefresh,
 }) {
   const [query, setQuery] = useState("");
   const [verification, setVerification] = useState("");
@@ -116,15 +117,14 @@ export default function RidersManagement({
 
   const handleApprove = (rider) => onApproveRider?.(rider.id);
   const handleReject = (rider) => onRejectRider?.(rider.id);
-  const handleDelete = (rider) => onDeleteRider?.(rider);
   const requestSuspendToggle = (rider) => setSuspendTarget(rider);
 
   // Actions invoked from WITHIN the details drawer must first close the drawer,
-  // so a confirmation surface (the in-module Suspend dialog, or the injected
-  // approve/reject/delete confirm/prompt) is never stacked on top of the
-  // drawer's own aria-modal + focus trap. Two modal surfaces at once breaks
-  // keyboard focus and confuses assistive tech; closing the drawer leaves a
-  // single clean modal and lets focus return correctly afterward.
+  // so a confirmation surface (the in-module Deactivate dialog, or the injected
+  // approve/reject confirm/prompt) is never stacked on top of the drawer's own
+  // aria-modal + focus trap. Two modal surfaces at once breaks keyboard focus
+  // and confuses assistive tech; closing the drawer leaves a single clean modal
+  // and lets focus return correctly afterward.
   const handleDrawerApprove = (rider) => {
     setSelectedRider(null);
     handleApprove(rider);
@@ -133,13 +133,24 @@ export default function RidersManagement({
     setSelectedRider(null);
     handleReject(rider);
   };
-  const handleDrawerDelete = (rider) => {
-    setSelectedRider(null);
-    handleDelete(rider);
-  };
   const handleDrawerSuspendToggle = (rider) => {
     setSelectedRider(null);
     requestSuspendToggle(rider);
+  };
+
+  // Phase 4: reason-capturing suspend / reactivate through the dedicated admin
+  // endpoints (recorded in the audit trail). The legacy block toggle above is
+  // kept as a fallback for callers that don't pass these handlers.
+  const handleSuspend = async (rider, reason) => {
+    await suspendRider(rider.id, reason);
+    setSelectedRider(null);
+    onRefresh?.();
+  };
+
+  const handleReactivate = async (rider, reason) => {
+    await reactivateRider(rider.id, reason);
+    setSelectedRider(null);
+    onRefresh?.();
   };
 
   const confirmSuspendToggle = () => {
@@ -257,19 +268,11 @@ export default function RidersManagement({
         </button>
         <button
           type="button"
-          className="admin-lib-btn admin-lib-btn--ghost"
-          aria-label={`${row.is_active ? "Suspend" : "Reactivate"} account for ${row.full_name || row.email}`}
+          className={`admin-lib-btn ${row.is_active ? "admin-lib-btn--danger" : "admin-lib-btn--ghost"}`}
+          aria-label={`${row.is_active ? "Deactivate" : "Reactivate"} account for ${row.full_name || row.email}`}
           onClick={() => requestSuspendToggle(row)}
         >
-          {row.is_active ? "Suspend" : "Reactivate"}
-        </button>
-        <button
-          type="button"
-          className="admin-lib-btn admin-lib-btn--danger"
-          aria-label={`Delete account for ${row.full_name || row.email}`}
-          onClick={() => handleDelete(row)}
-        >
-          Delete
+          {row.is_active ? "Deactivate Account" : "Reactivate Account"}
         </button>
       </div>
     );
@@ -354,18 +357,19 @@ export default function RidersManagement({
         onApprove={handleDrawerApprove}
         onReject={handleDrawerReject}
         onSuspendToggle={handleDrawerSuspendToggle}
-        onDelete={handleDrawerDelete}
+        onSuspend={handleSuspend}
+        onReactivate={handleReactivate}
       />
 
       <ConfirmationDialog
         open={Boolean(suspendTarget)}
-        title={suspendTarget?.is_active ? "Suspend rider account" : "Reactivate rider account"}
+        title={suspendTarget?.is_active ? "Deactivate rider account" : "Reactivate rider account"}
         message={
           suspendTarget?.is_active
-            ? `Suspend the account for ${suspendTarget?.full_name || suspendTarget?.email}? They will lose access until reactivated.`
-            : `Reactivate the account for ${suspendTarget?.full_name || suspendTarget?.email}?`
+            ? `Deactivate the account for ${suspendTarget?.full_name || suspendTarget?.email}? They will be signed out and blocked from logging in until reactivated. Ride history, payments, refunds, and safety records are preserved — the account is NOT deleted.`
+            : `Reactivate the account for ${suspendTarget?.full_name || suspendTarget?.email}? They will be able to log in again.`
         }
-        confirmLabel={suspendTarget?.is_active ? "Suspend" : "Reactivate"}
+        confirmLabel={suspendTarget?.is_active ? "Deactivate Account" : "Reactivate Account"}
         tone={suspendTarget?.is_active ? "danger" : "ghost"}
         onConfirm={confirmSuspendToggle}
         onCancel={() => setSuspendTarget(null)}

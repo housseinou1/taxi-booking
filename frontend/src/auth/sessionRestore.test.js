@@ -11,20 +11,15 @@
 
 // ── Mock the secure storage layer (Keychain/Keystore) ────────────────────────
 // Prefixed with `mock` so Jest allows referencing it inside the hoisted factory.
+// NOTE: CRA configures Jest with `resetMocks: true`, which wipes implementations
+// created inside a `jest.mock` factory before every test. The implementations are
+// therefore (re)installed in `beforeEach` below.
 const mockSecureStore = new Map();
 jest.mock("../native/storage", () => ({
   __esModule: true,
-  getToken: jest.fn((key) =>
-    Promise.resolve(mockSecureStore.has(key) ? mockSecureStore.get(key) : null)
-  ),
-  setToken: jest.fn((key, value) => {
-    mockSecureStore.set(key, value);
-    return Promise.resolve();
-  }),
-  removeToken: jest.fn((key) => {
-    mockSecureStore.delete(key);
-    return Promise.resolve();
-  }),
+  getToken: jest.fn(),
+  setToken: jest.fn(),
+  removeToken: jest.fn(),
 }));
 
 // ── Mock the API fallback (token refresh / /auth/me) ─────────────────────────
@@ -46,7 +41,7 @@ import {
   hydrateTokensFromSecureStorage,
   restoreAuthSession,
 } from "./session";
-import { getToken } from "../native/storage";
+import { getToken, removeToken, setToken } from "../native/storage";
 
 // Build a JWT whose exp is `secondsFromNow` seconds away.
 function makeJwt(secondsFromNow) {
@@ -64,7 +59,19 @@ beforeEach(() => {
   localStorage.clear();
   mockSecureStore.clear();
   mockAxiosFallback.mockReset();
-  getToken.mockClear();
+
+  // Re-arm the secure-storage bridge (resetMocks clears factory implementations).
+  getToken.mockImplementation((key) =>
+    Promise.resolve(mockSecureStore.has(key) ? mockSecureStore.get(key) : null)
+  );
+  setToken.mockImplementation((key, value) => {
+    mockSecureStore.set(key, value);
+    return Promise.resolve();
+  });
+  removeToken.mockImplementation((key) => {
+    mockSecureStore.delete(key);
+    return Promise.resolve();
+  });
 });
 
 describe("hasRestorableAuthCredentials — secure-storage recovery", () => {

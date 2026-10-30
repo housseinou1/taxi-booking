@@ -21,7 +21,7 @@ async function paymentRequest(path, options = {}) {
   return data;
 }
 
-function normalizeRidePaymentMethod(method = "cash") {
+function normalizeRidePaymentMethod(method = "card") {
   const value = String(method || "cash").toLowerCase();
   if (value === "masravi") return "masrvi";
   if (value === "sedad") return "seddad";
@@ -69,7 +69,7 @@ export function fetchMyPayments() {
   return paymentRequest("/my-payments/");
 }
 
-export function createRidePayment({ rideId, method = "cash", tipPercentage = 0 }) {
+export function createRidePayment({ rideId, method = "card", tipPercentage = 0 }) {
   return paymentRequest("/create/", {
     method: "POST",
     body: JSON.stringify({
@@ -147,6 +147,17 @@ export function fetchRefundRequests() {
 
 export function fetchAdminPaymentDashboard() {
   return paymentRequest("/admin/dashboard/");
+}
+
+/**
+ * CEO Payment Management Center payload.
+ *
+ * Returns payout totals split by driver vs courier, refunds awaiting CEO
+ * authorization, failed transactions, provider readiness, and the action-capability
+ * map. Read-only: this endpoint never moves money.
+ */
+export function fetchPaymentsOversight(period = "weekly") {
+  return paymentRequest(`/admin/payments/oversight/?period=${encodeURIComponent(period)}`);
 }
 
 export const DELIVERY_PAYMENT_METHODS = [

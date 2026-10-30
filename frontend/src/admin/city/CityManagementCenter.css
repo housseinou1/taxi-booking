@@ -1,0 +1,397 @@
+/* City Management — Yala Admin → CEO Command Center */
+
+.cmc-root {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 4px 0 32px;
+}
+
+.cmc-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.cmc-header h2 {
+  margin: 0 0 4px;
+  font-size: 1.35rem;
+}
+
+.cmc-header p {
+  margin: 0;
+  max-width: 720px;
+  color: #5b6472;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.cmc-header-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.cmc-banner {
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  border: 1px solid transparent;
+}
+
+.cmc-banner-warn {
+  background: #fff7e6;
+  border-color: #f0c36d;
+  color: #7a5200;
+}
+
+.cmc-banner-error {
+  background: #fdecec;
+  border-color: #f0a6a6;
+  color: #8a1f1f;
+}
+
+.cmc-banner-ok {
+  background: #eaf7ee;
+  border-color: #9ad3ac;
+  color: #1f6b3a;
+}
+
+.cmc-banner-info {
+  background: #eef4fd;
+  border-color: #a9c5ee;
+  color: #1f3f7a;
+}
+
+.cmc-banner code,
+.cmc-hint code {
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 0.82rem;
+}
+
+.cmc-card {
+  background: #fff;
+  border: 1px solid #e3e7ee;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+}
+
+.cmc-card h3 {
+  margin: 0 0 6px;
+  font-size: 1.05rem;
+}
+
+.cmc-card h4 {
+  margin: 12px 0 8px;
+  font-size: 0.95rem;
+}
+
+.cmc-hint {
+  margin: 4px 0 10px;
+  color: #5b6472;
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+
+.cmc-sub {
+  display: block;
+  color: #77808f;
+  font-size: 0.78rem;
+}
+
+.cmc-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8rem;
+}
+
+.cmc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+}
+
+.cmc-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.82rem;
+  color: #414a58;
+}
+
+.cmc-field input,
+.cmc-field select {
+  border: 1px solid #d5dae3;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.88rem;
+  background: #fff;
+}
+
+.cmc-field input:focus,
+.cmc-field select:focus {
+  outline: 2px solid #7aa5f0;
+  outline-offset: 1px;
+  border-color: #7aa5f0;
+}
+
+.cmc-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.cmc-btn {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 8px 14px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cmc-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cmc-btn-primary {
+  background: #1f4f9c;
+  color: #fff;
+}
+
+.cmc-btn-ghost {
+  background: #fff;
+  border-color: #d5dae3;
+  color: #2b3444;
+}
+
+.cmc-btn-danger {
+  background: #b3261e;
+  color: #fff;
+}
+
+.cmc-link {
+  background: none;
+  border: none;
+  color: #1f4f9c;
+  cursor: pointer;
+  text-decoration: underline;
+  font-size: 0.82rem;
+  padding: 0;
+}
+
+.cmc-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+
+.cmc-counter {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  font-size: 0.78rem;
+  color: #5b6472;
+}
+
+.cmc-counter strong {
+  font-size: 1.3rem;
+  color: #1f4f9c;
+}
+
+.cmc-table-wrap {
+  overflow-x: auto;
+  margin-top: 12px;
+}
+
+.cmc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.cmc-table th,
+.cmc-table td {
+  text-align: left;
+  padding: 9px 10px;
+  border-bottom: 1px solid #eef1f6;
+  vertical-align: top;
+}
+
+.cmc-table th {
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6b7484;
+}
+
+.cmc-row-selected {
+  background: #f2f6fd;
+}
+
+.cmc-status {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 2px 9px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.cmc-status-live {
+  background: #e3f5e8;
+  color: #1f6b3a;
+}
+
+.cmc-status-registered {
+  background: #fff4e0;
+  color: #8a5b00;
+}
+
+.cmc-status-off {
+  background: #eef0f4;
+  color: #5b6472;
+}
+
+.cmc-detail-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.cmc-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid #e3e7ee;
+  margin: 14px 0 16px;
+}
+
+.cmc-tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 8px 10px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #5b6472;
+  cursor: pointer;
+}
+
+.cmc-tab-active {
+  color: #1f4f9c;
+  border-bottom-color: #1f4f9c;
+}
+
+.cmc-service-block {
+  border-top: 1px solid #eef1f6;
+  padding-top: 8px;
+}
+
+.cmc-service-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cmc-service-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.85rem;
+  padding: 6px 0;
+  border-bottom: 1px dashed #eef1f6;
+}
+
+.cmc-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
+  gap: 10px;
+}
+
+.cmc-metric {
+  border: 1px solid #eef1f6;
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.78rem;
+  color: #5b6472;
+}
+
+.cmc-metric strong {
+  font-size: 1.05rem;
+  color: #101828;
+}
+
+.cmc-people {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 18px;
+}
+
+.cmc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cmc-list li {
+  border: 1px solid #eef1f6;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.85rem;
+}
+
+.cmc-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(16, 24, 40, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+  padding: 20px;
+}
+
+.cmc-modal {
+  background: #fff;
+  border-radius: 14px;
+  padding: 20px;
+  max-width: 460px;
+  width: 100%;
+  box-shadow: 0 18px 40px rgba(16, 24, 40, 0.24);
+}
+
+.cmc-modal h3 {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+}
+
+.cmc-modal p {
+  margin: 0 0 16px;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: #414a58;
+}
+
+.cmc-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+

@@ -210,9 +210,13 @@ describe("DriverEarnings", () => {
     });
 
     const earningsCall = authenticatedApi.get.mock.calls.find((call) =>
-      call[0].includes("/drivers/me/earnings/")
+      call[0].includes("/rides/driver/earnings/")
     );
-    expect(earningsCall?.[1]).toEqual({ suppressAuthRedirect: true });
+    expect(earningsCall?.[0]).toBe("http://localhost:8000/rides/driver/earnings/");
+    // Earnings failures must not bounce the driver to /login mid-session.
+    expect(earningsCall?.[1]).toEqual(
+      expect.objectContaining({ suppressAuthRedirect: true })
+    );
   });
 
   it("adds aria-pressed to chart-period tabs", async () => {

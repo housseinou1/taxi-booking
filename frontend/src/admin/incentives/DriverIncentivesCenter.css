@@ -1,31 +1,144 @@
+/* =============================================================================
+   YALA Admin — Driver Incentives
+   Fully token-based: this page no longer imports or borrows the shared
+   BetaDashboard.css (which is hardcoded to the dark palette and used by ~20
+   other admin pages), so it renders correctly in both admin themes.
+   ============================================================================= */
+
+.incentive-center {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+  color: var(--admin-text);
+}
+
+/* ── Header ───────────────────────────────────────────────────────────────── */
+
+.incentive-header {
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--admin-border);
+}
+
+.incentive-header__eyebrow {
+  margin: 0 0 4px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--admin-text-muted);
+}
+
+.incentive-header__subtitle {
+  margin: 6px 0 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--admin-text-muted);
+  max-width: 70ch;
+}
+
+.incentive-error {
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 0.8125rem;
+  color: var(--admin-danger);
+  background: rgba(248, 113, 113, 0.12);
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  border-radius: 8px;
+}
+
+/* ── Metric cards: 4 / 2 / 1 ──────────────────────────────────────────────── */
+
+.incentive-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.incentive-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  height: 100%;
+  padding: 16px;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-left: 3px solid var(--admin-accent);
+  border-radius: 12px;
+}
+
+.incentive-card__label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--admin-text-muted);
+}
+
+.incentive-card__value {
+  margin-top: 6px;
+  font-size: 1.25rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--admin-text);
+}
+
+.incentive-card__sub {
+  margin-top: 4px;
+  font-size: 0.6875rem;
+  color: var(--admin-text-muted);
+}
+
+/* ── Tabs ─────────────────────────────────────────────────────────────────── */
+
 .incentive-tabs {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin: 1rem 0;
+  gap: 4px;
+  padding: 4px;
+  margin: 0;
+  background: var(--admin-surface-alt);
+  border: 1px solid var(--admin-border);
+  border-radius: 10px;
 }
 
 .incentive-tab {
-  border: 1px solid #cbd5e1;
-  background: #fff;
-  border-radius: 999px;
-  padding: 8px 14px;
-  font-weight: 700;
+  padding: 9px 16px;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--admin-text-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
   cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
-.incentive-tab--active {
-  background: #111827;
-  color: #fff;
-  border-color: #111827;
+.incentive-tab:hover {
+  color: var(--admin-text);
+  background: var(--admin-surface-muted);
 }
+
+.incentive-tab:focus-visible {
+  outline: 2px solid var(--admin-accent);
+  outline-offset: -2px;
+}
+
+.incentive-tab--active,
+.incentive-tab--active:hover {
+  color: #ffffff;
+  background: var(--admin-accent);
+}
+
+/* ── Panels / forms ───────────────────────────────────────────────────────── */
 
 .incentive-panel {
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
   padding: 14px;
-  background: #fff;
-  margin-bottom: 1rem;
+  margin-bottom: 16px;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: 12px;
 }
 
 .incentive-form {
@@ -37,28 +150,41 @@
 .incentive-form label {
   display: grid;
   gap: 4px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 700;
+  color: var(--admin-text);
 }
 
 .incentive-form input,
 .incentive-form select,
 .incentive-form textarea {
   padding: 10px;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
+  font: inherit;
+  font-size: 0.8125rem;
+  color: var(--admin-text);
+  background: var(--admin-surface-alt);
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+}
+
+.incentive-form input:focus-visible,
+.incentive-form select:focus-visible,
+.incentive-form textarea:focus-visible {
+  outline: 2px solid var(--admin-accent);
+  outline-offset: 1px;
 }
 
 .incentive-campaign {
-  border: 1px solid #e2e8f0;
-  border-left: 5px solid #00A651;
-  border-radius: 8px;
   padding: 12px;
   margin-bottom: 8px;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-left: 5px solid var(--admin-accent);
+  border-radius: 10px;
 }
 
 .incentive-campaign--draft {
-  border-left-color: #94a3b8;
+  border-left-color: var(--admin-text-muted);
 }
 
 .incentive-actions {
@@ -69,19 +195,56 @@
 }
 
 .incentive-actions button {
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  background: #f8fafc;
-  padding: 7px 10px;
+  padding: 7px 12px;
+  font: inherit;
+  font-size: 0.75rem;
   font-weight: 700;
+  color: var(--admin-text);
+  background: var(--admin-surface-alt);
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
   cursor: pointer;
+}
+
+.incentive-actions button:hover {
+  background: var(--admin-surface-muted);
+}
+
+.incentive-actions button:focus-visible {
+  outline: 2px solid var(--admin-accent);
+  outline-offset: 1px;
 }
 
 .incentive-payout-row {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 8px;
   align-items: center;
   padding: 10px 0;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--admin-border);
 }
+
+.incentive-payout-row:last-child {
+  border-bottom: 0;
+}
+
+/* ── Responsive: tablet 2-up, mobile 1-up ─────────────────────────────────── */
+
+@media (max-width: 1180px) {
+  .incentive-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .incentive-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .incentive-tab {
+    transition: none;
+  }
+}
+

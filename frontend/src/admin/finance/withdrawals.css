@@ -1,0 +1,108 @@
+/* ── Finance & Withdrawals monitoring (Phase 7, read-only) ─────────────────── */
+
+.admin-withdrawals {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.withdrawals-notice {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--admin-border, #e5e7eb);
+  border-left: 3px solid var(--admin-warning, #b45309);
+  border-radius: 6px;
+  background: var(--admin-surface-alt, #f9fafb);
+  font-size: 0.85rem;
+  color: var(--admin-text-muted, #6b7280);
+}
+
+.withdrawals-cell-hint {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.78rem;
+  color: var(--admin-text-muted, #6b7280);
+}
+
+.withdrawals-detail__empty {
+  margin: 6px 0;
+  font-size: 0.85rem;
+  color: var(--admin-text-muted, #6b7280);
+}
+
+.withdrawals-detail__subheading {
+  margin: 14px 0 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.withdrawals-detail__timeline {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 0.85rem;
+}
+
+.withdrawals-detail__table-wrap {
+  overflow-x: auto;
+}
+
+.withdrawals-detail__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.withdrawals-detail__table th,
+.withdrawals-detail__table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--admin-border, #e5e7eb);
+  text-align: left;
+  vertical-align: top;
+}
+
+.withdrawals-detail__table th {
+  font-weight: 600;
+  color: var(--admin-text-muted, #6b7280);
+}
+
+/* ── Payout groups (Phase 6): open vs completed vs wallet exposure ────────── */
+
+.withdrawals-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.withdrawals-group__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--admin-text);
+}
+
+/* Responsive KPI grid for this page only (the shared .admin-kpi-row is used by
+   other admin pages, so it is scoped rather than redefined globally). */
+.admin-withdrawals .admin-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+@media (max-width: 1180px) {
+  .admin-withdrawals .admin-kpi-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .admin-withdrawals .admin-kpi-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+

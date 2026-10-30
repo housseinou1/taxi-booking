@@ -600,16 +600,31 @@ export default function ApprovalCenter() {
     if (!window.confirm(confirmMsg)) return;
 
     try {
-      await authenticatedApi.post(`${API_URL}/admin/approvals/${activeTab}/bulk/`, {
-        ids: Array.from(selectedIds),
-        action,
-      });
-      showToast(`Bulk ${action} completed for ${selectedIds.size} applications`);
+      const response = await authenticatedApi.post(
+        `${API_URL}/admin/approvals/${activeTab}/bulk/`,
+        { ids: Array.from(selectedIds), action }
+      );
+      const unsigned = response?.data?.unsigned_count || 0;
+      const skipped = response?.data?.blocked_count || 0;
+      let message = `Bulk ${action} completed for ${response?.data?.success_count ?? selectedIds.size} applications`;
+      if (unsigned > 0) {
+        message += ` — ${unsigned} skipped: electronic signature incomplete`;
+      }
+      if (skipped > 0) {
+        message += ` — ${skipped} skipped by CEO decision protection`;
+      }
+      showToast(message);
       setSelectedIds(new Set());
       fetchQueue(activeTab, currentPage);
       fetchStats();
     } catch (err) {
-      showToast("Bulk action failed");
+      const detail =
+        err?.response?.data?.detail ||
+        err?.response?.data?.error ||
+        (err?.response?.data?.unsigned_count
+          ? `${err.response.data.unsigned_count} application(s) skipped: electronic signature incomplete`
+          : "Bulk action failed");
+      showToast(detail);
     }
   };
 

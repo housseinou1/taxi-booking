@@ -34,7 +34,7 @@ function downloadBlob(response, filename) {
 }
 
 export default function AnalyticsCenter() {
-  const { canExport, cityId, canEdit } = usePermissions();
+  const { cityId } = usePermissions();
   const { push } = useToast();
   const abortRef = useRef(0);
   const [data, setData] = useState(null);
@@ -46,8 +46,6 @@ export default function AnalyticsCenter() {
   const [lastRefresh, setLastRefresh] = useState(null);
   const [selectedMetrics, setSelectedMetrics] = useState(["gross_bookings", "net_revenue", "completed_rides"]);
   const [savedReports, setSavedReports] = useState(loadReportConfigs);
-
-  const canWriteOps = canEdit("operations") || canEdit("finance");
 
   const load = useCallback(async () => {
     const reqId = ++abortRef.current;
@@ -256,11 +254,7 @@ export default function AnalyticsCenter() {
           <KPICard label="Commission" value={finance.platform_commission ?? growth.executive_kpis?.commission_revenue ?? "—"} />
           <KPICard label="Refund rate" value={finance.refund_rate_pct != null ? `${finance.refund_rate_pct}%` : "—"} />
         </div>
-        {canWriteOps ? (
-          <p className="fin-dash__warn">You also have write roles elsewhere — this center remains read-only for analytics exports.</p>
-        ) : (
-          <p className="fin-dash__hint">Analytics users cannot approve refunds, payouts, or mutate operational records from this page.</p>
-        )}
+        <p className="fin-dash__hint">Analytics users cannot approve refunds, payouts, or mutate operational records from this page.</p>
       </section>
 
       <section className="fin-dash__panel">
@@ -286,7 +280,7 @@ export default function AnalyticsCenter() {
             </label>
           ))}
         </FilterBar>
-        <p className="fin-dash__hint">Only approved BI report types can be exported — arbitrary SQL is not available.</p>
+        <p className="fin-dash__hint">Only approved report types can be exported.</p>
         <div className="fin-dash__row-actions">
           {REPORT_PRESETS.map((preset) => (
             <React.Fragment key={preset.id}>
@@ -302,9 +296,6 @@ export default function AnalyticsCenter() {
             </React.Fragment>
           ))}
         </div>
-        {!canExport?.("analytics") && !canExport?.("reports") ? (
-          <p className="fin-dash__hint">Export permission is enforced by BI endpoints and AdminActionGuard where wired.</p>
-        ) : null}
         <DataTable
           title="Saved report configs (local)"
           columns={[

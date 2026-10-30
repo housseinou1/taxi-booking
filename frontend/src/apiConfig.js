@@ -176,6 +176,29 @@ export function getWsCandidates(kind = "rides") {
 export function getApiCandidates(path = "") {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
 
+  // On a production web host the page's OWN origin must be tried FIRST: the
+  // cross-origin www/api candidates are blocked by CORS, which previously
+  // stranded the login flow (the request never reached the API). The host is
+  // read at call time rather than at import time so the ordering also holds
+  // after a client-side navigation or a host change.
+  if (
+    !isCapacitorNative() &&
+    typeof window !== "undefined" &&
+    isProductionWebHost(window.location.hostname) &&
+    window.location.origin
+  ) {
+    const candidates = [`${window.location.origin}${normalizedPath}`];
+
+    for (const base of getProductionApiBases()) {
+      const candidate = `${base}${normalizedPath}`;
+      if (!candidates.includes(candidate)) {
+        candidates.push(candidate);
+      }
+    }
+
+    return candidates;
+  }
+
   if (isRemoteApiConfigured || isCapacitorNative()) {
     return getProductionApiBases().map((base) => `${base}${normalizedPath}`);
   }

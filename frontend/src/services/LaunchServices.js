@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 
 import { API_URL, getApiCandidates, isRemoteApiConfigured } from "../apiConfig";
@@ -413,7 +413,11 @@ function LostFoundPanel({ admin }) {
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ ride_id: "", role: "rider", category: "other", description: "", rider_phone: "", driver_phone: "" });
 
-  const load = async () => {
+  // `load` is memoised on `admin` only, so its identity changes exactly when the
+  // request target changes. Previously it was a plain function recreated on every
+  // render, which is why it could not be declared as an effect dependency; the
+  // effect now lists it explicitly with identical behaviour (no extra fetches).
+  const load = useCallback(async () => {
     setLoading(true);
     if (!hasAccessToken()) {
       setItems([]);
@@ -433,9 +437,11 @@ function LostFoundPanel({ admin }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [admin]);
 
-  useEffect(() => { load(); }, [admin]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const submit = async (event) => {
     event.preventDefault();

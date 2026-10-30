@@ -11,6 +11,7 @@ import {
   getRequiredCourierDocumentTypes,
 } from "./deliveryDocumentReview";
 import { getCourierLevelInfo } from "./deliveryCourierLevel";
+import { stopBackgroundLocationTracking } from "../native/location";
 import "./delivery-courier-profile.css";
 import "./delivery-courier-flow.css";
 
@@ -85,6 +86,8 @@ export default function DeliveryCourierProfileDashboard() {
   const [error, setError] = useState("");
 
   const courierLogout = () => {
+    // The Android foreground location service must not outlive the session.
+    stopBackgroundLocationTracking().catch(() => {});
     localStorage.removeItem("access");
     localStorage.removeItem("refresh");
     localStorage.removeItem("user");

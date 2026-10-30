@@ -3,10 +3,12 @@ import React, { useEffect, useRef, useState } from "react";
 import { Drawer, StatusChip } from "../components/library";
 import { formatTimestamp } from "../components/library/utils/formatters";
 import {
+  fetchRiderDocumentBlob,
   getRiderActivity,
   getRiderAuditLogs,
   getRiderPayments,
   getRiderRideHistory,
+  getRiderSupport,
 } from "./ridersApi";
 import {
   getAccountStatus,
@@ -96,7 +98,8 @@ export default function RiderDetailsDrawer({
   onApprove,
   onReject,
   onSuspendToggle,
-  onDelete,
+  onSuspend,
+  onReactivate,
 }) {
   const drawerRef = useRef(null);
   const previouslyFocusedRef = useRef(null);
@@ -106,6 +109,10 @@ export default function RiderDetailsDrawer({
   const [payments, setPayments] = useState(INITIAL_SECTION);
   const [activity, setActivity] = useState(INITIAL_SECTION);
   const [auditLogs, setAuditLogs] = useState(INITIAL_SECTION);
+  const [support, setSupport] = useState(INITIAL_SECTION);
+  const [documentState, setDocumentState] = useState({ loading: false, error: null });
+  const [reasonDialog, setReasonDialog] = useState({ open: false, value: "", mode: null });
+  const [actionState, setActionState] = useState({ busy: false, error: null, notice: null });
 
   const riderId = rider?.id;
 
@@ -161,6 +168,15 @@ export default function RiderDetailsDrawer({
         if (!cancelled) setAuditLogs({ loading: false, error: err.message || "Failed to load account activity.", data: null });
       });
 
+    setSupport((prev) => ({ ...prev, loading: true, error: null }));
+    getRiderSupport(riderId)
+      .then((data) => {
+        if (!cancelled) setSupport({ loading: false, error: null, data });
+      })
+      .catch((err) => {
+        if (!cancelled) setSupport({ loading: false, error: err.message || "Failed to load support history.", data: null });
+      });
+
     return () => {
       cancelled = true;
     };
@@ -208,6 +224,55 @@ export default function RiderDetailsDrawer({
     };
   }, [open]);
 
+  // Identity documents are NOT public. Open them through the authenticated admin
+  // endpoint (blob), never via a public /media/ URL.
+  const openDocument = async () => {
+    if (!riderId) return;
+    setDocumentState({ loading: true, error: null });
+    try {
+      const blob = await fetchRiderDocumentBlob(riderId);
+      const url = window.URL.createObjectURL(blob);
+      window.open(url, "_blank", "noopener,noreferrer");
+      // Revoke shortly after so the tab has time to load it.
+      setTimeout(() => window.URL.revokeObjectURL(url), 60000);
+      setDocumentState({ loading: false, error: null });
+    } catch (err) {
+      setDocumentState({
+        loading: false,
+        error: err?.message || "Could not open the identity document.",
+      });
+    }
+  };
+
+  const runAccessChange = async (mode, reason) => {
+    setActionState({ busy: true, error: null, notice: null });
+    try {
+      if (mode === "suspend") await onSuspend(rider, reason);
+      else await onReactivate(rider, reason);
+      setActionState({
+        busy: false,
+        error: null,
+        notice: mode === "suspend" ? "Rider suspended." : "Rider reactivated.",
+      });
+      setReasonDialog({ open: false, value: "", mode: null });
+    } catch (err) {
+      setActionState({
+        busy: false,
+        error: err?.message || "The action failed.",
+        notice: null,
+      });
+    }
+  };
+
+  const submitReason = () => {
+    const value = reasonDialog.value.trim();
+    if (reasonDialog.mode === "suspend" && value.length < 5) {
+      setActionState({ busy: false, error: "A clear reason (5+ characters) is required.", notice: null });
+      return;
+    }
+    runAccessChange(reasonDialog.mode, value);
+  };
+
   if (!open || !rider) return null;
 
   const verification = getVerification(rider);
@@ -243,6 +308,8 @@ export default function RiderDetailsDrawer({
   const auditRows = Array.isArray(auditLogs.data)
     ? auditLogs.data
     : auditLogs.data?.results || [];
+  const supportRows = support.data?.results || [];
+  const supportOpenCount = support.data?.open_count ?? 0;
 
   // Rides that carry a rider rating/review, for the ratings & reviews section.
   const ratedRides = historyRows.filter(
@@ -306,13 +373,26 @@ export default function RiderDetailsDrawer({
             <p className="riders-cell-hint">Rejection reason: {rider.rider_rejection_reason}</p>
           ) : null}
           <h4 style={{ marginTop: 12 }}>Identity documents</h4>
-          {docUrl ? (
-            <a className="riders-detail__doc-link" href={docUrl} target="_blank" rel="noreferrer">
-              View national ID document
-            </a>
+          {rider.has_national_id_document ? (
+            <div className="riders-detail__actions">
+              <button
+                type="button"
+                className="admin-lib-btn admin-lib-btn--ghost"
+                disabled={documentState.loading}
+                onClick={openDocument}
+              >
+                {documentState.loading ? "Opening…" : "View national ID document"}
+              </button>
+              <span className="riders-cell-hint">
+                Served through an authenticated admin endpoint — not a public URL.
+              </span>
+            </div>
           ) : (
             <p className="riders-detail__empty">No document on file</p>
           )}
+          {documentState.error ? (
+            <p className="riders-detail__error">{documentState.error}</p>
+          ) : null}
         </section>
 
         {/* Account status — separate section */}
@@ -563,6 +643,49 @@ export default function RiderDetailsDrawer({
             </ul>
           </AsyncSection>
         </section>
+        {/* Rider support integration (existing support tickets raised by the rider) */}
+        <section className="riders-detail__section">
+          <h4>Support history</h4>
+          <AsyncSection
+            state={support}
+            isEmpty={supportRows.length === 0}
+            emptyLabel="No support tickets raised by this rider."
+          >
+            {supportOpenCount > 0 ? (
+              <p className="riders-cell-hint">
+                {supportOpenCount} open ticket{supportOpenCount === 1 ? "" : "s"}.
+              </p>
+            ) : null}
+            <div className="riders-detail__table-wrap">
+              <table className="riders-detail__table">
+                <thead>
+                  <tr>
+                    <th scope="col">Reference</th>
+                    <th scope="col">Category</th>
+                    <th scope="col">Severity</th>
+                    <th scope="col">Subject</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Raised</th>
+                    <th scope="col">Resolved</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {supportRows.map((ticket) => (
+                    <tr key={ticket.id}>
+                      <td>{naOr(ticket.reference)}</td>
+                      <td>{naOr(ticket.category)}</td>
+                      <td>{naOr(ticket.severity)}</td>
+                      <td>{naOr(ticket.subject)}</td>
+                      <td>{naOr(ticket.status)}</td>
+                      <td>{ticket.created_at ? formatTimestamp(ticket.created_at) : "N/A"}</td>
+                      <td>{ticket.resolved_at ? formatTimestamp(ticket.resolved_at) : "N/A"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </AsyncSection>
+        </section>
 
         {/* Administrative actions (requirement 5) */}
         <section className="riders-detail__section">
@@ -586,20 +709,70 @@ export default function RiderDetailsDrawer({
             </button>
             <button
               type="button"
-              className="admin-lib-btn admin-lib-btn--ghost"
-              onClick={() => onSuspendToggle(rider)}
+              className={`admin-lib-btn ${rider.is_active ? "admin-lib-btn--danger" : "admin-lib-btn--ghost"}`}
+              disabled={actionState.busy}
+              onClick={() => {
+                setActionState({ busy: false, error: null, notice: null });
+                if (rider.is_active && typeof onSuspend === "function") {
+                  setReasonDialog({ open: true, value: "", mode: "suspend" });
+                } else if (!rider.is_active && typeof onReactivate === "function") {
+                  setReasonDialog({ open: true, value: "", mode: "reactivate" });
+                } else {
+                  onSuspendToggle?.(rider);
+                }
+              }}
             >
               {rider.is_active ? "Suspend account" : "Reactivate account"}
             </button>
-            <button
-              type="button"
-              className="admin-lib-btn admin-lib-btn--danger"
-              onClick={() => onDelete(rider)}
-            >
-              Delete account
-            </button>
           </div>
+          {actionState.error ? (
+            <p className="riders-detail__error">{actionState.error}</p>
+          ) : null}
+          {actionState.notice ? (
+            <p className="riders-cell-hint">{actionState.notice}</p>
+          ) : null}
         </section>
+
+        {reasonDialog.open ? (
+          <div className="riders-detail__dialog" role="group"
+               aria-label={reasonDialog.mode === "suspend" ? "Suspend rider" : "Reactivate rider"}>
+            <h4>
+              {reasonDialog.mode === "suspend" ? "Suspend rider account" : "Reactivate rider account"}
+            </h4>
+            <p className="riders-cell-hint">
+              {reasonDialog.mode === "suspend"
+                ? "Access is blocked immediately. Ride and payment history are preserved."
+                : "Access is restored. This action is recorded in the audit trail."}
+            </p>
+            <label className="riders-detail__dialog-field">
+              Reason {reasonDialog.mode === "suspend" ? "(required)" : "(optional)"}
+              <input
+                type="text"
+                value={reasonDialog.value}
+                onChange={(event) =>
+                  setReasonDialog((prev) => ({ ...prev, value: event.target.value }))
+                }
+              />
+            </label>
+            <div className="riders-detail__actions">
+              <button
+                type="button"
+                className="admin-lib-btn"
+                disabled={actionState.busy}
+                onClick={submitReason}
+              >
+                {actionState.busy ? "Working…" : "Confirm"}
+              </button>
+              <button
+                type="button"
+                className="admin-lib-btn admin-lib-btn--ghost"
+                onClick={() => setReasonDialog({ open: false, value: "", mode: null })}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : null}
       </div>
     </Drawer>
   );

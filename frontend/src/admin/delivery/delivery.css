@@ -1,0 +1,307 @@
+.delivery-requirements {
+  list-style: none;
+  margin: 8px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.delivery-requirements li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+}
+
+.delivery-requirements__label {
+  min-width: 170px;
+  font-weight: 600;
+}
+
+.delivery-requirements__meta {
+  color: var(--admin-text-muted, #6b7280);
+  font-size: 0.76rem;
+}
+
+/* Courier terminology in delivery-specific management screens */
+.courier-badge {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--admin-info, #2563eb);
+}
+
+/* â”€â”€ Yala Delivery / Courier Management (Phase 5) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
+.admin-delivery {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* â”€â”€ Delivery overview dashboard (Task 6) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
+.dlvops-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.dlvops-toolbar__stamp {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--admin-text-muted, #6b7280);
+}
+
+.dlvops-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dlvops-section__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+}
+
+.dlvops-section__hint {
+  margin: 0;
+  max-width: 70ch;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--admin-text-muted, #6b7280);
+}
+
+.dlvops-panels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.dlvops-panel {
+  padding: 14px 16px;
+  border: 1px solid var(--admin-border, #e5e7eb);
+  border-radius: 12px;
+  background: var(--admin-surface, #fff);
+}
+
+.dlvops-panel__title {
+  margin: 0 0 10px;
+  font-size: 0.78rem;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--admin-text-muted, #6b7280);
+}
+
+.dlvops-stats {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dlvops-stats__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.85rem;
+}
+
+.dlvops-stats__row dt {
+  color: var(--admin-text-muted, #6b7280);
+}
+
+.dlvops-stats__row dd {
+  margin: 0;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.dlvops-live__table-wrap {
+  overflow-x: auto;
+}
+
+.dlvops-live__caption {
+  padding: 0 0 8px;
+  text-align: left;
+  font-size: 0.76rem;
+  color: var(--admin-text-muted, #6b7280);
+}
+
+.dlvops-live__slot {
+  margin-top: 12px;
+}
+
+/* The Leaflet container fills its parent, so the wrapper owns the height. */
+.dlvops-live__map {
+  height: 360px;
+  border: 1px solid var(--admin-border, #e5e7eb);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--admin-surface-alt, #f3f4f6);
+}
+
+@media (max-width: 640px) {
+  .dlvops-live__map {
+    height: 260px;
+  }
+}
+
+.delivery-cell-hint {
+  margin: 4px 0;
+  font-size: 0.78rem;
+  color: var(--admin-text-muted, #6b7280);
+}
+
+.delivery-detail__empty {
+  margin: 6px 0;
+  font-size: 0.85rem;
+  color: var(--admin-text-muted, #6b7280);
+}
+
+.delivery-detail__error {
+  margin: 6px 0;
+  font-size: 0.85rem;
+  color: var(--admin-danger, #b91c1c);
+}
+
+.delivery-detail__notice {
+  margin: 6px 0;
+  font-size: 0.85rem;
+  color: var(--admin-success, #15803d);
+}
+
+.delivery-detail__warning {
+  margin: 6px 0;
+  font-size: 0.8rem;
+  color: var(--admin-warning, #b45309);
+}
+
+.delivery-detail__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.delivery-detail__steps {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.delivery-detail__steps li {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: 0.85rem;
+}
+
+.delivery-detail__step {
+  flex: 0 0 auto;
+  min-width: 58px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  text-align: center;
+  background: var(--admin-surface-alt, #f3f4f6);
+  color: var(--admin-text-muted, #6b7280);
+}
+
+.delivery-detail__step--done {
+  background: var(--admin-success-soft, #dcfce7);
+  color: var(--admin-success, #15803d);
+}
+
+.delivery-detail__table-wrap {
+  overflow-x: auto;
+}
+
+.delivery-detail__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.delivery-detail__table th,
+.delivery-detail__table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--admin-border, #e5e7eb);
+  text-align: left;
+  vertical-align: top;
+}
+
+.delivery-detail__table th {
+  font-weight: 600;
+  color: var(--admin-text-muted, #6b7280);
+}
+
+.delivery-detail__pager {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  font-size: 0.8rem;
+}
+
+.delivery-detail__audit {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 0.82rem;
+}
+
+.delivery-detail__dialog {
+  margin: 12px;
+  padding: 12px;
+  border: 1px solid var(--admin-border, #e5e7eb);
+  border-radius: 8px;
+  background: var(--admin-surface, #fff);
+}
+
+.delivery-detail__dialog h4 {
+  margin: 0 0 8px;
+  font-size: 0.9rem;
+}
+
+.delivery-detail__dialog-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.8rem;
+  color: var(--admin-text-muted, #6b7280);
+}
+
+.delivery-detail__dialog-field textarea {
+  padding: 6px 8px;
+  border: 1px solid var(--admin-border, #e5e7eb);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-family: inherit;
+  color: inherit;
+}
+
+.delivery-detail__dialog-field textarea:focus-visible {
+  outline: 2px solid var(--admin-accent, #2563eb);
+  outline-offset: 1px;
+}
+
+.delivery-detail__dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+}

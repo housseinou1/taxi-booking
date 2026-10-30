@@ -1,0 +1,902 @@
+/* Employee Management Center â€” scoped styles.
+   Reuses existing admin design tokens (admin-lib-btn, admin-chip, admin-table*,
+   admin-field, beta__*). Only employee-specific layout classes are defined
+   here, all prefixed `emp-`. No new fonts/colors are introduced. */
+
+.emp-center {
+  display: block;
+}
+
+.emp-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.emp-tab {
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #f8fafc;
+  border-radius: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+
+.emp-tab--active {
+  background: #00a651;
+  border-color: #00a651;
+}
+
+.emp-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+  margin-bottom: 16px;
+}
+
+.emp-toolbar__search {
+  flex: 1 1 220px;
+  min-width: 180px;
+}
+
+.emp-thumb,
+.emp-photo {
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid #334155;
+  background: #0f172a;
+  display: block;
+}
+
+.emp-thumb {
+  width: 40px;
+  height: 40px;
+}
+
+.emp-photo {
+  width: 160px;
+  height: 160px;
+}
+
+.emp-photo__placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  font-size: 0.72rem;
+  text-align: center;
+}
+
+.emp-thumb.emp-photo__placeholder {
+  font-size: 0.6rem;
+}
+
+/* Forms */
+.emp-form {
+  display: grid;
+  gap: 16px;
+  max-width: 640px;
+}
+
+.emp-field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.emp-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.emp-field label {
+  font-size: 0.82rem;
+  color: #cbd5e1;
+}
+
+.emp-field input,
+.emp-field select {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #334155;
+  background: #1e293b;
+  color: #f8fafc;
+}
+
+.emp-field--error input {
+  border-color: #ef4444;
+}
+
+.emp-note {
+  font-size: 0.78rem;
+  color: #94a3b8;
+}
+
+.emp-form__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Profile */
+.emp-profile {
+  display: grid;
+  gap: 20px;
+}
+
+.emp-profile__head {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.emp-profile__identity {
+  display: grid;
+  gap: 6px;
+}
+
+.emp-profile__number {
+  font-family: monospace;
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+}
+
+.emp-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.emp-detail__label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #94a3b8;
+}
+
+.emp-detail__value {
+  font-size: 0.95rem;
+}
+
+/* DOB (and other field-level-permission values) hidden from this viewer */
+.emp-detail__value--restricted {
+  color: #94a3b8;
+  font-style: italic;
+}
+
+/* Administrator-tier audit trail (read-only) */
+.emp-audit {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.emp-audit li {
+  display: grid;
+  gap: 2px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  font-size: 0.9rem;
+}
+
+/* Card QR (authenticated blob; opaque uuid only) */
+.emp-card-qr {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+  margin-top: 12px;
+}
+
+.emp-card-qr__image {
+  width: 160px;
+  height: 160px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 8px;
+  background: #fff;
+  padding: 6px;
+}
+
+/* Camera capture */
+.emp-photo-camera {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.emp-photo-camera__video {
+  width: 100%;
+  max-width: 320px;
+  border-radius: 8px;
+  background: #0f172a;
+}
+
+.emp-audit__meta {
+  font-size: 0.78rem;
+  color: #94a3b8;
+}
+
+/* Card panel */
+.emp-card-panel {
+  display: grid;
+  gap: 16px;
+}
+
+.emp-card-current {
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid #334155;
+  background: #0f172a;
+  display: grid;
+  gap: 10px;
+}
+
+.emp-card-current__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.emp-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.emp-reason-field {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.emp-reason-field textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #334155;
+  background: #1e293b;
+  color: #f8fafc;
+}
+
+/* Photo panel */
+.emp-photo-panel {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.emp-photo-panel__controls {
+  display: grid;
+  gap: 8px;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .emp-field-grid,
+  .emp-detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .emp-profile__head {
+    flex-direction: column;
+  }
+
+  .emp-photo {
+    width: 120px;
+    height: 120px;
+  }
+}
+
+/* â”€â”€ Employee ID card: preview faces + true-size printing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+ * The faces are laid out at exact CR80 size (85.60 Ã— 53.98 mm) so the on-screen
+ * preview matches the generated PDF, and printing is 1:1 on a card printer or an
+ * office printer (never stretched to A4/Letter).
+ */
+
+.emp-card-output {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 10px 0;
+}
+
+.emp-card-output__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.emp-card-preview__faces {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6mm;
+  justify-content: center;
+  padding: 2mm 0 6mm;
+}
+
+.emp-idcard {
+  width: 85.6mm;
+  height: 53.98mm;
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #ffffff;
+  color: #0f172a;
+  border: 0.25mm solid #cbd5e1;
+  border-radius: 3mm;
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.18);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+.emp-idcard__band {
+  display: flex;
+  align-items: center;
+  gap: 2mm;
+  padding: 1.4mm 2.5mm;
+  background: #0a3d2a;
+  color: #ffffff;
+  border-bottom: 0.6mm solid #00a651;
+}
+
+.emp-idcard__logo {
+  height: 6mm;
+  width: auto;
+  object-fit: contain;
+}
+
+.emp-idcard__band-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
+.emp-idcard__band-text strong {
+  font-size: 2.6mm;
+  letter-spacing: 0.02em;
+}
+
+.emp-idcard__band-text span {
+  font-size: 1.7mm;
+  opacity: 0.9;
+}
+
+.emp-idcard__body {
+  display: flex;
+  gap: 2.5mm;
+  padding: 2.5mm;
+  flex: 1;
+  min-height: 0;
+}
+
+.emp-idcard__photo {
+  width: 17mm;
+  height: 20mm;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: #f1f5f9;
+  border: 0.25mm solid #cbd5e1;
+}
+
+.emp-idcard__photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.emp-idcard__photo span {
+  font-size: 1.8mm;
+  color: #64748b;
+}
+
+.emp-idcard__fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7mm;
+  min-width: 0;
+}
+
+.emp-idcard__name {
+  font-size: 3mm;
+  line-height: 1.1;
+}
+
+.emp-idcard__field {
+  display: flex;
+  gap: 1.2mm;
+  font-size: 1.9mm;
+}
+
+.emp-idcard__field span {
+  min-width: 14mm;
+  color: #475569;
+}
+
+.emp-idcard__field b {
+  font-weight: 650;
+}
+
+.emp-idcard__qr {
+  width: 20mm;
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6mm;
+}
+
+.emp-idcard__qr img {
+  width: 18mm;
+  height: 18mm;
+}
+
+.emp-idcard__qr span {
+  font-size: 2mm;
+  color: #64748b;
+}
+
+.emp-idcard__qr small {
+  font-size: 1.6mm;
+  color: #475569;
+}
+
+.emp-idcard__notice {
+  margin: 0 2.5mm;
+  font-size: 1.6mm;
+  line-height: 1.3;
+  color: #475569;
+}
+
+.emp-idcard__footer {
+  margin-top: auto;
+  display: flex;
+  justify-content: space-between;
+  gap: 2mm;
+  padding: 0.9mm 2.5mm;
+  background: #0a3d2a;
+  color: #ffffff;
+  font-size: 1.7mm;
+  font-weight: 650;
+}
+
+/* Back-face slogan band (Founder/CEO directive, 2026-10-26): official company slogan with the
+   Mauritanian flag beside it. Mirrors the PDF slogan band so the on-screen preview, the PDF
+   download and the printed card all match. The card body is flex:1 / min-height:0, so this
+   5.4mm band is absorbed inside the fixed 53.98mm CR80 height and is never clipped. */
+.emp-idcard__slogan {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2mm;
+  height: 5.4mm;
+  flex: 0 0 auto;
+  padding: 0 2.5mm;
+  background: #0a3d2a;
+  color: #ffffff;
+  border-top: 0.6mm solid #00a651;
+  font-size: 1.7mm;
+  font-weight: 700;
+  letter-spacing: 0.04mm;
+  text-align: center;
+}
+
+.emp-idcard__slogan-flag {
+  height: 3.4mm;
+  width: 5.1mm;
+  flex: 0 0 auto;
+  border-radius: 0.3mm;
+  box-shadow: 0 0 0 0.15mm rgba(255, 255, 255, 0.55);
+}
+
+/* â”€â”€ Back face: fit the slogan band inside the fixed CR80 height â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+   The back body was already close to its height budget, and the 5.4mm slogan band is
+   absorbed by shrinking the body (flex: 1 / min-height: 0). These rules tighten the BACK
+   FACE ONLY so the notice bullets are never clipped by the card's overflow: hidden. The
+   FRONT face is untouched, so the photograph, identity details and signature block keep
+   exactly their previous geometry. Scoped with .emp-idcard--back so nothing else moves. */
+.emp-idcard--back .emp-idcard__body {
+  padding: 1.6mm;
+  gap: 2mm;
+}
+
+.emp-idcard--back .emp-idcard__fields {
+  gap: 0.45mm;
+}
+
+.emp-idcard--back .emp-idcard__field {
+  font-size: 1.8mm;
+}
+
+.emp-idcard--back .emp-idcard__notice-block {
+  gap: 0.28mm;
+}
+
+.emp-idcard--back .emp-idcard__notice-block strong {
+  font-size: 1.8mm;
+}
+
+.emp-idcard--back .emp-idcard__notice-block span {
+  font-size: 1.7mm;
+  line-height: 1.12;
+}
+
+.emp-idcard--back .emp-idcard__bullets {
+  gap: 0.2mm;
+  font-size: 1.7mm;
+}
+
+/* â”€â”€ Printing: both faces at true CR80 size, nothing else on the page â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
+@page {
+  size: 85.6mm 53.98mm;
+  margin: 0;
+}
+
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+
+  .emp-card-print-area,
+  .emp-card-print-area * {
+    visibility: visible !important;
+  }
+
+  .emp-card-print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    display: block !important;
+    padding: 0 !important;
+    gap: 0 !important;
+  }
+
+  .emp-idcard {
+    width: 85.6mm;
+    height: 53.98mm;
+    margin: 0;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    break-after: page;
+    page-break-after: always;
+  }
+
+  .emp-idcard:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+}
+
+
+/* Back-face additions: verification block + notice bullets (mirror the PDF back) */
+.emp-idcard__notice-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4mm;
+}
+
+.emp-idcard__notice-block strong {
+  font-size: 1.9mm;
+  letter-spacing: 0.02em;
+}
+
+.emp-idcard__notice-block span {
+  font-size: 1.8mm;
+  line-height: 1.25;
+  color: #475569;
+}
+
+.emp-idcard__bullets {
+  margin: 0;
+  padding-left: 3mm;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3mm;
+  font-size: 1.8mm;
+  color: #0f172a;
+}
+
+.emp-idcard__notice strong {
+  display: block;
+  font-size: 1.8mm;
+}
+
+.emp-idcard__contact {
+  font-size: 1.7mm;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.2;
+}
+
+/* Employee signature block on the card front â€” sits below the identity details */
+.emp-idcard__signature {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4mm;
+  margin-top: 0.8mm;
+}
+
+.emp-idcard__signature-label {
+  font-size: 1.7mm;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  color: #475569;
+}
+
+.emp-idcard__signature img {
+  max-height: 6mm;
+  max-width: 22mm;
+  object-fit: contain; /* preserve original proportions â€” never stretched */
+  align-self: flex-start;
+}
+
+.emp-idcard__signature-empty {
+  font-size: 1.6mm;
+  font-style: italic;
+  color: #94a3b8;
+}
+
+/* Employee signature management panel */
+.emp-signature__pad {
+  width: 100%;
+  height: 160px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  touch-action: none; /* let the pointer draw instead of scrolling */
+  cursor: crosshair;
+}
+
+.emp-signature__preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 90px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+  padding: 8px;
+}
+
+.emp-signature__preview img {
+  max-height: 80px;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.emp-signature__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.emp-signature__consent {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 10px 0;
+  font-size: 13px;
+  color: #334155;
+}
+
+/* â”€â”€ Attendance Management (office + remote) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+.attendance__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.attendance__head > div > span {
+  color: #0f766e;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.attendance__head h2 {
+  margin: 5px 0;
+}
+
+.attendance__head p {
+  margin: 0;
+  color: #64748b;
+  max-width: 640px;
+}
+
+.attendance__filters {
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+.attendance__filters label,
+.attendance__clock-row label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.attendance__filters span,
+.attendance__clock-row span,
+.attendance__card label > span {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.attendance__filters select,
+.attendance__filters input,
+.attendance__clock-row select,
+.attendance__clock-row input,
+.attendance__card input {
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 8px;
+  background: #fff;
+}
+
+.attendance__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.attendance__card {
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+  background: #fff;
+  padding: 14px;
+}
+
+.attendance__card h3 {
+  margin: 0 0 6px;
+}
+
+.attendance__meta {
+  color: #64748b;
+  font-size: 13px;
+  margin: 0 0 10px;
+}
+
+.attendance__clock-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 9px;
+  margin-bottom: 10px;
+}
+
+.attendance__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.attendance__today {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  gap: 8px;
+  margin: 10px 0 0;
+}
+
+.attendance__today div {
+  background: #f8fafc;
+  padding: 8px;
+  text-align: center;
+  border-radius: 6px;
+}
+
+.attendance__today dt {
+  font-size: 10px;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.attendance__today dd {
+  margin: 4px 0 0;
+  font-weight: 900;
+}
+
+.attendance__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 12px 0;
+}
+
+.attendance__tabs button {
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  border-radius: 999px;
+  padding: 7px 12px;
+  cursor: pointer;
+}
+
+.attendance__tabs button.is-active {
+  background: #0a3d2a;
+  color: #fff;
+  border-color: #0a3d2a;
+}
+
+.attendance__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 9px;
+  margin-bottom: 14px;
+}
+
+.attendance__stats article {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.attendance__stats article span {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.attendance__stats article b {
+  font-size: 21px;
+}
+
+.attendance__table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.attendance__table th {
+  background: #f1f5f9;
+  text-align: left;
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #475569;
+  padding: 8px;
+}
+
+.attendance__table td {
+  padding: 8px;
+  border-top: 1px solid #e2e8f0;
+  font-size: 13px;
+}
+
+.attendance h3 {
+  margin-top: 18px;
+}
+
+.attendance h4 {
+  margin: 12px 0 6px;
+}
+
+/* NOTE: the .vehicles__* rules that used to live here styled the Vehicle Management
+   page, but this stylesheet is only loaded by the Employee module — so navigating
+   directly to /admin/vehicles rendered that page unstyled, and the light palette
+   produced white cards with white text inside the dark admin shell.
+   Vehicle Management now owns its styling in admin/fleet/VehicleManagementCenter.css
+   plus the shared admin/fleet/fleetUi.css. */

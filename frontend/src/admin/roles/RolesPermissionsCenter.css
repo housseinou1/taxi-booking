@@ -1,0 +1,107 @@
+/**
+ * YALA Admin — Roles & Permissions Center styles (Phase 10).
+ * Scoped to `.admin-roles`; reuses the shared library tokens/classes.
+ */
+.admin-roles {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.admin-roles__kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
+}
+
+.admin-roles__section {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.admin-roles__heading {
+  margin: 0 0 10px;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.admin-roles__guarantees {
+  margin: 6px 0 0 18px;
+  padding: 0;
+  font-size: 0.85rem;
+}
+
+.admin-roles__note {
+  margin: 0 0 10px;
+  color: #6b7280;
+  font-size: 0.85rem;
+}
+
+.admin-roles__row-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.admin-roles__protected {
+  color: #b91c1c;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.admin-roles__catalogue {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin-roles__catalogue-item {
+  display: grid;
+  grid-template-columns: 140px 110px 1fr;
+  gap: 10px;
+  align-items: baseline;
+  font-size: 0.82rem;
+  border-bottom: 1px dashed #e5e7eb;
+  padding-bottom: 6px;
+}
+
+.admin-roles__catalogue-count {
+  color: #2563eb;
+  font-weight: 600;
+}
+
+.admin-roles__catalogue-keys {
+  color: #4b5563;
+  word-break: break-word;
+}
+
+.admin-roles__panel {
+  border: 1px solid #fca5a5;
+  background: #fff7f7;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.admin-roles__reason {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.85rem;
+  margin: 10px 0;
+}
+
+.admin-roles__reason textarea {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font: inherit;
+}
+
+.admin-roles__panel-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}

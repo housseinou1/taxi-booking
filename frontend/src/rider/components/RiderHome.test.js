@@ -38,15 +38,34 @@ jest.mock('./MapView', () => {
 // ─── Mock services ───────────────────────────────────────────────────────────
 const mockSubscribeRideUpdates = jest.fn(() => jest.fn());
 const mockSubscribeDriverPosition = jest.fn(() => jest.fn());
+const mockJoinRideGroup = jest.fn();
+const mockLeaveRideGroup = jest.fn();
 
 jest.mock('../services/wsService', () => ({
   __esModule: true,
   default: {
     subscribeRideUpdates: (...args) => mockSubscribeRideUpdates(...args),
     subscribeDriverPosition: (...args) => mockSubscribeDriverPosition(...args),
+    joinRideGroup: (...args) => mockJoinRideGroup(...args),
+    leaveRideGroup: (...args) => mockLeaveRideGroup(...args),
   },
   subscribeRideUpdates: (...args) => mockSubscribeRideUpdates(...args),
   subscribeDriverPosition: (...args) => mockSubscribeDriverPosition(...args),
+  joinRideGroup: (...args) => mockJoinRideGroup(...args),
+  leaveRideGroup: (...args) => mockLeaveRideGroup(...args),
+}));
+
+// ─── legalApi ────────────────────────────────────────────────────────────────
+// handleConfirmBooking() calls acceptRideLegal() BEFORE requestRide(). Without
+// this mock the real client performs a network call that fails in jsdom, so the
+// confirm sequence throws and requestRide() is never invoked. fetchLegalStatus()
+// is mocked for the same reason (it drives the legal-compliance banner).
+const mockAcceptRideLegal = jest.fn();
+const mockFetchLegalStatus = jest.fn();
+jest.mock('../../legal/legalApi', () => ({
+  __esModule: true,
+  acceptRideLegal: (...args) => mockAcceptRideLegal(...args),
+  fetchLegalStatus: (...args) => mockFetchLegalStatus(...args),
 }));
 
 const mockGetRoute = jest.fn();
@@ -60,6 +79,9 @@ const mockRequestRide = jest.fn();
 const mockGetRiderProfile = jest.fn();
 const mockGetActiveRide = jest.fn();
 const mockValidatePromo = jest.fn();
+const mockEstimateFare = jest.fn();
+const mockAddRideStop = jest.fn();
+const mockGetRideById = jest.fn();
 
 jest.mock('../services/apiService', () => ({
   __esModule: true,
@@ -68,11 +90,17 @@ jest.mock('../services/apiService', () => ({
     getRiderProfile: (...args) => mockGetRiderProfile(...args),
     getActiveRide: (...args) => mockGetActiveRide(...args),
     validatePromo: (...args) => mockValidatePromo(...args),
+    estimateFare: (...args) => mockEstimateFare(...args),
+    addRideStop: (...args) => mockAddRideStop(...args),
+    getRideById: (...args) => mockGetRideById(...args),
   },
   requestRide: (...args) => mockRequestRide(...args),
   getRiderProfile: (...args) => mockGetRiderProfile(...args),
   getActiveRide: (...args) => mockGetActiveRide(...args),
   validatePromo: (...args) => mockValidatePromo(...args),
+  estimateFare: (...args) => mockEstimateFare(...args),
+  addRideStop: (...args) => mockAddRideStop(...args),
+  getRideById: (...args) => mockGetRideById(...args),
 }));
 
 // ─── Mock marketConfig ───────────────────────────────────────────────────────
@@ -114,6 +142,8 @@ jest.mock('../../marketConfig', () => ({
     return Math.round((p.base + d * p.perKm) * 100) / 100;
   },
   calculateDistanceKm: () => 5,
+  // PostRidePayRate (rendered by the pay-and-rate step) formats fares with this.
+  formatMoney: (amount) => `${Number(amount || 0).toFixed(2)} MRU`,
   isPointInServiceArea: () => true,
 }));
 
@@ -146,6 +176,16 @@ function openLocationStep() {
   fireEvent.click(document.querySelector('.rider-home__floating-search'));
 }
 
+/**
+ * Confirm Booking stays disabled until the mandatory Yala Ride legal checkboxes
+ * are ticked (BookingConfirmation gates the button on legalReady), so every
+ * booking-flow test must accept the terms and privacy policy first.
+ */
+function acceptRideTerms() {
+  fireEvent.click(screen.getByRole('checkbox', { name: /Yala Ride Terms & Conditions/i }));
+  fireEvent.click(screen.getByRole('checkbox', { name: /Privacy Policy/i }));
+}
+
 // ─── Test suite ──────────────────────────────────────────────────────────────
 describe('RiderHome integration tests', () => {
   beforeEach(() => {
@@ -156,7 +196,33 @@ describe('RiderHome integration tests', () => {
       phone_number: '+22245001234',
       profile_picture: 'https://example.com/photo.jpg',
     });
+    // Legal gate: not yet compliant, so the checkboxes stay visible and the
+    // rider must tick them (acceptRideTerms) before Confirm Booking enables.
+    mockFetchLegalStatus.mockResolvedValue({ ride: { compliance_current: false } });
+    mockAcceptRideLegal.mockResolvedValue({});
     mockGetActiveRide.mockResolvedValue(null);
+    mockGetRideById.mockResolvedValue(null);
+    mockAddRideStop.mockResolvedValue({});
+    // useFareEstimates() requests a backend estimate per ride type; without this
+    // implementation every fare lookup throws and the booking flow cannot render.
+    mockEstimateFare.mockImplementation(({ ride_type, distance_km } = {}) => {
+      const pricing = {
+        regular: { base: 175, perKm: 20 },
+        xl: { base: 225, perKm: 25 },
+        comfort: { base: 275, perKm: 30 },
+        share: { base: 150, perKm: 15 },
+      };
+      const p = pricing[ride_type] || pricing.regular;
+      const d = Number(distance_km) || 0;
+      const fare = Math.round((p.base + d * p.perKm) * 100) / 100;
+      return Promise.resolve({
+        ride_type,
+        distance_km: d,
+        base_fare: p.base,
+        per_km: p.perKm,
+        estimated_fare: fare,
+      });
+    });
     mockGetRoute.mockResolvedValue({
       points: [[18.0735, -15.9582], [18.0896, -15.9754]],
       distanceKm: 5,
@@ -229,6 +295,7 @@ describe('RiderHome integration tests', () => {
     fireEvent.click(comfortCard);
 
     // Step 4: Confirm the booking
+    acceptRideTerms();
     const confirmBtn = screen.getByRole('button', { name: /Confirm booking/i });
     fireEvent.click(confirmBtn);
 
@@ -292,8 +359,10 @@ describe('RiderHome integration tests', () => {
       rideUpdateCallbacks.forEach((callback) => callback({ ride_id: 99, status: 'in_progress' }));
     });
 
+    // RideTracker deliberately relabels the in-progress step: "Heading to
+    // destination" (or "To Stop N" when an intermediate stop is still pending).
     await waitFor(() => {
-      expect(screen.getByText('In Progress')).toBeInTheDocument();
+      expect(screen.getByText('Heading to destination')).toBeInTheDocument();
     });
   }, 10000);
 
@@ -401,6 +470,7 @@ describe('RiderHome integration tests', () => {
 
     // 5. Confirm booking (should fail)
 
+    acceptRideTerms();
     const confirmBtn = screen.getByRole('button', { name: /Confirm booking/i });
     fireEvent.click(confirmBtn);
 
@@ -493,6 +563,7 @@ describe('RiderHome integration tests', () => {
     });
 
     fireEvent.click(screen.getByLabelText(/Regular/));
+    acceptRideTerms();
     fireEvent.click(screen.getByRole('button', { name: /Confirm booking/i }));
 
     await waitFor(() => {

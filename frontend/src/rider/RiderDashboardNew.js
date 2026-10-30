@@ -17,13 +17,17 @@ import {
 import { subscribeRideUpdates, sendRideUpdate } from "../socket";
 import WaitingFeeBanner from "../components/WaitingFeeBanner";
 
-// Fix Leaflet marker icons
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-});
+// Fix Leaflet marker icons.
+// `L.Icon.Default` is not always available (e.g. under jsdom in tests), so guard the
+// patch rather than crashing on module load.
+if (L?.Icon?.Default?.prototype) {
+  delete L.Icon.Default.prototype._getIconUrl;
+  L.Icon.Default.mergeOptions({
+    iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+    iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+    shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  });
+}
 
 const riderIcon = new L.DivIcon({
   className: "",

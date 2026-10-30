@@ -11,40 +11,55 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "./delivery-map.css";
 
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-});
+// `L.Icon.Default` is not always available (e.g. under jsdom in tests), so guard the
+// patch rather than crashing on module load.
+if (L?.Icon?.Default?.prototype) {
+  delete L.Icon.Default.prototype._getIconUrl;
+  L.Icon.Default.mergeOptions({
+    iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+    iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+    shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  });
+}
 
-const courierIcon = new L.DivIcon({
-  className: "delivery-map-marker delivery-map-marker--courier",
-  html: '<div class="delivery-map-marker__pin delivery-map-marker__pin--courier">YD</div>',
-  iconSize: [38, 38],
-  iconAnchor: [19, 19],
-});
+// Icon *options* are plain data, and the Leaflet `DivIcon` objects are built lazily and
+// cached. Constructing them at module scope made this module throw on import whenever
+// Leaflet is not fully available (for example under jsdom in tests).
+const ICON_OPTIONS = {
+  courier: {
+    className: "delivery-map-marker delivery-map-marker--courier",
+    html: '<div class="delivery-map-marker__pin delivery-map-marker__pin--courier">YD</div>',
+    iconSize: [38, 38],
+    iconAnchor: [19, 19],
+  },
+  pickup: {
+    className: "delivery-map-marker delivery-map-marker--pickup",
+    html: '<div class="delivery-map-marker__pin delivery-map-marker__pin--pickup"></div>',
+    iconSize: [30, 30],
+    iconAnchor: [15, 15],
+  },
+  destination: {
+    className: "delivery-map-marker delivery-map-marker--destination",
+    html: '<div class="delivery-map-marker__pin delivery-map-marker__pin--destination"></div>',
+    iconSize: [30, 30],
+    iconAnchor: [15, 15],
+  },
+  stop: {
+    className: "delivery-map-marker delivery-map-marker--stop",
+    html: '<div class="delivery-map-marker__pin delivery-map-marker__pin--stop">S</div>',
+    iconSize: [26, 26],
+    iconAnchor: [13, 13],
+  },
+};
 
-const pickupIcon = new L.DivIcon({
-  className: "delivery-map-marker delivery-map-marker--pickup",
-  html: '<div class="delivery-map-marker__pin delivery-map-marker__pin--pickup"></div>',
-  iconSize: [30, 30],
-  iconAnchor: [15, 15],
-});
+const _iconCache = {};
 
-const destinationIcon = new L.DivIcon({
-  className: "delivery-map-marker delivery-map-marker--destination",
-  html: '<div class="delivery-map-marker__pin delivery-map-marker__pin--destination"></div>',
-  iconSize: [30, 30],
-  iconAnchor: [15, 15],
-});
-
-const stopIcon = new L.DivIcon({
-  className: "delivery-map-marker delivery-map-marker--stop",
-  html: '<div class="delivery-map-marker__pin delivery-map-marker__pin--stop">S</div>',
-  iconSize: [26, 26],
-  iconAnchor: [13, 13],
-});
+function getIcon(name) {
+  if (!_iconCache[name]) {
+    _iconCache[name] = new L.DivIcon(ICON_OPTIONS[name]);
+  }
+  return _iconCache[name];
+}
 
 function MapAutoCenter({ position }) {
   const map = useMap();
@@ -123,16 +138,16 @@ export default function DeliveryMapView({
         {!activeDelivery && courierPosition ? <MapAutoCenter position={courierPosition} /> : null}
         {activeDelivery && fitPoints ? <FitBounds points={fitPoints} /> : null}
 
-        {courierPosition ? <Marker position={courierPosition} icon={courierIcon} /> : null}
+        {courierPosition ? <Marker position={courierPosition} icon={getIcon("courier")} /> : null}
 
         {activeDelivery?.pickup_lat && activeDelivery?.pickup_lng ? (
-          <Marker position={[activeDelivery.pickup_lat, activeDelivery.pickup_lng]} icon={pickupIcon} />
+          <Marker position={[activeDelivery.pickup_lat, activeDelivery.pickup_lng]} icon={getIcon("pickup")} />
         ) : null}
 
         {activeDelivery?.destination_lat && activeDelivery?.destination_lng ? (
           <Marker
             position={[activeDelivery.destination_lat, activeDelivery.destination_lng]}
-            icon={destinationIcon}
+            icon={getIcon("destination")}
           />
         ) : null}
 
@@ -141,7 +156,7 @@ export default function DeliveryMapView({
             <Marker
               key={stop.id || `stop-${index}`}
               position={[stop.latitude, stop.longitude]}
-              icon={stopIcon}
+              icon={getIcon("stop")}
             />
           ) : null
         )}

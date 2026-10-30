@@ -58,6 +58,22 @@ export async function createCourse(payload) {
   return response.data;
 }
 
+/**
+ * PATCH /academy/admin/courses/<id>/ - CourseDetailView is a
+ * RetrieveUpdateDestroyAPIView, so update and delete are existing backend
+ * capabilities that simply had no client wrapper. Used by the Admin Portal to
+ * publish/unpublish and remove courses.
+ */
+export async function updateCourse(pk, payload) {
+  const response = await authenticatedApi.patch(`${BASE}/admin/courses/${pk}/`, payload);
+  return response.data;
+}
+
+export async function deleteCourse(pk) {
+  const response = await authenticatedApi.delete(`${BASE}/admin/courses/${pk}/`);
+  return response.data;
+}
+
 export async function createModule(payload) {
   const response = await authenticatedApi.post(`${BASE}/admin/modules/`, payload);
   return response.data;
@@ -137,3 +153,39 @@ export async function safeFetch(fn, fallback = null) {
     return fallback;
   }
 }
+
+/**
+ * Capability probe for the Academy admin/report surfaces.
+ *
+ * The Academy API enforces RBAC server-side (`IsAcademyAdmin` /
+ * `IsAcademyReportStaff` in `taxi/academy/permissions.py`) but the admin
+ * permissions payload exposes no academy-specific action key, so there is nothing
+ * to read client-side. Instead of guessing from the user's role, ask the API the
+ * real question and interpret its answer:
+ *
+ *   200        -> granted
+ *   401 / 403  -> denied   (the authoritative RBAC decision)
+ *   anything else (offline, 5xx, throttle) -> unknown, so the UI keeps the surface
+ *              visible and shows a retryable error rather than silently hiding it
+ *
+ * This can only ever REMOVE UI a user cannot use - it never grants access, and the
+ * server remains the sole authority.
+ */
+export async function probeAcademyAccess(fn) {
+  try {
+    const data = await fn();
+    return { access: "granted", data, status: 200 };
+  } catch (error) {
+    const status = error?.response?.status ?? null;
+    if (status === 401 || status === 403) {
+      return { access: "denied", data: null, status };
+    }
+    return {
+      access: "unknown",
+      data: null,
+      status,
+      message: error?.response?.data?.detail || error?.message || "Request failed",
+    };
+  }
+}
+

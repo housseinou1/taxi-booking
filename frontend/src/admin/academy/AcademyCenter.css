@@ -1,131 +1,501 @@
-.academy-timer {
-  color: #b45309;
-  font-weight: 600;
-  margin-bottom: 0.75rem;
-}
+/*
+ * YALA Academy Center - page-specific styles.
+ *
+ * Every value comes from the admin design tokens defined on `.admin-shell`
+ * (--admin-*), so this page is correct in BOTH the dark and light admin themes.
+ * The previous stylesheet hard-coded `#fff` panels and a purple accent while the
+ * dark shell's near-white text colour was inherited, which made the "Enrollments
+ * by audience" panel white-on-white and effectively unreadable.
+ *
+ * Shared primitives (buttons, inputs, tabs, tables, KPI cards, pills, states,
+ * pagers) come from `../fleet/fleetUi.css` and are NOT redefined here.
+ */
 
-.academy-tabs {
+.acad-center {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 1rem 0;
-  border-bottom: 1px solid #e5e7eb;
-  padding-bottom: 0.5rem;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
 }
 
-.academy-tab {
-  padding: 8px 14px;
-  border: 1px solid #e5e7eb;
-  background: #fff;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 500;
-  color: #374151;
-  transition: background 0.15s, color 0.15s;
+.acad-content {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  min-width: 0;
 }
 
-.academy-tab:hover {
-  background: #f3f4f6;
-}
-
-.academy-tab--active {
-  background: #7c3aed;
-  color: #fff;
-  border-color: #7c3aed;
-}
-
-.academy-content {
-  margin-top: 1rem;
-}
-
-.academy-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-
-.academy-panel {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 1rem;
-  margin-bottom: 1rem;
-}
-
-.academy-panel h3 {
-  margin-top: 0;
-  margin-bottom: 0.75rem;
-  color: #111827;
-}
-
-.academy-form {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 0.75rem;
-  margin-bottom: 0.75rem;
-}
-
-.academy-form input,
-.academy-form select,
-.academy-form textarea,
-.academy-form button {
-  padding: 8px 10px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  font-family: inherit;
-}
-
-.academy-form button {
-  background: #7c3aed;
-  color: #fff;
-  border-color: #7c3aed;
-  cursor: pointer;
-  font-weight: 500;
-}
-
-.academy-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.9rem;
-}
-
-.academy-table th,
-.academy-table td {
-  border: 1px solid #e5e7eb;
-  padding: 8px 10px;
-  text-align: left;
-}
-
-.academy-table th {
-  background: #f9fafb;
-  font-weight: 600;
-}
-
-.academy-list {
-  list-style: none;
-  padding: 0;
+.acad-notice {
   margin: 0;
 }
 
-.academy-list li {
-  padding: 8px 0;
-  border-bottom: 1px solid #f3f4f6;
+/* Screen-reader-only labels (e.g. the Actions column header). */
+.acad-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
-.academy-list li:last-child {
-  border-bottom: none;
+/* -- Text helpers ------------------------------------------------------------ */
+
+.acad-strong {
+  display: block;
+  font-weight: 600;
+  color: var(--admin-text, #f8fafc);
+  overflow-wrap: anywhere;
 }
 
-.academy-link {
-  background: none;
-  border: none;
-  color: #7c3aed;
-  cursor: pointer;
-  text-decoration: underline;
+.acad-sub {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.75rem;
+  color: var(--admin-text-muted, #cbd5e1);
+  overflow-wrap: anywhere;
+}
+
+/* -- Completion meter -------------------------------------------------------- */
+
+.acad-rate {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
+.acad-rate__bar {
+  position: relative;
+  display: block;
+  width: 54px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--admin-surface-alt, rgba(148, 163, 184, 0.18));
+  overflow: hidden;
+}
+
+.acad-rate__fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--admin-text-muted, #94a3b8);
+}
+
+.acad-rate__value {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--admin-text, #f8fafc);
+  min-width: 46px;
+  text-align: right;
+}
+
+.acad-rate--ok .acad-rate__fill {
+  background: var(--admin-success, #34d399);
+}
+
+.acad-rate--info .acad-rate__fill {
+  background: var(--admin-info, #93c5fd);
+}
+
+.acad-rate--warn .acad-rate__fill {
+  background: var(--admin-warning, #fbbf24);
+}
+
+.acad-rate--danger .acad-rate__fill {
+  background: #f87171;
+}
+
+/* Undefined rate: neutral, never a red 0% that implies failure. */
+.acad-rate--idle .acad-rate__value {
+  color: var(--admin-text-muted, #cbd5e1);
+}
+
+/* -- Enrolments by audience -------------------------------------------------- */
+
+.acad-audience td:first-child {
+  min-width: 180px;
+}
+
+.acad-audience__name {
+  display: block;
+  font-weight: 600;
+  color: var(--admin-text, #f8fafc);
+}
+
+.acad-audience__meta {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.72rem;
+  color: var(--admin-text-muted, #94a3b8);
+}
+
+/* Audiences with no learners are visibly de-emphasised rather than shouting "0%". */
+.acad-audience__row--empty td {
+  color: var(--admin-text-muted, #94a3b8);
+}
+
+.acad-audience__row--empty .acad-audience__name {
+  color: var(--admin-text-muted, #cbd5e1);
+  font-weight: 500;
+}
+
+/* -- Supported-audience chips (empty-data state) ----------------------------- */
+
+.acad-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--admin-border, rgba(110, 231, 183, 0.22));
+}
+
+.acad-chip {
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--admin-border, rgba(110, 231, 183, 0.22));
+  background: var(--admin-surface-alt, rgba(148, 163, 184, 0.1));
+  color: var(--admin-text-muted, #cbd5e1);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* -- Course cards ------------------------------------------------------------ */
+
+.acad-courses {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 14px;
+  min-width: 0;
+}
+
+.acad-course {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid var(--admin-border, rgba(110, 231, 183, 0.22));
+  background: var(--admin-surface, rgba(15, 33, 25, 0.72));
+}
+
+.acad-course__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.acad-course__title {
+  margin: 0;
   font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--admin-text, #f8fafc);
+  overflow-wrap: anywhere;
 }
 
-.academy-question {
-  margin-bottom: 1rem;
+.acad-course__desc {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--admin-text-muted, #cbd5e1);
+  overflow-wrap: anywhere;
 }
+
+.acad-course__facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 14px;
+  margin: 0;
+}
+
+.acad-course__facts dt {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--admin-text-muted, #94a3b8);
+}
+
+.acad-course__facts dd {
+  margin: 3px 0 0;
+  font-size: 0.82rem;
+  color: var(--admin-text, #f8fafc);
+  overflow-wrap: anywhere;
+}
+
+.acad-course__muted {
+  color: var(--admin-text-muted, #94a3b8);
+}
+
+.acad-course__progress {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--admin-border, rgba(110, 231, 183, 0.22));
+}
+
+.acad-course__progress-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--admin-text-muted, #94a3b8);
+}
+
+.acad-course__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: auto;
+}
+
+/* -- Training programmes ----------------------------------------------------- */
+
+.acad-programs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 14px;
+  min-width: 0;
+}
+
+.acad-program {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid var(--admin-border, rgba(110, 231, 183, 0.22));
+  background: var(--admin-surface, rgba(15, 33, 25, 0.72));
+}
+
+.acad-program__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.acad-program__title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--admin-text, #f8fafc);
+}
+
+.acad-program__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.acad-program__list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--admin-border, rgba(110, 231, 183, 0.16));
+}
+
+.acad-program__list li:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.acad-program__course {
+  font-size: 0.82rem;
+  color: var(--admin-text, #f8fafc);
+  overflow-wrap: anywhere;
+}
+
+.acad-program__foot {
+  margin-top: auto;
+  font-size: 0.72rem;
+  color: var(--admin-text-muted, #94a3b8);
+}
+
+
+/* -- Admin forms ------------------------------------------------------------- */
+
+.acad-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+  align-items: end;
+  min-width: 0;
+}
+
+.acad-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.acad-field > span {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--admin-text-muted, #94a3b8);
+}
+
+.acad-field--wide {
+  grid-column: 1 / -1;
+}
+
+.acad-field--check {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 8px;
+}
+
+.acad-field--check > span {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--admin-text, #f8fafc);
+}
+
+.acad-field--action {
+  justify-content: flex-end;
+}
+
+/* -- Course modules ---------------------------------------------------------- */
+
+.acad-modules {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.acad-module {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--admin-border, rgba(110, 231, 183, 0.18));
+  background: var(--admin-surface-alt, rgba(148, 163, 184, 0.08));
+}
+
+.acad-module__text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.acad-module__title {
+  font-weight: 600;
+  color: var(--admin-text, #f8fafc);
+  overflow-wrap: anywhere;
+}
+
+.acad-module__meta {
+  font-size: 0.72rem;
+  text-transform: capitalize;
+  color: var(--admin-text-muted, #94a3b8);
+}
+
+.acad-module__content {
+  font-size: 0.8rem;
+  color: var(--admin-text-muted, #cbd5e1);
+  overflow-wrap: anywhere;
+}
+
+/* -- Assessment -------------------------------------------------------------- */
+
+.acad-exam {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.acad-exam__timer {
+  margin: 0;
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--admin-warning, #fbbf24);
+  background: rgba(251, 191, 36, 0.12);
+  color: var(--admin-warning, #fbbf24);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.acad-question {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--admin-border, rgba(110, 231, 183, 0.18));
+  background: var(--admin-surface-alt, rgba(148, 163, 184, 0.08));
+}
+
+.acad-question__text {
+  margin: 0;
+  font-weight: 500;
+  color: var(--admin-text, #f8fafc);
+  overflow-wrap: anywhere;
+}
+
+/* -- Responsive -------------------------------------------------------------- */
+
+@media (max-width: 1100px) {
+  .acad-course__facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .acad-courses,
+  .acad-programs {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .acad-course__facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .acad-module {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .acad-field--action > button {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .acad-course,
+  .acad-program,
+  .acad-module {
+    transition: none;
+  }
+}
+

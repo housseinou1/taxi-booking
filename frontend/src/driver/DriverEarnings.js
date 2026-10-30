@@ -442,7 +442,7 @@ export default function DriverEarnings() {
     try {
       const response = await authenticatedApi.get(
         `${API_URL}/rides/driver/earnings/`,
-        { timeout: 12000 }
+        { ...NON_REDIRECTING_AUTH_CONFIG, timeout: 12000 }
       );
       setEarnings(normalizeEarningsPayload(response.data || {}));
       retryCountRef.current = 0;
@@ -474,7 +474,7 @@ export default function DriverEarnings() {
     try {
       const response = await authenticatedApi.get(
         `${API_URL}/rides/driver/earnings/?chart=${period}`,
-        { timeout: 10000 }
+        { ...NON_REDIRECTING_AUTH_CONFIG, timeout: 10000 }
       );
       setChartData(normalizeChartPayload(response.data?.charts?.[period] || response.data));
     } catch (err) {

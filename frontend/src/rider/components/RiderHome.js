@@ -254,17 +254,22 @@ function RiderHome() {
             const endedId = targetRideId ?? currentRideIdRef.current;
             try {
               const endedRide = await apiService.getRideById(endedId);
-              if (endedRide.status === 'cancelled') {
+              if (endedRide?.status === 'cancelled') {
                 clearActiveRideTracking(endedId);
                 notifyRideCancelled();
                 dispatch({ type: 'RIDE_CANCELLED' });
                 return;
               }
-              if (endedRide.status === 'completed') {
+              if (endedRide?.status === 'completed') {
                 clearActiveRideTracking(endedId);
                 dispatch({ type: 'RIDE_COMPLETED', payload: endedRide });
                 return;
               }
+              // Detail unavailable or without a recognised status: keep the last
+              // known ride state (as the outer catch below does) rather than
+              // dropping the rider out of an in-flight trip. Reading `.status` off
+              // a null body previously threw a TypeError and cleared the ride.
+              return;
             } catch (_) {
               clearActiveRideTracking(endedId);
               dispatch({ type: 'RESET_RIDE' });
@@ -505,14 +510,43 @@ function RiderHome() {
   }, [pickup, destination, stops, rideType, dispatch]);
 
   // ─── Bottom sheet state management ─────────────────────────────────
+  // The shared BottomSheet is a controlled component: a swipe only calls
+  // onStateChange(next) and lets the parent decide. We keep a Rider-local
+  // manual override so an upward/downward swipe on the idle Home sheet is
+  // honored, while booking-step-driven states still win during an active
+  // booking. (Delivery wires the same component with its own useState.)
+  const [manualSheetState, setManualSheetState] = useState(null);
+
   const handleSheetStateChange = useCallback(
     (newState) => {
+      // Collapsing the location step back to idle (existing behavior).
       if (newState === 'collapsed' && bookingStep === 'location' && !pickup && !destination) {
         dispatch({ type: 'SET_BOOKING_STEP', payload: 'idle' });
+        setManualSheetState(null);
+        return;
+      }
+
+      // On the idle Home screen, honor manual swipe gestures. Swiping up
+      // (collapsed → half → full) opens the booking flow, matching a tap on
+      // the destination field; swiping down keeps the sheet collapsed.
+      // A swipe never selects a destination or submits a ride on its own.
+      if (bookingStep === 'idle') {
+        if (newState === 'half' || newState === 'full') {
+          setManualSheetState(null);
+          dispatch({ type: 'SET_BOOKING_STEP', payload: 'location' });
+        } else {
+          setManualSheetState('collapsed');
+        }
       }
     },
     [bookingStep, dispatch, destination, pickup]
   );
+
+  // Step-driven states always win: clear any manual override whenever the
+  // booking step changes so an active booking isn't stuck on a stale swipe.
+  useEffect(() => {
+    setManualSheetState(null);
+  }, [bookingStep]);
 
   // Derive bottom sheet state from booking step
   const derivedSheetState = useMemo(() => {
@@ -534,6 +568,10 @@ function RiderHome() {
         return 'collapsed';
     }
   }, [bookingStep]);
+
+  // Effective state: a manual swipe override takes precedence while idle;
+  // otherwise follow the booking-step-derived state.
+  const effectiveSheetState = manualSheetState ?? derivedSheetState;
 
   // ─── Navigation handler for ServiceHub ─────────────────────────────
   const handleNavigate = useCallback((path) => {
@@ -1228,7 +1266,7 @@ function RiderHome() {
 
       <div className="rider-home__panel">
         <BottomSheet
-          state={derivedSheetState}
+          state={effectiveSheetState}
           onStateChange={handleSheetStateChange}
           contentClassName={bookingStep === 'idle' ? 'bottom-sheet__content--idle' : ''}
         >

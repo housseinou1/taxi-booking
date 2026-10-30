@@ -235,11 +235,6 @@ export default function AIOperationsDashboard() {
             <div key={rec.id} className="ops-ai__list-item">
               <strong>{rec.title}</strong>
               <div>{rec.summary}</div>
-              {rec.explanation && (
-                <pre className="ops-ai__disclaimer" style={{ whiteSpace: "pre-wrap" }}>
-                  {JSON.stringify(rec.explanation, null, 2)}
-                </pre>
-              )}
               {canCeo && (
                 <div className="ops-ai__actions">
                   <button type="button" className="ops-ai__btn primary" onClick={() => handleRecAction(rec.id, "approve")}>Approve</button>

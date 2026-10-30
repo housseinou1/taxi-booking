@@ -55,6 +55,7 @@ export default function ShareBookingFlow() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [confirmed, setConfirmed] = useState(false);
+  const [shareEstimate, setShareEstimate] = useState(null);
 
   const filterLocations = useCallback((query) => {
     if (!query || query.length < 2) return [];
@@ -80,22 +81,58 @@ export default function ShareBookingFlow() {
   const fares = useMemo(() => {
     if (!distance) return {};
     return {
-      share: calculateFare("share", distance),
+      share: shareEstimate?.fare ?? calculateFare("share", distance),
       regular: calculateFare("regular", distance),
       comfort: calculateFare("comfort", distance),
       xl: calculateFare("xl", distance),
     };
-  }, [distance]);
+  }, [distance, shareEstimate]);
+
+  useEffect(() => {
+    if (!distance) {
+      setShareEstimate(null);
+      return;
+    }
+
+    let cancelled = false;
+    const token = localStorage.getItem("access");
+    if (!token) return;
+
+    axios
+      .post(
+        `${API_URL}/api/rides/share/estimate/`,
+        { distance_km: distance, seats },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      .then((response) => {
+        if (!cancelled) {
+          setShareEstimate(response.data);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setShareEstimate(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [distance, seats]);
 
   const savings = useMemo(() => {
+    if (shareEstimate?.savings != null) {
+      return shareEstimate.savings;
+    }
     if (!fares.share || !fares.regular) return 0;
     return fares.regular - fares.share;
-  }, [fares]);
+  }, [fares, shareEstimate]);
 
   const savingsPercent = useMemo(() => {
-    if (!fares.regular || !savings) return 0;
-    return Math.round((savings / fares.regular) * 100);
-  }, [fares.regular, savings]);
+    const economyFare = shareEstimate?.economy_fare ?? fares.regular;
+    if (!economyFare || !savings) return 0;
+    return Math.round((savings / economyFare) * 100);
+  }, [fares.regular, savings, shareEstimate]);
 
   const handlePickupSelect = (loc) => {
     setPickup(loc.label);

@@ -115,7 +115,9 @@ describe('LocationInput', () => {
       jest.advanceTimersByTime(300);
     });
 
-    fireEvent.click(screen.getByText('Arafat'));
+    // The dropdown selects on mousedown/touchend (so the input's blur does not
+    // close the list before the selection registers), not on click.
+    fireEvent.mouseDown(screen.getByText('Arafat'));
 
     expect(onSelect).toHaveBeenCalledWith({
       label: 'Arafat',

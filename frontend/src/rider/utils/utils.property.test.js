@@ -133,10 +133,12 @@ describe('Property 5: Ride request availability', () => {
 
     fc.assert(
       fc.property(profileArb, (profile) => {
-        const hasPicture =
-          profile.profile_picture != null && profile.profile_picture !== '';
-        const hasPhone =
-          profile.phone_number != null && profile.phone_number !== '';
+        // "Present" means non-blank: isProfileComplete() trims, so a whitespace-only
+        // string counts as missing. The oracle must trim too, otherwise fast-check's
+        // whitespace-only strings (e.g. " ") make this property fail at random.
+        const present = (value) => value != null && String(value).trim() !== '';
+        const hasPicture = present(profile.profile_picture);
+        const hasPhone = present(profile.phone_number);
         const expectedComplete = hasPicture && hasPhone;
 
         expect(isProfileComplete(profile)).toBe(expectedComplete);
@@ -172,7 +174,11 @@ describe('Property 4: Booking state to API payload transformation', () => {
     rideType: rideTypeArb,
     fare: fc.double({ min: 0, max: 10000, noNaN: true, noDefaultInfinity: true }),
     routeInfo: fc.record({
-      distanceKm: fc.double({ min: 0, max: 500, noNaN: true, noDefaultInfinity: true }),
+      // One-decimal values inside the supported routed-distance window
+      // (0.1–500 km). The transform passes such values through unchanged, which
+      // is the contract this property asserts; it normalises (rounds to 2dp) and
+      // falls back to coordinate distance outside that window by design.
+      distanceKm: fc.integer({ min: 1, max: 5000 }).map((tenths) => tenths / 10),
       etaMinutes: fc.double({ min: 0, max: 120, noNaN: true, noDefaultInfinity: true }),
     }),
     promoCode: fc.option(fc.string({ minLength: 1, maxLength: 10 }), { nil: undefined }),

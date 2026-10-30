@@ -7,7 +7,10 @@ import AnalyticsDashboard from "./AnalyticsDashboard";
 import SafetyAdminPanel from "./SafetyAdminPanel";
 import HallOfFameAdminPanel from "./HallOfFameAdminPanel";
 import DeliveryAdminPanel from "../delivery/DeliveryAdminPanel";
+import { fetchRidesFinancialSummary } from "./rides/ridesApi";
 import RidersManagement from "./riders/RidersManagement";
+import DriversManagement from "./drivers/DriversManagement";
+import { PermissionProvider } from "./permissions/PermissionContext";
 
 const MARKET_OWNER_PERCENT = MARKET.ownerCommissionPercent;
 const logoSrc = "/yala-admin-logo.png";
@@ -252,6 +255,48 @@ const getDriverApprovalMissingItems = (driver, relatedUser = null) => {
   return checks.filter((item) => !item.ok).map((item) => item.label);
 };
 
+/**
+ * Data required by the ALWAYS-VISIBLE menu badges (`menuCounts`). These are
+ * derived from rides, drivers, users, withdrawals, cities and driver
+ * performance, so they must load on every section — otherwise the badges would
+ * read zero when the operator deep-links straight into a non-overview section.
+ */
+const ALWAYS_DATA = [
+  "drivers",
+  "users",
+  "rides",
+  "financialSummary",
+  "withdrawals",
+  "locations",
+  "driverPerformance",
+];
+
+/**
+ * Extra data that only a specific section renders. The legacy dashboard loaded
+ * these on every mount even though the operator rarely opens them; they are now
+ * fetched when their section is opened.
+ */
+const SECTION_EXTRA_DATA = {
+  overview: [],
+  verification: [],
+  riders: [],
+  drivers: [],
+  "delivery-drivers": [],
+  vehicles: [],
+  rides: [],
+  deliveries: [],
+  emergency: [],
+  reports: [],
+  analytics: [],
+  cities: [],
+  performance: [],
+  rewards: ["rewards"],
+  "hall-of-fame": ["rewards"],
+  payments: ["ownerPayout"],
+  withdrawals: [],
+  "withdrawal-accounts": ["withdrawalAccounts"],
+};
+
 const ADMIN_SECTION_KEYS = new Set([
   "overview",
   "verification",
@@ -279,7 +324,7 @@ const getInitialAdminSection = () => {
   return ADMIN_SECTION_KEYS.has(section) ? section : "overview";
 };
 
-function AdminDashboard() {
+function AdminDashboard({ embedded = false } = {}) {
   const DRIVER_CATEGORIES = [
     { value: "gold", label: "Gold" },
     { value: "platinum", label: "Platinum" },
@@ -294,6 +339,9 @@ function AdminDashboard() {
   const [drivers, setDrivers] = useState([]);
   const [users, setUsers] = useState([]);
   const [rides, setRides] = useState([]);
+  // Task 9A: optimized financial aggregate for the summary cards (separate from the
+  // ride-history table, which keeps its own full list).
+  const [financialSummary, setFinancialSummary] = useState(null);
   const [withdrawals, setWithdrawals] = useState([]);
   const [cities, setCities] = useState([]);
   const [regions, setRegions] = useState([]);
@@ -398,6 +446,21 @@ function AdminDashboard() {
     } catch (error) {
       console.error("Error fetching rides:", error);
       setRides([]);
+    }
+  }, []);
+
+  /**
+   * Task 9A — the dashboard's financial summary cards read this bounded aggregate instead of
+   * reducing the whole ride-history array client-side. `rides` is still fetched for the
+   * ride-history table (search / filters / pagination / download / details).
+   */
+  const fetchFinancialSummary = useCallback(async () => {
+    try {
+      const data = await fetchRidesFinancialSummary();
+      setFinancialSummary(data || null);
+    } catch (error) {
+      console.error("Error fetching financial summary:", error);
+      setFinancialSummary(null);
     }
   }, []);
 
@@ -513,23 +576,40 @@ function AdminDashboard() {
     }
   }, []);
 
+  // Runs each loader at most once per mount. React StrictMode deliberately
+  // double-invokes effects in development; the ref survives that remount, so the
+  // duplicate NETWORK call is removed while StrictMode itself is untouched.
+  const loadedDataRef = useRef(new Set());
+
   useEffect(() => {
-    fetchDrivers();
-    fetchDriverPerformance();
-    fetchRewardsLeaderboard();
-    fetchLocations();
-    fetchUsers();
-    fetchRides();
-    fetchWithdrawals();
-    fetchOwnerPayout();
-    fetchWithdrawalAccounts();
+    const loaders = {
+      drivers: fetchDrivers,
+      driverPerformance: fetchDriverPerformance,
+      rewards: fetchRewardsLeaderboard,
+      locations: fetchLocations,
+      users: fetchUsers,
+      rides: fetchRides,
+      financialSummary: fetchFinancialSummary,
+      withdrawals: fetchWithdrawals,
+      ownerPayout: fetchOwnerPayout,
+      withdrawalAccounts: fetchWithdrawalAccounts,
+    };
+
+    const needed = [...ALWAYS_DATA, ...(SECTION_EXTRA_DATA[page] || [])];
+    needed.forEach((key) => {
+      if (loadedDataRef.current.has(key)) return;
+      loadedDataRef.current.add(key);
+      loaders[key]?.();
+    });
   }, [
+    page,
     fetchDriverPerformance,
     fetchRewardsLeaderboard,
     fetchDrivers,
     fetchLocations,
     fetchOwnerPayout,
     fetchRides,
+    fetchFinancialSummary,
     fetchUsers,
     fetchWithdrawals,
     fetchWithdrawalAccounts,
@@ -676,24 +756,23 @@ function AdminDashboard() {
     }
   };
 
-  const deleteRider = async (user) => {
+  // Secure rider DEACTIVATION (replaces the former permanent delete-rider hard
+  // delete, which could not run safely and 500'd on protected ride/payment FKs).
+  // Reuses the existing block endpoint (POST /auth/users/<id>/block/), which
+  // sets is_active=False, blacklists outstanding tokens (prevents login), and
+  // PRESERVES all ride history, payments, refunds, safety incidents, and audit
+  // records. No account is ever permanently deleted from any admin screen.
+  const deactivateRiderAccount = async (user) => {
     const riderName = user?.full_name || user?.email || "this rider";
-    const confirmed = await showConfirm(`Delete rider account for ${riderName}? This cannot be undone.`);
+    const confirmed = await showConfirm(
+      `Deactivate the account for ${riderName}? They will be signed out and ` +
+        `blocked from logging in until reactivated. Ride history, payments, ` +
+        `refunds, and safety records are preserved — the account is NOT deleted.`
+    );
     if (!confirmed) return;
-    try {
-      const { response, data } = await callAdminApi(`/auth/users/${user.id}/delete-rider/`, { method: "DELETE" });
-      if (!response.ok) {
-        showToast(getApiMessage(data, `Could not delete rider (HTTP ${response.status})`), "error");
-        return;
-      }
-      showToast(getApiMessage(data, "Rider deleted"), "success");
-      fetchUsers();
-      fetchRides();
-      fetchWithdrawals();
-    } catch (error) {
-      console.error(error);
-      showToast("Server error deleting rider", "error");
-    }
+    // user.is_active === true -> block (deactivate); setUserBlocked already
+    // shows success/error toasts and refetches users + drivers on success.
+    await setUserBlocked(user.id, true);
   };
 
   const updateDriverCategory = async (driverId, driverCategory) => {
@@ -924,7 +1003,6 @@ function AdminDashboard() {
   const taxiDriverProfiles = alphabetDrivers.filter((driver) => !driver.is_courier);
   const deliveryDriverProfiles = alphabetDrivers.filter((driver) => driver.is_courier);
   const pendingDrivers = alphabetDrivers.filter((driver) => driver.status === "pending");
-  const pendingTaxiDrivers = taxiDriverProfiles.filter((driver) => driver.status === "pending");
   const pendingDeliveryDrivers = deliveryDriverProfiles.filter(
     (driver) => driver.status === "pending"
   );
@@ -987,23 +1065,45 @@ function AdminDashboard() {
     (item) => item.status === "paid"
   );
 
-  const totalRevenue = rides.reduce(
+  // ── Task 9A: financial summary cards ────────────────────────────────────────────────
+  // The optimized aggregate is the source of truth for the summary figures. The client-side
+  // reductions below survive only as a fallback for the moment before the aggregate arrives
+  // (or if that request fails), so the cards never flash a blank or a fake zero.
+  const summaryMoney = financialSummary?.money || null;
+  const summaryRates = financialSummary?.rates || null;
+  const rideCounts = financialSummary?.counts || null;
+
+  /** Server count when the aggregate provides it, otherwise the local array's length. */
+  const countValue = (key, fallback) =>
+    rideCounts && rideCounts[key] != null ? rideCounts[key] : fallback;
+
+  const fallbackRevenue = rides.reduce(
     (total, ride) => total + Number(ride.fare || 0),
     0
   );
-
-  const platformCommission = rides.reduce(
+  const fallbackCommission = rides.reduce(
     (total, ride) => total + Number(ride.app_fee || 0),
     0
   );
-
-  const driverPayouts = rides.reduce(
+  const fallbackDriverPayouts = rides.reduce(
     (total, ride) => total + Number(ride.driver_earning || 0),
     0
   );
+
+  // Money stays a decimal STRING from the API so `formatMoney` never routes it through
+  // binary floating point.
+  const totalRevenue = summaryMoney ? summaryMoney.total_revenue : fallbackRevenue;
+  const platformCommission = summaryMoney
+    ? summaryMoney.platform_commission
+    : fallbackCommission;
+  const driverPayouts = summaryMoney ? summaryMoney.driver_earnings : fallbackDriverPayouts;
+
+  const revenueNumber = Number(totalRevenue || 0);
+  const commissionNumber = Number(platformCommission || 0);
+  // Same commission formula as before — only the inputs are now server-side.
   const ownerCommissionPercent =
-    totalRevenue > 0
-      ? Math.round((platformCommission / totalRevenue) * 1000) / 10
+    revenueNumber > 0
+      ? Math.round((commissionNumber / revenueNumber) * 1000) / 10
       : MARKET_OWNER_PERCENT;
 
   const totalWithdrawRequested = withdrawals.reduce(
@@ -1016,11 +1116,23 @@ function AdminDashboard() {
     0
   );
   const completionRate =
-    rides.length > 0 ? Math.round((completedRides.length / rides.length) * 100) : 0;
+    summaryRates && summaryRates.completion_rate_pct != null
+      ? summaryRates.completion_rate_pct
+      : rides.length > 0
+        ? Math.round((completedRides.length / rides.length) * 100)
+        : 0;
   const cancellationRate =
-    rides.length > 0 ? Math.round((cancelledRides.length / rides.length) * 100) : 0;
+    summaryRates && summaryRates.cancellation_rate_pct != null
+      ? summaryRates.cancellation_rate_pct
+      : rides.length > 0
+        ? Math.round((cancelledRides.length / rides.length) * 100)
+        : 0;
   const averageFare =
-    rides.length > 0 ? Math.round(totalRevenue / rides.length) : 0;
+    financialSummary && financialSummary.average_fare != null
+      ? financialSummary.average_fare
+      : rides.length > 0
+        ? Math.round(fallbackRevenue / rides.length)
+        : 0;
   const emergencyWatchList = [
     ...activeRides.slice(0, 5).map((ride) => ({
       id: `ride-${ride.id}`,
@@ -1083,9 +1195,7 @@ function AdminDashboard() {
       "status",
     ])
   );
-  const filteredTaxiDriverProfiles = filteredDriverProfiles.filter(
-    (driver) => !driver.is_courier
-  );
+
   const filteredDeliveryDriverProfiles = filteredDriverProfiles.filter(
     (driver) => driver.is_courier
   );
@@ -1163,9 +1273,18 @@ function AdminDashboard() {
   }), []);
 
   return (
-    <div style={{ ...pageStyle, ...(isCompactLayout ? pageStyleCompact : {}) }}>
+    <div
+      style={{
+        ...pageStyle,
+        ...(isCompactLayout ? pageStyleCompact : {}),
+        // Embedded mode: the unified AdminShell already provides the brand header,
+        // the navigation sidebar and the sign-out control, so this console renders
+        // only its own content to avoid a second Admin application chrome.
+        ...(embedded ? embeddedPageStyle : {}),
+      }}
+    >
       {/* Mobile hamburger button */}
-      {isCompactLayout && (
+      {!embedded && isCompactLayout && (
         <button
           type="button"
           onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -1193,13 +1312,14 @@ function AdminDashboard() {
       )}
 
       {/* Mobile backdrop */}
-      {isCompactLayout && sidebarOpen && (
+      {!embedded && isCompactLayout && sidebarOpen && (
         <div
           onClick={() => setSidebarOpen(false)}
           style={{ position: "fixed", inset: 0, zIndex: 999, background: "rgba(0,0,0,0.5)" }}
         />
       )}
 
+      {!embedded ? (
       <div style={{ ...sidebar, ...(isCompactLayout ? sidebarCompact : {}), ...(isCompactLayout && !sidebarOpen ? { transform: "translateX(-100%)", pointerEvents: "none" } : {}) }}>
         <div style={sidebarBrandStyle}>
           <img src={logoSrc} alt={`${MARKET.brandName} logo`} style={brandLogoStyle} />
@@ -1267,8 +1387,10 @@ function AdminDashboard() {
           <span>Log out</span>
         </button>
       </div>
+      ) : null}
 
       <div style={{ ...content, ...(isCompactLayout ? contentCompact : {}) }}>
+        {!embedded ? (
         <header style={{ ...topBarStyle, ...(isCompactLayout ? topBarCompactStyle : {}) }}>
           <div>
             <span style={topBarKickerStyle}>Admin app</span>
@@ -1286,6 +1408,7 @@ function AdminDashboard() {
             </button>
           </div>
         </header>
+        ) : null}
 
         <div style={adminShortcutRowStyle} role="tablist" aria-label="Admin quick shortcuts">
           {adminQuickShortcuts.map((item) => {
@@ -1340,12 +1463,12 @@ function AdminDashboard() {
                   {
                     title: "Operations",
                     items: [
-                      ["Active rides", activeRides.length],
+                      ["Active rides", countValue("active", activeRides.length)],
                       ["Waiting requests", pendingRideRequests.length],
-                      ["Driver arriving", driverArrivingRides.length],
-                      ["In progress", inProgressRides.length],
-                      ["Completed", completedRides.length],
-                      ["Cancelled", cancelledRides.length],
+                      ["Driver arriving", countValue("driver_arriving", driverArrivingRides.length)],
+                      ["In progress", countValue("in_progress", inProgressRides.length)],
+                      ["Completed", countValue("completed", completedRides.length)],
+                      ["Cancelled", countValue("cancelled", cancelledRides.length)],
                     ],
                   },
                   {
@@ -1465,7 +1588,7 @@ function AdminDashboard() {
                   user={user}
                   setUserBlocked={setUserBlocked}
                   updateRiderApproval={updateRiderApproval}
-                  deleteRider={deleteRider}
+                  onDeactivate={deactivateRiderAccount}
                   showApprovalActions
                 />
               ))
@@ -1475,55 +1598,49 @@ function AdminDashboard() {
 
         {page === "riders" && (
           <div style={card}>
-            <RidersManagement
-              riders={riders}
-              rides={rides}
-              getFileUrl={getFileUrl}
-              onApproveRider={(id) => updateRiderApproval(id, "approve")}
-              onRejectRider={(id) => updateRiderApproval(id, "reject")}
-              onBlockUser={setUserBlocked}
-              onDeleteRider={deleteRider}
-            />
+            {/*
+              RidersManagement renders DataTable -> AdminActionGuard ->
+              usePermissions, which requires a PermissionProvider ancestor. This
+              legacy AdminDashboard surface (unlike the modern AdminShell) does
+              not provide one, so the Riders section is wrapped here. This
+              PRESERVES RBAC — the provider fetches the real admin permissions
+              and the guards default-deny until loaded; it does not bypass any
+              check.
+            */}
+            <PermissionProvider pathname="/admin">
+              <RidersManagement
+                riders={riders}
+                rides={rides}
+                getFileUrl={getFileUrl}
+                onApproveRider={(id) => updateRiderApproval(id, "approve")}
+                onRejectRider={(id) => updateRiderApproval(id, "reject")}
+                onBlockUser={setUserBlocked}
+              />
+            </PermissionProvider>
           </div>
         )}
 
         {page === "drivers" && (
           <div style={card}>
-            <SectionTitle
-              title="Drivers"
-              subtitle="Taxi driver accounts, approval status, and access. Delivery couriers are managed under Deliveries Drivers."
-            />
-
-            <div style={statsGrid}>
-              <StatCard title="Taxi Drivers" value={filteredTaxiDriverProfiles.length} />
-              <StatCard title="Online" value={onlineTaxiDrivers.length} />
-              <StatCard title="Pending" value={pendingTaxiDrivers.length} />
-              <StatCard
-                title="Blocked"
-                value={filteredTaxiDriverProfiles.filter((d) => !d.is_active).length}
+            {/*
+              DriversManagement renders DataTable -> AdminActionGuard ->
+              usePermissions, which requires a PermissionProvider ancestor. This
+              legacy AdminDashboard surface (unlike the modern AdminShell) does
+              not provide one, so the Drivers section is wrapped here. The
+              injected handlers are the EXISTING reusable AdminDashboard handlers
+              (approveDriver, rejectDriver, setUserBlocked, reintegrateDriver) —
+              no API calls are reimplemented, and there is no delete wiring.
+            */}
+            <PermissionProvider pathname="/admin">
+              <DriversManagement
+                drivers={taxiDriverProfiles}
+                getFileUrl={getFileUrl}
+                onApproveDriver={approveDriver}
+                onRejectDriver={rejectDriver}
+                onBlockUser={setUserBlocked}
+                onReintegrate={reintegrateDriver}
               />
-            </div>
-
-            <h2 style={subHeadingStyle}>Taxi Drivers</h2>
-            {filteredTaxiDriverProfiles.length === 0 ? (
-              <p style={{ color: "#94a3b8" }}>No taxi drivers found.</p>
-            ) : (
-              filteredTaxiDriverProfiles.map((driver) => (
-                <DriverInfoCard
-                  key={driver.id}
-                  driver={driver}
-                  relatedUser={usersById.get(Number(driver.user_id))}
-                  getFileUrl={getFileUrl}
-                  setUserBlocked={setUserBlocked}
-                  approveDriver={approveDriver}
-                  rejectDriver={rejectDriver}
-                  updateDriverCategory={updateDriverCategory}
-                  reintegrateDriver={reintegrateDriver}
-                  deleteDriver={deleteDriver}
-                  driverCategories={DRIVER_CATEGORIES}
-                />
-              ))
-            )}
+            </PermissionProvider>
           </div>
         )}
 
@@ -3198,7 +3315,7 @@ function UserAccessCard({
   user,
   setUserBlocked,
   updateRiderApproval,
-  deleteRider,
+  onDeactivate,
   showApprovalActions = false,
 }) {
   const isRiderAccount =
@@ -3328,19 +3445,24 @@ function UserAccessCard({
           />
         )}
 
-        <button
-          style={user.is_active ? blockButtonStyle : unblockButtonStyle}
-          onClick={() => setUserBlocked(user.id, user.is_active)}
-        >
-          {user.is_active ? "Block user" : "Unblock user"}
-        </button>
-        {isRiderAccount && (
+        {isRiderAccount ? (
           <button
             type="button"
-            style={dangerSolidButtonStyle}
-            onClick={() => deleteRider(user)}
+            style={user.is_active ? dangerSolidButtonStyle : unblockButtonStyle}
+            onClick={() =>
+              user.is_active
+                ? onDeactivate(user)
+                : setUserBlocked(user.id, user.is_active)
+            }
           >
-            🗑️ Delete Rider
+            {user.is_active ? "Deactivate Account" : "Reactivate Account"}
+          </button>
+        ) : (
+          <button
+            style={user.is_active ? blockButtonStyle : unblockButtonStyle}
+            onClick={() => setUserBlocked(user.id, user.is_active)}
+          >
+            {user.is_active ? "Block user" : "Unblock user"}
           </button>
         )}
       </div>
@@ -4119,6 +4241,20 @@ const pageStyle = {
   backgroundAttachment: "fixed",
   color: "#f8fafc",
   fontFamily: "\"Plus Jakarta Sans\", \"Inter\", \"Segoe UI\", sans-serif",
+};
+
+/**
+ * Embedded layout: used when this console is rendered inside the unified
+ * AdminShell (single navigation + single header). The shell owns the page grid,
+ * background and spacing, so this surface becomes a plain single-column block.
+ */
+const embeddedPageStyle = {
+  display: "block",
+  gridTemplateColumns: "none",
+  minHeight: 0,
+  backgroundImage: "none",
+  background: "transparent",
+  fontFamily: "inherit",
 };
 
 const sidebar = {

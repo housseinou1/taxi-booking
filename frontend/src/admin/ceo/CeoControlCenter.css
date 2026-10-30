@@ -1,0 +1,271 @@
+/* ── CEO Control Center (Phase 8) ────────────────────────────────────────────
+ *
+ * Dark-theme first. Every surface uses a theme token defined in AdminShell.css
+ * (--admin-surface / --admin-surface-alt) so the cards are never white-on-dark:
+ * an undefined token used to fall back to #fff and produced unreadable light text.
+ */
+
+.ceo-control {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  color: var(--admin-text, #f8fafc);
+}
+
+.ceo-control__section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ceo-control__heading {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  color: var(--admin-text, #f8fafc);
+}
+
+.ceo-control__notice {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(52, 211, 153, 0.35);
+  border-left: 3px solid var(--admin-success, #34d399);
+  background: var(--admin-surface-alt, rgba(148, 163, 184, 0.1));
+  color: var(--admin-text, #f8fafc);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+/* ── Approvals inbox cards ─────────────────────────────────────────────────── */
+
+.ceo-control__groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.ceo-control__group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid var(--admin-border, rgba(110, 231, 183, 0.22));
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: var(--admin-surface, rgba(15, 33, 25, 0.72));
+  color: var(--admin-text, #f8fafc);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ceo-control__group:hover,
+.ceo-control__group:focus-within {
+  border-color: var(--admin-accent, #00a651);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.32);
+}
+
+.ceo-control__group-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.86rem;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  color: var(--admin-text, #f8fafc);
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--admin-border, rgba(110, 231, 183, 0.22));
+}
+
+.ceo-control__count {
+  min-width: 28px;
+  text-align: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--admin-border, rgba(110, 231, 183, 0.22));
+  background: var(--admin-accent-soft, rgba(110, 231, 183, 0.14));
+  color: var(--admin-text, #f8fafc);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+.ceo-control__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 0.84rem;
+}
+
+.ceo-control__list li {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--admin-border, rgba(110, 231, 183, 0.22));
+  line-height: 1.4;
+}
+
+.ceo-control__list li:last-child {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.ceo-control__item-title {
+  font-weight: 600;
+  color: var(--admin-text, #f8fafc);
+  overflow-wrap: anywhere;
+}
+
+.ceo-control__meta {
+  font-size: 0.78rem;
+  color: var(--admin-text-muted, #cbd5e1);
+  overflow-wrap: anywhere;
+}
+
+.ceo-control__empty {
+  margin: 4px 0;
+  font-size: 0.82rem;
+  color: var(--admin-text-muted, #cbd5e1);
+}
+
+/* ── Status badges (accessible contrast on the dark surface) ──────────────── */
+
+.ceo-control__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  align-self: flex-start;
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.ceo-control__badge--success {
+  color: var(--admin-success, #34d399);
+  background: rgba(52, 211, 153, 0.12);
+}
+
+.ceo-control__badge--warning {
+  color: var(--admin-warning, #fbbf24);
+  background: rgba(251, 191, 36, 0.12);
+}
+
+.ceo-control__badge--danger {
+  color: var(--admin-danger, #fca5a5);
+  background: rgba(252, 165, 165, 0.12);
+}
+
+.ceo-control__badge--info {
+  color: var(--admin-info, #93c5fd);
+  background: rgba(147, 197, 253, 0.12);
+}
+
+.ceo-control__badge--neutral {
+  color: var(--admin-text-muted, #cbd5e1);
+  background: var(--admin-surface-alt, rgba(148, 163, 184, 0.1));
+}
+
+.ceo-control__row-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.ceo-control__row-actions .admin-lib-btn {
+  min-height: 32px;
+  padding: 4px 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: 8px;
+}
+
+.ceo-control__action--approve,
+.ceo-control__action--reactivate {
+  border-color: var(--admin-success, #34d399);
+  color: var(--admin-success, #34d399);
+}
+
+.ceo-control__action--approve:hover,
+.ceo-control__action--reactivate:hover {
+  background: rgba(52, 211, 153, 0.14);
+}
+
+.ceo-control__action--suspend {
+  border-color: var(--admin-warning, #fbbf24);
+  color: var(--admin-warning, #fbbf24);
+}
+
+.ceo-control__action--suspend:hover {
+  background: rgba(251, 191, 36, 0.14);
+}
+
+.ceo-control__action--deactivate {
+  border-color: var(--admin-danger, #fca5a5);
+  color: var(--admin-danger, #fca5a5);
+}
+
+.ceo-control__action--deactivate:hover {
+  background: rgba(252, 165, 165, 0.14);
+}
+
+.ceo-control__action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ceo-control__reason {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+  font-size: 0.8rem;
+  color: var(--admin-text-muted, #cbd5e1);
+}
+
+.ceo-control__reason textarea {
+  padding: 8px 10px;
+  border: 1px solid var(--admin-border, rgba(110, 231, 183, 0.22));
+  border-radius: 8px;
+  background: var(--admin-surface-alt, rgba(148, 163, 184, 0.1));
+  color: var(--admin-text, #f8fafc);
+  font-family: inherit;
+  font-size: 0.85rem;
+  resize: vertical;
+}
+
+.ceo-control__reason textarea:focus-visible {
+  outline: 2px solid var(--admin-accent, #00a651);
+  outline-offset: 1px;
+}
+
+.ceo-control__audit {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 0.82rem;
+}
+
+.ceo-control__audit li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
+  border: 1px solid var(--admin-border, rgba(110, 231, 183, 0.22));
+  border-radius: 8px;
+  background: var(--admin-surface, rgba(15, 33, 25, 0.72));
+  line-height: 1.4;
+}

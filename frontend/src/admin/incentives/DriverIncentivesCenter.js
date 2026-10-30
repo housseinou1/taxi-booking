@@ -10,7 +10,6 @@ import {
   payoutAction,
   updateIncentiveCampaign,
 } from "./incentiveEngineApi";
-import "../beta/BetaDashboard.css";
 import "./DriverIncentivesCenter.css";
 
 const TABS = [
@@ -33,10 +32,10 @@ const CAMPAIGN_TYPES = [
 
 function MetricCard({ label, value, sub }) {
   return (
-    <div className="beta__card">
-      <div className="beta__card-label">{label}</div>
-      <div className="beta__card-value">{value ?? "—"}</div>
-      {sub ? <div className="beta__card-sub">{sub}</div> : null}
+    <div className="incentive-card">
+      <div className="incentive-card__label">{label}</div>
+      <div className="incentive-card__value">{value ?? "—"}</div>
+      {sub ? <div className="incentive-card__sub">{sub}</div> : null}
     </div>
   );
 }
@@ -106,16 +105,16 @@ export default function DriverIncentivesCenter() {
   };
 
   return (
-    <div className="beta">
-      <header className="beta__header">
+    <div className="incentive-center">
+      <header className="incentive-header">
         <div>
-          <p className="beta__eyebrow">Phase 30 · Closed Beta</p>
-          <h1>Driver Incentive Engine</h1>
-          <p className="beta__subtitle">Configurable campaigns, progress tracking, bonus calculation, and finance-approved payouts.</p>
+          <p className="incentive-header__eyebrow">Phase 30 · Closed Beta</p>
+          {/* The shell owns the single page title ("Driver Incentives Center"). */}
+          <p className="incentive-header__subtitle">Configurable campaigns, progress tracking, bonus calculation, and finance-approved payouts.</p>
         </div>
       </header>
 
-      {error ? <p className="beta__error">{error}</p> : null}
+      {error ? <p className="incentive-error">{error}</p> : null}
       {loading && !data ? <p>Loading incentive engine…</p> : null}
 
       <div className="incentive-tabs">
@@ -178,7 +177,7 @@ export default function DriverIncentivesCenter() {
 
       {tab === "operations" && ops.summary ? (
         <>
-          <div className="beta__grid">
+          <div className="incentive-grid">
             <MetricCard label="Active campaigns" value={ops.summary.active_campaigns} />
             <MetricCard label="Participation rate" value={`${ops.summary.participation_rate}%`} />
             <MetricCard label="Completion rate" value={`${ops.summary.completion_rate}%`} />
@@ -195,7 +194,7 @@ export default function DriverIncentivesCenter() {
       ) : null}
 
       {tab === "ceo" && ceoData ? (
-        <div className="beta__grid">
+        <div className="incentive-grid">
           <MetricCard label="Incentive cost (30d)" value={formatMoney(ceoData.incentive_cost_30d)} />
           <MetricCard label="Additional rides" value={ceoData.additional_rides_generated} />
           <MetricCard label="Revenue increase est." value={formatMoney(ceoData.revenue_increase_estimate)} />
@@ -206,7 +205,7 @@ export default function DriverIncentivesCenter() {
 
       {tab === "finance" && financeData ? (
         <>
-          <div className="beta__grid">
+          <div className="incentive-grid">
             <MetricCard label="Pending bonus" value={formatMoney(financeData.summary?.pending_bonus)} />
             <MetricCard label="Paid bonus" value={formatMoney(financeData.summary?.paid_bonus)} />
             <MetricCard label="Earned bonus" value={formatMoney(financeData.summary?.earned_bonus)} />

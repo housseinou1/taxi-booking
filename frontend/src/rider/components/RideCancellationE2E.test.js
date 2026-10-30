@@ -248,10 +248,11 @@ async function assertHomeIsClean({ driverName, pickupLabel, destinationLabel, et
     expect(screen.getByText('Ride cancelled')).toBeInTheDocument();
   });
 
-  // Toast disappears automatically (allow up to 4s for the 3s timer)
+  // Toast disappears automatically (RiderHome dismisses it after 5s, so allow
+  // a margin above that timer).
   await waitFor(() => {
     expect(screen.queryByText('Ride cancelled')).not.toBeInTheDocument();
-  }, { timeout: 4000 });
+  }, { timeout: 8000 });
 
   // Route/polyline disappears
   expect(screen.queryByTestId('map-polyline')).not.toBeInTheDocument();

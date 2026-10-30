@@ -8,7 +8,7 @@ import {
 const DIGITAL_METHODS = new Set(["bankily", "masrvi", "seddad", "card"]);
 
 function normalizeMethod(method) {
-  const value = String(method || "cash").toLowerCase();
+  const value = String(method || "card").toLowerCase();
   if (value === "masravi") return "masrvi";
   if (value === "sedad") return "seddad";
   return value;
@@ -26,7 +26,8 @@ function buildStatusMessage(method, payment) {
   }
 
   if (method === "cash") {
-    return "Cash payment recorded. Pay your driver and they will confirm receipt.";
+    // Phase 11 — cashless platform: cash is never a valid payment path.
+    return "Cash is not available on Yala. Please choose a digital payment method.";
   }
 
   if (DIGITAL_METHODS.has(method)) {

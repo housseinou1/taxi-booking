@@ -208,7 +208,7 @@ export default function DriverOpsDashboard() {
           <a className="admin-lib-btn admin-lib-btn--ghost" href="/admin/fleet">
             Fleet Center
           </a>
-          <a className="admin-lib-btn admin-lib-btn--ghost" href="/admin/legacy">
+          <a className="admin-lib-btn admin-lib-btn--ghost" href="/admin/drivers">
             Legacy verification
           </a>
         </div>

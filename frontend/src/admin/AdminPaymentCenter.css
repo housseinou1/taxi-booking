@@ -1,0 +1,421 @@
+/* =============================================================================
+   YALA Admin — Payment Management Center
+   Enterprise financial dashboard styling. Built entirely on the shared admin
+   design tokens (--admin-*) so light and dark themes are handled by the shell.
+   ============================================================================= */
+
+.admin-payment-center {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0; /* prevents grid/flex children from forcing page overflow */
+}
+
+/* ── Header ───────────────────────────────────────────────────────────────── */
+
+.admin-payment-center__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--admin-border);
+}
+
+.admin-payment-center__heading {
+  min-width: 0;
+  flex: 1 1 320px;
+}
+
+.admin-payment-center__subtitle {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--admin-text-muted);
+  max-width: 62ch;
+}
+
+.admin-payment-center__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.admin-payment-center__control {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.admin-payment-center__control-label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--admin-text-muted);
+}
+
+.admin-payment-center__select {
+  appearance: none;
+  min-height: 38px;
+  padding: 8px 30px 8px 12px;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--admin-text);
+  background-color: var(--admin-surface-alt);
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: calc(100% - 16px) 16px, calc(100% - 11px) 16px;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.admin-payment-center__select:focus-visible {
+  outline: 2px solid var(--admin-accent);
+  outline-offset: 1px;
+}
+
+/* ── Tabs ─────────────────────────────────────────────────────────────────── */
+
+.admin-payment-center__tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  background: var(--admin-surface-alt);
+  border: 1px solid var(--admin-border);
+  border-radius: 10px;
+}
+
+.admin-payment-center__tab {
+  position: relative;
+  flex: 0 0 auto;
+  padding: 10px 18px;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--admin-text-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.admin-payment-center__tab:hover {
+  color: var(--admin-text);
+  background: var(--admin-surface-muted);
+}
+
+.admin-payment-center__tab:focus-visible {
+  outline: 2px solid var(--admin-accent);
+  outline-offset: -2px;
+}
+
+.admin-payment-center__tab--active {
+  color: #ffffff;
+  background: var(--admin-accent);
+  box-shadow: 0 2px 10px rgba(0, 166, 81, 0.32);
+}
+
+.admin-payment-center__tab--active:hover {
+  color: #ffffff;
+  background: var(--admin-accent);
+}
+
+/* Active indicator sits under the label, independent of theme contrast. */
+.admin-payment-center__tab--active::after {
+  content: "";
+  position: absolute;
+  inset: auto 14px 3px 14px;
+  height: 2px;
+  border-radius: 2px;
+  background: currentColor;
+  opacity: 0.85;
+}
+
+/* ── Tab panel ────────────────────────────────────────────────────────────── */
+
+.admin-payment-center__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+.admin-payment-center__panel:focus {
+  outline: none;
+}
+
+/* ── KPI grid: 4 / 2 / 1 ──────────────────────────────────────────────────── */
+
+.payment-center__kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.payment-center__kpi-grid .admin-kpi {
+  height: 100%;
+  min-height: 148px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ── Sections ─────────────────────────────────────────────────────────────── */
+
+.payment-center__section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.payment-center__section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.payment-center__section-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--admin-text);
+}
+
+.payment-center__section-hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--admin-text-muted);
+}
+
+.payment-center__section-content {
+  min-width: 0;
+}
+
+/* ── KPI icon + status accents ────────────────────────────────────────────── */
+
+.admin-kpi__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-right: 8px;
+  font-size: 0.9375rem;
+  line-height: 1;
+  border-radius: 8px;
+  background: var(--admin-accent-soft);
+  flex: 0 0 auto;
+}
+
+.admin-kpi__head {
+  align-items: center;
+}
+
+/* Financial status colours: only the left edge is tinted so the value stays
+   the most prominent element on the card. */
+.admin-kpi {
+  border-left: 3px solid transparent;
+}
+
+.admin-kpi--success { border-left-color: var(--admin-success); }
+.admin-kpi--warning { border-left-color: var(--admin-warning); }
+.admin-kpi--danger { border-left-color: var(--admin-danger); }
+.admin-kpi--info { border-left-color: var(--admin-info); }
+
+/* ── Money alignment (right) ──────────────────────────────────────────────── */
+
+.admin-table__cell--right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.payment-center__money {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.payment-center__muted {
+  color: var(--admin-text-muted);
+}
+
+/* ── Performance breakdown (real backend aggregates only) ─────────────────── */
+
+.payment-center__metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+}
+
+.payment-center__metric {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  background: var(--admin-surface-muted);
+  border: 1px solid var(--admin-border);
+  border-radius: 10px;
+}
+
+.payment-center__metric-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--admin-text-muted);
+}
+
+.payment-center__metric-value {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--admin-text);
+}
+
+.payment-center__bars {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  background: var(--admin-surface-muted);
+  border: 1px solid var(--admin-border);
+  border-radius: 10px;
+}
+
+.payment-center__bar-row {
+  display: grid;
+  grid-template-columns: minmax(96px, 160px) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.8125rem;
+}
+
+.payment-center__bar-label {
+  color: var(--admin-text-muted);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.payment-center__bar-track {
+  height: 8px;
+  background: var(--admin-surface-alt);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.payment-center__bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--admin-accent);
+}
+
+.payment-center__bar-value {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--admin-text);
+  white-space: nowrap;
+}
+
+/* ── Advisory / notice blocks ─────────────────────────────────────────────── */
+
+.payment-center__notice {
+  padding: 12px 14px;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--admin-text-muted);
+  background: var(--admin-surface-muted);
+  border: 1px solid var(--admin-border);
+  border-left: 3px solid var(--admin-info);
+  border-radius: 8px;
+}
+
+.payment-center__notice strong {
+  color: var(--admin-text);
+}
+
+/* ── Responsive: tablet (2 per row) ───────────────────────────────────────── */
+
+@media (max-width: 1180px) {
+  .payment-center__kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ── Responsive: mobile (1 per row, stacked controls) ─────────────────────── */
+
+@media (max-width: 720px) {
+  .payment-center__kpi-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-payment-center__header {
+    align-items: stretch;
+  }
+
+  .admin-payment-center__actions {
+    width: 100%;
+  }
+
+  .admin-payment-center__control {
+    flex: 1 1 140px;
+  }
+
+  .admin-payment-center__select {
+    width: 100%;
+  }
+
+  .payment-center__kpi-grid .admin-kpi {
+    min-height: 0;
+  }
+
+  .payment-center__bar-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "label value"
+      "track track";
+    row-gap: 6px;
+  }
+
+  .payment-center__bar-label { grid-area: label; }
+  .payment-center__bar-value { grid-area: value; }
+  .payment-center__bar-track { grid-area: track; }
+}
+
+@media (max-width: 420px) {
+  .admin-payment-center {
+    gap: 16px;
+  }
+
+  .admin-payment-center__tab {
+    padding: 9px 13px;
+    font-size: 0.78125rem;
+  }
+
+  .payment-center__section-title {
+    font-size: 0.9375rem;
+  }
+}
+
+/* Respect reduced-motion preferences (no decorative animation). */
+@media (prefers-reduced-motion: reduce) {
+  .admin-payment-center__tab {
+    transition: none;
+  }
+}
+

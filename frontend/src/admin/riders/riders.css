@@ -219,6 +219,44 @@
 .riders-detail__pager {
   display: flex;
   align-items: center;
+
+/* ── Reason dialog + protected document actions (Phase 4) ────────────────── */
+.riders-detail__dialog {
+  border: 1px solid var(--admin-border, #e5e7eb);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-top: 12px;
+  background: var(--admin-surface-muted, #f9fafb);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.riders-detail__dialog h4 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.riders-detail__dialog-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.8rem;
+  color: var(--admin-text-muted, #6b7280);
+}
+
+.riders-detail__dialog-field input {
+  padding: 7px 9px;
+  border: 1px solid var(--admin-border, #e5e7eb);
+  border-radius: 6px;
+  font-size: 0.88rem;
+}
+
+.riders-detail__dialog-field input:focus-visible {
+  outline: 2px solid var(--admin-accent, #2563eb);
+  outline-offset: 1px;
+}
+
   gap: 12px;
   margin-top: 10px;
 }

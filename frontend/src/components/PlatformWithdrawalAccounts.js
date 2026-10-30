@@ -6,6 +6,20 @@ import "./PlatformWithdrawalAccounts.css";
 
 const METHOD_ORDER = ["bankily", "sedad", "masravi"];
 
+/**
+ * Masks a settlement reference for shoulder-surfing protection on admin screens.
+ * Keeps a short head/tail so an operator can still recognise the account.
+ * NOTE: this is presentation only — the value is already returned by the
+ * read-only API and the page is finance-permission gated, so it is NOT an
+ * access-control boundary.
+ */
+export function maskReference(value) {
+  const text = String(value ?? "").trim();
+  if (!text) return "";
+  if (text.length <= 6) return "•".repeat(text.length);
+  return `${text.slice(0, 2)}${"•".repeat(Math.max(4, text.length - 5))}${text.slice(-3)}`;
+}
+
 export default function PlatformWithdrawalAccounts({
   apiClient = authenticatedApi,
   authHeaders = null,
@@ -13,10 +27,12 @@ export default function PlatformWithdrawalAccounts({
   onSelectMethod,
   title = "Withdrawal method",
   subtitle = "Choose how you want to receive your payout. Enter your own account details below.",
+  maskDestination = false,
 }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [accounts, setAccounts] = useState(null);
+  const [revealed, setRevealed] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -102,7 +118,30 @@ export default function PlatformWithdrawalAccounts({
       {activeMethod ? (
         <div className="platform-withdrawal-accounts__destination">
           <small>Yala {activeMethod.label} settlement reference</small>
-          <strong>{activeMethod.destination || "Not configured"}</strong>
+          <span
+            className={`platform-withdrawal-accounts__status ${
+              activeMethod.destination ? "is-configured" : "is-missing"
+            }`}
+          >
+            {activeMethod.destination ? "Configured" : "Not configured"}
+          </span>
+          <strong>
+            {activeMethod.destination
+              ? maskDestination && !revealed
+                ? maskReference(activeMethod.destination)
+                : activeMethod.destination
+              : "No settlement reference stored"}
+          </strong>
+          {maskDestination && activeMethod.destination ? (
+            <button
+              type="button"
+              className="platform-withdrawal-accounts__reveal"
+              onClick={() => setRevealed((value) => !value)}
+              aria-pressed={revealed}
+            >
+              {revealed ? "Hide full reference" : "Show full reference"}
+            </button>
+          ) : null}
         </div>
       ) : null}
     </section>

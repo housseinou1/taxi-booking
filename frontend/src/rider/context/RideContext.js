@@ -110,7 +110,11 @@ function rideReducer(state, action) {
           : null,
         driverPosition: null,
         loading: false,
-        bookingStep: state.currentRide ? 'completed' : 'idle',
+        // Stay on the tracking step: RideTracker owns the completed view (trip
+        // total + "Rate your driver"), which then routes to /rider-payments where
+        // PostRidePayRate renders. Jumping to a separate 'completed' step skipped
+        // that view entirely, so the rider never saw the pay-and-rate action.
+        bookingStep: state.currentRide ? 'tracking' : 'idle',
       };
 
     case 'RESET_RIDE':

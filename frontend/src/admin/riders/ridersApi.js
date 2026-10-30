@@ -12,6 +12,7 @@
  */
 import { API_URL } from "../../apiConfig";
 import { apiRequest } from "../../delivery/DeliveryShared";
+import authenticatedApi from "../../auth/authenticatedApi";
 
 /** Drop null/undefined/empty params and return a "?a=b" string (or ""). */
 function buildQuery(params = {}) {
@@ -48,6 +49,69 @@ export async function getRiderPayments(riderId, params = {}) {
  */
 export async function getRiderActivity(riderId) {
   return apiRequest(`${API_URL}/auth/admin/rider/${riderId}/activity/`);
+}
+
+/**
+ * GET /auth/admin/riders/ — paginated, filtered, sortable admin rider list.
+ * Supports: q, status, state, has_document, date_from, date_to, ordering,
+ * page, page_size.
+ */
+export async function fetchAdminRiders(params = {}) {
+  return apiRequest(`${API_URL}/auth/admin/riders/${buildQuery(params)}`);
+}
+
+/** GET /auth/admin/riders/<id>/ — rider profile detail. */
+export async function fetchAdminRiderDetail(riderId) {
+  return apiRequest(`${API_URL}/auth/admin/riders/${riderId}/`);
+}
+
+/**
+ * Authenticated, admin-only identity document URL.
+ *
+ * Identity documents must NOT be fetched from the public media URL. This returns
+ * the protected admin endpoint, which streams the file only to authenticated
+ * administrators. Callers must fetch it with the authenticated client.
+ */
+export function getRiderDocumentUrl(riderId) {
+  return `${API_URL}/auth/admin/riders/${riderId}/document/`;
+}
+
+/**
+ * Fetch the rider identity document as a Blob through the authenticated client.
+ *
+ * Identity documents are NOT public: the protected admin endpoint requires the
+ * Bearer token, so the file must be fetched (not linked by URL) and rendered from
+ * an object URL that is revoked by the caller.
+ */
+export async function fetchRiderDocumentBlob(riderId) {
+  const response = await authenticatedApi.get(getRiderDocumentUrl(riderId), {
+    responseType: "blob",
+  });
+  return response.data;
+}
+
+/** POST /auth/users/<id>/suspend/ — requires a reason (min 5 chars). */
+export async function suspendRider(riderId, reason) {
+  return apiRequest(`${API_URL}/auth/users/${riderId}/suspend/`, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
+  });
+}
+
+/** POST /auth/users/<id>/reactivate/ — restores access (reversible). */
+export async function reactivateRider(riderId, reason = "") {
+  return apiRequest(`${API_URL}/auth/users/${riderId}/reactivate/`, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
+  });
+}
+
+/**
+ * GET /auth/admin/riders/<id>/support/ — the rider's support/feedback history.
+ * Read-only; reuses the existing support ticket model on the backend.
+ */
+export async function getRiderSupport(riderId, params = {}) {
+  return apiRequest(`${API_URL}/auth/admin/riders/${riderId}/support/${buildQuery(params)}`);
 }
 
 /**

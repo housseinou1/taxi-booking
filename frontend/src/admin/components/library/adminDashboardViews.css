@@ -1,0 +1,96 @@
+/*
+ * Shared layout primitives for the YALA Admin dashboard views.
+ *
+ * These views render INSIDE AdminShellPage, so every `--admin-*` token is
+ * already declared on `.admin-shell` — no colour values are duplicated here.
+ */
+
+.admin-dash {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.admin-dash__note {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--admin-text-muted);
+}
+
+.admin-dash-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+}
+
+.admin-dash-panel {
+  border: 1px solid var(--admin-border);
+  background: var(--admin-surface, rgba(15, 33, 25, 0.72));
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+
+.admin-dash-panel__title {
+  margin: 0 0 10px;
+  font-size: 1rem;
+}
+
+.admin-dash-table-wrap {
+  overflow-x: auto;
+}
+
+.admin-dash-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.admin-dash-table th,
+.admin-dash-table td {
+  text-align: left;
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--admin-border);
+  white-space: nowrap;
+}
+
+.admin-dash-table th {
+  font-size: 0.72rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--admin-text-muted);
+}
+
+.admin-dash-links {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.admin-dash-link {
+  display: block;
+  border: 1px solid var(--admin-border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: var(--admin-surface-alt, rgba(148, 163, 184, 0.1));
+  color: var(--admin-text);
+  text-decoration: none;
+}
+
+.admin-dash-link:hover,
+.admin-dash-link:focus-visible {
+  border-color: var(--admin-accent);
+  outline: 2px solid var(--admin-accent);
+  outline-offset: 1px;
+}
+
+.admin-dash-link__label {
+  display: block;
+  font-weight: 600;
+}
+
+.admin-dash-link__desc {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.8rem;
+  color: var(--admin-text-muted);
+}

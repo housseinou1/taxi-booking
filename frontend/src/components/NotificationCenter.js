@@ -8,6 +8,28 @@ const READ_KEY = "sx_read_notifications";
 const PUSH_KEY = "sx_push_notifications";
 const POLL_INTERVAL_MS = 6000;
 
+/**
+ * The ride/payment history fallback exists to synthesise notifications for a
+ * rider or driver whose own notification history is empty. It downloads the
+ * FULL ride history (measured at ~242 KB) plus the payment list.
+ *
+ * Two guards keep it from dominating the Admin shell:
+ *  1. `historyFallbackAttempted` — it is attempted at most once per page load
+ *     instead of on every 6-second poll.
+ *  2. `isAdminSurface()` — admin staff have no personal ride history, and
+ *     /notifications/history/ is the authoritative source, so it is skipped
+ *     entirely under /admin.
+ */
+let historyFallbackAttempted = false;
+
+function isAdminSurface() {
+  return (
+    typeof window !== "undefined" &&
+    typeof window.location !== "undefined" &&
+    window.location.pathname.startsWith("/admin")
+  );
+}
+
 function NotificationCenter({
   mode = "ride",
   variant = "floating",
@@ -224,11 +246,16 @@ async function buildNotifications(mode = "ride") {
       console.log("Notification history load error:", error.response?.data || error);
     }
 
+    const shouldLoadHistoryFallback = !isAdminSurface() && !historyFallbackAttempted;
+    if (shouldLoadHistoryFallback) historyFallbackAttempted = true;
+
     try {
-      const [ridesResponse, paymentsResponse] = await Promise.allSettled([
-        authenticatedApi.get(`${API_URL}/rides/history/`),
-        authenticatedApi.get(`${API_URL}/payments/my-payments/`),
-      ]);
+      const [ridesResponse, paymentsResponse] = shouldLoadHistoryFallback
+        ? await Promise.allSettled([
+            authenticatedApi.get(`${API_URL}/rides/history/`),
+            authenticatedApi.get(`${API_URL}/payments/my-payments/`),
+          ])
+        : [{ status: "skipped" }, { status: "skipped" }];
 
       if (ridesResponse.status === "fulfilled") {
         const rides = Array.isArray(ridesResponse.value.data)

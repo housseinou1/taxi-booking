@@ -159,6 +159,7 @@ export default function DataTable({
                 <th
                   key={col.id}
                   scope="col"
+                  className={col.align === "right" ? "admin-table__cell--right" : undefined}
                   aria-sort={
                     sortKey === col.id ? (sortDirection === "asc" ? "ascending" : "descending") : "none"
                   }
@@ -179,7 +180,17 @@ export default function DataTable({
             {pagedRows.length === 0 ? (
               <tr>
                 <td colSpan={visibleCols.length + (rowActions ? 1 : 0) + (bulkActions ? 1 : 0)}>
-                  <p className="admin-table__empty">{emptyLabel}</p>
+                  {/* A failed request must never look like "no records": when an error
+                      is present the empty state is suppressed (the error is shown
+                      above), so an operator can tell "nothing matched" from "the data
+                      did not load / access was denied / the session expired". */}
+                  {error ? (
+                    <p className="admin-table__empty" role="status">
+                      Records could not be loaded. See the error above.
+                    </p>
+                  ) : (
+                    <p className="admin-table__empty">{emptyLabel}</p>
+                  )}
                 </td>
               </tr>
             ) : (
@@ -205,7 +216,12 @@ export default function DataTable({
                       </td>
                     ) : null}
                     {visibleCols.map((col) => (
-                      <td key={col.id}>{col.render ? col.render(row) : row[col.id] ?? "—"}</td>
+                      <td
+                        key={col.id}
+                        className={col.align === "right" ? "admin-table__cell--right" : undefined}
+                      >
+                        {col.render ? col.render(row) : row[col.id] ?? "—"}
+                      </td>
                     ))}
                     {rowActions ? <td className="admin-table__actions">{rowActions(row)}</td> : null}
                   </tr>
