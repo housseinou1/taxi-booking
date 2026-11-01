@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "rest_framework_simplejwt",
+    "anymail",
     "rest_framework_simplejwt.token_blacklist",
     "authapp",
     "locations",
@@ -292,6 +293,9 @@ EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", True)
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "Yala <noreply@yala.mr>")
+# To use Resend, set EMAIL_BACKEND=anymail.backends.resend.EmailBackend
+# and RESEND_API_KEY in the private runtime environment. Never commit the key.
+ANYMAIL = {"RESEND_API_KEY": os.getenv("RESEND_API_KEY", "")}
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
 # ── SMS phone verification ────────────────────────────────────────────────────
