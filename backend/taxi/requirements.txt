@@ -27,6 +27,9 @@ Pillow
 qrcode[pil]>=7.0
 pyotp>=2.9.0
 
+# ── Transactional email (Django 4.2-compatible Resend HTTPS API backend) ──────
+django-anymail==14.0
+
 # ── Environment ───────────────────────────────────────────────────────────────
 python-dotenv
 
