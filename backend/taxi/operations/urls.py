@@ -242,7 +242,12 @@ from .business_views import (
 )
 from .views import complete_maintenance, maintenance_reminders
 
+from .admin_permissions_views import AdminClientAuditView, AdminPermissionsView
+
 urlpatterns = [
+    # Admin shell RBAC bootstrap (staff JWT only; gated by IsStaffUser).
+    path("admin/me/permissions/", AdminPermissionsView.as_view()),
+    path("admin/audit/client-event/", AdminClientAuditView.as_view()),
     path("maintenance/", maintenance_reminders),
     path("maintenance/<int:reminder_id>/complete/", complete_maintenance),
     path("center/dashboard/", operations_center_dashboard),
