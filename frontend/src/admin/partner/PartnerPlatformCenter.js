@@ -133,7 +133,7 @@ export default function PartnerPlatformCenter() {
     <div className="beta">
       <header className="beta__header">
         <div>
-          <p className="beta__eyebrow">Phase 32 · Production</p>
+          <p className="beta__eyebrow">Platform Management</p>
           <h1>Partner & Franchise Platform</h1>
           <p className="beta__subtitle">
             Register local operators, assign territories, track performance, and manage revenue-share settlements.

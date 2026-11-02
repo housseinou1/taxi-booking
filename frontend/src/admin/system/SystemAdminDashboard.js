@@ -32,6 +32,7 @@ import {
   updateStaffUser,
 } from "./systemAdminApi";
 import "../finance/FinanceDashboard.css";
+import StructuredValue, { ChangeSummary } from "../components/library/data/StructuredValue";
 
 const TABS = [
   { id: "health", label: "Platform Health" },
@@ -438,10 +439,7 @@ export default function SystemAdminDashboard() {
               {
                 id: "diff",
                 label: "Before → After",
-                render: (r) => {
-                  if (r.before == null && r.after == null) return "—";
-                  return `${JSON.stringify(r.before)} → ${JSON.stringify(r.after)}`;
-                },
+                render: (r) => <ChangeSummary before={r.before} after={r.after} />,
               },
               { id: "ip_address", label: "IP" },
             ]}
@@ -487,7 +485,7 @@ export default function SystemAdminDashboard() {
               {
                 id: "value",
                 label: "Value",
-                render: (r) => <code style={{ fontSize: 12 }}>{JSON.stringify(r.value)}</code>,
+                render: (r) => <StructuredValue value={r.value} />,
               },
               { id: "updated_by", label: "Updated by" },
               { id: "updated_at", label: "Updated", render: (r) => formatTimestamp(r.updated_at) || "—" },

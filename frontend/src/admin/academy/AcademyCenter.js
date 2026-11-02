@@ -665,7 +665,7 @@ export default function AcademyCenter() {
       setLearningDashboard(learnData);
       setEnrollments(myEnrollments || []);
       setCerts(myCerts || []);
-      setAvailable(availableCourses || []);
+      setAvailable(Array.isArray(availableCourses) ? availableCourses : []);
     } catch (err) {
       setError(err?.response?.data?.detail || err?.message || "Failed to load academy data");
       setLoading(false);

@@ -30,6 +30,7 @@ import {
   requestExitPermission,
   writePerformanceReview,
 } from "./hrApi";
+import useUrlTab from "../layouts/useUrlTab";
 
 /**
  * Employee HR Management Center (Phase 3).
@@ -97,7 +98,7 @@ function message(error) {
 
 
 export default function HrManagementCenter() {
-  const [tab, setTab] = useState("exit");
+  const [tab, setTab] = useUrlTab(TABS.map((item) => item.id), "exit");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");

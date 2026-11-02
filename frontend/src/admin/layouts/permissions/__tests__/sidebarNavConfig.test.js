@@ -45,10 +45,10 @@ const REQUIRED_PAGES = [
   "Rider Management",
   "Courier Management",
   "Merchant Management",
-  "CEO Command Center",
+  "CEO Dashboard",
   "Operations Overview",
-  "Support Dashboard",
-  "Payment Management",
+  "Support Tickets",
+  "Transactions",
   "Security Dashboard",
   "System Status",
 ];
@@ -93,7 +93,7 @@ describe("Yala Admin sidebar navigation", () => {
   it("gives every navigable item a path that the route guard knows", () => {
     const leaves = flattenNavItems(SIDEBAR_NAV_ITEMS);
     leaves.forEach((leaf) => {
-      const path = leaf.getPath ? leaf.getPath({ home_route: "/admin/home/ops" }) : leaf.path;
+      const path = leaf.getPath ? leaf.getPath({ home_route: "/admin/home/ops" }).split("?")[0] : leaf.path.split("?")[0];
       expect(typeof path).toBe("string");
       expect(PATH_MODULE_MAP[path]).toBeDefined();
       // The mapped module must match the nav item's declared module.

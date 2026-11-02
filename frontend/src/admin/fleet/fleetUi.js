@@ -18,20 +18,20 @@ const CURRENCY = MARKET.currency || "MRU";
 
 /** Formatters are exported so both pages render numbers identically. */
 
-/* â”€â”€ formatting helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* â”€â”€ formatting helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€─ */
 
 export function isNum(value) {
   return value !== null && value !== undefined && value !== "" && !Number.isNaN(Number(value));
 }
 
 export function formatCount(value) {
-  if (!isNum(value)) return "â€”";
+  if (!isNum(value)) return "—";
   return Number(value).toLocaleString("en-US");
 }
 
 /** Money values arrive as Decimal strings; format them as MRU without inventing precision. */
 export function formatMoney(value) {
-  if (!isNum(value)) return "â€”";
+  if (!isNum(value)) return "—";
   return `${Number(value).toLocaleString("en-US", {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
@@ -39,21 +39,21 @@ export function formatMoney(value) {
 }
 
 export function formatPct(value) {
-  if (!isNum(value)) return "â€”";
+  if (!isNum(value)) return "—";
   return `${Number(value)}%`;
 }
 
 export function formatDateTime(value) {
-  if (!value) return "â€”";
+  if (!value) return "—";
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "â€”";
+  if (Number.isNaN(date.getTime())) return "—";
   return date.toLocaleString();
 }
 
 export function formatDate(value) {
-  if (!value) return "â€”";
+  if (!value) return "—";
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "â€”";
+  if (Number.isNaN(date.getTime())) return "—";
   return date.toLocaleDateString();
 }
 
@@ -87,14 +87,14 @@ export function KpiCard({ label, value, unit, sub, icon, tone = "idle", title })
   );
 }
 
-/** Explicit gap for a metric the API does not provide â€” never a fabricated number. */
+/** Explicit gap for a metric the API does not provide — never a fabricated number. */
 export function UnavailableKpi({ label, reason }) {
   return (
     <div className="fleet-kpi fleet-kpi--unavailable" title={reason}>
       <div className="fleet-kpi__top">
         <span className="fleet-kpi__label">{label}</span>
         <span className="fleet-kpi__icon" aria-hidden="true">
-          â€”
+          —
         </span>
       </div>
       <div className="fleet-kpi__value">Not available</div>
@@ -121,12 +121,12 @@ export function ScoreMeter({ score, band }) {
       <span className="fleet-score__bar" aria-hidden="true">
         <span className="fleet-score__fill" style={{ width: `${safe}%` }} />
       </span>
-      <span className="fleet-score__value">{isNum(score) ? score : "â€”"}</span>
+      <span className="fleet-score__value">{isNum(score) ? score : "—"}</span>
     </div>
   );
 }
 
-export function EmptyState({ icon = "ðŸ“­", title, hint }) {
+export function EmptyState({ icon = "📭", title, hint }) {
   return (
     <div className="fleet-state">
       <span className="fleet-state__icon" aria-hidden="true">
@@ -171,7 +171,7 @@ export function Pager({ page, pageCount, total, pageSize, onPage }) {
   return (
     <div className="fleet-pager">
       <span className="fleet-pager__info">
-        Showing <strong>{from}</strong>â€“<strong>{to}</strong> of <strong>{total}</strong>
+        Showing <strong>{from}</strong>–<strong>{to}</strong> of <strong>{total}</strong>
       </span>
       <span className="fleet-pager__btns">
         <button
@@ -200,7 +200,7 @@ export function Pager({ page, pageCount, total, pageSize, onPage }) {
 
 export function SortHeader({ label, sortKey, sort, onSort, className }) {
   const active = sort.key === sortKey;
-  const arrow = active ? (sort.dir === "asc" ? "â–²" : "â–¼") : "â†•";
+  const arrow = active ? (sort.dir === "asc" ? "▲" : "▼") : "↕";
   return (
     <th
       className={className}

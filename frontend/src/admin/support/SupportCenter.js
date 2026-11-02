@@ -31,6 +31,12 @@ import {
   updateSupportTicket,
 } from "./supportCenterApi";
 import "../finance/FinanceDashboard.css";
+import { readUrlParam } from "../layouts/useUrlTab";
+
+function allowedParam(name, allowed, fallback) {
+  const value = readUrlParam(name);
+  return value && allowed.includes(value) ? value : fallback;
+}
 
 const SAVED_VIEWS_KEY = "yala.support.savedViews";
 
@@ -58,14 +64,14 @@ export default function SupportCenter() {
   const [loadMs, setLoadMs] = useState(null);
   const [lastRefresh, setLastRefresh] = useState(null);
   const [search, setSearch] = useState("");
-  const [filters, setFilters] = useState({
-    queue: "open",
+  const [filters, setFilters] = useState(() => ({
+    queue: allowedParam("queue", QUEUE_TABS, "open"),
     app: "",
-    category: "",
+    category: allowedParam("category", CATEGORY_OPTIONS, ""),
     severity: "",
     owner_id: "",
     sort: "sla",
-  });
+  }));
   const [detail, setDetail] = useState(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [reply, setReply] = useState("");

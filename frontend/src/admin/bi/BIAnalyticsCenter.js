@@ -11,6 +11,7 @@ import {
 } from "./biAnalyticsApi";
 import "../beta/BetaDashboard.css";
 import "./BIAnalyticsCenter.css";
+import StructuredValue from "../components/library/data/StructuredValue";
 
 const TABS = [
   { id: "overview", label: "Data Warehouse Overview" },
@@ -241,7 +242,7 @@ export default function BIAnalyticsCenter() {
           <MetricCard label="Predictive Alerts" value={(p.predictive_alerts || []).length} />
         </div>
         <Section title="Driver Supply Forecast">
-          <pre className="bi-pre">{JSON.stringify(p.driver_supply_forecast || {}, null, 2)}</pre>
+          <StructuredValue value={p.driver_supply_forecast} emptyLabel="No driver supply forecast available." />
         </Section>
         <Section title="Peak Hours">
           <ul className="bi-list">

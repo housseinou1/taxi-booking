@@ -35,7 +35,7 @@ const TERMINAL_STATUSES = new Set(["delivered", "cancelled", "delivery_exception
 
 /**
  * `0` is a real measurement. Only null / undefined / "" mean "the API did not
- * provide this metric" and must render as an em dash â€” never as an invented zero.
+ * provide this metric" and must render as an em dash — never as an invented zero.
  */
 function hasValue(value) {
   return value !== null && value !== undefined && value !== "";
@@ -43,7 +43,7 @@ function hasValue(value) {
 
 /** Render a count, or an em dash when the API does not supply it. */
 function stat(value) {
-  return hasValue(value) ? value : "â€”";
+  return hasValue(value) ? value : "—";
 }
 
 function statusTone(status) {
@@ -79,7 +79,7 @@ const RECENT_COLUMNS = [
   {
     id: "fare",
     label: "Fare",
-    render: (row) => (hasValue(row.fare) ? formatCurrency(row.fare) : "â€”"),
+    render: (row) => (hasValue(row.fare) ? formatCurrency(row.fare) : "—"),
   },
   {
     id: "created_at",
@@ -92,9 +92,9 @@ const RECENT_COLUMNS = [
  * Yala Delivery overview (`/admin/delivery`).
  *
  * Every figure comes from read-only delivery endpoints:
- *   - `/deliveries/admin/overview/`  â†’ delivery, courier and merchant counts
- *   - `/deliveries/<id>/tracking/`   â†’ live courier position and ETA
- *   - `/deliveries/<id>/`            â†’ pickup / destination coordinates
+ *   - `/deliveries/admin/overview/`  → delivery, courier and merchant counts
+ *   - `/deliveries/<id>/tracking/`   → live courier position and ETA
+ *   - `/deliveries/<id>/`            → pickup / destination coordinates
  *
  * Metrics the API does not expose are shown as an em dash rather than a zero, and
  * module navigation reuses the existing AdminModuleHub cards (nothing duplicated).
@@ -112,8 +112,8 @@ export default function DeliveryManagement({ pathname = "/admin/delivery" } = {}
   const [detailError, setDetailError] = useState("");
 
   // Guard every async write: the dashboard polls, so a response can land after unmount.
-  // The flag must be restored on mount as well as cleared on unmount â€” React 18 StrictMode
-  // runs mount â†’ unmount â†’ mount in development, and a one-way `false` would discard every
+  // The flag must be restored on mount as well as cleared on unmount — React 18 StrictMode
+  // runs mount → unmount → mount in development, and a one-way `false` would discard every
   // response and leave the dashboard on skeletons forever.
   const mountedRef = useRef(true);
   useEffect(() => {
@@ -280,7 +280,7 @@ export default function DeliveryManagement({ pathname = "/admin/delivery" } = {}
               : "Not loaded yet"}
           </p>
           <button type="button" className="admin-lib-btn" onClick={load} disabled={loading}>
-            {loading ? "Refreshingâ€¦" : "Refresh"}
+            {loading ? "Refreshing…" : "Refresh"}
           </button>
         </div>
 
@@ -564,7 +564,7 @@ export default function DeliveryManagement({ pathname = "/admin/delivery" } = {}
 
               {selectedId ? (
                 <div className="dlvops-live__slot">
-                  {detailLoading ? <p className="delivery-detail__empty">Loading mapâ€¦</p> : null}
+                  {detailLoading ? <p className="delivery-detail__empty">Loading map…</p> : null}
                   {detailError ? <p className="delivery-detail__error">{detailError}</p> : null}
                   {!detailLoading && !detailError && hasMapCoordinates ? (
                     <div className="dlvops-live__map">

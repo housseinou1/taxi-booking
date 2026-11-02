@@ -53,7 +53,7 @@ const TABS = [
   { id: "reports", label: "Reports" },
 ];
 
-/** Revenue window selector â€” maps to the three revenue columns the API returns. */
+/** Revenue window selector — maps to the three revenue columns the API returns. */
 const PERIOD_OPTIONS = [
   { value: "today", label: "Today", field: "revenue_today" },
   { value: "week", label: "This week", field: "revenue_week" },
@@ -93,7 +93,7 @@ function FleetMap({ liveMap, heatMap }) {
   if (!markers.length) {
     return (
       <EmptyState
-        icon="ðŸ—ºï¸"
+        icon="🗺️"
         title="No live map data"
         hint="The backend returned no driver positions or demand hotspots for this selection."
       />
@@ -147,7 +147,7 @@ function FleetMap({ liveMap, heatMap }) {
   );
 }
 
-/* â”€â”€ Main component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* â”€â”€ Main component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€─ */
 
 
 export default function FleetPerformanceCenter() {
@@ -160,7 +160,7 @@ export default function FleetPerformanceCenter() {
   const [notice, setNotice] = useState("");
   const [lastLoaded, setLastLoaded] = useState(null);
 
-  // Filters â€” each one changes the request or the rendered rows, never a no-op.
+  // Filters — each one changes the request or the rendered rows, never a no-op.
   const [search, setSearch] = useState("");
   const [cityId, setCityId] = useState("");
   const [approval, setApproval] = useState("");
@@ -424,7 +424,7 @@ export default function FleetPerformanceCenter() {
     };
   }, [vehicles]);
 
-  /** Per-driver trip totals summed over the loaded set â€” labelled as such in the UI. */
+  /** Per-driver trip totals summed over the loaded set — labelled as such in the UI. */
   const loadedTripTotals = useMemo(() => {
     return drivers.reduce(
       (acc, driver) => {
@@ -512,7 +512,7 @@ export default function FleetPerformanceCenter() {
         <div className="fleet-center__header">
           <div className="fleet-center__heading">
             <h1 className="fleet-center__title">Fleet &amp; Driver Performance Center</h1>
-            <p className="fleet-center__subtitle">Loading fleet operations dataâ€¦</p>
+            <p className="fleet-center__subtitle">Loading fleet operations data…</p>
           </div>
         </div>
         <LoadingSkeleton />
@@ -533,13 +533,13 @@ export default function FleetPerformanceCenter() {
               <span className="fleet-live__dot" aria-hidden="true" />
               Live
             </span>
-            <span>Updated {lastLoaded ? lastLoaded.toLocaleTimeString() : "â€”"}</span>
+            <span>Updated {lastLoaded ? lastLoaded.toLocaleTimeString() : "—"}</span>
             <span>
               {overview.total_registered !== undefined
                 ? `${formatCount(overview.total_registered)} registered drivers`
                 : "Driver count unavailable"}
             </span>
-            {vehiclesError ? <span>Â· vehicle directory unavailable</span> : null}
+            {vehiclesError ? <span>· vehicle directory unavailable</span> : null}
           </div>
         </div>
         <div className="fleet-center__actions">
@@ -552,7 +552,7 @@ export default function FleetPerformanceCenter() {
             }}
             disabled={loading}
           >
-            {loading ? "Refreshingâ€¦" : "Refresh"}
+            {loading ? "Refreshing…" : "Refresh"}
           </button>
         </div>
       </header>
@@ -664,55 +664,55 @@ export default function FleetPerformanceCenter() {
           <section className="fleet-section">
             <SectionHead
               title="Driver availability &amp; approvals"
-              hint="Live dispatch and approval counters from GET /operations/fleet/dashboard/. These counters cover every DriverProfile row, which includes delivery courier profiles alongside ride drivers â€” the backend does not filter couriers out of this block."
+              hint="Live dispatch and approval counters from GET /operations/fleet/dashboard/. These counters cover every DriverProfile row, which includes delivery courier profiles alongside ride drivers — the backend does not filter couriers out of this block."
             />
             <div className="fleet-kpis">
               <KpiCard
                 label="Total registered"
                 value={formatCount(overview.total_registered)}
-                icon="ðŸ‘¥"
+                icon="👥"
                 tone="idle"
-                sub="All driver profiles â€” ride drivers and delivery couriers"
+                sub="All driver profiles — ride drivers and delivery couriers"
               />
               <KpiCard
                 label="Approved"
                 value={formatCount(overview.approved_drivers)}
-                icon="âœ…"
+                icon="✅"
                 tone="ok"
                 sub="Profiles with approved status"
               />
               <KpiCard
                 label="Online"
                 value={formatCount(overview.online_drivers)}
-                icon="ðŸŸ¢"
+                icon="🟢"
                 tone="ok"
                 sub="Available for dispatch"
               />
               <KpiCard
                 label="Completing trips"
                 value={formatCount(overview.busy_drivers)}
-                icon="ðŸš•"
+                icon="🚕"
                 tone="warn"
                 sub="Currently on an active trip"
               />
               <KpiCard
                 label="Offline"
                 value={formatCount(overview.offline_drivers)}
-                icon="âšª"
+                icon="⚪"
                 tone="idle"
                 sub="Not available right now"
               />
               <KpiCard
                 label="Suspended"
                 value={formatCount(overview.suspended_drivers)}
-                icon="ðŸš«"
+                icon="🚫"
                 tone="danger"
                 sub="Accounts deactivated"
               />
               <KpiCard
                 label="Expired documents"
                 value={formatCount(overview.expired_document_drivers)}
-                icon="ðŸ“„"
+                icon="📄"
                 tone="warn"
                 sub="Drivers with an expired approved document"
               />
@@ -740,39 +740,39 @@ export default function FleetPerformanceCenter() {
                   <KpiCard
                     label="Registered vehicles"
                     value={formatCount(vehicleSummary.total)}
-                    icon="ðŸš™"
+                    icon="🚙"
                     tone="idle"
                     sub={
                       vehicleSummary.truncated
-                        ? `Directory reports ${formatCount(vehicleSummary.reportedCount)} â€” showing first ${formatCount(vehicleSummary.total)}`
+                        ? `Directory reports ${formatCount(vehicleSummary.reportedCount)} — showing first ${formatCount(vehicleSummary.total)}`
                         : "Driver profiles with vehicle records"
                     }
                   />
                   <KpiCard
                     label="Road-legal vehicles"
                     value={formatCount(vehicleSummary.roadLegal)}
-                    icon="ðŸ›¡ï¸"
+                    icon="🛡️"
                     tone="ok"
                     sub="Registration, insurance, vignette and licence all valid"
                   />
                   <KpiCard
                     label="Awaiting approval"
                     value={formatCount(vehicleSummary.awaitingApproval)}
-                    icon="â±ï¸"
+                    icon="â±️"
                     tone="warn"
                     sub="Vehicle belongs to a driver pending review"
                   />
                   <KpiCard
                     label="With expired documents"
                     value={formatCount(vehicleSummary.withExpired)}
-                    icon="â›”"
+                    icon="⛔"
                     tone="danger"
                     sub="At least one tracked document has expired"
                   />
                   <KpiCard
                     label="Expiring soon"
                     value={formatCount(vehicleSummary.withExpiring)}
-                    icon="ðŸ“…"
+                    icon="📅"
                     tone="warn"
                     sub={`Within ${vehicles?.expiry_alert_days ?? 30} days`}
                   />
@@ -797,7 +797,7 @@ export default function FleetPerformanceCenter() {
             ) : vehiclesError ? null : (
               <Panel>
                 <EmptyState
-                  icon="ðŸš™"
+                  icon="🚙"
                   title="Vehicle directory not loaded"
                   hint="The vehicle metrics appear once GET /operations/vehicles/ responds."
                 />
@@ -815,21 +815,21 @@ export default function FleetPerformanceCenter() {
                 label="Fleet utilisation"
                 value={formatCount(ceo.fleet_utilization_pct)}
                 unit="%"
-                icon="ðŸ“Š"
+                icon="📊"
                 tone="info"
-                sub="Ride drivers only â€” couriers are excluded from this ratio."
+                sub="Ride drivers only — couriers are excluded from this ratio."
               />
               <KpiCard
                 label="Completed trips"
                 value={formatCount(loadedTripTotals.completed)}
-                icon="ðŸ"
+                icon="🏁"
                 tone="ok"
                 sub={`Summed across the ${formatCount(drivers.length)} loaded drivers`}
               />
               <KpiCard
                 label="Cancelled trips"
                 value={formatCount(loadedTripTotals.cancelled)}
-                icon="âœ–ï¸"
+                icon="âœ–️"
                 tone="warn"
                 sub={`Summed across the ${formatCount(drivers.length)} loaded drivers`}
               />
@@ -865,14 +865,14 @@ export default function FleetPerformanceCenter() {
                             {zone.label || "Unnamed zone"}
                           </span>
                           <span className="fleet-zone-item__meta">
-                            {formatCount(zone.waiting_riders)} waiting Â·{" "}
+                            {formatCount(zone.waiting_riders)} waiting ·{" "}
                             {formatCount(zone.drivers_nearby)} drivers
                           </span>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <EmptyState icon="ðŸŸ¢" title="No busy zones" hint="No zone is under surge pressure right now." />
+                    <EmptyState icon="🟢" title="No busy zones" hint="No zone is under surge pressure right now." />
                   )}
                 </Panel>
                 <Panel
@@ -887,13 +887,13 @@ export default function FleetPerformanceCenter() {
                             {zone.label || "Unnamed zone"}
                           </span>
                           <span className="fleet-zone-item__meta">
-                            demand ratio {zone.demand_supply_ratio ?? "â€”"}
+                            demand ratio {zone.demand_supply_ratio ?? "—"}
                           </span>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <EmptyState icon="âœ…" title="Full coverage" hint="No low-coverage zone detected." />
+                    <EmptyState icon="✅" title="Full coverage" hint="No low-coverage zone detected." />
                   )}
                 </Panel>
               </div>
@@ -937,8 +937,8 @@ export default function FleetPerformanceCenter() {
                         const vehicleLabel = vehicle
                           ? [vehicle.make, vehicle.model].filter(Boolean).join(" ") ||
                             vehicle.plate_number ||
-                            "â€”"
-                          : "â€”";
+                            "—"
+                          : "—";
                         const docStates = vehicleRow
                           ? Object.entries(vehicleRow.documents || {})
                           : [];
@@ -986,7 +986,7 @@ export default function FleetPerformanceCenter() {
                                   ))}
                                 </span>
                               ) : (
-                                "â€”"
+                                "—"
                               )}
                             </td>
                             <td>
@@ -1038,61 +1038,61 @@ export default function FleetPerformanceCenter() {
               title="Performance summary"
               hint={`Averages across the ${formatCount(
                 performanceSummary?.count || 0
-              )} drivers matching the current filters. Scores use the existing backend formula â€” nothing is recalculated here.`}
+              )} drivers matching the current filters. Scores use the existing backend formula — nothing is recalculated here.`}
             />
             {performanceSummary ? (
               <div className="fleet-kpis">
                 <KpiCard
                   label="Average score"
-                  value={performanceSummary.avgScore ?? "â€”"}
-                  icon="ðŸŽ¯"
+                  value={performanceSummary.avgScore ?? "—"}
+                  icon="🎯"
                   tone="info"
-                  sub={`${formatCount(performanceSummary.excellent)} excellent Â· ${formatCount(
+                  sub={`${formatCount(performanceSummary.excellent)} excellent · ${formatCount(
                     performanceSummary.atRisk
                   )} at risk`}
                 />
                 <KpiCard
                   label="Average acceptance"
-                  value={performanceSummary.avgAcceptance ?? "â€”"}
+                  value={performanceSummary.avgAcceptance ?? "—"}
                   unit="%"
-                  icon="ðŸ¤"
+                  icon="🤝"
                   tone="ok"
                   sub="Acceptance points across filtered drivers"
                 />
                 <KpiCard
                   label="Average cancellation"
-                  value={performanceSummary.avgCancellation ?? "â€”"}
+                  value={performanceSummary.avgCancellation ?? "—"}
                   unit="%"
-                  icon="âœ–ï¸"
+                  icon="âœ–️"
                   tone="warn"
-                  sub="Cancelled Ã· accepted"
+                  sub="Cancelled ÷ accepted"
                 />
                 <KpiCard
                   label="Average rating"
-                  value={performanceSummary.avgRating ?? "â€”"}
+                  value={performanceSummary.avgRating ?? "—"}
                   icon="â­"
                   tone="ok"
                   sub="Rider rating average (out of 5)"
                 />
                 <KpiCard
                   label="Average on-time"
-                  value={performanceSummary.avgOnTime ?? "â€”"}
+                  value={performanceSummary.avgOnTime ?? "—"}
                   unit="%"
-                  icon="â±ï¸"
+                  icon="â±️"
                   tone="info"
                   sub="Arrivals within the on-time window"
                 />
                 <KpiCard
                   label="Completed trips"
                   value={formatCount(performanceSummary.totalTrips)}
-                  icon="ðŸ"
+                  icon="🏁"
                   tone="idle"
                   sub="Sum across filtered drivers"
                 />
                 <KpiCard
                   label={`Earnings (${periodLabel.toLowerCase()})`}
                   value={formatMoney(performanceSummary.totalRevenue)}
-                  icon="ðŸ’°"
+                  icon="💰"
                   tone="ok"
                   sub="Sum across filtered drivers"
                 />
@@ -1100,7 +1100,7 @@ export default function FleetPerformanceCenter() {
             ) : (
               <Panel>
                 <EmptyState
-                  icon="ðŸ“Š"
+                  icon="📊"
                   title="No drivers match the current filters"
                   hint="Clear the search or status filters to see performance figures."
                 />
@@ -1223,39 +1223,39 @@ export default function FleetPerformanceCenter() {
           <section className="fleet-section">
             <SectionHead
               title="Document compliance"
-              hint="Expiry buckets from GET /operations/fleet/documents/. Only approved documents are tracked, so these counts describe compliance of approved documents â€” not the approval queue."
+              hint="Expiry buckets from GET /operations/fleet/documents/. Only approved documents are tracked, so these counts describe compliance of approved documents — not the approval queue."
             />
             <div className="fleet-kpis">
               <KpiCard
                 label="Valid"
                 value={formatCount(documents.summary?.valid)}
-                icon="âœ…"
+                icon="✅"
                 tone="ok"
                 sub="Approved with more than 30 days remaining"
               />
               <KpiCard
-                label="Expiring â‰¤30 days"
+                label="Expiring ≤30 days"
                 value={formatCount(documents.summary?.expiring_30d)}
-                icon="ðŸ“…"
+                icon="📅"
                 tone="warn"
                 sub="Next renewal window"
               />
               <KpiCard
-                label="Expiring â‰¤15 days"
+                label="Expiring ≤15 days"
                 value={formatCount(documents.summary?.expiring_15d)}
-                icon="ðŸ“…"
+                icon="📅"
                 tone="warn"
                 sub="Renewal should be scheduled"
               />
               <KpiCard
-                label="Expiring â‰¤7 days"
+                label="Expiring ≤7 days"
                 value={formatCount(documents.summary?.expiring_7d)}
-                icon="âš ï¸"
+                icon="âš ️"
                 tone="warn"
                 sub="Urgent renewal"
               />
               <KpiCard
-                label="Expiring â‰¤1 day"
+                label="Expiring ≤1 day"
                 value={formatCount(documents.summary?.expiring_1d)}
                 icon="â°"
                 tone="danger"
@@ -1264,7 +1264,7 @@ export default function FleetPerformanceCenter() {
               <KpiCard
                 label="Expired"
                 value={formatCount(documents.summary?.expired)}
-                icon="â›”"
+                icon="⛔"
                 tone="danger"
                 sub="Already past the expiry date"
               />
@@ -1276,7 +1276,7 @@ export default function FleetPerformanceCenter() {
                 </strong>{" "}
                 GET /operations/fleet/documents/ filters to <code>status=&quot;approved&quot;</code>,
                 so it cannot report the review queue. Approval and rejection remain available on the
-                documents below using the existing fleet document endpoints â€” no document is ever
+                documents below using the existing fleet document endpoints — no document is ever
                 approved or rejected automatically.
               </span>
             </div>
@@ -1313,9 +1313,9 @@ export default function FleetPerformanceCenter() {
                             <td>
                               <DriverCell name={doc.driver_email} />
                             </td>
-                            <td>{doc.document_label || doc.document_type || "â€”"}</td>
+                            <td>{doc.document_label || doc.document_type || "—"}</td>
                             <td>{formatDate(doc.expires_at)}</td>
-                            <td className="fleet-table__num">{doc.days_remaining ?? "â€”"}</td>
+                            <td className="fleet-table__num">{doc.days_remaining ?? "—"}</td>
                             <td>
                               <Pill
                                 tone={
@@ -1357,7 +1357,7 @@ export default function FleetPerformanceCenter() {
                 ) : (
                   <div className="fleet-panel__body">
                     <EmptyState
-                      icon="âœ…"
+                      icon="✅"
                       title={`No documents in "${bucket.label}"`}
                       hint="Nothing to review in this bucket right now."
                     />
@@ -1381,14 +1381,14 @@ export default function FleetPerformanceCenter() {
                 label="Fleet utilisation"
                 value={formatCount(ceo.fleet_utilization_pct)}
                 unit="%"
-                icon="ðŸ“Š"
+                icon="📊"
                 tone="info"
                 sub="Ride drivers only (couriers excluded). No previous-period comparison is provided by the API."
               />
               <KpiCard
                 label="Average monthly earnings"
                 value={formatMoney(ceo.average_earnings_month)}
-                icon="ðŸ’°"
+                icon="💰"
                 tone="ok"
                 sub="Mean of positive monthly revenue across drivers. No previous-period comparison is provided."
               />
@@ -1396,7 +1396,7 @@ export default function FleetPerformanceCenter() {
                 label="Acceptance trend"
                 value={formatCount(acceptanceTrend.current_avg)}
                 unit="pts"
-                icon="ðŸ¤"
+                icon="🤝"
                 tone="ok"
                 sub={acceptanceTrend.label || "Fleet acceptance points (7-day snapshot)"}
               />
@@ -1404,7 +1404,7 @@ export default function FleetPerformanceCenter() {
                 label="Cancellation trend"
                 value={formatCount(cancellationTrend.current_pct)}
                 unit="%"
-                icon="âœ–ï¸"
+                icon="âœ–️"
                 tone={
                   cancellationTrend.direction === "up" && cancellationTrend.current_pct > 0
                     ? "warn"
@@ -1426,7 +1426,7 @@ export default function FleetPerformanceCenter() {
                               : "var(--admin-success, #34d399)",
                         }}
                       >
-                        {cancellationTrend.direction === "up" ? "â–² higher" : "â–¼ lower"}
+                        {cancellationTrend.direction === "up" ? "▲ higher" : "▼ lower"}
                       </span>
                     </>
                   )
@@ -1524,7 +1524,7 @@ export default function FleetPerformanceCenter() {
 
               <Panel
                 title="Lowest-performing drivers"
-                note="Lowest performance scores. Shown for review only â€” no automatic penalty or suspension is applied."
+                note="Lowest performance scores. Shown for review only — no automatic penalty or suspension is applied."
                 flush
               >
                 <div className="fleet-table-wrap">
@@ -1620,7 +1620,7 @@ export default function FleetPerformanceCenter() {
                   </div>
                 ) : (
                   <div className="fleet-panel__body">
-                    <EmptyState icon="ðŸ’°" title="No revenue data" hint="No driver revenue recorded for this selection." />
+                    <EmptyState icon="💰" title="No revenue data" hint="No driver revenue recorded for this selection." />
                   </div>
                 )}
               </Panel>
@@ -1651,7 +1651,7 @@ export default function FleetPerformanceCenter() {
                   </div>
                 ) : (
                   <div className="fleet-panel__body">
-                    <EmptyState icon="ðŸ™ï¸" title="No city data" hint="No city revenue recorded for this selection." />
+                    <EmptyState icon="🏙️" title="No city data" hint="No city revenue recorded for this selection." />
                   </div>
                 )}
               </Panel>
@@ -1715,13 +1715,13 @@ export default function FleetPerformanceCenter() {
               {UNSUPPORTED_REPORTS.map((gap) => (
                 <div key={gap.label} className="fleet-gap">
                   <span>
-                    <strong>{gap.label}</strong> â€” {gap.reason}
+                    <strong>{gap.label}</strong> — {gap.reason}
                   </span>
                 </div>
               ))}
               <div className="fleet-gap">
                 <span>
-                  <strong>Date-range filtering</strong> â€” the export endpoint accepts only{" "}
+                  <strong>Date-range filtering</strong> — the export endpoint accepts only{" "}
                   <code>type</code>, <code>export_format</code> and <code>city_id</code>. Report
                   windows are fixed by the backend (for example, the Weekly Driver Report uses the
                   current week), so no date picker is shown.
@@ -1729,7 +1729,7 @@ export default function FleetPerformanceCenter() {
               </div>
               <div className="fleet-gap">
                 <span>
-                  <strong>In-page report preview</strong> â€” the backend returns report rows only as a
+                  <strong>In-page report preview</strong> — the backend returns report rows only as a
                   file download. There is no JSON preview endpoint, so no preview table is rendered
                   here.
                 </span>
@@ -1748,7 +1748,7 @@ export default function FleetPerformanceCenter() {
                   {selectedDriver.driver_name || selectedDriver.email || "Driver details"}
                 </h3>
                 <p className="fleet-panel__note">
-                  Driver profile id {selectedDriver.driver_id} Â· user id {selectedDriver.user_id}
+                  Driver profile id {selectedDriver.driver_id} · user id {selectedDriver.user_id}
                 </p>
               </div>
               <div className="fleet-action-bar">
@@ -1769,7 +1769,7 @@ export default function FleetPerformanceCenter() {
                   <div className="fleet-fact__value">
                     {DRIVER_STATUS_LABELS[selectedDriver.status]?.label ||
                       selectedDriver.status ||
-                      "â€”"}
+                      "—"}
                   </div>
                 </div>
                 <div className="fleet-fact">
@@ -1777,13 +1777,13 @@ export default function FleetPerformanceCenter() {
                   <div className="fleet-fact__value">
                     {DISPATCH_STATUS_LABELS[selectedDriver.current_status]?.label ||
                       selectedDriver.current_status ||
-                      "â€”"}
+                      "—"}
                   </div>
                 </div>
                 <div className="fleet-fact">
                   <div className="fleet-fact__label">Score</div>
                   <div className="fleet-fact__value">
-                    {selectedDriver.score ?? "â€”"} Â· {scoreBandMeta(selectedDriver.score_band).label}
+                    {selectedDriver.score ?? "—"} · {scoreBandMeta(selectedDriver.score_band).label}
                   </div>
                 </div>
                 <div className="fleet-fact">

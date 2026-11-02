@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { formatMoney } from "../../marketConfig";
 import { exportBiGrowthReport, fetchBiGrowthCenter } from "./biGrowthApi";
 import "./BiGrowthCenter.css";
+import StructuredValue from "../components/library/data/StructuredValue";
 
 const REFRESH_MS = 30000;
 const PERIODS = ["daily", "weekly", "monthly", "quarterly", "annual"];
@@ -391,9 +392,7 @@ export default function BiGrowthCenter() {
           </div>
           <div className="bi-growth__card">
             <h3>Retention Opportunities</h3>
-            <pre className="bi-growth__subtitle" style={{ fontSize: "0.78rem", overflow: "auto" }}>
-              {JSON.stringify(growth.retention_opportunities || {}, null, 2)}
-            </pre>
+            <StructuredValue value={growth.retention_opportunities} emptyLabel="No retention opportunities identified." />
           </div>
         </div>
         <div className="bi-growth__card bi-growth__card--wide" style={{ marginTop: 14 }}>

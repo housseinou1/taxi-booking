@@ -164,7 +164,7 @@ test("renders the protected-CEO posture card", async () => {
 
   expect(await screen.findByText("CEO access protection")).toBeInTheDocument();
   expect(
-    screen.getByText(/holds protected CEO authority/i)
+    await screen.findByText(/holds protected CEO authority/i)
   ).toBeInTheDocument();
   expect(screen.getByText(/Enabled/)).toBeInTheDocument();
   expect(

@@ -145,6 +145,14 @@ import {
   unregisterPushNotifications,
 } from './native/push';
 
+// The /admin home overview renders its own welcome banner, so the shell title
+// is only shown for the legacy console sections (?section=...).
+function adminConsoleTitle() {
+  if (typeof window === "undefined") return "Operations Console";
+  const section = new URLSearchParams(window.location.search).get("section");
+  return section && section !== "overview" ? "Operations Console" : undefined;
+}
+
 const LOGO_SRC = "/yala-logo.png";
 const DELIVERY_LOGO_SRC = "/yala-delivery-logo.png";
 
@@ -1719,7 +1727,7 @@ function App() {
     // unified AdminShell (single sidebar, header, theme and sign-out), so there is
     // no second Admin application chrome. No module or feature is removed.
     return withInstall(
-      <AdminShellPage pathname="/admin" title="Operations Console">
+      <AdminShellPage pathname="/admin" title={adminConsoleTitle()}>
         <AdminDashboard embedded />
       </AdminShellPage>
     );
@@ -1810,7 +1818,7 @@ function App() {
     }
     if (getAppType() === 'admin') {
       return withInstall(
-        <AdminShellPage pathname="/admin" title="Operations Console">
+        <AdminShellPage pathname="/admin" title={adminConsoleTitle()}>
           <AdminDashboard embedded />
         </AdminShellPage>,
         { showNotifications: false }

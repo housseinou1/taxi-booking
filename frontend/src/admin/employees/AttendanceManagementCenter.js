@@ -27,6 +27,7 @@ import {
   saveWorkSchedule,
   startBreak,
 } from "./attendanceApi";
+import useUrlTab from "../layouts/useUrlTab";
 
 /**
  * Employees & HR -> Attendance Management (office + remote).
@@ -64,7 +65,7 @@ export function clockTime(value) {
 }
 
 export default function AttendanceManagementCenter() {
-  const [tab, setTab] = useState("dashboard");
+  const [tab, setTab] = useUrlTab(TABS.map((item) => item.id), "dashboard");
   const [city, setCity] = useState("");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [view, setView] = useState("daily");

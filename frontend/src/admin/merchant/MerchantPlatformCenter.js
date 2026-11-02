@@ -87,7 +87,7 @@ export default function MerchantPlatformCenter() {
     <div className="beta">
       <header className="beta__header">
         <div>
-          <p className="beta__eyebrow">Phase 31 · Production</p>
+          <p className="beta__eyebrow">YALA Delivery</p>
           <h1>Yala Merchant Platform</h1>
           <p className="beta__subtitle">Merchant onboarding, menu operations, orders, analytics, settlements, and CEO metrics.</p>
         </div>

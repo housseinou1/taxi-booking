@@ -16,187 +16,203 @@
  *    (`/admin/ceo`) are distinct entries and are never duplicated.
  */
 
+import { getModuleForPath } from "./adminRouteAccess";
+
+/** RBAC module of an admin path; query strings (`?tab=`) select a tab inside the same page. */
+function navModule(path) {
+  return getModuleForPath(String(path).split("?")[0]) || path;
+}
+
+const GROUP_MODULE = {
+  ceo: "/admin/ceo-master",
+  ops: "/admin/operations",
+  drivers_fleet: "/admin/drivers",
+  riders: "/admin/riders",
+  delivery: "/admin/delivery",
+  employees: "/admin/employees",
+  support: "/admin/support",
+  finance: "/admin/payments",
+  security: "/admin/security",
+  growth: "/admin/business-intelligence",
+  platform: "/admin/status",
+};
+
+function nav(id, label, path, icon, extra = {}) {
+  return { id, module: navModule(path), label, path, icon, ...extra };
+}
+
 export const SIDEBAR_NAV_ITEMS = [
-  // ── HOME ────────────────────────────────────────────────────────────────────
   {
     id: "home",
     module: "home",
     label: "Home Dashboard",
-    icon: "🏠",
-    // `/admin` is the routed admin home (Operations Console inside AdminShell).
-    // The backend's `home_route` currently returns `/admin/home/ceo`, which is
-    // NOT registered in App.js, so linking it would render the public landing
-    // page. Point at the real route instead.
+    icon: "home",
+    // `/admin` is the routed admin home (the backend `home_route` /admin/home/* is not registered).
     path: "/admin",
   },
-
-  // ── EXECUTIVE COMMAND CENTER ────────────────────────────────────────────────
   {
     id: "ceo",
-    module: "ceo",
+    module: navModule(GROUP_MODULE.ceo),
     label: "Executive Command Center",
-    icon: "👔",
+    icon: "briefcase",
     children: [
-      { id: "ceo-master", module: "ceo", label: "CEO Command Center", path: "/admin/ceo-master", icon: "🎯" },
-      { id: "ceo-dashboard", module: "ceo", label: "Executive Dashboard", path: "/admin/ceo", icon: "📊" },
-      { id: "executive", module: "ceo", label: "Executive Overview", path: "/admin/executive", icon: "🧭" },
-      { id: "ceo-control", module: "ceo", label: "CEO Control Center", path: "/admin/ceo-control", icon: "🛡" },
-      { id: "ceo-reports", module: "ceo", label: "CEO Reports", path: "/admin/ceo-reports", icon: "📄" },
-      { id: "board", module: "ceo", label: "Board Reports", path: "/admin/board-reports", icon: "📑" },
-      { id: "cities", module: "ceo", label: "City Management", path: "/admin/cities", icon: "🏙" },
-      { id: "roles", module: "employees", label: "Roles & Permissions", path: "/admin/roles", icon: "🔑" },
+      nav("executive", "Executive Overview", "/admin/executive", "compass"),
+      nav("ceo-master", "CEO Dashboard", "/admin/ceo-master", "target"),
+      nav("ceo-dashboard", "Business Performance", "/admin/ceo", "chart"),
+      nav("board", "Strategic Reports", "/admin/board-reports", "files"),
+      nav("ceo-control", "CEO Control Center", "/admin/ceo-control", "shield-check"),
+      nav("cities", "City Management", "/admin/cities", "city"),
     ],
   },
-
-  // ── OPERATIONS ──────────────────────────────────────────────────────────────
   {
     id: "ops",
-    module: "ops",
+    module: navModule(GROUP_MODULE.ops),
     label: "Operations",
-    icon: "📡",
+    icon: "radio",
     children: [
-      { id: "ops-overview", module: "ops", label: "Operations Overview", path: "/admin/operations", icon: "🗂" },
-      { id: "ops-center", module: "ops", label: "Ops Center Home", path: "/admin/ops-center", icon: "🧮" },
-      { id: "ops-live", module: "ops", label: "Live Operations", path: "/admin/ops-center/live", icon: "📍" },
-      { id: "rides", module: "rides", label: "Ride Management", path: "/admin/rides", icon: "🚕" },
-      { id: "rides-live", module: "rides", label: "Live Rides", path: "/admin/rides/live", icon: "🛰" },
-      { id: "rides-reports", module: "rides", label: "Ride Reports", path: "/admin/rides/reports", icon: "📈" },
-      { id: "smart-pricing", module: "ops", label: "Smart Pricing Dispatch", path: "/admin/smart-pricing", icon: "💹" },
-      { id: "multi-city", module: "ops", label: "Multi-City Operations", path: "/admin/multi-city", icon: "🌍", featureFlag: "multi_city" },
-      { id: "ai-ops", module: "ops", label: "AI Operations", path: "/admin/ai-operations", icon: "🤖" },
+      nav("rides", "Ride Management", "/admin/rides", "route"),
+      nav("smart-pricing", "Dispatch Management", "/admin/smart-pricing", "activity"),
+      nav("ops-live", "Live Tracking", "/admin/ops-center/live", "map-pin"),
+      nav("rides-reports", "Ride History", "/admin/rides/reports", "bar-chart"),
+      nav("ops-overview", "Operations Overview", "/admin/operations", "grid"),
+      nav("ops-center", "Ops Center Home", "/admin/ops-center", "monitor"),
+      nav("rides-live", "Live Rides", "/admin/rides/live", "satellite"),
+      nav("multi-city", "Multi-City Operations", "/admin/multi-city", "globe", { featureFlag: "multi_city" }),
+      nav("ai-ops", "AI Operations", "/admin/ai-operations", "cpu"),
     ],
   },
-
-  // ── DRIVERS & FLEET ─────────────────────────────────────────────────────────
   {
     id: "drivers-fleet",
-    module: "drivers",
+    module: navModule(GROUP_MODULE.drivers_fleet),
     label: "Drivers & Fleet",
-    icon: "🚕",
+    icon: "taxi",
     children: [
-      { id: "drivers-dashboard", module: "drivers", label: "Drivers Dashboard", path: "/admin/drivers/dashboard", icon: "📊" },
-      { id: "drivers", module: "drivers", label: "Driver Management", path: "/admin/drivers", icon: "🧑‍✈️" },
-      { id: "approvals", module: "drivers", label: "Driver Approvals", path: "/admin/approvals", icon: "✅" },
-      { id: "fleet", module: "drivers", label: "Fleet Management", path: "/admin/fleet", icon: "🚙", featureFlag: "fleet_center" },
-      { id: "vehicles", module: "drivers", label: "Vehicle Management", path: "/admin/vehicles", icon: "🚗" },
-      { id: "academy", module: "drivers", label: "Driver Academy", path: "/admin/academy", icon: "🎓" },
-      { id: "hall-of-fame", module: "drivers", label: "Hall of Fame", path: "/admin/hall-of-fame", icon: "🏆" },
+      nav("drivers", "Driver Management", "/admin/drivers", "user-check"),
+      nav("approvals", "Driver Approvals", "/admin/approvals", "check-square"),
+      nav("vehicles", "Vehicle Management", "/admin/vehicles", "car"),
+      nav("fleet", "Fleet Management", "/admin/fleet", "truck", { featureFlag: "fleet_center" }),
+      nav("driver-documents", "Driver Documents", "/admin/approvals?tab=drivers", "file"),
+      nav("drivers-dashboard", "Performance Monitoring", "/admin/drivers/dashboard", "chart"),
+      nav("academy", "Driver Academy", "/admin/academy", "graduation-cap"),
+      nav("hall-of-fame", "Hall of Fame", "/admin/hall-of-fame", "award"),
     ],
   },
-
-  // ── RIDERS ──────────────────────────────────────────────────────────────────
   {
     id: "riders",
-    module: "riders",
+    module: navModule(GROUP_MODULE.riders),
     label: "Riders",
-    icon: "👥",
+    icon: "users",
     children: [
-      { id: "riders-dashboard", module: "riders", label: "Riders Dashboard", path: "/admin/riders/dashboard", icon: "📊" },
-      { id: "riders", module: "riders", label: "Rider Management", path: "/admin/riders", icon: "🗂" },
+      nav("riders", "Rider Management", "/admin/riders", "users"),
+      nav("rider-accounts", "Rider Accounts", "/admin/approvals?tab=riders", "user-check"),
+      nav("rider-ride-history", "Ride History", "/admin/rides/reports", "route"),
+      nav("rider-complaints", "Customer Complaints", "/admin/support?category=rider", "message"),
+      nav("riders-dashboard", "Riders Dashboard", "/admin/riders/dashboard", "chart"),
     ],
   },
-
-  // ── YALA DELIVERY ───────────────────────────────────────────────────────────
   {
     id: "delivery",
-    module: "delivery",
+    module: navModule(GROUP_MODULE.delivery),
     label: "Yala Delivery",
-    icon: "📦",
+    icon: "package",
     children: [
-      { id: "delivery-dashboard", module: "delivery", label: "Delivery Dashboard", path: "/admin/delivery", icon: "🚚" },
-      { id: "delivery-directory", module: "delivery", label: "Delivery Directory", path: "/admin/delivery/directory", icon: "📋" },
-      { id: "delivery-cities", module: "delivery", label: "City Analytics", path: "/admin/delivery/cities", icon: "🏙" },
-      { id: "delivery-couriers", module: "delivery", label: "Courier Management", path: "/admin/delivery/couriers", icon: "🧑‍🔧" },
-      { id: "delivery-merchants", module: "delivery", label: "Merchant Management", path: "/admin/delivery/merchants", icon: "🏪" },
-      { id: "merchant-platform", module: "business", label: "Merchant Platform", path: "/admin/merchant-platform", icon: "🤝" },
+      nav("delivery-dashboard", "Delivery Management", "/admin/delivery", "package"),
+      nav("delivery-couriers", "Courier Management", "/admin/delivery/couriers", "bike"),
+      nav("delivery-directory", "Delivery Tracking", "/admin/delivery/directory", "map-pin"),
+      nav("courier-approvals", "Courier Approvals", "/admin/approvals?tab=couriers", "check-square"),
+      nav("delivery-cities", "City Analytics", "/admin/delivery/cities", "city"),
+      nav("delivery-merchants", "Merchant Management", "/admin/delivery/merchants", "store"),
+      nav("merchant-platform", "Merchant Platform", "/admin/merchant-platform", "handshake"),
     ],
   },
-
-  // ── EMPLOYEES & HUMAN RESOURCES ─────────────────────────────────────────────
   {
     id: "employees",
-    module: "employees",
+    module: navModule(GROUP_MODULE.employees),
     label: "Employees & Human Resources",
-    icon: "🧑‍💼",
+    icon: "id-card",
     children: [
-      { id: "employees-directory", module: "employees", label: "Employees", path: "/admin/employees", icon: "🗂" },
-      { id: "hr", module: "employees", label: "HR Management", path: "/admin/hr", icon: "📋" },
-      { id: "attendance", module: "employees", label: "Attendance Management", path: "/admin/attendance", icon: "⏰" },
-      { id: "verification", module: "employees", label: "Employee Verification", path: "/admin/verification", icon: "🪪" },
-      { id: "break-notifications", module: "employees", label: "Break Notifications", path: "/admin/break-notifications", icon: "🔔" },
+      nav("employees-directory", "Employee Management", "/admin/employees", "users"),
+      nav("clock", "Clock In / Clock Out", "/admin/attendance", "clock"),
+      nav("break-notifications", "Break Management", "/admin/break-notifications", "bell"),
+      nav("verification", "Attendance", "/admin/verification", "clipboard"),
+      nav("employee-cards", "Employee ID Cards", "/admin/employees?tab=directory", "id-card"),
+      nav("leave", "Leave Management", "/admin/attendance?tab=leave", "files"),
+      nav("hr", "HR Management", "/admin/hr", "briefcase"),
     ],
   },
-  // ── CUSTOMER SUPPORT ────────────────────────────────────────────────────────
   {
     id: "support",
-    module: "support",
+    module: navModule(GROUP_MODULE.support),
     label: "Customer Support",
-    icon: "🎧",
+    icon: "headset",
     children: [
-      { id: "support-console", module: "support", label: "Support Dashboard", path: "/admin/support", icon: "📞" },
-      { id: "beta-feedback", module: "support", label: "Beta Feedback", path: "/admin/beta-feedback", icon: "💬" },
-      { id: "beta", module: "support", label: "Beta Program", path: "/admin/beta", icon: "🧪" },
+      nav("support-console", "Support Tickets", "/admin/support", "inbox"),
+      nav("support-complaints", "Complaints", "/admin/support?queue=escalated", "alert"),
+      nav("support-communication", "Customer Communication", "/admin/support?queue=waiting", "message"),
+      nav("beta-feedback", "Beta Feedback", "/admin/beta-feedback", "inbox"),
+      nav("beta", "Beta Program", "/admin/beta", "flask"),
     ],
   },
-
-  // ── FINANCE ─────────────────────────────────────────────────────────────────
   {
     id: "finance",
-    module: "finance",
+    module: navModule(GROUP_MODULE.finance),
     label: "Finance",
-    icon: "💰",
+    icon: "wallet",
     children: [
-      { id: "financial-overview", module: "finance", label: "Financial Overview", path: "/admin/ops-center/finance", icon: "💵" },
-      { id: "payments", module: "finance", label: "Payment Management", path: "/admin/payments", icon: "🧾" },
-      { id: "finance-ops", module: "finance", label: "Finance Operations", path: "/admin/finance-ops", icon: "💳" },
-      { id: "withdrawals", module: "finance", label: "Driver & Courier Payouts", path: "/admin/withdrawals", icon: "🏦" },
-      { id: "withdrawal-accounts", module: "finance", label: "Settlement Accounts", path: "/admin/withdrawal-accounts", icon: "🏛" },
-      { id: "incentives", module: "finance", label: "Driver Incentives", path: "/admin/incentives", icon: "🎁" },
+      nav("finance-revenue", "Revenue Analytics", "/admin/finance-ops?tab=revenue", "trending-up"),
+      nav("payments", "Transactions", "/admin/payments", "credit-card"),
+      nav("withdrawals", "Driver Payments", "/admin/withdrawals", "bank"),
+      nav("financial-overview", "Commissions", "/admin/ops-center/finance", "pie"),
+      nav("finance-accounting", "Accounting", "/admin/finance-ops?tab=accounting", "receipt"),
+      nav("finance-ops", "Financial Reports", "/admin/finance-ops", "file"),
+      nav("finance-audit", "Financial Audit", "/admin/finance-ops?tab=audit", "scroll"),
+      nav("withdrawal-accounts", "Settlement Accounts", "/admin/withdrawal-accounts", "landmark"),
+      nav("incentives", "Driver Incentives", "/admin/incentives", "gift"),
     ],
   },
-
-  // ── SECURITY & COMPLIANCE ───────────────────────────────────────────────────
   {
     id: "security",
-    module: "security",
+    module: navModule(GROUP_MODULE.security),
     label: "Security & Compliance",
-    icon: "🛡",
+    icon: "shield",
     children: [
-      { id: "security-ops", module: "security", label: "Security Dashboard", path: "/admin/security", icon: "🔐" },
-      { id: "trust-safety", module: "trust_safety", label: "Trust & Safety", path: "/admin/trust-safety", icon: "🚨" },
-      { id: "compliance", module: "compliance", label: "Compliance", path: "/admin/compliance-governance", icon: "📜" },
+      nav("trust-safety", "Trust & Safety Center", "/admin/trust-safety", "shield-check"),
+      nav("incidents", "Incident Management", "/admin/trust-safety?tab=incidents", "alert"),
+      nav("emergency", "Emergency Alerts", "/admin/trust-safety?tab=emergency", "bell"),
+      nav("driver-verification", "Driver Verification", "/admin/trust-safety?tab=drivers", "user-check"),
+      nav("audit-logs", "Audit Logs", "/admin/security/audit", "list"),
+      nav("security-ops", "Security Dashboard", "/admin/security", "lock"),
+      nav("compliance", "Compliance", "/admin/compliance-governance", "scroll"),
     ],
   },
-
-  // ── GROWTH & ANALYTICS ──────────────────────────────────────────────────────
   {
     id: "growth",
-    module: "analytics",
+    module: navModule(GROUP_MODULE.growth),
     label: "Growth & Analytics",
-    icon: "📈",
+    icon: "trending-up",
     children: [
-      { id: "business-intelligence", module: "analytics", label: "Reports & Analytics", path: "/admin/business-intelligence", icon: "🧠" },
-      { id: "bi", module: "analytics", label: "BI Warehouse", path: "/admin/bi", icon: "📊" },
-      { id: "growth", module: "marketing", label: "Marketing", path: "/admin/growth", icon: "📣" },
-      { id: "customer-growth", module: "marketing", label: "Customer Growth", path: "/admin/customer-growth", icon: "🌱" },
+      nav("business-intelligence", "Business Intelligence", "/admin/business-intelligence", "brain"),
+      nav("bi", "Performance Analytics", "/admin/bi", "database"),
+      nav("growth", "Expansion Management", "/admin/growth", "globe"),
+      nav("ceo-reports", "Reports", "/admin/ceo-reports", "bar-chart"),
+      nav("customer-growth", "Customer Growth", "/admin/customer-growth", "sprout"),
     ],
   },
-
-  // ── PLATFORM MANAGEMENT ─────────────────────────────────────────────────────
   {
     id: "platform",
-    module: "system",
+    module: navModule(GROUP_MODULE.platform),
     label: "Platform Management",
-    icon: "⚙",
+    icon: "settings",
     children: [
-      { id: "launch", module: "launch", label: "Launch Hub", path: "/admin/launch", icon: "🚀" },
-      { id: "command", module: "launch", label: "Launch Command", path: "/admin/command", icon: "🧭" },
-      { id: "operations-command", module: "launch", label: "Operations Command", path: "/admin/operations-command", icon: "🎯" },
-      { id: "status", module: "system", label: "System Status", path: "/admin/status", icon: "🩺" },
-      { id: "api-gateway", module: "system", label: "API Gateway", path: "/admin/api-gateway", icon: "🔌" },
-      { id: "business", module: "business", label: "Business Hub", path: "/admin/business", icon: "🏢" },
-      { id: "business-accounts", module: "business", label: "Business Accounts", path: "/admin/business-accounts", icon: "🧾" },
-      { id: "partner-platform", module: "business", label: "Partner Platform", path: "/admin/partner-platform", icon: "🔗" },
+      nav("status", "System Status", "/admin/status", "activity"),
+      nav("roles", "Roles & Permissions", "/admin/roles", "key"),
+      nav("launch", "Application Management", "/admin/launch", "rocket"),
+      nav("api-gateway", "API Gateway", "/admin/api-gateway", "plug"),
+      nav("command", "Launch Command", "/admin/command", "monitor"),
+      nav("operations-command", "Operations Command", "/admin/operations-command", "activity"),
+      nav("business", "Business Hub", "/admin/business", "building"),
+      nav("business-accounts", "Business Accounts", "/admin/business-accounts", "briefcase"),
+      nav("partner-platform", "Partner Platform", "/admin/partner-platform", "link"),
     ],
   },
 ];

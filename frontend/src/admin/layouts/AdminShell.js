@@ -73,15 +73,15 @@ function AdminShellInner({ pathname, title, children }) {
 
   return (
     <div className="admin-shell">
-      <AdminHeader
-        onOpenMobileNav={() => setMobileNavOpen(true)}
-        onOpenSearch={() => setSearchOpen(true)}
+      <AdminSidebar
+        pathname={pathname}
+        mobileOpen={mobileNavOpen}
+        onMobileClose={() => setMobileNavOpen(false)}
       />
-      <div className="admin-shell__body">
-        <AdminSidebar
-          pathname={pathname}
-          mobileOpen={mobileNavOpen}
-          onMobileClose={() => setMobileNavOpen(false)}
+      <div className="admin-shell__column">
+        <AdminHeader
+          onOpenMobileNav={() => setMobileNavOpen(true)}
+          onOpenSearch={() => setSearchOpen(true)}
         />
         <main className="admin-shell__main" id="admin-main-content">
           <AdminBreadcrumbs items={crumbs} />
@@ -100,8 +100,8 @@ function AdminShellInner({ pathname, title, children }) {
             )}
           </AdminErrorBoundary>
         </main>
+        <AdminFooter />
       </div>
-      <AdminFooter />
 
       {searchOpen ? (
         <div className="admin-shell__modal-overlay" role="presentation" onClick={() => setSearchOpen(false)}>
