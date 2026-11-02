@@ -31,7 +31,7 @@ const SETTINGS = [
   {
     title: "Privacy Policy",
     description: "How Yala Technologies uses your Delivery account data.",
-    href: "https://yalataxi.live/privacy-policy",
+    href: "https://yalataxi.live/privacy",
   },
   {
     title: "Delete account",

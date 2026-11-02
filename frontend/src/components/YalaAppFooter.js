@@ -23,7 +23,7 @@ export default function YalaAppFooter({ showLegalLinks = true }) {
       {showLegalLinks ? (
         <nav className="yala-app-footer__links" aria-label="Legal">
           <a
-            href="https://yalataxi.live/privacy-policy"
+            href="https://yalataxi.live/privacy"
             target="_blank"
             rel="noopener noreferrer"
           >

@@ -131,7 +131,7 @@ describe("DriverSettings", () => {
     expect(screen.getByText("Show Vehicle")).toBeInTheDocument();
 
     const privacyPolicy = screen.getByRole("link", { name: "View privacy policy" });
-    expect(privacyPolicy).toHaveAttribute("href", "https://yalataxi.live/privacy-policy");
+    expect(privacyPolicy).toHaveAttribute("href", "https://yalataxi.live/privacy");
     const deleteAccount = screen.getByRole("link", { name: "Request account deletion" });
     expect(deleteAccount).toHaveAttribute(
       "href",
