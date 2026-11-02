@@ -19,6 +19,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal, ROUND_HALF_UP
 from unittest.mock import patch
 
+from django.core.cache import cache
 from django.conf import settings
 from django.contrib.auth.models import Group
 from django.db import connection
@@ -365,6 +366,12 @@ class DriverPerformanceEquivalenceTests(CeoFixtureMixin, TestCase):
 
 
 class AiInsightsEquivalenceTests(CeoFixtureMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        # build_ai_operations_dashboard is cached (ops:ai_dashboard); clear any value
+        # another test in this worker cached so the fixture's drivers are counted.
+        cache.clear()
+
     def test_driver_performance_scores_match_previous_implementation(self):
         result = ai.build_driver_performance_scores()
         self.assertEqual(result["drivers"], _legacy_driver_performance_drivers())
