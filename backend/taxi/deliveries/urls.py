@@ -22,6 +22,28 @@ from .chat_views import (
     delivery_chat_send,
     delivery_chat_templates,
 )
+from .admin_operations_views import (
+    admin_deliveries_directory,
+    admin_delivery_city_analytics,
+    admin_delivery_detail,
+    admin_delivery_tracking,
+)
+from .admin_courier_views import (
+    admin_courier_profile,
+    admin_courier_requirements,
+    admin_courier_requirements_audit,
+)
+from .admin_views import (
+    admin_courier_deliveries,
+    admin_courier_detail,
+    admin_courier_document,
+    admin_courier_reactivate,
+    admin_courier_signature,
+    admin_courier_suspend,
+    admin_couriers_list,
+    admin_delivery_overview,
+    admin_merchants_directory,
+)
 from .views import (
     accept_delivery,
     admin_analytics,
@@ -124,6 +146,78 @@ urlpatterns = [
 
     # Admin endpoints
     path("admin/analytics/", admin_analytics, name="delivery-admin-analytics"),
+    # Phase 5 — Delivery / courier management module (additive, admin-only)
+    path("admin/overview/", admin_delivery_overview, name="delivery-admin-overview"),
+    path("admin/couriers/", admin_couriers_list, name="delivery-admin-couriers"),
+    # Task 7 — admin delivery directory, read-only detail/tracking, city analytics (additive)
+    path("admin/deliveries/", admin_deliveries_directory, name="delivery-admin-deliveries"),
+    path(
+        "admin/deliveries/<int:delivery_id>/",
+        admin_delivery_detail,
+        name="delivery-admin-delivery-detail",
+    ),
+    path(
+        "admin/deliveries/<int:delivery_id>/tracking/",
+        admin_delivery_tracking,
+        name="delivery-admin-delivery-tracking",
+    ),
+    path(
+        "admin/analytics/cities/",
+        admin_delivery_city_analytics,
+        name="delivery-admin-city-analytics",
+    ),
+    # Courier management (professional profile, vehicle-type document verification,
+    # requirement audit) — read-only; approvals stay in the audited approval paths.
+    path(
+        "admin/couriers/requirements-audit/",
+        admin_courier_requirements_audit,
+        name="delivery-admin-courier-requirements-audit",
+    ),
+    path(
+        "admin/couriers/<int:driver_id>/profile/",
+        admin_courier_profile,
+        name="delivery-admin-courier-profile",
+    ),
+    path(
+        "admin/couriers/<int:driver_id>/requirements/",
+        admin_courier_requirements,
+        name="delivery-admin-courier-requirements",
+    ),
+    path(
+        "admin/couriers/<int:driver_id>/",
+        admin_courier_detail,
+        name="delivery-admin-courier-detail",
+    ),
+    path(
+        "admin/couriers/<int:driver_id>/deliveries/",
+        admin_courier_deliveries,
+        name="delivery-admin-courier-deliveries",
+    ),
+    path(
+        "admin/couriers/<int:driver_id>/documents/<int:document_id>/",
+        admin_courier_document,
+        name="delivery-admin-courier-document",
+    ),
+    path(
+        "admin/couriers/<int:driver_id>/signature/",
+        admin_courier_signature,
+        name="delivery-admin-courier-signature",
+    ),
+    path(
+        "admin/couriers/<int:driver_id>/suspend/",
+        admin_courier_suspend,
+        name="delivery-admin-courier-suspend",
+    ),
+    path(
+        "admin/couriers/<int:driver_id>/reactivate/",
+        admin_courier_reactivate,
+        name="delivery-admin-courier-reactivate",
+    ),
+    path(
+        "admin/merchants/",
+        admin_merchants_directory,
+        name="delivery-admin-merchants",
+    ),
     path("admin/disputes/", admin_disputes, name="delivery-admin-disputes"),
     path(
         "admin/deliveries/<int:delivery_id>/exceptions/approve/",

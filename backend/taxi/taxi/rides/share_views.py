@@ -37,6 +37,16 @@ SERVICE_AREA_LNG_MAX = -15.8
 # applied on top of canonical resolve_ride_fare("share") (not hardcoded 50/30).
 DEFAULT_SIMILARITY_SCORE = 0.7
 
+# Session statuses where a driver is already committed to an active Share run.
+DRIVER_ACTIVE_SESSION_STATUSES = (
+    "driver_assigned",
+    "driver_arriving",
+    "passenger_pickup",
+    "additional_pickup",
+    "in_progress",
+    "drop_off_stop",
+)
+
 
 def _canonical_share_base_fare(city, distance_km):
     """Return (FareResult, rounded_base_mru) from CityPricing / GlobalFareConfig / market.py."""
@@ -83,6 +93,59 @@ def _get_first_name(user):
     if user.first_name:
         return user.first_name.split()[0]
     return user.email.split("@")[0]
+
+
+def _fare_estimate_flags(ride):
+    """Return fare estimate metadata for Share ride responses."""
+    session = ride.share_session
+    may_change = bool(
+        session
+        and session.status == "matching"
+        and ride.share_status in ("waiting_match", "matched")
+    )
+    is_estimated = may_change or ride.share_status == "waiting_match"
+    return {
+        "fare_is_estimated": is_estimated,
+        "fare_may_change_on_match": may_change,
+    }
+
+
+def _user_can_view_session(session, user):
+    """Return True if user may read this Share session."""
+    if user.is_staff:
+        return True
+    if session.driver_id and session.driver_id == user.id:
+        return True
+    return session.rides.filter(rider=user).exists()
+
+
+def _build_session_detail(session):
+    """Build a response dict for a Share session."""
+    rides = session.active_rides.select_related("rider").order_by("id")
+    return {
+        "session_id": session.id,
+        "status": session.status,
+        "passengers_count": session.passengers_count,
+        "total_fare": int(session.total_fare) if session.total_fare else 0,
+        "platform_commission": int(session.platform_commission) if session.platform_commission else 0,
+        "driver_earnings": int(session.driver_earnings) if session.driver_earnings else 0,
+        "route_similarity_score": session.route_similarity_score,
+        "created_at": session.created_at.isoformat() if session.created_at else None,
+        "completed_at": session.completed_at.isoformat() if session.completed_at else None,
+        "rides": [
+            {
+                "id": ride.id,
+                "fare": int(ride.fare) if ride.fare else 0,
+                "economy_fare": int(ride.economy_fare) if ride.economy_fare else 0,
+                "seats": ride.seats,
+                "share_status": ride.share_status,
+                "pickup": ride.pickup,
+                "destination": ride.destination,
+                "passenger_name": _get_first_name(ride.rider),
+            }
+            for ride in rides
+        ],
+    }
 
 
 def _build_ride_detail(ride):
@@ -161,6 +224,7 @@ def _build_ride_detail(ride):
         data["driver"] = None
         data["stops"] = []
 
+    data.update(_fare_estimate_flags(ride))
     return data
 
 
@@ -327,6 +391,67 @@ class ShareRideRequestView(APIView):
         response_data["matching_timeout_seconds"] = MatchingService.MATCHING_TIMEOUT_SECONDS
 
         return Response(response_data, status=status.HTTP_201_CREATED)
+
+
+class ShareRideEstimateView(APIView):
+    """
+    POST /api/rides/share/estimate/
+
+    Return canonical Share fare preview using the same pricing path as request
+    creation (resolve_ride_fare + PricingEngine discount + seats).
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        data = request.data
+
+        try:
+            distance_km = Decimal(str(data.get("distance_km")))
+            seats = int(data.get("seats", 1))
+        except (ValueError, TypeError):
+            return Response(
+                {"error": "distance_km and seats are required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if seats not in (1, 2):
+            return Response(
+                {"error": "Seat count must be 1 or 2"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if distance_km < 0:
+            return Response(
+                {"error": "distance_km must be non-negative"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        city = resolve_city(
+            city_id=data.get("city"),
+            city_slug=data.get("city_slug"),
+            fallback_user=request.user,
+        )
+
+        fare_result, economy_fare = _canonical_share_base_fare(city, distance_km)
+        share_fare = PricingEngine().calculate_share_fare(
+            economy_fare=economy_fare,
+            similarity_score=DEFAULT_SIMILARITY_SCORE,
+            seats=seats,
+        )
+
+        return Response({
+            "ride_type": "share",
+            "economy_fare": int(economy_fare),
+            "fare": int(share_fare),
+            "savings": int(economy_fare - share_fare),
+            "seats": seats,
+            "distance_km": str(distance_km),
+            "similarity_score": DEFAULT_SIMILARITY_SCORE,
+            "pricing_source": fare_result.source,
+            "fare_is_estimated": True,
+            "fare_may_change_on_match": True,
+        })
 
 
 class ShareRideDetailView(APIView):
@@ -560,6 +685,20 @@ class ShareSessionAcceptView(APIView):
             return Response(
                 {"error": "Your driver account is not approved"},
                 status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Prevent accepting a second session while one is already active.
+        active_session = ShareRideSession.objects.filter(
+            driver=request.user,
+            status__in=DRIVER_ACTIVE_SESSION_STATUSES,
+        ).exclude(pk=session_id).first()
+        if active_session:
+            return Response(
+                {
+                    "error": "You already have an active Share session",
+                    "active_session_id": active_session.id,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         # Assign driver to session
@@ -832,6 +971,31 @@ class ShareSessionCompleteView(APIView):
         })
 
 
+class ShareSessionDetailView(APIView):
+    """
+    GET /api/rides/share/session/{id}/
+
+    Return Share session details for the assigned driver, participating riders,
+    or staff. Prevents IDOR access for unrelated users.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, session_id):
+        session = get_object_or_404(
+            ShareRideSession.objects.select_related("driver"),
+            pk=session_id,
+        )
+
+        if not _user_can_view_session(session, request.user):
+            return Response(
+                {"error": "You do not have permission to view this session"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        return Response(_build_session_detail(session))
+
+
 class ShareSessionStopsView(APIView):
     """
     GET /api/rides/share/session/{id}/stops/
@@ -844,11 +1008,7 @@ class ShareSessionStopsView(APIView):
     def get(self, request, session_id):
         session = get_object_or_404(ShareRideSession, pk=session_id)
 
-        # Verify user is the driver or a passenger in this session
-        is_driver = session.driver == request.user
-        is_passenger = session.rides.filter(rider=request.user).exists()
-
-        if not is_driver and not is_passenger:
+        if not _user_can_view_session(session, request.user):
             return Response(
                 {"error": "You do not have permission to view these stops"},
                 status=status.HTTP_403_FORBIDDEN,

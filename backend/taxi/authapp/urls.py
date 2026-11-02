@@ -3,7 +3,12 @@ from rest_framework_simplejwt.views import TokenRefreshView
 
 from .views import (
     RegisterView,
+    admin_driver_activity,
     admin_rider_activity,
+    admin_rider_detail,
+    admin_rider_document,
+    admin_riders_list,
+    admin_rider_support,
     approve_rider,
     block_user,
     delete_rider,
@@ -11,7 +16,9 @@ from .views import (
     logout_all_devices,
     me,
     my_devices,
+    reactivate_rider,
     reject_rider,
+    suspend_rider,
     unblock_user,
     update_identity,
     user_list,
@@ -39,7 +46,15 @@ urlpatterns = [
     path("users/<int:user_id>/delete-rider/", delete_rider),
     path("users/<int:user_id>/block/", block_user),
     path("users/<int:user_id>/unblock/", unblock_user),
+    # Riders Management (additive, IsAdminUser-gated)
+    path("admin/riders/", admin_riders_list),
+    path("admin/riders/<int:rider_id>/", admin_rider_detail),
+    path("admin/riders/<int:rider_id>/document/", admin_rider_document),
+    path("admin/riders/<int:rider_id>/support/", admin_rider_support),
+    path("users/<int:user_id>/suspend/", suspend_rider),
+    path("users/<int:user_id>/reactivate/", reactivate_rider),
     path("admin/rider/<int:rider_id>/activity/", admin_rider_activity),
+    path("admin/driver/<int:driver_id>/activity/", admin_driver_activity),
     # Email verification
     path("email/send-verification/", send_verification_email),
     path("email/verify/", verify_email),

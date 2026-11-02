@@ -28,9 +28,19 @@ from payments.models import DriverPayoutMethod
 from taxi.drivers.models import DriverDocument, DriverProfile
 from taxi.drivers.signals import trigger_qr_generation_on_approval
 
+# ── Seed passwords come from the environment; otherwise a random per-run value ──
+# (never a shared default, never printed — set the variable to choose a known password)
+import os as _cred_os
+import secrets as _cred_secrets
+
+
+def _seed_password(name):
+    return _cred_os.environ.get(name) or _cred_secrets.token_urlsafe(18)
+
+
 User = get_user_model()
 
-DEFAULT_PASSWORD = "Test1234!"
+DEFAULT_PASSWORD = _seed_password("YALA_SEED_DEFAULT_PASSWORD")
 SIGNATURE_PNG = (
     b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde"
     b"\x00\x00\x00\x0cIDATx\x9cc\xf8\x0f\x00\x00\x01\x01\x00\x05\x18\xd8N\x00\x00\x00\x00IEND\xaeB`\x82"
@@ -281,4 +291,7 @@ class Command(BaseCommand):
             )
 
         self.stdout.write(self.style.SUCCESS("Delivery courier seed complete."))
-        self.stdout.write(f"Shared password: {password}")
+        self.stdout.write(
+            "Shared password not shown: pass --password or set YALA_SEED_DEFAULT_PASSWORD "
+            "to choose it (random per run otherwise)."
+        )

@@ -283,7 +283,7 @@ class DeliveryService:
                 weight_kg=data.get("weight_kg"),
                 estimated_duration_minutes=estimated_duration,
                 payment_method=payment_method,
-                payment_status="paid",
+                payment_status=payment_record.status,
                 is_scheduled=is_scheduled,
                 scheduled_pickup_at=scheduled_pickup_at,
                 business_account=business_account,

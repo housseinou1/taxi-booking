@@ -122,7 +122,11 @@ class SmartPricingDispatchTests(TestCase):
     def test_legacy_pricing_when_engine_disabled(self):
         result = calculate_dynamic_fare(distance_km=5, ride_type="regular", use_engine=False)
         self.assertEqual(result["engine"], "legacy")
-        self.assertEqual(Decimal(result["customer_price"]), Decimal("300.00"))
+        # Legacy Regular policy (taxi/market.py MARKET["fare"]["regular"]):
+        # base 175 MRU + 20 MRU/km. For 5 km: 175 + (5 x 20) = 275.00 MRU.
+        # (Previously asserted 300.00, which assumed a 200 MRU base that is not
+        # the approved policy; corrected to match the documented fare table.)
+        self.assertEqual(Decimal(result["customer_price"]), Decimal("275.00"))
 
     def test_simulate_pricing_writes_audit_entry(self):
         simulate_pricing({"distance_km": 3}, user=self.ops)

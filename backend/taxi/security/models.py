@@ -65,6 +65,13 @@ class AuditLog(models.Model):
         ("document_approval", "Document Approval"),
         ("verification_event", "Verification Event"),
         ("fraud_flag", "Fraud Flag"),
+        # Driver account lifecycle actions (admin audit trail)
+        ("approve", "Approved"),
+        ("reject", "Rejected"),
+        ("suspend", "Suspended"),
+        ("reactivate", "Reactivated"),
+        ("reintegrate", "Reintegrated"),
+        ("approval_blocked", "Approval Blocked"),
     ]
 
     ENTITY_CHOICES = [
@@ -76,6 +83,12 @@ class AuditLog(models.Model):
         ("refund", "Refund"),
         ("document", "Document"),
         ("system", "System"),
+        ("employee", "Employee"),
+        ("id_card", "Employee ID Card"),
+        # Driver account lifecycle (approve / reject / suspend / reactivate /
+        # reintegrate / blocked approval attempts). Added so driver actions have
+        # a first-class audit entity instead of being logged as "payment".
+        ("driver", "Driver"),
     ]
 
     actor = models.ForeignKey(

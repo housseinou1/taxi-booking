@@ -159,6 +159,37 @@ class PricingEngine:
         commission = total_fares * rate
         return commission.quantize(Decimal("1"), rounding=ROUND_HALF_UP)
 
+    def reprice_session_rides(self, session, similarity_score=None):
+        """
+        Recalculate share fares for active rides that are not yet completed.
+
+        Skips dropped-off or completed rides so historical fares are preserved.
+        """
+        score = (
+            similarity_score
+            if similarity_score is not None
+            else session.route_similarity_score
+        )
+        updated_fares = {}
+
+        for ride in session.active_rides:
+            if ride.share_status == "dropped_off" or ride.status == "completed":
+                continue
+            if not ride.economy_fare:
+                continue
+
+            new_fare = self.calculate_share_fare(
+                economy_fare=ride.economy_fare,
+                similarity_score=score,
+                seats=ride.seats,
+            )
+            if ride.fare != new_fare:
+                ride.fare = new_fare
+                ride.save(update_fields=["fare"])
+            updated_fares[ride.id] = new_fare
+
+        return updated_fares
+
     def recalculate_on_cancellation(self, session, cancelled_ride):
         """
         Recalculate fares for remaining passengers after a cancellation.

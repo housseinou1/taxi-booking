@@ -297,11 +297,22 @@ def build_fleet_ceo_metrics(city_id=None, drivers: list[dict] | None = None) -> 
         )
     city_rows.sort(key=lambda row: Decimal(row["revenue_month"]), reverse=True)
 
-    approved = DriverProfile.objects.filter(status="approved")
+    # Canonical fleet figures (operations.fleet_metrics): RIDE drivers only — courier profiles
+    # are excluded, so this dashboard can never double-count a courier as a driver.
+    from operations.fleet_metrics import courier_user_ids, fleet_metrics
+
+    fleet = fleet_metrics()
     if city_id:
-        approved = approved.filter(user__city_id=city_id)
-    total_approved = approved.count()
-    online = approved.filter(is_available=True).count()
+        approved = (
+            DriverProfile.objects.filter(status="approved")
+            .exclude(user_id__in=courier_user_ids())
+            .filter(user__city_id=city_id)
+        )
+        total_approved = approved.count()
+        online = approved.filter(is_available=True).count()
+    else:
+        total_approved = fleet["drivers"]["approved"]
+        online = fleet["drivers"]["online"]
     utilization = round((online / total_approved) * 100, 1) if total_approved else 0
 
     earnings = [Decimal(d.get("revenue_month", "0")) for d in drivers if Decimal(d.get("revenue_month", "0")) > 0]

@@ -23,7 +23,7 @@ def customer_user(db):
     )
     return User.objects.create_user(
         email="customer@yala.mr",
-        password="Test1234!",
+        password="test-only-Pass-2026",
         first_name="Fatima",
         last_name="Mint",
         phone_number="+22248123456",
@@ -62,7 +62,7 @@ def test_create_delivery_rejects_cash(customer_user):
 
 
 @pytest.mark.django_db
-def test_create_delivery_prepay_marks_paid(customer_user):
+def test_create_delivery_prepay_stays_pending_until_provider_confirms(customer_user):
     service = DeliveryService()
     delivery, _metadata = service.create_delivery(
         customer=customer_user,
@@ -70,9 +70,9 @@ def test_create_delivery_prepay_marks_paid(customer_user):
     )
 
     assert delivery.payment_method == "bankily"
-    assert delivery.payment_status == "paid"
+    assert delivery.payment_status == "pending"
     record = PaymentRecord.objects.get(delivery=delivery)
-    assert record.status == "paid"
+    assert record.status == "pending"
     assert record.payment_timing == "before_delivery"
 
 
@@ -84,7 +84,7 @@ def test_create_delivery_accepts_masravi(customer_user):
         data=_delivery_payload(customer_user, payment_method="masravi"),
     )
     assert delivery.payment_method == "masravi"
-    assert delivery.payment_status == "paid"
+    assert delivery.payment_status == "pending"
 
 
 def _delivery_payload(customer_user, payment_method="card"):

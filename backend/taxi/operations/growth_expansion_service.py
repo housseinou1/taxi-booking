@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from datetime import timedelta
 from decimal import Decimal
 
@@ -30,7 +31,9 @@ def _month_start():
     return timezone.localdate().replace(day=1)
 
 
-def build_growth_metrics(city_id=None) -> dict:
+def build_growth_metrics(city_id=None, kpis: dict | None = None) -> dict:
+    # kpis: optional build_business_kpis(city_id) result already computed by the caller for the
+    # same city_id (lets build_growth_overview build it once instead of twice). Default unchanged.
     today = timezone.localdate()
     month_start = _month_start()
     week_start = today - timedelta(days=6)
@@ -41,7 +44,8 @@ def build_growth_metrics(city_id=None) -> dict:
     new_riders_week = riders.filter(date_joined__date__gte=week_start).count()
     new_riders_today = riders.filter(date_joined__date=today).count()
 
-    kpis = build_business_kpis(city_id=city_id)
+    if kpis is None:
+        kpis = build_business_kpis(city_id=city_id)
     user_metrics = kpis.get("users", {})
 
     approved_drivers = DriverProfile.objects.filter(status="approved")
@@ -62,17 +66,32 @@ def build_growth_metrics(city_id=None) -> dict:
     driver_referrals_total = DriverReferral.objects.count()
     driver_referrals_month = DriverReferral.objects.filter(created_at__date__gte=month_start).count()
 
+    # Perf: two queries for the 14-day chart instead of two per day (28). The DB applies the
+    # same local-date window as the old per-day `__date=` filters, and each timestamp is bucketed
+    # by its local date (timezone.localtime), which is what the `__date` lookup does in SQL.
+    chart_start = today - timedelta(days=13)
+    rider_days = Counter(
+        timezone.localtime(joined).date()
+        for joined in riders.filter(date_joined__date__gte=chart_start, date_joined__date__lte=today)
+        .values_list("date_joined", flat=True)
+    )
+    driver_days = Counter(
+        timezone.localtime(joined).date()
+        for joined in DriverProfile.objects.filter(
+            status="approved",
+            user__date_joined__date__gte=chart_start,
+            user__date_joined__date__lte=today,
+        ).values_list("user__date_joined", flat=True)
+    )
     registration_chart = []
-    cursor = today - timedelta(days=13)
+    cursor = chart_start
     while cursor <= today:
         registration_chart.append(
             {
                 "date": cursor.isoformat(),
                 "label": cursor.strftime("%b %d"),
-                "riders": riders.filter(date_joined__date=cursor).count(),
-                "drivers": DriverProfile.objects.filter(
-                    status="approved", user__date_joined__date=cursor
-                ).count(),
+                "riders": rider_days.get(cursor, 0),
+                "drivers": driver_days.get(cursor, 0),
             }
         )
         cursor += timedelta(days=1)
@@ -317,10 +336,15 @@ def build_geographic_expansion(city_id=None) -> dict:
     }
 
 
-def build_ceo_forecast(city_id=None) -> dict:
+def build_ceo_forecast(city_id=None, kpis: dict | None = None) -> dict:
+    # kpis: optional pre-computed build_business_kpis(city_id) for the same city_id. Default unchanged.
     insights = build_financial_insights()
-    kpis = build_business_kpis(city_id=city_id)
-    fleet = build_fleet_ceo_metrics(city_id=city_id)
+    if kpis is None:
+        kpis = build_business_kpis(city_id=city_id)
+    # Only fleet_utilization_pct is read below, and it does not depend on the per-driver
+    # ranking rows. Passing drivers=[] skips build_driver_performance_rows (an N+1 over up to
+    # 500 drivers, ~540 queries) whose output was discarded. The utilization figure is unchanged.
+    fleet = build_fleet_ceo_metrics(city_id=city_id, drivers=[])
 
     growth_chart = kpis.get("growth_chart", [])
     if len(growth_chart) >= 7:

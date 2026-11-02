@@ -162,11 +162,25 @@ class Payment(models.Model):
     )
 
     transaction_id = models.CharField(max_length=255, blank=True, default="")
+    provider_reference = models.CharField(
+        max_length=120,
+        blank=True,
+        default="",
+        help_text="Provider-side reference of the verified settlement (set only by provider_settlement).",
+    )
+    provider_verified_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         indexes = [
             models.Index(fields=["ride_id", "status"], name="payment_ride_status_idx"),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["provider_reference"],
+                condition=models.Q(provider_reference__gt=""),
+                name="uniq_payment_provider_reference",
+            ),
         ]
 
     def __str__(self):
@@ -435,6 +449,7 @@ class PaymentRecord(models.Model):
         ("ride", "Ride"),
         ("delivery", "Delivery"),
         ("merchant_order", "Merchant Order"),
+        ("wallet_top_up", "Wallet Top-up"),
     ]
 
     source = models.CharField(max_length=20, choices=SOURCE_CHOICES)
@@ -490,6 +505,13 @@ class PaymentRecord(models.Model):
         default="",
         help_text="Tokenized payment reference only — never store raw card data.",
     )
+    provider_reference = models.CharField(
+        max_length=120,
+        blank=True,
+        default="",
+        help_text="Provider-side reference of the verified settlement (set only by provider_settlement).",
+    )
+    provider_verified_at = models.DateTimeField(null=True, blank=True)
 
     app_fee = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     courier_earning = models.DecimalField(max_digits=12, decimal_places=2, default=0)
@@ -512,6 +534,13 @@ class PaymentRecord(models.Model):
             models.Index(fields=["source", "-created_at"], name="payment_record_source_idx"),
             models.Index(fields=["method", "status", "-created_at"], name="payrec_method_status_idx"),
         ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["provider_reference"],
+                condition=models.Q(provider_reference__gt=""),
+                name="uniq_payrec_provider_reference",
+            ),
+        ]
 
     def __str__(self):
         return f"PaymentRecord #{self.id} — {self.source} — {self.amount} {self.currency}"
@@ -527,6 +556,7 @@ class RefundRequest(models.Model):
 
     STATUS_CHOICES = [
         ("requested", "Requested"),
+        ("awaiting_ceo", "Awaiting CEO Approval"),
         ("approved", "Approved"),
         ("rejected", "Rejected"),
         ("refunded", "Refunded"),
@@ -543,6 +573,18 @@ class RefundRequest(models.Model):
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     reason = models.CharField(max_length=30, choices=REASON_CHOICES)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="requested")
+    # Restored: these columns exist in the database (payments migration 0021
+    # "sprint6_finance_driver_ops") but were missing from this model. Schema
+    # alignment only — no refund logic or calculation is changed.
+    finance_approved_at = models.DateTimeField(null=True, blank=True)
+    finance_approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="finance_approved_refunds",
+    )
+    requires_dual_approval = models.BooleanField(default=False)
     note = models.TextField(blank=True, default="")
     admin_note = models.TextField(blank=True, default="")
     fraud_flag = models.BooleanField(default=False)

@@ -9,3 +9,4 @@ media/
 .pytest_cache/
 *.log
 .vscode/
+protected_media/

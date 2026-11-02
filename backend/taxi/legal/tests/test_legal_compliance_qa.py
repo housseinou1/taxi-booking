@@ -1,5 +1,8 @@
 """QA harness for Yala legal compliance — run: pytest legal/tests/test_legal_compliance_qa.py -v"""
 
+import uuid
+from datetime import timedelta
+
 import pytest
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -39,6 +42,24 @@ def _png_file(name="sig.png"):
         b"\x01\x01\x01\x00\x18\xdd\x8d\xb4\x00\x00\x00\x00IEND\xaeB`\x82"
     )
     return SimpleUploadedFile(name, png_bytes, content_type="image/png")
+
+
+def _attach_required_documents(profile):
+    """Attach the legacy document fields so the profile passes document checks."""
+    future_date = timezone.localdate() + timedelta(days=365)
+    profile.user.national_id_document = _png_file("national-id.png")
+    profile.user.save(update_fields=["national_id_document"])
+
+    profile.driver_photo = _png_file("driver-photo.png")
+    profile.license_file = _png_file("license.png")
+    profile.vehicle_registration = _png_file("carte-grise.png")
+    profile.insurance_document = _png_file("insurance.png")
+    profile.vignette_document = _png_file("vignette.png")
+    profile.license_expires_at = future_date
+    profile.vehicle_registration_expires_at = future_date
+    profile.insurance_expires_at = future_date
+    profile.vignette_expires_at = future_date
+    profile.save()
 
 
 def _user(email, user_type="driver", **extra):
@@ -216,7 +237,13 @@ class TestLegalComplianceQA:
     # 8 — Driver cannot go online or be approved without signature
     def test_qa_08_driver_online_and_approve_blocked_without_signature(self):
         user = _user("driver-unsigned@test.com")
-        profile = _driver_profile(user, status="approved")
+        profile = _driver_profile(user, status="pending_review")
+        _attach_required_documents(profile)
+        # Pre-set a QR UUID so the approval signal skips QR generation for this test.
+        profile.qr_code_uuid = uuid.uuid4()
+        profile.status = "approved"
+        profile.save()
+
         api = _auth(user)
         toggle = api.post("/drivers/availability/toggle/", {})
         assert toggle.status_code == 400, toggle.data

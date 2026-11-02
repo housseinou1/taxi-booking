@@ -278,20 +278,17 @@ class MatchingService:
         )
 
         # Assign rides to session and update their status
-        total_fare = Decimal("0")
         for ride in rides:
             ride.share_session = session
             ride.share_status = "matched"
+            ride.save(update_fields=["share_session", "share_status"])
 
-            # Calculate share fare if not already set
-            if ride.economy_fare and not ride.fare:
-                ride.fare = self.pricing_engine.calculate_share_fare(
-                    economy_fare=ride.economy_fare,
-                    similarity_score=avg_similarity,
-                    seats=ride.seats,
-                )
+        # Reprice all rides using the session similarity (request-time fare may
+        # have used DEFAULT_SIMILARITY_SCORE before matching).
+        self.pricing_engine.reprice_session_rides(session, avg_similarity)
 
-            ride.save(update_fields=["share_session", "share_status", "fare"])
+        total_fare = Decimal("0")
+        for ride in rides:
             total_fare += ride.fare
 
         # Update session totals
@@ -376,16 +373,12 @@ class MatchingService:
         # Assign ride to session
         ride.share_session = session
         ride.share_status = "matched"
+        ride.save(update_fields=["share_session", "share_status"])
 
-        # Calculate fare
-        if ride.economy_fare:
-            ride.fare = self.pricing_engine.calculate_share_fare(
-                economy_fare=ride.economy_fare,
-                similarity_score=new_similarity,
-                seats=ride.seats,
-            )
+        session.save(update_fields=["route_similarity_score"])
 
-        ride.save(update_fields=["share_session", "share_status", "fare"])
+        # Reprice all active, non-completed rides with updated similarity.
+        self.pricing_engine.reprice_session_rides(session, new_similarity)
 
         # Update session totals
         total_fare = Decimal("0")
@@ -397,8 +390,7 @@ class MatchingService:
         session.platform_commission = commission
         session.driver_earnings = total_fare - commission
         session.save(update_fields=[
-            "route_similarity_score", "total_fare",
-            "platform_commission", "driver_earnings",
+            "total_fare", "platform_commission", "driver_earnings",
         ])
 
         # Recalculate route

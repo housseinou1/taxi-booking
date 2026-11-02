@@ -116,6 +116,35 @@ class DriverProfile(models.Model):
     account_risk_flag = models.BooleanField(default=False)
     account_under_review = models.BooleanField(default=False)
     account_risk_reason = models.TextField(blank=True, default="")
+
+    # --- Explicit suspension state (separate from the performance risk review) ---
+    # `account_under_review` / `account_risk_flag` belong to the performance module: the
+    # ride-performance service sets them when acceptance/cancellation quality degrades, and
+    # the risk-review queue lists exactly those rows. Overloading them as the suspension
+    # marker conflated two different meanings (a risk review showed as a suspension, and
+    # clearing a review silently un-suspended a driver). These four fields carry the
+    # administrative suspension instead:
+    #
+    #   suspension_active     - the driver is suspended: no new work, keeps app access.
+    #   suspension_reason     - why (mandatory on the CEO action, retrievable on the profile).
+    #   suspension_started_at - when it began (ageing/SLA reporting, stale-suspension review).
+    #   suspended_by          - which administrator applied it (accountability; SET_NULL so
+    #                           removing an admin account never deletes driver rows).
+    # NOTE: deliberately NOT db_index=True. On SQLite a new indexed column forces a full
+    # table rebuild (CREATE new → INSERT SELECT → DROP TABLE → RENAME). At pilot scale
+    # (≈10² driver rows) the index buys nothing, so the migration stays a plain additive
+    # ADD COLUMN with no table rebuild and no DROP TABLE. Add an index in its own migration
+    # if query volume ever justifies it.
+    suspension_active = models.BooleanField(default=False)
+    suspension_reason = models.TextField(blank=True, default="")
+    suspension_started_at = models.DateTimeField(null=True, blank=True)
+    suspended_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="drivers_suspended",
+    )
     average_rating = models.DecimalField(
         max_digits=3, decimal_places=2, default=0.00
     )
@@ -736,6 +765,9 @@ class DriverSettings(models.Model):
     privacy_show_name = models.BooleanField(default=True)
     privacy_show_photo = models.BooleanField(default=True)
     privacy_show_vehicle = models.BooleanField(default=True)
+    # Used by the driver performance hub leaderboard opt-out. The column exists
+    # in the database; the field was missing from this model.
+    privacy_leaderboard_opt_out = models.BooleanField(default=False)
 
     class Meta:
         verbose_name_plural = "Driver settings"

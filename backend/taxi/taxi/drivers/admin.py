@@ -1,5 +1,8 @@
+from django import forms
 from django.contrib import admin, messages
 from django.utils.html import format_html
+
+from legal.services import approval_signature_block
 
 from .models import (
     Achievement,
@@ -15,7 +18,11 @@ from .models import (
     SupportTicket,
     VerificationRecord,
 )
-from .services.qr_service import QRCodeService, QRGenerationError
+from .services.qr_service import (
+    QRCodeService,
+    QRGenerationError,
+    QRIneligibleDriverError,
+)
 
 
 class VerificationRecordInline(admin.TabularInline):
@@ -30,8 +37,36 @@ class VerificationRecordInline(admin.TabularInline):
         return False
 
 
+class DriverProfileAdminForm(forms.ModelForm):
+    """Admin form that enforces the e-signature gate on approval.
+
+    During clean() the bound instance still holds the PERSISTED values (Django
+    applies form data to it later, in _post_clean), so the check judges what the
+    driver actually signed, not signature fields typed into this same form.
+    Only a transition INTO "approved" is checked: pending/rejected changes and
+    edits to drivers that are already approved are unaffected.
+    """
+
+    class Meta:
+        model = DriverProfile
+        fields = "__all__"
+
+    def clean(self):
+        cleaned = super().clean()
+        new_status = cleaned.get("status")
+        becoming_approved = new_status == "approved" and (
+            self.instance.pk is None or self.instance.status != "approved"
+        )
+        if becoming_approved:
+            block = approval_signature_block(self.instance, "driver")
+            if block is not None:
+                self.add_error("status", block["error"])
+        return cleaned
+
+
 @admin.register(DriverProfile)
 class DriverProfileAdmin(admin.ModelAdmin):
+    form = DriverProfileAdminForm
 
     list_display = (
         "id",
@@ -138,6 +173,7 @@ class DriverProfileAdmin(admin.ModelAdmin):
         success_count = 0
         skip_count = 0
         error_count = 0
+        ineligible_count = 0
 
         for driver_profile in queryset:
             if not driver_profile.qr_code_uuid:
@@ -147,6 +183,10 @@ class DriverProfileAdmin(admin.ModelAdmin):
             try:
                 service.regenerate_qr_code(driver_profile, request.user)
                 success_count += 1
+            except QRIneligibleDriverError:
+                # Not approved or not e-signed. Must be caught BEFORE the generic
+                # QRGenerationError (its parent). Existing QR is left unchanged.
+                ineligible_count += 1
             except QRGenerationError:
                 error_count += 1
 
@@ -161,6 +201,14 @@ class DriverProfileAdmin(admin.ModelAdmin):
                 request,
                 f"Skipped {skip_count} driver(s) with no existing QR code.",
                 messages.WARNING,
+            )
+        if ineligible_count:
+            self.message_user(
+                request,
+                f"Not regenerated for {ineligible_count} driver(s): a verification QR "
+                "code requires an approved driver with a complete electronic "
+                "signature. Existing QR codes unchanged.",
+                messages.ERROR,
             )
         if error_count:
             self.message_user(

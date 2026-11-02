@@ -7,6 +7,9 @@ from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from datetime import date, datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 from .models import DriverProfile, DriverSettings
 from .api.serializers import DriverSettingsSerializer
@@ -18,7 +21,12 @@ from authapp.validators import (
 )
 from taxi.security.abuse import rate_limit, validate_driver_location
 from legal.constants import DRIVER_AGREEMENT_VERSION
-from legal.services import driver_has_complete_signature, driver_requires_terms_resign, serialize_driver_signature
+from legal.services import (
+    approval_signature_block,
+    driver_has_complete_signature,
+    driver_requires_terms_resign,
+    serialize_driver_signature,
+)
 
 
 from .driver_access import get_or_create_driver_profile, resolve_driver_profile
@@ -330,7 +338,18 @@ def driver_list(request):
         from deliveries.models import DriverDeliverySettings
         courier_user_ids = set(DriverDeliverySettings.objects.values_list("driver_id", flat=True))
         drivers = drivers.exclude(user_id__in=courier_user_ids)
-    return Response([serialize_driver(driver, request) for driver in drivers])
+
+    rows = []
+    for driver in drivers:
+        # Admin-only additive fields; NOT added to serialize_driver so the
+        # mobile /drivers/me/ contract stays unchanged.
+        data = serialize_driver(driver, request)
+        data["total_rides_completed"] = driver.total_rides_completed
+        data["average_rating"] = (
+            str(driver.average_rating) if driver.average_rating is not None else None
+        )
+        rows.append(data)
+    return Response(rows)
 
 
 @api_view(["GET"])
@@ -429,6 +448,19 @@ def toggle_availability(request):
     # Idempotent: already in the requested state (same pattern as confirm_delivery).
     if profile.is_available == going_online:
         return _availability_toggle_response(profile, unchanged=True)
+
+    # A suspended driver keeps account access (earnings, documents, support) but must
+    # not go online to take new work. Suspension is a persisted state, so this is
+    # distinct from simply being offline.
+    if going_online and (profile.suspension_active or profile.account_under_review):
+        return Response(
+            {
+                "error": "Your account is suspended. You cannot go online for new work.",
+                "code": "driver_suspended",
+                "is_available": False,
+            },
+            status=status.HTTP_403_FORBIDDEN,
+        )
 
     if not request.user.is_active:
         if profile.is_available:
@@ -770,6 +802,30 @@ def update_driver_profile(request):
     })
 
 
+def _log_driver_audit(request, profile, *, action, summary, details=None):
+    """Write a driver lifecycle row to the admin audit trail.
+
+    Uses entity_type="driver" with the DriverProfile id as entity_id, so the
+    admin drawer can fetch a driver's history with
+    /security/admin/audit-logs/?entity_type=driver&entity_id=<profile id>.
+    Never stores documents or signature images — only status transitions and
+    the administrative reason. Auditing must never break the action itself.
+    """
+    try:
+        from security.services.audit_service import log_from_request
+
+        log_from_request(
+            request,
+            action=action,
+            entity_type="driver",
+            entity_id=str(profile.pk),
+            summary=summary[:255],
+            details=details or {},
+        )
+    except Exception:
+        logger.exception("Failed to write driver audit row for profile=%s", profile.pk)
+
+
 @api_view(["POST"])
 @permission_classes([IsAdminUser])
 def approve_driver(request, driver_id):
@@ -799,15 +855,19 @@ def approve_driver(request, driver_id):
             status=400,
         )
 
-    if not driver_has_complete_signature(profile):
-        return Response(
-            {
-                "error": "Driver electronic signature is incomplete. Cannot approve.",
-                "legal_signature": serialize_driver_signature(profile, request),
-            },
-            status=400,
+    signature_block = approval_signature_block(profile, "driver", request)
+    if signature_block is not None:
+        _log_driver_audit(
+            request,
+            profile,
+            action="approval_blocked",
+            summary=f"Driver approval blocked for {profile.user.email}: incomplete e-signature",
+            details={"previous_status": profile.status, "new_status": profile.status,
+                     "reason": "driver_signature_required"},
         )
+        return Response(signature_block, status=400)
 
+    previous_status = profile.status
     profile.status = "approved"
     profile.application_rejection_reason = ""
     ensure_driver_code(profile)
@@ -820,6 +880,14 @@ def approve_driver(request, driver_id):
 
     profile.user.is_active = True
     profile.user.save(update_fields=["is_active"])
+
+    _log_driver_audit(
+        request,
+        profile,
+        action="approve",
+        summary=f"Driver approved: {profile.user.email}",
+        details={"previous_status": previous_status, "new_status": "approved"},
+    )
 
     return Response({
         "message": "Driver approved",
@@ -837,6 +905,7 @@ def reject_driver(request, driver_id):
     if len(reason) < 5:
         return Response({"error": "A clear rejection reason is required."}, status=400)
 
+    previous_status = profile.status
     profile.status = "rejected"
     profile.is_available = False
     profile.application_rejection_reason = reason
@@ -844,6 +913,15 @@ def reject_driver(request, driver_id):
 
     profile.user.is_active = False
     profile.user.save(update_fields=["is_active"])
+
+    _log_driver_audit(
+        request,
+        profile,
+        action="reject",
+        summary=f"Driver rejected: {profile.user.email}",
+        details={"previous_status": previous_status, "new_status": "rejected",
+                 "reason": reason},
+    )
 
     return Response({
         "message": "Driver rejected",
@@ -866,6 +944,16 @@ def reintegrate_driver(request, driver_id):
         profile.user.save(update_fields=["is_active"])
         profile.save(update_fields=["status", "is_available"])
 
+        _log_driver_audit(
+            request,
+            profile,
+            action="approval_blocked",
+            summary=f"Driver reintegration blocked for {profile.user.email}: expired documents",
+            details={"previous_status": "rejected", "new_status": "rejected",
+                     "reason": "expired_documents",
+                     "expired_documents": expired_documents},
+        )
+
         return Response(
             {
                 "error": f"Driver cannot be reintegrated until expired documents are updated: {', '.join(expired_documents)}",
@@ -874,11 +962,46 @@ def reintegrate_driver(request, driver_id):
             status=400,
         )
 
+    new_status = request.data.get("status", "approved")
+    valid_statuses = [value for value, _label in DriverProfile.STATUS_CHOICES]
+    if not isinstance(new_status, str) or new_status not in valid_statuses:
+        return Response(
+            {
+                "error": "Invalid status.",
+                "code": "invalid_status",
+                "valid_statuses": valid_statuses,
+            },
+            status=400,
+        )
+    if new_status == "approved":
+        # Reintegration must not become a way around the e-signature rule. An
+        # existing complete signature is accepted; no re-signing is required.
+        signature_block = approval_signature_block(profile, "driver", request)
+        if signature_block is not None:
+            _log_driver_audit(
+                request,
+                profile,
+                action="approval_blocked",
+                summary=f"Driver reintegration blocked for {profile.user.email}: incomplete e-signature",
+                details={"previous_status": profile.status, "new_status": profile.status,
+                         "reason": "driver_signature_required"},
+            )
+            return Response(signature_block, status=400)
+
+    previous_status = profile.status
     profile.user.is_active = True
     profile.user.save(update_fields=["is_active"])
-    profile.status = request.data.get("status", "approved")
+    profile.status = new_status
     profile.is_available = False
     profile.save(update_fields=["status", "is_available"])
+
+    _log_driver_audit(
+        request,
+        profile,
+        action="reintegrate",
+        summary=f"Driver reintegrated: {profile.user.email}",
+        details={"previous_status": previous_status, "new_status": new_status},
+    )
 
     return Response({
         "message": "Driver reintegrated. Account is active and driver can go online.",

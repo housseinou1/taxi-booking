@@ -30,6 +30,22 @@ from taxi.drivers.views_verification import (
 User = get_user_model()
 
 
+def _sign(profile):
+    """Give `profile` a complete driver e-signature.
+
+    Verification QR codes now require approved status AND a complete signature,
+    so fixtures that expect a QR must be signed first.
+    """
+    # The image is referenced by storage name only (no upload), so this fixture
+    # never writes a file into the project's media directory.
+    profile.driver_terms_accepted = True
+    profile.driver_signed_full_name = "Signed Test Driver"
+    profile.driver_legal_declaration_accepted = True
+    profile.driver_signature_image = "legal/driver_signatures/test-fixture.png"
+    profile.save()
+    return profile
+
+
 # =============================================================================
 # Task 8.3: Unit tests for admin endpoints
 # =============================================================================
@@ -81,6 +97,7 @@ class TestAdminRegenerateQRCodeEndpoint(TestCase):
             vehicle_color="White",
             plate_number="ABC123",
         )
+        _sign(self.driver_profile)
         # Generate initial QR code
         self.service.generate_qr_code(self.driver_profile)
         self.driver_profile.refresh_from_db()
@@ -388,6 +405,7 @@ class TestFullApprovalFlow(TestCase):
             vehicle_color="Red",
             plate_number="INT001",
         )
+        _sign(profile)  # signed while still pending: no QR is issued yet
 
         # Verify no QR code initially
         self.assertIsNone(profile.qr_code_uuid)
@@ -450,6 +468,7 @@ class TestFullScanFlow(TestCase):
             vehicle_color="Silver",
             plate_number="SCAN01",
         )
+        _sign(profile)
         qr_uuid, _ = service.generate_qr_code(profile)
         profile.refresh_from_db()
 
@@ -538,6 +557,7 @@ class TestRegenerationFlow(TestCase):
             vehicle_color="Blue",
             plate_number="REGEN1",
         )
+        _sign(profile)
 
         # Generate initial QR code
         old_uuid, _ = service.generate_qr_code(profile)
@@ -595,10 +615,10 @@ class TestApprovalRejectionMissingDriverCode(TestCase):
     Integration test: approval rejection when driver_code is missing (Req 1.7).
     """
 
-    def test_approval_rejected_without_driver_code(self):
+    def test_approval_without_driver_code_auto_assigns(self):
         """
         When a driver profile without a driver_code is set to approved,
-        the signal should reject the approval and revert the status.
+        the model auto-assigns a driver_code and the signal generates a QR code.
         """
         driver_user = User.objects.create_user(
             email="integration_nocode@test.com",
@@ -611,18 +631,15 @@ class TestApprovalRejectionMissingDriverCode(TestCase):
             status="pending",
             driver_code=None,  # No driver code
         )
+        _sign(profile)
 
-        # Attempt to approve without driver_code should raise ValueError
         profile.status = "approved"
-        with self.assertRaises(ValueError) as ctx:
-            profile.save()
+        profile.save()
 
-        self.assertIn("Driver Code must be assigned", str(ctx.exception))
-
-        # Verify status was reverted to pending
         profile.refresh_from_db()
-        self.assertEqual(profile.status, "pending")
-        self.assertIsNone(profile.qr_code_uuid)
+        self.assertEqual(profile.status, "approved")
+        self.assertIsNotNone(profile.driver_code)
+        self.assertIsNotNone(profile.qr_code_uuid)
 
 
 @override_settings(
@@ -678,7 +695,9 @@ class TestQRGenerationFailureWithUUIDCollision(TestCase):
 
         # Mock uuid.uuid4 at the module where it's used so it always
         # returns the colliding UUID
-        with patch(
+        # This test is about UUID collisions, not eligibility (the profile is
+        # deliberately pending), so the eligibility check is bypassed explicitly.
+        with patch.object(QRCodeService, "ensure_eligible", return_value=None), patch(
             "taxi.drivers.services.qr_service.uuid.uuid4",
             return_value=uuid.UUID(colliding_uuid),
         ):

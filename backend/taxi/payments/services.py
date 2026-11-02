@@ -135,6 +135,11 @@ def authorize_corporate_ride_payment(ride, discount_amount=0):
     return payment
 
 
+# Electronic methods: only a verified provider confirmation
+# (payments.provider_settlement) may mark these paid, never ride completion.
+PROVIDER_CONFIRMED_METHODS = {"card", "bank_account", "bankily", "masrvi", "seddad"}
+
+
 def capture_ride_payment(ride):
     payment = Payment.objects.filter(
         ride_id=ride.id,
@@ -144,7 +149,10 @@ def capture_ride_payment(ride):
     if not payment:
         return None
 
-    payment.status = "paid"
+    if payment.method in PROVIDER_CONFIRMED_METHODS:
+        payment.status = "pending_verification"
+    else:
+        payment.status = "paid"
     payment.transaction_id = payment.transaction_id or f"PAY-{uuid.uuid4()}"
     payment.save(update_fields=["status", "transaction_id"])
 

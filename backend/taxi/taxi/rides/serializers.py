@@ -409,6 +409,211 @@ class AdminRiderRideSerializer(serializers.ModelSerializer):
         return payment.status if payment else None
 
 
+class AdminDriverRideSerializer(serializers.ModelSerializer):
+    """Trimmed, read-only ride serializer for the admin driver ride-history endpoint.
+
+    Deliberately NOT derived from RideSerializer so that changes here never touch
+    the existing RideSerializer contract used by the mobile apps.
+    """
+
+    rider_name = serializers.SerializerMethodField()
+    rider_email = serializers.SerializerMethodField()
+    payment_status = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Ride
+        fields = [
+            "id",
+            "pickup",
+            "destination",
+            "rider_name",
+            "rider_email",
+            "status",
+            "fare",
+            "driver_earning",
+            "payment_status",
+            "created_at",
+            "completed_at",
+            "rating",
+            "driver_rating",
+        ]
+        read_only_fields = fields
+
+    def get_rider_name(self, obj):
+        if obj.rider:
+            return f"{obj.rider.first_name} {obj.rider.last_name}".strip() or None
+        return None
+
+    def get_rider_email(self, obj):
+        return obj.rider.email if obj.rider else None
+
+    def get_payment_status(self, obj):
+        # Reuse the latest-Payment lookup pattern from RideSerializer.get_payment_status.
+        # Import locally to avoid an import cycle (payments imports from rides).
+        try:
+            from payments.models import Payment
+
+            payment = (
+                Payment.objects.filter(ride_id=obj.id).order_by("-created_at").first()
+            )
+        except Exception:
+            return None
+        return payment.status if payment else None
+
+
+class AdminRideListSerializer(serializers.ModelSerializer):
+    """Trimmed, read-only ride row for the admin Rides Management table.
+
+    Deliberately NOT derived from RideSerializer so changes here never touch the
+    mobile app contract. Exposes operational columns only: no pickup PIN, no
+    precise coordinates (those stay on the live-ops surfaces), no documents.
+    """
+
+    rider_name = serializers.SerializerMethodField()
+    rider_email = serializers.SerializerMethodField()
+    driver_name = serializers.SerializerMethodField()
+    driver_email = serializers.SerializerMethodField()
+    payment_status = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Ride
+        fields = [
+            "id",
+            "status",
+            "ride_type",
+            "pickup",
+            "destination",
+            "rider_name",
+            "rider_email",
+            "driver_name",
+            "driver_email",
+            "distance_km",
+            "fare",
+            "app_fee",
+            "driver_earning",
+            "payment_status",
+            "created_at",
+            "scheduled_at",
+            "completed_at",
+            "cancelled_at",
+            "cancelled_by",
+            "cancellation_reason",
+            "rating",
+        ]
+        read_only_fields = fields
+
+    def _full_name(self, user):
+        if not user:
+            return None
+        return f"{user.first_name} {user.last_name}".strip() or None
+
+    def get_rider_name(self, obj):
+        return self._full_name(obj.rider)
+
+    def get_rider_email(self, obj):
+        return obj.rider.email if obj.rider else None
+
+    def get_driver_name(self, obj):
+        return self._full_name(obj.driver)
+
+    def get_driver_email(self, obj):
+        return obj.driver.email if obj.driver else None
+
+    def get_payment_status(self, obj):
+        # Reuse the latest-Payment lookup pattern used by the rider/driver twins.
+        try:
+            from payments.models import Payment
+
+            payment = Payment.objects.filter(ride_id=obj.id).order_by("-created_at").first()
+        except Exception:
+            return None
+        return payment.status if payment else None
+
+
+class AdminRideDetailSerializer(serializers.ModelSerializer):
+    """Read-only ride detail for the admin Rides drawer (adds timeline + ratings)."""
+
+    rider_name = serializers.SerializerMethodField()
+    rider_email = serializers.SerializerMethodField()
+    rider_phone = serializers.SerializerMethodField()
+    driver_name = serializers.SerializerMethodField()
+    driver_email = serializers.SerializerMethodField()
+    driver_phone = serializers.SerializerMethodField()
+    payment_status = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Ride
+        fields = [
+            "id",
+            "status",
+            "dispatch_status",
+            "ride_type",
+            "pickup",
+            "destination",
+            "rider_name",
+            "rider_email",
+            "rider_phone",
+            "driver_name",
+            "driver_email",
+            "driver_phone",
+            "distance_km",
+            "fare",
+            "app_fee",
+            "driver_earning",
+            "waiting_fee",
+            "cancellation_fee",
+            "payment_status",
+            "created_at",
+            "scheduled_at",
+            "driver_arrived_at",
+            "completed_at",
+            "cancelled_at",
+            "cancelled_by",
+            "cancellation_reason",
+            "cancellation_reason_details",
+            "rating",
+            "review",
+            "driver_rating",
+            "driver_review",
+        ]
+        read_only_fields = fields
+
+    def _full_name(self, user):
+        if not user:
+            return None
+        return f"{user.first_name} {user.last_name}".strip() or None
+
+    def get_rider_name(self, obj):
+        return self._full_name(obj.rider)
+
+    def get_rider_email(self, obj):
+        return obj.rider.email if obj.rider else None
+
+    def get_rider_phone(self, obj):
+        return getattr(obj.rider, "phone_number", None) if obj.rider else None
+
+    def get_driver_name(self, obj):
+        return self._full_name(obj.driver)
+
+    def get_driver_email(self, obj):
+        return obj.driver.email if obj.driver else None
+
+    def get_driver_phone(self, obj):
+        if not obj.driver:
+            return None
+        profile = getattr(obj.driver, "driver_profile", None)
+        return getattr(profile, "phone_number", None) or getattr(obj.driver, "phone_number", None)
+
+    def get_payment_status(self, obj):
+        try:
+            from payments.models import Payment
+
+            payment = Payment.objects.filter(ride_id=obj.id).order_by("-created_at").first()
+        except Exception:
+            return None
+        return payment.status if payment else None
+
+
 class RideStopSerializer(serializers.ModelSerializer):
     class Meta:
         model = RideStop
