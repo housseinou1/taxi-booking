@@ -532,7 +532,7 @@ describe("AcademyCenter", () => {
     const rate = kpi("Completion Rate");
     expect(rate.queryByText("0%")).not.toBeInTheDocument();
     expect(rate.getByText("\u2014")).toBeInTheDocument();
-    expect(rate.getByText(/rate is undefined/i)).toBeInTheDocument();
+    expect(rate.getByText(/completion rate not available/i)).toBeInTheDocument();
   });
 
   it("renders the audience table with every supported audience and its columns", async () => {

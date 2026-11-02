@@ -17,6 +17,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import authenticatedApi from "../../auth/authenticatedApi";
 import { API_URL } from "../../apiConfig";
 import "./ApprovalCenter.css";
+import useUrlTab from "../layouts/useUrlTab";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 const TABS = [
@@ -506,7 +507,7 @@ function ApprovalHistory() {
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 export default function ApprovalCenter() {
-  const [activeTab, setActiveTab] = useState("dashboard");
+  const [activeTab, setActiveTab] = useUrlTab(TABS.map((item) => item.key), "dashboard");
   const [stats, setStats] = useState({});
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);

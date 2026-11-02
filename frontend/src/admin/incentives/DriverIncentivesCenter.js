@@ -108,7 +108,7 @@ export default function DriverIncentivesCenter() {
     <div className="incentive-center">
       <header className="incentive-header">
         <div>
-          <p className="incentive-header__eyebrow">Phase 30 · Closed Beta</p>
+          <p className="incentive-header__eyebrow">Finance</p>
           {/* The shell owns the single page title ("Driver Incentives Center"). */}
           <p className="incentive-header__subtitle">Configurable campaigns, progress tracking, bonus calculation, and finance-approved payouts.</p>
         </div>

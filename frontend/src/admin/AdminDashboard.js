@@ -7,6 +7,7 @@ import AnalyticsDashboard from "./AnalyticsDashboard";
 import SafetyAdminPanel from "./SafetyAdminPanel";
 import HallOfFameAdminPanel from "./HallOfFameAdminPanel";
 import DeliveryAdminPanel from "../delivery/DeliveryAdminPanel";
+import AdminHomeOverview from "./home/AdminHomeOverview";
 import { fetchRidesFinancialSummary } from "./rides/ridesApi";
 import RidersManagement from "./riders/RidersManagement";
 import DriversManagement from "./drivers/DriversManagement";
@@ -342,6 +343,11 @@ function AdminDashboard({ embedded = false } = {}) {
   // Task 9A: optimized financial aggregate for the summary cards (separate from the
   // ride-history table, which keeps its own full list).
   const [financialSummary, setFinancialSummary] = useState(null);
+  // Per-resource load status so the home KPIs never show "0" before data arrives.
+  const [homeLoadStatus, setHomeLoadStatus] = useState({});
+  const markLoaded = useCallback((key, status) => {
+    setHomeLoadStatus((prev) => (prev[key] === status ? prev : { ...prev, [key]: status }));
+  }, []);
   const [withdrawals, setWithdrawals] = useState([]);
   const [cities, setCities] = useState([]);
   const [regions, setRegions] = useState([]);
@@ -423,31 +429,37 @@ function AdminDashboard({ embedded = false } = {}) {
     try {
       const res = await authenticatedApi.get(`${API_URL}/drivers/list/`);
       setDrivers(Array.isArray(res.data) ? res.data : []);
+      markLoaded("drivers", "ok");
     } catch (error) {
       console.error("Error fetching drivers:", error);
       setDrivers([]);
+      markLoaded("drivers", "error");
     }
-  }, []);
+  }, [markLoaded]);
 
   const fetchUsers = useCallback(async () => {
     try {
       const res = await authenticatedApi.get(`${API_URL}/auth/users/`);
       setUsers(Array.isArray(res.data) ? res.data : []);
+      markLoaded("users", "ok");
     } catch (error) {
       console.error("Error fetching users:", error);
       setUsers([]);
+      markLoaded("users", "error");
     }
-  }, []);
+  }, [markLoaded]);
 
   const fetchRides = useCallback(async () => {
     try {
       const res = await authenticatedApi.get(`${API_URL}/rides/history/`);
       setRides(Array.isArray(res.data) ? res.data : []);
+      markLoaded("rides", "ok");
     } catch (error) {
       console.error("Error fetching rides:", error);
       setRides([]);
+      markLoaded("rides", "error");
     }
-  }, []);
+  }, [markLoaded]);
 
   /**
    * Task 9A — the dashboard's financial summary cards read this bounded aggregate instead of
@@ -458,11 +470,13 @@ function AdminDashboard({ embedded = false } = {}) {
     try {
       const data = await fetchRidesFinancialSummary();
       setFinancialSummary(data || null);
+      markLoaded("summary", "ok");
     } catch (error) {
       console.error("Error fetching financial summary:", error);
       setFinancialSummary(null);
+      markLoaded("summary", "error");
     }
-  }, []);
+  }, [markLoaded]);
 
   const fetchWithdrawals = useCallback(async () => {
     try {
@@ -1389,7 +1403,7 @@ function AdminDashboard({ embedded = false } = {}) {
       </div>
       ) : null}
 
-      <div style={{ ...content, ...(isCompactLayout ? contentCompact : {}) }}>
+      <div style={embedded ? embeddedContentStyle : { ...content, ...(isCompactLayout ? contentCompact : {}) }}>
         {!embedded ? (
         <header style={{ ...topBarStyle, ...(isCompactLayout ? topBarCompactStyle : {}) }}>
           <div>
@@ -1410,6 +1424,7 @@ function AdminDashboard({ embedded = false } = {}) {
         </header>
         ) : null}
 
+        {embedded && page === "overview" ? null : (
         <div style={adminShortcutRowStyle} role="tablist" aria-label="Admin quick shortcuts">
           {adminQuickShortcuts.map((item) => {
             const active = page === item.key;
@@ -1430,27 +1445,47 @@ function AdminDashboard({ embedded = false } = {}) {
             );
           })}
         </div>
+        )}
 
-        <section style={{ ...opsHeroStyle, ...(isCompactLayout ? opsHeroCompactStyle : {}) }}>
-          <div>
-            <span style={opsKickerStyle}>Three app platform</span>
-            <h1 style={opsTitleStyle}>Admin operations center</h1>
-            <p style={opsSubtitleStyle}>
-              Monitor riders, drivers, dispatch, payments, and approvals from one place.
-            </p>
-          </div>
+        {embedded && page === "overview" ? (
+          <AdminHomeOverview
+            driversCount={homeLoadStatus.drivers === "ok" ? taxiDriverProfiles.length : null}
+            driversLoading={!homeLoadStatus.drivers}
+            ridersCount={homeLoadStatus.users === "ok" ? riders.length : null}
+            ridersLoading={!homeLoadStatus.users}
+            revenueValue={
+              summaryMoney
+                ? summaryMoney.total_revenue
+                : homeLoadStatus.summary === "error" && homeLoadStatus.rides === "ok"
+                ? fallbackRevenue
+                : null
+            }
+            revenueSource={summaryMoney ? "summary" : "rides"}
+            revenueLoading={!homeLoadStatus.summary || (homeLoadStatus.summary === "error" && !homeLoadStatus.rides)}
+            formatMoney={formatMoney}
+          />
+        ) : (
+          <section style={{ ...opsHeroStyle, ...(isCompactLayout ? opsHeroCompactStyle : {}) }}>
+            <div>
+              <span style={opsKickerStyle}>Three app platform</span>
+              <h1 style={opsTitleStyle}>Admin operations center</h1>
+              <p style={opsSubtitleStyle}>
+                Monitor riders, drivers, dispatch, payments, and approvals from one place.
+              </p>
+            </div>
 
-          <div style={opsStatsGridStyle}>
-            <StatCard title="Drivers" value={taxiDriverProfiles.length} />
-            <StatCard title="Delivery Drivers" value={deliveryDriverProfiles.length} />
-            <StatCard title="Riders" value={riders.length} />
-            <StatCard title="Online" value={onlineTaxiDrivers.length} />
-            <StatCard title="Active rides" value={activeRides.length} />
-            <StatCard title="Revenue" value={formatMoney(totalRevenue)} />
-          </div>
-        </section>
+            <div style={opsStatsGridStyle}>
+              <StatCard title="Drivers" value={taxiDriverProfiles.length} />
+              <StatCard title="Delivery Drivers" value={deliveryDriverProfiles.length} />
+              <StatCard title="Riders" value={riders.length} />
+              <StatCard title="Online" value={onlineTaxiDrivers.length} />
+              <StatCard title="Active rides" value={activeRides.length} />
+              <StatCard title="Revenue" value={formatMoney(totalRevenue)} />
+            </div>
+          </section>
+        )}
 
-        {page === "overview" && (
+        {!embedded && page === "overview" && (
           <div style={adminOverviewGridStyle}>
             <section style={card}>
               <SectionTitle
@@ -4388,6 +4423,11 @@ const sidebarCompact = {
   zIndex: 1000,
   overflowY: "auto",
   transition: "transform 0.28s cubic-bezier(0.4, 0, 0.2, 1)",
+};
+
+const embeddedContentStyle = {
+  padding: 0,
+  background: "transparent",
 };
 
 const contentCompact = {

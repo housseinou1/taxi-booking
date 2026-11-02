@@ -11,6 +11,7 @@ import {
 } from "./customerGrowthApi";
 import "../beta/BetaDashboard.css";
 import "./CustomerGrowthCenter.css";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 const TABS = [
   { id: "overview", label: "Overview" },
@@ -109,8 +110,8 @@ export default function CustomerGrowthCenter() {
     <div className="beta">
       <header className="beta__header">
         <div>
-          <p className="beta__eyebrow">Phase 33 · Production</p>
-          <h1>Customer Growth & Loyalty</h1>
+          <p className="beta__eyebrow">Growth &amp; Analytics</p>
+          <h1><AdminPageTitle>Customer Growth & Loyalty</AdminPageTitle></h1>
           <p className="beta__subtitle">Referrals, loyalty tiers, promotions, retention analytics, and campaign finance.</p>
         </div>
       </header>
@@ -135,9 +136,9 @@ export default function CustomerGrowthCenter() {
         <div className="beta__grid">
           <MetricCard label="Active riders (30d)" value={summary.active_riders_30d} />
           <MetricCard label="Repeat riders" value={summary.repeat_riders_30d} />
-          <MetricCard label="Retention rate" value={`${summary.retention_rate}%`} />
-          <MetricCard label="Churn rate" value={`${summary.churn_rate}%`} />
-          <MetricCard label="Referral rate" value={`${summary.referral_rate}%`} />
+          <MetricCard label="Retention rate" value={summary.retention_rate == null ? "—" : `${summary.retention_rate}%`} />
+          <MetricCard label="Churn rate" value={summary.churn_rate == null ? "—" : `${summary.churn_rate}%`} />
+          <MetricCard label="Referral rate" value={summary.referral_rate == null ? "—" : `${summary.referral_rate}%`} />
           <MetricCard label="Loyalty members" value={summary.loyalty_members} />
           <MetricCard label="Avg rides / customer" value={summary.avg_rides_per_customer} />
           <MetricCard label="Avg deliveries / customer" value={summary.avg_deliveries_per_customer} />
@@ -254,8 +255,8 @@ export default function CustomerGrowthCenter() {
         <>
           <div className="beta__grid">
             <MetricCard label="New riders (30d)" value={ceoData.new_riders_30d} />
-            <MetricCard label="Loyalty participation" value={`${ceoData.loyalty_participation_rate}%`} />
-            <MetricCard label="Referral conversion" value={`${ceoData.referral_conversion_rate}%`} />
+            <MetricCard label="Loyalty participation" value={ceoData.loyalty_participation_rate == null ? "—" : `${ceoData.loyalty_participation_rate}%`} />
+            <MetricCard label="Referral conversion" value={ceoData.referral_conversion_rate == null ? "—" : `${ceoData.referral_conversion_rate}%`} />
             <MetricCard label="Est. CLV" value={formatMoney(ceoData.estimated_customer_lifetime_value)} />
             <MetricCard label="Campaign ROI proxy" value={ceoData.campaign_roi_proxy} />
             <MetricCard label="Promo spend (30d)" value={formatMoney(ceoData.promo_spend_30d)} />

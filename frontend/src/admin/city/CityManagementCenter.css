@@ -15,6 +15,7 @@
   flex-wrap: wrap;
 }
 
+.cmc-header h1,
 .cmc-header h2 {
   margin: 0 0 4px;
   font-size: 1.35rem;

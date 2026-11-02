@@ -513,7 +513,7 @@ describe("FleetPerformanceCenter", () => {
 
     // Dashboard content still renders; only the vehicle block reports the failure.
     expect(screen.getByText("Total registered")).toBeInTheDocument();
-    expect(await screen.findByText("vehicles down")).toBeInTheDocument();
+    expect(await screen.findByText(/Could not reach the Yala backend to load vehicle directory/)).toBeInTheDocument();
   });
 });
 

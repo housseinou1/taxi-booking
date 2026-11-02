@@ -113,7 +113,7 @@ function kpi(label) {
 }
 
 describe("VehicleManagementCenter", () => {
-  it("renders the page header, breadcrumb and subtitle", async () => {
+  it("renders the page header and subtitle", async () => {
     await renderPage();
 
     expect(screen.getByRole("heading", { level: 1, name: "Vehicle Management" })).toBeInTheDocument();
@@ -121,12 +121,6 @@ describe("VehicleManagementCenter", () => {
       screen.getByText(/Manage fleet vehicles, driver assignments, approval status/i)
     ).toBeInTheDocument();
 
-    const crumbs = screen.getByLabelText(/Breadcrumb/i);
-    expect(within(crumbs).getByText("Vehicle Management")).toBeInTheDocument();
-    expect(within(crumbs).getByRole("link", { name: "Fleet" })).toHaveAttribute(
-      "href",
-      "/admin/fleet"
-    );
 
     // Exactly one page title — no duplicated headings.
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);

@@ -45,7 +45,7 @@ export default function InstallAppButton() {
   if (!installPrompt && !isIos) return null;
 
   return (
-    <div style={installWrapStyle}>
+    <div className="install-app-wrap" style={installWrapStyle}>
       <button onClick={installApp} style={installButtonStyle}>
         Install app
       </button>

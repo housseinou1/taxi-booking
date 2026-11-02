@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { apiErrorMessage } from "../layouts/errors/apiErrorMessage";
 
 import {
   StatusChip,
@@ -92,7 +93,7 @@ export default function EmployeeCardPanel({ employeeNumber, canManage, canAdmini
       if (err?.response?.status === 403) {
         setError("You are not authorized to view ID card history.");
       } else {
-        setError(err?.response?.data?.detail || err?.message || "Failed to load cards");
+        setError(apiErrorMessage(err, { resource: "employee ID cards" }));
       }
       setCards([]);
     } finally {

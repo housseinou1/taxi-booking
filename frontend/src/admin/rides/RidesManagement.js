@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import { AdminShellPage } from "../layouts/AdminShell";
+import { apiErrorMessage } from "../layouts/errors/apiErrorMessage";
 import { DataTable, KPICard } from "../components/library";
 import RideDetailsDrawer from "./RideDetailsDrawer";
 import { fetchAdminRideDetail, fetchAdminRides } from "./ridesApi";
@@ -116,7 +117,7 @@ export default function RidesManagement({ pathname = "/admin/rides" } = {}) {
         page_size: data.page_size || PAGE_SIZE,
       });
     } catch (err) {
-      setError(err?.response?.data?.detail || err?.message || "Could not load rides.");
+      setError(apiErrorMessage(err, { resource: "rides" }));
       setRows([]);
     } finally {
       setLoading(false);
@@ -169,19 +170,19 @@ export default function RidesManagement({ pathname = "/admin/rides" } = {}) {
       : `${summary.completed_fare} MRU`;
 
   return (
-    <AdminShellPage pathname={pathname} title="Rides Management">
+    <AdminShellPage pathname={pathname} title="Ride Management">
       <div className="admin-rides">
         <div className="admin-kpi-row">
-          <KPICard label="Total rides" value={summary?.total} loading={loading} error={error} onRefresh={load} />
-          <KPICard label="Active now" value={summary?.active} loading={loading} error={error} onRefresh={load} />
-          <KPICard label="Completed" value={summary?.completed} loading={loading} error={error} onRefresh={load} />
-          <KPICard label="Cancelled" value={summary?.cancelled} loading={loading} error={error} onRefresh={load} />
+          <KPICard label="Total rides" value={summary?.total} loading={loading} error={error ? "Unavailable" : ""} onRefresh={load} />
+          <KPICard label="Active now" value={summary?.active} loading={loading} error={error ? "Unavailable" : ""} onRefresh={load} />
+          <KPICard label="Completed" value={summary?.completed} loading={loading} error={error ? "Unavailable" : ""} onRefresh={load} />
+          <KPICard label="Cancelled" value={summary?.cancelled} loading={loading} error={error ? "Unavailable" : ""} onRefresh={load} />
           <KPICard
             label="Completed fare"
             value={fareValue}
             subtitle="Real completed-ride fares for the current filter"
             loading={loading}
-            error={error}
+            error={error ? "Unavailable" : ""}
             onRefresh={load}
           />
         </div>

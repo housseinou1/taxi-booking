@@ -24,6 +24,7 @@ import {
 import { subscribeOperationsUpdates } from "./opsSocket";
 import "./OperationsCenter.css";
 import "./OperationsControlCenter.css";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 const MODULES = [
   { id: "dispatch", label: "Live Dispatch" },
@@ -783,8 +784,7 @@ export default function OperationsControlCenter() {
     <div className="ops-center ops-ctrl">
       <header className="ops-center__header ops-ctrl__hero">
         <div>
-          <a className="ops-center__back-link" href="/admin">← Admin</a>
-          <h1>YALA Operations Control Center</h1>
+          <h1><AdminPageTitle>YALA Operations Control Center</AdminPageTitle></h1>
           <p>Unified dispatch, monitoring, incidents, support, fleet health, analytics, tasks & CEO command</p>
         </div>
         <div className="ops-center__status">

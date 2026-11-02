@@ -25,6 +25,7 @@
   gap: 16px;
 }
 
+.drivers-management__header h1,
 .drivers-management__header h2 {
   margin: 0 0 4px;
   font-size: 1.3rem;

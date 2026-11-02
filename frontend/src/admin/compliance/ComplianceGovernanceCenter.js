@@ -16,6 +16,7 @@ import {
 } from "./complianceGovernanceApi";
 import "../beta/BetaDashboard.css";
 import "./ComplianceGovernanceCenter.css";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 const TABS = [
   { id: "dashboard", label: "Compliance Dashboard" },
@@ -132,7 +133,7 @@ export default function ComplianceGovernanceCenter() {
     return (
       <>
         <div className="compliance-grid">
-          <MetricCard label="Overall Compliance Score" value={`${d.overall_compliance_score}%`} critical={d.overall_compliance_score < 70} />
+          <MetricCard label="Overall Compliance Score" value={d.overall_compliance_score == null ? "—" : `${d.overall_compliance_score}%`} critical={d.overall_compliance_score < 70} />
           <MetricCard label="Open Compliance Issues" value={d.open_compliance_issues} critical={d.open_compliance_issues > 0} />
           <MetricCard label="Expiring Licenses" value={d.expiring_licenses} critical />
           <MetricCard label="Expiring Insurance" value={d.expiring_insurance} critical />
@@ -363,7 +364,7 @@ export default function ComplianceGovernanceCenter() {
     return (
       <>
         <div className="compliance-grid">
-          <MetricCard label="Compliance Score" value={`${d.compliance_score}%`} critical={d.compliance_score < 70} />
+          <MetricCard label="Compliance Score" value={d.compliance_score == null ? "—" : `${d.compliance_score}%`} critical={d.compliance_score < 70} />
           <MetricCard label="Critical Risks" value={d.critical_risks} critical={d.critical_risks > 0} />
           <MetricCard label="Pending Merchants" value={d.outstanding_approvals?.pending_merchants} />
           <MetricCard label="Pending Drivers" value={d.outstanding_approvals?.pending_drivers} />
@@ -446,7 +447,7 @@ export default function ComplianceGovernanceCenter() {
     <div className="beta__container">
       <header className="beta__header">
         <div>
-          <h1 className="beta__title">Compliance & Governance Center</h1>
+          <h1 className="beta__title"><AdminPageTitle>Compliance & Governance Center</AdminPageTitle></h1>
           <p className="beta__subtitle">
             Regulatory compliance, audits, policies, risk register, calendar, and governance dashboard.
           </p>

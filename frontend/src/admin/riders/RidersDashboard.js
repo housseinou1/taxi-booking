@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import { API_URL } from "../../apiConfig";
 import { apiRequest } from "../../delivery/DeliveryShared";
+import { describeLoadFailure } from "../layouts/errors/apiErrorMessage";
 import { AlertBanner, KPICard, StatusChip, formatTimestamp } from "../components/library";
 import "../components/library/adminDashboardViews.css";
 
@@ -66,7 +67,7 @@ export default function RidersDashboard() {
       setPayload(await fetchAllRiders());
     } catch (err) {
       setPayload(null);
-      setError(err?.message || "Unable to load the riders dashboard.");
+      setError(describeLoadFailure(err, { resource: "riders dashboard" }));
     } finally {
       setLoading(false);
     }

@@ -17,6 +17,7 @@ import {
 import { subscribeOperationsUpdates } from "./opsSocket";
 import { usePermissions } from "../permissions/PermissionContext";
 import "./OperationsCenter.css";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 const TABS = [
   { id: "overview", label: "Overview" },
@@ -338,7 +339,7 @@ export default function OperationsCenter() {
     <div className="ops-center">
       <header className="ops-page__header">
         <div className="ops-page__heading">
-          <h1 className="ops-page__title">Real-Time Operations Center</h1>
+          <h1 className="ops-page__title"><AdminPageTitle>Real-Time Operations Center</AdminPageTitle></h1>
           <p className="ops-page__subtitle">
             Live dispatch, fleet monitoring and operational intelligence across YALA
             Technologies.

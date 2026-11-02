@@ -4,6 +4,7 @@ import { formatMoney } from "../../marketConfig";
 import { exportGrowthReport, fetchGrowthDashboard } from "./growthApi";
 import "../beta/BetaDashboard.css";
 import "./GrowthExpansionDashboard.css";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 const TABS = [
   { id: "growth", label: "Growth Metrics" },
@@ -104,7 +105,7 @@ export default function GrowthExpansionDashboard() {
     <div className="beta">
       <header className="beta__header">
         <div>
-          <h1>Growth & Expansion Dashboard</h1>
+          <h1><AdminPageTitle>Growth & Expansion Dashboard</AdminPageTitle></h1>
           <p className="beta__subtitle">CEO view — platform growth, revenue, marketing, and expansion</p>
         </div>
         <div className="growth-toolbar">

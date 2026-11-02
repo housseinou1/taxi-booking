@@ -8,6 +8,7 @@ import {
   updateSupportTicket,
 } from "./supportApi";
 import "../beta/BetaDashboard.css";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 const CATEGORY_OPTIONS = [
   "emergency",
@@ -112,12 +113,9 @@ export default function BetaFeedbackCenter() {
 
   return (
     <div className="beta">
-      <a href="/admin" className="beta__back">
-        ← Admin
-      </a>
       <div className="beta__header">
         <div>
-          <h1 className="beta__title">Support Center</h1>
+          <h1 className="beta__title"><AdminPageTitle>Support Center</AdminPageTitle></h1>
           <p className="beta__subtitle">In-app support queue for rider, driver, and delivery closed beta</p>
         </div>
         <button type="button" className="beta__btn" onClick={load}>

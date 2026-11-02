@@ -12,6 +12,7 @@ import {
 } from "./smartPricingApi";
 import "../beta/BetaDashboard.css";
 import "./SmartPricingDispatchCenter.css";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 const TABS = [
   { id: "dispatch", label: "Intelligent Dispatch" },
@@ -133,7 +134,7 @@ export default function SmartPricingDispatchCenter() {
     <div className="beta">
       <header className="beta__header">
         <div>
-          <h1>Smart Pricing & Dispatch Engine</h1>
+          <h1><AdminPageTitle>Smart Pricing & Dispatch Engine</AdminPageTitle></h1>
           <p className="beta__subtitle">Intelligent dispatch, dynamic pricing, surge, and analytics</p>
         </div>
         <div className="smart-pricing-toolbar">

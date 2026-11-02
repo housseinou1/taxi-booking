@@ -14,8 +14,8 @@ function resolveTheme(mode) {
 }
 
 export function AdminThemeProvider({ children }) {
-  const [mode, setModeState] = useState(() => localStorage.getItem(STORAGE_KEY) || "dark");
-  const [resolved, setResolved] = useState(() => resolveTheme(localStorage.getItem(STORAGE_KEY) || "dark"));
+  const [mode, setModeState] = useState(() => localStorage.getItem(STORAGE_KEY) || "light");
+  const [resolved, setResolved] = useState(() => resolveTheme(localStorage.getItem(STORAGE_KEY) || "light"));
 
   const setMode = useCallback((next) => {
     setModeState(next);

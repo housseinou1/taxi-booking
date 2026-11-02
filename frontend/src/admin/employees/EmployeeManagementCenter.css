@@ -1,4 +1,4 @@
-/* Employee Management Center â€” scoped styles.
+/* Employee Management Center — scoped styles.
    Reuses existing admin design tokens (admin-lib-btn, admin-chip, admin-table*,
    admin-field, beta__*). Only employee-specific layout classes are defined
    here, all prefixed `emp-`. No new fonts/colors are introduced. */
@@ -295,8 +295,8 @@
   }
 }
 
-/* â”€â”€ Employee ID card: preview faces + true-size printing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
- * The faces are laid out at exact CR80 size (85.60 Ã— 53.98 mm) so the on-screen
+/* â”€â”€ Employee ID card: preview faces + true-size printing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€─
+ * The faces are laid out at exact CR80 size (85.60 × 53.98 mm) so the on-screen
  * preview matches the generated PDF, and printing is 1:1 on a card printer or an
  * office printer (never stretched to A4/Letter).
  */
@@ -498,7 +498,7 @@
   box-shadow: 0 0 0 0.15mm rgba(255, 255, 255, 0.55);
 }
 
-/* â”€â”€ Back face: fit the slogan band inside the fixed CR80 height â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+/* â”€â”€ Back face: fit the slogan band inside the fixed CR80 height â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€─
    The back body was already close to its height budget, and the 5.4mm slogan band is
    absorbed by shrinking the body (flex: 1 / min-height: 0). These rules tighten the BACK
    FACE ONLY so the notice bullets are never clipped by the card's overflow: hidden. The
@@ -535,7 +535,7 @@
   font-size: 1.7mm;
 }
 
-/* â”€â”€ Printing: both faces at true CR80 size, nothing else on the page â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* â”€â”€ Printing: both faces at true CR80 size, nothing else on the page â”€â”€â”€â”€â”€â”€â”€â”€─ */
 
 @page {
   size: 85.6mm 53.98mm;
@@ -619,7 +619,7 @@
   line-height: 1.2;
 }
 
-/* Employee signature block on the card front â€” sits below the identity details */
+/* Employee signature block on the card front — sits below the identity details */
 .emp-idcard__signature {
   display: flex;
   flex-direction: column;
@@ -637,7 +637,7 @@
 .emp-idcard__signature img {
   max-height: 6mm;
   max-width: 22mm;
-  object-fit: contain; /* preserve original proportions â€” never stretched */
+  object-fit: contain; /* preserve original proportions — never stretched */
   align-self: flex-start;
 }
 
@@ -691,7 +691,7 @@
   color: #334155;
 }
 
-/* â”€â”€ Attendance Management (office + remote) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* â”€â”€ Attendance Management (office + remote) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€─ */
 .attendance__head {
   display: flex;
   justify-content: space-between;

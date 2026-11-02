@@ -31,6 +31,13 @@ import {
   updateSupportTicket,
 } from "./supportCenterApi";
 import "../finance/FinanceDashboard.css";
+import { readUrlParam } from "../layouts/useUrlTab";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
+
+function allowedParam(name, allowed, fallback) {
+  const value = readUrlParam(name);
+  return value && allowed.includes(value) ? value : fallback;
+}
 
 const SAVED_VIEWS_KEY = "yala.support.savedViews";
 
@@ -58,14 +65,14 @@ export default function SupportCenter() {
   const [loadMs, setLoadMs] = useState(null);
   const [lastRefresh, setLastRefresh] = useState(null);
   const [search, setSearch] = useState("");
-  const [filters, setFilters] = useState({
-    queue: "open",
+  const [filters, setFilters] = useState(() => ({
+    queue: allowedParam("queue", QUEUE_TABS, "open"),
     app: "",
-    category: "",
+    category: allowedParam("category", CATEGORY_OPTIONS, ""),
     severity: "",
     owner_id: "",
     sort: "sla",
-  });
+  }));
   const [detail, setDetail] = useState(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [reply, setReply] = useState("");
@@ -238,7 +245,7 @@ export default function SupportCenter() {
     <div className="fin-dash">
       <header className="fin-dash__header">
         <div>
-          <h1 className="fin-dash__title">Customer Support Center</h1>
+          <h1 className="fin-dash__title"><AdminPageTitle>Customer Support Center</AdminPageTitle></h1>
           <p className="fin-dash__subtitle">
             Tickets, SLA, lost property, and agent workspace
             {lastRefresh ? ` · Updated ${lastRefresh.toLocaleTimeString()}` : ""}

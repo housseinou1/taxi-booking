@@ -1,0 +1,22 @@
+.sv-muted { color: var(--admin-text-muted, #94a3b8); font-size: 0.82rem; }
+.sv-scalar { font-variant-numeric: tabular-nums; }
+.sv-badge { display: inline-flex; padding: 1px 8px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; }
+.sv-badge--yes { color: #6ee7b7; background: rgba(16, 185, 129, 0.15); }
+.sv-badge--no { color: #cbd5e1; background: rgba(148, 163, 184, 0.14); }
+.sv-facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; margin: 0; }
+.sv-facts--nested { grid-template-columns: 1fr; gap: 4px; margin-top: 6px; }
+.sv-facts__item { padding: 10px 12px; border-radius: 10px; border: 1px solid var(--admin-border, #e2e8f0); background: rgba(15, 23, 42, 0.35); min-width: 0; }
+.sv-facts--nested .sv-facts__item { padding: 6px 10px; display: flex; justify-content: space-between; gap: 10px; }
+.sv-facts dt { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--admin-text-muted, #64748b); }
+.sv-facts dd { margin: 2px 0 0; font-weight: 700; overflow-wrap: anywhere; }
+.sv-facts--nested dd { margin: 0; font-weight: 600; }
+.sv-table-wrap { overflow-x: auto; }
+.sv-table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+.sv-table th { text-align: left; padding: 8px 10px; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--admin-text-muted, #64748b); border-bottom: 1px solid var(--admin-border, #e2e8f0); white-space: nowrap; }
+.sv-table td { padding: 8px 10px; border-bottom: 1px solid rgba(148, 163, 184, 0.12); vertical-align: top; }
+.sv-table--compact { margin-top: 6px; font-size: 0.78rem; }
+.sv-list { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+.sv-details summary { cursor: pointer; color: #6ee7b7; font-weight: 600; font-size: 0.8rem; }
+.sv-change { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.sv-change__old { color: #fca5a5; text-decoration: line-through; }
+.sv-change__new { color: #6ee7b7; font-weight: 600; }

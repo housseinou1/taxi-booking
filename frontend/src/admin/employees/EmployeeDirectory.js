@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { apiErrorMessage } from "../layouts/errors/apiErrorMessage";
 
 import {
   DataTable,
@@ -74,7 +75,7 @@ export default function EmployeeDirectory({ reloadKey = 0, notify, onSelectEmplo
         setError("You are not authorized to view the employee directory.");
         notifyRef.current?.("danger", "You are not authorized to view the employee directory.");
       } else {
-        setError(err?.response?.data?.detail || err?.message || "Failed to load employees");
+        setError(apiErrorMessage(err, { resource: "employees" }));
       }
       setRows([]);
       setCount(0);

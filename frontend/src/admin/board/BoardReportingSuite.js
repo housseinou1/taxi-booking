@@ -14,6 +14,8 @@ import {
 } from "./boardReportingApi";
 import "../beta/BetaDashboard.css";
 import "./BoardReportingSuite.css";
+import StructuredValue from "../components/library/data/StructuredValue";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 const TABS = [
   { id: "executive", label: "Executive Summary" },
@@ -43,7 +45,7 @@ function MetricCard({ label, value, sub, critical = false }) {
   return (
     <div className={`beta__card ${critical ? "board-report-critical" : ""}`}>
       <div className="beta__card-label">{label}</div>
-      <div className="beta__card-value">{value ?? "�"}</div>
+      <div className="beta__card-value">{value ?? "—"}</div>
       {sub ? <div className="beta__card-sub">{sub}</div> : null}
     </div>
   );
@@ -101,7 +103,7 @@ export default function BoardReportingSuite() {
           <MetricCard label="GMV" value={formatMoney(s.gmv_mru)} sub={s.period} />
           <MetricCard label="Completed Rides" value={s.completed_rides} />
           <MetricCard label="Completed Deliveries" value={s.completed_deliveries} />
-          <MetricCard label="Cancellation Rate" value={`${s.cancellation_rate_pct}%`} />
+          <MetricCard label="Cancellation Rate" value={s.cancellation_rate_pct == null ? "—" : `${s.cancellation_rate_pct}%`} />
           <MetricCard label="Active Riders" value={s.active_riders} />
           <MetricCard label="Active Drivers" value={s.active_drivers} />
         </div>
@@ -128,11 +130,11 @@ export default function BoardReportingSuite() {
         <MetricCard label="Active Riders" value={k.active_riders} />
         <MetricCard label="Active Drivers" value={k.active_drivers} />
         <MetricCard label="Active Couriers" value={k.active_couriers} />
-        <MetricCard label="Driver Retention" value={`${k.driver_retention_pct}%`} />
-        <MetricCard label="Customer Retention" value={`${k.customer_retention_pct}%`} />
+        <MetricCard label="Driver Retention" value={k.driver_retention_pct == null ? "—" : `${k.driver_retention_pct}%`} />
+        <MetricCard label="Customer Retention" value={k.customer_retention_pct == null ? "—" : `${k.customer_retention_pct}%`} />
         <MetricCard label="Avg Order Value" value={formatMoney(k.average_order_value_mru)} />
         <MetricCard label="Avg Ride Fare" value={formatMoney(k.average_ride_fare_mru)} />
-        <MetricCard label="Revenue Growth" value={`${k.revenue_growth_pct}%`} />
+        <MetricCard label="Revenue Growth" value={k.revenue_growth_pct == null ? "—" : `${k.revenue_growth_pct}%`} />
       </div>
     );
   };
@@ -178,18 +180,18 @@ export default function BoardReportingSuite() {
           <MetricCard label="Completed Deliveries" value={delivery.completed} />
           <MetricCard label="Cancelled Deliveries" value={delivery.cancelled} />
           <MetricCard label="Open Incidents" value={incident.open_count} critical={incident.open_count > 0} />
-          <MetricCard label="Platform Uptime" value={`${o.platform_uptime_pct}%`} />
+          <MetricCard label="Platform Uptime" value={o.platform_uptime_pct == null ? "—" : `${o.platform_uptime_pct}%`} />
         </div>
         <Section title="Safety Metrics">
           <div className="board-report-grid">
             <MetricCard label="Safety Score" value={o.safety_metrics?.safety_score} />
             <MetricCard label="Open Safety Incidents" value={o.safety_metrics?.open_incidents} critical={(o.safety_metrics?.open_incidents || 0) > 0} />
             <MetricCard label="Emergency Alerts (24h)" value={o.safety_metrics?.emergency_alerts_24h} />
-            <MetricCard label="Avg Resolution (hrs)" value={o.safety_metrics?.avg_resolution_hours ?? "�"} />
+            <MetricCard label="Avg Resolution (hrs)" value={o.safety_metrics?.avg_resolution_hours ?? "—"} />
           </div>
         </Section>
         <Section title="Support Metrics">
-          <pre className="board-report-pre">{JSON.stringify(o.support_metrics || {}, null, 2)}</pre>
+          <StructuredValue value={o.support_metrics} emptyLabel="No support metrics reported." />
         </Section>
       </>
     );
@@ -210,13 +212,13 @@ export default function BoardReportingSuite() {
           <MetricCard label="Driver Referrals" value={g.referral_growth?.driver_referrals_month} />
         </div>
         <Section title="Marketing Campaign Results">
-          <pre className="board-report-pre">{JSON.stringify(g.marketing_campaign_results || {}, null, 2)}</pre>
+          <StructuredValue value={g.marketing_campaign_results} emptyLabel="No campaign results reported." />
         </Section>
         <Section title="Top Cities">
           <ul className="board-report-list">
             {(g.city_growth || []).map((c) => (
               <li key={c.id || c.city_id}>
-                {c.name} � {c.completed_rides} rides
+                {c.name} — {c.completed_rides} rides
               </li>
             ))}
           </ul>
@@ -287,7 +289,7 @@ export default function BoardReportingSuite() {
           <ul className="board-report-list">
             {(s.new_city_readiness || []).map((city, idx) => (
               <li key={idx}>
-                {city.name} � {city.ready ? "Ready" : "Not Ready"}: {city.demand_signal}
+                {city.name} — {city.ready ? "Ready" : "Not Ready"}: {city.demand_signal}
               </li>
             ))}
           </ul>
@@ -348,7 +350,7 @@ export default function BoardReportingSuite() {
     <div className="beta__container">
       <header className="beta__header">
         <div>
-          <h1 className="beta__title">Board & Investor Reporting Suite</h1>
+          <h1 className="beta__title"><AdminPageTitle>Board & Investor Reporting Suite</AdminPageTitle></h1>
           <p className="beta__subtitle">
             Board-ready reports across executive, KPIs, financial, operational, growth, risk, and strategy.
           </p>
@@ -356,7 +358,7 @@ export default function BoardReportingSuite() {
       </header>
 
       {error ? <p className="beta__error">{error}</p> : null}
-      {loading && !data ? <p>Loading board reports�</p> : null}
+      {loading && !data ? <p>Loading board reports…</p> : null}
 
       <div className="board-report-controls">
         <label htmlFor="period-select">Period:</label>

@@ -12,6 +12,9 @@ const LABELS = {
   analytics: "Analytics",
   system: "System",
   "ceo-master": "CEO Command",
+  "ceo-control": "CEO Control",
+  "ai-operations": "AI Operations",
+  hr: "HR",
   "ops-control": "Operations Center",
   "operations-control": "Operations Center",
   operations: "Operations Center",
@@ -59,8 +62,10 @@ export default function AdminBreadcrumbs({ items = [] }) {
             <li key={item.path || item.label}>
               {isLast ? (
                 <span aria-current="page">{item.label}</span>
-              ) : (
+              ) : item.path ? (
                 <a href={item.path}>{item.label}</a>
+              ) : (
+                <span>{item.label}</span>
               )}
             </li>
           );

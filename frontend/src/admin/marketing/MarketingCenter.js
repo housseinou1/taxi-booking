@@ -25,6 +25,7 @@ import {
   updateCampaign,
 } from "./marketingCenterApi";
 import "../finance/FinanceDashboard.css";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 export default function MarketingCenter() {
   const { canEdit, cityId } = usePermissions();
@@ -194,7 +195,7 @@ export default function MarketingCenter() {
     <div className="fin-dash">
       <header className="fin-dash__header">
         <div>
-          <h1 className="fin-dash__title">Marketing Center</h1>
+          <h1 className="fin-dash__title"><AdminPageTitle>Marketing Center</AdminPageTitle></h1>
           <p className="fin-dash__subtitle">
             Campaigns, promotions, audiences, and performance
             {lastRefresh ? ` · Updated ${lastRefresh.toLocaleTimeString()}` : ""}

@@ -11,6 +11,8 @@ import {
   REPORT_TYPES,
 } from "./financeOpsApi";
 import "./FinanceOperationsCenter.css";
+import { ChangeSummary } from "../components/library/data/StructuredValue";
+import useUrlTab from "../layouts/useUrlTab";
 
 /**
  * Finance Operations Center (/admin/finance-ops).
@@ -138,7 +140,7 @@ function downloadBlob(response, filename) {
 }
 
 export default function FinanceOperationsCenter() {
-  const [tab, setTab] = useState("reconciliation");
+  const [tab, setTab] = useUrlTab(TABS.map((item) => item.id), "reconciliation");
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -226,7 +228,7 @@ export default function FinanceOperationsCenter() {
     event.preventDefault();
     setTab(TABS[nextIndex].id);
     tabRefs.current[nextIndex]?.focus();
-  }, []);
+  }, [setTab]);
 
   const reconciliation = data?.reconciliation;
   const totals = reconciliation?.totals || {};
@@ -1155,18 +1157,9 @@ export default function FinanceOperationsCenter() {
         render: (row) => (row.amount ? formatMoney(row.amount) : "—"),
       },
       {
-        id: "before",
-        label: "Before",
-        render: (row) => (
-          <span className="finance-audit-before">{JSON.stringify(row.before ?? "—")}</span>
-        ),
-      },
-      {
-        id: "after",
-        label: "After",
-        render: (row) => (
-          <span className="finance-audit-after">{JSON.stringify(row.after ?? "—")}</span>
-        ),
+        id: "change",
+        label: "Change",
+        render: (row) => <ChangeSummary before={row.before} after={row.after} />,
       },
       { id: "summary", label: "Summary" },
     ];

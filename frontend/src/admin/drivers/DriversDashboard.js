@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 
 import { API_URL } from "../../apiConfig";
 import { apiRequest } from "../../delivery/DeliveryShared";
+import { describeLoadFailure } from "../layouts/errors/apiErrorMessage";
 import { AlertBanner, KPICard, StatusChip, formatTimestamp } from "../components/library";
 import "../components/library/adminDashboardViews.css";
 
@@ -73,7 +74,7 @@ export default function DriversDashboard() {
     // queued driver list can never leave the cards on skeletons.
     fetchFleet("/operations/fleet/overview/")
       .then((payload) => setOverview(payload?.overview || {}))
-      .catch((err) => setError(err?.message || "Unable to load the drivers dashboard."))
+      .catch((err) => setError(describeLoadFailure(err, { resource: "drivers dashboard" })))
       .finally(() => setLoadingOverview(false));
 
     fetchFleet("/operations/fleet/drivers/")

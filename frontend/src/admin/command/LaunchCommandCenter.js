@@ -13,6 +13,8 @@ import {
 } from "./launchCommandApi";
 import "../beta/BetaDashboard.css";
 import "./LaunchCommandCenter.css";
+import { ChangeSummary } from "../components/library/data/StructuredValue";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 const TABS = [
   { id: "live", label: "Live Operations" },
@@ -232,7 +234,7 @@ export default function LaunchCommandCenter() {
     <div className="beta">
       <header className="beta__header">
         <div>
-          <h1>Operations Command Center</h1>
+          <h1><AdminPageTitle>Operations Command Center</AdminPageTitle></h1>
           <p className="beta__subtitle">Daily operations for managers and CEO oversight</p>
         </div>
         <div className="command-toolbar">
@@ -522,8 +524,7 @@ export default function LaunchCommandCenter() {
                 <th>Timestamp</th>
                 <th>User</th>
                 <th>Action</th>
-                <th>Before</th>
-                <th>After</th>
+                <th>Change</th>
                 <th>Summary</th>
               </tr>
             </thead>
@@ -533,8 +534,7 @@ export default function LaunchCommandCenter() {
                   <td>{new Date(entry.timestamp).toLocaleString()}</td>
                   <td>{entry.user}</td>
                   <td>{entry.action}</td>
-                  <td>{JSON.stringify(entry.before ?? "—")}</td>
-                  <td>{JSON.stringify(entry.after ?? "—")}</td>
+                  <td><ChangeSummary before={entry.before} after={entry.after} /></td>
                   <td>{entry.summary}</td>
                 </tr>
               ))}

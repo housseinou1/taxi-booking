@@ -8,6 +8,7 @@ import React, { useCallback, useEffect, useState } from "react";
 
 import { fetchOpsDashboard } from "./opsDashboardApi";
 import "./ExecutiveCommandCenter.css";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 // ─── Tabs ────────────────────────────────────────────────────────────────────
 
@@ -213,7 +214,7 @@ export default function ExecutiveCommandCenter() {
   return (
     <div className="ecc">
       <header className="ecc__header">
-        <h1 className="ecc__title">Executive Command Center</h1>
+        <h1 className="ecc__title"><AdminPageTitle>Executive Command Center</AdminPageTitle></h1>
         <p className="ecc__subtitle">Security · Audit · Support · Documents · Actions</p>
       </header>
 

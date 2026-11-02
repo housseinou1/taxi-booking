@@ -34,7 +34,7 @@ export function apiErrorMessage(error, { resource = "records", action = "load" }
     return `Access denied. Your role is not permitted to ${action} ${resource}.`;
   }
   if (status === 404) {
-    return `The ${resource} endpoint was not found on this backend (HTTP 404). This is a configuration problem, not missing data.`;
+    return `The ${resource} service is not available on this server yet (HTTP 404). No data is shown rather than placeholder figures.`;
   }
   if (status === 429) {
     return "Too many requests. Wait a moment and try again.";
@@ -46,6 +46,17 @@ export function apiErrorMessage(error, { resource = "records", action = "load" }
   }
   if (detail) return detail;
   return `The ${resource} could not be ${action === "load" ? "loaded" : `${action}ed`} (HTTP ${status}).`;
+}
+
+/**
+ * Same wording for helpers that throw `Error("Request failed (HTTP 404).")` instead of an
+ * axios error, so raw transport text never reaches the page.
+ */
+export function describeLoadFailure(error, options = {}) {
+  if (error?.response) return apiErrorMessage(error, options);
+  const status = /HTTP (\d{3})/.exec(error?.message || "")?.[1];
+  if (status) return apiErrorMessage({ response: { status: Number(status) } }, options);
+  return error?.message || apiErrorMessage(error, options);
 }
 
 export default apiErrorMessage;

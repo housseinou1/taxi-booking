@@ -11,6 +11,7 @@ import {
   updateIncident,
 } from "./launchApi";
 import "./LaunchHub.css";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 const TABS = [
   { id: "control", label: "Launch Control" },
@@ -136,10 +137,9 @@ export default function LaunchHub() {
 
   return (
     <div className="launch">
-      <a href="/admin" className="launch__back">← Admin</a>
       <div className="launch__header">
         <div>
-          <h1 className="launch__title">Launch Control Center</h1>
+          <h1 className="launch__title"><AdminPageTitle>Launch Control Center</AdminPageTitle></h1>
           <p className="launch__subtitle">Commercial launch preparation — Mauritania</p>
         </div>
         <Traffic status={control?.platform_status} label="Platform" />

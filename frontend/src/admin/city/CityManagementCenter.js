@@ -20,6 +20,7 @@ import {
   updateCityPricing,
 } from "./cityManagementApi";
 import "./CityManagementCenter.css";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 /**
  * City Management — Yala Admin → CEO Command Center.
@@ -302,7 +303,7 @@ export default function CityManagementCenter() {
     <div className="cmc-root">
       <header className="cmc-header">
         <div>
-          <h2>City Management</h2>
+          <h1><AdminPageTitle>City Management</AdminPageTitle></h1>
           <p>
             Register and operate cities dynamically across Mauritania. Adding a city never
             requires a source change or a redeploy, and a new city is never live until the
@@ -332,10 +333,11 @@ export default function CityManagementCenter() {
 
       {!schemaReady && (
         <div className="cmc-banner cmc-banner-warn">
-          <strong>Migration pending.</strong> City registration, editing, activation,
-          reporting and auditing work now. Independent service activation, city pricing and
-          service areas need <code>{requiresMigration || "cities.0005_city_management"}</code>{" "}
-          to be applied. Nothing is live until you authorize it.
+          <strong>Database update pending.</strong> City registration, editing, activation,
+          reporting and auditing are available now. Per-city service activation, pricing and
+          service areas become available once the pending database update
+          <span title={requiresMigration || "cities.0005_city_management"}> has been applied</span>{" "}
+          by the technical team. Nothing changes until you authorize it.
         </div>
       )}
 

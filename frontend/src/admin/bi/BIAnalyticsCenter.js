@@ -11,6 +11,8 @@ import {
 } from "./biAnalyticsApi";
 import "../beta/BetaDashboard.css";
 import "./BIAnalyticsCenter.css";
+import StructuredValue from "../components/library/data/StructuredValue";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 const TABS = [
   { id: "overview", label: "Data Warehouse Overview" },
@@ -241,7 +243,7 @@ export default function BIAnalyticsCenter() {
           <MetricCard label="Predictive Alerts" value={(p.predictive_alerts || []).length} />
         </div>
         <Section title="Driver Supply Forecast">
-          <pre className="bi-pre">{JSON.stringify(p.driver_supply_forecast || {}, null, 2)}</pre>
+          <StructuredValue value={p.driver_supply_forecast} emptyLabel="No driver supply forecast available." />
         </Section>
         <Section title="Peak Hours">
           <ul className="bi-list">
@@ -302,7 +304,7 @@ export default function BIAnalyticsCenter() {
     <div className="beta__container">
       <header className="beta__header">
         <div>
-          <h1 className="beta__title">Business Intelligence & Data Warehouse</h1>
+          <h1 className="beta__title"><AdminPageTitle>Business Intelligence & Data Warehouse</AdminPageTitle></h1>
           <p className="beta__subtitle">
             Unified analytics layer for operational, financial, and predictive insights.
           </p>

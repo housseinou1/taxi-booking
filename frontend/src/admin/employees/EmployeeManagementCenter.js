@@ -9,6 +9,8 @@ import EmployeeRegistrationForm from "./EmployeeRegistrationForm";
 import EmployeeProfile from "./EmployeeProfile";
 import "../beta/BetaDashboard.css";
 import "./EmployeeManagementCenter.css";
+import useUrlTab from "../layouts/useUrlTab";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 const TABS = [
   { id: "directory", label: "Directory" },
@@ -16,7 +18,7 @@ const TABS = [
 ];
 
 function EmployeeManagementCenterInner() {
-  const [tab, setTab] = useState("directory");
+  const [tab, setTab] = useUrlTab(TABS.map((item) => item.id), "directory");
   const [selectedEmployeeNumber, setSelectedEmployeeNumber] = useState(null);
   // Bump to force the directory to reload after a mutation (register/edit).
   const [directoryReloadKey, setDirectoryReloadKey] = useState(0);
@@ -45,7 +47,7 @@ function EmployeeManagementCenterInner() {
     setSelectedEmployeeNumber(null);
     setTab("directory");
     setDirectoryReloadKey((key) => key + 1);
-  }, []);
+  }, [setTab]);
 
   if (selectedEmployeeNumber) {
     return (
@@ -66,7 +68,7 @@ function EmployeeManagementCenterInner() {
     <div className="beta emp-center">
       <div className="beta__header">
         <div>
-          <h1 className="beta__title">Employee Management Center</h1>
+          <h1 className="beta__title"><AdminPageTitle>Employee Management Center</AdminPageTitle></h1>
           <p className="beta__subtitle">
             Directory, registration, profiles, ID cards, and photographs
           </p>

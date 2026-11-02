@@ -30,6 +30,8 @@ import {
   requestExitPermission,
   writePerformanceReview,
 } from "./hrApi";
+import useUrlTab from "../layouts/useUrlTab";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 /**
  * Employee HR Management Center (Phase 3).
@@ -97,7 +99,7 @@ function message(error) {
 
 
 export default function HrManagementCenter() {
-  const [tab, setTab] = useState("exit");
+  const [tab, setTab] = useUrlTab(TABS.map((item) => item.id), "exit");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -180,7 +182,7 @@ export default function HrManagementCenter() {
     <div className="hr-center">
       <header className="hr-center__head">
         <div>
-          <h2>HR Management</h2>
+          <h1><AdminPageTitle>HR Management</AdminPageTitle></h1>
           <p className="hr-center__sub">
             Human-driven HR workflows. Nothing is approved, disciplined, scored or paid
             automatically — every change is a named, audited action.

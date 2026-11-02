@@ -12,6 +12,7 @@ import {
   setMaintenanceMode,
 } from "./executiveApi";
 import "./ExecutiveDashboard.css";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 const PERIODS = [
   { id: "daily", label: "Daily" },
@@ -283,8 +284,7 @@ export default function ExecutiveDashboard() {
     <div className="executive">
       <div className="executive__header">
         <div>
-          <a href="/admin" className="executive__back-link">← Back to Admin</a>
-          <h1>Yala Executive Operations</h1>
+          <h1><AdminPageTitle>Yala Executive Operations</AdminPageTitle></h1>
           <p>CEO · Finance · Operations — live platform monitoring</p>
         </div>
         <div className="executive__toolbar">

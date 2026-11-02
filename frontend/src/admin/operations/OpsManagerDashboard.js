@@ -51,6 +51,7 @@ import {
 } from "./opsDashboardMappers";
 import { useOpsDashboardData } from "./useOpsDashboardData";
 import "./OpsManagerDashboard.css";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 const RIDE_STATUS_OPTIONS = [
   { value: "", label: "All active statuses" },
@@ -259,7 +260,7 @@ export default function OpsManagerDashboard() {
     <div className={`ops-md ${mapFullscreen ? "ops-md--map-fullscreen" : ""}`.trim()}>
       <header className="ops-md__header">
         <div>
-          <h1 className="ops-md__title">Operations Control Center</h1>
+          <h1 className="ops-md__title"><AdminPageTitle>Operations Control Center</AdminPageTitle></h1>
           <p className="ops-md__subtitle">
             Real-time supervision of rides, drivers, deliveries, and incidents
             {lastRefresh ? ` · Updated ${lastRefresh.toLocaleTimeString()}` : ""}

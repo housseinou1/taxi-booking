@@ -63,6 +63,7 @@ import {
   sumAudienceTotals,
 } from "./academyUi";
 import "./AcademyCenter.css";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 /**
  * YALA Academy Center - training, certification and compliance management.
@@ -116,7 +117,7 @@ const REPORT_PERIODS = [
 function RateMeter({ pct }) {
   if (pct === null || pct === undefined) {
     return (
-      <span className="acad-rate acad-rate--idle" title="No learners enrolled - rate is undefined">
+      <span className="acad-rate acad-rate--idle" title="No learners enrolled — completion rate not available">
         <span className="acad-rate__value">{DASH}</span>
       </span>
     );
@@ -665,7 +666,7 @@ export default function AcademyCenter() {
       setLearningDashboard(learnData);
       setEnrollments(myEnrollments || []);
       setCerts(myCerts || []);
-      setAvailable(availableCourses || []);
+      setAvailable(Array.isArray(availableCourses) ? availableCourses : []);
     } catch (err) {
       setError(err?.response?.data?.detail || err?.message || "Failed to load academy data");
       setLoading(false);
@@ -1148,7 +1149,7 @@ export default function AcademyCenter() {
               unit={completion === null ? undefined : "%"}
               sub={
                 completion === null
-                  ? "No enrolments yet - rate is undefined"
+                  ? "No enrolments yet — completion rate not available"
                   : `${formatCount(dashboard?.completed)} of ${formatCount(
                       dashboard?.total_enrollments
                     )} enrolments completed`
@@ -2533,7 +2534,7 @@ export default function AcademyCenter() {
               unit={completionRate === null ? undefined : "%"}
               sub={
                 completionRate === null
-                  ? "No enrolments match - rate is undefined"
+                  ? "No matching enrolments — completion rate not available"
                   : "Completed share of the filtered enrolments"
               }
               icon={"\uD83D\uDCC8"}
@@ -2834,7 +2835,7 @@ export default function AcademyCenter() {
     <div className="fleet-center acad-center">
       <header className="fleet-center__header">
         <div className="fleet-center__heading">
-          <h1 className="fleet-center__title">YALA Academy</h1>
+          <h1 className="fleet-center__title"><AdminPageTitle>YALA Academy</AdminPageTitle></h1>
           <p className="fleet-center__subtitle">
             Training, professional development, certification, and compliance management.
           </p>

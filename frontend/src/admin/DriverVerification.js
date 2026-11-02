@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { API_URL } from "../apiConfig";
+import { AdminPageTitle } from "./layouts/AdminPageHeading";
 
 function DriverVerification({ onBack }) {
   const [drivers, setDrivers] = useState([]);
@@ -70,7 +71,7 @@ function DriverVerification({ onBack }) {
     <div style={page}>
       <button onClick={onBack}>← Back</button>
 
-      <h1>🪪 Driver Verification</h1>
+      <h1><AdminPageTitle>🪪 Driver Verification</AdminPageTitle></h1>
 
       {loading ? (
         <p>Loading drivers...</p>
