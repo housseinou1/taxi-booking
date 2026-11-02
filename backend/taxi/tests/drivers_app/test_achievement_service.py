@@ -346,35 +346,37 @@ class TestRewardPointsAccumulation:
 
 
 class TestOnRideCompleted:
-    """Tests for on_ride_completed() - the main trigger after ride completion."""
+    """Tests for on_ride_completed() - the main trigger after ride completion.
+
+    NOTE (architecture): point awards moved to RewardsService, which calls
+    AchievementService for milestone evaluation only. These tests therefore assert
+    milestone evaluation, not point awarding. Point awarding is covered by
+    TestRewardsServicePointAwards below.
+    """
 
     @patch.object(AchievementService, "evaluate_all_milestones")
-    @patch.object(AchievementService, "award_ride_completion_points")
-    def test_awards_points_and_evaluates_milestones(
-        self, mock_award_points, mock_evaluate, service, mock_driver_profile
+    def test_evaluates_milestones_without_awarding_points(
+        self, mock_evaluate, service, mock_driver_profile
     ):
-        """on_ride_completed awards points and evaluates all milestones."""
-        mock_award_points.return_value = POINTS_PER_COMPLETED_RIDE
+        """on_ride_completed evaluates milestones; points come from RewardsService."""
         mock_evaluate.return_value = []
         mock_driver_profile.reward_points = POINTS_PER_COMPLETED_RIDE
 
         result = service.on_ride_completed(mock_driver_profile)
 
-        mock_award_points.assert_called_once_with(mock_driver_profile)
         mock_evaluate.assert_called_once_with(mock_driver_profile)
-        assert result["points_awarded"] == POINTS_PER_COMPLETED_RIDE
+        # AchievementService must NOT award points itself (RewardsService owns that).
+        assert result["points_awarded"] == 0
         assert result["new_achievements"] == []
         assert result["total_points"] == mock_driver_profile.reward_points
 
     @patch.object(AchievementService, "evaluate_all_milestones")
-    @patch.object(AchievementService, "award_ride_completion_points")
     def test_returns_new_achievements(
-        self, mock_award_points, mock_evaluate, service, mock_driver_profile
+        self, mock_evaluate, service, mock_driver_profile
     ):
         """on_ride_completed returns newly unlocked achievements."""
         mock_achievement = MagicMock()
         mock_achievement.code = "first_ride"
-        mock_award_points.return_value = POINTS_PER_COMPLETED_RIDE
         mock_evaluate.return_value = [mock_achievement]
         mock_driver_profile.reward_points = POINTS_PER_COMPLETED_RIDE
 
@@ -385,49 +387,61 @@ class TestOnRideCompleted:
 
 
 class TestOnRideRated:
-    """Tests for on_ride_rated() - trigger after a ride receives a rating."""
+    """Tests for on_ride_rated() - trigger after a ride receives a rating.
+
+    NOTE (architecture): rating points are awarded by RewardsService. This service
+    evaluates rating-based achievements (5-star streak, excellent rating) only.
+    """
 
     @patch.object(AchievementService, "ensure_achievements_exist")
+    @patch.object(AchievementService, "check_excellent_rating")
     @patch.object(AchievementService, "check_five_star_streak")
-    @patch.object(AchievementService, "award_high_rating_points")
-    def test_awards_points_for_high_rating(
-        self, mock_award, mock_streak, mock_ensure, service, mock_driver_profile
+    def test_no_points_awarded_for_high_rating(
+        self, mock_streak, mock_excellent, mock_ensure, service, mock_driver_profile
     ):
-        """on_ride_rated awards points for 4+ star rating."""
-        mock_award.return_value = POINTS_PER_HIGH_RATING
+        """on_ride_rated does not award points itself (RewardsService does)."""
         mock_streak.return_value = None
+        mock_excellent.return_value = None
         mock_driver_profile.reward_points = POINTS_PER_HIGH_RATING
 
         result = service.on_ride_rated(mock_driver_profile, 4)
 
-        mock_award.assert_called_once_with(mock_driver_profile, 4)
-        assert result["points_awarded"] == POINTS_PER_HIGH_RATING
+        mock_streak.assert_not_called()  # streak only checked for 5 stars
+        assert result["points_awarded"] == 0
+        assert result["new_achievements"] == []
 
     @patch.object(AchievementService, "ensure_achievements_exist")
+    @patch.object(AchievementService, "check_excellent_rating")
     @patch.object(AchievementService, "check_five_star_streak")
-    @patch.object(AchievementService, "award_high_rating_points")
     def test_checks_streak_on_5_star(
-        self, mock_award, mock_streak, mock_ensure, service, mock_driver_profile
+        self, mock_streak, mock_excellent, mock_ensure, service, mock_driver_profile
     ):
         """on_ride_rated checks 5-star streak when rating is 5."""
-        mock_award.return_value = POINTS_PER_HIGH_RATING
         mock_streak.return_value = MagicMock(code="five_star_streak_10")
+        mock_excellent.return_value = None
         mock_driver_profile.reward_points = POINTS_PER_HIGH_RATING
 
         result = service.on_ride_rated(mock_driver_profile, 5)
 
         mock_streak.assert_called_once_with(mock_driver_profile)
         assert len(result["new_achievements"]) == 1
+        assert result["points_awarded"] == 0
 
     @patch.object(AchievementService, "ensure_achievements_exist")
+    @patch.object(AchievementService, "check_excellent_rating")
     @patch.object(AchievementService, "check_five_star_streak")
-    @patch.object(AchievementService, "award_high_rating_points")
     def test_no_streak_check_for_non_5_star(
-        self, mock_award, mock_streak, mock_ensure, service, mock_driver_profile
+        self, mock_streak, mock_excellent, mock_ensure, service, mock_driver_profile
     ):
         """on_ride_rated does not check streak for ratings below 5."""
-        mock_award.return_value = POINTS_PER_HIGH_RATING
+        mock_excellent.return_value = None
         mock_driver_profile.reward_points = POINTS_PER_HIGH_RATING
+
+        result = service.on_ride_rated(mock_driver_profile, 3)
+
+        mock_streak.assert_not_called()
+        assert result["points_awarded"] == 0
+
 
         result = service.on_ride_rated(mock_driver_profile, 4)
 
@@ -467,3 +481,100 @@ class TestGetRewardPointsBalance:
         """Returns 0 for a new driver with no points."""
         mock_driver_profile.reward_points = 0
         assert service.get_reward_points_balance(mock_driver_profile) == 0
+
+
+@pytest.mark.django_db
+class TestRewardsServicePointAwards:
+    """Regression coverage: RewardsService is what actually awards reward points.
+
+    These tests run against the database (no mocks for the point ledger) so that
+    a silent failure to award points is caught — the exact regression that made
+    completed rides award 0 points.
+    """
+
+    def _profile(self, email):
+        from authapp.models import User
+        from taxi.drivers.models import DriverProfile
+
+        user = User.objects.create_user(
+            email=email, password="x-Strong-Pass-1", user_type="driver"
+        )
+        return DriverProfile.objects.create(user=user, status="approved")
+
+    def _ride(self, profile):
+        """A real completed Ride (reference_ride is a real FK, not a mock)."""
+        from authapp.models import User
+        from taxi.rides.models import Ride
+
+        rider = User.objects.create_user(
+            email=f"rider-{profile.user_id}@test.local",
+            password="x-Strong-Pass-1",
+            user_type="rider",
+        )
+        return Ride.objects.create(
+            rider=rider,
+            driver=profile.user,
+            pickup="Pickup A",
+            destination="Destination B",
+            distance_km="3.00",
+            status="completed",
+            completed_at=timezone.now(),
+        )
+
+    def test_completed_ride_awards_points_and_writes_ledger(self):
+        from taxi.drivers.models import DriverPointTransaction
+        from taxi.drivers.services.rewards_service import POINTS, RewardsService
+
+        profile = self._profile("rewards-complete@test.local")
+        ride = self._ride(profile)
+
+        result = RewardsService().on_ride_completed(ride, profile)
+
+        expected = POINTS.get("ride_complete", 10)
+        assert result["points_awarded"] >= expected
+        profile.refresh_from_db()
+        # The awarded total (base + any bonus categories) must reach the ledger.
+        assert profile.reward_points == result["total_points"]
+        assert profile.reward_points >= expected
+        assert DriverPointTransaction.objects.filter(
+            driver=profile, category="ride_complete"
+        ).exists()
+
+    def test_five_star_rating_awards_points(self):
+        from taxi.drivers.models import DriverPointTransaction
+        from taxi.drivers.services.rewards_service import POINTS, RewardsService
+
+        profile = self._profile("rewards-rated@test.local")
+        ride = self._ride(profile)
+
+        result = RewardsService().on_ride_rated(ride, profile, 5)
+
+        expected = POINTS.get("five_star_rating", 5)
+        assert result["points_awarded"] == expected
+        profile.refresh_from_db()
+        assert profile.reward_points == expected
+        assert DriverPointTransaction.objects.filter(
+            driver=profile, category="five_star_rating"
+        ).exists()
+
+    def test_low_rating_awards_no_points(self):
+        from taxi.drivers.services.rewards_service import RewardsService
+
+        profile = self._profile("rewards-lowrating@test.local")
+        ride = self._ride(profile)
+
+        result = RewardsService().on_ride_rated(ride, profile, 3)
+
+        assert result["points_awarded"] == 0
+        profile.refresh_from_db()
+        assert profile.reward_points == 0
+
+    def test_points_never_go_negative(self):
+        from taxi.drivers.services.rewards_service import RewardsService
+
+        profile = self._profile("rewards-negative@test.local")
+        RewardsService().on_driver_cancellation(profile)
+
+        profile.refresh_from_db()
+        assert profile.reward_points == 0
+

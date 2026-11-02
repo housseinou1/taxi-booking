@@ -46,9 +46,14 @@ TEST_CHANNEL_LAYERS = {
 class RideConsumerConnectionTests(TestCase):
     """Test WebSocket connection and group management."""
 
-    @pytest.fixture(autouse=True)
-    def _setup(self):
-        pass
+    def setUp(self):
+        self._ride_consumer_patcher = patch.object(
+            RideConsumer, "_user_can_access_ride", new=AsyncMock(return_value=True)
+        )
+        self._ride_consumer_patcher.start()
+
+    def tearDown(self):
+        self._ride_consumer_patcher.stop()
 
     async def _create_communicator(self, user=None):
         """Create a WebSocket communicator with optional authenticated user."""
@@ -63,10 +68,10 @@ class RideConsumerConnectionTests(TestCase):
 
     @pytest.mark.asyncio
     async def test_connect_anonymous(self):
-        """Anonymous users can connect and join the shared rides group."""
+        """Anonymous users are rejected from connecting."""
         communicator = await self._create_communicator()
         connected, _ = await communicator.connect()
-        assert connected is True
+        assert connected is False
         await communicator.disconnect()
 
     @pytest.mark.asyncio
@@ -113,6 +118,15 @@ class RideConsumerConnectionTests(TestCase):
 @override_settings(CHANNEL_LAYERS=TEST_CHANNEL_LAYERS)
 class RideConsumerInboundTests(TestCase):
     """Test inbound message handling."""
+
+    def setUp(self):
+        self._ride_consumer_patcher = patch.object(
+            RideConsumer, "_user_can_access_ride", new=AsyncMock(return_value=True)
+        )
+        self._ride_consumer_patcher.start()
+
+    def tearDown(self):
+        self._ride_consumer_patcher.stop()
 
     async def _create_connected_communicator(self, user=None):
         """Create and connect a WebSocket communicator."""
@@ -253,7 +267,8 @@ class RideConsumerInboundTests(TestCase):
     @pytest.mark.asyncio
     async def test_backward_compatible_broadcast(self):
         """Unknown message types are broadcast to the shared rides group (backward compat)."""
-        communicator = await self._create_connected_communicator()
+        user = MagicMock(is_authenticated=True, is_staff=True, id=1)
+        communicator = await self._create_connected_communicator(user=user)
 
         # Send a message with an unknown type
         await communicator.send_json_to(
@@ -269,6 +284,15 @@ class RideConsumerInboundTests(TestCase):
 @override_settings(CHANNEL_LAYERS=TEST_CHANNEL_LAYERS)
 class RideConsumerOutboundTests(TestCase):
     """Test outbound event handlers."""
+
+    def setUp(self):
+        self._ride_consumer_patcher = patch.object(
+            RideConsumer, "_user_can_access_ride", new=AsyncMock(return_value=True)
+        )
+        self._ride_consumer_patcher.start()
+
+    def tearDown(self):
+        self._ride_consumer_patcher.stop()
 
     async def _create_connected_communicator(self, user=None):
         """Create and connect a WebSocket communicator."""
@@ -506,6 +530,15 @@ class RideConsumerOutboundTests(TestCase):
 @override_settings(CHANNEL_LAYERS=TEST_CHANNEL_LAYERS)
 class RideConsumerUtilityFunctionTests(TestCase):
     """Test utility functions for sending messages from backend services."""
+
+    def setUp(self):
+        self._ride_consumer_patcher = patch.object(
+            RideConsumer, "_user_can_access_ride", new=AsyncMock(return_value=True)
+        )
+        self._ride_consumer_patcher.start()
+
+    def tearDown(self):
+        self._ride_consumer_patcher.stop()
 
     @pytest.mark.asyncio
     async def test_send_ride_request_to_driver(self):

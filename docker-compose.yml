@@ -26,6 +26,7 @@ services:
              daphne -b 0.0.0.0 -p 8000 taxi.asgi:application"
     volumes:
       - ./backend/taxi/media:/app/media
+      - ./backend/taxi/protected_media:/app/protected_media
     env_file:
       - ./backend/taxi/.env.production
     environment:
@@ -61,6 +62,7 @@ services:
     command: daphne -b 0.0.0.0 -p 8000 taxi.asgi:application
     volumes:
       - ./backend/taxi/media:/app/media
+      - ./backend/taxi/protected_media:/app/protected_media
     env_file:
       - ./backend/taxi/.env.production
     environment:
@@ -85,6 +87,7 @@ services:
     command: daphne -b 0.0.0.0 -p 8000 taxi.asgi:application
     volumes:
       - ./backend/taxi/media:/app/media
+      - ./backend/taxi/protected_media:/app/protected_media
     env_file:
       - ./backend/taxi/.env.production
     environment:

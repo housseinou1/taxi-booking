@@ -502,3 +502,84 @@ def serialize_merchant_signature(merchant, request=None):
         "requires_resign": merchant_requires_resign(merchant),
         "current_terms_version": MERCHANT_TERMS_VERSION,
     }
+
+
+# ---------------------------------------------------------------------------
+# Shared approval gate
+#
+# Every route that can move a DriverProfile to status="approved" must call
+# approval_signature_block() BEFORE writing. Drivers and couriers share the
+# DriverProfile table but sign DIFFERENT agreements stored in DIFFERENT fields,
+# so the rule is selected by `kind`:
+#   - "driver"  -> driver_has_complete_signature  (driver_* fields)
+#   - "courier" -> courier_has_complete_signature (courier fields)
+# The existing completeness rules are reused unchanged. A signature that is
+# already complete is accepted as-is: no new signature is ever required.
+# ---------------------------------------------------------------------------
+
+APPROVAL_SIGNATURE_KINDS = ("driver", "courier")
+
+
+def has_valid_approval_signature(profile, kind: str = "driver") -> bool:
+    """True when `profile` holds a complete signature for the given `kind`."""
+    if kind == "driver":
+        return driver_has_complete_signature(profile)
+    if kind == "courier":
+        return courier_has_complete_signature(profile)
+    raise ValueError(f"Unknown approval signature kind: {kind!r}")
+
+
+def approval_signature_block(profile, kind: str = "driver", request=None):
+    """Return None when approval may proceed, else a JSON-serializable error body.
+
+    Callers return the body with HTTP 400 (or count it as a blocked item in bulk
+    flows) and must not modify the profile in that case.
+    """
+    if has_valid_approval_signature(profile, kind):
+        return None
+    label = "Courier" if kind == "courier" else "Driver"
+    serializer = serialize_courier_signature if kind == "courier" else serialize_driver_signature
+    return {
+        "error": f"{label} electronic signature is incomplete. Cannot approve.",
+        "code": f"{kind}_signature_required",
+        "legal_signature": serializer(profile, request),
+    }
+
+
+
+# ---------------------------------------------------------------------------
+# Verification QR eligibility
+#
+# A driver may hold/receive an active verification QR code, and be reported as
+# "verified" to a rider, only when BOTH are true:
+#   1. DriverProfile.status == "approved"
+#   2. the driver e-signature is complete (existing driver_has_complete_signature)
+# Used by QR generation, QR regeneration (API + Django admin) and QR scanning.
+# Reads only; it never changes a profile.
+# ---------------------------------------------------------------------------
+
+QR_INELIGIBLE_NOT_APPROVED = "driver_not_approved"
+QR_INELIGIBLE_UNSIGNED = "driver_signature_required"
+
+
+def qr_ineligibility_reason(profile):
+    """Return None when `profile` may hold a verification QR, else a reason code."""
+    if profile is None or getattr(profile, "status", None) != "approved":
+        return QR_INELIGIBLE_NOT_APPROVED
+    if not driver_has_complete_signature(profile):
+        return QR_INELIGIBLE_UNSIGNED
+    return None
+
+
+def is_qr_eligible(profile) -> bool:
+    return qr_ineligibility_reason(profile) is None
+
+
+QR_INELIGIBLE_MESSAGES = {
+    QR_INELIGIBLE_NOT_APPROVED: "Driver must be approved to receive a verification QR code.",
+    QR_INELIGIBLE_UNSIGNED: (
+        "Driver electronic signature is incomplete. "
+        "A verification QR code cannot be issued."
+    ),
+}
+

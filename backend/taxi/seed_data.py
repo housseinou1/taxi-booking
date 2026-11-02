@@ -8,6 +8,16 @@ import random
 from datetime import timedelta
 from decimal import Decimal
 
+# ── Seed passwords come from the environment; otherwise a random per-run value ──
+# (never a shared default, never printed — set the variable to choose a known password)
+import os as _cred_os
+import secrets as _cred_secrets
+
+
+def _seed_password(name):
+    return _cred_os.environ.get(name) or _cred_secrets.token_urlsafe(18)
+
+
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "taxi.settings")
 
 import django
@@ -66,7 +76,7 @@ for r in RIDERS:
         },
     )
     if created:
-        user.set_password("Test1234!")
+        user.set_password(_seed_password("YALA_SEED_DEFAULT_PASSWORD"))
         user.save()
     rider_users.append(user)
     print(f"  {'Created' if created else 'Exists'}: {user.email}")
@@ -86,7 +96,7 @@ for d in DRIVERS:
         },
     )
     if created:
-        user.set_password("Test1234!")
+        user.set_password(_seed_password("YALA_SEED_DEFAULT_PASSWORD"))
         user.save()
     driver_users.append(user)
 
@@ -210,8 +220,8 @@ print(f"  Active rides:    {Ride.objects.filter(status__in=['requested','driver_
 print(f"  Payments:        {Payment.objects.count()}")
 print(f"  Total revenue:   {sum(r.fare for r in completed_rides)} MRU")
 print("=" * 60)
-print("\nLogin credentials (all passwords: Test1234!):")
-print("  Admin:   admin@sakho.com / Admin123!")
+print("\nLogin accounts (password: $YALA_SEED_DEFAULT_PASSWORD, or a random per-run value if unset; never printed):")
+print("  Admin:   admin@sakho.com (existing account; password not shown)")
 for r in RIDERS:
     print(f"  Rider:   {r['email']}")
 for d in DRIVERS:

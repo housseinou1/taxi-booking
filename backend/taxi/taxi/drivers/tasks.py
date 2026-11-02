@@ -11,7 +11,11 @@ import logging
 from celery import shared_task
 from django.core.management import call_command
 
-from taxi.drivers.services.qr_service import QRCodeService, QRGenerationError
+from taxi.drivers.services.qr_service import (
+    QRCodeService,
+    QRGenerationError,
+    QRIneligibleDriverError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +61,15 @@ def generate_qr_code_task(self, driver_profile_id: int) -> None:
             qr_uuid,
             driver_profile_id,
         )
+    except QRIneligibleDriverError as exc:
+        # Not a generation failure: the driver is simply not eligible (not
+        # approved or not e-signed). Do NOT revert status and do NOT retry.
+        logger.warning(
+            "generate_qr_code_task: DriverProfile id=%s not eligible for a QR code (%s).",
+            driver_profile_id,
+            exc.code,
+        )
+        return
     except QRGenerationError as exc:
         logger.error(
             "generate_qr_code_task: QR generation failed for DriverProfile id=%s: %s",

@@ -324,6 +324,41 @@ class DocumentService:
 
         return results
 
+    def get_expiring_documents_bulk(
+        self, drivers, days: int = EXPIRATION_WARNING_DAYS
+    ) -> dict:
+        """
+        Same result as get_expiring_documents() for many drivers in one query.
+
+        Returns {driver_profile_id: [document dicts]}; every requested driver has a key.
+        Documents are ordered by id within each driver.
+        """
+        today = date.today()
+        warning_date = today + timedelta(days=days)
+        driver_ids = [driver.id for driver in drivers]
+        results = {driver_id: [] for driver_id in driver_ids}
+        if not driver_ids:
+            return results
+
+        expiring_docs = DriverDocument.objects.filter(
+            driver_id__in=driver_ids,
+            expires_at__isnull=False,
+            expires_at__gte=today,
+            expires_at__lte=warning_date,
+            status="approved",
+        ).order_by("driver_id", "id")
+
+        for doc in expiring_docs:
+            results[doc.driver_id].append(
+                {
+                    "id": doc.id,
+                    "document_type": doc.document_type,
+                    "expires_at": doc.expires_at,
+                    "days_remaining": self.get_days_until_expiry(doc),
+                }
+            )
+        return results
+
     def get_days_until_expiry(self, document: DriverDocument) -> Optional[int]:
         """
         Calculate the number of days remaining until a document expires.

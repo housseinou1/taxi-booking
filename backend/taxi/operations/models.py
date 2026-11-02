@@ -311,6 +311,7 @@ class MarketingCampaign(models.Model):
         ("draft", "Draft"),
         ("scheduled", "Scheduled"),
         ("active", "Active"),
+        ("paused", "Paused"),
         ("completed", "Completed"),
         ("cancelled", "Cancelled"),
     ]
@@ -404,8 +405,11 @@ class BetaFeedback(models.Model):
         ("emergency", "Emergency"),
         ("ride", "Ride Issue"),
         ("payment", "Payment Issue"),
+        ("refund", "Refund"),
         ("driver", "Driver Issue"),
         ("rider", "Rider Issue"),
+        ("safety", "Safety"),
+        ("lost_property", "Lost Property"),
         ("gps", "GPS Issue"),
         ("bug", "App Bug"),
         ("suggestion", "Suggestion"),
@@ -416,7 +420,9 @@ class BetaFeedback(models.Model):
         ("store", "Store Issue"),
         ("delivery", "Delivery Issue"),
         ("crash", "Crash"),
-        ("account", "Account"),
+        ("account", "Account Access"),
+        ("promotion", "Promotion"),
+        ("technical", "Technical Problem"),
         ("ui", "UI/UX"),
         ("performance", "Performance"),
         ("other", "Other"),
@@ -428,10 +434,23 @@ class BetaFeedback(models.Model):
         ("P3", "P3 — Low"),
     ]
     STATUS_CHOICES = [
-        ("open", "Open"),
-        ("assigned", "Assigned"),
-        ("waiting", "Waiting"),
+        ("open", "Open / New"),
+        ("assigned", "Open"),
+        ("waiting", "Waiting for Customer"),
+        ("waiting_internal", "Waiting for Internal Team"),
+        ("escalated", "Escalated"),
         ("resolved", "Resolved"),
+        ("closed", "Closed"),
+        ("reopened", "Reopened"),
+    ]
+    LOST_PROPERTY_STATUS_CHOICES = [
+        ("", "N/A"),
+        ("reported", "Reported"),
+        ("driver_contacted", "Driver Contacted"),
+        ("item_found", "Item Found"),
+        ("return_arranged", "Return Arranged"),
+        ("returned", "Returned"),
+        ("not_found", "Not Found"),
         ("closed", "Closed"),
     ]
 
@@ -463,6 +482,26 @@ class BetaFeedback(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     first_response_at = models.DateTimeField(null=True, blank=True)
     resolved_at = models.DateTimeField(null=True, blank=True)
+
+    # ── Support workspace fields ──────────────────────────────────────────────
+    # These columns already exist in the database (operations migration 0014
+    # "sprint7_support_marketing"). They were missing from this model, which made
+    # the support workspace unusable and left Django wanting to DROP the columns.
+    # Restored here so the model matches the applied schema.
+    conversation = models.JSONField(default=list, blank=True)
+    internal_notes = models.TextField(blank=True, default="")
+    resolution_code = models.CharField(max_length=64, blank=True, default="")
+    escalated_at = models.DateTimeField(null=True, blank=True)
+    escalated_to = models.CharField(max_length=64, blank=True, default="")
+    sla_first_response_due = models.DateTimeField(null=True, blank=True)
+    sla_resolution_due = models.DateTimeField(null=True, blank=True)
+    lost_property_status = models.CharField(
+        max_length=30,
+        choices=LOST_PROPERTY_STATUS_CHOICES,
+        blank=True,
+        default="",
+    )
+    reopen_count = models.PositiveIntegerField(default=0)
 
     class Meta:
         ordering = ["-created_at"]
@@ -762,3 +801,125 @@ class ComplianceCalendarEvent(models.Model):
     def __str__(self):
         return f"{self.title} ({self.due_date})"
 
+
+
+class OpsShiftHandover(models.Model):
+    """Shift handover between two operations staff members.
+
+    Restored: the table and all columns exist in the database (operations
+    migration 0012 "ops_shift_handover"), but this model had been dropped, which
+    broke ``operations/ops_handover_service.py`` and left Django wanting to drop
+    the table.
+    """
+
+    STATUS_CHOICES = [
+        ("draft", "Draft"),
+        ("submitted", "Submitted"),
+        ("acknowledged", "Acknowledged"),
+        ("closed", "Closed"),
+    ]
+
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default="draft", db_index=True
+    )
+    city_id = models.IntegerField(null=True, blank=True, db_index=True)
+    open_incidents_summary = models.TextField(blank=True, default="")
+    delayed_rides_summary = models.TextField(blank=True, default="")
+    drivers_attention_summary = models.TextField(blank=True, default="")
+    payment_system_concerns = models.TextField(blank=True, default="")
+    pending_escalations = models.TextField(blank=True, default="")
+    important_notes = models.TextField(blank=True, default="")
+    follow_up_notes = models.TextField(blank=True, default="")
+    snapshot = models.JSONField(default=dict, blank=True)
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    acknowledged_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    incoming_operator = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="ops_handovers_incoming",
+    )
+    outgoing_operator = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="ops_handovers_outgoing",
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["status", "created_at"], name="operations__status_d41a7a_idx"),
+        ]
+
+    def __str__(self):
+        return f"Handover #{self.pk} ({self.status})"
+
+
+class DriverDisciplinaryAction(models.Model):
+    """Disciplinary record for a driver.
+
+    Restored: the table exists in the database (operations migration 0013
+    "sprint6_finance_driver_ops") but this model had been dropped.
+    """
+
+    ACTION_TYPE_CHOICES = [
+        ("warning", "Warning"),
+        ("temporary_suspension", "Temporary Suspension"),
+        ("permanent_suspension", "Permanent Suspension"),
+        ("reactivation", "Reactivation"),
+        ("appeal_note", "Appeal Note"),
+        ("internal_note", "Internal Note"),
+    ]
+    STATUS_CHOICES = [
+        ("active", "Active"),
+        ("appealed", "Appealed"),
+        ("overturned", "Overturned"),
+        ("closed", "Closed"),
+    ]
+
+    action_type = models.CharField(
+        max_length=40, choices=ACTION_TYPE_CHOICES, db_index=True
+    )
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default="active", db_index=True
+    )
+    reason = models.TextField()
+    duration_days = models.PositiveIntegerField(null=True, blank=True)
+    appeal_notes = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="issued_disciplinary_actions",
+    )
+    driver = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="disciplinary_actions",
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            # Field order matches the applied migration (0013_sprint6_finance_driver_ops)
+            # so the model stays in sync with the live schema without a DB change.
+            models.Index(
+                fields=["driver", "action_type", "status"],
+                name="operations__driver__53c420_idx",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.action_type} -> {self.driver_id} ({self.status})"
+
+
+
+# Task 8 — explicit staff -> city assignments (separate module; imported so Django registers it).
+from .city_assignment_models import StaffCityAssignment  # noqa: E402,F401

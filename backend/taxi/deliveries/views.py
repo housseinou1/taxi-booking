@@ -1729,27 +1729,22 @@ def courier_location(request):
     if not profile:
         return Response({"detail": "Courier profile not found."}, status=status.HTTP_400_BAD_REQUEST)
 
-    prev_lat = profile.current_lat
-    prev_lng = profile.current_lng
-    prev_updated = profile.updated_at
+    # Same validation as the ride-driver endpoint (taxi.drivers.views.update_location):
+    # numeric input inside GPS bounds (NaN rejected), an approved profile, and the
+    # speed-plausibility check that raises a fake_location fraud flag. The previous code read
+    # ``profile.updated_at`` — a field DriverProfile does not have — so every update from a
+    # courier with a stored position raised AttributeError (HTTP 500), and non-numeric input
+    # crashed in float() (HTTP 500).
+    from taxi.security.abuse import validate_driver_location
 
-    profile.current_lat = float(lat)
-    profile.current_lng = float(lng)
+    try:
+        lat, lng = validate_driver_location(profile, lat, lng)
+    except ValueError as exc:
+        return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+    profile.current_lat = lat
+    profile.current_lng = lng
     profile.save(update_fields=["current_lat", "current_lng"])
-
-    if prev_lat is not None and prev_lng is not None and prev_updated:
-        elapsed = (timezone.now() - prev_updated).total_seconds()
-        if elapsed > 0:
-            from security.services.fraud_service import check_fake_location_movement
-
-            check_fake_location_movement(
-                request.user,
-                prev_lat=prev_lat,
-                prev_lng=prev_lng,
-                new_lat=profile.current_lat,
-                new_lng=profile.current_lng,
-                elapsed_seconds=elapsed,
-            )
 
     active_delivery = (
         Delivery.objects.filter(

@@ -1,8 +1,9 @@
 from datetime import timedelta
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 import logging
 import math
 import secrets
+import os
 import sys
 import threading
 
@@ -38,7 +39,13 @@ from locations.services import calculate_city_fare, resolve_city
 from legal.ride_terms import ensure_ride_legal_acceptance
 
 from .models import Ride, RidePricingSnapshot, RideStop
-from .serializers import AdminRiderRideSerializer, RideSerializer
+from .serializers import (
+    AdminDriverRideSerializer,
+    AdminRideDetailSerializer,
+    AdminRideListSerializer,
+    AdminRiderRideSerializer,
+    RideSerializer,
+)
 from .broadcast import broadcast_ride_update
 from .distance_utils import resolve_ride_distance_km
 from .services.waiting_service import calculate_waiting_fee
@@ -69,8 +76,24 @@ from notifications.push import (
 logger = logging.getLogger(__name__)
 
 
-def _run_in_background(target):
+def _running_under_test_runner() -> bool:
+    """True when running under a test runner (Django's or pytest).
+
+    Background threads cannot use the test database connection, so side effects
+    must run synchronously in tests. The previous check only looked for Django's
+    ``manage.py test`` in sys.argv, so pytest runs spawned real threads that hit
+    "database table is locked" and silently skipped the work (for example reward
+    points were never awarded).
+    """
     if "test" in sys.argv:
+        return True
+    if os.environ.get("PYTEST_CURRENT_TEST"):
+        return True
+    return "pytest" in sys.modules
+
+
+def _run_in_background(target):
+    if _running_under_test_runner():
         target()
         return
     threading.Thread(target=target, daemon=True).start()
@@ -148,6 +171,13 @@ def approved_driver_error(user):
 
     if not DriverProfile.objects.filter(user=user, status="approved").exists():
         return "Your driver application must be approved before viewing or accepting rides."
+
+    # Suspended drivers keep app access (so they can see their account, earnings and
+    # the suspension reason) but must not accept new ride work. `account_under_review`
+    # is the persisted suspension marker, so a suspended driver is distinguishable
+    # from one who is merely offline.
+    if DriverProfile.objects.filter(user=user).filter(Q(suspension_active=True) | Q(account_under_review=True)).exists():
+        return "Your driver account is suspended. New ride requests are not available."
 
     return ""
 
@@ -1047,9 +1077,12 @@ def verify_pickup_pin(request, ride_id):
             try:
                 from security.services.audit_service import log_from_request
 
+                # AuditLog.action is max_length=30. The previous 32-char value raised a DataError
+                # on PostgreSQL inside this atomic block, aborting the transaction so the PIN
+                # re-tap returned HTTP 500 (SQLite does not enforce the length).
                 log_from_request(
                     request,
-                    action="ride_pickup_pin_reverify_ignored",
+                    action="ride_pickup_pin_reverify",
                     entity_type="ride",
                     entity_id=ride.id,
                     summary=f"Driver re-submitted PIN for already-verified ride #{ride.id}",
@@ -1940,6 +1973,187 @@ def driver_earnings_summary(request):
     )
 
 
+class AdminRidesPagination(PageNumberPagination):
+    """Server-side pagination for the admin Rides Management table.
+
+    Adds page/page_size/total_pages so the professional table can render its
+    pager without client-side arithmetic.
+    """
+
+    page_size = 25
+    page_size_query_param = "page_size"
+    max_page_size = 100
+
+    def get_paginated_response(self, data):
+        page_size = self.get_page_size(self.request) or self.page_size
+        return Response(
+            {
+                "count": self.page.paginator.count,
+                "page": self.page.number,
+                "page_size": page_size,
+                "total_pages": self.page.paginator.num_pages,
+                "next": self.get_next_link(),
+                "previous": self.get_previous_link(),
+                "results": data,
+            }
+        )
+
+
+ADMIN_RIDE_SORT_FIELDS = {
+    "created_at": "created_at",
+    "-created_at": "-created_at",
+    "fare": "fare",
+    "-fare": "-fare",
+    "status": "status",
+    "-status": "-status",
+    "completed_at": "completed_at",
+    "-completed_at": "-completed_at",
+    "distance_km": "distance_km",
+    "-distance_km": "-distance_km",
+}
+
+
+@api_view(["GET"])
+@permission_classes([IsAdminUser])
+def admin_rides_list(request):
+    """Admin-only, paginated Rides Management list.
+
+    Additive endpoint: it does not change ``ride_history`` (the legacy 500-row
+    staff dump) or any rider/driver-facing endpoint.
+
+    Query params:
+      status      - one of Ride.STATUS_CHOICES (validated; 400 when invalid)
+      ride_type   - one of Ride.RIDE_TYPES (validated; 400 when invalid)
+      q           - search id, pickup, destination, rider email, driver email
+      date_from   - YYYY-MM-DD on created_at (400 when malformed)
+      date_to     - YYYY-MM-DD on created_at (400 when malformed)
+      ordering    - whitelisted sort field (default -created_at)
+      page, page_size
+    """
+    from .models import Ride as RideModel
+
+    queryset = (
+        RideModel.objects.select_related("rider", "driver")
+        .only(
+            "id", "status", "ride_type", "pickup", "destination", "distance_km",
+            "fare", "app_fee", "driver_earning", "created_at", "scheduled_at",
+            "completed_at", "cancelled_at", "cancelled_by", "cancellation_reason",
+            "rating", "rider", "driver",
+        )
+        .order_by("-created_at")
+    )
+
+    status_filter = request.query_params.get("status")
+    if status_filter:
+        valid_statuses = [value for value, _label in RideModel.STATUS_CHOICES]
+        if status_filter not in valid_statuses:
+            return Response(
+                {"detail": "Invalid status.", "valid_statuses": valid_statuses},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        queryset = queryset.filter(status=status_filter)
+
+    ride_type = request.query_params.get("ride_type")
+    if ride_type:
+        valid_types = [value for value, _label in RideModel.RIDE_TYPES]
+        if ride_type not in valid_types:
+            return Response(
+                {"detail": "Invalid ride_type.", "valid_ride_types": valid_types},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        queryset = queryset.filter(ride_type=ride_type)
+
+    search = (request.query_params.get("q") or "").strip()
+    if search:
+        filters = (
+            Q(pickup__icontains=search)
+            | Q(destination__icontains=search)
+            | Q(rider__email__icontains=search)
+            | Q(driver__email__icontains=search)
+        )
+        if search.isdigit():
+            filters |= Q(id=int(search))
+        queryset = queryset.filter(filters)
+
+    # Malformed dates return 400 (consistent with the rider/driver admin twins).
+    date_from_raw = request.query_params.get("date_from")
+    if date_from_raw:
+        date_from = parse_date(date_from_raw)
+        if date_from is None:
+            return Response(
+                {"detail": "Invalid date_from; expected YYYY-MM-DD."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        queryset = queryset.filter(created_at__date__gte=date_from)
+
+    date_to_raw = request.query_params.get("date_to")
+    if date_to_raw:
+        date_to = parse_date(date_to_raw)
+        if date_to is None:
+            return Response(
+                {"detail": "Invalid date_to; expected YYYY-MM-DD."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        queryset = queryset.filter(created_at__date__lte=date_to)
+
+    ordering = request.query_params.get("ordering") or "-created_at"
+    queryset = queryset.order_by(ADMIN_RIDE_SORT_FIELDS.get(ordering, "-created_at"))
+
+    paginator = AdminRidesPagination()
+    page = paginator.paginate_queryset(queryset, request)
+    serializer = AdminRideListSerializer(page, many=True)
+
+    # Decimal-safe, real-data summary for the filtered set (no fabricated values).
+    summary_agg = queryset.aggregate(
+        total=Count("id"),
+        completed=Count("id", filter=Q(status="completed")),
+        cancelled=Count("id", filter=Q(status="cancelled")),
+        active=Count(
+            "id",
+            filter=Q(status__in=["requested", "scheduled", "driver_arriving", "driver_arrived", "in_progress"]),
+        ),
+        completed_fare=Sum("fare", filter=Q(status="completed")),
+    )
+    summary = {
+        "total": summary_agg["total"] or 0,
+        "completed": summary_agg["completed"] or 0,
+        "cancelled": summary_agg["cancelled"] or 0,
+        "active": summary_agg["active"] or 0,
+        "completed_fare": (
+            # Quantize to the column's 2-decimal MRU contract (SQLite Sum can
+            # return Decimal('275') without a fixed scale). None stays None.
+            str(
+                summary_agg["completed_fare"].quantize(
+                    Decimal("0.01"), rounding=ROUND_HALF_UP
+                )
+            )
+            if summary_agg["completed_fare"] is not None
+            else None
+        ),
+        "currency": "MRU",
+    }
+
+    response = paginator.get_paginated_response(serializer.data)
+    response.data["summary"] = summary
+    return response
+
+
+@api_view(["GET"])
+@permission_classes([IsAdminUser])
+def admin_ride_detail(request, ride_id):
+    """Admin-only ride detail for the Rides Management drawer (read-only)."""
+    from .models import Ride as RideModel
+
+    try:
+        ride = RideModel.objects.select_related("rider", "driver").get(pk=ride_id)
+    except RideModel.DoesNotExist:
+        return Response(
+            {"detail": "Ride not found."}, status=status.HTTP_404_NOT_FOUND
+        )
+
+    return Response(AdminRideDetailSerializer(ride).data)
+
+
 class AdminRiderHistoryPagination(PageNumberPagination):
     """Server-side pagination for the admin rider ride-history endpoint."""
 
@@ -2050,6 +2264,170 @@ def admin_rider_ride_history(request, rider_id):
             "total_pages": paginator.page.paginator.num_pages,
             "results": serializer.data,
             "summary": summary,
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+def _money_str(value):
+    """Serialize a Decimal money aggregate to a fixed 2-decimal string, or None.
+
+    ORM Sum/Avg over a Decimal(10,2) column can return a Decimal without a fixed
+    scale (e.g. Decimal('500')); we quantize to match the column's 2-decimal
+    contract (MRU). None (empty aggregate) stays None ΓÇö never float, never 0.
+    """
+    if value is None:
+        return None
+    return str(Decimal(value).quantize(Decimal("0.01")))
+
+
+class AdminDriverHistoryPagination(PageNumberPagination):
+    """Server-side pagination for the admin driver ride-history endpoint."""
+
+    page_size = 25
+    page_size_query_param = "page_size"
+    max_page_size = 100
+
+
+@api_view(["GET"])
+@permission_classes([IsAdminUser])
+def admin_driver_ride_history(request, driver_id):
+    """Admin-only ride history + statistics for a single driver.
+
+    The URL <driver_id> is a DriverProfile.id. We resolve the DriverProfile then
+    query rides by profile.user_id (Ride.driver keys off the User id). Returns ONLY
+    rides where Ride.driver_id == profile.user_id (strict data isolation),
+    server-side paginated with optional ?status=, ?date_from=, ?date_to= filters.
+    A `summary` object is computed over the driver's FULL history (ignoring the
+    status/date list filters) using Decimal-safe ORM aggregates.
+
+    Additive endpoint only: it does not touch any existing view, serializer,
+    route, or auth behavior.
+    """
+    profile = get_object_or_404(DriverProfile, id=driver_id)
+
+    qs = (
+        Ride.objects.filter(driver_id=profile.user_id)
+        .select_related("rider")
+        .order_by("-created_at")
+    )
+
+    # Optional status filter: validate against the model's STATUS_CHOICES.
+    # An unknown status value is ignored (no filtering applied).
+    status_filter = request.query_params.get("status")
+    if status_filter:
+        valid_statuses = [c[0] for c in Ride.STATUS_CHOICES]
+        if status_filter in valid_statuses:
+            qs = qs.filter(status=status_filter)
+
+    # Optional date filters applied against created_at__date.
+    # A malformed date returns HTTP 400 (not silent-ignore).
+    date_from_raw = request.query_params.get("date_from")
+    if date_from_raw:
+        date_from = parse_date(date_from_raw)
+        if date_from is None:
+            return Response(
+                {"detail": "Invalid date_from; expected YYYY-MM-DD."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        qs = qs.filter(created_at__date__gte=date_from)
+
+    date_to_raw = request.query_params.get("date_to")
+    if date_to_raw:
+        date_to = parse_date(date_to_raw)
+        if date_to is None:
+            return Response(
+                {"detail": "Invalid date_to; expected YYYY-MM-DD."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        qs = qs.filter(created_at__date__lte=date_to)
+
+    # Summary is computed over the driver's FULL history, deliberately IGNORING the
+    # status/date list filters above, so the dashboard totals stay stable.
+    # Decimal-safe: Sum/Avg over a Decimal(10,2) column return Decimal/None; we
+    # serialize them as strings and leave them null when there are no completed rides.
+    summary_agg = Ride.objects.filter(driver_id=profile.user_id).aggregate(
+        total_rides=Count("id"),
+        completed_rides=Count("id", filter=Q(status="completed")),
+        cancelled_rides=Count("id", filter=Q(status="cancelled")),
+        total_earnings_mru=Sum("driver_earning", filter=Q(status="completed")),
+        average_earning_mru=Avg("driver_earning", filter=Q(status="completed")),
+    )
+
+    summary = {
+        "total_rides": summary_agg["total_rides"],
+        "completed_rides": summary_agg["completed_rides"],
+        "cancelled_rides": summary_agg["cancelled_rides"],
+        "total_earnings_mru": _money_str(summary_agg["total_earnings_mru"]),
+        "average_earning_mru": _money_str(summary_agg["average_earning_mru"]),
+    }
+
+    paginator = AdminDriverHistoryPagination()
+    page = paginator.paginate_queryset(qs, request)
+    serializer = AdminDriverRideSerializer(
+        page,
+        many=True,
+        context={"request": request},
+    )
+
+    page_number = paginator.page.number
+    page_size = paginator.get_page_size(request)
+    return Response(
+        {
+            "count": paginator.page.paginator.count,
+            "page": page_number,
+            "page_size": page_size,
+            "total_pages": paginator.page.paginator.num_pages,
+            "results": serializer.data,
+            "summary": summary,
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(["GET"])
+@permission_classes([IsAdminUser])
+def admin_driver_earnings(request, driver_id):
+    """Admin-only earnings breakdown for a single driver.
+
+    The URL <driver_id> is a DriverProfile.id, resolved to profile.user_id. Earnings
+    are aggregated over the driver's COMPLETED rides into total/today/week/month
+    buckets. All money values are Decimal-safe strings (via str(Decimal)) or null
+    when a period has no completed rides ΓÇö never float, never 0. ride_count is an int.
+
+    Additive, read-only endpoint; it does NOT reuse driver_earnings_summary's
+    float()/`or 0` pattern.
+    """
+    profile = get_object_or_404(DriverProfile, id=driver_id)
+
+    completed = Ride.objects.filter(driver_id=profile.user_id, status="completed")
+
+    today = timezone.localdate()
+    week_start = today - timedelta(days=today.weekday())
+    month_start = today.replace(day=1)
+
+    def bucket(qs):
+        agg = qs.aggregate(
+            earnings_mru=Sum("driver_earning"),
+            commission_mru=Sum("app_fee"),
+            payout_mru=Sum("driver_earning"),
+            ride_count=Count("id"),
+        )
+        return {
+            "earnings_mru": _money_str(agg["earnings_mru"]),
+            "commission_mru": _money_str(agg["commission_mru"]),
+            "payout_mru": _money_str(agg["payout_mru"]),
+            "ride_count": agg["ride_count"],
+            "currency": "MRU",
+        }
+
+    return Response(
+        {
+            "total": bucket(completed),
+            "today": bucket(completed.filter(completed_at__date=today)),
+            "week": bucket(completed.filter(completed_at__date__gte=week_start)),
+            "month": bucket(completed.filter(completed_at__date__gte=month_start)),
+            "currency": "MRU",
         },
         status=status.HTTP_200_OK,
     )

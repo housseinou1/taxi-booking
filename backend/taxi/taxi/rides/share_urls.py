@@ -8,9 +8,11 @@ from django.urls import path
 
 from taxi.rides.share_views import (
     ShareRideRequestView,
+    ShareRideEstimateView,
     ShareRideDetailView,
     ShareRideCancelView,
     ShareRideRateView,
+    ShareSessionDetailView,
     ShareSessionAcceptView,
     ShareSessionPickupView,
     ShareSessionDropoffView,
@@ -26,6 +28,11 @@ urlpatterns = [
         "request/",
         ShareRideRequestView.as_view(),
         name="share-ride-request",
+    ),
+    path(
+        "estimate/",
+        ShareRideEstimateView.as_view(),
+        name="share-ride-estimate",
     ),
     path(
         "<int:ride_id>/",
@@ -44,6 +51,11 @@ urlpatterns = [
     ),
 
     # Driver-facing session endpoints
+    path(
+        "session/<int:session_id>/",
+        ShareSessionDetailView.as_view(),
+        name="share-session-detail",
+    ),
     path(
         "session/<int:session_id>/accept/",
         ShareSessionAcceptView.as_view(),

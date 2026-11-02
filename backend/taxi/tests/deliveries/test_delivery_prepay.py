@@ -23,7 +23,7 @@ def customer_user(db):
     )
     return User.objects.create_user(
         email="customer@yala.mr",
-        password="Test1234!",
+        password="test-only-Pass-2026",
         first_name="Fatima",
         last_name="Mint",
         phone_number="+22248123456",

@@ -3,12 +3,23 @@ import requests
 import json
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+import os
+import sys
+
+
+def _required_env(name):
+    """Credentials come from the environment only; values are never printed."""
+    value = os.environ.get(name, "")
+    if not value:
+        sys.exit(f"Missing required environment variable: {name} (values are never printed)")
+    return value
+
 
 BASE = "https://api.yalataxi.live"
 
 # Login with phone+password
 print("Logging in...")
-login_data = {"phone_number": "+22246831552", "password": "Oumar@2025"}
+login_data = {"phone_number": "+22246831552", "password": _required_env("YALA_QA_PHONE_PASSWORD")}
 r = requests.post(f"{BASE}/auth/login/", json=login_data, verify=False, timeout=10)
 print(f"Login: {r.status_code}")
 

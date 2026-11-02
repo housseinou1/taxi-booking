@@ -24,6 +24,19 @@ from taxi.drivers.views_verification import VerifyDriverView
 User = get_user_model()
 
 
+def _sign(profile):
+    """Give `profile` a complete driver e-signature (no file is uploaded).
+
+    Verification QR codes now require approved status AND a complete signature.
+    """
+    profile.driver_terms_accepted = True
+    profile.driver_signed_full_name = "Signed Test Driver"
+    profile.driver_legal_declaration_accepted = True
+    profile.driver_signature_image = "legal/driver_signatures/test-fixture.png"
+    profile.save()
+    return profile
+
+
 # --- Strategies ---
 
 def valid_driver_code_strategy():
@@ -99,6 +112,7 @@ class TestQRFieldReadOnlyOnDriverEndpoints(HypothesisTestCase):
             plate_number="AB1234",
             phone_number="12345678",
         )
+        _sign(profile)
 
         # Generate a real QR code first
         qr_uuid, image_path = service.generate_qr_code(profile)
@@ -200,6 +214,7 @@ class TestOldQRCodeInvalidatedAfterRegeneration(HypothesisTestCase):
             vehicle_color="Black",
             plate_number="XY9876",
         )
+        _sign(profile)
 
         # Generate initial QR code
         old_qr_uuid, _ = service.generate_qr_code(profile)

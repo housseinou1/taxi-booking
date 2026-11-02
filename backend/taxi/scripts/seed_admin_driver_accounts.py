@@ -9,6 +9,16 @@ from taxi.drivers.models import DriverProfile
 
 from PIL import Image, ImageDraw
 
+# ── Seed passwords come from the environment; otherwise a random per-run value ──
+# (never a shared default, never printed — set the variable to choose a known password)
+import os as _cred_os
+import secrets as _cred_secrets
+
+
+def _seed_password(name):
+    return _cred_os.environ.get(name) or _cred_secrets.token_urlsafe(18)
+
+
 
 def make_image(path: Path, label: str, color=(0, 166, 81)):
     if path.exists():
@@ -47,7 +57,7 @@ def run():
     now = timezone.now()
     issued = timezone.localdate() - timedelta(days=365)
     expires = timezone.localdate() + timedelta(days=365 * 2)
-    temp_password = "Driver12345!"
+    temp_password = _seed_password("YALA_SEED_TEMP_PASSWORD")
 
     drivers = [
         {
@@ -181,7 +191,7 @@ def run():
             f"profile_id={profile.id}",
         )
 
-    print(f"TEMP_PASSWORD {temp_password}")
+    print("TEMP_PASSWORD not shown: set YALA_SEED_TEMP_PASSWORD to choose it (random per run otherwise)")
 
 
 run()

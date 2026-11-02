@@ -31,7 +31,7 @@ class ToggleAvailabilityTests(APITestCase):
     def setUp(self):
         self.user = User.objects.create_user(
             email="offline-driver@test.local",
-            password="Test1234!",
+            password="test-only-Pass-2026",
             user_type="driver",
         )
         self.profile = DriverProfile.objects.create(

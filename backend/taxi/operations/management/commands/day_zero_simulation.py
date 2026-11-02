@@ -48,12 +48,22 @@ from taxi.drivers.services.ride_workflow import transition_ride
 from taxi.market import calculate_app_fee
 from taxi.rides.models import Ride
 
+# ── Seed passwords come from the environment; otherwise a random per-run value ──
+# (never a shared default, never printed — set the variable to choose a known password)
+import os as _cred_os
+import secrets as _cred_secrets
+
+
+def _seed_password(name):
+    return _cred_os.environ.get(name) or _cred_secrets.token_urlsafe(18)
+
+
 User = get_user_model()
 
 STAGING_URL = "https://staging.yalataxi.live/api/health/ready/"
 PROD_HEALTH_URL = "https://api.yalataxi.live/api/health/ready/"
 PREFIX = "dz0"
-PASSWORD = "DayZero2026!"
+PASSWORD = _seed_password("YALA_SIMULATION_PASSWORD")
 NOUAKCHOTT = (18.0735, -15.9582)
 TEVRAGH = (18.0896, -15.9754)
 

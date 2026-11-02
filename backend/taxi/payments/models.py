@@ -527,6 +527,7 @@ class RefundRequest(models.Model):
 
     STATUS_CHOICES = [
         ("requested", "Requested"),
+        ("awaiting_ceo", "Awaiting CEO Approval"),
         ("approved", "Approved"),
         ("rejected", "Rejected"),
         ("refunded", "Refunded"),
@@ -543,6 +544,18 @@ class RefundRequest(models.Model):
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     reason = models.CharField(max_length=30, choices=REASON_CHOICES)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="requested")
+    # Restored: these columns exist in the database (payments migration 0021
+    # "sprint6_finance_driver_ops") but were missing from this model. Schema
+    # alignment only — no refund logic or calculation is changed.
+    finance_approved_at = models.DateTimeField(null=True, blank=True)
+    finance_approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="finance_approved_refunds",
+    )
+    requires_dual_approval = models.BooleanField(default=False)
     note = models.TextField(blank=True, default="")
     admin_note = models.TextField(blank=True, default="")
     fraud_flag = models.BooleanField(default=False)

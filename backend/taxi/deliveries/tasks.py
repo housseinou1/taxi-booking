@@ -159,11 +159,18 @@ def cleanup_stale_requests():
 
 @shared_task(name="deliveries.tasks.remind_cash_settlement")
 def remind_cash_settlement():
-    """Remind drivers to confirm cash collection for completed deliveries.
+    """Legacy cash-settlement reminder — skipped entirely under the cashless policy.
 
-    Targets deliveries completed over 30 minutes ago with payment_status still pending
-    and payment_method == cash. Should run every 30 minutes via Celery Beat.
+    Yala is a 100% cashless platform, so there is no cash to settle. The task is
+    kept (it is referenced by the Celery Beat schedule) but becomes a no-op while
+    the policy is enforced, and it never mutates any record.
     """
+    from payments.cashless import is_enforced as cashless_enforced
+
+    if cashless_enforced():
+        logger.info("remind_cash_settlement skipped: cashless policy is enforced.")
+        return {"skipped": "cashless_policy", "reminded": 0}
+
     from datetime import timedelta
 
     from .models import Delivery

@@ -13,11 +13,18 @@ from deliveries.models import Delivery
 from merchants.models import MerchantOrder
 from merchants.permissions import IsMerchantOwner
 
+from .admin_driver_serializers import AdminDriverWithdrawalSerializer
 from .admin_rider_serializers import (
     AdminRiderPaymentSerializer,
     AdminRiderRefundSerializer,
 )
-from .models import MerchantWithdrawalRequest, Payment, PaymentRecord, RefundRequest
+from .models import (
+    MerchantWithdrawalRequest,
+    Payment,
+    PaymentRecord,
+    RefundRequest,
+    WithdrawalRequest,
+)
 from .serializers import (
     MerchantWithdrawalRequestSerializer,
     PaymentRecordSerializer,
@@ -322,6 +329,69 @@ def admin_rider_payments(request, rider_id):
             "total_pages": paginator.page.paginator.num_pages,
             "results": serializer.data,
             "refunds": refunds,
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+class AdminDriverPayoutsPagination(PageNumberPagination):
+    """Server-side pagination for the admin driver payout-history endpoint."""
+
+    page_size = 25
+    page_size_query_param = "page_size"
+    max_page_size = 100
+
+
+@api_view(["GET"])
+@permission_classes([IsAdminUser])
+def admin_driver_payouts(request, driver_id):
+    """Admin-only withdrawal (payout) history for a single driver.
+
+    The URL <driver_id> is a DriverProfile.id. The profile is resolved first,
+    then WithdrawalRequest rows are filtered by profile.user_id (WithdrawalRequest
+    keys off the USER id) for strict data isolation. Returns 404 ONLY when the
+    DriverProfile id is missing; the rider '404 when user has a driver_profile'
+    rule does NOT apply here.
+
+    Serialized payloads NEVER include a nested payout method, a PaymentRecord, a
+    provider_token, or a full card/PAN ΓÇö only the whitelisted WithdrawalRequest
+    fields plus a redacted payout_method_label (AdminDriverWithdrawalSerializer).
+
+    Additive endpoint only: it does not touch any existing view, serializer,
+    route, or auth behavior (driver_wallet_summary / GET /payments/withdrawals/
+    is left unchanged).
+    """
+    from taxi.drivers.models import DriverProfile
+
+    profile = get_object_or_404(DriverProfile, id=driver_id)
+
+    qs = (
+        WithdrawalRequest.objects.filter(driver_id=profile.user_id)
+        .select_related("payout_method")
+        .order_by("-created_at")
+    )
+
+    # Optional status filter: validate against the model's status choices.
+    # An unknown status value is ignored (no filtering applied).
+    status_filter = request.query_params.get("status")
+    if status_filter:
+        valid_statuses = [c[0] for c in WithdrawalRequest.STATUS_CHOICES]
+        if status_filter in valid_statuses:
+            qs = qs.filter(status=status_filter)
+
+    paginator = AdminDriverPayoutsPagination()
+    page = paginator.paginate_queryset(qs, request)
+    serializer = AdminDriverWithdrawalSerializer(page, many=True)
+
+    page_number = paginator.page.number
+    page_size = paginator.get_page_size(request)
+    return Response(
+        {
+            "count": paginator.page.paginator.count,
+            "page": page_number,
+            "page_size": page_size,
+            "total_pages": paginator.page.paginator.num_pages,
+            "results": serializer.data,
         },
         status=status.HTTP_200_OK,
     )
