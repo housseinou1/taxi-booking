@@ -11,6 +11,7 @@ Runs only on the throwaway test DB.
 """
 
 import itertools
+import tempfile
 
 from django.contrib.auth.models import Group
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -23,6 +24,7 @@ from taxi.drivers.models import DriverProfile
 
 LIST_URL = "/auth/admin/riders/"
 _counter = itertools.count(1)
+_MEDIA_ROOT = tempfile.mkdtemp(prefix="rider-doc-test-")
 _PNG = (
     b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
     b"\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\x0cIDATx\x9cc\xf8\x0f\x00"
@@ -178,7 +180,7 @@ class AdminRidersTests(APITestCase):
         self.assertEqual(self.client.get(f"{LIST_URL}{rider.id}/").status_code, 403)
 
     # ---- identity document (privacy) -------------------------------------
-    @override_settings(MEDIA_ROOT="C:/Users/Housseinou/Backups/yala-test-artifacts/rider-doc-test")
+    @override_settings(MEDIA_ROOT=_MEDIA_ROOT)
     def test_document_requires_admin(self):
         rider = self._user("rider")
         rider.national_id_document = SimpleUploadedFile("id.png", _PNG, content_type="image/png")
@@ -190,7 +192,7 @@ class AdminRidersTests(APITestCase):
             APIClient().get(f"{LIST_URL}{rider.id}/document/").status_code, (401, 403)
         )
 
-    @override_settings(MEDIA_ROOT="C:/Users/Housseinou/Backups/yala-test-artifacts/rider-doc-test")
+    @override_settings(MEDIA_ROOT=_MEDIA_ROOT)
     def test_document_streams_for_admin_and_404_without_document(self):
         rider = self._user("rider")
         rider.national_id_document = SimpleUploadedFile("id.png", _PNG, content_type="image/png")
