@@ -151,6 +151,14 @@ describe("DriverDocumentsPage", () => {
     expect(screen.getByText("Missing required documents")).toBeInTheDocument();
   });
 
+  it("discloses that the figures come from the approvals queue, not a full register", async () => {
+    render(<DriverDocumentsPage mode="documents" />);
+    expect(await screen.findByText("What these figures cover")).toBeInTheDocument();
+    // The limitation must be stated plainly, not implied.
+    expect(screen.getByText(/not represented/)).toBeInTheDocument();
+    expect(screen.getByText(/admin approvals queue/)).toBeInTheDocument();
+  });
+
   it("approves a document through the audited admin endpoint", async () => {
     render(<DriverDocumentsPage mode="documents" />);
     const approve = await screen.findByRole("button", { name: "Approve" });

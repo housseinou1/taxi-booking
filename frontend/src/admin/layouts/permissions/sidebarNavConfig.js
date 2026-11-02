@@ -3,8 +3,7 @@
  * FAST • SAFE • RELIABLE 🇲🇷
  *
  * Single source of truth for the Admin sidebar. Organises the EXISTING admin
- * pages into the twelve approved business sections of the enterprise navigation
- * spec (Executive Command Center … Settings & Configuration).
+ * pages into the ten business categories of the enterprise navigation spec.
  *
  * Rules honoured here:
  *  - Every `path` below is a real route registered in `App.js`. No link is
@@ -45,20 +44,20 @@ export const SIDEBAR_NAV_ITEMS = [
       { id: "ceo-reports", module: "ceo", label: "CEO Reports", path: "/admin/ceo-reports", icon: "📄" },
       { id: "board", module: "ceo", label: "Board Reports", path: "/admin/board-reports", icon: "📑" },
       { id: "cities", module: "ceo", label: "City Management", path: "/admin/cities", icon: "🏙" },
+      { id: "roles", module: "employees", label: "Roles & Permissions", path: "/admin/roles", icon: "🔑" },
     ],
   },
 
-  // ── 2. OPERATIONS MANAGEMENT ────────────────────────────────────────────────
+  // ── OPERATIONS ──────────────────────────────────────────────────────────────
   {
     id: "ops",
     module: "ops",
-    label: "Operations Management",
+    label: "Operations",
     icon: "📡",
     children: [
       { id: "ops-overview", module: "ops", label: "Operations Overview", path: "/admin/operations", icon: "🗂" },
       { id: "ops-center", module: "ops", label: "Ops Center Home", path: "/admin/ops-center", icon: "🧮" },
       { id: "ops-live", module: "ops", label: "Live Operations", path: "/admin/ops-center/live", icon: "📍" },
-      { id: "ops-command", module: "ops", label: "Ops Command Center", path: "/admin/ops-center/command", icon: "🧭" },
       { id: "rides", module: "rides", label: "Ride Management", path: "/admin/rides", icon: "🚕" },
       { id: "rides-live", module: "rides", label: "Live Rides", path: "/admin/rides/live", icon: "🛰" },
       { id: "rides-reports", module: "rides", label: "Ride Reports", path: "/admin/rides/reports", icon: "📈" },
@@ -68,11 +67,11 @@ export const SIDEBAR_NAV_ITEMS = [
     ],
   },
 
-  // ── 3. DRIVERS & FLEET MANAGEMENT ───────────────────────────────────────────
+  // ── DRIVERS & FLEET ─────────────────────────────────────────────────────────
   {
     id: "drivers-fleet",
     module: "drivers",
-    label: "Drivers & Fleet Management",
+    label: "Drivers & Fleet",
     icon: "🚕",
     children: [
       // Driver Management dropdown, ordered per the YALA admin brief. Existing
@@ -96,25 +95,23 @@ export const SIDEBAR_NAV_ITEMS = [
     ],
   },
 
-  // ── 4. RIDER & CUSTOMER MANAGEMENT ──────────────────────────────────────────
+  // ── RIDERS ──────────────────────────────────────────────────────────────────
   {
     id: "riders",
     module: "riders",
-    label: "Rider & Customer Management",
+    label: "Riders",
     icon: "👥",
     children: [
       { id: "riders-dashboard", module: "riders", label: "Riders Dashboard", path: "/admin/riders/dashboard", icon: "📊" },
       { id: "riders", module: "riders", label: "Rider Management", path: "/admin/riders", icon: "🗂" },
-      { id: "customer-growth", module: "marketing", label: "Customer Growth", path: "/admin/customer-growth", icon: "🌱" },
-      { id: "marketing", module: "marketing", label: "Marketing & Promotions", path: "/admin/growth", icon: "📣" },
     ],
   },
 
-  // ── 5. YALA DELIVERY MANAGEMENT ─────────────────────────────────────────────
+  // ── YALA DELIVERY ───────────────────────────────────────────────────────────
   {
     id: "delivery",
     module: "delivery",
-    label: "YALA Delivery Management",
+    label: "Yala Delivery",
     icon: "📦",
     children: [
       { id: "delivery-dashboard", module: "delivery", label: "Delivery Dashboard", path: "/admin/delivery", icon: "🚚" },
@@ -122,12 +119,11 @@ export const SIDEBAR_NAV_ITEMS = [
       { id: "delivery-cities", module: "delivery", label: "City Analytics", path: "/admin/delivery/cities", icon: "🏙" },
       { id: "delivery-couriers", module: "delivery", label: "Courier Management", path: "/admin/delivery/couriers", icon: "🧑‍🔧" },
       { id: "delivery-merchants", module: "delivery", label: "Merchant Management", path: "/admin/delivery/merchants", icon: "🏪" },
-      { id: "delivery-support", module: "delivery", label: "Delivery Support", path: "/admin/delivery/support", icon: "🎧" },
       { id: "merchant-platform", module: "business", label: "Merchant Platform", path: "/admin/merchant-platform", icon: "🤝" },
     ],
   },
 
-  // ── 7. EMPLOYEES & HUMAN RESOURCES ──────────────────────────────────────────
+  // ── EMPLOYEES & HUMAN RESOURCES ─────────────────────────────────────────────
   {
     id: "employees",
     module: "employees",
@@ -141,7 +137,7 @@ export const SIDEBAR_NAV_ITEMS = [
       { id: "break-notifications", module: "employees", label: "Break Notifications", path: "/admin/break-notifications", icon: "🔔" },
     ],
   },
-  // ── 8. CUSTOMER SUPPORT ─────────────────────────────────────────────────────
+  // ── CUSTOMER SUPPORT ────────────────────────────────────────────────────────
   {
     id: "support",
     module: "support",
@@ -154,11 +150,11 @@ export const SIDEBAR_NAV_ITEMS = [
     ],
   },
 
-  // ── 6. FINANCE & ACCOUNTING ─────────────────────────────────────────────────
+  // ── FINANCE ─────────────────────────────────────────────────────────────────
   {
     id: "finance",
     module: "finance",
-    label: "Finance & Accounting",
+    label: "Finance",
     icon: "💰",
     children: [
       { id: "financial-overview", module: "finance", label: "Financial Overview", path: "/admin/ops-center/finance", icon: "💵" },
@@ -170,66 +166,48 @@ export const SIDEBAR_NAV_ITEMS = [
     ],
   },
 
-  // ── 9. TRUST & SAFETY ───────────────────────────────────────────────────────
+  // ── SECURITY & COMPLIANCE ───────────────────────────────────────────────────
   {
-    id: "trust-safety",
-    module: "trust_safety",
-    label: "Trust & Safety",
+    id: "security",
+    module: "security",
+    label: "Security & Compliance",
     icon: "🛡",
     children: [
-      { id: "trust-safety-center", module: "trust_safety", label: "Trust & Safety Center", path: "/admin/trust-safety", icon: "🚨" },
-      { id: "safety-incidents", module: "trust_safety", label: "Safety Incidents", path: "/admin/safety", icon: "🆘" },
       { id: "security-ops", module: "security", label: "Security Dashboard", path: "/admin/security", icon: "🔐" },
-      { id: "security-audit", module: "security", label: "Audit Logs", path: "/admin/security/audit", icon: "📜" },
-      { id: "security-fraud", module: "security", label: "Fraud Monitoring", path: "/admin/security/fraud", icon: "🕵" },
-      { id: "compliance", module: "compliance", label: "Compliance & Governance", path: "/admin/compliance-governance", icon: "⚖" },
+      { id: "trust-safety", module: "trust_safety", label: "Trust & Safety", path: "/admin/trust-safety", icon: "🚨" },
+      { id: "compliance", module: "compliance", label: "Compliance", path: "/admin/compliance-governance", icon: "📜" },
     ],
   },
 
-  // ── 10. REPORTS & ANALYTICS ─────────────────────────────────────────────────
+  // ── GROWTH & ANALYTICS ──────────────────────────────────────────────────────
   {
-    id: "reports",
+    id: "growth",
     module: "analytics",
-    label: "Reports & Analytics",
+    label: "Growth & Analytics",
     icon: "📈",
     children: [
       { id: "business-intelligence", module: "analytics", label: "Reports & Analytics", path: "/admin/business-intelligence", icon: "🧠" },
       { id: "bi", module: "analytics", label: "BI Warehouse", path: "/admin/bi", icon: "📊" },
-      { id: "share-analytics", module: "analytics", label: "Share & Referral Analytics", path: "/admin/share-analytics", icon: "🔗" },
+      { id: "growth", module: "marketing", label: "Marketing", path: "/admin/growth", icon: "📣" },
+      { id: "customer-growth", module: "marketing", label: "Customer Growth", path: "/admin/customer-growth", icon: "🌱" },
     ],
   },
 
-  // ── 11. PLATFORM ADMINISTRATION ─────────────────────────────────────────────
+  // ── PLATFORM MANAGEMENT ─────────────────────────────────────────────────────
   {
     id: "platform",
     module: "system",
-    label: "Platform Administration",
+    label: "Platform Management",
     icon: "⚙",
     children: [
       { id: "launch", module: "launch", label: "Launch Hub", path: "/admin/launch", icon: "🚀" },
       { id: "command", module: "launch", label: "Launch Command", path: "/admin/command", icon: "🧭" },
-      { id: "operations-command", module: "launch", label: "Launch Operations Command", path: "/admin/operations-command", icon: "🎯" },
+      { id: "operations-command", module: "launch", label: "Operations Command", path: "/admin/operations-command", icon: "🎯" },
+      { id: "status", module: "system", label: "System Status", path: "/admin/status", icon: "🩺" },
+      { id: "api-gateway", module: "system", label: "API Gateway", path: "/admin/api-gateway", icon: "🔌" },
       { id: "business", module: "business", label: "Business Hub", path: "/admin/business", icon: "🏢" },
       { id: "business-accounts", module: "business", label: "Business Accounts", path: "/admin/business-accounts", icon: "🧾" },
       { id: "partner-platform", module: "business", label: "Partner Platform", path: "/admin/partner-platform", icon: "🔗" },
-    ],
-  },
-
-  // ── 12. SETTINGS & CONFIGURATION ────────────────────────────────────────────
-  // Platform configuration surfaces. Every path here is an existing, registered
-  // page; nothing is invented. Roles & Permissions and Pricing & Dispatch keep
-  // their own RBAC modules, so `filterNavItems` shows each entry only to a role
-  // that has been granted it (the CEO/elevated bypass is unchanged).
-  {
-    id: "settings",
-    module: "system",
-    label: "Settings & Configuration",
-    icon: "🛠",
-    children: [
-      { id: "status", module: "system", label: "System Status", path: "/admin/status", icon: "🩺" },
-      { id: "api-gateway", module: "system", label: "API Gateway", path: "/admin/api-gateway", icon: "🔌" },
-      { id: "roles", module: "employees", label: "Roles & Permissions", path: "/admin/roles", icon: "🔑" },
-      { id: "pricing-config", module: "ops", label: "Pricing & Dispatch Configuration", path: "/admin/pricing-dispatch", icon: "💹" },
     ],
   },
 ];

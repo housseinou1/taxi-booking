@@ -122,9 +122,109 @@ before acting.
 * No migration, model field or endpoint was added.
 * `backend/taxi/taxi/drivers/performance.py` was not edited (PR #21 owns it).
 
-## 4. Recommended approval path
+## 4. Recommendations (prepared for approval — NOT applied)
 
-1. Approve or reject the `cancelled_by` fix (§2.1) — highest impact, smallest change.
-2. Decide how insufficient data is represented (§2.2).
-3. Decide which scoring system is canonical (§2.3).
-4. Only then consider exposing weights for configuration.
+These are proposals only. No weight, formula, field or migration was changed.
+
+### R1 — Stop penalising drivers for customer cancellations (highest priority)
+
+**Recommendation:** exclude rider-initiated cancellations from the driver's
+cancellation count.
+
+```python
+# backend/taxi/taxi/drivers/performance.py — _ride_stats_for_profile()
+# PROPOSED, not applied:
+cancelled_rides = assigned_rides.filter(status="cancelled").exclude(
+    cancelled_by="rider"          # confirm the exact value against Ride.cancelled_by choices
+)
+```
+
+and the same correction in `bulk_driver_ride_stats()`:
+
+```python
+cancelled=Count("id", filter=Q(status="cancelled") & ~Q(cancelled_by="rider")),
+```
+
+**Prerequisite:** read `Ride.cancelled_by`'s `choices` first. If the column is a
+free-text or inconsistent field, backfill/validate it before relying on it, and
+decide how legacy rows with an empty `cancelled_by` are treated (recommendation:
+treat unknown as *not* the driver's fault, i.e. exclude it, so drivers are never
+penalised by missing data).
+
+**Expected effect:** `cancellation_rate` becomes a genuine driver-behaviour metric,
+which raises the 20% cancellation component for drivers who only ever had riders
+cancel. Scores will move — hence the need for explicit approval before shipping.
+
+### R2 — Represent "insufficient data" instead of scoring it as poor performance
+
+**Recommendation:** return an explicit marker rather than a misleading 0, and let
+the UI keep showing "No data".
+
+```python
+# PROPOSED, not applied:
+"on_time_rate": float(percent(on_time_rate)) if arrival_count else None,
+"on_time_insufficient_data": arrival_count == 0,
+"score_confidence": "low" if completed_count < MIN_SCORED_RIDES else "normal",
+```
+
+Where `MIN_SCORED_RIDES` should be an agreed setting (e.g.
+`YALA_PERFORMANCE_MIN_RIDES = 20`), not a hardcoded number.
+
+Two specific cases today:
+
+| Case | Current behaviour | Proposed |
+|---|---|---|
+| `arrival_samples == 0` | `on_time_rate = 0` → loses the full 15% | `null` + `insufficient_data` flag; UI shows "No data" |
+| `completed_rides < 100` | `completion_volume_score = completed/100*100` → a new driver scores near 0 on a 15% component | gate on `MIN_SCORED_RIDES`, and/or normalise volume against the fleet median instead of a fixed 100 |
+
+**Interim mitigation already shipped in the UI (no backend change):** the
+performance table renders "No data" rather than `0%` when `arrival_samples == 0`,
+and the driver profile prints the denominator (`44/50 arrivals`), so an
+administrator can judge the sample size before trusting the number.
+
+### R3 — Reconcile the two scoring systems
+
+Two independent scores are surfaced to administrators today and can rank the same
+driver differently:
+
+| System | Source | Fields | Shape |
+|---|---|---|---|
+| A | `drivers/performance.py` → `calculate_driver_performance` | `score`, `score_band`, `recommendation` | 5 weighted components → 0-100 |
+| B | `ride_performance_service.get_driver_performance_snapshot` | `performance_points`, `driver_score`, `driver_score_tier`, `driver_score_label` | points/tier model, also on `/drivers/list/` |
+
+**Recommendation:** pick one of these two outcomes and record the decision:
+
+1. **One canonical score.** Compute B from A (or delete B), so
+   `/drivers/performance/` and `/drivers/list/` cannot disagree.
+2. **Both retained, clearly labelled.** Keep them, but name them distinctly in the
+   UI and document what each is for (e.g. "Performance score" vs "Reward tier"),
+   so no administrator compares two numbers that measure different things.
+
+Either way, this is a product decision, not a refactor — the fields are already
+persisted and used elsewhere.
+
+### R4 — Keep safety out of the score (already satisfied)
+
+Safety incidents are correctly **not** an input to `score`, and nothing in either
+system suspends a driver automatically. Recommendation: keep it that way, and keep
+safety as a separate, human-reviewed signal surfaced from
+`/safety/admin/incidents/`.
+
+### R5 — Do not expose weights for configuration yet
+
+Making the weights configurable before R1-R3 are settled would let two
+administrators produce two different scores for the same driver, and would make
+the audit trail harder to reason about. Recommendation: defer until the model is
+stable and a versioning story exists.
+
+### Suggested sequence
+
+1. Approve/reject **R1** — smallest change, highest impact, directly fixes an
+   unfair penalty.
+2. Decide **R2** and set `MIN_SCORED_RIDES`.
+3. Decide **R3** (canonical vs co-existing).
+4. Revisit **R5** only afterwards.
+
+All of the above is a change to `backend/taxi/taxi/drivers/performance.py`, which is
+owned by **PR #21 (`devin/backend-release`)**. **Nothing here was applied**, and no
+file under `backend/` was edited by this work.

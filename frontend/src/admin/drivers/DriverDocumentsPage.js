@@ -320,6 +320,22 @@ function DriverDocumentsInner({ mode }) {
         <AlertBanner tone="warning">{`Driver review state: ${directory.error}`}</AlertBanner>
       ) : null}
 
+      {/*
+        Scope disclosure (owner request). These figures are NOT a complete
+        cross-driver document register: there is no such endpoint yet. They are
+        derived from the admin approvals queue plus the per-driver review state on
+        /drivers/list/, so a driver absent from the queue is not represented here.
+      */}
+      <AlertBanner tone="info" title="What these figures cover">
+        Counts and rows are built from the <strong>admin approvals queue</strong>{" "}
+        (<code>/admin/approvals/drivers/</code>) — the only admin source of document
+        records — combined with the per-driver review state on{" "}
+        <code>/drivers/list/</code>. A driver who is not in the approvals queue is
+        therefore <strong>not represented</strong>. This is not yet a complete
+        cross-driver document register; the missing endpoint is documented in{" "}
+        <code>.agents/tasks/driver-documents-performance-integration.md</code> §2.1.
+      </AlertBanner>
+
       <div className="admin-kpi-row driver-docs__kpis">
         <KPICard label="Registered drivers" value={kpis.totalDrivers} icon="🚕" loading={directory.loading} />
         <KPICard label="Documents verified" value={kpis.verifiedDrivers} tone="success" icon="✅" loading={directory.loading} />
