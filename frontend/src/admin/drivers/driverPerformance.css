@@ -129,6 +129,29 @@
   color: var(--admin-text-muted, #cbd5e1);
 }
 
+/* ── Charts & ride history (profile) ──────────────────────────────────────── */
+
+.driver-perf__chart-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.driver-perf__range {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.driver-perf__range-actions {
+  display: inline-flex;
+  gap: 8px;
+}
+
 /* ── Responsive ───────────────────────────────────────────────────────────── */
 
 @media (max-width: 560px) {
@@ -140,4 +163,14 @@
     flex-direction: column;
     align-items: stretch;
   }
+
+  .driver-perf__chart-row {
+    grid-template-columns: 1fr;
+  }
+
+  .driver-perf__range {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
+

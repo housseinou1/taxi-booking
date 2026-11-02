@@ -2,10 +2,10 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   AlertBanner,
+  BarChart,
   DataTable,
   FilterBar,
   KPICard,
-  Modal,
   Select,
   StatusChip,
   ToastProvider,
@@ -15,7 +15,8 @@ import {
   getDriverPerformanceSummary,
   getSafetyIncidents,
 } from "./driverAdminApi";
-import { getDriverEarnings, getDriverRideHistory } from "./driversApi";
+import DriverPerformanceProfile from "./DriverPerformanceProfile";
+import { buildScoreBandDistribution, isEmptySeries } from "./driverPerformanceCharts";
 import "./driverPerformance.css";
 
 /**
@@ -222,6 +223,8 @@ function DriverPerformanceInner({ mode }) {
     ];
   }, [rows]);
 
+  const scoreBands = useMemo(() => buildScoreBandDistribution(rows), [rows]);
+
   const bandOptions = useMemo(() => {
     const bands = new Set();
     rows.forEach((row) => {
@@ -334,6 +337,20 @@ function DriverPerformanceInner({ mode }) {
         </div>
       )}
 
+      {/*
+        The only fleet-level chart the current API supports: a distribution of the
+        score bands the backend assigned. There is no fleet time-series endpoint, so
+        daily/weekly/monthly fleet charts are deliberately absent rather than faked.
+      */}
+      <BarChart
+        title="Fleet distribution by backend score band"
+        subtitle="Counts of drivers per band, exactly as scored by /drivers/performance/"
+        data={scoreBands}
+        loading={loading}
+        empty={!loading && isEmptySeries(scoreBands)}
+        emptyLabel="No scored drivers matched these filters"
+      />
+
       <DataTable
         title={title}
         columns={columnsFor(mode, setDetail)}
@@ -395,7 +412,7 @@ function DriverPerformanceInner({ mode }) {
         }
       />
 
-      <DriverPerformanceDetail row={detail} onClose={() => setDetail(null)} />
+      <DriverPerformanceProfile row={detail} onClose={() => setDetail(null)} />
     </div>
   );
 }
@@ -522,201 +539,4 @@ export function columnsFor(mode, onView) {
     { id: "recommendation", label: "Recommendation", render: (row) => row.recommendation || "—" },
     view,
   ];
-}
-
-/**
- * Individual driver performance profile.
- *
- * Everything shown is backend data. Ride history and earnings are loaded on demand
- * from the existing per-driver endpoints, and a failure in either is reported inline
- * rather than silently rendering zeros.
- */
-export function DriverPerformanceDetail({ row, onClose }) {
-  const [earnings, setEarnings] = useState({ state: "idle", data: null, error: "" });
-  const [history, setHistory] = useState({ state: "idle", data: null, error: "" });
-
-  useEffect(() => {
-    setEarnings({ state: "idle", data: null, error: "" });
-    setHistory({ state: "idle", data: null, error: "" });
-  }, [row?.driver_id]);
-
-  if (!row) return null;
-
-  const loadHistory = async () => {
-    setHistory({ state: "loading", data: null, error: "" });
-    try {
-      const data = await getDriverRideHistory(row.driver_id, { page: 1 });
-      setHistory({ state: "done", data, error: "" });
-    } catch (error) {
-      setHistory({ state: "error", data: null, error: error?.message || "Could not load ride history." });
-    }
-  };
-
-  const loadEarnings = async () => {
-    setEarnings({ state: "loading", data: null, error: "" });
-    try {
-      const data = await getDriverEarnings(row.driver_id);
-      setEarnings({ state: "done", data, error: "" });
-    } catch (error) {
-      setEarnings({ state: "error", data: null, error: error?.message || "Could not load earnings." });
-    }
-  };
-
-  const completionRate = Number(row.accepted_rides)
-    ? (Number(row.completed_rides) / Number(row.accepted_rides)) * 100
-    : null;
-
-  return (
-    <Modal open title={`${row.driver_name} — performance profile`} onClose={onClose}>
-      <h4>Driver information</h4>
-      <dl className="driver-perf__detail">
-        <div>
-          <dt>Driver ID</dt>
-          <dd>{row.driver_id}</dd>
-        </div>
-        <div>
-          <dt>Name</dt>
-          <dd>{row.driver_name}</dd>
-        </div>
-        <div>
-          <dt>City</dt>
-          <dd>{row.city_name || "—"}</dd>
-        </div>
-        <div>
-          <dt>Vehicle category</dt>
-          <dd>{row.driver_category_label || "—"}</dd>
-        </div>
-        <div>
-          <dt>Level</dt>
-          <dd>{row.driver_level || "—"}</dd>
-        </div>
-        <div>
-          <dt>Account status</dt>
-          <dd>
-            <StatusChip
-              label={row.status || "unknown"}
-              tone={row.status === "approved" ? "success" : "warning"}
-            />
-          </dd>
-        </div>
-      </dl>
-
-      <h4>Ride performance</h4>
-      <dl className="driver-perf__detail">
-        <div>
-          <dt>Requests received</dt>
-          <dd>{row.received_rides}</dd>
-        </div>
-        <div>
-          <dt>Accepted</dt>
-          <dd>{row.accepted_rides}</dd>
-        </div>
-        <div>
-          <dt>Declined</dt>
-          <dd>{row.declined_rides}</dd>
-        </div>
-        <div>
-          <dt>Missed</dt>
-          <dd>{row.missed_rides}</dd>
-        </div>
-        <div>
-          <dt>Completed</dt>
-          <dd>{row.completed_rides}</dd>
-        </div>
-        <div>
-          <dt>Cancelled</dt>
-          <dd>{row.cancelled_rides}</dd>
-        </div>
-        <div>
-          <dt>Acceptance rate</dt>
-          <dd>{pct(row.acceptance_rate)}</dd>
-        </div>
-        <div>
-          <dt>Completion rate</dt>
-          <dd>{completionRate === null ? "No accepted rides recorded" : pct(completionRate)}</dd>
-        </div>
-        <div>
-          <dt>On-time rate</dt>
-          <dd>
-            {Number(row.arrival_samples) > 0 ? (
-              <>
-                {pct(row.on_time_rate)}{" "}
-                <small>
-                  ({row.on_time_arrivals}/{row.arrival_samples} arrivals)
-                </small>
-              </>
-            ) : (
-              <span className="driver-perf__insufficient">No arrival samples recorded</span>
-            )}
-          </dd>
-        </div>
-      </dl>
-
-      <h4>Customer satisfaction</h4>
-      <dl className="driver-perf__detail">
-        <div>
-          <dt>Average rating</dt>
-          <dd>
-            {Number(row.rating_average) > 0
-              ? `${Number(row.rating_average).toFixed(2)} / 5`
-              : "No ratings recorded"}
-          </dd>
-        </div>
-        <div>
-          <dt>Complaints / review</dt>
-          <dd>
-            {row.account_risk_flag || row.account_under_review ? (
-              <StatusChip
-                label={row.account_risk_flag ? "Flagged" : "Under review"}
-                tone={row.account_risk_flag ? "danger" : "warning"}
-                title={row.account_risk_reason || ""}
-              />
-            ) : (
-              <StatusChip label="None recorded" tone="neutral" />
-            )}
-          </dd>
-        </div>
-      </dl>
-      {row.account_risk_reason ? (
-        <p className="driver-perf__reason">
-          <strong>Reason on record:</strong> {row.account_risk_reason}
-        </p>
-      ) : null}
-
-      <h4>Financial summary</h4>
-      {earnings.state === "idle" ? (
-        <p>
-          <button type="button" className="admin-lib-btn admin-lib-btn--ghost" onClick={loadEarnings}>
-            Load earnings from finance API
-          </button>
-        </p>
-      ) : earnings.state === "loading" ? (
-        <p className="driver-perf__insufficient">Loading earnings…</p>
-      ) : earnings.state === "error" ? (
-        <p className="driver-perf__reason">{earnings.error}</p>
-      ) : (
-        <pre className="driver-perf__payload">{JSON.stringify(earnings.data, null, 2)}</pre>
-      )}
-
-      <h4>Recent rides</h4>
-      {history.state === "idle" ? (
-        <p>
-          <button type="button" className="admin-lib-btn admin-lib-btn--ghost" onClick={loadHistory}>
-            Load ride history
-          </button>
-        </p>
-      ) : history.state === "loading" ? (
-        <p className="driver-perf__insufficient">Loading ride history…</p>
-      ) : history.state === "error" ? (
-        <p className="driver-perf__reason">{history.error}</p>
-      ) : (
-        <pre className="driver-perf__payload">{JSON.stringify(history.data, null, 2)}</pre>
-      )}
-
-      <p className="driver-perf__note">
-        Score {row.score} ({row.score_band}) — {row.recommendation}. Scoring is operational only:
-        safety incidents are reviewed separately and never suspend a driver automatically.
-      </p>
-    </Modal>
-  );
 }

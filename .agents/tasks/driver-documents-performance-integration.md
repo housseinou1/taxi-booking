@@ -92,18 +92,41 @@ because none are exposed.
 **Suggested endpoints:** `GET /admin/drivers/<id>/ratings/` and
 `GET /admin/drivers/ratings/?min_rating=&max_rating=&city=`.
 
-### 2.5 No date-ranged driver analytics endpoint
-The brief asks for daily / weekly / monthly trip charts and date-range filtering.
-`/drivers/performance/` returns **current totals only** — no time series.
+### 2.5 No fleet-level driver time-series endpoint (charts partially delivered)
 
-**Consequence:** **no charts were built.** Rendering one would have required
-inventing the series. The date-range filter was also not added, since it would have
-had nothing to filter. The modules present current-state KPIs and tables instead.
+`/drivers/performance/` returns **current totals only** — there is no fleet-level
+daily/weekly/monthly series for drivers, and no `/admin/drivers/analytics/`
+endpoint exists. (`analytics` endpoints exist for api_gateway, cities, deliveries
+and employees — not drivers.)
+
+**What was built instead, from real data only:**
+
+| Chart | Scope | Source |
+|---|---|---|
+| Fleet distribution by score band | Fleet | `score_band` counts from `/drivers/performance/` |
+| Driver earnings by period | Per driver | `/rides/admin/driver/<id>/earnings/` buckets (today/week/month/total) |
+| Platform commission by period | Per driver | same payload (`commission_mru`) |
+| Completed trips — last 14 days | Per driver | `/rides/admin/driver/<id>/history/` grouped on `completed_at` |
+| Driver earnings per day | Per driver | same rows, summed on `driver_earning` |
+| Average customer rating over time | Per driver | same rows, `rating` averaged per day |
+| Ride outcomes (completed/cancelled/other) | Per driver | the history endpoint's own `summary` |
+
+Ride history is paginated (max 100 rows per request), so the per-driver time-series
+charts **state their window explicitly** ("Built from the N most recent rides
+returned by the ride-history API") rather than implying they cover the full history.
+
+**Still not possible without a backend change:** fleet-wide daily/weekly/monthly
+trip, acceptance and cancellation trends. Those remain absent rather than faked.
 
 **Suggested endpoint:**
 `GET /admin/drivers/analytics/?from=&to=&granularity=day|week|month` returning
-completed trips, acceptance, cancellation and earnings series. Once it exists, charts
-and the date-range picker can be added directly.
+completed trips, acceptance, cancellation and earnings series across the fleet.
+Once it exists, fleet-level charts and a fleet date-range picker can be added
+directly.
+
+**Date-range selection is delivered per driver**, where the API genuinely supports
+it: `/rides/admin/driver/<id>/history/` accepts `date_from` / `date_to`, and the
+profile's range selector applies them server-side (asserted by a test).
 
 ### 2.6 No driver-eligibility change required
 Expired mandatory documents already flow through the existing eligibility rules
