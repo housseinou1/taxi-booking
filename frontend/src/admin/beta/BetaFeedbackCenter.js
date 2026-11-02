@@ -112,9 +112,6 @@ export default function BetaFeedbackCenter() {
 
   return (
     <div className="beta">
-      <a href="/admin" className="beta__back">
-        ← Admin
-      </a>
       <div className="beta__header">
         <div>
           <h1 className="beta__title">Support Center</h1>

@@ -136,7 +136,6 @@ export default function LaunchHub() {
 
   return (
     <div className="launch">
-      <a href="/admin" className="launch__back">← Admin</a>
       <div className="launch__header">
         <div>
           <h1 className="launch__title">Launch Control Center</h1>

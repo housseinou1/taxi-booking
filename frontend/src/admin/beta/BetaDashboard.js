@@ -150,9 +150,6 @@ export default function BetaDashboard() {
   return (
     <div className="beta">
       <div className="beta__no-print">
-        <a href="/admin" className="beta__back">
-          ← Admin
-        </a>
         <div className="beta__header">
           <div>
             <h1 className="beta__title">Closed Beta Operations</h1>

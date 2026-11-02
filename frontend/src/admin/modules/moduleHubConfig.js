@@ -10,7 +10,7 @@
 export const MODULE_HUBS = {
   rides: {
     module: "rides",
-    title: "Rides Management",
+    title: "Ride Management",
     subtitle: "Taxi ride operations: live rides, completed trips, cancellations and reports.",
     links: [
       { label: "Live Operations", path: "/admin/operations", description: "Real-time ride and dispatch monitoring." },
@@ -27,7 +27,7 @@ export const MODULE_HUBS = {
   },
   drivers: {
     module: "drivers",
-    title: "Drivers Management",
+    title: "Driver Management",
     subtitle: "Driver applications, approvals, signatures, documents, earnings and performance.",
     links: [
       { label: "Driver Approvals", path: "/admin/approvals", description: "Review and approve driver applications." },
@@ -47,7 +47,7 @@ export const MODULE_HUBS = {
   },
   riders: {
     module: "riders",
-    title: "Riders Management",
+    title: "Rider Management",
     subtitle: "Rider accounts, verification, ride history, payments, activity and account management.",
     links: [
       // Was "/admin/legacy" (not a registered route).

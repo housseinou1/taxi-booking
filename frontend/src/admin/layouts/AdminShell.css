@@ -272,9 +272,12 @@
   overflow: auto;
 }
 
-.admin-shell__page-title {
-  margin: 8px 0 16px;
-  font-size: 1.35rem;
+.admin-shell__main-title {
+  margin: 4px 0 18px;
+  font-size: 1.6rem;
+  font-weight: 800;
+  line-height: 1.25;
+  color: var(--admin-text);
 }
 
 .admin-shell__breadcrumbs ol {

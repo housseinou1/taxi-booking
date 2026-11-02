@@ -783,7 +783,6 @@ export default function OperationsControlCenter() {
     <div className="ops-center ops-ctrl">
       <header className="ops-center__header ops-ctrl__hero">
         <div>
-          <a className="ops-center__back-link" href="/admin">← Admin</a>
           <h1>YALA Operations Control Center</h1>
           <p>Unified dispatch, monitoring, incidents, support, fleet health, analytics, tasks & CEO command</p>
         </div>

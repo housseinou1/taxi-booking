@@ -143,7 +143,6 @@ export default function BiGrowthCenter() {
     <div className={`bi-growth ${theme === "light" ? "bi-growth--light" : ""}`}>
       <header className="bi-growth__header">
         <div>
-          <a href="/admin" className="bi-growth__back">← Admin</a>
           <h1>Business Intelligence & Growth Center</h1>
           <p className="bi-growth__subtitle">
             Executive analytics — transform operational data into actionable insights

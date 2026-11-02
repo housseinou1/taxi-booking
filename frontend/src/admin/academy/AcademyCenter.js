@@ -116,7 +116,7 @@ const REPORT_PERIODS = [
 function RateMeter({ pct }) {
   if (pct === null || pct === undefined) {
     return (
-      <span className="acad-rate acad-rate--idle" title="No learners enrolled - rate is undefined">
+      <span className="acad-rate acad-rate--idle" title="No learners enrolled — completion rate not available">
         <span className="acad-rate__value">{DASH}</span>
       </span>
     );
@@ -1148,7 +1148,7 @@ export default function AcademyCenter() {
               unit={completion === null ? undefined : "%"}
               sub={
                 completion === null
-                  ? "No enrolments yet - rate is undefined"
+                  ? "No enrolments yet — completion rate not available"
                   : `${formatCount(dashboard?.completed)} of ${formatCount(
                       dashboard?.total_enrollments
                     )} enrolments completed`
@@ -2533,7 +2533,7 @@ export default function AcademyCenter() {
               unit={completionRate === null ? undefined : "%"}
               sub={
                 completionRate === null
-                  ? "No enrolments match - rate is undefined"
+                  ? "No matching enrolments — completion rate not available"
                   : "Completed share of the filtered enrolments"
               }
               icon={"\uD83D\uDCC8"}

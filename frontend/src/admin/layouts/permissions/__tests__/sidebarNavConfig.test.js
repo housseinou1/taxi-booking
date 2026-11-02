@@ -10,6 +10,7 @@ import {
   filterNavItems,
   flattenNavItems,
   resolveNavPath,
+  resolveActiveNav,
 } from "../sidebarNavConfig";
 import {
   PATH_MODULE_MAP,
@@ -270,5 +271,36 @@ describe("Admin route access (backend-aligned)", () => {
     // Whatever is returned must be a path the route guard knows.
     expect(PATH_MODULE_MAP[resolveRegisteredAdminHome("/admin/home/ceo")]).toBe("home");
     expect(PATH_MODULE_MAP[resolveRegisteredAdminHome("/admin/employees")]).toBe("employees");
+  });
+});
+
+describe("resolveActiveNav", () => {
+  const ceo = { role: "ceo", elevated: true, modules: [], feature_flags: {} };
+
+  it("returns the menu entry and its category for an exact path", () => {
+    const hit = resolveActiveNav(ceo, "/admin/ceo");
+    expect(hit.item.label).toBe("Business Performance");
+    expect(hit.group.label).toBe("Executive Command Center");
+  });
+
+  it("prefers the entry whose query string matches", () => {
+    expect(resolveActiveNav(ceo, "/admin/trust-safety", "?tab=emergency").item.label).toBe(
+      "Emergency Alerts"
+    );
+    expect(resolveActiveNav(ceo, "/admin/trust-safety", "").item.label).toBe(
+      "Trust & Safety Center"
+    );
+    expect(resolveActiveNav(ceo, "/admin/approvals", "?tab=couriers").item.label).toBe(
+      "Courier Approvals"
+    );
+  });
+
+  it("falls back to the closest parent entry for nested pages", () => {
+    expect(resolveActiveNav(ceo, "/admin/riders/42/edit").item.label).toBe("Rider Management");
+  });
+
+  it("returns null for unknown pages and missing permissions", () => {
+    expect(resolveActiveNav(ceo, "/admin/does-not-exist")).toBeNull();
+    expect(resolveActiveNav(null, "/admin/ceo")).toBeNull();
   });
 });

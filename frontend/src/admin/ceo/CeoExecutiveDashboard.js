@@ -261,7 +261,6 @@ export default function CeoExecutiveDashboard() {
     <div className={`ceo-exec ${theme === "light" ? "ceo-exec--light" : ""}`}>
       <header className="ceo-exec__header">
         <div>
-          <a href="/admin" className="ceo-exec__back">← Admin Home</a>
           <h1>YALA CEO Executive Dashboard</h1>
           <p className="ceo-exec__subtitle">
             Executive decision center — mobility, delivery, and platform health at a glance

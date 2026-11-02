@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { apiErrorMessage } from "../layouts/errors/apiErrorMessage";
 
 import {
   DRIVER_STATUS_LABELS,
@@ -126,7 +127,7 @@ export default function VehicleManagementCenter() {
       setError(
         status === 403
           ? "You are not authorized to view the vehicle directory."
-          : err?.response?.data?.detail || err?.message || "Could not load the vehicle directory."
+          : apiErrorMessage(err, { resource: "vehicle directory" })
       );
       setRows([]);
       setAlerts([]);
@@ -334,14 +335,6 @@ export default function VehicleManagementCenter() {
 
   return (
     <div className="fleet-center">
-      <nav className="veh-crumbs" aria-label="Breadcrumb">
-        <a href="/admin">Admin</a>
-        <span aria-hidden="true">/</span>
-        <a href="/admin/fleet">Fleet</a>
-        <span aria-hidden="true">/</span>
-        <span aria-current="page">Vehicle Management</span>
-      </nav>
-
       <header className="fleet-center__header">
         <div className="fleet-center__heading">
           <h1 className="fleet-center__title">Vehicle Management</h1>

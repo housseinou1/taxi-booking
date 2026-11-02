@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { apiErrorMessage } from "../layouts/errors/apiErrorMessage";
 
 import {
   BADGE_LABELS,
@@ -191,7 +192,7 @@ export default function FleetPerformanceCenter() {
         setLastLoaded(new Date());
       } catch (err) {
         setError(
-          err?.response?.data?.detail || err?.message || "Failed to load the fleet center"
+          apiErrorMessage(err, { resource: "fleet data" })
         );
       } finally {
         setLoading(false);
@@ -210,7 +211,7 @@ export default function FleetPerformanceCenter() {
     } catch (err) {
       setVehicles(null);
       setVehiclesError(
-        err?.response?.data?.detail || err?.message || "Vehicle directory is unavailable"
+        apiErrorMessage(err, { resource: "vehicle directory" })
       );
     }
   }, [cityId]);

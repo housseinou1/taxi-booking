@@ -371,7 +371,6 @@ export default function LaunchGrowthCenter() {
     <div className="launch-growth">
       <header className="launch-growth__header">
         <div>
-          <a className="launch-growth__back" href="/admin">← Admin</a>
           <h1>Launch & Growth Center</h1>
           <p>Driver recruitment, rider acquisition, promotions, partnerships & CEO scorecard</p>
         </div>

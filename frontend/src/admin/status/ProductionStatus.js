@@ -64,7 +64,6 @@ export default function ProductionStatus() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#0b0f14", color: "#f8fafc", padding: 24, fontFamily: "Plus Jakarta Sans, Inter, sans-serif" }}>
-      <a href="/admin" style={{ color: "#94a3b8", fontSize: 13 }}>← Admin</a>
       <h1 style={{ marginTop: 8 }}>Production Status</h1>
       <p style={{ color: "#94a3b8" }}>Live infrastructure health for launch certification</p>
 

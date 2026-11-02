@@ -362,7 +362,7 @@ export default function DriversManagement({
   return (
     <section className="drivers-management" aria-label="Drivers management">
       <header className="drivers-management__header">
-        <h2>Drivers Management</h2>
+        <h2>Driver Management</h2>
         <p>Review driver accounts, identity verification, vehicle documents, and account access.</p>
       </header>
 

@@ -1073,7 +1073,7 @@ function App() {
   if (page === "admin-ai-operations") {
     // Phase C - unified shell (pre-checked: does not self-wrap).
     return withInstall(
-      <AdminShellPage pathname="/admin/ai-operations" title="AIOperations Dashboard">
+      <AdminShellPage pathname="/admin/ai-operations" title="AI Operations & Smart Dispatch">
         <AIOperationsDashboard />
       </AdminShellPage>
     );
@@ -1146,7 +1146,7 @@ function App() {
   if (page === "admin-fleet") {
     // Phase C - unified shell (pre-checked: does not self-wrap).
     return withInstall(
-      <AdminShellPage pathname="/admin/fleet" title="Fleet Performance Center">
+      <AdminShellPage pathname="/admin/fleet" title="Fleet & Driver Performance Center">
         <FleetPerformanceCenter />
       </AdminShellPage>
     );
@@ -1274,8 +1274,8 @@ function App() {
     );
   }
   const MODULE_HUB_PAGES = {
-    "admin-drivers": { hubKey: "drivers", pathname: "/admin/drivers", title: "Drivers Management" },
-    "admin-riders": { hubKey: "riders", pathname: "/admin/riders", title: "Riders Management" },
+    "admin-drivers": { hubKey: "drivers", pathname: "/admin/drivers", title: "Driver Management" },
+    "admin-riders": { hubKey: "riders", pathname: "/admin/riders", title: "Rider Management" },
     // "admin-delivery" is intentionally absent: `/admin/delivery` is served by
     // DeliveryManagement (the `page === "admin-delivery"` branch above), which already renders
     // the AdminModuleHub itself. An entry here was unreachable dead code.
@@ -1369,7 +1369,7 @@ function App() {
   if (page === "admin-growth") {
     // Phase C - unified shell (pre-checked: does not self-wrap).
     return withInstall(
-      <AdminShellPage pathname="/admin/growth" title="Growth Expansion Dashboard">
+      <AdminShellPage pathname="/admin/growth" title="Growth & Expansion Dashboard">
         <GrowthExpansionDashboard />
       </AdminShellPage>
     );
@@ -1378,7 +1378,7 @@ function App() {
   if (page === "admin-multi-city") {
     // Phase C - unified shell (pre-checked: does not self-wrap).
     return withInstall(
-      <AdminShellPage pathname="/admin/multi-city" title="Multi City Operations Center">
+      <AdminShellPage pathname="/admin/multi-city" title="Multi-City Operations Platform">
         <MultiCityOperationsCenter />
       </AdminShellPage>
     );
@@ -1387,7 +1387,7 @@ function App() {
   if (page === "admin-smart-pricing") {
     // Phase C - unified shell (pre-checked: does not self-wrap).
     return withInstall(
-      <AdminShellPage pathname="/admin/pricing-dispatch" title="Smart Pricing Dispatch Center">
+      <AdminShellPage pathname="/admin/pricing-dispatch" title="Smart Pricing & Dispatch Engine">
         <SmartPricingDispatchCenter />
       </AdminShellPage>
     );
@@ -1396,7 +1396,7 @@ function App() {
   if (page === "admin-trust-safety") {
     // Phase C - unified shell (pre-checked: does not self-wrap).
     return withInstall(
-      <AdminShellPage pathname="/admin/safety" title="Trust Safety Center">
+      <AdminShellPage pathname="/admin/safety" title="Trust & Safety Center">
         <TrustSafetyCenter />
       </AdminShellPage>
     );
@@ -1423,7 +1423,7 @@ function App() {
   if (page === "admin-merchant-platform") {
     // Phase C - unified shell (pre-checked: does not self-wrap).
     return withInstall(
-      <AdminShellPage pathname="/admin/merchants" title="Merchant Platform Center">
+      <AdminShellPage pathname="/admin/merchants" title="Yala Merchant Platform">
         <MerchantPlatformCenter />
       </AdminShellPage>
     );
@@ -1432,7 +1432,7 @@ function App() {
   if (page === "admin-partner-platform") {
     // Phase C - unified shell (pre-checked: does not self-wrap).
     return withInstall(
-      <AdminShellPage pathname="/admin/partners" title="Partner Platform Center">
+      <AdminShellPage pathname="/admin/partners" title="Partner & Franchise Platform">
         <PartnerPlatformCenter />
       </AdminShellPage>
     );
@@ -1441,7 +1441,7 @@ function App() {
   if (page === "admin-customer-growth") {
     // Phase C - unified shell (pre-checked: does not self-wrap).
     return withInstall(
-      <AdminShellPage pathname="/admin/loyalty" title="Customer Growth Center">
+      <AdminShellPage pathname="/admin/loyalty" title="Customer Growth & Loyalty">
         <CustomerGrowthCenter />
       </AdminShellPage>
     );
@@ -1478,7 +1478,7 @@ function App() {
   if (page === "admin-board-reports") {
     // Phase C - unified shell (pre-checked: does not self-wrap).
     return withInstall(
-      <AdminShellPage pathname="/admin/board-reports" title="Board Reporting Suite">
+      <AdminShellPage pathname="/admin/board-reports" title="Board & Investor Reporting Suite">
         <BoardReportingSuite />
       </AdminShellPage>
     );
@@ -1487,7 +1487,7 @@ function App() {
   if (page === "admin-compliance-governance") {
     // Phase C - unified shell (pre-checked: does not self-wrap).
     return withInstall(
-      <AdminShellPage pathname="/admin/compliance-governance" title="Compliance Governance Center">
+      <AdminShellPage pathname="/admin/compliance-governance" title="Compliance & Governance Center">
         <ComplianceGovernanceCenter />
       </AdminShellPage>
     );
@@ -1496,7 +1496,7 @@ function App() {
   if (page === "admin-bi") {
     // Phase C - unified shell (pre-checked: does not self-wrap).
     return withInstall(
-      <AdminShellPage pathname="/admin/business-intelligence" title="BIAnalytics Center">
+      <AdminShellPage pathname="/admin/business-intelligence" title="Business Intelligence & Data Warehouse">
         <BIAnalyticsCenter />
       </AdminShellPage>
     );
@@ -1505,7 +1505,7 @@ function App() {
   if (page === "admin-api-gateway") {
     // Phase C - unified shell (pre-checked: does not self-wrap).
     return withInstall(
-      <AdminShellPage pathname="/admin/integration" title="APIGateway Center">
+      <AdminShellPage pathname="/admin/integration" title="API Gateway & Integration Platform">
         <APIGatewayCenter />
       </AdminShellPage>
     );
@@ -1526,7 +1526,7 @@ function App() {
   if (page === "admin-support") {
     // Phase C - unified shell (pre-checked: does not self-wrap).
     return withInstall(
-      <AdminShellPage pathname="/admin/support" title="Beta Feedback Center">
+      <AdminShellPage pathname="/admin/support" title="Support Center">
         <BetaFeedbackCenter />
       </AdminShellPage>
     );

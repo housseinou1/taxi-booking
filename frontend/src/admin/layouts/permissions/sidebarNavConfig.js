@@ -277,3 +277,42 @@ export function groupNavItems(items) {
   return (items || []).map((item) => ({ section: item.label, items: [item] }));
 }
 
+
+const normalizePath = (value) => (value || "").replace(/\/+$/, "") || "/";
+
+/**
+ * The sidebar entry (and its category) for the page currently open, using the
+ * same rules as the sidebar highlight: an exact path match wins, and when
+ * several entries share a path the one whose `?query` matches is preferred.
+ */
+export function resolveActiveNav(permissions, pathname, search = "") {
+  const items = filterNavItems(permissions);
+  const current = normalizePath(pathname);
+  const params = new URLSearchParams(search || "");
+  const entries = [];
+  items.forEach((item) => {
+    if (item.children?.length) {
+      item.children.forEach((child) => entries.push({ item: child, group: item }));
+    } else {
+      entries.push({ item, group: null });
+    }
+  });
+  const withPath = entries
+    .map((entry) => ({ ...entry, path: resolveNavPath(entry.item, permissions) }))
+    .filter((entry) => entry.path);
+  const exact = withPath.filter(({ path }) => {
+    const [target, query] = path.split("?");
+    if (normalizePath(target) !== current) return false;
+    return Array.from(new URLSearchParams(query || "")).every(([key, value]) => params.get(key) === value);
+  });
+  const preferred = exact.filter(({ path }) => path.includes("?"));
+  const hit = (preferred.length ? preferred : exact)[0];
+  if (hit) return { item: hit.item, group: hit.group };
+  const prefix = withPath
+    .filter(({ path }) => {
+      const target = normalizePath(path.split("?")[0]);
+      return target !== "/admin" && current.startsWith(`${target}/`);
+    })
+    .sort((a, b) => b.path.length - a.path.length)[0];
+  return prefix ? { item: prefix.item, group: prefix.group } : null;
+}

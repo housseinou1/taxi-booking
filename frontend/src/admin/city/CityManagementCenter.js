@@ -332,10 +332,11 @@ export default function CityManagementCenter() {
 
       {!schemaReady && (
         <div className="cmc-banner cmc-banner-warn">
-          <strong>Migration pending.</strong> City registration, editing, activation,
-          reporting and auditing work now. Independent service activation, city pricing and
-          service areas need <code>{requiresMigration || "cities.0005_city_management"}</code>{" "}
-          to be applied. Nothing is live until you authorize it.
+          <strong>Database update pending.</strong> City registration, editing, activation,
+          reporting and auditing are available now. Per-city service activation, pricing and
+          service areas become available once the pending database update
+          <span title={requiresMigration || "cities.0005_city_management"}> has been applied</span>{" "}
+          by the technical team. Nothing changes until you authorize it.
         </div>
       )}
 

@@ -306,7 +306,7 @@ export default function RidersManagement({
   return (
     <section className="riders-management" aria-label="Riders management">
       <header className="riders-management__header">
-        <h2>Riders Management</h2>
+        <h2>Rider Management</h2>
         <p>Review rider accounts, identity verification, and account access.</p>
       </header>
 

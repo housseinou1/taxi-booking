@@ -103,9 +103,6 @@ export default function BusinessHub() {
           <h1 className="launch__title">Business Operations</h1>
           <p className="launch__subtitle">Finance · CRM · Marketing · Partners · Corporate · Compliance · BI</p>
         </div>
-        <button type="button" className="launch__btn" onClick={() => { window.location.href = "/admin"; }}>
-          ← Admin
-        </button>
       </header>
 
       {error && <div className="launch__error">{error}</div>}

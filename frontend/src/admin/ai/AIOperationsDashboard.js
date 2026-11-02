@@ -103,7 +103,6 @@ export default function AIOperationsDashboard() {
     <div className="ops-ai">
       <header className="ops-ai__header">
         <div>
-          <a className="ops-ai__back-link" href="/admin">← Admin</a>
           <h1>AI Operations & Smart Dispatch</h1>
           <p>Explainable recommendations — human approval required for all actions</p>
         </div>
