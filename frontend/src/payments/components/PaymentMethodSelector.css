@@ -1,0 +1,245 @@
+/*
+ * YALA payment method selector.
+ *
+ * Reusable across YALA Rider, YALA Delivery customer and (where supported)
+ * merchant checkout. Uses the YALA brand palette (navy #08111F, green #00A651)
+ * and is fluid from 320px to wide desktop.
+ *
+ * All class names are namespaced `yala-pay-method` so the component cannot
+ * collide with the existing per-surface checkout styles.
+ */
+
+.yala-pay-method {
+  --ypm-navy: #08111f;
+  --ypm-green: #00a651;
+  --ypm-ink: #16202e;
+  --ypm-muted: #5b6b7f;
+  --ypm-line: #e3e8ef;
+  --ypm-surface: #ffffff;
+  --ypm-soft: #f6f8fb;
+
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  color: var(--ypm-ink);
+}
+
+.yala-pay-method__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.yala-pay-method__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ypm-navy);
+}
+
+.yala-pay-method__amount {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ypm-muted);
+}
+
+.yala-pay-method__amount strong {
+  font-size: 15px;
+  color: var(--ypm-navy);
+}
+
+/* ── Category cards ───────────────────────────────────────────────────────── */
+
+.yala-pay-method__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.yala-pay-method__card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 60px;
+  padding: 12px 14px;
+  text-align: left;
+  border: 1px solid var(--ypm-line);
+  border-radius: 12px;
+  background: var(--ypm-surface);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.yala-pay-method__card:hover:not(:disabled) {
+  border-color: var(--ypm-green);
+}
+
+.yala-pay-method__card:focus-visible {
+  outline: 2px solid var(--ypm-green);
+  outline-offset: 2px;
+}
+
+.yala-pay-method__card.is-active {
+  border-color: var(--ypm-green);
+  background: rgba(0, 166, 81, 0.06);
+  box-shadow: inset 0 0 0 1px var(--ypm-green);
+}
+
+.yala-pay-method__card:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.yala-pay-method__icon {
+  font-size: 22px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.yala-pay-method__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.yala-pay-method__text strong {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--ypm-navy);
+}
+
+.yala-pay-method__text small {
+  font-size: 11.5px;
+  color: var(--ypm-muted);
+}
+
+/* Selection tick — visible only on the active card. */
+.yala-pay-method__check {
+  margin-left: auto;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 2px solid var(--ypm-line);
+}
+
+.yala-pay-method__card.is-active .yala-pay-method__check {
+  border-color: var(--ypm-green);
+  background: var(--ypm-green);
+  box-shadow: inset 0 0 0 3px var(--ypm-surface);
+}
+
+/* ── Mobile Money provider dropdown ───────────────────────────────────────── */
+
+.yala-pay-method__provider {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--ypm-line);
+  border-radius: 12px;
+  background: var(--ypm-soft);
+}
+
+.yala-pay-method__provider label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ypm-navy);
+}
+
+.yala-pay-method__select {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--ypm-line);
+  border-radius: 10px;
+  background: var(--ypm-surface);
+  color: var(--ypm-ink);
+  font: inherit;
+  font-size: 14px;
+}
+
+.yala-pay-method__select:focus-visible {
+  outline: 2px solid var(--ypm-green);
+  outline-offset: 1px;
+}
+
+.yala-pay-method__select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ── Messages ─────────────────────────────────────────────────────────────── */
+
+.yala-pay-method__error {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #b42318;
+}
+
+.yala-pay-method__sandbox {
+  margin: 0;
+  padding: 8px 10px;
+  border-left: 3px solid #d4af37;
+  border-radius: 6px;
+  background: rgba(212, 175, 55, 0.12);
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: #6b5a12;
+}
+
+.yala-pay-method__status-hint {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--ypm-muted);
+}
+
+/* ── Responsive ───────────────────────────────────────────────────────────── */
+
+@media (max-width: 560px) {
+  .yala-pay-method__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .yala-pay-method__card {
+    min-height: 56px;
+    padding: 11px 12px;
+  }
+
+  .yala-pay-method__head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .yala-pay-method__grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .yala-pay-method__card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    min-height: 116px;
+  }
+
+  .yala-pay-method__check {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    margin-left: 0;
+  }
+}

@@ -2,17 +2,16 @@ import React, { useEffect, useState } from "react";
 import { API_URL } from "../../apiConfig";
 import authenticatedApi from "../../auth/authenticatedApi";
 import { formatMoney } from "../../marketConfig";
+import PaymentMethodSelector from "../../payments/components/PaymentMethodSelector";
+import {
+  RIDE_PAYMENT_METHODS,
+  selectionFromMethod,
+  toRidePaymentMethod,
+} from "../../payments/paymentMethods";
 import { submitRidePayment } from "../../payments/ridePaymentService";
 import { readStoredPaymentMethod, storePaymentMethod } from "../utils/paymentMethods";
 import "./PostRidePayRate.css";
 
-const PAYMENT_METHODS = [
-  { id: "cash", label: "Cash", hint: "Pay driver directly" },
-  { id: "bankily", label: "Bankily", hint: "Mobile wallet" },
-  { id: "masrvi", label: "Masravi", hint: "Local wallet" },
-  { id: "seddad", label: "Sedad", hint: "Mobile wallet" },
-  { id: "card", label: "Card", hint: "Saved card" },
-];
 
 const COMPLIMENT_OPTIONS = [
   "Great conversation",
@@ -45,7 +44,17 @@ function getDriverPhoto(ride) {
 export default function PostRidePayRate({ ride, onDone }) {
   const [payment, setPayment] = useState(null);
   const [tipPercentage, setTipPercentage] = useState(15);
-  const [selectedMethod, setSelectedMethod] = useState(() => readStoredPaymentMethod());
+  // The checkout holds the full payment selection (category + provider) so an
+  // incomplete Mobile Money choice is representable and blocks submission.
+  // `selectedMethod` is derived in the legacy spelling the ride Payment.method
+  // column declares (masrvi / seddad), defaulting to card like the other surfaces.
+  const [paymentSelection, setPaymentSelection] = useState(() => {
+    const stored = selectionFromMethod(readStoredPaymentMethod());
+    return stored.category ? stored : selectionFromMethod("card");
+  });
+  const selectedMethod = paymentSelection.method
+    ? toRidePaymentMethod(paymentSelection.method)
+    : "";
   const [rating, setRating] = useState(5);
   const [compliment, setCompliment] = useState("");
   const [review, setReview] = useState("");
@@ -107,6 +116,13 @@ export default function PostRidePayRate({ ride, onDone }) {
 
     try {
       if (!isPaid) {
+        if (!selectedMethod) {
+          // Incomplete selection (Mobile Money chosen but no provider yet): never
+          // submit a payment without a concrete provider.
+          setNotice("Choose a payment method before paying.");
+          setSubmitting(false);
+          return;
+        }
         try {
           await makePayment();
         } catch (error) {
@@ -240,20 +256,16 @@ export default function PostRidePayRate({ ride, onDone }) {
           </section>
 
           <section className="post-ride__methods">
-            <p>Payment method</p>
-            <div className="post-ride__method-list">
-              {PAYMENT_METHODS.map((method) => (
-                <button
-                  key={method.id}
-                  type="button"
-                  className={selectedMethod === method.id ? "active" : ""}
-                  onClick={() => setSelectedMethod(method.id)}
-                >
-                  <span>{method.label}</span>
-                  <small>{method.hint}</small>
-                </button>
-              ))}
-            </div>
+            <PaymentMethodSelector
+              idPrefix="rider-post-ride-payment"
+              value={paymentSelection}
+              onChange={setPaymentSelection}
+              availableMethods={RIDE_PAYMENT_METHODS}
+              amount={totalAmount}
+              currency="MRU"
+              disabled={submitting}
+              showAmount={false}
+            />
           </section>
         </>
       )}
@@ -284,7 +296,7 @@ export default function PostRidePayRate({ ride, onDone }) {
         <button
           type="button"
           className="post-ride__primary"
-          disabled={submitting || !rating}
+          disabled={submitting || !rating || (!isPaid && !selectedMethod)}
           onClick={handleSubmit}
         >
           {submitting ? "Submitting..." : isPaid ? "Submit rating" : `Pay ${formatMoney(totalAmount)} & rate`}

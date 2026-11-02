@@ -1,4 +1,43 @@
 {
+  "payments": {
+    "amountDue": "Amount due",
+    "sandboxNotice": "Sandbox mode: providers are not live. No money will move and no payment is confirmed until the provider verifies it.",
+    "methods": {
+      "label": "Payment method",
+      "card": "Credit Card / Debit Card",
+      "cardHint": "Visa or Mastercard via a secure card gateway",
+      "mobileMoney": "Mobile Money",
+      "mobileMoneyHint": "Bankily, Masravi or Sedad",
+      "wallet": "YALA Wallet",
+      "walletHint": "Pay from your YALA balance",
+      "bankTransfer": "Bank Transfer",
+      "bankTransferHint": "Transfer from your Mauritanian bank account"
+    },
+    "mobileMoney": {
+      "choose": "Choose your mobile money provider",
+      "placeholder": "Select a provider"
+    },
+    "providers": {
+      "bankily": "Bankily",
+      "masravi": "Masravi",
+      "sedad": "Sedad"
+    },
+    "errors": {
+      "chooseProvider": "Choose a mobile money provider to continue.",
+      "incompleteSelection": "Select a payment method to continue."
+    },
+    "status": {
+      "pendingTitle": "Payment pending verification",
+      "pendingMessage": "We received your payment request and are waiting for the provider to confirm it independently. This is not a confirmation yet.",
+      "pendingHint": "You will see a pending status until the provider independently verifies this payment.",
+      "settledTitle": "Payment confirmed",
+      "settledMessage": "Your provider confirmed this payment. Your receipt is available below.",
+      "failedTitle": "Payment not completed",
+      "failedMessage": "This payment did not complete and no money was taken. You can try again with another method.",
+      "unknownTitle": "Payment status unavailable",
+      "unknownMessage": "We could not read a verified status for this payment yet. Refresh to check again."
+    }
+  },
   "common": {
     "brand": "Yala",
     "home": "Home",

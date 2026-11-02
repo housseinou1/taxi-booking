@@ -1,5 +1,6 @@
 import { API_URL } from "../apiConfig";
 import { authHeaders } from "../delivery/DeliveryShared";
+import { toRidePaymentMethod } from "./paymentMethods";
 
 const BASE = `${API_URL}/payments`;
 
@@ -22,10 +23,11 @@ async function paymentRequest(path, options = {}) {
 }
 
 function normalizeRidePaymentMethod(method = "card") {
-  const value = String(method || "cash").toLowerCase();
-  if (value === "masravi") return "masrvi";
-  if (value === "sedad") return "seddad";
-  return value;
+  // Ride payments use the legacy spelling declared by
+  // Payment.PAYMENT_METHOD_CHOICES (masrvi / seddad); the UI uses canonical
+  // provider codes. That conversion lives in payments/paymentMethods.js so every
+  // surface shares one rule instead of re-deriving it.
+  return toRidePaymentMethod(method || "cash");
 }
 
 export function fetchWallet() {

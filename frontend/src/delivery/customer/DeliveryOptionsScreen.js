@@ -5,8 +5,9 @@ import { DELIVERY_VEHICLE_TYPES } from "../deliveryVehicleTypes";
 import { fetchServerCourierFares } from "../deliveryPricing";
 import { getDefaultCourierType } from "../deliveryCourierRouting";
 import { mapCategoryToApi } from "../deliveryCustomerCategories";
-import { DELIVERY_PAYMENT_METHODS } from "../../payments/paymentApi";
+import PaymentMethodSelector from "../../payments/components/PaymentMethodSelector";
 import { getDeliveryPayButtonLabel } from "../../payments/deliveryPayment";
+import { DELIVERY_PREPAY_METHODS } from "../../payments/paymentMethods";
 
 export default function DeliveryOptionsScreen({
   form,
@@ -14,8 +15,8 @@ export default function DeliveryOptionsScreen({
   distanceKm,
   selectedOption,
   onSelectOption,
-  paymentMethod,
-  onPaymentMethodChange,
+  paymentSelection,
+  onPaymentSelectionChange,
   onConfirm,
   onBack,
   busy = false,
@@ -26,6 +27,9 @@ export default function DeliveryOptionsScreen({
   onPrivacyCheckedChange,
 }) {
   const packageType = form.package_type || "small";
+  // The provider's API value. Empty while the selection is incomplete (Mobile
+  // Money chosen but no provider yet) — which blocks the confirm button below.
+  const paymentMethod = paymentSelection?.method || "";
   const [fareOptions, setFareOptions] = useState([]);
 
   useEffect(() => {
@@ -115,20 +119,15 @@ export default function DeliveryOptionsScreen({
       </div>
 
       <section className="delivery-dash__payment-section">
-        <h3>Payment method</h3>
-        <div className="delivery-dash__payment-chips">
-          {DELIVERY_PAYMENT_METHODS.map((method) => (
-            <button
-              key={method.value}
-              type="button"
-              className={`delivery-dash__payment-chip ${paymentMethod === method.value ? "is-active" : ""}`}
-              onClick={() => onPaymentMethodChange(method.value)}
-              disabled={busy}
-            >
-              {method.label}
-            </button>
-          ))}
-        </div>
+        <PaymentMethodSelector
+          idPrefix="delivery-options-payment"
+          value={paymentSelection}
+          onChange={onPaymentSelectionChange}
+          availableMethods={DELIVERY_PREPAY_METHODS}
+          amount={selectedFare?.total ?? 0}
+          currency="MRU"
+          disabled={busy}
+        />
       </section>
 
       <div className="delivery-dash__sticky-confirm">
@@ -146,7 +145,7 @@ export default function DeliveryOptionsScreen({
           type="button"
           className="delivery-dash__confirm-btn delivery-dash__confirm-btn--pay"
           onClick={onConfirm}
-          disabled={busy || (showTermsAcceptance && (!termsChecked || !privacyChecked))}
+          disabled={busy || !paymentMethod || (showTermsAcceptance && (!termsChecked || !privacyChecked))}
           aria-busy={busy}
         >
           {payLabel}
