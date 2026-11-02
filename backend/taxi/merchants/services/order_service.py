@@ -283,8 +283,8 @@ class MerchantOrderService:
             raise MerchantOrderError("Invalid status.", code="invalid_status")
         order.status = "delivered"
         order.delivered_at = timezone.now()
-        order.payment_status = "paid"
-        order.save(update_fields=["status", "delivered_at", "payment_status"])
+        # Delivery is not proof of payment; payment_status changes only via settlement.
+        order.save(update_fields=["status", "delivered_at"])
         merchant = order.merchant
         merchant.total_orders += 1
         merchant.save(update_fields=["total_orders"])

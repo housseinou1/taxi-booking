@@ -111,7 +111,12 @@ def prepay_delivery_request(
     payment_method: str,
     provider_token: str = "",
 ) -> PaymentRecord:
-    """Charge the customer before a delivery request is created."""
+    """Open the customer's prepayment before a delivery request is created.
+
+    The record stays ``pending``: a client-supplied ``provider_token`` is not
+    proof of payment. Only a verified live provider confirmation
+    (``provider_security.apply_verified_confirmation``) may mark it paid.
+    """
     method = normalize_delivery_payment_method(payment_method)
     total = _quantize(amount)
     if total <= 0:
@@ -125,7 +130,7 @@ def prepay_delivery_request(
         customer=customer,
         amount=split["total"],
         method=ledger_method,
-        status="paid",
+        status="pending",
         payment_timing="before_delivery",
         transaction_id=_generate_transaction_id("DLV"),
         provider_token=(provider_token or "")[:255],
@@ -228,7 +233,9 @@ def settle_merchant_order_payment(
     if existing:
         return existing
 
-    status = "paid" if payment_timing == "before_delivery" else "pending"
+    # Digital payments stay pending until a verified live provider confirmation;
+    # a client-supplied provider_token is never proof of payment.
+    status = "pending"
     ledger_method = "masrvi" if method == "masravi" else ("seddad" if method == "sedad" else method)
     if method == "wallet":
         wallet = get_or_create_wallet(order.customer)
