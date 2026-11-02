@@ -39,7 +39,9 @@ from .utils import build_gateway_analytics, build_gateway_ceo_dashboard, dispatc
 
 
 GRACE_PERIOD_DAYS = 7
-DOCS_DIR = Path(__file__).resolve().parents[3] / "release"
+_HERE = Path(__file__).resolve()
+# Repo checkout: <repo>/release. In the Docker image the code sits at /app, which has no such ancestor.
+DOCS_DIR = (_HERE.parents[3] if len(_HERE.parents) > 3 else _HERE.parents[1]) / "release"
 
 
 # ─── Developer Portal Permissions ──────────────────────────────

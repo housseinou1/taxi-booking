@@ -144,7 +144,12 @@ class AdminRidesListTests(APITestCase):
 
     def test_search_matches_pickup_and_ride_id(self):
         target = self._ride(pickup="Ksar")
-        self._ride(pickup="Sebkha")
+        other = self._ride(pickup="Sebkha")
+        # Searching by id also matches text fields; keep digits out of the other ride's
+        # text so the result never depends on which ids the database hands out.
+        Ride.objects.filter(pk=other.pk).update(destination="Toujounine")
+        User.objects.filter(pk=other.rider_id).update(email="rides-admin-other-rider@example.com")
+        User.objects.filter(pk=other.driver_id).update(email="rides-admin-other-driver@example.com")
         by_pickup = self.client.get(LIST_URL, {"q": "Ksar"})
         self.assertEqual(by_pickup.data["count"], 1)
         by_id = self.client.get(LIST_URL, {"q": str(target.id)})
