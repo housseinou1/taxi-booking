@@ -57,7 +57,7 @@ def wallet_top_up_view(request):
         )
     except SettlementError as exc:
         return Response({"error": exc.message, "code": exc.code}, status=status.HTTP_400_BAD_REQUEST)
-    return Response(result, status=status.HTTP_201_CREATED)
+    return Response(result, status=status.HTTP_202_ACCEPTED)
 
 
 @api_view(["GET"])

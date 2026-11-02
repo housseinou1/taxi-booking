@@ -308,30 +308,38 @@ def _credit_merchant_wallet(merchant_user, amount, order_id):
     )
 
 
-@transaction.atomic
 def wallet_top_up(user, amount, method="bankily", provider_token=""):
+    """Start a wallet top-up. Never credits the wallet.
+
+    A client-supplied ``provider_token`` is not proof of payment, so the request
+    only opens a provider collection and stays ``pending``. Crediting requires a
+    verified live provider confirmation (``provider_security.assert_verified_confirmation``).
+    """
     amount = _quantize(amount)
     if amount <= 0:
         raise SettlementError("Amount must be positive.", code="invalid_amount")
     method = _normalize_method(method)
     wallet = get_or_create_wallet(user)
-    status = "paid" if method in MOBILE_METHODS and provider_token else "pending"
-    wallet_tx = None
-    if status == "paid":
-        wallet_tx = apply_wallet_transaction(
-            wallet,
-            amount,
-            True,
-            "top_up",
-            reference=_generate_transaction_id("TOP"),
-            note=f"Top up via {method}",
+
+    from .providers import ProviderError, get_provider
+
+    try:
+        collection = get_provider(method).create_collection(
+            amount=amount, reference=_generate_transaction_id("TOP"), customer=None
         )
+    except (ProviderError, KeyError) as exc:
+        raise SettlementError(
+            "Top-up provider is not available.", code="provider_unavailable"
+        ) from exc
+
     return {
-        "status": status,
+        "status": "pending",
+        "verified": False,
         "amount": str(amount),
         "wallet_balance": str(wallet.balance),
-        "transaction": wallet_tx,
-        "provider_token": (provider_token or "")[:255],
+        "transaction": None,
+        "reference": collection.reference,
+        "message": "Top-up pending provider confirmation. Your wallet is credited only after the payment provider confirms it.",
     }
 
 
