@@ -5,13 +5,17 @@
  * approve/reject wiring, and the explicit error state when the backend fails.
  */
 jest.mock("../permissions/PermissionContext", () => ({
-  usePermissions: () => ({
-    canView: () => true,
-    canAction: () => true,
-    canApprove: () => true,
-    canExport: () => true,
-  }),
+  // Read at call time so individual tests can revoke an action permission.
+  usePermissions: () => mockPermissions,
 }));
+
+// Mutable so a test can revoke a permission; the guard reads it at render time.
+let mockPermissions = {
+  canView: () => true,
+  canAction: () => true,
+  canApprove: () => true,
+  canExport: () => true,
+};
 
 jest.mock("./driverAdminApi", () => {
   const actual = jest.requireActual("./driverAdminApi");
@@ -84,6 +88,12 @@ const DIRECTORY = [
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockPermissions = {
+    canView: () => true,
+    canAction: () => true,
+    canApprove: () => true,
+    canExport: () => true,
+  };
   getDriverApprovalQueue.mockResolvedValue(QUEUE);
   getDriverDirectory.mockResolvedValue(DIRECTORY);
   approveDriverDocument.mockResolvedValue({ message: "Document approved." });
@@ -157,6 +167,20 @@ describe("DriverDocumentsPage", () => {
     // The limitation must be stated plainly, not implied.
     expect(screen.getByText(/not represented/)).toBeInTheDocument();
     expect(screen.getByText(/admin approvals queue/)).toBeInTheDocument();
+  });
+
+  it("hides approve/reject when the document-verification action is not granted", async () => {
+    mockPermissions = { ...mockPermissions, canAction: () => false };
+    render(<DriverDocumentsPage mode="documents" />);
+    await screen.findByText("Driver Documents");
+
+    await waitFor(() =>
+      expect(screen.getByText("Document verification permission required")).toBeInTheDocument()
+    );
+    expect(screen.queryByRole("button", { name: "Approve" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Reject" })).not.toBeInTheDocument();
+    // The read-only affordance must survive losing the action permission.
+    expect(screen.getAllByRole("button", { name: "View" }).length).toBeGreaterThan(0);
   });
 
   it("approves a document through the audited admin endpoint", async () => {
