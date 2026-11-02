@@ -1,0 +1,170 @@
+/*
+ * Driver Documents Management — YALA Admin.
+ *
+ * Namespaced `driver-docs` so it cannot collide with existing admin module CSS.
+ * Uses the admin shell tokens (--admin-*) so it follows the active theme, and is
+ * fluid from 320px to desktop.
+ */
+
+.driver-docs {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  color: var(--admin-text, #f8fafc);
+}
+
+.driver-docs__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.driver-docs__head h2 {
+  margin: 0 0 4px;
+  font-size: 1.15rem;
+}
+
+.driver-docs__head p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--admin-text-muted, #cbd5e1);
+  max-width: 70ch;
+}
+
+.driver-docs__kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+}
+
+/* ── Table cells ──────────────────────────────────────────────────────────── */
+
+.driver-docs__driver {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.driver-docs__avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--admin-accent-soft, rgba(255, 196, 0, 0.14));
+}
+
+.driver-docs__avatar--fallback {
+  display: grid;
+  place-items: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: var(--admin-accent, #ffc400);
+  color: var(--admin-accent-contrast, #0b1220);
+}
+
+.driver-docs__days {
+  opacity: 0.7;
+  font-size: 0.72rem;
+}
+
+.driver-docs__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.driver-docs__na {
+  font-size: 0.72rem;
+  color: var(--admin-text-muted, #cbd5e1);
+  font-style: italic;
+}
+
+/* ── Detail dialog ────────────────────────────────────────────────────────── */
+
+.driver-docs__detail {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  margin: 0 0 12px;
+}
+
+.driver-docs__detail div {
+  min-width: 0;
+}
+
+.driver-docs__detail dt {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--admin-text-muted, #cbd5e1);
+}
+
+.driver-docs__detail dd {
+  margin: 2px 0 0;
+  font-size: 0.85rem;
+  word-break: break-word;
+}
+
+.driver-docs__reject-reason {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-left: 3px solid #b42318;
+  border-radius: 6px;
+  background: rgba(180, 35, 24, 0.1);
+  font-size: 0.82rem;
+}
+
+.driver-docs__history {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 0.8rem;
+  line-height: 1.6;
+}
+
+.driver-docs__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.82rem;
+}
+
+.driver-docs__field textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--admin-border, rgba(148, 163, 184, 0.22));
+  border-radius: 10px;
+  background: var(--admin-surface, rgba(16, 30, 56, 0.74));
+  color: inherit;
+  font: inherit;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.driver-docs__error {
+  margin: 10px 0 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #fca5a5;
+}
+
+/* ── Responsive ───────────────────────────────────────────────────────────── */
+
+@media (max-width: 560px) {
+  .driver-docs__kpis {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
+
+  .driver-docs__head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .driver-docs__actions .admin-lib-btn {
+    min-height: 36px;
+  }
+}

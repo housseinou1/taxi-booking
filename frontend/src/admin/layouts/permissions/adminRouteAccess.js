@@ -36,6 +36,14 @@ export const PATH_MODULE_MAP = {
   // Dedicated overview dashboards (new routes, same modules)
   "/admin/drivers/dashboard": "drivers",
   "/admin/riders/dashboard": "riders",
+  // Driver Documents & Performance modules (existing endpoints, new admin pages).
+  "/admin/driver-documents": "drivers",
+  "/admin/driver-verification": "drivers",
+  "/admin/driver-performance": "drivers",
+  "/admin/driver-ratings": "drivers",
+  "/admin/driver-activity": "drivers",
+  // Driver Safety reuses the Trust & Safety Center, so it stays in that module.
+  "/admin/driver-safety": "trust_safety",
   // Yala Delivery
   "/admin/delivery": "delivery",
   "/admin/delivery/directory": "delivery",

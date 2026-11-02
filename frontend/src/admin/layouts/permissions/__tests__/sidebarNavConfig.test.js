@@ -20,22 +20,24 @@ import {
 } from "../adminRouteAccess";
 
 /**
- * The approved 12-group enterprise sidebar. Top-level entries are business
- * categories; the individual management pages live inside them.
+ * The approved enterprise sidebar: twelve business sections plus the Home
+ * Dashboard landing entry. Top-level entries are the sections; the individual
+ * management pages live inside them as dropdown children.
  */
 const REQUIRED_GROUPS = [
   "Home Dashboard",
   "Executive Command Center",
-  "Operations",
-  "Drivers & Fleet",
-  "Riders",
-  "Yala Delivery",
+  "Operations Management",
+  "Drivers & Fleet Management",
+  "Rider & Customer Management",
+  "YALA Delivery Management",
   "Employees & Human Resources",
   "Customer Support",
-  "Finance",
-  "Security & Compliance",
-  "Growth & Analytics",
-  "Platform Management",
+  "Finance & Accounting",
+  "Trust & Safety",
+  "Reports & Analytics",
+  "Platform Administration",
+  "Settings & Configuration",
 ];
 
 /** Management pages that must stay reachable from inside those groups. */
@@ -76,7 +78,7 @@ describe("Yala Admin sidebar navigation", () => {
 
   it("uses the official application names and no corrupted icon glyphs", () => {
     const labels = SIDEBAR_NAV_ITEMS.map((item) => item.label).join(" ");
-    expect(labels).toContain("Yala Delivery");
+    expect(labels).toContain("YALA Delivery Management");
 
     const assertIcon = (icon) => {
       expect(typeof icon).toBe("string");
@@ -101,6 +103,15 @@ describe("Yala Admin sidebar navigation", () => {
     });
   });
 
+  it("never points two entries at the same path", () => {
+    // `AdminSidebar.isActive` matches on the path alone, so a duplicated path would
+    // highlight two menu items at once and make the active-page indicator lie.
+    const paths = flattenNavItems(SIDEBAR_NAV_ITEMS).map((leaf) =>
+      leaf.getPath ? leaf.getPath({ home_route: "/admin/home/ops" }) : leaf.path
+    );
+    expect(new Set(paths).size).toBe(paths.length);
+  });
+
   it("hides modules the role is not granted", () => {
     const permissions = {
       role: "ops",
@@ -113,15 +124,15 @@ describe("Yala Admin sidebar navigation", () => {
 
     // Granted modules stay visible...
     expect(groups).toContain("Home Dashboard");
-    expect(groups).toContain("Operations");
+    expect(groups).toContain("Operations Management");
 
     // ...and every ungranted one is gone.
-    expect(groups).not.toContain("Finance");
-    expect(groups).not.toContain("Security & Compliance");
-    expect(groups).not.toContain("Yala Delivery");
+    expect(groups).not.toContain("Finance & Accounting");
+    expect(groups).not.toContain("Trust & Safety");
+    expect(groups).not.toContain("YALA Delivery Management");
     expect(groups).not.toContain("Executive Command Center");
-    expect(groups).not.toContain("Platform Management");
-    expect(groups).not.toContain("Growth & Analytics");
+    expect(groups).not.toContain("Platform Administration");
+    expect(groups).not.toContain("Reports & Analytics");
     expect(groups).not.toContain("Employees & Human Resources");
 
     // No child may leak through from an ungranted module.
@@ -272,3 +283,68 @@ describe("Admin route access (backend-aligned)", () => {
     expect(PATH_MODULE_MAP[resolveRegisteredAdminHome("/admin/employees")]).toBe("employees");
   });
 });
+/**
+ * Phase 2: the Driver Management dropdown. These guard the module wiring for the
+ * Driver Documents and Driver Performance pages, because an unmapped path is
+ * default-denied by the route guard and silently falls through to the landing page.
+ */
+const DRIVER_MANAGEMENT_ENTRIES = [
+  { label: "Driver Overview", path: "/admin/drivers/dashboard", module: "drivers" },
+  { label: "Driver Management", path: "/admin/drivers", module: "drivers" },
+  { label: "Driver Applications", path: "/admin/approvals", module: "drivers" },
+  { label: "Driver Documents", path: "/admin/driver-documents", module: "drivers" },
+  { label: "Document Verification", path: "/admin/driver-verification", module: "drivers" },
+  { label: "Driver Performance", path: "/admin/driver-performance", module: "drivers" },
+  { label: "Driver Ratings", path: "/admin/driver-ratings", module: "drivers" },
+  { label: "Driver Activity", path: "/admin/driver-activity", module: "drivers" },
+  { label: "Driver Safety", path: "/admin/driver-safety", module: "trust_safety" },
+];
+
+describe("Driver Management dropdown (Phase 2)", () => {
+  const driversGroup = SIDEBAR_NAV_ITEMS.find((item) => item.id === "drivers-fleet");
+  const children = driversGroup ? driversGroup.children : [];
+
+  it("keeps the Drivers & Fleet Management section", () => {
+    expect(driversGroup).toBeDefined();
+    expect(driversGroup.label).toBe("Drivers & Fleet Management");
+  });
+
+  it.each(DRIVER_MANAGEMENT_ENTRIES)("exposes $label at $path", ({ label, path, module }) => {
+    const entry = children.find((child) => child.label === label);
+    expect(entry).toBeDefined();
+    expect(entry.path).toBe(path);
+    expect(entry.module).toBe(module);
+    // The route guard must know the path, mapped to the same module, or the
+    // navigation entry would be dead.
+    expect(PATH_MODULE_MAP[path]).toBe(module);
+  });
+
+  it("maps the new driver routes to a module that has a label", () => {
+    [
+      "/admin/driver-documents",
+      "/admin/driver-verification",
+      "/admin/driver-performance",
+      "/admin/driver-ratings",
+      "/admin/driver-activity",
+      "/admin/driver-safety",
+    ].forEach((path) => {
+      const module = getModuleForPath(path);
+      expect(module).not.toBeNull();
+      expect(MODULE_LABELS[module]).toBeTruthy();
+    });
+  });
+
+  it("still denies an unmapped driver path by default", () => {
+    const permissions = { role: "ops", elevated: false, modules: ["drivers"], feature_flags: {} };
+    expect(canAccessPath(permissions, "/admin/driver-documents")).toBe(true);
+    expect(canAccessPath(permissions, "/admin/driver-not-a-page")).toBe(false);
+  });
+
+  it("restricts the safety entry to trust_safety holders", () => {
+    const driversOnly = { role: "ops", elevated: false, modules: ["drivers"], feature_flags: {} };
+    expect(canAccessPath(driversOnly, "/admin/driver-safety")).toBe(false);
+    const withSafety = { role: "ops", elevated: false, modules: ["drivers", "trust_safety"], feature_flags: {} };
+    expect(canAccessPath(withSafety, "/admin/driver-safety")).toBe(true);
+  });
+});
+
