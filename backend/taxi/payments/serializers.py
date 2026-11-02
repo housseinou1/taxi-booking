@@ -56,6 +56,10 @@ class PaymentSerializer(serializers.ModelSerializer):
         source="rider.email",
         read_only=True,
     )
+    provider_verified = serializers.SerializerMethodField()
+
+    def get_provider_verified(self, obj):
+        return obj.provider_verified_at is not None
 
     class Meta:
         model = Payment
@@ -74,6 +78,8 @@ class PaymentSerializer(serializers.ModelSerializer):
             "method",
             "status",
             "transaction_id",
+            "provider_verified",
+            "provider_verified_at",
             "created_at",
         ]
 
@@ -83,6 +89,7 @@ class PaymentSerializer(serializers.ModelSerializer):
             "rider_email",
             "status",
             "transaction_id",
+            "provider_verified_at",
             "created_at",
         ]
 
@@ -324,6 +331,8 @@ class WalletAccountSerializer(serializers.ModelSerializer):
 
 
 class PaymentRecordSerializer(serializers.ModelSerializer):
+    provider_verified = serializers.SerializerMethodField()
+
     class Meta:
         model = PaymentRecord
         fields = (
@@ -345,8 +354,14 @@ class PaymentRecordSerializer(serializers.ModelSerializer):
             "courier_earning",
             "merchant_earning",
             "currency",
+            "provider_verified",
+            "provider_verified_at",
             "created_at",
         )
+        read_only_fields = ("provider_verified_at",)
+
+    def get_provider_verified(self, obj):
+        return obj.provider_verified_at is not None
 
 
 class RefundRequestSerializer(serializers.ModelSerializer):

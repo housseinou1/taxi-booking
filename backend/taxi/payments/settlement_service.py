@@ -339,6 +339,18 @@ def wallet_top_up(user, amount, method="bankily", provider_token=""):
             "Top-up provider is not available.", code="provider_unavailable"
         ) from exc
 
+    ledger_method = "masrvi" if method == "masravi" else ("seddad" if method == "sedad" else method)
+    PaymentRecord.objects.create(
+        source="wallet_top_up",
+        customer=user,
+        amount=amount,
+        method=ledger_method,
+        status="pending",
+        payment_timing="before_delivery",
+        transaction_id=collection.reference,
+        provider_token=(provider_token or "")[:255],
+    )
+
     return {
         "status": "pending",
         "verified": False,
