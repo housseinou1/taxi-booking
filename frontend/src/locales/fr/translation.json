@@ -1,4 +1,44 @@
 {
+  "payments": {
+    "amountDue": "Montant a payer",
+    "sandboxNotice": "Mode bac a sable : les fournisseurs ne sont pas en production. Aucun argent ne sera transfere et aucun paiement n'est confirme avant verification par le fournisseur.",
+    "methods": {
+      "label": "Moyen de paiement",
+      "card": "Carte de credit / debit",
+      "cardHint": "Visa ou Mastercard via une passerelle securisee",
+      "mobileMoney": "Mobile Money",
+      "mobileMoneyHint": "Bankily, Masravi ou Sedad",
+      "wallet": "Portefeuille YALA",
+      "walletHint": "Payez depuis votre solde YALA",
+      "bankTransfer": "Virement bancaire",
+      "bankTransferHint": "Virement depuis votre compte bancaire mauritanien"
+    },
+    "mobileMoney": {
+      "choose": "Choisissez votre fournisseur Mobile Money",
+      "placeholder": "Selectionner un fournisseur"
+    },
+    "providers": {
+      "bankily": "Bankily",
+      "masravi": "Masravi",
+      "sedad": "Sedad"
+    },
+    "errors": {
+      "chooseProvider": "Choisissez un fournisseur Mobile Money pour continuer.",
+      "incompleteSelection": "Selectionnez un moyen de paiement pour continuer."
+    },
+    "status": {
+      "pendingTitle": "Paiement en attente de verification",
+      "pendingMessage": "Nous avons recu votre demande de paiement et attendons la confirmation independante du fournisseur. Ce n'est pas encore une confirmation.",
+      "pendingHint": "Le statut restera en attente jusqu'a la verification independante par le fournisseur.",
+      "settledTitle": "Paiement enregistre comme regle",
+      "settledMessage": "YALA a enregistre ce paiement comme regle. Votre recu est disponible ci-dessous.",
+      "verifiedMessage": "Le fournisseur de paiement a confirme ce paiement de maniere independante. Votre recu est disponible ci-dessous.",
+      "failedTitle": "Paiement non abouti",
+      "failedMessage": "Ce paiement n'a pas abouti et aucun montant n'a ete preleve. Vous pouvez reessayer avec un autre moyen.",
+      "unknownTitle": "Statut de paiement indisponible",
+      "unknownMessage": "Nous n'avons pas encore pu lire un statut verifie pour ce paiement. Actualisez pour verifier a nouveau."
+    }
+  },
   "common": {
     "brand": "Yala",
     "home": "Accueil",

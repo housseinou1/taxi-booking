@@ -5,8 +5,9 @@ import DeliveryInstructionFields from "../components/DeliveryInstructionFields";
 import { emptyInstructions, instructionsFromDefaults } from "../deliveryInstructionUtils";
 import { getDeliveryInstructionDefaults } from "../../security/securityApi";
 import { checkoutCart, fetchCart, removeCartItem, updateCartItem } from "../../merchant/merchantApi";
-import { DELIVERY_PAYMENT_METHODS } from "../../payments/paymentApi";
+import PaymentMethodSelector from "../../payments/components/PaymentMethodSelector";
 import { getDeliveryPayButtonLabel } from "../../payments/deliveryPayment";
+import { DELIVERY_PREPAY_METHODS, selectionFromMethod } from "../../payments/paymentMethods";
 
 export default function DeliveryCart({
   store,
@@ -26,7 +27,10 @@ export default function DeliveryCart({
   const [recipientName, setRecipientName] = useState("");
   const [recipientPhone, setRecipientPhone] = useState("");
   const [promoCode, setPromoCode] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("card");
+  // Full selection (category + provider) so an incomplete Mobile Money choice is
+  // representable; `paymentMethod` is the derived value sent to the API.
+  const [paymentSelection, setPaymentSelection] = useState(() => selectionFromMethod("card"));
+  const paymentMethod = paymentSelection.method || "";
   const [dropoffInstructions, setDropoffInstructions] = useState(emptyInstructions);
   const [recipientAltPhone, setRecipientAltPhone] = useState("");
   const [saveAddress, setSaveAddress] = useState(false);
@@ -189,19 +193,15 @@ export default function DeliveryCart({
 
       {/* Payment */}
       <section className="delivery-cart__section">
-        <h3>Payment</h3>
-        <div className="delivery-cart__chips">
-          {DELIVERY_PAYMENT_METHODS.map((m) => (
-            <button
-              key={m.value}
-              type="button"
-              className={`delivery-cart__chip ${paymentMethod === m.value ? "is-active" : ""}`}
-              onClick={() => setPaymentMethod(m.value)}
-            >
-              {m.label}
-            </button>
-          ))}
-        </div>
+        <PaymentMethodSelector
+          idPrefix="delivery-cart-payment"
+          value={paymentSelection}
+          onChange={setPaymentSelection}
+          availableMethods={DELIVERY_PREPAY_METHODS}
+          amount={totals.total ?? 0}
+          currency="MRU"
+          disabled={busy}
+        />
         <label className="delivery-cart__field">
           <span>Promo code</span>
           <input value={promoCode} onChange={(e) => setPromoCode(e.target.value)} placeholder="Enter code" />
@@ -232,7 +232,7 @@ export default function DeliveryCart({
       <button
         type="button"
         className="delivery-cart__checkout"
-        disabled={busy || items.length === 0 || (showTermsAcceptance && (!termsChecked || !privacyChecked))}
+        disabled={busy || !paymentMethod || items.length === 0 || (showTermsAcceptance && (!termsChecked || !privacyChecked))}
         onClick={handleCheckout}
         aria-busy={busy}
       >

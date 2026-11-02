@@ -33,6 +33,7 @@ import { haversineKm } from "./deliveryPricing";
 import useDeliveryTrackingRealtime from "./useDeliveryTrackingRealtime";
 import useSmoothCourierPosition from "./hooks/useSmoothCourierPosition";
 import { apiRequest } from "./DeliveryShared";
+import { selectionFromMethod } from "../payments/paymentMethods";
 import {
   fetchCustomerDeliveryTermsStatus,
   readCustomerTermsSessionFlag,
@@ -141,7 +142,12 @@ export default function DeliveryCustomerApp() {
   const [etaMinutes, setEtaMinutes] = useState(null);
   const [error, setError] = useState("");
   const [busyAction, setBusyAction] = useState(null);
-  const [paymentMethod, setPaymentMethod] = useState("card");
+  // The checkout holds the full payment selection (category + provider) so an
+  // incomplete choice — Mobile Money with no provider chosen yet — is
+  // representable and can block submission. `paymentMethod` stays the derived
+  // API value that the request payloads use.
+  const [paymentSelection, setPaymentSelection] = useState(() => selectionFromMethod("card"));
+  const paymentMethod = paymentSelection.method || "";
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [selectedStore, setSelectedStore] = useState(null);
   const [placedOrder, setPlacedOrder] = useState(null);
@@ -680,8 +686,8 @@ export default function DeliveryCustomerApp() {
           distanceKm={distanceKm}
           selectedOption={selectedOption}
           onSelectOption={setSelectedOption}
-          paymentMethod={paymentMethod}
-          onPaymentMethodChange={setPaymentMethod}
+          paymentSelection={paymentSelection}
+          onPaymentSelectionChange={setPaymentSelection}
           onConfirm={confirmDelivery}
           onBack={() => setScreen(SCREENS.REQUEST)}
           busy={busyAction === "payment"}
