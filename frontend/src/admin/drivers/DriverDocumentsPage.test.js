@@ -169,6 +169,24 @@ describe("DriverDocumentsPage", () => {
     expect(screen.getByText(/admin approvals queue/)).toBeInTheDocument();
   });
 
+  it("exposes the five professional dropdown filters", async () => {
+    render(<DriverDocumentsPage mode="documents" />);
+    // Wait for data: DataTable renders a skeleton (no filter bar) while loading.
+    await screen.findAllByText("Awa Diallo");
+    const filterBar = document.querySelector(".admin-filter-bar");
+    expect(filterBar).toBeTruthy();
+    const selects = [...filterBar.querySelectorAll("select")];
+    expect(selects).toHaveLength(5);
+
+    const optionCounts = selects.map((select) => select.options.length);
+    // Fixed-enum filters (verification status, expiration) carry their full sets.
+    expect(Math.max(...optionCounts)).toBeGreaterThanOrEqual(6);
+    // Data-driven filters populate from the rows the backend returned, and a
+    // filter with no matching data keeps only its placeholder rather than
+    // inventing options.
+    expect(optionCounts.filter((count) => count > 1).length).toBeGreaterThanOrEqual(3);
+  });
+
   it("hides approve/reject when the document-verification action is not granted", async () => {
     mockPermissions = { ...mockPermissions, canAction: () => false };
     render(<DriverDocumentsPage mode="documents" />);

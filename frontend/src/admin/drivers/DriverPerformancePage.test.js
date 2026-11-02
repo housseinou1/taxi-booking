@@ -177,6 +177,17 @@ describe("DriverPerformancePage", () => {
     expect(kpiValue("Safety incidents")).toContain("2");
   });
 
+  it("exposes the five performance dropdown filters", async () => {
+    render(<DriverPerformancePage mode="performance" />);
+    // Wait for data: DataTable renders a skeleton (no filter bar) while loading.
+    await screen.findByText("Awa Diallo");
+    const filterBar = document.querySelector(".admin-filter-bar");
+    expect(filterBar).toBeTruthy();
+    const selects = filterBar.querySelectorAll("select");
+    expect(selects).toHaveLength(5);
+    selects.forEach((select) => expect(select.options.length).toBeGreaterThan(1));
+  });
+
   it("renders backend driver rows without recomputing scores client-side", async () => {
     render(<DriverPerformancePage mode="performance" />);
     expect(await screen.findByText("Awa Diallo")).toBeInTheDocument();
