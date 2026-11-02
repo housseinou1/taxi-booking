@@ -538,7 +538,7 @@ export default function DriverSettings({ deliveryOnly = false } = {}) {
             </span>
           </div>
           <a
-            href="https://yalataxi.live/privacy-policy"
+            href="https://yalataxi.live/privacy"
             target="_blank"
             rel="noopener noreferrer"
             style={securityButtonStyle}

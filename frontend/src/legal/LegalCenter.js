@@ -5,7 +5,7 @@ import "./legal-compliance.css";
 const LEGAL_LINKS = {
   rider: [
     { label: "Terms & Conditions", href: "/terms" },
-    { label: "Privacy Policy", href: "https://yalataxi.live/privacy-policy" },
+    { label: "Privacy Policy", href: "https://yalataxi.live/privacy" },
     { label: "Refund Policy", href: "/terms#refunds" },
     { label: "Delete account", href: "https://api.yalataxi.live/yala-account-deletion/" },
   ],
@@ -13,7 +13,7 @@ const LEGAL_LINKS = {
     { label: "Driver Agreement", href: "/terms#driver" },
     { label: "Earnings Policy", href: "/terms#earnings" },
     { label: "Safety Policy", href: "/terms#safety" },
-    { label: "Privacy Policy", href: "https://yalataxi.live/privacy-policy" },
+    { label: "Privacy Policy", href: "https://yalataxi.live/privacy" },
     { label: "Delete account", href: "https://api.yalataxi.live/yala-account-deletion/" },
   ],
   delivery: [
@@ -21,7 +21,7 @@ const LEGAL_LINKS = {
     { label: "Delivery Rules", href: "/delivery/courier/terms" },
     { label: "Prohibited Items Policy", href: "/delivery/courier/terms#prohibited" },
     { label: "Customer Terms", href: "/delivery/customer/terms" },
-    { label: "Privacy Policy", href: "https://yalataxi.live/privacy-policy" },
+    { label: "Privacy Policy", href: "https://yalataxi.live/privacy" },
     { label: "Delete account", href: "https://api.yalataxi.live/yala-account-deletion/" },
   ],
   admin: [

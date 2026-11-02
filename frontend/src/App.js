@@ -551,6 +551,15 @@ function App() {
     else if (currentPath === "/settings") setPage("settings");
     else if (currentPath === "/terms") setPage("terms");
     else if (currentPath === "/privacy") setPage("privacy");
+    else if (currentPath === "/privacy-policy") {
+      // The official public address is /privacy. Google Play listings and printed
+      // material still point at /privacy-policy, so the legacy address must keep
+      // working and canonicalise to /privacy. Before this, /privacy-policy was not
+      // routed at all and fell through to the marketing landing page, which is not
+      // a privacy policy. nginx also issues a real 301 for the same path.
+      window.history.replaceState(null, "", "/privacy");
+      setPage("privacy");
+    }
     else if (currentPath === "/support") setPage("support");
     else if (currentPath === "/services") setPage("services");
     else if (currentPath.match(/^\/trip-share\/[^/]+$/)) setPage("shared-trip");
@@ -1759,7 +1768,17 @@ function App() {
     );
   }
 
-  if (["terms", "privacy"].includes(page)) {
+  // Public legal pages.
+  //
+  // The Privacy Policy renders its own standalone layout (brand header + legal
+  // footer) and is deliberately NOT wrapped in the TopBar: it is a public document,
+  // so it must not offer Rider / Driver / Admin / Settings / Logout navigation, and
+  // it must stay readable with no session at all.
+  if (page === "privacy") {
+    return <PrivacyPolicy />;
+  }
+
+  if (page === "terms") {
     return withInstall(
       <div>
         <TopBar title={`${MARKET.brandName} ${page}`} goHome={goHome} logout={logout} />
@@ -4209,15 +4228,11 @@ function SettingsStyles() {
 }
 
 function LegalPage({ page }) {
-  // The Privacy Policy is rendered by the dedicated, store-compliant component in
-  // frontend/src/legal/PrivacyPolicy.js. Keeping one source of truth prevents this
-  // copy from drifting out of date: the previous inline version omitted the
-  // background-location disclosure that Google Play requires for Yala Driver and
-  // Yala Delivery, so the published policy was not compliant.
-  if (page === "privacy") {
-    return <PrivacyPolicy />;
-  }
-
+  // Terms and Conditions only. The Privacy Policy is now a standalone public page
+  // rendered by frontend/src/legal/PrivacyPolicy.js and no longer routes through
+  // here, so this component cannot drift into a second copy of the policy. The
+  // previous inline copy omitted the background-location disclosure that Google
+  // Play requires for Yala Driver and Yala Delivery.
   const content = {
     terms: {
       title: "Terms and Conditions",
