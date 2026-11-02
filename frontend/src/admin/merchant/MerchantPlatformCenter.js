@@ -12,6 +12,7 @@ import {
 } from "./merchantPlatformApi";
 import "../beta/BetaDashboard.css";
 import "./MerchantPlatformCenter.css";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 const TABS = [
   { id: "overview", label: "Overview" },
@@ -88,7 +89,7 @@ export default function MerchantPlatformCenter() {
       <header className="beta__header">
         <div>
           <p className="beta__eyebrow">YALA Delivery</p>
-          <h1>Yala Merchant Platform</h1>
+          <h1><AdminPageTitle>Yala Merchant Platform</AdminPageTitle></h1>
           <p className="beta__subtitle">Merchant onboarding, menu operations, orders, analytics, settlements, and CEO metrics.</p>
         </div>
       </header>

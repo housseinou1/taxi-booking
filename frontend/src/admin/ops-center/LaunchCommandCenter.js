@@ -11,6 +11,7 @@ import { API_URL } from "../../apiConfig";
 import { fetchOpsDashboard } from "./opsDashboardApi";
 import { formatMoney } from "../../marketConfig";
 import "./LaunchCommandCenter.css";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -129,7 +130,7 @@ export default function LaunchCommandCenter() {
       {/* Header */}
       <header className="lcc__header">
         <div>
-          <h1 className="lcc__title">🚀 Launch Command Center</h1>
+          <h1 className="lcc__title"><AdminPageTitle>🚀 Launch Command Center</AdminPageTitle></h1>
           <p className="lcc__subtitle">YALA Platform — Real-time launch monitoring</p>
         </div>
         <div className="lcc__header-meta">

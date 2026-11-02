@@ -1197,7 +1197,7 @@ function App() {
             aria-labelledby="settlement-accounts-heading"
           >
             <h2 className="admin-finance-page__heading" id="settlement-accounts-heading">
-              Settlement Accounts
+              About these accounts
             </h2>
             <p className="admin-finance-page__note">
               Read-only view of the settlement destinations configured for Yala Technologies.

@@ -20,6 +20,7 @@ import {
   updateCityPricing,
 } from "./cityManagementApi";
 import "./CityManagementCenter.css";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 /**
  * City Management — Yala Admin → CEO Command Center.
@@ -302,7 +303,7 @@ export default function CityManagementCenter() {
     <div className="cmc-root">
       <header className="cmc-header">
         <div>
-          <h2>City Management</h2>
+          <h1><AdminPageTitle>City Management</AdminPageTitle></h1>
           <p>
             Register and operate cities dynamically across Mauritania. Adding a city never
             requires a source change or a redeploy, and a new city is never live until the

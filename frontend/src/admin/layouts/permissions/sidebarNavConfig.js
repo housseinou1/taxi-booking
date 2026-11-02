@@ -134,7 +134,7 @@ export const SIDEBAR_NAV_ITEMS = [
       nav("employees-directory", "Employee Management", "/admin/employees", "users"),
       nav("clock", "Clock In / Clock Out", "/admin/attendance", "clock"),
       nav("break-notifications", "Break Management", "/admin/break-notifications", "bell"),
-      nav("verification", "Attendance", "/admin/verification", "clipboard"),
+      nav("verification", "Attendance Verification", "/admin/verification", "clipboard"),
       nav("employee-cards", "Employee ID Cards", "/admin/employees?tab=directory", "id-card"),
       nav("leave", "Leave Management", "/admin/attendance?tab=leave", "files"),
       nav("hr", "HR Management", "/admin/hr", "briefcase"),

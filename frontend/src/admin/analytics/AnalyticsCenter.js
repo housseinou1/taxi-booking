@@ -22,6 +22,7 @@ import {
   saveReportConfig,
 } from "./analyticsCenterApi";
 import "../finance/FinanceDashboard.css";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 function downloadBlob(response, filename) {
   const blob = new Blob([response.data]);
@@ -152,7 +153,7 @@ export default function AnalyticsCenter() {
     <div className="fin-dash">
       <header className="fin-dash__header">
         <div>
-          <h1 className="fin-dash__title">Analytics Center</h1>
+          <h1 className="fin-dash__title"><AdminPageTitle>Analytics Center</AdminPageTitle></h1>
           <p className="fin-dash__subtitle">
             Platform metrics, cohorts, and approved exports
             {lastRefresh ? ` · UI refreshed ${lastRefresh.toLocaleTimeString()}` : ""}

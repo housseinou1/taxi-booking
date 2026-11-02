@@ -11,6 +11,7 @@ import {
   updateCorporateInvoice,
 } from "./businessApi";
 import "../beta/BetaDashboard.css";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 function MetricCard({ label, value, sub }) {
   return (
@@ -101,7 +102,7 @@ export default function BusinessAccountsCenter() {
     <div className="beta">
       <div className="beta__header">
         <div>
-          <h1 className="beta__title">Yala Business Accounts</h1>
+          <h1 className="beta__title"><AdminPageTitle>Yala Business Accounts</AdminPageTitle></h1>
           <p className="beta__subtitle">Corporate companies, employees, billing, and CEO metrics</p>
         </div>
         <button type="button" className="beta__btn" onClick={load}>

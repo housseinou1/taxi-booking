@@ -19,6 +19,7 @@ import {
   sortDrivers,
 } from "./driversSelectors";
 import "./drivers.css";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 const PAGE_SIZE = 25;
 
@@ -362,7 +363,7 @@ export default function DriversManagement({
   return (
     <section className="drivers-management" aria-label="Drivers management">
       <header className="drivers-management__header">
-        <h2>Driver Management</h2>
+        <h1><AdminPageTitle>Driver Management</AdminPageTitle></h1>
         <p>Review driver accounts, identity verification, vehicle documents, and account access.</p>
       </header>
 

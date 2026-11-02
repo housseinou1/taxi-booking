@@ -11,6 +11,7 @@ import {
 } from "./customerGrowthApi";
 import "../beta/BetaDashboard.css";
 import "./CustomerGrowthCenter.css";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 const TABS = [
   { id: "overview", label: "Overview" },
@@ -110,7 +111,7 @@ export default function CustomerGrowthCenter() {
       <header className="beta__header">
         <div>
           <p className="beta__eyebrow">Growth &amp; Analytics</p>
-          <h1>Customer Growth & Loyalty</h1>
+          <h1><AdminPageTitle>Customer Growth & Loyalty</AdminPageTitle></h1>
           <p className="beta__subtitle">Referrals, loyalty tiers, promotions, retention analytics, and campaign finance.</p>
         </div>
       </header>

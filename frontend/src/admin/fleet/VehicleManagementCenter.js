@@ -27,6 +27,7 @@ import {
 } from "./fleetUi";
 import "./fleetUi.css";
 import "./VehicleManagementCenter.css";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 /**
  * Vehicle Management (Fleet).
@@ -324,7 +325,7 @@ export default function VehicleManagementCenter() {
       <div className="fleet-center">
         <div className="fleet-center__header">
           <div className="fleet-center__heading">
-            <h1 className="fleet-center__title">Vehicle Management</h1>
+            <h1 className="fleet-center__title"><AdminPageTitle>Vehicle Management</AdminPageTitle></h1>
             <p className="fleet-center__subtitle">Loading the vehicle directory…</p>
           </div>
         </div>
@@ -337,7 +338,7 @@ export default function VehicleManagementCenter() {
     <div className="fleet-center">
       <header className="fleet-center__header">
         <div className="fleet-center__heading">
-          <h1 className="fleet-center__title">Vehicle Management</h1>
+          <h1 className="fleet-center__title"><AdminPageTitle>Vehicle Management</AdminPageTitle></h1>
           <p className="fleet-center__subtitle">
             Manage fleet vehicles, driver assignments, approval status, and document compliance.
           </p>

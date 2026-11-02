@@ -63,6 +63,7 @@ import {
   sumAudienceTotals,
 } from "./academyUi";
 import "./AcademyCenter.css";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 /**
  * YALA Academy Center - training, certification and compliance management.
@@ -2834,7 +2835,7 @@ export default function AcademyCenter() {
     <div className="fleet-center acad-center">
       <header className="fleet-center__header">
         <div className="fleet-center__heading">
-          <h1 className="fleet-center__title">YALA Academy</h1>
+          <h1 className="fleet-center__title"><AdminPageTitle>YALA Academy</AdminPageTitle></h1>
           <p className="fleet-center__subtitle">
             Training, professional development, certification, and compliance management.
           </p>

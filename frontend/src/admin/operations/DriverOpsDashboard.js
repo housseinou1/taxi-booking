@@ -34,6 +34,7 @@ import {
 import authenticatedApi from "../../auth/authenticatedApi";
 import { API_URL } from "../../apiConfig";
 import "../finance/FinanceDashboard.css";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 function downloadBlob(response, filename) {
   const blob = new Blob([response.data]);
@@ -194,7 +195,7 @@ export default function DriverOpsDashboard() {
     <div className="drv-dash">
       <header className="drv-dash__header">
         <div>
-          <h1 className="drv-dash__title">Driver Operations</h1>
+          <h1 className="drv-dash__title"><AdminPageTitle>Driver Operations</AdminPageTitle></h1>
           <p className="drv-dash__subtitle">
             Approvals, documents, performance, and compliance
             {lastRefresh ? ` · Updated ${lastRefresh.toLocaleTimeString()}` : ""}

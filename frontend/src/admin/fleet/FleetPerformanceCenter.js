@@ -42,6 +42,7 @@ import {
   formatMoney,
   formatPct,
 } from "./fleetUi";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 const REFRESH_MS = 30000;
 const PAGE_SIZE = 10;
@@ -512,7 +513,7 @@ export default function FleetPerformanceCenter() {
       <div className="fleet-center">
         <div className="fleet-center__header">
           <div className="fleet-center__heading">
-            <h1 className="fleet-center__title">Fleet &amp; Driver Performance Center</h1>
+            <h1 className="fleet-center__title"><AdminPageTitle>Fleet &amp; Driver Performance Center</AdminPageTitle></h1>
             <p className="fleet-center__subtitle">Loading fleet operations data…</p>
           </div>
         </div>
@@ -525,7 +526,7 @@ export default function FleetPerformanceCenter() {
     <div className="fleet-center">
       <header className="fleet-center__header">
         <div className="fleet-center__heading">
-          <h1 className="fleet-center__title">Fleet &amp; Driver Performance Center</h1>
+          <h1 className="fleet-center__title"><AdminPageTitle>Fleet &amp; Driver Performance Center</AdminPageTitle></h1>
           <p className="fleet-center__subtitle">
             Fleet operations, driver performance, document compliance and CEO intelligence.
           </p>

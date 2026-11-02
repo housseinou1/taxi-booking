@@ -12,6 +12,7 @@ import {
 import "../beta/BetaDashboard.css";
 import "./BIAnalyticsCenter.css";
 import StructuredValue from "../components/library/data/StructuredValue";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 const TABS = [
   { id: "overview", label: "Data Warehouse Overview" },
@@ -303,7 +304,7 @@ export default function BIAnalyticsCenter() {
     <div className="beta__container">
       <header className="beta__header">
         <div>
-          <h1 className="beta__title">Business Intelligence & Data Warehouse</h1>
+          <h1 className="beta__title"><AdminPageTitle>Business Intelligence & Data Warehouse</AdminPageTitle></h1>
           <p className="beta__subtitle">
             Unified analytics layer for operational, financial, and predictive insights.
           </p>

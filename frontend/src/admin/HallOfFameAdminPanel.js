@@ -36,6 +36,7 @@ import {
   selectedPeriodLabel,
 } from "./hallOfFameUi";
 import "./HallOfFameAdminPanel.css";
+import { AdminPageTitle } from "./layouts/AdminPageHeading";
 
 /**
  * YALA Hall of Fame - admin oversight of the driver recognition programme.
@@ -967,7 +968,7 @@ export default function HallOfFameAdminPanel({ cities = [] }) {
     <div className="fleet-center hof">
       <header className="fleet-center__header">
         <div className="fleet-center__heading">
-          <h1 className="fleet-center__title">YALA Hall of Fame</h1>
+          <h1 className="fleet-center__title"><AdminPageTitle>YALA Hall of Fame</AdminPageTitle></h1>
           <p className="fleet-center__subtitle">
             Recognizing excellence, outstanding performance, and driver loyalty.
           </p>

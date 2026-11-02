@@ -14,6 +14,7 @@ import {
 } from "./partnerPlatformApi";
 import "../beta/BetaDashboard.css";
 import "./PartnerPlatformCenter.css";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 const TABS = [
   { id: "overview", label: "Overview" },
@@ -134,7 +135,7 @@ export default function PartnerPlatformCenter() {
       <header className="beta__header">
         <div>
           <p className="beta__eyebrow">Platform Management</p>
-          <h1>Partner & Franchise Platform</h1>
+          <h1><AdminPageTitle>Partner & Franchise Platform</AdminPageTitle></h1>
           <p className="beta__subtitle">
             Register local operators, assign territories, track performance, and manage revenue-share settlements.
           </p>

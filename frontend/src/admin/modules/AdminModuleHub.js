@@ -2,6 +2,7 @@ import React from "react";
 
 import { AlertBanner } from "../components/library";
 import { getModuleHub } from "./moduleHubConfig";
+import { useAdminPageHeading } from "../layouts/AdminPageHeading";
 
 /**
  * AdminModuleHub — professional landing page for a Yala Admin section.
@@ -14,6 +15,7 @@ import { getModuleHub } from "./moduleHubConfig";
  * "Backend endpoints for this section" panel.
  */
 export default function AdminModuleHub({ hubKey }) {
+  const pageHeading = useAdminPageHeading();
   const hub = getModuleHub(hubKey);
 
   if (!hub) {
@@ -27,7 +29,7 @@ export default function AdminModuleHub({ hubKey }) {
   return (
     <div className="admin-hub">
       <header className="admin-hub__head">
-        <h2 className="admin-hub__title">{hub.title}</h2>
+        {pageHeading ? null : <h2 className="admin-hub__title">{hub.title}</h2>}
         <p className="admin-hub__subtitle">{hub.subtitle}</p>
       </header>
 

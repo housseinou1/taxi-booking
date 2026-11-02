@@ -12,6 +12,7 @@ import {
   postCeoFreeze,
 } from "./ceoMasterApi";
 import "./CeoExecutiveDashboard.css";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 const REFRESH_MS = 20000;
 const SECTIONS = [
@@ -261,7 +262,7 @@ export default function CeoExecutiveDashboard() {
     <div className={`ceo-exec ${theme === "light" ? "ceo-exec--light" : ""}`}>
       <header className="ceo-exec__header">
         <div>
-          <h1>YALA CEO Executive Dashboard</h1>
+          <h1><AdminPageTitle>YALA CEO Executive Dashboard</AdminPageTitle></h1>
           <p className="ceo-exec__subtitle">
             Executive decision center — mobility, delivery, and platform health at a glance
           </p>

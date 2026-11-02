@@ -33,6 +33,7 @@ import {
 } from "./systemAdminApi";
 import "../finance/FinanceDashboard.css";
 import StructuredValue, { ChangeSummary } from "../components/library/data/StructuredValue";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 const TABS = [
   { id: "health", label: "Platform Health" },
@@ -220,7 +221,7 @@ export default function SystemAdminDashboard() {
     <div className="fin-dash">
       <header className="fin-dash__header">
         <div>
-          <h1 className="fin-dash__title">System Administration</h1>
+          <h1 className="fin-dash__title"><AdminPageTitle>System Administration</AdminPageTitle></h1>
           <p className="fin-dash__subtitle">
             Platform health, security, settings, and recovery · CEO / Platform Admin only
             {lastRefresh ? ` · Updated ${lastRefresh.toLocaleTimeString()}` : ""}

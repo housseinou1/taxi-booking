@@ -43,6 +43,7 @@ import {
 } from "./ceoDashboardMappers";
 import { useCeoDashboardData } from "./useCeoDashboardData";
 import "./CeoCommandCenter.css";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 const LazyAreaChart = lazy(() =>
   import("../components/library/charts/ChartComponents").then((m) => ({ default: m.AreaChart }))
@@ -279,7 +280,7 @@ export default function CeoCommandCenter() {
     <div className={`ceo-cc ${mapFullscreen ? "ceo-cc--map-fullscreen" : ""}`.trim()}>
       <header className="ceo-cc__header">
         <div>
-          <h1 className="ceo-cc__title">CEO Command Center</h1>
+          <h1 className="ceo-cc__title"><AdminPageTitle>CEO Command Center</AdminPageTitle></h1>
           <p className="ceo-cc__subtitle">
             Real-time operational, financial, and strategic visibility
             {lastRefresh ? ` · Updated ${lastRefresh.toLocaleTimeString()}` : ""}

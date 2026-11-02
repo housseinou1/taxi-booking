@@ -15,6 +15,7 @@ import {
 import "../beta/BetaDashboard.css";
 import "./BoardReportingSuite.css";
 import StructuredValue from "../components/library/data/StructuredValue";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 const TABS = [
   { id: "executive", label: "Executive Summary" },
@@ -349,7 +350,7 @@ export default function BoardReportingSuite() {
     <div className="beta__container">
       <header className="beta__header">
         <div>
-          <h1 className="beta__title">Board & Investor Reporting Suite</h1>
+          <h1 className="beta__title"><AdminPageTitle>Board & Investor Reporting Suite</AdminPageTitle></h1>
           <p className="beta__subtitle">
             Board-ready reports across executive, KPIs, financial, operational, growth, risk, and strategy.
           </p>

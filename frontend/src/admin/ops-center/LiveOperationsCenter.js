@@ -14,6 +14,7 @@ import "leaflet/dist/leaflet.css";
 
 import { fetchOpsDashboard } from "./opsDashboardApi";
 import "./LiveOperationsCenter.css";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 // ─── Map Icons ───────────────────────────────────────────────────────────────
 
@@ -236,7 +237,7 @@ export default function LiveOperationsCenter() {
     <div className="ops-live">
       {/* ─── Top Bar ───────────────────────────────────────── */}
       <header className="ops-live__topbar">
-        <h1 className="ops-live__topbar-title">Live Operations Center</h1>
+        <h1 className="ops-live__topbar-title"><AdminPageTitle>Live Operations Center</AdminPageTitle></h1>
         <div className="ops-live__topbar-meta">
           {lastUpdated && (
             <time className="ops-live__topbar-time">

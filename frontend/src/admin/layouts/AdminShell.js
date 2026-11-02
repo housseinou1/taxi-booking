@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from
 import AdminBreadcrumbs, { buildBreadcrumbs } from "./AdminBreadcrumbs";
 import AdminFooter from "./AdminFooter";
 import AdminHeader from "./AdminHeader";
+import { AdminPageHeadingContext } from "./AdminPageHeading";
 import AdminSidebar from "./AdminSidebar";
 import AdminErrorBoundary from "./errors/AdminErrorBoundary";
 import {
@@ -16,8 +17,14 @@ import { AdminThemeProvider } from "./theme/AdminThemeContext";
 import { PermissionProvider, usePermissions } from "../permissions/PermissionContext";
 import { resolveRegisteredAdminHome } from "./permissions/adminRouteAccess";
 import { resolveActiveNav } from "./permissions/sidebarNavConfig";
+import { URL_CHANGE_EVENT } from "./useUrlTab";
 import { ToastProvider } from "../components/library";
 import "./AdminShell.css";
+
+function normalizeAdminPath(path) {
+  const trimmed = (path || "").replace(/\/+$/, "");
+  return trimmed || "/";
+}
 
 function AdminShellInner({ pathname, title, children }) {
   const {
@@ -33,6 +40,17 @@ function AdminShellInner({ pathname, title, children }) {
   } = usePermissions();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [, setUrlVersion] = useState(0);
+
+  useEffect(() => {
+    const onUrlChange = () => setUrlVersion((version) => version + 1);
+    window.addEventListener(URL_CHANGE_EVENT, onUrlChange);
+    window.addEventListener("popstate", onUrlChange);
+    return () => {
+      window.removeEventListener(URL_CHANGE_EVENT, onUrlChange);
+      window.removeEventListener("popstate", onUrlChange);
+    };
+  }, []);
 
   const browserPath = typeof window === "undefined" ? "" : window.location.pathname;
   const browserSearch = typeof window === "undefined" ? "" : window.location.search;
@@ -49,6 +67,8 @@ function AdminShellInner({ pathname, title, children }) {
       ]
     : buildBreadcrumbs(pathname);
   const pageLabel = activeNav?.item.label || title || "Admin";
+  const isHome = normalizeAdminPath(browserPath.startsWith("/admin") ? browserPath : pathname) === "/admin";
+  const pageHeading = activeNav && !isHome ? activeNav.item.label : "";
 
   const mainRef = useRef(null);
   const [pageHasHeading, setPageHasHeading] = useState(false);
@@ -121,7 +141,10 @@ function AdminShellInner({ pathname, title, children }) {
         />
         <main className="admin-shell__main" id="admin-main-content" ref={mainRef}>
           <AdminBreadcrumbs items={crumbs} />
-          {title && !pageHasHeading ? <h1 className="admin-shell__main-title">{title}</h1> : null}
+          {(pageHeading || title) && !pageHasHeading ? (
+            <h1 className="admin-shell__main-title">{pageHeading || title}</h1>
+          ) : null}
+          <AdminPageHeadingContext.Provider value={pageHeading}>
           <AdminErrorBoundary>
             {isNotFound ? (
               <AdminNotFoundPage onGoHome={goHome} />
@@ -135,6 +158,7 @@ function AdminShellInner({ pathname, title, children }) {
               children
             )}
           </AdminErrorBoundary>
+          </AdminPageHeadingContext.Provider>
         </main>
         <AdminFooter />
       </div>

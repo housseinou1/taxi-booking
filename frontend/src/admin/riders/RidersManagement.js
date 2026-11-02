@@ -20,6 +20,7 @@ import {
 } from "./ridersSelectors";
 import { reactivateRider, suspendRider } from "./ridersApi";
 import "./riders.css";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 const PAGE_SIZE = 25;
 
@@ -306,7 +307,7 @@ export default function RidersManagement({
   return (
     <section className="riders-management" aria-label="Riders management">
       <header className="riders-management__header">
-        <h2>Rider Management</h2>
+        <h1><AdminPageTitle>Rider Management</AdminPageTitle></h1>
         <p>Review rider accounts, identity verification, and account access.</p>
       </header>
 

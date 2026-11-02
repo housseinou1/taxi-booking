@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { formatMoney } from "../../marketConfig";
 import { fetchBetaDashboard } from "./betaApi";
 import "./BetaDashboard.css";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 function MetricCard({ label, value, sub }) {
   return (
@@ -152,7 +153,7 @@ export default function BetaDashboard() {
       <div className="beta__no-print">
         <div className="beta__header">
           <div>
-            <h1 className="beta__title">Closed Beta Operations</h1>
+            <h1 className="beta__title"><AdminPageTitle>Closed Beta Operations</AdminPageTitle></h1>
             <p className="beta__subtitle">
               {data?.release ?? "RC2"} · Nouakchott · Updated {data?.generated_at ? new Date(data.generated_at).toLocaleString() : "—"}
             </p>

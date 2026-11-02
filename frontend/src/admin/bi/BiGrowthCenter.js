@@ -4,6 +4,7 @@ import { formatMoney } from "../../marketConfig";
 import { exportBiGrowthReport, fetchBiGrowthCenter } from "./biGrowthApi";
 import "./BiGrowthCenter.css";
 import StructuredValue from "../components/library/data/StructuredValue";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 const REFRESH_MS = 30000;
 const PERIODS = ["daily", "weekly", "monthly", "quarterly", "annual"];
@@ -143,7 +144,7 @@ export default function BiGrowthCenter() {
     <div className={`bi-growth ${theme === "light" ? "bi-growth--light" : ""}`}>
       <header className="bi-growth__header">
         <div>
-          <h1>Business Intelligence & Growth Center</h1>
+          <h1><AdminPageTitle>Business Intelligence & Growth Center</AdminPageTitle></h1>
           <p className="bi-growth__subtitle">
             Executive analytics — transform operational data into actionable insights
           </p>

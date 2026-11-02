@@ -10,6 +10,7 @@ import EmployeeProfile from "./EmployeeProfile";
 import "../beta/BetaDashboard.css";
 import "./EmployeeManagementCenter.css";
 import useUrlTab from "../layouts/useUrlTab";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 const TABS = [
   { id: "directory", label: "Directory" },
@@ -67,7 +68,7 @@ function EmployeeManagementCenterInner() {
     <div className="beta emp-center">
       <div className="beta__header">
         <div>
-          <h1 className="beta__title">Employee Management Center</h1>
+          <h1 className="beta__title"><AdminPageTitle>Employee Management Center</AdminPageTitle></h1>
           <p className="beta__subtitle">
             Directory, registration, profiles, ID cards, and photographs
           </p>

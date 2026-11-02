@@ -30,6 +30,7 @@ import {
   rejectWithdrawal,
 } from "./financeOpsApi";
 import "./FinanceDashboard.css";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 const LARGE_REFUND_MRU = 50000;
 
@@ -170,7 +171,7 @@ export default function FinanceDashboard() {
     <div className="fin-dash">
       <header className="fin-dash__header">
         <div>
-          <h1 className="fin-dash__title">Finance Dashboard</h1>
+          <h1 className="fin-dash__title"><AdminPageTitle>Finance Dashboard</AdminPageTitle></h1>
           <p className="fin-dash__subtitle">
             Revenue, transactions, refunds, and payouts
             {lastRefresh ? ` · Updated ${lastRefresh.toLocaleTimeString()}` : ""}

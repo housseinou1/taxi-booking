@@ -31,6 +31,7 @@ import {
   writePerformanceReview,
 } from "./hrApi";
 import useUrlTab from "../layouts/useUrlTab";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 /**
  * Employee HR Management Center (Phase 3).
@@ -181,7 +182,7 @@ export default function HrManagementCenter() {
     <div className="hr-center">
       <header className="hr-center__head">
         <div>
-          <h2>HR Management</h2>
+          <h1><AdminPageTitle>HR Management</AdminPageTitle></h1>
           <p className="hr-center__sub">
             Human-driven HR workflows. Nothing is approved, disciplined, scored or paid
             automatically — every change is a named, audited action.

@@ -15,6 +15,7 @@ import {
 import AdminIcon from "../layouts/icons/AdminIcon";
 import "./TrustSafetyCenter.css";
 import useUrlTab from "../layouts/useUrlTab";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 const TABS = [
   { id: "overview", label: "Overview", icon: "grid" },
@@ -265,7 +266,7 @@ export default function TrustSafetyCenter() {
           <p className="ts-hero__eyebrow">
             <AdminIcon name="shield-check" size={14} /> Security & Compliance
           </p>
-          <h1>Trust & Safety Center</h1>
+          <h1><AdminPageTitle>Trust & Safety Center</AdminPageTitle></h1>
           <p>Emergency SOS, safety monitoring, incident management, safety profiles and executive reporting.</p>
         </div>
         <div className="ts-hero__side">

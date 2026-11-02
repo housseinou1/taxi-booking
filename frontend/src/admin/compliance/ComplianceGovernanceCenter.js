@@ -16,6 +16,7 @@ import {
 } from "./complianceGovernanceApi";
 import "../beta/BetaDashboard.css";
 import "./ComplianceGovernanceCenter.css";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 const TABS = [
   { id: "dashboard", label: "Compliance Dashboard" },
@@ -446,7 +447,7 @@ export default function ComplianceGovernanceCenter() {
     <div className="beta__container">
       <header className="beta__header">
         <div>
-          <h1 className="beta__title">Compliance & Governance Center</h1>
+          <h1 className="beta__title"><AdminPageTitle>Compliance & Governance Center</AdminPageTitle></h1>
           <p className="beta__subtitle">
             Regulatory compliance, audits, policies, risk register, calendar, and governance dashboard.
           </p>

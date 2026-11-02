@@ -21,6 +21,7 @@ import {
 } from "./apiGatewayApi";
 import "../beta/BetaDashboard.css";
 import "./APIGatewayCenter.css";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 const TABS = [
   { id: "portal", label: "Developer Portal" },
@@ -517,7 +518,7 @@ print(response.json())`}
     <div className="beta__container">
       <header className="beta__header">
         <div>
-          <h1 className="beta__title">API Gateway & Integration Platform</h1>
+          <h1 className="beta__title"><AdminPageTitle>API Gateway & Integration Platform</AdminPageTitle></h1>
           <p className="beta__subtitle">Manage partner integrations, API keys, webhooks, and analytics.</p>
         </div>
       </header>

@@ -16,6 +16,7 @@ import authenticatedApi from "../../auth/authenticatedApi";
 import { API_URL } from "../../apiConfig";
 import { fetchOpsDashboard } from "./opsDashboardApi";
 import "./OpsCenterHome.css";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 // ─── Data fetching ───────────────────────────────────────────────────────────
 
@@ -138,7 +139,7 @@ export default function OpsCenterHome() {
   if (error && !data) {
     return (
       <div className="ops-center ops-center--error" role="alert">
-        <h1>Executive Operations Center</h1>
+        <h1><AdminPageTitle>Executive Operations Center</AdminPageTitle></h1>
         <p className="ops-center__error">{error}</p>
         <button className="ops-btn ops-btn--primary" onClick={load}>Retry</button>
       </div>
@@ -179,7 +180,7 @@ export default function OpsCenterHome() {
       {/* ─── Header ─────────────────────────────────────────── */}
       <header className="ops-center__header">
         <div className="ops-center__header-main">
-          <h1 className="ops-center__title">Executive Operations Center</h1>
+          <h1 className="ops-center__title"><AdminPageTitle>Executive Operations Center</AdminPageTitle></h1>
           <p className="ops-center__subtitle">
             YALA Platform — Real-time operational overview
           </p>

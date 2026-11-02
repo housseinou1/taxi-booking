@@ -8,6 +8,7 @@ import {
 } from "./multiCityApi";
 import "../beta/BetaDashboard.css";
 import "./MultiCityOperationsCenter.css";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 const TABS = [
   { id: "admin", label: "City Management" },
@@ -94,7 +95,7 @@ export default function MultiCityOperationsCenter() {
     <div className="beta">
       <header className="beta__header">
         <div>
-          <h1>Multi-City Operations Platform</h1>
+          <h1><AdminPageTitle>Multi-City Operations Platform</AdminPageTitle></h1>
           <p className="beta__subtitle">Mauritania-wide city administration and performance</p>
         </div>
         <div className="multicity-toolbar">

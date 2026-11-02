@@ -5,6 +5,7 @@
   color: var(--admin-text, #e8ecf3);
 }
 
+.hr-center__head h1,
 .hr-center__head h2 {
   margin: 0 0 0.25rem;
   font-size: 1.35rem;

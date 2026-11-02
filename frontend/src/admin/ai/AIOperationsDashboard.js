@@ -8,6 +8,7 @@ import {
   refreshRecommendations,
 } from "./aiOperationsApi";
 import "./AIOperationsDashboard.css";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 const TABS = [
   { id: "overview", label: "Overview" },
@@ -103,7 +104,7 @@ export default function AIOperationsDashboard() {
     <div className="ops-ai">
       <header className="ops-ai__header">
         <div>
-          <h1>AI Operations & Smart Dispatch</h1>
+          <h1><AdminPageTitle>AI Operations & Smart Dispatch</AdminPageTitle></h1>
           <p>Explainable recommendations — human approval required for all actions</p>
         </div>
         {canCeo && (

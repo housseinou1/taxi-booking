@@ -32,6 +32,7 @@ import {
 } from "./supportCenterApi";
 import "../finance/FinanceDashboard.css";
 import { readUrlParam } from "../layouts/useUrlTab";
+import { AdminPageTitle } from "../layouts/AdminPageHeading";
 
 function allowedParam(name, allowed, fallback) {
   const value = readUrlParam(name);
@@ -244,7 +245,7 @@ export default function SupportCenter() {
     <div className="fin-dash">
       <header className="fin-dash__header">
         <div>
-          <h1 className="fin-dash__title">Customer Support Center</h1>
+          <h1 className="fin-dash__title"><AdminPageTitle>Customer Support Center</AdminPageTitle></h1>
           <p className="fin-dash__subtitle">
             Tickets, SLA, lost property, and agent workspace
             {lastRefresh ? ` · Updated ${lastRefresh.toLocaleTimeString()}` : ""}
