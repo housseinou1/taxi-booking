@@ -339,6 +339,29 @@ describe("DriverPerformanceProfile", () => {
     expect(await screen.findByText(/Request failed \(HTTP 500\)\./)).toBeInTheDocument();
   });
 
+  it("discloses when the charts are limited by pagination", async () => {
+    // 437 matching rides but only the first page is returned.
+    getDriverRideHistory.mockResolvedValue({ ...HISTORY, count: 437 });
+    await openProfile();
+
+    expect(
+      await screen.findByText("These charts cover only part of this driver's history")
+    ).toBeInTheDocument();
+    // The exact window must be stated, not implied.
+    expect(screen.getByText("437")).toBeInTheDocument();
+    expect(screen.getAllByText(/Partial window/).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Narrow the date range below/)).toBeInTheDocument();
+  });
+
+  it("states the full window when nothing is truncated", async () => {
+    await openProfile();
+    expect(await screen.findByText(/Built from all 2 rides/)).toBeInTheDocument();
+    expect(
+      screen.queryByText("These charts cover only part of this driver's history")
+    ).not.toBeInTheDocument();
+    expect(screen.getAllByText(/All 2 rides in this filter/).length).toBeGreaterThan(0);
+  });
+
   it("reports missing money values as 'No data' rather than 0", async () => {
     getDriverEarnings.mockResolvedValue({
       ...EARNINGS,

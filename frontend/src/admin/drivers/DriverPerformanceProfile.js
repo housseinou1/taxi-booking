@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
+  AlertBanner,
   BarChart,
   DataTable,
   DateRangePicker,
@@ -97,6 +98,20 @@ export default function DriverPerformanceProfile({ row, onClose }) {
     [history.data]
   );
   const summary = history.data?.summary || null;
+
+  /**
+   * The history endpoint paginates (max 100 rows per request), so the time-series
+   * charts can cover only a window of the driver's rides. `count` is the total the
+   * backend matched; when it exceeds the rows returned, the charts are a partial
+   * view and must say so.
+   */
+  const totalMatching = Number(history.data?.count ?? rides.length);
+  const isTruncated = totalMatching > rides.length;
+
+  // Carried on every chart so a screenshot of a chart alone still states its window.
+  const windowNote = isTruncated
+    ? `Partial window — ${rides.length} of ${totalMatching.toLocaleString()} rides`
+    : `All ${rides.length} ride${rides.length === 1 ? "" : "s"} in this filter`;
 
   const series = useMemo(
     () => ({
@@ -363,13 +378,27 @@ export default function DriverPerformanceProfile({ row, onClose }) {
         <p className="driver-perf__reason">{history.error}</p>
       ) : (
         <>
-          <p className="driver-perf__insufficient">
-            Built from the {rides.length} most recent ride{rides.length === 1 ? "" : "s"} returned by the
-            ride-history API (max {HISTORY_PAGE_SIZE} per request).
-          </p>
+          {isTruncated ? (
+            <AlertBanner
+              tone="warning"
+              title="These charts cover only part of this driver's history"
+            >
+              The ride-history API returns at most {HISTORY_PAGE_SIZE} rides per request, so these
+              charts are built from the <strong>{rides.length}</strong> most recent rides out of{" "}
+              <strong>{totalMatching.toLocaleString()}</strong> matching the current filter. Days
+              before that window can show zero activity even though the driver was working. Narrow
+              the date range below to inspect an earlier period.
+            </AlertBanner>
+          ) : (
+            <p className="driver-perf__insufficient">
+              Built from all {rides.length} ride{rides.length === 1 ? "" : "s"} returned by the
+              ride-history API for this filter (max {HISTORY_PAGE_SIZE} per request).
+            </p>
+          )}
           <div className="driver-perf__chart-row">
             <LineChart
               title={`Completed trips — last ${SERIES_DAYS} days`}
+              subtitle={windowNote}
               data={series.completed}
               loading={history.state === "loading"}
               empty={history.state === "done" && isEmptySeries(series.completed)}
@@ -377,6 +406,7 @@ export default function DriverPerformanceProfile({ row, onClose }) {
             />
             <BarChart
               title={`Driver earnings per day (MRU) — last ${SERIES_DAYS} days`}
+              subtitle={windowNote}
               data={series.earnings}
               loading={history.state === "loading"}
               empty={history.state === "done" && isEmptySeries(series.earnings)}
@@ -384,6 +414,7 @@ export default function DriverPerformanceProfile({ row, onClose }) {
             />
             <LineChart
               title="Average customer rating over time"
+              subtitle={windowNote}
               data={series.ratings}
               loading={history.state === "loading"}
               empty={history.state === "done" && isEmptySeries(series.ratings)}
@@ -391,6 +422,7 @@ export default function DriverPerformanceProfile({ row, onClose }) {
             />
             <DonutChart
               title="Ride outcomes (lifetime)"
+              subtitle="Lifetime totals from the history summary, not limited by pagination"
               data={series.outcomes}
               loading={history.state === "loading"}
               empty={history.state === "done" && isEmptySeries(series.outcomes)}

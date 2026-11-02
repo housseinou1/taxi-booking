@@ -112,8 +112,14 @@ and employees — not drivers.)
 | Ride outcomes (completed/cancelled/other) | Per driver | the history endpoint's own `summary` |
 
 Ride history is paginated (max 100 rows per request), so the per-driver time-series
-charts **state their window explicitly** ("Built from the N most recent rides
-returned by the ride-history API") rather than implying they cover the full history.
+charts **detect truncation and disclose it** rather than implying they cover the full
+history. When the backend's total `count` exceeds the rows returned, the profile
+shows a warning banner naming both numbers ("built from the 100 most recent rides out
+of 437 matching the current filter"), warns that earlier days can read as zero
+activity, and points at the date range to inspect an earlier period. Every chart also
+carries a subtitle stating its window ("Partial window — 100 of 437 rides"), so a
+screenshot of a chart alone is still honest. When nothing is truncated the page says
+"Built from all N rides" instead.
 
 **Still not possible without a backend change:** fleet-wide daily/weekly/monthly
 trip, acceptance and cancellation trends. Those remain absent rather than faked.
