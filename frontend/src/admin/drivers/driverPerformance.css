@@ -1,0 +1,143 @@
+/*
+ * Driver Performance Monitoring — YALA Admin.
+ *
+ * Namespaced `driver-perf`. Follows the admin shell tokens so it tracks the
+ * active theme, and reflows from 320px to desktop.
+ */
+
+.driver-perf {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  color: var(--admin-text, #f8fafc);
+}
+
+.driver-perf__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.driver-perf__head h2 {
+  margin: 0 0 4px;
+  font-size: 1.15rem;
+}
+
+.driver-perf__head p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--admin-text-muted, #cbd5e1);
+  max-width: 70ch;
+}
+
+.driver-perf__kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+}
+
+/* ── Table cells ──────────────────────────────────────────────────────────── */
+
+.driver-perf__driver {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.driver-perf__avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.driver-perf__avatar--fallback {
+  display: grid;
+  place-items: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: var(--admin-accent, #ffc400);
+  color: var(--admin-accent-contrast, #0b1220);
+}
+
+.driver-perf__score {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/*
+ * "Insufficient data" is deliberately styled differently from a real zero so an
+ * administrator can tell "no samples" apart from "measured as 0".
+ */
+.driver-perf__insufficient {
+  font-size: 0.75rem;
+  font-style: italic;
+  color: var(--admin-text-muted, #cbd5e1);
+}
+
+/* ── Profile dialog ───────────────────────────────────────────────────────── */
+
+.driver-perf__detail {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin: 0 0 14px;
+}
+
+.driver-perf__detail dt {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--admin-text-muted, #cbd5e1);
+}
+
+.driver-perf__detail dd {
+  margin: 2px 0 0;
+  font-size: 0.85rem;
+  word-break: break-word;
+}
+
+.driver-perf__reason {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-left: 3px solid #b42318;
+  border-radius: 6px;
+  background: rgba(180, 35, 24, 0.1);
+  font-size: 0.82rem;
+}
+
+.driver-perf__payload {
+  max-height: 220px;
+  overflow: auto;
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--admin-border, rgba(148, 163, 184, 0.22));
+  background: var(--admin-surface, rgba(16, 30, 56, 0.74));
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.driver-perf__note {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--admin-text-muted, #cbd5e1);
+}
+
+/* ── Responsive ───────────────────────────────────────────────────────────── */
+
+@media (max-width: 560px) {
+  .driver-perf__kpis {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
+
+  .driver-perf__head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

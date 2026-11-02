@@ -74,9 +74,20 @@ export const SIDEBAR_NAV_ITEMS = [
     label: "Drivers & Fleet",
     icon: "🚕",
     children: [
-      { id: "drivers-dashboard", module: "drivers", label: "Drivers Dashboard", path: "/admin/drivers/dashboard", icon: "📊" },
+      // Driver Management dropdown, ordered per the YALA admin brief. Existing
+      // pages are reused rather than reimplemented; only the five `driver-*`
+      // paths below are new, and each renders a real module.
+      { id: "drivers-overview", module: "drivers", label: "Driver Overview", path: "/admin/drivers/dashboard", icon: "📊" },
       { id: "drivers", module: "drivers", label: "Driver Management", path: "/admin/drivers", icon: "🧑‍✈️" },
-      { id: "approvals", module: "drivers", label: "Driver Approvals", path: "/admin/approvals", icon: "✅" },
+      { id: "approvals", module: "drivers", label: "Driver Applications", path: "/admin/approvals", icon: "✅" },
+      { id: "driver-documents", module: "drivers", label: "Driver Documents", path: "/admin/driver-documents", icon: "📄" },
+      { id: "driver-verification", module: "drivers", label: "Document Verification", path: "/admin/driver-verification", icon: "🔍" },
+      { id: "driver-performance", module: "drivers", label: "Driver Performance", path: "/admin/driver-performance", icon: "🎯" },
+      { id: "driver-ratings", module: "drivers", label: "Driver Ratings", path: "/admin/driver-ratings", icon: "⭐" },
+      { id: "driver-activity", module: "drivers", label: "Driver Activity", path: "/admin/driver-activity", icon: "📈" },
+      // Safety incidents are owned by the trust_safety module; this entry reuses
+      // the existing Trust & Safety Center at a driver-focused path.
+      { id: "driver-safety", module: "trust_safety", label: "Driver Safety", path: "/admin/driver-safety", icon: "🚨" },
       { id: "fleet", module: "drivers", label: "Fleet Management", path: "/admin/fleet", icon: "🚙", featureFlag: "fleet_center" },
       { id: "vehicles", module: "drivers", label: "Vehicle Management", path: "/admin/vehicles", icon: "🚗" },
       { id: "academy", module: "drivers", label: "Driver Academy", path: "/admin/academy", icon: "🎓" },

@@ -123,6 +123,8 @@ import MerchantRegister from "./merchant/MerchantRegister";
 import WalletPage from "./payments/WalletPage";
 import AdminPaymentDashboard from "./admin/AdminPaymentDashboard";
 import DriversDashboard from "./admin/drivers/DriversDashboard";
+import DriverDocumentsPage from "./admin/drivers/DriverDocumentsPage";
+import DriverPerformancePage from "./admin/drivers/DriverPerformancePage";
 import RidersDashboard from "./admin/riders/RidersDashboard";
 import LaunchServices from "./services/LaunchServices";
 import { API_URL } from "./apiConfig";
@@ -513,7 +515,7 @@ function App() {
     else if (currentPath === "/admin/growth") setPage("admin-growth");
     else if (currentPath === "/admin/multi-city") setPage("admin-multi-city");
     else if (currentPath === "/admin/smart-pricing" || currentPath === "/admin/pricing-dispatch") setPage("admin-smart-pricing");
-    else if (currentPath === "/admin/trust-safety" || currentPath === "/admin/safety") setPage("admin-trust-safety");
+    else if (currentPath === "/admin/trust-safety" || currentPath === "/admin/safety" || currentPath === "/admin/driver-safety") setPage("admin-trust-safety");
     else if (currentPath === "/admin/approvals") setPage("admin-approvals");
     else if (currentPath === "/admin/incentives" || currentPath === "/admin/incentive-engine") setPage("admin-incentives");
     else if (currentPath === "/admin/merchant-platform" || currentPath === "/admin/merchants") setPage("admin-merchant-platform");
@@ -536,6 +538,12 @@ function App() {
     else if (currentPath === "/admin/riders") setPage("admin-riders");
     // Dedicated overview dashboards (distinct from the management hubs above).
     else if (currentPath === "/admin/drivers/dashboard") setPage("admin-drivers-dashboard");
+    // Driver Documents & Performance modules.
+    else if (currentPath === "/admin/driver-documents") setPage("admin-driver-documents");
+    else if (currentPath === "/admin/driver-verification") setPage("admin-driver-verification");
+    else if (currentPath === "/admin/driver-performance") setPage("admin-driver-performance");
+    else if (currentPath === "/admin/driver-ratings") setPage("admin-driver-ratings");
+    else if (currentPath === "/admin/driver-activity") setPage("admin-driver-activity");
     else if (currentPath === "/admin/riders/dashboard") setPage("admin-riders-dashboard");
     else if (currentPath === "/admin/delivery") setPage("admin-delivery");
     else if (currentPath === "/admin/delivery/support") setPage("admin-delivery-support");
@@ -1264,6 +1272,48 @@ function App() {
     return withInstall(
       <AdminShellPage pathname="/admin/drivers/dashboard" title="Drivers Dashboard">
         <DriversDashboard />
+      </AdminShellPage>
+    );
+  }
+  // Driver Documents & Driver Performance modules. Both are backed by existing
+  // endpoints and show explicit unavailable states rather than placeholder numbers.
+  if (page === "admin-driver-documents" || page === "admin-driver-verification") {
+    const isVerification = page === "admin-driver-verification";
+    return withInstall(
+      <AdminShellPage
+        pathname={isVerification ? "/admin/driver-verification" : "/admin/driver-documents"}
+        title={isVerification ? "Document Verification" : "Driver Documents"}
+      >
+        <DriverDocumentsPage mode={isVerification ? "verification" : "documents"} />
+      </AdminShellPage>
+    );
+  }
+  if (
+    page === "admin-driver-performance" ||
+    page === "admin-driver-activity" ||
+    page === "admin-driver-ratings"
+  ) {
+    const driverPerfMode =
+      page === "admin-driver-activity"
+        ? "activity"
+        : page === "admin-driver-ratings"
+          ? "ratings"
+          : "performance";
+    const driverPerfPath =
+      driverPerfMode === "activity"
+        ? "/admin/driver-activity"
+        : driverPerfMode === "ratings"
+          ? "/admin/driver-ratings"
+          : "/admin/driver-performance";
+    const driverPerfTitle =
+      driverPerfMode === "activity"
+        ? "Driver Activity"
+        : driverPerfMode === "ratings"
+          ? "Driver Ratings"
+          : "Driver Performance";
+    return withInstall(
+      <AdminShellPage pathname={driverPerfPath} title={driverPerfTitle}>
+        <DriverPerformancePage mode={driverPerfMode} />
       </AdminShellPage>
     );
   }
