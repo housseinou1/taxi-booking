@@ -100,11 +100,39 @@ export async function submitRidePayment({ rideId, method, tipPercentage = 0 }) {
   };
 }
 
+function normalizeStatus(payment) {
+  return String(payment?.status || "").trim().toLowerCase();
+}
+
+/**
+ * True only when the backend reports the payment as settled (`paid`).
+ *
+ * `authorized` is NOT a settlement — it means the payment was authorized but not
+ * captured, so money had not necessarily moved. Treating it as settled could
+ * reveal a confirmation for an unsettled payment.
+ *
+ * This is a *reporting* helper. Never use it to decide whether to re-attempt a
+ * payment: use `hasPaymentAttempt()` for that, otherwise a second attempt can be
+ * submitted for a ride that already has one.
+ */
 export function isPaymentSettled(payment) {
-  const status = payment?.status || "";
-  return status === "paid" || status === "authorized";
+  return normalizeStatus(payment) === "paid";
+}
+
+/**
+ * True when an attempt already exists for this ride — settled, authorized, or
+ * awaiting verification.
+ *
+ * Deliberately WIDER than `isPaymentSettled()`. The ride `create_payment`
+ * endpoint returns the existing payment rather than creating a second one for
+ * exactly these three statuses, so keeping this gate wide is what prevents
+ * duplicate payment attempts.
+ */
+export function hasPaymentAttempt(payment) {
+  return ["paid", "authorized", "pending_verification"].includes(normalizeStatus(payment));
 }
 
 export function isPaymentPending(payment) {
-  return payment?.status === "pending_verification" || payment?.status === "pending";
+  const status = normalizeStatus(payment);
+  return status === "pending_verification" || status === "pending";
 }

@@ -78,10 +78,28 @@ describe("payment status safety", () => {
     );
   });
 
-  test("describes a settlement as provider-confirmed", () => {
+  test("describes a settlement without claiming provider verification", () => {
     const described = describePaymentStatus("paid");
     expect(described.tone).toBe("settled");
     expect(described.settled).toBe(true);
-    expect(described.defaultMessage).toMatch(/provider confirmed/i);
+    // A backend `paid` status is YALA's settled state. It is not proof that a
+    // provider independently confirmed the payment, so the default must not say so.
+    expect(described.providerVerified).toBe(false);
+    expect(described.defaultMessage).not.toMatch(/provider/i);
+  });
+
+  test("only reports provider verification when a caller supplies evidence", () => {
+    const described = describePaymentStatus("paid", { providerVerified: true });
+    expect(described.settled).toBe(true);
+    expect(described.providerVerified).toBe(true);
+    expect(described.defaultMessage).toMatch(/provider independently confirmed/i);
+  });
+
+  test("never reports provider verification for a non-settled status", () => {
+    ["pending", "authorized", "pending_verification", "failed", "cancelled"].forEach((status) => {
+      const described = describePaymentStatus(status, { providerVerified: true });
+      expect(described.providerVerified).toBe(false);
+      expect(described.settled).toBe(false);
+    });
   });
 });

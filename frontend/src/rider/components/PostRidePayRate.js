@@ -8,7 +8,8 @@ import {
   selectionFromMethod,
   toRidePaymentMethod,
 } from "../../payments/paymentMethods";
-import { submitRidePayment } from "../../payments/ridePaymentService";
+import { hasPaymentAttempt, submitRidePayment } from "../../payments/ridePaymentService";
+import { describePaymentStatus } from "../../payments/paymentStatus";
 import { readStoredPaymentMethod, storePaymentMethod } from "../utils/paymentMethods";
 import "./PostRidePayRate.css";
 
@@ -66,7 +67,12 @@ export default function PostRidePayRate({ ride, onDone }) {
   const tipAmount = Math.round((fare * tipPercentage) / 100);
   const totalAmount = fare + tipAmount;
   const paymentStatus = payment?.status || ride?.payment_status || "";
-  const isPaid = paymentStatus === "paid" || paymentStatus === "authorized";
+  // Two different questions, deliberately kept apart:
+  //   hasAttempt  → do NOT re-submit (prevents duplicate payment attempts; the
+  //                 backend returns the existing payment for these statuses)
+  //   statusNotice.settled → the backend reports the payment settled (only `paid`)
+  const hasAttempt = hasPaymentAttempt({ status: paymentStatus });
+  const statusNotice = describePaymentStatus(paymentStatus);
 
   const driverName = getDriverName(ride);
   const driverPhoto = getDriverPhoto(ride);
@@ -115,7 +121,7 @@ export default function PostRidePayRate({ ride, onDone }) {
     setNotice("");
 
     try {
-      if (!isPaid) {
+      if (!hasAttempt) {
         if (!selectedMethod) {
           // Incomplete selection (Mobile Money chosen but no provider yet): never
           // submit a payment without a concrete provider.
@@ -236,7 +242,7 @@ export default function PostRidePayRate({ ride, onDone }) {
         </div>
       </section>
 
-      {!isPaid && (
+      {!hasAttempt && (
         <>
           <section className="post-ride__tips">
             <p>Add a tip</p>
@@ -270,9 +276,14 @@ export default function PostRidePayRate({ ride, onDone }) {
         </>
       )}
 
-      {isPaid && (
-        <div className="post-ride__paid-badge" role="status">
-          ✓ Payment recorded
+      {hasAttempt && (
+        <div
+          className={`post-ride__paid-badge post-ride__paid-badge--${statusNotice.tone}`}
+          role="status"
+        >
+          {statusNotice.tone === "settled"
+            ? "✓ Payment settled"
+            : "⏳ Payment pending verification"}
         </div>
       )}
 
@@ -296,10 +307,10 @@ export default function PostRidePayRate({ ride, onDone }) {
         <button
           type="button"
           className="post-ride__primary"
-          disabled={submitting || !rating || (!isPaid && !selectedMethod)}
+          disabled={submitting || !rating || (!hasAttempt && !selectedMethod)}
           onClick={handleSubmit}
         >
-          {submitting ? "Submitting..." : isPaid ? "Submit rating" : `Pay ${formatMoney(totalAmount)} & rate`}
+          {submitting ? "Submitting..." : hasAttempt ? "Submit rating" : `Pay ${formatMoney(totalAmount)} & rate`}
         </button>
       )}
 

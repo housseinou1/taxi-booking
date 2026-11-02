@@ -54,22 +54,35 @@ export function isFailedPaymentStatus(status) {
  *
  * `tone` is one of `pending` | `settled` | `failed` | `unknown`.
  * `settled` is the single flag a caller may use to reveal a receipt: it is true
- * **only** for a verified settlement, so a receipt can never appear for a
+ * **only** for a backend `paid` status, so a receipt can never appear for a
  * provider selection, a submitted reference, or a mock result.
+ *
+ * `providerVerified` is reported **separately** and defaults to `false`. A
+ * backend `paid` status means YALA recorded the payment as settled; it is not by
+ * itself proof that a payment provider independently confirmed it. Callers may
+ * pass `providerVerified: true` only when they hold explicit evidence of an
+ * independent provider confirmation — the API does not currently expose such a
+ * field, so the default must stay false and the UI must never claim provider
+ * verification from `paid` alone.
  */
-export function describePaymentStatus(status) {
+export function describePaymentStatus(status, { providerVerified = false } = {}) {
   const normalized = normalizePaymentStatus(status);
+  const verified = Boolean(providerVerified);
 
   if (isSettledPaymentStatus(normalized)) {
     return {
       status: normalized,
       tone: "settled",
       settled: true,
+      providerVerified: verified,
       titleKey: "payments.status.settledTitle",
-      defaultTitle: "Payment confirmed",
-      messageKey: "payments.status.settledMessage",
-      defaultMessage:
-        "Your provider confirmed this payment. Your receipt is available below.",
+      defaultTitle: verified ? "Payment confirmed" : "Payment settled",
+      messageKey: verified
+        ? "payments.status.verifiedMessage"
+        : "payments.status.settledMessage",
+      defaultMessage: verified
+        ? "The payment provider independently confirmed this payment. Your receipt is available below."
+        : "YALA has recorded this payment as settled. Your receipt is available below.",
     };
   }
 
@@ -78,6 +91,7 @@ export function describePaymentStatus(status) {
       status: normalized,
       tone: "pending",
       settled: false,
+      providerVerified: false,
       titleKey: "payments.status.pendingTitle",
       defaultTitle: "Payment pending verification",
       messageKey: "payments.status.pendingMessage",
@@ -91,6 +105,7 @@ export function describePaymentStatus(status) {
       status: normalized,
       tone: "failed",
       settled: false,
+      providerVerified: false,
       titleKey: "payments.status.failedTitle",
       defaultTitle: "Payment not completed",
       messageKey: "payments.status.failedMessage",
@@ -103,6 +118,7 @@ export function describePaymentStatus(status) {
     status: normalized,
     tone: "unknown",
     settled: false,
+    providerVerified: false,
     titleKey: "payments.status.unknownTitle",
     defaultTitle: "Payment status unavailable",
     messageKey: "payments.status.unknownMessage",
