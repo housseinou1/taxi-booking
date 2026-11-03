@@ -6,6 +6,7 @@ import {
   DataTable,
   InlineError,
   KPICard,
+  formatMoneyOrDash,
   formatTimestamp,
 } from "../components/library";
 import {
@@ -17,13 +18,17 @@ import {
 
 const COMPARISON_COLUMNS = [
   { id: "city", label: "City" },
-  { id: "total_fare", label: "Total fare", render: (row) => `${row.total_fare} MRU` },
+  {
+    id: "total_fare",
+    label: "Total fare",
+    render: (row) => formatMoneyOrDash(row.total_fare),
+  },
   { id: "rides_completed", label: "Rides completed" },
   { id: "deliveries_delivered", label: "Deliveries delivered" },
   {
     id: "withdrawals_pending_amount",
     label: "Withdrawals pending",
-    render: (row) => `${row.withdrawals_pending_amount} MRU`,
+    render: (row) => formatMoneyOrDash(row.withdrawals_pending_amount),
   },
 ];
 
@@ -48,24 +53,27 @@ function CityBlock({ title, block }) {
           value={block.rides.completed}
           hint={`${block.rides.total} requested`}
         />
-        <Stat label="Ride fares" value={`${block.rides.completed_fare} MRU`} />
+        <Stat label="Ride fares" value={formatMoneyOrDash(block.rides.completed_fare)} />
         <Stat
           label="Deliveries delivered"
           value={block.deliveries.delivered}
           hint={`${block.deliveries.total} requested`}
         />
-        <Stat label="Delivery fares" value={`${block.deliveries.delivered_fare} MRU`} />
-        <Stat label="Total fare" value={`${block.revenue.total_fare} MRU`} />
+        <Stat
+          label="Delivery fares"
+          value={formatMoneyOrDash(block.deliveries.delivered_fare)}
+        />
+        <Stat label="Total fare" value={formatMoneyOrDash(block.revenue.total_fare)} />
         <Stat
           label="Delivery commission"
-          value={`${block.commissions.deliveries_platform_commission} MRU`}
+          value={formatMoneyOrDash(block.commissions.deliveries_platform_commission)}
           hint="Platform commission (deliveries)"
         />
-        <Stat label="Driver earnings" value={`${block.revenue.driver_earnings} MRU`} />
-        <Stat label="Courier earnings" value={`${block.revenue.courier_earnings} MRU`} />
+        <Stat label="Driver earnings" value={formatMoneyOrDash(block.revenue.driver_earnings)} />
+        <Stat label="Courier earnings" value={formatMoneyOrDash(block.revenue.courier_earnings)} />
         <Stat
           label="Withdrawals pending"
-          value={`${block.withdrawals.pending_amount} MRU`}
+          value={formatMoneyOrDash(block.withdrawals.pending_amount)}
           hint={`${block.withdrawals.pending} pending · ${block.withdrawals.paid} paid`}
         />
         <Stat
@@ -213,7 +221,7 @@ export default function CeoReportingCenter({ pathname = "/admin/ceo-reports" } =
           <div className="admin-kpi-row">
             <KPICard
               label="Combined total fare"
-              value={`${combined.revenue.total_fare} MRU`}
+              value={formatMoneyOrDash(combined.revenue.total_fare)}
               subtitle={report ? `${report.range.from} → ${report.range.to} (UTC)` : undefined}
               loading={loading}
               error={error}
@@ -235,14 +243,14 @@ export default function CeoReportingCenter({ pathname = "/admin/ceo-reports" } =
             />
             <KPICard
               label="Delivery commission"
-              value={`${combined.commissions.deliveries_platform_commission} MRU`}
+              value={formatMoneyOrDash(combined.commissions.deliveries_platform_commission)}
               loading={loading}
               error={error}
               onRefresh={loadReport}
             />
             <KPICard
               label="Withdrawals pending"
-              value={`${combined.withdrawals.pending_amount} MRU`}
+              value={formatMoneyOrDash(combined.withdrawals.pending_amount)}
               subtitle={`${combined.withdrawals.pending} pending`}
               loading={loading}
               error={error}

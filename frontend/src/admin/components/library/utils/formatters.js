@@ -28,6 +28,21 @@ export function formatCurrency(value) {
   return marketFormatMoney(value);
 }
 
+/**
+ * Format a monetary amount, distinguishing UNAVAILABLE data from a genuine zero.
+ *
+ * `formatMoney(null)` renders "0 MRU", which is indistinguishable from a real
+ * zero balance, so a dashboard cannot tell "the API did not report this" from
+ * "the value really is zero". Use this helper for any field that may be absent
+ * from a payload: it returns "—" when the value is null/undefined/blank, and
+ * otherwise delegates to the decimal-safe `formatMoney`, so a genuine 0 still
+ * reads "0 MRU" and a real amount keeps its grouping and 2-decimal rounding.
+ */
+export function formatMoneyOrDash(value) {
+  if (value === null || value === undefined || value === "") return "—";
+  return marketFormatMoney(value);
+}
+
 export function formatTimestamp(iso) {
   if (!iso) return "—";
   try {

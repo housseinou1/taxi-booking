@@ -19,6 +19,7 @@ import {
   updateCity,
   updateCityPricing,
 } from "./cityManagementApi";
+import { formatMoneyOrDash } from "../components/library/utils/formatters";
 import "./CityManagementCenter.css";
 
 /**
@@ -90,9 +91,17 @@ function statusClass(status) {
   return "cmc-status cmc-status-registered";
 }
 
+/**
+ * Money rendering for city metrics.
+ *
+ * Delegates to the shared decimal-safe formatter so this page agrees with every
+ * other admin surface. The previous local implementation used `toLocaleString`
+ * with the `fr-FR` locale, which rendered `1 234,50` here while the rest of the
+ * platform rendered `1,234.50`; it also did `Number(value || 0)`, so an absent
+ * metric was displayed as a genuine `0.00 MRU` instead of as unavailable.
+ */
 function money(value) {
-  const number = Number(value || 0);
-  return `${number.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MRU`;
+  return formatMoneyOrDash(value);
 }
 
 export default function CityManagementCenter() {

@@ -1,4 +1,7 @@
-import { formatTimestamp } from "../components/library/utils/formatters";
+import {
+  formatMoneyOrDash,
+  formatTimestamp,
+} from "../components/library/utils/formatters";
 
 const SEVERITY_TONE = {
   critical: "danger",
@@ -177,7 +180,7 @@ export function buildActivityFeed({ master, withdrawals = [] }) {
     items.push({
       id: `withdrawal-${row.id}`,
       title: "Large payout pending",
-      description: `#${row.id} · ${row.amount} MRU`,
+      description: `#${row.id} · ${formatMoneyOrDash(row.amount)}`,
       timestamp: row.created_at || master?.generated_at,
       type: "payout",
     });

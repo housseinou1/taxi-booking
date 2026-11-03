@@ -102,7 +102,10 @@ test("renders city-separated and combined statistics", async () => {
   const combinedKpi = screen
     .getByText("Combined total fare", { selector: ".admin-kpi__label" })
     .closest(".admin-kpi");
-  expect(within(combinedKpi).getByText("16000.00 MRU")).toBeInTheDocument();
+  // Rendered through the shared decimal-safe formatter: a whole amount shows no
+  // decimals and is thousands-grouped ("16,000 MRU"), instead of the raw
+  // "16000.00 MRU" the API string used to be interpolated as.
+  expect(within(combinedKpi).getByText("16,000 MRU")).toBeInTheDocument();
 
   expect(screen.getByText(/2026-10-01 → 2026-10-24/)).toBeInTheDocument();
 });
@@ -111,8 +114,8 @@ test("renders the city comparison table with both cities", async () => {
   render(<CeoReportingCenter />);
 
   expect(await screen.findByText("City comparison")).toBeInTheDocument();
-  expect(screen.getAllByText("12000.00 MRU").length).toBeGreaterThan(0);
-  expect(screen.getAllByText("4000.00 MRU").length).toBeGreaterThan(0);
+  expect(screen.getAllByText("12,000 MRU").length).toBeGreaterThan(0);
+  expect(screen.getAllByText("4,000 MRU").length).toBeGreaterThan(0);
 });
 
 test("passes period and city selection to the backend", async () => {
@@ -192,5 +195,29 @@ test("surfaces backend failures without crashing", async () => {
 
   expect(await screen.findByText("report unavailable")).toBeInTheDocument();
   expect(await screen.findByText("posture unavailable")).toBeInTheDocument();
+});
+
+test("distinguishes an unavailable money field from a genuine zero", async () => {
+  // A city whose fare fields the backend did not report must NOT be shown as
+  // "0 MRU": absent data is rendered as "—". A field that really is zero is
+  // still rendered as a genuine "0 MRU".
+  const partial = cityBlock("Nouakchott", 10, 5, undefined, "600.00", "1500.00");
+  partial.revenue.total_fare = undefined; // absent, not zero
+  partial.withdrawals.pending_amount = "0"; // a genuine zero
+  fetchCeoCityReport.mockResolvedValue({
+    ...REPORT,
+    cities: { Nouakchott: partial },
+    combined: partial,
+  });
+
+  render(<CeoReportingCenter />);
+  await screen.findByText("Combined (all cities)");
+
+  // Unavailable fare -> em dash, never a fabricated 0.
+  expect(screen.getAllByText("—").length).toBeGreaterThan(0);
+  expect(screen.queryByText("undefined MRU")).not.toBeInTheDocument();
+
+  // A genuine zero still reads as a real zero.
+  expect(screen.getAllByText("0 MRU").length).toBeGreaterThan(0);
 });
 
