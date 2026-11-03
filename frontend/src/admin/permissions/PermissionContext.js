@@ -12,6 +12,7 @@ import {
   getModuleForPath,
   getRouteAccessDenial,
 } from "../layouts/permissions/adminRouteAccess";
+import { apiErrorMessage } from "../layouts/errors/apiErrorMessage";
 import {
   logAdminLogin,
   logAdminLogout,
@@ -51,7 +52,14 @@ export function PermissionProvider({ children, pathname }) {
       }
       return data;
     } catch (err) {
-      setError(err?.response?.data?.detail || err?.message || "Failed to load permissions");
+      // Route through the shared mapper so an operator sees the real cause instead
+      // of a bare "Request failed with status code 404". A 404 here means the
+      // backend has not deployed /operations/admin/me/permissions/ — every admin
+      // page is then denied, so the message must say so rather than imply the
+      // signed-in user lacks permission.
+      setError(
+        apiErrorMessage(err, { resource: "admin permissions", action: "load" })
+      );
       setPermissions(null);
       return null;
     } finally {
