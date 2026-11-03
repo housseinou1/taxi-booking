@@ -288,3 +288,79 @@ test("surfaces backend failures without crashing", async () => {
   expect(await screen.findByText("audit unavailable")).toBeInTheDocument();
 });
 
+// ── Approvals inbox: nothing awaiting CEO authority may be invisible ──────────
+
+test("every pending item is reachable, not just the first five", async () => {
+  const many = Array.from({ length: 8 }, (_, i) => ({
+    id: 100 + i,
+    type: "driver",
+    title: `Driver onboarding: Driver ${i}`,
+    amount: null,
+    status: "pending",
+    city: "Nouakchott",
+    deep_link: "/admin/drivers",
+  }));
+  fetchCeoApprovals.mockResolvedValue({
+    total_pending: 8,
+    groups: { drivers: { count: 8, items: many } },
+  });
+
+  render(<CeoControlCenter />);
+  await screen.findByText("Driver onboarding: Driver 0");
+
+  // Only five are rendered until the CEO asks for the rest.
+  expect(screen.queryByText("Driver onboarding: Driver 7")).not.toBeInTheDocument();
+  const more = screen.getByRole("button", { name: /show 3 more/i });
+  fireEvent.click(more);
+
+  // The remaining three were previously unreachable entirely.
+  expect(screen.getByText("Driver onboarding: Driver 7")).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /show 3 more/i })).not.toBeInTheDocument();
+});
+
+test("a group the backend did not report shows a dash, never a fabricated zero", async () => {
+  fetchCeoApprovals.mockResolvedValue({ total_pending: 0, groups: {} });
+
+  render(<CeoControlCenter />);
+  await screen.findByText("Approvals inbox");
+
+  const refundsHead = screen.getByText("Refunds").closest(".ceo-control__group-head");
+  // "0 pending" would claim the category is clear; the truth is that it was not reported.
+  expect(refundsHead.textContent).toContain("—");
+  expect(refundsHead.textContent).not.toMatch(/Refunds0/);
+});
+
+test("a genuine zero count still renders as 0", async () => {
+  fetchCeoApprovals.mockResolvedValue({
+    total_pending: 0,
+    groups: { refunds: { count: 0, items: [] } },
+  });
+
+  render(<CeoControlCenter />);
+  await screen.findByText("Approvals inbox");
+
+  const head = screen.getByText("Refunds").closest(".ceo-control__group-head");
+  expect(head.textContent).toContain("0");
+});
+
+test("the inbox filter narrows items without a round trip", async () => {
+  render(<CeoControlCenter />);
+  await screen.findByText("Refund #7");
+
+  fireEvent.change(screen.getByLabelText("Filter approvals inbox"), {
+    target: { value: "nouadhibou" },
+  });
+
+  await waitFor(() => expect(screen.queryByText("Refund #7")).not.toBeInTheDocument());
+  expect(screen.getByText("Withdrawal #8")).toBeInTheDocument();
+});
+
+test("the inbox meta line does not repeat the status already shown as a badge", async () => {
+  render(<CeoControlCenter />);
+  await screen.findByText("Refund #7");
+
+  const row = screen.getByText("Refund #7").closest("li");
+  const meta = within(row).getByText(/Nouakchott/);
+  expect(meta.textContent).not.toContain("awaiting_ceo");
+});
+

@@ -268,4 +268,58 @@
   border-radius: 8px;
   background: var(--admin-surface, rgba(15, 33, 25, 0.72));
   line-height: 1.4;
+
+/* ── Approvals inbox: filter toolbar and full-item disclosure ─────────────── */
+
+.ceo-control__section-note {
+  margin: 0 0 12px;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--admin-text-muted, #94a3b8);
+  max-width: 78ch;
+}
+
+.ceo-control__inbox-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.ceo-control__inbox-toolbar .admin-table-search {
+  flex: 1 1 260px;
+  max-width: 420px;
+}
+
+/* Reveals the inbox items beyond the first five, so nothing awaiting CEO
+   authority is unreachable. */
+.ceo-control__more {
+  margin-top: 8px;
+  padding: 4px 10px;
+  border: 1px dashed var(--admin-border, #334155);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--admin-accent, #c9a227);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ceo-control__more:hover {
+  background: var(--admin-surface-alt, rgba(148, 163, 184, 0.12));
+}
+
+.ceo-control__more:focus-visible {
+  outline: 2px solid var(--admin-accent, #c9a227);
+  outline-offset: 2px;
+}
+
+@media (max-width: 640px) {
+  .ceo-control__inbox-toolbar .admin-table-search {
+    flex: 1 1 100%;
+    max-width: none;
+  }
+}
+
 }

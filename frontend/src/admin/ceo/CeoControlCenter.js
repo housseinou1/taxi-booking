@@ -58,6 +58,22 @@ const ACCOUNT_COLUMNS = [
   { id: "domain", label: "Domain" },
   { id: "city_name", label: "City" },
   {
+    id: "phone_number",
+    label: "Phone",
+    // The directory API already returns these; they were simply not surfaced.
+    render: (row) => row.phone_number || "—",
+  },
+  {
+    id: "user_type",
+    label: "Type",
+    render: (row) => row.user_type || "—",
+  },
+  {
+    id: "date_joined",
+    label: "Joined",
+    render: (row) => (row.date_joined ? formatTimestamp(row.date_joined) : "—"),
+  },
+  {
     id: "is_active",
     label: "State",
     render: (row) => {
@@ -116,6 +132,11 @@ export default function CeoControlCenter({ pathname = "/admin/ceo-control" } = {
   const [notice, setNotice] = useState(null);
   const [audit, setAudit] = useState({ loading: false, error: "", data: null });
   const [auditScope, setAuditScope] = useState("me");
+  // The inbox renders every pending item the backend returns (up to its per-group limit),
+  // so nothing awaiting CEO authority is invisible. Groups start collapsed to keep the
+  // page scannable.
+  const [expandedGroups, setExpandedGroups] = useState({});
+  const [inboxSearch, setInboxSearch] = useState("");
 
   const loadApprovals = useCallback(async () => {
     setApprovalsError("");
@@ -249,6 +270,19 @@ export default function CeoControlCenter({ pathname = "/admin/ceo-control" } = {
 
   const auditRows = audit.data?.results || [];
 
+  // Client-side filter over the returned inbox items. The inbox is a summary surface, so
+  // filtering here avoids a round trip; the account directory keeps server-side search.
+  const inboxQuery = inboxSearch.trim().toLowerCase();
+  const matchesInboxQuery = useCallback(
+    (item) => {
+      if (!inboxQuery) return true;
+      return [item.title, item.status, item.city, item.requester_email, item.reason]
+        .filter(Boolean)
+        .some((field) => String(field).toLowerCase().includes(inboxQuery));
+    },
+    [inboxQuery]
+  );
+
   return (
     <AdminShellPage pathname={pathname} title="CEO Control Center">
       <div className="ceo-control">
@@ -264,7 +298,7 @@ export default function CeoControlCenter({ pathname = "/admin/ceo-control" } = {
           <KPICard
             label="Accounts"
             value={summary?.total}
-            subtitle={`${summary?.active ?? "N/A"} active · ${summary?.inactive ?? "N/A"} suspended`}
+            subtitle={`${summary?.active ?? "—"} active · ${summary?.inactive ?? "—"} suspended`}
             loading={loading}
             error={error}
             onRefresh={loadAccounts}
@@ -331,6 +365,31 @@ export default function CeoControlCenter({ pathname = "/admin/ceo-control" } = {
 
         <section className="ceo-control__section">
           <h3 className="ceo-control__heading">Approvals inbox</h3>
+          <p className="ceo-control__section-note">
+            Read-only: every item links to the module that owns its state transition. Financial
+            approvals stay frozen here, and no wallet, payout or transfer is touched on this page.
+          </p>
+          <div className="ceo-control__inbox-toolbar">
+            <label className="admin-table-search">
+              <span className="admin-shell__sr-only">Filter approvals inbox</span>
+              <input
+                type="search"
+                value={inboxSearch}
+                placeholder="Filter by title, status, city or requester…"
+                aria-label="Filter approvals inbox"
+                onChange={(e) => setInboxSearch(e.target.value)}
+              />
+            </label>
+            {inboxSearch ? (
+              <button
+                type="button"
+                className="admin-lib-btn admin-lib-btn--ghost"
+                onClick={() => setInboxSearch("")}
+              >
+                Clear filter
+              </button>
+            ) : null}
+          </div>
           {approvalsError ? <InlineError message={approvalsError} /> : null}
           {approvals?.financial_approvals_frozen ? (
             <AlertBanner tone="info">{approvals.financial_approvals_note}</AlertBanner>
@@ -338,40 +397,73 @@ export default function CeoControlCenter({ pathname = "/admin/ceo-control" } = {
           <div className="ceo-control__groups">
             {Object.entries(APPROVAL_GROUP_LABELS).map(([key, label]) => {
               const group = groups[key];
-              const items = group?.items || [];
+              // `?? null` rather than `?? 0`: a group the backend did not report is unknown,
+              // not "nothing pending". Fabricating 0 here would tell the CEO a category is
+              // clear when the truth is that we could not read it.
+              const count = group?.count ?? null;
+              const allItems = (group?.items || []).filter(matchesInboxQuery);
+              const expanded = Boolean(expandedGroups[key]);
+              const visible = expanded ? allItems : allItems.slice(0, 5);
+              const hidden = allItems.length - visible.length;
               return (
                 <div className="ceo-control__group" key={key}>
                   <div className="ceo-control__group-head">
                     <span>{label}</span>
-                    <span className="ceo-control__count">{group?.count ?? 0}</span>
+                    <span className="ceo-control__count" aria-label={`${label} pending count`}>
+                      {count ?? "—"}
+                    </span>
                   </div>
-                  {items.length === 0 ? (
-                    <p className="ceo-control__empty">Nothing pending.</p>
+                  {allItems.length === 0 ? (
+                    <p className="ceo-control__empty">
+                      {inboxQuery ? "No items match this filter." : "Nothing pending."}
+                    </p>
                   ) : (
-                    <ul className="ceo-control__list">
-                      {items.slice(0, 5).map((item) => (
-                        <li key={`${key}-${item.id}`}>
-                          <span className="ceo-control__item-title">{item.title}</span>
-                          {item.status ? (
-                            <span
-                              className={`ceo-control__badge ceo-control__badge--${approvalTone(
-                                item.status
-                              )}`}
-                            >
-                              {item.status}
+                    <>
+                      <ul className="ceo-control__list">
+                        {visible.map((item) => (
+                          <li key={`${key}-${item.id}`}>
+                            <span className="ceo-control__item-title">{item.title}</span>
+                            {item.status ? (
+                              <span
+                                className={`ceo-control__badge ceo-control__badge--${approvalTone(
+                                  item.status
+                                )}`}
+                              >
+                                {item.status}
+                              </span>
+                            ) : null}
+                            <span className="ceo-control__meta">
+                              {item.amount ? `${item.amount} MRU · ` : ""}
+                              {item.city || "—"}
+                              {item.requester_email ? ` · ${item.requester_email}` : ""}
                             </span>
-                          ) : null}
-                          <span className="ceo-control__meta">
-                            {item.amount ? `${item.amount} MRU · ` : ""}
-                            {item.status ? `${item.status} · ` : ""}
-                            {item.city || "—"}
-                          </span>
-                          <a className="admin-lib-btn admin-lib-btn--ghost" href={item.deep_link}>
-                            Open
-                          </a>
-                        </li>
-                      ))}
-                    </ul>
+                            <a className="admin-lib-btn admin-lib-btn--ghost" href={item.deep_link}>
+                              Open
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                      {hidden > 0 ? (
+                        <button
+                          type="button"
+                          className="ceo-control__more"
+                          onClick={() =>
+                            setExpandedGroups((prev) => ({ ...prev, [key]: true }))
+                          }
+                        >
+                          Show {hidden} more
+                        </button>
+                      ) : null}
+                      {expanded && allItems.length > 5 ? (
+                        <button
+                          type="button"
+                          className="ceo-control__more"
+                          onClick={() => setExpandedGroups((prev) => ({ ...prev, [key]: false }))}
+                        >
+                          Show fewer
+                        </button>
+                      ) : null}
+                    </>
                   )}
                 </div>
               );
