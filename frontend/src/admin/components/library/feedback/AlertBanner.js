@@ -1,5 +1,7 @@
 import React from "react";
 
+import { humanizeApiMessage } from "../utils/apiMessage";
+
 const TONE_CLASS = {
   info: "admin-banner--info",
   success: "admin-banner--success",
@@ -8,11 +10,15 @@ const TONE_CLASS = {
 };
 
 export default function AlertBanner({ tone = "info", title, children, onDismiss, action }) {
+  // Callers frequently pass a raw transport string as the body
+  // (e.g. <AlertBanner tone="danger">{error}</AlertBanner>). Normalise only when
+  // the child is a plain string, so JSX children are passed through untouched.
+  const body = typeof children === "string" ? humanizeApiMessage(children) : children;
   return (
     <div className={`admin-banner ${TONE_CLASS[tone] || TONE_CLASS.info}`} role="status">
       <div className="admin-banner__body">
         {title ? <strong className="admin-banner__title">{title}</strong> : null}
-        <div>{children}</div>
+        <div>{body}</div>
       </div>
       <div className="admin-banner__actions">
         {action}

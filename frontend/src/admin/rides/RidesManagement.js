@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import { AdminShellPage } from "../layouts/AdminShell";
-import { DataTable, KPICard } from "../components/library";
+import { DataTable, KPICard, formatMoneyOrDash } from "../components/library";
 import RideDetailsDrawer from "./RideDetailsDrawer";
 import { fetchAdminRideDetail, fetchAdminRides } from "./ridesApi";
 
@@ -42,7 +42,7 @@ export const RIDE_COLUMNS = [
   { id: "destination", label: "Drop-off" },
   { id: "rider_name", label: "Rider" },
   { id: "driver_name", label: "Driver" },
-  { id: "fare", label: "Fare", sortable: true, render: (row) => `${row.fare} MRU` },
+  { id: "fare", label: "Fare", sortable: true, render: (row) => formatMoneyOrDash(row.fare) },
   {
     id: "created_at",
     label: "Requested",
@@ -163,10 +163,11 @@ export default function RidesManagement({ pathname = "/admin/rides" } = {}) {
     [filters]
   );
 
-  const fareValue =
-    summary?.completed_fare === null || summary?.completed_fare === undefined
-      ? "N/A"
-      : `${summary.completed_fare} MRU`;
+  // Completed fare for the current filter. Rendered through the shared
+  // decimal-safe formatter: a real amount is thousands-grouped and rounded to 2
+  // decimals, and an absent value is the platform's em dash rather than "N/A"
+  // (which collided with the "no data" wording used elsewhere).
+  const fareValue = formatMoneyOrDash(summary?.completed_fare);
 
   return (
     <AdminShellPage pathname={pathname} title="Rides Management">
