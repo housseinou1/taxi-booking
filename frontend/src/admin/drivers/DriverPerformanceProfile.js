@@ -10,6 +10,7 @@ import {
   LineChart,
   Modal,
   StatusChip,
+  formatMoneyOrDash,
 } from "../components/library";
 import { getDriverEarnings, getDriverRideHistory } from "./driversApi";
 import {
@@ -126,11 +127,12 @@ export default function DriverPerformanceProfile({ row, onClose }) {
 
   const bucket = (key) => earnings.data?.[key] || null;
 
-  // Money values arrive as Decimal strings or null (never 0 when there is no data).
-  const money = (value) =>
-    value === null || value === undefined || value === ""
-      ? "No data"
-      : `${Number(value).toLocaleString()} MRU`;
+  // Money values arrive as Decimal strings or null (never 0 when there is no
+  // data). The shared formatter keeps the platform contract: a real amount is
+  // grouped and rounded to 2 decimals, an absent value is the em dash, and a
+  // genuine zero stays "0 MRU". The previous local version printed "No data"
+  // and routed the string through Number().
+  const money = (value) => formatMoneyOrDash(value);
 
   const commissionSeries = useMemo(
     () => buildCommissionBuckets(earnings.data),

@@ -158,7 +158,7 @@ test("renders statistics from the authoritative summary", async () => {
   const section = stats.closest(".riders-detail__section");
   expect(within(section).getByText("Total rides").closest(".riders-detail__field")).toHaveTextContent("2");
   expect(within(section).getByText("Total spending").closest(".riders-detail__field")).toHaveTextContent(
-    "1,500.00 MRU"
+    "1,500 MRU"
   );
 });
 
@@ -260,7 +260,8 @@ test("shows empty states when all sections return no records", async () => {
   expect(await screen.findByText("No rides found for this rider.")).toBeInTheDocument();
   expect(screen.getByText("No payments found for this rider.")).toBeInTheDocument();
   expect(screen.getByText("No activity log entries for this rider.")).toBeInTheDocument();
-  // Total spending null -> N/A, never fabricated 0.
+  // Total spending null -> the platform's em dash for unavailable data, never a
+  // fabricated 0 and never the non-standard "N/A" this used to emit.
   const stats = screen.getByText("Statistics").closest(".riders-detail__section");
-  expect(within(stats).getByText("Total spending").closest(".riders-detail__field")).toHaveTextContent("N/A");
+  expect(within(stats).getByText("Total spending").closest(".riders-detail__field")).toHaveTextContent("—");
 });

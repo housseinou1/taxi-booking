@@ -122,7 +122,7 @@ test("renders queue KPIs and rows from the read-only endpoints", async () => {
   expect(await screen.findByText("Moussa Coura")).toBeInTheDocument();
   const pendingCard = screen.getByText("Pending", { selector: ".admin-kpi__label" }).closest(".admin-kpi");
   expect(within(pendingCard).getByText("1")).toBeInTheDocument();
-  expect(within(pendingCard).getByText("1500.00 MRU")).toBeInTheDocument();
+  expect(within(pendingCard).getByText("1,500 MRU")).toBeInTheDocument();
 
   const walletsCard = screen
     .getByText("Wallet balances", { selector: ".admin-kpi__label" })

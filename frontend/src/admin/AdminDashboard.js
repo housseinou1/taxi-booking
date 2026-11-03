@@ -2681,7 +2681,7 @@ function DriverRewardsAdminPanel({ leaderboard }) {
                   <div style={{ color: "#94a3b8", fontSize: 12 }}>
                     {row.reward_tier && `${row.reward_tier} · `}
                     {row.reward_points != null && `${row.reward_points} pts`}
-                    {row.monthly_earnings && `${row.monthly_earnings} MRU`}
+                    {row.monthly_earnings != null && formatMoney(row.monthly_earnings)}
                     {row.points_gained != null && `${row.points_gained} pts gained`}
                     {row.average_rating != null && ` · ${row.average_rating}★`}
                   </div>

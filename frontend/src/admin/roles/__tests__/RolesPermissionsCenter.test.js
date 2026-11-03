@@ -155,7 +155,7 @@ describe("RolesPermissionsCenter (Phase 10)", () => {
 
     expect((await screen.findAllByText("CEO")).length).toBeGreaterThan(0);
     expect(screen.getAllByText("Finance").length).toBeGreaterThan(0);
-    expect(screen.getByText("refund_mru: 50000 MRU · withdrawal_mru: 100000 MRU")).toBeInTheDocument();
+    expect(screen.getByText("refund_mru: 50,000 MRU · withdrawal_mru: 100,000 MRU")).toBeInTheDocument();
     expect(screen.getByText("Founder/CEO authority is protected")).toBeInTheDocument();
   });
 

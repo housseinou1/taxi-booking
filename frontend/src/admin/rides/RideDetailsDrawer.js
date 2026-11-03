@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from "react";
 
-import { InlineError, StatusChip } from "../components/library";
+import { InlineError, StatusChip, formatMoneyOrDash } from "../components/library";
 
 const TIMELINE_FIELDS = [
   { key: "created_at", label: "Requested" },
@@ -17,9 +17,16 @@ function formatTimestamp(value) {
   return date.toLocaleString();
 }
 
+/**
+ * Money for the ride drawer.
+ *
+ * Delegates to the shared decimal-safe formatter so the drawer agrees with the
+ * rest of the platform. The previous local version returned the non-standard
+ * "N/A" for an absent value and interpolated the raw API string, which lost
+ * thousands grouping and could print a float artefact.
+ */
 function formatMoney(value) {
-  if (value === null || value === undefined || value === "") return "N/A";
-  return `${value} MRU`;
+  return formatMoneyOrDash(value);
 }
 
 function Field({ label, children }) {

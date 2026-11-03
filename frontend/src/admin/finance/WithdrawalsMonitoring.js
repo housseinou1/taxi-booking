@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import { AdminShellPage } from "../layouts/AdminShell";
-import { DataTable, KPICard, StatusChip } from "../components/library";
+import { DataTable, KPICard, StatusChip, formatMoneyOrDash } from "../components/library";
 import AdminModuleHub from "../modules/AdminModuleHub";
 import { usePermissions } from "../permissions/PermissionContext";
 import WithdrawalDetailsDrawer from "./WithdrawalDetailsDrawer";
@@ -299,7 +299,7 @@ function WithdrawalsMonitoringContent({ pathname = "/admin/withdrawals" } = {}) 
             <KPICard
               label="Pending"
               value={queue?.pending}
-              subtitle={queue?.pending_amount ? `${queue.pending_amount} MRU` : undefined}
+              subtitle={formatMoneyOrDash(queue?.pending_amount)}
               tone="warning"
               loading={loading}
               error={error}
@@ -308,7 +308,7 @@ function WithdrawalsMonitoringContent({ pathname = "/admin/withdrawals" } = {}) 
             <KPICard
               label="Approved (unpaid)"
               value={queue?.approved}
-              subtitle={queue?.approved_amount ? `${queue.approved_amount} MRU` : undefined}
+              subtitle={formatMoneyOrDash(queue?.approved_amount)}
               tone="info"
               loading={loading}
               error={error}
@@ -333,7 +333,7 @@ function WithdrawalsMonitoringContent({ pathname = "/admin/withdrawals" } = {}) 
             <KPICard
               label="Paid"
               value={queue?.paid}
-              subtitle={queue?.paid_amount ? `${queue.paid_amount} MRU` : undefined}
+              subtitle={formatMoneyOrDash(queue?.paid_amount)}
               tone="success"
               loading={loading}
               error={error}

@@ -2,6 +2,7 @@ import React from "react";
 
 import { MARKET } from "../../marketConfig";
 import { scoreBandMeta } from "./fleetApi";
+import { formatMoney as sharedFormatMoney } from "../components/library/utils/formatters";
 
 /**
  * YALA Admin — Fleet UI kit (SHARED components).
@@ -14,6 +15,7 @@ import { scoreBandMeta } from "./fleetApi";
  * Pure presentation only: no data fetching, no business logic.
  */
 
+/* eslint-disable-next-line no-unused-vars -- kept for the fleet pages' own MRU suffix if reintroduced */
 const CURRENCY = MARKET.currency || "MRU";
 
 /** Formatters are exported so both pages render numbers identically. */
@@ -29,13 +31,14 @@ export function formatCount(value) {
   return Number(value).toLocaleString("en-US");
 }
 
-/** Money values arrive as Decimal strings; format them as MRU without inventing precision. */
+/**
+ * Money values arrive as Decimal strings; format them as MRU without inventing
+ * precision. Delegates to the shared decimal-safe formatter so the fleet pages
+ * agree with every other admin surface — the previous local version routed the
+ * value through Number(), which reintroduces binary floating point.
+ */
 export function formatMoney(value) {
-  if (!isNum(value)) return "â€”";
-  return `${Number(value).toLocaleString("en-US", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  })} ${CURRENCY}`;
+  return sharedFormatMoney(value);
 }
 
 export function formatPct(value) {

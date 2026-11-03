@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 
 import { Drawer, StatusChip } from "../components/library";
-import { formatTimestamp } from "../components/library/utils/formatters";
+import { formatMoneyOrDash, formatTimestamp } from "../components/library/utils/formatters";
 import {
   fetchRiderDocumentBlob,
   getRiderActivity,
@@ -43,15 +43,16 @@ function naOr(value) {
 }
 
 /**
- * MRU money renderer that stays honest about missing data: a null/undefined
- * amount renders "N/A" rather than coercing to 0 (the shared formatMoney would
- * turn null into "0 MRU", which would fabricate a spend figure).
+ * MRU money renderer that stays honest about missing data.
+ *
+ * This used to hand-roll the formatting because the plain shared `formatMoney`
+ * turns null into "0 MRU", which would fabricate a spend figure. The shared
+ * library now provides `formatMoneyOrDash`, which returns "—" for an absent
+ * value and a genuine "0 MRU" for a real zero, so the local copy is no longer
+ * needed and the page agrees with every other admin surface.
  */
 function formatMru(amount) {
-  if (amount === null || amount === undefined || amount === "") return "N/A";
-  const num = Number(amount);
-  if (Number.isNaN(num)) return "N/A";
-  return `${num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MRU`;
+  return formatMoneyOrDash(amount);
 }
 
 /** Small reusable section body that renders loading/error/empty/data states. */

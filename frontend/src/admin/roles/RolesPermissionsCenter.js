@@ -7,6 +7,7 @@ import {
   InlineError,
   KPICard,
   StatusChip,
+  formatMoneyOrDash,
   formatTimestamp,
 } from "../components/library";
 import {
@@ -32,7 +33,7 @@ const ROLE_COLUMNS = [
     render: (row) => {
       const limits = Object.entries(row.approval_limits || {});
       if (!limits.length) return "—";
-      return limits.map(([key, value]) => `${key}: ${value} MRU`).join(" · ");
+      return limits.map(([key, value]) => `${key}: ${formatMoneyOrDash(value)}`).join(" · ");
     },
   },
   { id: "members", label: "Members" },
