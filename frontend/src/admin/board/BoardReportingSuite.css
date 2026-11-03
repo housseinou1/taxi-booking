@@ -133,3 +133,98 @@
 .board-report-export-button:hover {
   opacity: 0.92;
 }
+
+.board-report-export-button:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+/* Professional data tables, replacing the raw JSON <pre> dumps. */
+.board-report-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+}
+
+.board-report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.board-report-table th,
+.board-report-table td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid #f3f4f6;
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+.board-report-table th {
+  background: #f9fafb;
+  font-weight: 600;
+  color: #374151;
+  position: sticky;
+  top: 0;
+}
+
+.board-report-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.board-report-empty,
+.board-report-loading {
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.board-report-controls-note {
+  color: #6b7280;
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+.board-report-export-warning {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  color: #92400e;
+  line-height: 1.5;
+}
+
+.board-report-export-warning code {
+  background: #fef3c7;
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-size: 0.85em;
+}
+
+.board-report-export-ok {
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  border-radius: 8px;
+  padding: 0.6rem 0.9rem;
+  margin-bottom: 1rem;
+  color: #065f46;
+  font-size: 0.9rem;
+}
+
+/* Keep export controls usable on narrow screens. */
+@media (max-width: 640px) {
+  .board-report-export-button {
+    flex: 1 1 auto;
+    text-align: center;
+    padding: 10px 12px;
+  }
+
+  .board-report-table th,
+  .board-report-table td {
+    padding: 8px 10px;
+    font-size: 0.85rem;
+  }
+}

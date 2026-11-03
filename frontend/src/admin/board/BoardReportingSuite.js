@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useState } from "react";
 
+import { apiErrorMessage } from "../layouts/errors/apiErrorMessage";
 import { formatMoneyOrDash } from "../components/library/utils/formatters";
 import {
-  boardReportExportUrl,
+  downloadBoardReport,
+  saveBlob,
   fetchBoardBusinessKpis,
   fetchBoardExecutiveSummary,
   fetchBoardFinancialReport,
@@ -14,6 +16,8 @@ import {
 } from "./boardReportingApi";
 import "../beta/BetaDashboard.css";
 import "./BoardReportingSuite.css";
+
+const DASH = "\u2014";
 
 const TABS = [
   { id: "executive", label: "Executive Summary" },
@@ -39,11 +43,44 @@ const EXPORT_REPORTS = [
   { id: "strategic", label: "Strategic" },
 ];
 
+// Which tabs the backend actually honours `period` for. board_reporting_views only reads the
+// period for the suite, executive, financial and export views; the other endpoints are
+// computed over fixed windows and ignore it. The UI says so rather than implying that a
+// filter was applied when it was not.
+const PERIOD_AWARE_TABS = new Set(["executive", "financial"]);
+
+/** A percentage that is honest about absence - never "undefined%", never a fabricated 0. */
+function pct(value, digits = 1) {
+  if (value === null || value === undefined || value === "") return DASH;
+  const num = Number(value);
+  if (Number.isNaN(num)) return DASH;
+  return `${num.toFixed(digits)}%`;
+}
+
+/** A plain count that is honest about absence - a real 0 stays 0. */
+function count(value) {
+  if (value === null || value === undefined || value === "") return DASH;
+  return value;
+}
+
+/** Humanise a snake_case key for display. */
+function humanise(key) {
+  return String(key).replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/** Render a scalar for a table cell, keeping genuine zeros and dashes for absence. */
+function cellValue(value) {
+  if (value === null || value === undefined || value === "") return DASH;
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
+
 function MetricCard({ label, value, sub, critical = false }) {
   return (
     <div className={`beta__card ${critical ? "board-report-critical" : ""}`}>
       <div className="beta__card-label">{label}</div>
-      <div className="beta__card-value">{value ?? "ù"}</div>
+      <div className="beta__card-value">{value ?? DASH}</div>
       {sub ? <div className="beta__card-sub">{sub}</div> : null}
     </div>
   );
@@ -58,6 +95,54 @@ function Section({ title, children }) {
   );
 }
 
+/**
+ * A professional table for object payloads.
+ *
+ * These sections used to dump raw `JSON.stringify` output into a <pre>, which is not a
+ * report. Scalars render as a label/value table; arrays of objects render as a real
+ * column table so the figures can actually be read.
+ */
+function DataTable({ data, emptyLabel = "No data available for this period." }) {
+  const rows = React.useMemo(() => {
+    if (!data) return [];
+    if (Array.isArray(data)) return data.filter((r) => r && typeof r === "object");
+    if (typeof data !== "object") return [];
+    // {"total": 5, "by_status": {...}} -> a label/value table.
+    return Object.entries(data).map(([key, value]) => ({ metric: humanise(key), value }));
+  }, [data]);
+
+  if (!rows.length) {
+    return <p className="board-report-empty">{emptyLabel}</p>;
+  }
+
+  const columns = Array.from(new Set(rows.flatMap((row) => Object.keys(row))));
+
+  return (
+    <div className="board-report-table-wrap">
+      <table className="board-report-table">
+        <thead>
+          <tr>
+            {columns.map((col) => (
+              <th key={col} scope="col">
+                {humanise(col)}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, idx) => (
+            <tr key={idx}>
+              {columns.map((col) => (
+                <td key={col}>{cellValue(row[col])}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export default function BoardReportingSuite() {
   const [tab, setTab] = useState("executive");
   const [period, setPeriod] = useState("weekly");
@@ -65,22 +150,30 @@ export default function BoardReportingSuite() {
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [exporting, setExporting] = useState("");
+  const [exportNotice, setExportNotice] = useState(null);
 
   const load = useCallback(async () => {
     try {
       setError("");
+      setLoading(true);
+      // Clear the previous tab's payload first. Without this, a failed request for the new
+      // tab leaves the old tab's data on screen, so one report's figures appear under
+      // another report's heading.
+      setDetail(null);
+
       const suite = await fetchBoardReportingSuite({ period });
       setData(suite);
 
       if (tab === "executive") setDetail(await fetchBoardExecutiveSummary({ period }));
-      if (tab === "business-kpis") setDetail(await fetchBoardBusinessKpis());
+      if (tab === "business-kpis") setDetail(await fetchBoardBusinessKpis({ period }));
       if (tab === "financial") setDetail(await fetchBoardFinancialReport({ period }));
-      if (tab === "operational") setDetail(await fetchBoardOperationalReport());
-      if (tab === "growth") setDetail(await fetchBoardGrowthReport());
-      if (tab === "risk") setDetail(await fetchBoardRiskDashboard());
-      if (tab === "strategic") setDetail(await fetchBoardStrategicPlanning());
+      if (tab === "operational") setDetail(await fetchBoardOperationalReport({ period }));
+      if (tab === "growth") setDetail(await fetchBoardGrowthReport({ period }));
+      if (tab === "risk") setDetail(await fetchBoardRiskDashboard({ period }));
+      if (tab === "strategic") setDetail(await fetchBoardStrategicPlanning({ period }));
     } catch (err) {
-      setError(err?.response?.data?.detail || err?.message || "Failed to load board reports");
+      setError(apiErrorMessage(err, { resource: "board reports" }));
     } finally {
       setLoading(false);
     }
@@ -89,6 +182,30 @@ export default function BoardReportingSuite() {
   useEffect(() => {
     load();
   }, [load]);
+
+  const handleExport = useCallback(
+    async (reportId, format) => {
+      const key = `${reportId}:${format}`;
+      setExporting(key);
+      setExportNotice(null);
+      try {
+        const { blob, filename, contentType } = await downloadBoardReport(reportId, format, { period });
+        saveBlob(blob, filename);
+        setExportNotice({
+          ok: true,
+          message: `Downloaded ${filename} (${contentType || "unknown type"}, ${blob.size} bytes).`,
+        });
+      } catch (err) {
+        setExportNotice({
+          ok: false,
+          message: apiErrorMessage(err, { resource: "board report export", action: "export" }),
+        });
+      } finally {
+        setExporting("");
+      }
+    },
+    [period]
+  );
 
   const periodLabel = period.charAt(0).toUpperCase() + period.slice(1);
 
@@ -101,7 +218,7 @@ export default function BoardReportingSuite() {
           <MetricCard label="GMV" value={formatMoneyOrDash(s.gmv_mru)} sub={s.period} />
           <MetricCard label="Completed Rides" value={s.completed_rides} />
           <MetricCard label="Completed Deliveries" value={s.completed_deliveries} />
-          <MetricCard label="Cancellation Rate" value={`${s.cancellation_rate_pct}%`} />
+          <MetricCard label="Cancellation Rate" value={pct(s.cancellation_rate_pct)} />
           <MetricCard label="Active Riders" value={s.active_riders} />
           <MetricCard label="Active Drivers" value={s.active_drivers} />
         </div>
@@ -128,11 +245,11 @@ export default function BoardReportingSuite() {
         <MetricCard label="Active Riders" value={k.active_riders} />
         <MetricCard label="Active Drivers" value={k.active_drivers} />
         <MetricCard label="Active Couriers" value={k.active_couriers} />
-        <MetricCard label="Driver Retention" value={`${k.driver_retention_pct}%`} />
-        <MetricCard label="Customer Retention" value={`${k.customer_retention_pct}%`} />
+        <MetricCard label="Driver Retention" value={pct(k.driver_retention_pct)} />
+        <MetricCard label="Customer Retention" value={pct(k.customer_retention_pct)} />
         <MetricCard label="Avg Order Value" value={formatMoneyOrDash(k.average_order_value_mru)} />
         <MetricCard label="Avg Ride Fare" value={formatMoneyOrDash(k.average_ride_fare_mru)} />
-        <MetricCard label="Revenue Growth" value={`${k.revenue_growth_pct}%`} />
+        <MetricCard label="Revenue Growth" value={pct(k.revenue_growth_pct)} />
       </div>
     );
   };
@@ -178,18 +295,18 @@ export default function BoardReportingSuite() {
           <MetricCard label="Completed Deliveries" value={delivery.completed} />
           <MetricCard label="Cancelled Deliveries" value={delivery.cancelled} />
           <MetricCard label="Open Incidents" value={incident.open_count} critical={incident.open_count > 0} />
-          <MetricCard label="Platform Uptime" value={`${o.platform_uptime_pct}%`} />
+          <MetricCard label="Platform Uptime" value={pct(o.platform_uptime_pct)} />
         </div>
         <Section title="Safety Metrics">
           <div className="board-report-grid">
             <MetricCard label="Safety Score" value={o.safety_metrics?.safety_score} />
             <MetricCard label="Open Safety Incidents" value={o.safety_metrics?.open_incidents} critical={(o.safety_metrics?.open_incidents || 0) > 0} />
             <MetricCard label="Emergency Alerts (24h)" value={o.safety_metrics?.emergency_alerts_24h} />
-            <MetricCard label="Avg Resolution (hrs)" value={o.safety_metrics?.avg_resolution_hours ?? "ù"} />
+            <MetricCard label="Avg Resolution (hrs)" value={o.safety_metrics?.avg_resolution_hours ?? DASH} />
           </div>
         </Section>
         <Section title="Support Metrics">
-          <pre className="board-report-pre">{JSON.stringify(o.support_metrics || {}, null, 2)}</pre>
+          <DataTable data={o.support_metrics} emptyLabel="No support metrics reported for this period." />
         </Section>
       </>
     );
@@ -210,13 +327,16 @@ export default function BoardReportingSuite() {
           <MetricCard label="Driver Referrals" value={g.referral_growth?.driver_referrals_month} />
         </div>
         <Section title="Marketing Campaign Results">
-          <pre className="board-report-pre">{JSON.stringify(g.marketing_campaign_results || {}, null, 2)}</pre>
+          <DataTable
+            data={g.marketing_campaign_results}
+            emptyLabel="No marketing campaign results reported for this period."
+          />
         </Section>
         <Section title="Top Cities">
           <ul className="board-report-list">
             {(g.city_growth || []).map((c) => (
               <li key={c.id || c.city_id}>
-                {c.name} ù {c.completed_rides} rides
+                {c.name} ‚Äî {count(c.completed_rides)} rides
               </li>
             ))}
           </ul>
@@ -230,8 +350,13 @@ export default function BoardReportingSuite() {
     return (
       <>
         <div className="board-report-score">
-          <h2>Overall Risk Score: {r.overall_risk_score}/100</h2>
-          <p>Risk Level: <strong>{r.risk_level}</strong></p>
+          <h2>
+            Overall Risk Score: {r.overall_risk_score ?? DASH}
+            {r.overall_risk_score === null || r.overall_risk_score === undefined ? null : "/100"}
+          </h2>
+          <p>
+            Risk Level: <strong>{r.risk_level ?? DASH}</strong>
+          </p>
         </div>
         <div className="board-report-grid">
           {Object.entries(r.categories || {}).map(([key, vals]) => (
@@ -245,7 +370,11 @@ export default function BoardReportingSuite() {
           ))}
         </div>
         <Section title="Mitigation Status">
-          <p>{typeof r.mitigation_status === "string" ? r.mitigation_status : r.mitigation_status?.summary}</p>
+          <p>
+            {typeof r.mitigation_status === "string"
+              ? r.mitigation_status
+              : r.mitigation_status?.summary ?? DASH}
+          </p>
         </Section>
       </>
     );
@@ -287,7 +416,7 @@ export default function BoardReportingSuite() {
           <ul className="board-report-list">
             {(s.new_city_readiness || []).map((city, idx) => (
               <li key={idx}>
-                {city.name} ù {city.ready ? "Ready" : "Not Ready"}: {city.demand_signal}
+                {city.name} ‚Äî {city.ready ? "Ready" : "Not Ready"}: {city.demand_signal}
               </li>
             ))}
           </ul>
@@ -298,22 +427,45 @@ export default function BoardReportingSuite() {
 
   const renderExport = () => (
     <Section title="One-Click Board Exports">
-      <p className="beta__subtitle">Export reports as CSV, Excel, PDF, or Executive Presentation ({periodLabel}).</p>
+      <p className="beta__subtitle">
+        Export reports as CSV, Excel, PDF, or Executive Presentation ({periodLabel}).
+      </p>
+
+      <div className="board-report-export-warning" role="note">
+        <strong>Backend limitation:</strong> the Excel, PDF and Presentation downloads are produced by
+        <code> report_export.py</code>, whose optional dependencies (<code>openpyxl</code>,{" "}
+        <code>reportlab</code>) are not installed and are absent from <code>requirements.txt</code>. Excel
+        therefore returns CSV bytes, and PDF returns plain text, both under a mismatched content type and file
+        extension. <strong>Only CSV is a genuine file today.</strong> This is reported to the backend team.
+      </div>
+
+      {exportNotice ? (
+        <p className={exportNotice.ok ? "board-report-export-ok" : "beta__error"} role="status">
+          {exportNotice.message}
+        </p>
+      ) : null}
+
       <div className="board-report-export-grid">
         {EXPORT_REPORTS.map((report) => (
           <div key={report.id} className="board-report-export-card">
             <h4>{report.label}</h4>
             <div className="board-report-export-actions">
-              {EXPORT_FORMATS.map((fmt) => (
-                <a
-                  key={fmt}
-                  href={boardReportExportUrl(report.id, fmt, { period })}
-                  className="board-report-export-button"
-                  download
-                >
-                  {fmt === "presentation" ? "Presentation" : fmt.toUpperCase()}
-                </a>
-              ))}
+              {EXPORT_FORMATS.map((fmt) => {
+                const key = `${report.id}:${fmt}`;
+                const busy = exporting === key;
+                return (
+                  <button
+                    key={fmt}
+                    type="button"
+                    className="board-report-export-button"
+                    onClick={() => handleExport(report.id, fmt)}
+                    disabled={busy}
+                    aria-busy={busy}
+                  >
+                    {busy ? "Preparing‚Ä¶" : fmt === "presentation" ? "Presentation" : fmt.toUpperCase()}
+                  </button>
+                );
+              })}
             </div>
           </div>
         ))}
@@ -356,7 +508,7 @@ export default function BoardReportingSuite() {
       </header>
 
       {error ? <p className="beta__error">{error}</p> : null}
-      {loading && !data ? <p>Loading board reportsÖ</p> : null}
+      {loading ? <p className="board-report-loading">Loading board reports‚Ä¶</p> : null}
 
       <div className="board-report-controls">
         <label htmlFor="period-select">Period:</label>
@@ -371,13 +523,22 @@ export default function BoardReportingSuite() {
             </option>
           ))}
         </select>
+        {PERIOD_AWARE_TABS.has(tab) ? null : (
+          <span className="board-report-controls-note">
+            This report is computed over a fixed window; the period selector does not affect it.
+          </span>
+        )}
       </div>
 
-      <div className="board-report-tabs">
+      <div className="board-report-tabs" role="tablist" aria-label="Report sections">
         {TABS.map((item) => (
           <button
             key={item.id}
             type="button"
+            role="tab"
+            id={`board-tab-${item.id}`}
+            aria-selected={tab === item.id}
+            aria-controls="board-report-content"
             className={`board-report-tab ${tab === item.id ? "board-report-tab--active" : ""}`}
             onClick={() => setTab(item.id)}
           >
@@ -386,7 +547,14 @@ export default function BoardReportingSuite() {
         ))}
       </div>
 
-      <div className="board-report-content">{renderTab()}</div>
+      <div
+        className="board-report-content"
+        id="board-report-content"
+        role="tabpanel"
+        aria-labelledby={`board-tab-${tab}`}
+      >
+        {renderTab()}
+      </div>
     </div>
   );
 }
