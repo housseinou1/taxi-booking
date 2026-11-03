@@ -6,7 +6,7 @@
  */
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
-import { formatMoney } from "../../marketConfig";
+import { formatMoneyOrDash } from "../components/library/utils/formatters";
 import authenticatedApi from "../../auth/authenticatedApi";
 import { API_URL } from "../../apiConfig";
 import { fetchOpsDashboard } from "./opsDashboardApi";
@@ -138,7 +138,7 @@ function InsightCard({ label, current, previous, unit = "", isCurrency = false, 
   const prev = Number(previous) || 0;
   const change = prev > 0 ? ((curr - prev) / prev) * 100 : 0;
   const isPositive = change >= 0;
-  const displayValue = isCurrency ? formatMoney(curr) : unit ? `${curr.toLocaleString()} ${unit}` : curr.toLocaleString();
+  const displayValue = isCurrency ? formatMoneyOrDash(curr) : unit ? `${curr.toLocaleString()} ${unit}` : curr.toLocaleString();
   const changeText = showTrend && prev > 0 ? `${isPositive ? "+" : ""}${change.toFixed(1)}%` : "";
 
   return (
@@ -276,13 +276,13 @@ export default function FinanceAnalyticsCenter() {
       <section className="fin-section" aria-label="Revenue">
         <h2 className="fin-section__title">A. Revenue</h2>
         <div className="fin-kpi-grid">
-          <KpiCard icon="💰" label="Revenue (today)" value={formatMoney(revenueToday)} tone="green" />
-          <KpiCard icon="📊" label="Revenue (this week)" value={formatMoney(revenueWeek)} tone="green" />
-          <KpiCard icon="📈" label="Revenue (this month)" value={formatMoney(revenueMonth)} tone="green" />
+          <KpiCard icon="💰" label="Revenue (today)" value={formatMoneyOrDash(revenueToday)} tone="green" />
+          <KpiCard icon="📊" label="Revenue (this week)" value={formatMoneyOrDash(revenueWeek)} tone="green" />
+          <KpiCard icon="📈" label="Revenue (this month)" value={formatMoneyOrDash(revenueMonth)} tone="green" />
           <KpiCard
             icon="🏦"
             label="Platform commission"
-            value={formatMoney(platformCommission)}
+            value={formatMoneyOrDash(platformCommission)}
             tone="blue"
             subtitle="Retained by Yala — not driver or courier earnings"
           />
@@ -299,14 +299,14 @@ export default function FinanceAnalyticsCenter() {
           <KpiCard
             icon="🚗"
             label="Driver earnings"
-            value={formatMoney(driverEarnings)}
+            value={formatMoneyOrDash(driverEarnings)}
             tone="green"
             subtitle="Payable to drivers — distinct from platform commission"
           />
           <KpiCard
             icon="📦"
             label="Courier earnings"
-            value={formatMoney(courierEarnings)}
+            value={formatMoneyOrDash(courierEarnings)}
             tone="green"
             subtitle="Payable to couriers — distinct from platform commission"
           />
@@ -318,7 +318,7 @@ export default function FinanceAnalyticsCenter() {
       <section className="fin-section" aria-label="Payments">
         <h2 className="fin-section__title">C. Payments</h2>
         <div className="fin-kpi-grid">
-          <KpiCard icon="↩️" label="Refunds" value={formatMoney(refunds)} tone="red" />
+          <KpiCard icon="↩️" label="Refunds" value={formatMoneyOrDash(refunds)} tone="red" />
         </div>
         <p className="fin-unavailable">
           Successful and failed transaction counts and pending refunds are not reported by this
@@ -330,7 +330,7 @@ export default function FinanceAnalyticsCenter() {
       <section className="fin-section" aria-label="Wallets">
         <h2 className="fin-section__title">D. Wallets</h2>
         <div className="fin-kpi-grid">
-          <KpiCard icon="💳" label="Wallet balances" value={formatMoney(walletBalances)} tone="blue" />
+          <KpiCard icon="💳" label="Wallet balances" value={formatMoneyOrDash(walletBalances)} tone="blue" />
         </div>
         <p className="fin-unavailable">
           Wallet deposits and wallet withdrawals are not reported by this endpoint — see{" "}
@@ -370,7 +370,7 @@ export default function FinanceAnalyticsCenter() {
             columns={[
               { key: "name", label: "Driver" },
               { key: "trips", label: "Trips" },
-              { key: "earnings", label: "Earnings", render: (r) => formatMoney(r.earnings || 0) },
+              { key: "earnings", label: "Earnings", render: (r) => formatMoneyOrDash(r.earnings || 0) },
             ]}
             rows={topDrivers}
           />
@@ -379,7 +379,7 @@ export default function FinanceAnalyticsCenter() {
             columns={[
               { key: "name", label: "Courier" },
               { key: "deliveries", label: "Deliveries" },
-              { key: "earnings", label: "Earnings", render: (r) => formatMoney(r.earnings || 0) },
+              { key: "earnings", label: "Earnings", render: (r) => formatMoneyOrDash(r.earnings || 0) },
             ]}
             rows={topCouriers}
           />
@@ -387,7 +387,7 @@ export default function FinanceAnalyticsCenter() {
             title="Recent Withdrawals"
             columns={[
               { key: "name", label: "Name" },
-              { key: "amount", label: "Amount", render: (r) => formatMoney(r.amount || 0) },
+              { key: "amount", label: "Amount", render: (r) => formatMoneyOrDash(r.amount || 0) },
               { key: "status", label: "Status" },
             ]}
             rows={recentWithdrawals}
@@ -396,7 +396,7 @@ export default function FinanceAnalyticsCenter() {
             title="Recent Refunds"
             columns={[
               { key: "customer", label: "Customer" },
-              { key: "amount", label: "Amount", render: (r) => formatMoney(r.amount || 0) },
+              { key: "amount", label: "Amount", render: (r) => formatMoneyOrDash(r.amount || 0) },
               { key: "reason", label: "Reason" },
             ]}
             rows={recentRefunds}

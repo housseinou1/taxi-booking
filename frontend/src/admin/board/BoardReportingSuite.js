@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 
-import { formatMoney } from "../../marketConfig";
+import { formatMoneyOrDash } from "../components/library/utils/formatters";
 import {
   boardReportExportUrl,
   fetchBoardBusinessKpis,
@@ -98,7 +98,7 @@ export default function BoardReportingSuite() {
       <>
         <p className="beta__subtitle">{periodLabel} Executive Summary</p>
         <div className="board-report-grid">
-          <MetricCard label="GMV" value={formatMoney(s.gmv_mru)} sub={s.period} />
+          <MetricCard label="GMV" value={formatMoneyOrDash(s.gmv_mru)} sub={s.period} />
           <MetricCard label="Completed Rides" value={s.completed_rides} />
           <MetricCard label="Completed Deliveries" value={s.completed_deliveries} />
           <MetricCard label="Cancellation Rate" value={`${s.cancellation_rate_pct}%`} />
@@ -120,18 +120,18 @@ export default function BoardReportingSuite() {
     const k = detail || {};
     return (
       <div className="board-report-grid">
-        <MetricCard label="Revenue" value={formatMoney(k.revenue_mru)} />
-        <MetricCard label="GMV" value={formatMoney(k.gmv_mru)} />
+        <MetricCard label="Revenue" value={formatMoneyOrDash(k.revenue_mru)} />
+        <MetricCard label="GMV" value={formatMoneyOrDash(k.gmv_mru)} />
         <MetricCard label="Completed Rides" value={k.completed_rides} />
         <MetricCard label="Completed Deliveries" value={k.completed_deliveries} />
-        <MetricCard label="Merchant Sales" value={formatMoney(k.merchant_sales_mru)} />
+        <MetricCard label="Merchant Sales" value={formatMoneyOrDash(k.merchant_sales_mru)} />
         <MetricCard label="Active Riders" value={k.active_riders} />
         <MetricCard label="Active Drivers" value={k.active_drivers} />
         <MetricCard label="Active Couriers" value={k.active_couriers} />
         <MetricCard label="Driver Retention" value={`${k.driver_retention_pct}%`} />
         <MetricCard label="Customer Retention" value={`${k.customer_retention_pct}%`} />
-        <MetricCard label="Avg Order Value" value={formatMoney(k.average_order_value_mru)} />
-        <MetricCard label="Avg Ride Fare" value={formatMoney(k.average_ride_fare_mru)} />
+        <MetricCard label="Avg Order Value" value={formatMoneyOrDash(k.average_order_value_mru)} />
+        <MetricCard label="Avg Ride Fare" value={formatMoneyOrDash(k.average_ride_fare_mru)} />
         <MetricCard label="Revenue Growth" value={`${k.revenue_growth_pct}%`} />
       </div>
     );
@@ -144,21 +144,21 @@ export default function BoardReportingSuite() {
     return (
       <>
         <div className="board-report-grid">
-          <MetricCard label="Gross Revenue" value={formatMoney(income.gross_revenue_mru)} />
-          <MetricCard label="Platform Commission" value={formatMoney(income.platform_commission_mru)} />
-          <MetricCard label="Merchant Commission" value={formatMoney(income.merchant_commission_mru)} />
-          <MetricCard label="Partner Revenue Share" value={formatMoney(income.partner_revenue_share_mru)} />
-          <MetricCard label="Operating Expenses" value={formatMoney(f.operating_expenses_mru)} />
-          <MetricCard label="Net Operating Income" value={formatMoney(f.net_operating_income_mru)} />
-          <MetricCard label="Wallet Balance" value={formatMoney(f.wallet_balance_mru)} />
-          <MetricCard label="Outstanding Liabilities" value={formatMoney(f.outstanding_liabilities_mru)} />
-          <MetricCard label="Outstanding Refunds" value={formatMoney(f.refund_summary?.amount_mru)} sub={`${f.refund_summary?.count ?? 0} requests`} critical />
+          <MetricCard label="Gross Revenue" value={formatMoneyOrDash(income.gross_revenue_mru)} />
+          <MetricCard label="Platform Commission" value={formatMoneyOrDash(income.platform_commission_mru)} />
+          <MetricCard label="Merchant Commission" value={formatMoneyOrDash(income.merchant_commission_mru)} />
+          <MetricCard label="Partner Revenue Share" value={formatMoneyOrDash(income.partner_revenue_share_mru)} />
+          <MetricCard label="Operating Expenses" value={formatMoneyOrDash(f.operating_expenses_mru)} />
+          <MetricCard label="Net Operating Income" value={formatMoneyOrDash(f.net_operating_income_mru)} />
+          <MetricCard label="Wallet Balance" value={formatMoneyOrDash(f.wallet_balance_mru)} />
+          <MetricCard label="Outstanding Liabilities" value={formatMoneyOrDash(f.outstanding_liabilities_mru)} />
+          <MetricCard label="Outstanding Refunds" value={formatMoneyOrDash(f.refund_summary?.amount_mru)} sub={`${f.refund_summary?.count ?? 0} requests`} critical />
         </div>
         <Section title="Cash Flow Summary">
           <div className="board-report-grid">
-            <MetricCard label="Cash In" value={formatMoney(cashFlow.cash_in_mru)} />
-            <MetricCard label="Cash Out" value={formatMoney(cashFlow.cash_out_mru)} />
-            <MetricCard label="Net Cash Flow" value={formatMoney(cashFlow.net_cash_flow_mru)} />
+            <MetricCard label="Cash In" value={formatMoneyOrDash(cashFlow.cash_in_mru)} />
+            <MetricCard label="Cash Out" value={formatMoneyOrDash(cashFlow.cash_out_mru)} />
+            <MetricCard label="Net Cash Flow" value={formatMoneyOrDash(cashFlow.net_cash_flow_mru)} />
           </div>
         </Section>
       </>

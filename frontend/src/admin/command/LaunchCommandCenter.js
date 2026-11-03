@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
-import { formatMoney } from "../../marketConfig";
+import { formatMoneyOrDash } from "../components/library/utils/formatters";
 import {
   createCommandIncident,
   exportCeoSummary,
@@ -268,8 +268,8 @@ export default function LaunchCommandCenter() {
             <MetricCard label="Online couriers" value={live.online_couriers} />
             <MetricCard label="Open incidents" value={live.open_incidents} sub={`${live.open_safety_incidents || 0} safety · ${live.open_ops_incidents || 0} ops`} />
             <MetricCard label="Open support tickets" value={live.open_support_tickets} />
-            <MetricCard label="Pending withdrawals" value={formatMoney(live.pending_withdrawals?.amount)} sub={`${live.pending_withdrawals?.count || 0} requests`} />
-            <MetricCard label="Failed payments" value={live.failed_payments?.count} sub={formatMoney(live.failed_payments?.amount)} />
+            <MetricCard label="Pending withdrawals" value={formatMoneyOrDash(live.pending_withdrawals?.amount)} sub={`${live.pending_withdrawals?.count || 0} requests`} />
+            <MetricCard label="Failed payments" value={live.failed_payments?.count} sub={formatMoneyOrDash(live.failed_payments?.amount)} />
             <MetricCard label="System alerts" value={live.system_alerts} />
             <MetricCard label="Waiting riders" value={live.waiting_riders} />
           </div>
@@ -500,7 +500,7 @@ export default function LaunchCommandCenter() {
             </button>
           </div>
           <div className="beta__grid beta__grid--4">
-            <MetricCard label="Revenue today" value={formatMoney(ceo.revenue?.gross_today_mru)} />
+            <MetricCard label="Revenue today" value={formatMoneyOrDash(ceo.revenue?.gross_today_mru)} />
             <MetricCard label="Completed rides" value={ceo.trips?.completed_rides_today} />
             <MetricCard label="Completed deliveries" value={ceo.deliveries?.completed_deliveries_today} />
             <MetricCard label="Driver utilization" value={`${ceo.utilization?.driver_utilization_pct ?? "—"}%`} />

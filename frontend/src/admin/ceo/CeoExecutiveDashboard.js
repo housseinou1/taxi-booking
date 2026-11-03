@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import { API_URL } from "../../apiConfig";
 import authenticatedApi from "../../auth/authenticatedApi";
-import { formatMoney } from "../../marketConfig";
+import { formatMoneyOrDash } from "../components/library/utils/formatters";
 import { fetchExecutiveDashboard, fetchPendingWithdrawals } from "../executive/executiveApi";
 import {
   ceoMasterReportUrl,
@@ -323,7 +323,7 @@ export default function CeoExecutiveDashboard() {
       <section id="ceo-today" className="ceo-exec__section">
         <h2 className="ceo-exec__section-title"><span>📊</span> Today&apos;s Business</h2>
         <div className="ceo-exec__grid ceo-exec__grid--metrics">
-          <MetricCard label="Today's Revenue" value={formatMoney(overview.total_revenue_today)} tone="gold" />
+          <MetricCard label="Today's Revenue" value={formatMoneyOrDash(overview.total_revenue_today)} tone="gold" />
           <MetricCard label="Completed Rides" value={overview.completed_rides_today} />
           <MetricCard label="Delivery Orders" value={overview.completed_deliveries_today} tone="purple" />
           <MetricCard label="Property Payments" value={null} na />
@@ -338,28 +338,28 @@ export default function CeoExecutiveDashboard() {
       <section id="ceo-finance" className="ceo-exec__section">
         <h2 className="ceo-exec__section-title"><span>💰</span> Financial Overview</h2>
         <div className="ceo-exec__grid ceo-exec__grid--metrics">
-          <MetricCard label="Ride Revenue" value={formatMoney(overview.ride_revenue_today)} tone="gold" />
-          <MetricCard label="Delivery Revenue" value={formatMoney(overview.delivery_revenue_today)} tone="purple" />
+          <MetricCard label="Ride Revenue" value={formatMoneyOrDash(overview.ride_revenue_today)} tone="gold" />
+          <MetricCard label="Delivery Revenue" value={formatMoneyOrDash(overview.delivery_revenue_today)} tone="purple" />
           <MetricCard label="Real Estate Revenue" value={null} na />
-          <MetricCard label="Commission Earned" value={formatMoney(overview.commission_earned_today)} tone="gold" />
+          <MetricCard label="Commission Earned" value={formatMoneyOrDash(overview.commission_earned_today)} tone="gold" />
           <MetricCard
             label="Driver Payouts Pending"
-            value={formatMoney(finance.pending_withdrawals?.amount)}
+            value={formatMoneyOrDash(finance.pending_withdrawals?.amount)}
             sub={`${finance.pending_withdrawals?.count || 0} requests`}
             tone="orange"
           />
           <MetricCard
             label="Courier Payouts Pending"
-            value={formatMoney(finance.pending_withdrawals?.amount)}
+            value={formatMoneyOrDash(finance.pending_withdrawals?.amount)}
             sub="Shared withdrawal queue"
             tone="orange"
           />
           <MetricCard label="Collector Deposits" value={null} na />
           <MetricCard label="Outstanding Rent" value={null} na />
-          <MetricCard label="Net Profit Estimate" value={formatMoney(netProfit)} tone="green" />
+          <MetricCard label="Net Profit Estimate" value={formatMoneyOrDash(netProfit)} tone="green" />
           <MetricCard
             label="Outstanding Refunds"
-            value={formatMoney(finance.outstanding_refunds?.amount)}
+            value={formatMoneyOrDash(finance.outstanding_refunds?.amount)}
             sub={`${finance.outstanding_refunds?.count || 0} open`}
             tone="red"
           />
@@ -517,7 +517,7 @@ export default function CeoExecutiveDashboard() {
                 {(approvals.pending_refunds || []).map((row) => (
                   <tr key={row.id}>
                     <td>{row.id}</td>
-                    <td>{formatMoney(row.amount)}</td>
+                    <td>{formatMoneyOrDash(row.amount)}</td>
                     <td>{row.customer__email}</td>
                   </tr>
                 ))}
@@ -577,7 +577,7 @@ export default function CeoExecutiveDashboard() {
             <BarChart
               data={(analytics.revenue_by_hour || []).filter((_, i) => i % 2 === 0)}
               valueKey="revenue"
-              formatValue={(v) => formatMoney(v)}
+              formatValue={(v) => formatMoneyOrDash(v)}
             />
           </div>
           <div className="ceo-exec__card">
@@ -590,7 +590,7 @@ export default function CeoExecutiveDashboard() {
               data={analytics.revenue_by_day || executive?.finance?.chart || []}
               valueKey="gross_revenue"
               labelKey="label"
-              formatValue={(v) => formatMoney(v)}
+              formatValue={(v) => formatMoneyOrDash(v)}
             />
           </div>
           <div className="ceo-exec__card">
@@ -601,7 +601,7 @@ export default function CeoExecutiveDashboard() {
                 {(analytics.trips_by_city || []).slice(0, 8).map((row) => (
                   <tr key={row.city_id}>
                     <td>{row.city_name}</td>
-                    <td>{formatMoney(row.revenue_month)}</td>
+                    <td>{formatMoneyOrDash(row.revenue_month)}</td>
                     <td>{row.driver_count}</td>
                   </tr>
                 ))}
@@ -720,7 +720,7 @@ export default function CeoExecutiveDashboard() {
             ) : (
               withdrawals.map((w) => (
                 <div key={w.id} style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                  <span>{formatMoney(w.amount)} #{w.id}</span>
+                  <span>{formatMoneyOrDash(w.amount)} #{w.id}</span>
                   <span>
                     <button type="button" className="success" disabled={actionLoading[`w-${w.id}`]} onClick={() => handleWithdrawal(w.id, true)}>✓</button>
                     <button type="button" className="danger" disabled={actionLoading[`w-${w.id}`]} onClick={() => handleWithdrawal(w.id, false)}>✗</button>

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
-import { formatMoney } from "../../marketConfig";
+import { formatMoneyOrDash } from "../components/library/utils/formatters";
 import {
   createLaunchCampaign,
   createLaunchPromo,
@@ -111,7 +111,7 @@ function RiderGrowthModule({ data }) {
           <h3>Promo summary</h3>
           <p>Active codes: {data?.promotions_summary?.active_codes ?? 0}</p>
           <p>Usages (30d): {data?.promotions_summary?.usages_30d ?? 0}</p>
-          <p>Discount spend: {formatMoney(data?.promotions_summary?.discount_spend_30d || 0)}</p>
+          <p>Discount spend: {formatMoneyOrDash(data?.promotions_summary?.discount_spend_30d || 0)}</p>
         </div>
       </div>
     </>
@@ -128,7 +128,7 @@ function PromotionsModule({ data, onAction, message }) {
       <div className="launch-growth__kpi-row">
         <Kpi label="Active promos" value={data?.active_promo_codes} />
         <Kpi label="Redemptions (30d)" value={data?.redemptions_30d} />
-        <Kpi label="Spend (30d)" value={formatMoney(data?.discount_spend_30d || 0)} />
+        <Kpi label="Spend (30d)" value={formatMoneyOrDash(data?.discount_spend_30d || 0)} />
         <Kpi label="ROI proxy" value={`${data?.campaign_roi_proxy ?? 0}%`} />
       </div>
 
@@ -244,7 +244,7 @@ function PartnershipsModule({ data, onAction, message }) {
                 <td>{row.status}</td>
                 <td>{row.contact_person}<br /><span style={{ color: "var(--lg-muted)" }}>{row.contact_email}</span></td>
                 <td>{row.agreement?.slice(0, 60) || "—"}</td>
-                <td>{row.performance?.rides_referred ?? 0} rides · {formatMoney(row.performance?.revenue_mru || 0)}</td>
+                <td>{row.performance?.rides_referred ?? 0} rides · {formatMoneyOrDash(row.performance?.revenue_mru || 0)}</td>
               </tr>
             ))}
           </tbody>
@@ -259,7 +259,7 @@ function MarketingModule({ data }) {
   return (
     <>
       <div className="launch-growth__kpi-row">
-        <Kpi label="CAC estimate" value={formatMoney(data?.customer_acquisition_cost || 0)} />
+        <Kpi label="CAC estimate" value={formatMoneyOrDash(data?.customer_acquisition_cost || 0)} />
         <Kpi label="New riders (30d proxy)" value={data?.daily_installs_proxy} />
         <Kpi label="Ride conversion" value={`${data?.ride_conversion_proxy ?? 0}%`} />
         <Kpi label="Retention" value={`${data?.rider_retention_pct ?? 0}%`} tone="ok" />
@@ -297,7 +297,7 @@ function ScorecardModule({ data }) {
         <Kpi label="Active drivers" value={data?.active_drivers} />
         <Kpi label="Registered riders" value={data?.registered_riders} />
         <Kpi label="Completed trips today" value={data?.completed_trips_today} />
-        <Kpi label="Revenue today" value={formatMoney(data?.revenue_today || 0)} tone="ok" />
+        <Kpi label="Revenue today" value={formatMoneyOrDash(data?.revenue_today || 0)} tone="ok" />
         <Kpi label="Average rating" value={data?.average_rating ?? "—"} />
         <Kpi label="Cancellation rate" value={`${data?.cancellation_rate ?? 0}%`} tone={data?.cancellation_rate > 15 ? "warn" : ""} />
         <Kpi label="Avg pickup time" value={data?.average_pickup_time_minutes != null ? `${data.average_pickup_time_minutes}m` : "—"} />
@@ -310,7 +310,7 @@ function ScorecardModule({ data }) {
           <div>New riders: {data?.overview?.new_riders_today ?? 0}</div>
           <div>New drivers: {data?.overview?.new_drivers_today ?? 0}</div>
           <div>Active trips: {data?.overview?.active_trips ?? 0}</div>
-          <div>Commission today: {formatMoney(data?.overview?.commission_earned_today || 0)}</div>
+          <div>Commission today: {formatMoneyOrDash(data?.overview?.commission_earned_today || 0)}</div>
         </div>
       </div>
     </>

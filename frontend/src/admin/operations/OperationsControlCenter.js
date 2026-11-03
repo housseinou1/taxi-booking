@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
-import { formatMoney } from "../../marketConfig";
+import { formatMoneyOrDash } from "../components/library/utils/formatters";
 import { getStoredUser } from "../../auth/session";
 import { updateSupportTicket } from "../beta/supportApi";
 import {
@@ -403,7 +403,7 @@ function SupportModule({ bundle, runAction, reload }) {
                     <td>{trip.rider?.name}</td>
                     <td>{trip.driver?.name || "—"}</td>
                     <td>{trip.status}</td>
-                    <td>{formatMoney(trip.fare)}</td>
+                    <td>{formatMoneyOrDash(trip.fare)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -425,7 +425,7 @@ function SupportModule({ bundle, runAction, reload }) {
             {refunds.slice(0, 15).map((row) => (
               <tr key={row.id}>
                 <td>#{row.id}</td>
-                <td>{formatMoney(row.amount)}</td>
+                <td>{formatMoneyOrDash(row.amount)}</td>
                 <td>{row.status}</td>
                 <td>
                   {row.status === "requested" && (

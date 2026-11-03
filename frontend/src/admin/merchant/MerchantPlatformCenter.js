@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 
-import { formatMoney } from "../../marketConfig";
+import { formatMoneyOrDash } from "../components/library/utils/formatters";
 import {
   approveMerchantSettlement,
   fetchMerchantCeoDashboard,
@@ -115,7 +115,7 @@ export default function MerchantPlatformCenter() {
           <MetricCard label="Approved" value={summary.approved} />
           <MetricCard label="Pending" value={summary.pending} />
           <MetricCard label="Suspended" value={summary.suspended} />
-          <MetricCard label="Gross revenue" value={formatMoney(summary.gross_revenue)} />
+          <MetricCard label="Gross revenue" value={formatMoneyOrDash(summary.gross_revenue)} />
           <MetricCard label="Pending settlements" value={summary.pending_settlements} />
         </div>
       ) : null}
@@ -128,7 +128,7 @@ export default function MerchantPlatformCenter() {
               <div>
                 <strong>{merchant.business_name}</strong>
                 <div>{merchant.merchant_type} · {merchant.status} · {merchant.city}</div>
-                <small>{merchant.total_orders} orders · {formatMoney(merchant.revenue)} revenue</small>
+                <small>{merchant.total_orders} orders · {formatMoneyOrDash(merchant.revenue)} revenue</small>
               </div>
               <div className="merchant-platform-actions">
                 {merchant.status === "pending" ? (
@@ -163,7 +163,7 @@ export default function MerchantPlatformCenter() {
                 <div>
                   <strong>{row.merchant_name}</strong>
                   <div>{row.invoice_reference} · {row.period_start} → {row.period_end}</div>
-                  <small>Net {formatMoney(row.net_payout)} · Commission {formatMoney(row.commission_amount)}</small>
+                  <small>Net {formatMoneyOrDash(row.net_payout)} · Commission {formatMoneyOrDash(row.commission_amount)}</small>
                 </div>
                 <button type="button" onClick={() => handleApproveSettlement(row.id)}>Approve & pay</button>
               </div>
@@ -177,7 +177,7 @@ export default function MerchantPlatformCenter() {
           <div className="beta__grid">
             <MetricCard label="Total merchants" value={ceoData.total_merchants} />
             <MetricCard label="Approved" value={ceoData.approved_merchants} />
-            <MetricCard label="Commission revenue (30d)" value={formatMoney(ceoData.commission_revenue_30d)} />
+            <MetricCard label="Commission revenue (30d)" value={formatMoneyOrDash(ceoData.commission_revenue_30d)} />
           </div>
           <section className="merchant-platform-panel">
             <h3>Top restaurants</h3>

@@ -38,7 +38,7 @@ import {
   formatCount,
   formatDate,
   formatDateTime,
-  formatMoney,
+  formatMoneyOrDash,
   formatPct,
 } from "./fleetUi";
 
@@ -993,7 +993,7 @@ export default function FleetPerformanceCenter() {
                               <ScoreMeter score={driver.score} band={driver.score_band} />
                             </td>
                             <td className="fleet-table__num">{formatCount(driver.total_trips)}</td>
-                            <td className="fleet-table__num">{formatMoney(driver[periodField])}</td>
+                            <td className="fleet-table__num">{formatMoneyOrDash(driver[periodField])}</td>
                             <td>
                               <div className="fleet-table__actions">
                                 <button
@@ -1091,7 +1091,7 @@ export default function FleetPerformanceCenter() {
                 />
                 <KpiCard
                   label={`Earnings (${periodLabel.toLowerCase()})`}
-                  value={formatMoney(performanceSummary.totalRevenue)}
+                  value={formatMoneyOrDash(performanceSummary.totalRevenue)}
                   icon="ðŸ’°"
                   tone="ok"
                   sub="Sum across filtered drivers"
@@ -1164,7 +1164,7 @@ export default function FleetPerformanceCenter() {
                             />
                           </td>
                           <td className="fleet-table__num">{formatCount(driver.total_trips)}</td>
-                          <td className="fleet-table__num">{formatMoney(driver[periodField])}</td>
+                          <td className="fleet-table__num">{formatMoneyOrDash(driver[periodField])}</td>
                           <td className="fleet-table__num">{formatPct(driver.acceptance_rate)}</td>
                           <td className="fleet-table__num">
                             {formatPct(driver.cancellation_rate)}
@@ -1387,7 +1387,7 @@ export default function FleetPerformanceCenter() {
               />
               <KpiCard
                 label="Average monthly earnings"
-                value={formatMoney(ceo.average_earnings_month)}
+                value={formatMoneyOrDash(ceo.average_earnings_month)}
                 icon="ðŸ’°"
                 tone="ok"
                 sub="Mean of positive monthly revenue across drivers. No previous-period comparison is provided."
@@ -1503,7 +1503,7 @@ export default function FleetPerformanceCenter() {
                             </td>
                             <td className="fleet-table__num">{formatCount(driver.total_trips)}</td>
                             <td className="fleet-table__num">
-                              {formatMoney(driver.revenue_month)}
+                              {formatMoneyOrDash(driver.revenue_month)}
                             </td>
                             <td className="fleet-table__num">
                               {formatPct(driver.rating_average)}
@@ -1612,7 +1612,7 @@ export default function FleetPerformanceCenter() {
                               <DriverCell name={row.name} />
                             </td>
                             <td className="fleet-table__num">{formatCount(row.trips)}</td>
-                            <td className="fleet-table__num">{formatMoney(row.revenue_month)}</td>
+                            <td className="fleet-table__num">{formatMoneyOrDash(row.revenue_month)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -1643,7 +1643,7 @@ export default function FleetPerformanceCenter() {
                             <td>{row.city_name}</td>
                             <td className="fleet-table__num">{formatCount(row.driver_count)}</td>
                             <td className="fleet-table__num">{formatCount(row.online_now)}</td>
-                            <td className="fleet-table__num">{formatMoney(row.revenue_month)}</td>
+                            <td className="fleet-table__num">{formatMoneyOrDash(row.revenue_month)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -1811,13 +1811,13 @@ export default function FleetPerformanceCenter() {
                 <div className="fleet-fact">
                   <div className="fleet-fact__label">Wallet balance</div>
                   <div className="fleet-fact__value">
-                    {formatMoney(selectedDriver.wallet_balance)}
+                    {formatMoneyOrDash(selectedDriver.wallet_balance)}
                   </div>
                 </div>
                 <div className="fleet-fact">
                   <div className="fleet-fact__label">Revenue (month)</div>
                   <div className="fleet-fact__value">
-                    {formatMoney(selectedDriver.revenue_month)}
+                    {formatMoneyOrDash(selectedDriver.revenue_month)}
                   </div>
                 </div>
                 <div className="fleet-fact">

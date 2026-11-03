@@ -2,7 +2,8 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { API_URL } from "../apiConfig";
 import authenticatedApi from "../auth/authenticatedApi";
 import { clearAuthSession } from "../auth/session";
-import { MARKET, formatMoney } from "../marketConfig";
+import { MARKET } from "../marketConfig";
+import { formatMoneyOrDash } from "./components/library/utils/formatters";
 import AnalyticsDashboard from "./AnalyticsDashboard";
 import SafetyAdminPanel from "./SafetyAdminPanel";
 import HallOfFameAdminPanel from "./HallOfFameAdminPanel";
@@ -1446,7 +1447,7 @@ function AdminDashboard({ embedded = false } = {}) {
             <StatCard title="Riders" value={riders.length} />
             <StatCard title="Online" value={onlineTaxiDrivers.length} />
             <StatCard title="Active rides" value={activeRides.length} />
-            <StatCard title="Revenue" value={formatMoney(totalRevenue)} />
+            <StatCard title="Revenue" value={formatMoneyOrDash(totalRevenue)} />
           </div>
         </section>
 
@@ -1485,12 +1486,12 @@ function AdminDashboard({ embedded = false } = {}) {
                   {
                     title: "Financials",
                     items: [
-                      ["Revenue", formatMoney(totalRevenue)],
-                      ["Owner commission", formatMoney(platformCommission)],
-                      ["Driver payouts", formatMoney(driverPayouts)],
+                      ["Revenue", formatMoneyOrDash(totalRevenue)],
+                      ["Owner commission", formatMoneyOrDash(platformCommission)],
+                      ["Driver payouts", formatMoneyOrDash(driverPayouts)],
                       ["Withdraw pending", pendingWithdrawals.length],
                       ["Withdraw approved", approvedWithdrawals.length],
-                      ["Avg fare", formatMoney(averageFare)],
+                      ["Avg fare", formatMoneyOrDash(averageFare)],
                     ],
                   },
                 ]}
@@ -1503,8 +1504,8 @@ function AdminDashboard({ embedded = false } = {}) {
                 <PremiumMetric title="Pending drivers" value={pendingDrivers.length} tone="amber" />
                 <PremiumMetric title="Pending riders" value={pendingRiders.length} tone="amber" />
                 <PremiumMetric title="Online drivers" value={onlineDrivers.length} tone="blue" />
-                <PremiumMetric title="Revenue" value={formatMoney(totalRevenue)} tone="gold" />
-                <PremiumMetric title="Owner commission" value={formatMoney(platformCommission)} tone="green" />
+                <PremiumMetric title="Revenue" value={formatMoneyOrDash(totalRevenue)} tone="gold" />
+                <PremiumMetric title="Owner commission" value={formatMoneyOrDash(platformCommission)} tone="green" />
               </div>
 
               <div style={overviewPanelsStyle}>
@@ -1752,10 +1753,10 @@ function AdminDashboard({ embedded = false } = {}) {
                     </div>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: "4px 12px", marginTop: "8px" }}>
                       <p style={{ margin: 0, fontSize: "13px" }}><b>Distance:</b> {ride.distance_km || 0} km</p>
-                      <p style={{ margin: 0, fontSize: "13px" }}><b>Fare:</b> {formatMoney(ride.fare)}</p>
-                      <p style={{ margin: 0, fontSize: "13px" }}><b>App Fee:</b> {formatMoney(ride.app_fee)}</p>
-                      <p style={{ margin: 0, fontSize: "13px" }}><b>Tip:</b> {formatMoney(ride.payment_tip_amount)}</p>
-                      <p style={{ margin: 0, fontSize: "13px" }}><b>Driver Earning:</b> {formatMoney(ride.driver_earning)}</p>
+                      <p style={{ margin: 0, fontSize: "13px" }}><b>Fare:</b> {formatMoneyOrDash(ride.fare)}</p>
+                      <p style={{ margin: 0, fontSize: "13px" }}><b>App Fee:</b> {formatMoneyOrDash(ride.app_fee)}</p>
+                      <p style={{ margin: 0, fontSize: "13px" }}><b>Tip:</b> {formatMoneyOrDash(ride.payment_tip_amount)}</p>
+                      <p style={{ margin: 0, fontSize: "13px" }}><b>Driver Earning:</b> {formatMoneyOrDash(ride.driver_earning)}</p>
                     </div>
                   </div>
                 );
@@ -1906,19 +1907,19 @@ function AdminDashboard({ embedded = false } = {}) {
               <StatCard title="Unpaid Rides" value={unpaidRides.length} />
               <StatCard
                 title="Total Revenue"
-                value={formatMoney(totalRevenue)}
+                value={formatMoneyOrDash(totalRevenue)}
               />
               <StatCard
                 title={`Owner Commission (${ownerCommissionPercent}%)`}
-                value={formatMoney(platformCommission)}
+                value={formatMoneyOrDash(platformCommission)}
               />
               <StatCard
                 title="Driver Payouts"
-                value={formatMoney(driverPayouts)}
+                value={formatMoneyOrDash(driverPayouts)}
               />
               <StatCard
                 title="Owner Available"
-                value={formatMoney(ownerPayoutSummary.owner_commission_balance)}
+                value={formatMoneyOrDash(ownerPayoutSummary.owner_commission_balance)}
               />
             </div>
 
@@ -2043,11 +2044,11 @@ function AdminDashboard({ embedded = false } = {}) {
               <StatCard title="Rejected" value={rejectedWithdrawals.length} />
               <StatCard
                 title="Total Requested"
-                value={formatMoney(totalWithdrawRequested)}
+                value={formatMoneyOrDash(totalWithdrawRequested)}
               />
               <StatCard
                 title="Total Approved"
-                value={formatMoney(totalApprovedWithdrawals)}
+                value={formatMoneyOrDash(totalApprovedWithdrawals)}
               />
             </div>
 
@@ -2112,7 +2113,7 @@ function AdminDashboard({ embedded = false } = {}) {
                   </p>
 
                   <p>
-                    <b>Amount:</b> {formatMoney(item.amount)}
+                    <b>Amount:</b> {formatMoneyOrDash(item.amount)}
                   </p>
 
                   <p>
@@ -2591,7 +2592,7 @@ function CityManagementPanel({
         <PremiumMetric title="Total cities" value={cities.length} tone="blue" />
         <PremiumMetric title="Regions" value={regions.length} tone="gold" />
         <PremiumMetric title="City rides" value={analytics.summary?.rides || 0} tone="green" />
-        <PremiumMetric title="City revenue" value={formatMoney(analytics.summary?.revenue || 0)} tone="amber" />
+        <PremiumMetric title="City revenue" value={formatMoneyOrDash(analytics.summary?.revenue || 0)} tone="amber" />
       </div>
 
       <div style={cityManagementGridStyle}>
@@ -2641,7 +2642,7 @@ function CityManagementPanel({
                 </div>
                 <div style={performanceMetricsStyle}>
                   <DetailItem label="Rides" value={stats.rides || 0} />
-                  <DetailItem label="Revenue" value={formatMoney(stats.revenue || 0)} />
+                  <DetailItem label="Revenue" value={formatMoneyOrDash(stats.revenue || 0)} />
                   <DetailItem label="Drivers" value={stats.active_drivers || 0} />
                   <DetailItem label="Riders" value={stats.active_riders || 0} />
                   <DetailItem label="Pricing" value={`${city.pricing?.length || 0} types`} />
@@ -2681,7 +2682,7 @@ function DriverRewardsAdminPanel({ leaderboard }) {
                   <div style={{ color: "#94a3b8", fontSize: 12 }}>
                     {row.reward_tier && `${row.reward_tier} · `}
                     {row.reward_points != null && `${row.reward_points} pts`}
-                    {row.monthly_earnings != null && formatMoney(row.monthly_earnings)}
+                    {row.monthly_earnings != null && formatMoneyOrDash(row.monthly_earnings)}
                     {row.points_gained != null && `${row.points_gained} pts gained`}
                     {row.average_rating != null && ` · ${row.average_rating}★`}
                   </div>
@@ -2917,7 +2918,7 @@ function RevenueAnalyticsPanel({
                 }}
               />
             </div>
-            <strong>{formatMoney(item.value)}</strong>
+            <strong>{formatMoneyOrDash(item.value)}</strong>
             <small>{item.label}</small>
           </div>
         ))}
@@ -2953,7 +2954,7 @@ function LiveRidesList({ rides, onCancelRide }) {
             <div style={detailGridStyle}>
               <DetailItem label="Pickup" value={ride.pickup || "N/A"} />
               <DetailItem label="Destination" value={ride.destination || "N/A"} />
-              <DetailItem label="Fare" value={formatMoney(ride.fare)} />
+              <DetailItem label="Fare" value={formatMoneyOrDash(ride.fare)} />
               <DetailItem label="Distance" value={`${ride.distance_km || 0} KM`} />
             </div>
 
@@ -3079,9 +3080,9 @@ function ReportsSection({
       title: "Earnings analytics",
       tone: "gold",
       rows: [
-        ["Total revenue", formatMoney(totalRevenue)],
-        ["Yala fee", formatMoney(platformCommission)],
-        ["Driver earnings", formatMoney(driverPayouts)],
+        ["Total revenue", formatMoneyOrDash(totalRevenue)],
+        ["Yala fee", formatMoneyOrDash(platformCommission)],
+        ["Driver earnings", formatMoneyOrDash(driverPayouts)],
         ["Withdrawals", withdrawals.length],
       ],
     },

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 
-import { formatMoney } from "../../marketConfig";
+import { formatMoneyOrDash } from "../components/library/utils/formatters";
 import { fetchBetaDashboard } from "./betaApi";
 import "./BetaDashboard.css";
 
@@ -55,8 +55,8 @@ function CeoPrintReport({ ceo, overview, generatedAt }) {
 
       <h2>Revenue</h2>
       <p>
-        Gross today: {formatMoney(ceo.revenue?.gross_today_mru)} · Refunds:{" "}
-        {formatMoney(ceo.revenue?.refunds_today_mru)}
+        Gross today: {formatMoneyOrDash(ceo.revenue?.gross_today_mru)} · Refunds:{" "}
+        {formatMoneyOrDash(ceo.revenue?.refunds_today_mru)}
       </p>
 
       <h2>Trips</h2>
@@ -183,7 +183,7 @@ export default function BetaDashboard() {
             <MetricCard label="Online couriers" value={overview.online_couriers} />
             <MetricCard label="Completed rides today" value={overview.completed_rides_today} />
             <MetricCard label="Completed deliveries today" value={overview.completed_deliveries_today} />
-            <MetricCard label="Revenue today" value={formatMoney(overview.revenue_today)} />
+            <MetricCard label="Revenue today" value={formatMoneyOrDash(overview.revenue_today)} />
             <MetricCard label="Withdrawals pending" value={overview.withdrawals_pending} />
             <MetricCard label="Open incidents" value={overview.open_incidents} />
             <MetricCard label="Support tickets open" value={overview.support_tickets_open} />
@@ -286,7 +286,7 @@ export default function BetaDashboard() {
         <section className="beta__section">
           <h2 className="beta__section-title">CEO Summary</h2>
           <div className="beta__grid beta__grid--wide">
-            <MetricCard label="Revenue today" value={formatMoney(ceo.revenue?.gross_today_mru)} />
+            <MetricCard label="Revenue today" value={formatMoneyOrDash(ceo.revenue?.gross_today_mru)} />
             <MetricCard label="Trips today" value={ceo.trips?.completed_rides_today} />
             <MetricCard label="Deliveries today" value={ceo.deliveries?.completed_deliveries_today} />
             <MetricCard label="Fleet — drivers online" value={ceo.fleet_health?.online_drivers} />

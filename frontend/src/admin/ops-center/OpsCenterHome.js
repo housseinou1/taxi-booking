@@ -11,7 +11,7 @@
  */
 import React, { useCallback, useEffect, useState } from "react";
 
-import { formatMoney } from "../../marketConfig";
+import { formatMoneyOrDash } from "../components/library/utils/formatters";
 import authenticatedApi from "../../auth/authenticatedApi";
 import { API_URL } from "../../apiConfig";
 import { fetchOpsDashboard } from "./opsDashboardApi";
@@ -156,7 +156,7 @@ export default function OpsCenterHome() {
   // An absent field is therefore never coerced to 0, and no number is invented.
   const show = (value) => (value === undefined || value === null ? "—" : value);
   const showMoney = (value) =>
-    value === undefined || value === null ? "—" : formatMoney(value);
+    value === undefined || value === null ? "—" : formatMoneyOrDash(value);
 
   const activeDrivers = analytics.active_drivers ?? finance.active_drivers;
   const activeCouriers = finance.active_couriers;

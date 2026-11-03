@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 
-import { formatMoney } from "../../marketConfig";
+import { formatMoneyOrDash } from "../components/library/utils/formatters";
 import {
   approvePartnerSettlement,
   assignPartnerTerritory,
@@ -245,7 +245,7 @@ export default function PartnerPlatformCenter() {
                 <div>
                   <strong>{row.partner_name}</strong>
                   <div>{row.invoice_reference} · {row.period_type} · {row.period_start} → {row.period_end}</div>
-                  <small>Net {formatMoney(row.partner_payout)} · Platform {formatMoney(row.platform_commission)}</small>
+                  <small>Net {formatMoneyOrDash(row.partner_payout)} · Platform {formatMoneyOrDash(row.platform_commission)}</small>
                 </div>
                 <button type="button" onClick={() => handleApproveSettlement(row.id)}>Approve & pay</button>
               </div>
@@ -254,7 +254,7 @@ export default function PartnerPlatformCenter() {
           <section className="partner-platform-panel">
             <h3>Settlement history</h3>
             {(financeData.settlement_history || []).map((row) => (
-              <p key={row.id}>{row.partner_name} — {formatMoney(row.partner_payout)} ({row.status})</p>
+              <p key={row.id}>{row.partner_name} — {formatMoneyOrDash(row.partner_payout)} ({row.status})</p>
             ))}
           </section>
         </>
@@ -288,11 +288,11 @@ export default function PartnerPlatformCenter() {
           <section className="partner-platform-panel">
             <h3>Revenue by partner (30d)</h3>
             {(ceoData.revenue_by_partner || []).map((row) => (
-              <p key={row.partner_id}>{row.name} — {formatMoney(row.revenue)} · commission {formatMoney(row.commission)}</p>
+              <p key={row.partner_id}>{row.name} — {formatMoneyOrDash(row.revenue)} · commission {formatMoneyOrDash(row.commission)}</p>
             ))}
             <h3>Revenue by city</h3>
             {(ceoData.revenue_by_city || []).map((row) => (
-              <p key={row.city}>{row.city} — {formatMoney(row.revenue)} · {row.partner_count} partners</p>
+              <p key={row.city}>{row.city} — {formatMoneyOrDash(row.revenue)} · {row.partner_count} partners</p>
             ))}
             <h3>Fastest-growing territories</h3>
             {(ceoData.fastest_growing_territories || []).map((row) => (
@@ -317,9 +317,9 @@ export default function PartnerPlatformCenter() {
             <MetricCard label="Active drivers" value={selectedPartner.metrics?.active_drivers} />
             <MetricCard label="Active couriers" value={selectedPartner.metrics?.active_couriers} />
             <MetricCard label="Active merchants" value={selectedPartner.metrics?.active_merchants} />
-            <MetricCard label="Daily revenue" value={formatMoney(selectedPartner.metrics?.daily_revenue)} />
-            <MetricCard label="Weekly revenue" value={formatMoney(selectedPartner.metrics?.weekly_revenue)} />
-            <MetricCard label="Commission earned" value={formatMoney(selectedPartner.metrics?.commission_earned)} />
+            <MetricCard label="Daily revenue" value={formatMoneyOrDash(selectedPartner.metrics?.daily_revenue)} />
+            <MetricCard label="Weekly revenue" value={formatMoneyOrDash(selectedPartner.metrics?.weekly_revenue)} />
+            <MetricCard label="Commission earned" value={formatMoneyOrDash(selectedPartner.metrics?.commission_earned)} />
           </div>
         </section>
       ) : null}

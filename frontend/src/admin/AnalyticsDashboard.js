@@ -7,7 +7,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { API_URL } from "../apiConfig";
 import authenticatedApi from "../auth/authenticatedApi";
-import { formatMoney } from "../marketConfig";
+import { formatMoneyOrDash } from "./components/library/utils/formatters";
 
 // ─── Design tokens (Uber-inspired) ──────────────────────────────────────────
 const T = {
@@ -123,7 +123,7 @@ function UberBarChart({ data, color = T.green, height = 160 }) {
         return (
           <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", height: "100%", gap: 6 }}>
             <div style={{ flex: 1, display: "flex", alignItems: "flex-end", width: "100%" }}>
-              <div title={`${item.label}: ${formatMoney(item.value)}`} style={{
+              <div title={`${item.label}: ${formatMoneyOrDash(item.value)}`} style={{
                 width: "100%", height: `${pct}%`, minHeight: 3,
                 background: item.value > 0 ? color : "#262626",
                 borderRadius: "4px 4px 2px 2px",
@@ -423,11 +423,11 @@ function DriverView({ data }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       {/* KPIs */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 12 }}>
-        <MetricCard label="Today's earnings" value={formatMoney(summary.today_earnings)} accent={T.green} accentBg={T.greenBg} change={`${summary.today_rides} rides`} />
-        <MetricCard label="This week" value={formatMoney(summary.week_earnings)} accent={T.blue} accentBg={T.blueBg} />
-        <MetricCard label="This month" value={formatMoney(summary.month_earnings)} accent={T.amber} accentBg={T.amberBg} />
-        <MetricCard label="All time" value={formatMoney(summary.total_earnings)} accent={T.purple} accentBg={T.purpleBg} change={`${summary.total_rides} total rides`} />
-        <MetricCard label="Avg fare" value={formatMoney(summary.avg_fare)} />
+        <MetricCard label="Today's earnings" value={formatMoneyOrDash(summary.today_earnings)} accent={T.green} accentBg={T.greenBg} change={`${summary.today_rides} rides`} />
+        <MetricCard label="This week" value={formatMoneyOrDash(summary.week_earnings)} accent={T.blue} accentBg={T.blueBg} />
+        <MetricCard label="This month" value={formatMoneyOrDash(summary.month_earnings)} accent={T.amber} accentBg={T.amberBg} />
+        <MetricCard label="All time" value={formatMoneyOrDash(summary.total_earnings)} accent={T.purple} accentBg={T.purpleBg} change={`${summary.total_rides} total rides`} />
+        <MetricCard label="Avg fare" value={formatMoneyOrDash(summary.avg_fare)} />
         <MetricCard label="Rating" value={summary.avg_rating > 0 ? `${summary.avg_rating} ★` : "—"} accent={T.amber} accentBg={T.amberBg} />
       </div>
 
@@ -465,9 +465,9 @@ function RiderView({ data }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       {/* KPIs */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 12 }}>
-        <MetricCard label="Total spent" value={formatMoney(summary.total_spent)} accent={T.blue} accentBg={T.blueBg} change={`${summary.total_rides} rides`} />
-        <MetricCard label="This month" value={formatMoney(summary.month_spent)} accent={T.amber} accentBg={T.amberBg} />
-        <MetricCard label="Avg fare" value={formatMoney(summary.avg_fare)} />
+        <MetricCard label="Total spent" value={formatMoneyOrDash(summary.total_spent)} accent={T.blue} accentBg={T.blueBg} change={`${summary.total_rides} rides`} />
+        <MetricCard label="This month" value={formatMoneyOrDash(summary.month_spent)} accent={T.amber} accentBg={T.amberBg} />
+        <MetricCard label="Avg fare" value={formatMoneyOrDash(summary.avg_fare)} />
         <MetricCard label="Cancelled" value={summary.cancelled_rides} accent={T.red} accentBg={T.redBg} />
       </div>
 
@@ -497,7 +497,7 @@ function RiderView({ data }) {
               {recent_rides.slice(0, 6).map(ride => (
                 <ListRow key={ride.id} title={`${ride.pickup} → ${ride.destination}`}
                   subtitle={`${ride.ride_type} · ${ride.distance_km} km`}
-                  value={formatMoney(ride.fare)} accent={T.green} />
+                  value={formatMoneyOrDash(ride.fare)} accent={T.green} />
               ))}
             </div>
           </ChartPanel>
@@ -521,13 +521,13 @@ function AdminView({ data, cityId }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       {/* KPIs */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 12 }}>
-        <MetricCard label="Total revenue" value={formatMoney(summary.total_revenue)} accent={T.green} accentBg={T.greenBg} />
-        <MetricCard label="Platform commission" value={formatMoney(summary.total_commission)} accent={T.amber} accentBg={T.amberBg} change={`${summary.completion_rate}% completion`} />
-        <MetricCard label="Driver payouts" value={formatMoney(summary.total_driver_earnings)} accent={T.blue} accentBg={T.blueBg} />
+        <MetricCard label="Total revenue" value={formatMoneyOrDash(summary.total_revenue)} accent={T.green} accentBg={T.greenBg} />
+        <MetricCard label="Platform commission" value={formatMoneyOrDash(summary.total_commission)} accent={T.amber} accentBg={T.amberBg} change={`${summary.completion_rate}% completion`} />
+        <MetricCard label="Driver payouts" value={formatMoneyOrDash(summary.total_driver_earnings)} accent={T.blue} accentBg={T.blueBg} />
         <MetricCard label="Total rides" value={summary.total_rides} accent={T.purple} accentBg={T.purpleBg} change={`${summary.active_rides} active now`} />
         <MetricCard label="Completed" value={summary.completed_rides} accent={T.green} accentBg={T.greenBg} />
         <MetricCard label="Cancelled" value={summary.cancelled_rides} accent={T.red} accentBg={T.redBg} change={`${summary.cancellation_rate}%`} />
-        <MetricCard label="Avg fare" value={formatMoney(summary.avg_fare)} />
+        <MetricCard label="Avg fare" value={formatMoneyOrDash(summary.avg_fare)} />
       </div>
 
       {/* Revenue chart */}
@@ -566,7 +566,7 @@ function AdminView({ data, cityId }) {
               <Donut size={90} label="types" segments={ride_type_breakdown.map((r, i) => ({ value: r.count, color: colors[i % 4] }))} />
               <div style={{ flex: 1 }}>
                 {ride_type_breakdown.map((r, i) => (
-                  <Progress key={r.ride_type} label={r.ride_type} value={r.revenue} max={summary.total_revenue} color={colors[i % 4]} display={formatMoney(r.revenue)} />
+                  <Progress key={r.ride_type} label={r.ride_type} value={r.revenue} max={summary.total_revenue} color={colors[i % 4]} display={formatMoneyOrDash(r.revenue)} />
                 ))}
               </div>
             </div>
@@ -578,7 +578,7 @@ function AdminView({ data, cityId }) {
               {top_drivers.map((d, i) => (
                 <ListRow key={d.driver__id || i} rank={i + 1} title={d.name}
                   subtitle={`${d.ride_count} rides · ${d.avg_rating > 0 ? d.avg_rating + " ★" : "—"}`}
-                  value={formatMoney(d.total_earned)} accent={T.amber} />
+                  value={formatMoneyOrDash(d.total_earned)} accent={T.amber} />
               ))}
             </div>
           </ChartPanel>

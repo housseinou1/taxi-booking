@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 
-import { formatMoney } from "../../marketConfig";
+import { formatMoneyOrDash } from "../components/library/utils/formatters";
 import {
   exportMultiCityReport,
   fetchMultiCityDashboard,
@@ -216,12 +216,12 @@ export default function MultiCityOperationsCenter() {
               <div key={fin.city_id} style={{ marginBottom: "1.5rem" }}>
                 <h3>{fin.city_name}</h3>
                 <div className="beta__grid beta__grid--4">
-                  <MetricCard label="Revenue" value={formatMoney(fin.revenue)} />
-                  <MetricCard label="Commission" value={formatMoney(fin.commission)} />
-                  <MetricCard label="Pending withdrawals" value={formatMoney(fin.withdrawals_pending)} />
-                  <MetricCard label="Paid withdrawals" value={formatMoney(fin.withdrawals_paid)} />
-                  <MetricCard label="Wallet balances" value={formatMoney(fin.wallet_balance)} />
-                  <MetricCard label="Failed payments" value={fin.failed_payments?.count} sub={formatMoney(fin.failed_payments?.amount)} />
+                  <MetricCard label="Revenue" value={formatMoneyOrDash(fin.revenue)} />
+                  <MetricCard label="Commission" value={formatMoneyOrDash(fin.commission)} />
+                  <MetricCard label="Pending withdrawals" value={formatMoneyOrDash(fin.withdrawals_pending)} />
+                  <MetricCard label="Paid withdrawals" value={formatMoneyOrDash(fin.withdrawals_paid)} />
+                  <MetricCard label="Wallet balances" value={formatMoneyOrDash(fin.wallet_balance)} />
+                  <MetricCard label="Failed payments" value={fin.failed_payments?.count} sub={formatMoneyOrDash(fin.failed_payments?.amount)} />
                 </div>
               </div>
             );
@@ -264,7 +264,7 @@ export default function MultiCityOperationsCenter() {
       {tab === "ceo" && permissions.national ? (
         <section>
           <div className="beta__grid beta__grid--4">
-            <MetricCard label="National revenue" value={formatMoney(ceo.national_revenue)} />
+            <MetricCard label="National revenue" value={formatMoneyOrDash(ceo.national_revenue)} />
             <MetricCard label="Active cities" value={ceo.active_city_count} sub={`${ceo.pilot_city_count || 0} pilot`} />
             <MetricCard label="Best performing" value={ceo.best_performing_city?.city_name} />
             <MetricCard label="Needs attention" value={ceo.cities_requiring_attention?.length || 0} />
@@ -274,7 +274,7 @@ export default function MultiCityOperationsCenter() {
               <h3>Revenue by city</h3>
               {(ceo.revenue_by_city || []).map((row) => (
                 <div key={row.city_id} className="beta__muted">
-                  {row.city_name}: {formatMoney(row.revenue)}
+                  {row.city_name}: {formatMoneyOrDash(row.revenue)}
                 </div>
               ))}
             </div>

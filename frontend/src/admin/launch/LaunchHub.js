@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 
-import { formatMoney } from "../../marketConfig";
+import { formatMoneyOrDash } from "../components/library/utils/formatters";
 import {
   createIncident,
   exportIncidentReport,
@@ -168,7 +168,7 @@ export default function LaunchHub() {
             <MetricCard label="Online couriers" value={metrics.online_couriers ?? 0} />
             <MetricCard label="Active rides" value={metrics.active_rides ?? 0} />
             <MetricCard label="Active deliveries" value={metrics.active_deliveries ?? 0} />
-            <MetricCard label="Revenue today" value={formatMoney(metrics.revenue_today || 0)} />
+            <MetricCard label="Revenue today" value={formatMoneyOrDash(metrics.revenue_today || 0)} />
             <MetricCard label="Withdrawals pending" value={metrics.withdrawals_pending ?? 0} />
             <MetricCard label="Failed payments" value={metrics.failed_payments_today ?? 0} />
           </div>
@@ -294,13 +294,13 @@ export default function LaunchHub() {
       {tab === "finance" && data?.finance && (
         <>
           <div className="launch__grid">
-            <MetricCard label="Ride revenue" value={formatMoney(data.finance.ride_revenue)} />
-            <MetricCard label="Delivery revenue" value={formatMoney(data.finance.delivery_revenue)} />
-            <MetricCard label="Wallet balance" value={formatMoney(data.finance.wallet_balance)} />
-            <MetricCard label="Pending withdrawals" value={formatMoney(data.finance.pending_withdrawals)} />
-            <MetricCard label="Completed withdrawals" value={formatMoney(data.finance.completed_withdrawals)} />
-            <MetricCard label="Refunds" value={formatMoney(data.finance.refunds)} />
-            <MetricCard label="Commission" value={formatMoney(data.finance.commission)} />
+            <MetricCard label="Ride revenue" value={formatMoneyOrDash(data.finance.ride_revenue)} />
+            <MetricCard label="Delivery revenue" value={formatMoneyOrDash(data.finance.delivery_revenue)} />
+            <MetricCard label="Wallet balance" value={formatMoneyOrDash(data.finance.wallet_balance)} />
+            <MetricCard label="Pending withdrawals" value={formatMoneyOrDash(data.finance.pending_withdrawals)} />
+            <MetricCard label="Completed withdrawals" value={formatMoneyOrDash(data.finance.completed_withdrawals)} />
+            <MetricCard label="Refunds" value={formatMoneyOrDash(data.finance.refunds)} />
+            <MetricCard label="Commission" value={formatMoneyOrDash(data.finance.commission)} />
           </div>
           <button type="button" className="launch__btn launch__btn--primary" onClick={handleExportReconciliation}>Export reconciliation (CSV)</button>
         </>
@@ -314,8 +314,8 @@ export default function LaunchHub() {
             <MetricCard label="MAU" value={data.kpis.users.mau} />
             <MetricCard label="Driver retention %" value={data.kpis.retention.driver_retention_pct ?? "—"} />
             <MetricCard label="Courier retention %" value={data.kpis.retention.courier_retention_pct ?? "—"} />
-            <MetricCard label="Avg trip value" value={formatMoney(data.kpis.averages.trip_value)} />
-            <MetricCard label="Avg delivery value" value={formatMoney(data.kpis.averages.delivery_value)} />
+            <MetricCard label="Avg trip value" value={formatMoneyOrDash(data.kpis.averages.trip_value)} />
+            <MetricCard label="Avg delivery value" value={formatMoneyOrDash(data.kpis.averages.delivery_value)} />
             <MetricCard label="Cancellation rate %" value={data.kpis.rates.cancellation_rate_pct} />
             <MetricCard label="Completion rate %" value={data.kpis.rates.completion_rate_pct} />
           </div>

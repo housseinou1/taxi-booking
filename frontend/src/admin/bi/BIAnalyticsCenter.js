@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
-import { formatMoney } from "../../marketConfig";
+import { formatMoneyOrDash } from "../components/library/utils/formatters";
 import {
   exportBiReport,
   fetchBiExecutiveAnalytics,
@@ -186,8 +186,8 @@ export default function BIAnalyticsCenter() {
     const e = detail || {};
     return (
       <div className="bi-grid">
-        <MetricCard label="Revenue" value={formatMoney(e.revenue_mru)} />
-        <MetricCard label="GMV" value={formatMoney(e.gmv_mru)} />
+        <MetricCard label="Revenue" value={formatMoneyOrDash(e.revenue_mru)} />
+        <MetricCard label="GMV" value={formatMoneyOrDash(e.gmv_mru)} />
         <MetricCard label="Completed Rides" value={e.completed_rides} />
         <MetricCard label="Completed Deliveries" value={e.completed_deliveries} />
         <MetricCard label="Ride Growth" value={`${e.ride_growth_pct}%`} />
@@ -223,7 +223,7 @@ export default function BIAnalyticsCenter() {
         <Section title="Revenue by District">
           <ul className="bi-list">
             {(g.revenue_by_district || []).map((row, idx) => (
-              <li key={idx}>City {row.city_id} — {formatMoney(row.revenue_mru)}</li>
+              <li key={idx}>City {row.city_id} — {formatMoneyOrDash(row.revenue_mru)}</li>
             ))}
           </ul>
         </Section>
@@ -236,8 +236,8 @@ export default function BIAnalyticsCenter() {
     return (
       <>
         <div className="bi-grid">
-          <MetricCard label="Daily Revenue Forecast" value={formatMoney(p.revenue_forecast?.daily_revenue)} />
-          <MetricCard label="Weekly Revenue Forecast" value={formatMoney(p.revenue_forecast?.weekly_revenue)} />
+          <MetricCard label="Daily Revenue Forecast" value={formatMoneyOrDash(p.revenue_forecast?.daily_revenue)} />
+          <MetricCard label="Weekly Revenue Forecast" value={formatMoneyOrDash(p.revenue_forecast?.weekly_revenue)} />
           <MetricCard label="Predictive Alerts" value={(p.predictive_alerts || []).length} />
         </div>
         <Section title="Driver Supply Forecast">

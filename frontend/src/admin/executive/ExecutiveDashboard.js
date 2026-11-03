@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
-import { formatMoney } from "../../marketConfig";
+import { formatMoneyOrDash } from "../components/library/utils/formatters";
 import {
   approveWithdrawal as approveWithdrawalApi,
   exportExecutiveReport,
@@ -122,7 +122,7 @@ function FinanceChart({ chart = [] }) {
             <div
               className="executive__bar"
               style={{ height: `${Math.max(8, (point.gross_revenue / max) * 120)}px` }}
-              title={`${point.label}: ${formatMoney(point.gross_revenue)}`}
+              title={`${point.label}: ${formatMoneyOrDash(point.gross_revenue)}`}
             />
             <div className="executive__bar-label">{point.label}</div>
           </div>
@@ -323,23 +323,23 @@ export default function ExecutiveDashboard() {
       <div className="executive__grid executive__grid--metrics">
         <MetricCard label="Trips" value={today.trips ?? 0} />
         <MetricCard label="Deliveries" value={today.deliveries ?? 0} />
-        <MetricCard label="Revenue" value={formatMoney(today.revenue)} tone="gold" />
-        <MetricCard label="Driver Earnings" value={formatMoney(today.driver_earnings)} tone="green" />
-        <MetricCard label="Platform Commission" value={formatMoney(today.platform_commission)} tone="gold" />
+        <MetricCard label="Revenue" value={formatMoneyOrDash(today.revenue)} tone="gold" />
+        <MetricCard label="Driver Earnings" value={formatMoneyOrDash(today.driver_earnings)} tone="green" />
+        <MetricCard label="Platform Commission" value={formatMoneyOrDash(today.platform_commission)} tone="gold" />
         <MetricCard label="Withdrawal Requests" value={today.withdrawal_requests ?? 0} />
         <MetricCard label="Refund Requests" value={today.refund_requests ?? 0} tone="red" />
       </div>
 
       <div className="executive__section-title">Financial Dashboard</div>
       <div className="executive__grid executive__grid--metrics">
-        <MetricCard label="Gross Revenue" value={formatMoney(finance.gross_revenue)} tone="gold" />
-        <MetricCard label="Platform Commission" value={formatMoney(finance.platform_commission)} tone="gold" />
-        <MetricCard label="Driver Earnings" value={formatMoney(finance.driver_earnings)} tone="green" />
-        <MetricCard label="Courier Earnings" value={formatMoney(finance.courier_earnings)} tone="orange" />
-        <MetricCard label="Withdrawal Total" value={formatMoney(finance.withdrawal_total)} />
-        <MetricCard label="Refund Total" value={formatMoney(finance.refund_total)} tone="red" />
-        <MetricCard label="Wallet Balance" value={formatMoney(finance.wallet_balance)} />
-        <MetricCard label="Pending Withdrawals" value={formatMoney(finance.pending_withdrawals)} tone="orange" />
+        <MetricCard label="Gross Revenue" value={formatMoneyOrDash(finance.gross_revenue)} tone="gold" />
+        <MetricCard label="Platform Commission" value={formatMoneyOrDash(finance.platform_commission)} tone="gold" />
+        <MetricCard label="Driver Earnings" value={formatMoneyOrDash(finance.driver_earnings)} tone="green" />
+        <MetricCard label="Courier Earnings" value={formatMoneyOrDash(finance.courier_earnings)} tone="orange" />
+        <MetricCard label="Withdrawal Total" value={formatMoneyOrDash(finance.withdrawal_total)} />
+        <MetricCard label="Refund Total" value={formatMoneyOrDash(finance.refund_total)} tone="red" />
+        <MetricCard label="Wallet Balance" value={formatMoneyOrDash(finance.wallet_balance)} />
+        <MetricCard label="Pending Withdrawals" value={formatMoneyOrDash(finance.pending_withdrawals)} tone="orange" />
       </div>
 
       <div className="executive__grid executive__grid--two">
@@ -484,7 +484,7 @@ export default function ExecutiveDashboard() {
                   {pendingWithdrawals.map((w) => (
                     <div key={w.id} className="executive__withdrawal-row">
                       <div>
-                        <div className="executive__withdrawal-amount">{formatMoney(w.amount)}</div>
+                        <div className="executive__withdrawal-amount">{formatMoneyOrDash(w.amount)}</div>
                         <div className="executive__muted">#{w.id} — {w.driver_email || w.driver}</div>
                       </div>
                       <div className="executive__withdrawal-actions">
@@ -515,10 +515,10 @@ export default function ExecutiveDashboard() {
       <div className="executive__section-title">QA Reconciliation</div>
       <div className="executive__grid executive__grid--metrics">
         <MetricCard label="Overall QA" value={qaPass ? "PASS" : "FAIL"} tone={qaPass ? "green" : "red"} />
-        <MetricCard label="Gross (Payments)" value={formatMoney(qa.gross_revenue_payments)} />
-        <MetricCard label="Gross (Operations)" value={formatMoney(qa.gross_revenue_operations)} />
-        <MetricCard label="Wallet Balance" value={formatMoney(qa.wallet_balance)} />
-        <MetricCard label="Pending Withdrawals" value={formatMoney(qa.pending_withdrawals)} />
+        <MetricCard label="Gross (Payments)" value={formatMoneyOrDash(qa.gross_revenue_payments)} />
+        <MetricCard label="Gross (Operations)" value={formatMoneyOrDash(qa.gross_revenue_operations)} />
+        <MetricCard label="Wallet Balance" value={formatMoneyOrDash(qa.wallet_balance)} />
+        <MetricCard label="Pending Withdrawals" value={formatMoneyOrDash(qa.pending_withdrawals)} />
         <MetricCard label="Driver Trips Today" value={qa.driver_trips_today ?? 0} />
         <MetricCard label="Deliveries Today" value={qa.deliveries_today ?? 0} />
       </div>

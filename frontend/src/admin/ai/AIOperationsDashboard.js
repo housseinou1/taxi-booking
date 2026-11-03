@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 
-import { formatMoney } from "../../marketConfig";
+import { formatMoneyOrDash } from "../components/library/utils/formatters";
 import {
   fetchAIDashboard,
   fetchHotspotMap,
@@ -251,10 +251,10 @@ export default function AIOperationsDashboard() {
         <div className="ops-ai__card">
           <h3>Financial Insights</h3>
           <div className="ops-ai__metrics">
-            <div className="ops-ai__metric"><div className="ops-ai__metric-label">Forecast daily</div><div className="ops-ai__metric-value">{formatMoney(data?.financial_insights?.forecast?.daily_revenue || 0)}</div></div>
-            <div className="ops-ai__metric"><div className="ops-ai__metric-label">Forecast weekly</div><div className="ops-ai__metric-value">{formatMoney(data?.financial_insights?.forecast?.weekly_revenue || 0)}</div></div>
-            <div className="ops-ai__metric"><div className="ops-ai__metric-label">Expected withdrawals</div><div className="ops-ai__metric-value">{formatMoney(data?.financial_insights?.forecast?.expected_withdrawals || 0)}</div></div>
-            <div className="ops-ai__metric"><div className="ops-ai__metric-label">Expected refunds</div><div className="ops-ai__metric-value">{formatMoney(data?.financial_insights?.forecast?.expected_refunds || 0)}</div></div>
+            <div className="ops-ai__metric"><div className="ops-ai__metric-label">Forecast daily</div><div className="ops-ai__metric-value">{formatMoneyOrDash(data?.financial_insights?.forecast?.daily_revenue || 0)}</div></div>
+            <div className="ops-ai__metric"><div className="ops-ai__metric-label">Forecast weekly</div><div className="ops-ai__metric-value">{formatMoneyOrDash(data?.financial_insights?.forecast?.weekly_revenue || 0)}</div></div>
+            <div className="ops-ai__metric"><div className="ops-ai__metric-label">Expected withdrawals</div><div className="ops-ai__metric-value">{formatMoneyOrDash(data?.financial_insights?.forecast?.expected_withdrawals || 0)}</div></div>
+            <div className="ops-ai__metric"><div className="ops-ai__metric-label">Expected refunds</div><div className="ops-ai__metric-value">{formatMoneyOrDash(data?.financial_insights?.forecast?.expected_refunds || 0)}</div></div>
           </div>
           <p className="ops-ai__disclaimer">{data?.financial_insights?.disclaimer}</p>
         </div>

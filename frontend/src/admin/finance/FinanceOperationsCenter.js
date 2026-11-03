@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { formatMoney } from "../../marketConfig";
+import { formatMoneyOrDash } from "../components/library/utils/formatters";
 import { DataTable, KPICard, StatusChip } from "../components/library";
 import {
   approveWithdrawal,
@@ -120,7 +120,7 @@ function MiniBarChart({ items, valueKey = "revenue" }) {
             key={item.date || item.label || item.start}
             className="finance-chart__bar"
             style={{ height: `${height}%` }}
-            title={`${item.label || item.date}: ${formatMoney(value)}`}
+            title={`${item.label || item.date}: ${formatMoneyOrDash(value)}`}
           />
         );
       })}
@@ -294,11 +294,11 @@ export default function FinanceOperationsCenter() {
         error={error}
         onRefresh={load}
         cards={[
-          { label: "Ride revenue", value: formatMoney(totals.ride_revenue), icon: "🚗", tone: "info" },
-          { label: "Delivery revenue", value: formatMoney(totals.delivery_revenue), icon: "📦", tone: "info" },
+          { label: "Ride revenue", value: formatMoneyOrDash(totals.ride_revenue), icon: "🚗", tone: "info" },
+          { label: "Delivery revenue", value: formatMoneyOrDash(totals.delivery_revenue), icon: "📦", tone: "info" },
           {
             label: "Platform commission",
-            value: formatMoney(totals.platform_commission),
+            value: formatMoneyOrDash(totals.platform_commission),
             icon: "🏦",
             tone: "success",
             subtitle: "Commission retained by Yala",
@@ -314,8 +314,8 @@ export default function FinanceOperationsCenter() {
         error={error}
         onRefresh={load}
         cards={[
-          { label: "Driver earnings", value: formatMoney(totals.driver_earnings), icon: "🧑‍✈️", tone: "success" },
-          { label: "Courier earnings", value: formatMoney(totals.courier_earnings), icon: "🛵", tone: "success" },
+          { label: "Driver earnings", value: formatMoneyOrDash(totals.driver_earnings), icon: "🧑‍✈️", tone: "success" },
+          { label: "Courier earnings", value: formatMoneyOrDash(totals.courier_earnings), icon: "🛵", tone: "success" },
         ]}
       />
 
@@ -327,9 +327,9 @@ export default function FinanceOperationsCenter() {
         error={error}
         onRefresh={load}
         cards={[
-          { label: "Wallet deposits", value: formatMoney(totals.wallet_deposits), icon: "⬇️", tone: "info" },
-          { label: "Wallet withdrawals", value: formatMoney(totals.wallet_withdrawals), icon: "⬆️", tone: "info" },
-          { label: "Wallet balance", value: formatMoney(totals.wallet_balance), icon: "👛", tone: "neutral" },
+          { label: "Wallet deposits", value: formatMoneyOrDash(totals.wallet_deposits), icon: "⬇️", tone: "info" },
+          { label: "Wallet withdrawals", value: formatMoneyOrDash(totals.wallet_withdrawals), icon: "⬆️", tone: "info" },
+          { label: "Wallet balance", value: formatMoneyOrDash(totals.wallet_balance), icon: "👛", tone: "neutral" },
         ]}
       />
 
@@ -343,22 +343,22 @@ export default function FinanceOperationsCenter() {
         cards={[
           {
             label: "Failed payments",
-            value: formatMoney(totals.failed_payments),
+            value: formatMoneyOrDash(totals.failed_payments),
             icon: "⚠️",
             tone: "danger",
             subtitle: `${totals.failed_payments_count || 0} transactions`,
           },
-          { label: "Refunds", value: formatMoney(totals.refunds), icon: "↩️", tone: "warning" },
+          { label: "Refunds", value: formatMoneyOrDash(totals.refunds), icon: "↩️", tone: "warning" },
           {
             label: "Pending settlements",
-            value: formatMoney(totals.pending_settlements),
+            value: formatMoneyOrDash(totals.pending_settlements),
             icon: "⏳",
             tone: "warning",
             subtitle: `${totals.pending_settlements_count || 0} open`,
           },
           {
             label: "Pending withdrawals",
-            value: formatMoney(totals.pending_withdrawals),
+            value: formatMoneyOrDash(totals.pending_withdrawals),
             icon: "⏳",
             tone: "warning",
             subtitle: `${totals.pending_withdrawals_count || 0} requests`,
@@ -379,19 +379,19 @@ export default function FinanceOperationsCenter() {
           <div className="finance-ops__metric">
             <span className="finance-ops__metric-label">Operations total</span>
             <span className="finance-ops__metric-value">
-              {formatMoney(reconStatus.operations_total)}
+              {formatMoneyOrDash(reconStatus.operations_total)}
             </span>
           </div>
           <div className="finance-ops__metric">
             <span className="finance-ops__metric-label">Payments total</span>
             <span className="finance-ops__metric-value">
-              {formatMoney(reconStatus.payments_total)}
+              {formatMoneyOrDash(reconStatus.payments_total)}
             </span>
           </div>
           <div className="finance-ops__metric">
             <span className="finance-ops__metric-label">Difference</span>
             <span className="finance-ops__metric-value">
-              {formatMoney(reconStatus.difference_amount)}
+              {formatMoneyOrDash(reconStatus.difference_amount)}
             </span>
           </div>
           <div className="finance-ops__metric">
@@ -442,25 +442,25 @@ export default function FinanceOperationsCenter() {
                 <div className="finance-provider-stat">
                   <span>Successful</span>
                   <span>
-                    {provider.successful.count} · {formatMoney(provider.successful.amount)}
+                    {provider.successful.count} · {formatMoneyOrDash(provider.successful.amount)}
                   </span>
                 </div>
                 <div className="finance-provider-stat">
                   <span>Failed</span>
                   <span>
-                    {provider.failed.count} · {formatMoney(provider.failed.amount)}
+                    {provider.failed.count} · {formatMoneyOrDash(provider.failed.amount)}
                   </span>
                 </div>
                 <div className="finance-provider-stat">
                   <span>Pending</span>
                   <span>
-                    {provider.pending.count} · {formatMoney(provider.pending.amount)}
+                    {provider.pending.count} · {formatMoneyOrDash(provider.pending.amount)}
                   </span>
                 </div>
                 <div className="finance-provider-stat">
                   <span>Reversed</span>
                   <span>
-                    {provider.reversed.count} · {formatMoney(provider.reversed.amount)}
+                    {provider.reversed.count} · {formatMoneyOrDash(provider.reversed.amount)}
                   </span>
                 </div>
                 </div>
@@ -511,16 +511,16 @@ export default function FinanceOperationsCenter() {
                   <tr key={`perf-${provider.key}`}>
                     <td>{provider.label}</td>
                     <td className="finance-table__cell--right">
-                      {provider.successful.count} · {formatMoney(provider.successful.amount)}
+                      {provider.successful.count} · {formatMoneyOrDash(provider.successful.amount)}
                     </td>
                     <td className="finance-table__cell--right">
-                      {provider.failed.count} · {formatMoney(provider.failed.amount)}
+                      {provider.failed.count} · {formatMoneyOrDash(provider.failed.amount)}
                     </td>
                     <td className="finance-table__cell--right">
-                      {provider.pending.count} · {formatMoney(provider.pending.amount)}
+                      {provider.pending.count} · {formatMoneyOrDash(provider.pending.amount)}
                     </td>
                     <td className="finance-table__cell--right">
-                      {provider.reversed.count} · {formatMoney(provider.reversed.amount)}
+                      {provider.reversed.count} · {formatMoneyOrDash(provider.reversed.amount)}
                     </td>
                   </tr>
                 ))
@@ -580,7 +580,7 @@ export default function FinanceOperationsCenter() {
       id: item.id,
       driver: item.driver_name || item.driver_email || "—",
       email: item.driver_email || "",
-      amount: formatMoney(item.amount),
+      amount: formatMoneyOrDash(item.amount),
       currency: item.currency,
       method: item.payout_display || item.payout_method || "—",
       status: item.status,
@@ -645,7 +645,7 @@ export default function FinanceOperationsCenter() {
             <div className="finance-ops__metric">
               <span className="finance-ops__metric-label">Pending</span>
               <span className="finance-ops__metric-value">
-                {formatMoney(withdrawalSummary.pending?.amount)}
+                {formatMoneyOrDash(withdrawalSummary.pending?.amount)}
               </span>
               <span className="finance-ops__muted">
                 {withdrawalSummary.pending?.count || 0} requests
@@ -654,7 +654,7 @@ export default function FinanceOperationsCenter() {
             <div className="finance-ops__metric">
               <span className="finance-ops__metric-label">Approved</span>
               <span className="finance-ops__metric-value">
-                {formatMoney(withdrawalSummary.approved?.amount)}
+                {formatMoneyOrDash(withdrawalSummary.approved?.amount)}
               </span>
               <span className="finance-ops__muted">
                 {withdrawalSummary.approved?.count || 0} requests
@@ -663,7 +663,7 @@ export default function FinanceOperationsCenter() {
             <div className="finance-ops__metric">
               <span className="finance-ops__metric-label">Paid</span>
               <span className="finance-ops__metric-value">
-                {formatMoney(withdrawalSummary.paid?.amount)}
+                {formatMoneyOrDash(withdrawalSummary.paid?.amount)}
               </span>
               <span className="finance-ops__muted">
                 {withdrawalSummary.paid?.count || 0} requests
@@ -672,7 +672,7 @@ export default function FinanceOperationsCenter() {
             <div className="finance-ops__metric">
               <span className="finance-ops__metric-label">Total filtered</span>
               <span className="finance-ops__metric-value">
-                {formatMoney(withdrawalSummary.total_amount)}
+                {formatMoneyOrDash(withdrawalSummary.total_amount)}
               </span>
             </div>
           </div>
@@ -742,7 +742,7 @@ export default function FinanceOperationsCenter() {
         <div className="finance-ops__kpi-grid">
           <KPICard
             label="Gross revenue"
-            value={formatMoney(totals.gross_revenue)}
+            value={formatMoneyOrDash(totals.gross_revenue)}
             icon="💰"
             tone="success"
             subtitle="Recorded for the selected period"
@@ -752,7 +752,7 @@ export default function FinanceOperationsCenter() {
           />
           <KPICard
             label="Ride revenue"
-            value={formatMoney(totals.ride_revenue)}
+            value={formatMoneyOrDash(totals.ride_revenue)}
             icon="🚗"
             tone="info"
             loading={loading}
@@ -761,7 +761,7 @@ export default function FinanceOperationsCenter() {
           />
           <KPICard
             label="Delivery revenue"
-            value={formatMoney(totals.delivery_revenue)}
+            value={formatMoneyOrDash(totals.delivery_revenue)}
             icon="📦"
             tone="info"
             loading={loading}
@@ -770,7 +770,7 @@ export default function FinanceOperationsCenter() {
           />
           <KPICard
             label="Platform commission"
-            value={formatMoney(totals.platform_commission)}
+            value={formatMoneyOrDash(totals.platform_commission)}
             icon="🏦"
             tone="success"
             subtitle="Retained by Yala"
@@ -845,7 +845,7 @@ export default function FinanceOperationsCenter() {
                   (charts.by_service || []).map((row) => (
                     <tr key={row.service}>
                       <td>{row.label}</td>
-                      <td className="finance-table__cell--right">{formatMoney(row.revenue)}</td>
+                      <td className="finance-table__cell--right">{formatMoneyOrDash(row.revenue)}</td>
                       <td className="finance-table__cell--right">{row.count}</td>
                     </tr>
                   ))
@@ -879,7 +879,7 @@ export default function FinanceOperationsCenter() {
                   (charts.by_payment_method || []).map((row) => (
                     <tr key={row.key}>
                       <td>{row.label}</td>
-                      <td className="finance-table__cell--right">{formatMoney(row.revenue)}</td>
+                      <td className="finance-table__cell--right">{formatMoneyOrDash(row.revenue)}</td>
                       <td className="finance-table__cell--right">{row.count}</td>
                     </tr>
                   ))
@@ -914,7 +914,7 @@ export default function FinanceOperationsCenter() {
                 (charts.by_city || []).map((row, index) => (
                   <tr key={`${row.city}-${index}`}>
                     <td>{row.city}</td>
-                    <td className="finance-table__cell--right">{formatMoney(row.revenue)}</td>
+                    <td className="finance-table__cell--right">{formatMoneyOrDash(row.revenue)}</td>
                     <td className="finance-table__cell--right">
                       {row.trips || row.deliveries || "—"}
                     </td>
@@ -993,49 +993,49 @@ export default function FinanceOperationsCenter() {
                   <div className="finance-ops__metric">
                     <span className="finance-ops__metric-label">Gross revenue</span>
                     <span className="finance-ops__metric-value">
-                      {formatMoney(report.metrics?.gross_revenue)}
+                      {formatMoneyOrDash(report.metrics?.gross_revenue)}
                     </span>
                   </div>
                   <div className="finance-ops__metric">
                     <span className="finance-ops__metric-label">Platform commission</span>
                     <span className="finance-ops__metric-value">
-                      {formatMoney(report.metrics?.platform_commission)}
+                      {formatMoneyOrDash(report.metrics?.platform_commission)}
                     </span>
                   </div>
                   <div className="finance-ops__metric">
                     <span className="finance-ops__metric-label">Cash in</span>
                     <span className="finance-ops__metric-value">
-                      {formatMoney(report.metrics?.cash_in)}
+                      {formatMoneyOrDash(report.metrics?.cash_in)}
                     </span>
                   </div>
                   <div className="finance-ops__metric">
                     <span className="finance-ops__metric-label">Cash out</span>
                     <span className="finance-ops__metric-value">
-                      {formatMoney(report.metrics?.cash_out)}
+                      {formatMoneyOrDash(report.metrics?.cash_out)}
                     </span>
                   </div>
                   <div className="finance-ops__metric">
                     <span className="finance-ops__metric-label">Refunds</span>
                     <span className="finance-ops__metric-value">
-                      {formatMoney(report.metrics?.refunds)}
+                      {formatMoneyOrDash(report.metrics?.refunds)}
                     </span>
                   </div>
                   <div className="finance-ops__metric">
                     <span className="finance-ops__metric-label">Net cash flow</span>
                     <span className="finance-ops__metric-value">
-                      {formatMoney(report.metrics?.net_cash_flow)}
+                      {formatMoneyOrDash(report.metrics?.net_cash_flow)}
                     </span>
                   </div>
                   <div className="finance-ops__metric">
                     <span className="finance-ops__metric-label">Wallet balance</span>
                     <span className="finance-ops__metric-value">
-                      {formatMoney(report.metrics?.wallet_balance)}
+                      {formatMoneyOrDash(report.metrics?.wallet_balance)}
                     </span>
                   </div>
                   <div className="finance-ops__metric">
                     <span className="finance-ops__metric-label">Outstanding withdrawals</span>
                     <span className="finance-ops__metric-value">
-                      {formatMoney(report.metrics?.outstanding_withdrawals)}
+                      {formatMoneyOrDash(report.metrics?.outstanding_withdrawals)}
                     </span>
                     <span className="finance-ops__muted">
                       {report.metrics?.outstanding_withdrawals_count ?? 0} requests
@@ -1044,7 +1044,7 @@ export default function FinanceOperationsCenter() {
                   <div className="finance-ops__metric">
                     <span className="finance-ops__metric-label">Pending refunds</span>
                     <span className="finance-ops__metric-value">
-                      {formatMoney(report.metrics?.pending_refunds)}
+                      {formatMoneyOrDash(report.metrics?.pending_refunds)}
                     </span>
                     <span className="finance-ops__muted">
                       {report.metrics?.pending_refunds_count ?? 0} requests
@@ -1103,13 +1103,13 @@ export default function FinanceOperationsCenter() {
                         <ReconciliationPill status={recon.status} />
                       </td>
                       <td className="finance-table__cell--right">
-                        {formatMoney(recon.operations_total)}
+                        {formatMoneyOrDash(recon.operations_total)}
                       </td>
                       <td className="finance-table__cell--right">
-                        {formatMoney(recon.payments_total)}
+                        {formatMoneyOrDash(recon.payments_total)}
                       </td>
                       <td className="finance-table__cell--right">
-                        {formatMoney(recon.difference_amount)}
+                        {formatMoneyOrDash(recon.difference_amount)}
                       </td>
                     </tr>
                   );
@@ -1152,7 +1152,7 @@ export default function FinanceOperationsCenter() {
         id: "amount",
         label: "Amount",
         align: "right",
-        render: (row) => (row.amount ? formatMoney(row.amount) : "—"),
+        render: (row) => (row.amount ? formatMoneyOrDash(row.amount) : "—"),
       },
       {
         id: "before",
@@ -1350,7 +1350,7 @@ export default function FinanceOperationsCenter() {
             <div className="finance-ops__recon-fact">
               <span className="finance-ops__recon-label">Difference</span>
               <span className="finance-ops__recon-value">
-                {formatMoney(reconStatus.difference_amount)}
+                {formatMoneyOrDash(reconStatus.difference_amount)}
               </span>
             </div>
             <div className="finance-ops__recon-fact">

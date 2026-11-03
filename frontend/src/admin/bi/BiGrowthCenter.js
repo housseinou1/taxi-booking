@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
-import { formatMoney } from "../../marketConfig";
+import { formatMoneyOrDash } from "../components/library/utils/formatters";
 import { exportBiGrowthReport, fetchBiGrowthCenter } from "./biGrowthApi";
 import "./BiGrowthCenter.css";
 
@@ -193,17 +193,17 @@ export default function BiGrowthCenter() {
       <section id="bi-kpis" className="bi-growth__section">
         <h2 className="bi-growth__section-title">Executive KPIs</h2>
         <div className="bi-growth__grid">
-          <Metric label="Daily Revenue" value={formatMoney(kpis.revenue_daily)} tone="gold" />
-          <Metric label="Weekly Revenue" value={formatMoney(kpis.revenue_weekly)} tone="gold" />
-          <Metric label="Monthly Revenue" value={formatMoney(kpis.revenue_monthly)} tone="gold" />
-          <Metric label="Annual Revenue" value={formatMoney(kpis.revenue_annual)} tone="gold" />
-          <Metric label="Gross Revenue" value={formatMoney(kpis.gross_revenue)} />
-          <Metric label="Net Revenue" value={formatMoney(kpis.net_revenue)} tone="green" />
-          <Metric label="Commission Revenue" value={formatMoney(kpis.commission_revenue)} tone="gold" />
+          <Metric label="Daily Revenue" value={formatMoneyOrDash(kpis.revenue_daily)} tone="gold" />
+          <Metric label="Weekly Revenue" value={formatMoneyOrDash(kpis.revenue_weekly)} tone="gold" />
+          <Metric label="Monthly Revenue" value={formatMoneyOrDash(kpis.revenue_monthly)} tone="gold" />
+          <Metric label="Annual Revenue" value={formatMoneyOrDash(kpis.revenue_annual)} tone="gold" />
+          <Metric label="Gross Revenue" value={formatMoneyOrDash(kpis.gross_revenue)} />
+          <Metric label="Net Revenue" value={formatMoneyOrDash(kpis.net_revenue)} tone="green" />
+          <Metric label="Commission Revenue" value={formatMoneyOrDash(kpis.commission_revenue)} tone="gold" />
           <Metric label="Total Trips" value={kpis.total_trips} />
           <Metric label="Completed Trips" value={kpis.completed_trips} tone="green" />
           <Metric label="Cancelled Trips" value={kpis.cancelled_trips} tone="red" />
-          <Metric label="Avg Trip Value" value={formatMoney(kpis.average_trip_value)} />
+          <Metric label="Avg Trip Value" value={formatMoneyOrDash(kpis.average_trip_value)} />
           <Metric label="Completion Rate" value={`${kpis.completion_rate_pct}%`} tone="green" />
         </div>
       </section>
@@ -235,7 +235,7 @@ export default function BiGrowthCenter() {
                   <tr key={row.rider_id}>
                     <td>{row.rider__first_name} {row.rider__last_name || row.rider__email}</td>
                     <td>{row.trips}</td>
-                    <td>{formatMoney(row.total_spent)}</td>
+                    <td>{formatMoneyOrDash(row.total_spent)}</td>
                   </tr>
                 ))
               )}
@@ -252,7 +252,7 @@ export default function BiGrowthCenter() {
           <Metric label="Active (Online)" value={drivers.active_drivers} tone="green" />
           <Metric label="Acceptance Rate" value={`${drivers.acceptance_rate_pct}%`} />
           <Metric label="Completion Rate" value={`${drivers.completion_rate_pct}%`} />
-          <Metric label="Driver Earnings" value={formatMoney(drivers.driver_earnings_mru)} tone="gold" />
+          <Metric label="Driver Earnings" value={formatMoneyOrDash(drivers.driver_earnings_mru)} tone="gold" />
           <Metric label="Avg Rating" value={drivers.average_rating ?? "—"} />
           <Metric label="Fleet Utilization" value={`${drivers.fleet_utilization_pct}%`} />
         </div>
@@ -289,7 +289,7 @@ export default function BiGrowthCenter() {
                   <td>{d.driver_name || d.name}</td>
                   <td>{d.score}</td>
                   <td>{d.total_trips}</td>
-                  <td>{formatMoney(d.revenue_month)}</td>
+                  <td>{formatMoneyOrDash(d.revenue_month)}</td>
                 </tr>
               ))}
             </tbody>
@@ -315,7 +315,7 @@ export default function BiGrowthCenter() {
             <h3>Revenue by Neighborhood</h3>
             <ul className="bi-growth__subtitle">
               {(geo.revenue_by_district || []).slice(0, 8).map((row, idx) => (
-                <li key={idx}>City {row.city_id} — {formatMoney(row.revenue_mru)}</li>
+                <li key={idx}>City {row.city_id} — {formatMoneyOrDash(row.revenue_mru)}</li>
               ))}
             </ul>
           </div>
@@ -335,12 +335,12 @@ export default function BiGrowthCenter() {
       <section id="bi-financial" className="bi-growth__section">
         <h2 className="bi-growth__section-title">Financial Reports</h2>
         <div className="bi-growth__grid">
-          <Metric label="Daily Gross" value={formatMoney(financial.daily?.gross_revenue)} tone="gold" />
-          <Metric label="Weekly Gross" value={formatMoney(financial.weekly?.gross_revenue)} tone="gold" />
-          <Metric label="Monthly Gross" value={formatMoney(financial.monthly?.gross_revenue)} tone="gold" />
-          <Metric label="Pending Payouts" value={formatMoney(financial.driver_payout_summary?.pending_amount_mru)} tone="orange" />
-          <Metric label="Commission (Period)" value={formatMoney(financial.commission_summary?.platform_commission_mru)} />
-          <Metric label="Refunds (Tax)" value={formatMoney(financial.tax_summary?.refunds_mru)} tone="red" />
+          <Metric label="Daily Gross" value={formatMoneyOrDash(financial.daily?.gross_revenue)} tone="gold" />
+          <Metric label="Weekly Gross" value={formatMoneyOrDash(financial.weekly?.gross_revenue)} tone="gold" />
+          <Metric label="Monthly Gross" value={formatMoneyOrDash(financial.monthly?.gross_revenue)} tone="gold" />
+          <Metric label="Pending Payouts" value={formatMoneyOrDash(financial.driver_payout_summary?.pending_amount_mru)} tone="orange" />
+          <Metric label="Commission (Period)" value={formatMoneyOrDash(financial.commission_summary?.platform_commission_mru)} />
+          <Metric label="Refunds (Tax)" value={formatMoneyOrDash(financial.tax_summary?.refunds_mru)} tone="red" />
         </div>
         <div className="bi-growth__card bi-growth__card--wide" style={{ marginTop: 14 }}>
           <h3>Export Reports (PDF / Excel / CSV)</h3>
@@ -399,9 +399,9 @@ export default function BiGrowthCenter() {
         <div className="bi-growth__card bi-growth__card--wide" style={{ marginTop: 14 }}>
           <h3>Revenue Forecast</h3>
           <div className="bi-growth__grid">
-            <Metric label="Daily Forecast" value={formatMoney(growth.revenue_forecast?.daily_revenue)} />
-            <Metric label="Weekly Forecast" value={formatMoney(growth.revenue_forecast?.weekly_revenue)} />
-            <Metric label="Monthly Forecast" value={formatMoney(growth.revenue_forecast?.monthly_revenue)} />
+            <Metric label="Daily Forecast" value={formatMoneyOrDash(growth.revenue_forecast?.daily_revenue)} />
+            <Metric label="Weekly Forecast" value={formatMoneyOrDash(growth.revenue_forecast?.weekly_revenue)} />
+            <Metric label="Monthly Forecast" value={formatMoneyOrDash(growth.revenue_forecast?.monthly_revenue)} />
           </div>
         </div>
       </section>

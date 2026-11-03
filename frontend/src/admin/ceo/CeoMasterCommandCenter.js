@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 
-import { formatMoney } from "../../marketConfig";
+import { formatMoneyOrDash } from "../components/library/utils/formatters";
 import { fetchExecutiveMetrics } from "./executiveMetricsApi";
 import {
   ceoMasterReportUrl,
@@ -187,7 +187,7 @@ export default function CeoMasterCommandCenter() {
         payment_id: Number(actionForm.payment_id),
         note: actionForm.note,
       });
-      setMessage(`Approved payout #${result.id} — ${formatMoney(result.amount)}`);
+      setMessage(`Approved payout #${result.id} — ${formatMoneyOrDash(result.amount)}`);
     } catch (err) {
       setError(err?.response?.data?.detail || err?.message);
     }
@@ -220,9 +220,9 @@ export default function CeoMasterCommandCenter() {
         {/* Executive Overview Cards */}
         <Section title="Executive Overview">
           <div className="ceo-master-grid">
-            <KPICard label="Revenue Today" value={formatMoney(overview.total_revenue_today)} loading={loading} />
-            <KPICard label="Revenue This Week" value={formatMoney(overview.total_revenue_week)} loading={loading} />
-            <KPICard label="Revenue This Month" value={formatMoney(overview.total_revenue_month)} loading={loading} />
+            <KPICard label="Revenue Today" value={formatMoneyOrDash(overview.total_revenue_today)} loading={loading} />
+            <KPICard label="Revenue This Week" value={formatMoneyOrDash(overview.total_revenue_week)} loading={loading} />
+            <KPICard label="Revenue This Month" value={formatMoneyOrDash(overview.total_revenue_month)} loading={loading} />
             <KPICard
               label="Total Riders"
               value={metrics?.riders?.total ?? overview.active_riders}
@@ -301,12 +301,12 @@ export default function CeoMasterCommandCenter() {
             <div className="ceo-master-grid">
               <KPICard
                 label="Gross Transaction Value"
-                value={formatMoney(money?.gross_transaction_value)}
+                value={formatMoneyOrDash(money?.gross_transaction_value)}
                 loading={loading}
               />
               <KPICard
                 label="Platform Revenue (Settled)"
-                value={formatMoney(money?.platform_revenue)}
+                value={formatMoneyOrDash(money?.platform_revenue)}
                 sub="From settled payment ledger"
                 loading={loading}
               />
@@ -327,19 +327,19 @@ export default function CeoMasterCommandCenter() {
               />
               <KPICard
                 label="Wallet Liabilities"
-                value={formatMoney(metrics?.liabilities?.wallet_liabilities?.value)}
+                value={formatMoneyOrDash(metrics?.liabilities?.wallet_liabilities?.value)}
                 sub="Not revenue"
                 loading={loading}
               />
               <KPICard
                 label="Wallet Pending Balance"
-                value={formatMoney(metrics?.liabilities?.wallet_pending_balance?.value)}
+                value={formatMoneyOrDash(metrics?.liabilities?.wallet_pending_balance?.value)}
                 sub="Not revenue"
                 loading={loading}
               />
               <KPICard
                 label="Merchant Payables"
-                value={formatMoney(metrics?.liabilities?.merchant_payables?.value)}
+                value={formatMoneyOrDash(metrics?.liabilities?.merchant_payables?.value)}
                 sub="Not revenue"
                 loading={loading}
               />
@@ -365,35 +365,35 @@ export default function CeoMasterCommandCenter() {
           <div className="ceo-master-grid">
             <KPICard
               label="Wallet Balance"
-              value={formatMoney(f.wallet_balance)}
+              value={formatMoneyOrDash(f.wallet_balance)}
               loading={loading}
             />
             <KPICard
               label="Pending Withdrawals"
-              value={formatMoney(f.pending_withdrawals?.amount)}
+              value={formatMoneyOrDash(f.pending_withdrawals?.amount)}
               sub={`${f.pending_withdrawals?.count} requests`}
               critical={f.pending_withdrawals?.count > 0}
               loading={loading}
             />
             <KPICard
               label="Completed Withdrawals"
-              value={formatMoney(f.completed_withdrawals?.amount)}
+              value={formatMoneyOrDash(f.completed_withdrawals?.amount)}
               sub={`${f.completed_withdrawals?.count} processed`}
               loading={loading}
             />
             <KPICard
               label="Merchant Settlements"
-              value={formatMoney(f.merchant_settlements_pending)}
+              value={formatMoneyOrDash(f.merchant_settlements_pending)}
               loading={loading}
             />
             <KPICard
               label="Partner Settlements"
-              value={formatMoney(f.partner_settlements_pending)}
+              value={formatMoneyOrDash(f.partner_settlements_pending)}
               loading={loading}
             />
             <KPICard
               label="Outstanding Refunds"
-              value={formatMoney(f.outstanding_refunds?.amount)}
+              value={formatMoneyOrDash(f.outstanding_refunds?.amount)}
               sub={`${f.outstanding_refunds?.count} requests`}
               critical={f.outstanding_refunds?.count > 0}
               loading={loading}
@@ -403,10 +403,10 @@ export default function CeoMasterCommandCenter() {
 
         <Section title="Cash Flow">
           <div className="ceo-master-grid">
-            <KPICard label="Today In" value={formatMoney(cashFlow.today_in)} loading={loading} />
-            <KPICard label="Today Out" value={formatMoney(cashFlow.today_out)} loading={loading} />
-            <KPICard label="Month In" value={formatMoney(cashFlow.month_in)} loading={loading} />
-            <KPICard label="Month Out" value={formatMoney(cashFlow.month_out)} loading={loading} />
+            <KPICard label="Today In" value={formatMoneyOrDash(cashFlow.today_in)} loading={loading} />
+            <KPICard label="Today Out" value={formatMoneyOrDash(cashFlow.today_out)} loading={loading} />
+            <KPICard label="Month In" value={formatMoneyOrDash(cashFlow.month_in)} loading={loading} />
+            <KPICard label="Month Out" value={formatMoneyOrDash(cashFlow.month_out)} loading={loading} />
           </div>
         </Section>
       </>
@@ -655,10 +655,10 @@ export default function CeoMasterCommandCenter() {
             {a.fastest_growing_area && (
               <KPICard label="Fastest Growing Area" value={a.fastest_growing_area} loading={loading} />
             )}
-            <KPICard label="Daily Revenue Forecast" value={formatMoney(forecast.daily_revenue)} loading={loading} />
-            <KPICard label="Weekly Revenue Forecast" value={formatMoney(forecast.weekly_revenue)} loading={loading} />
-            <KPICard label="Expected Withdrawals" value={formatMoney(forecast.expected_withdrawals)} loading={loading} />
-            <KPICard label="Expected Refunds" value={formatMoney(forecast.expected_refunds)} loading={loading} />
+            <KPICard label="Daily Revenue Forecast" value={formatMoneyOrDash(forecast.daily_revenue)} loading={loading} />
+            <KPICard label="Weekly Revenue Forecast" value={formatMoneyOrDash(forecast.weekly_revenue)} loading={loading} />
+            <KPICard label="Expected Withdrawals" value={formatMoneyOrDash(forecast.expected_withdrawals)} loading={loading} />
+            <KPICard label="Expected Refunds" value={formatMoneyOrDash(forecast.expected_refunds)} loading={loading} />
           </div>
         </Section>
 

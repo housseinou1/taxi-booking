@@ -3,6 +3,7 @@ import React from "react";
 import { MARKET } from "../../marketConfig";
 import { scoreBandMeta } from "./fleetApi";
 import { formatMoney as sharedFormatMoney } from "../components/library/utils/formatters";
+import { formatMoneyOrDash as sharedFormatMoneyOrDash } from "../components/library/utils/formatters";
 
 /**
  * YALA Admin — Fleet UI kit (SHARED components).
@@ -39,6 +40,17 @@ export function formatCount(value) {
  */
 export function formatMoney(value) {
   return sharedFormatMoney(value);
+}
+
+/**
+ * Money that distinguishes UNAVAILABLE data from a genuine zero.
+ *
+ * Re-exported here so the fleet pages can keep importing their money helpers from
+ * `./fleetUi` while rendering an absent value as the platform em dash instead of a
+ * fabricated "0 MRU".
+ */
+export function formatMoneyOrDash(value) {
+  return sharedFormatMoneyOrDash(value);
 }
 
 export function formatPct(value) {

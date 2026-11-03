@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 
-import { formatMoney } from "../../marketConfig";
+import { formatMoneyOrDash } from "../components/library/utils/formatters";
 import {
   fetchCeoDashboard,
   fetchSmartEngineDashboard,
@@ -345,10 +345,10 @@ export default function SmartPricingDispatchCenter() {
           </button>
           {simResult ? (
             <div className="smart-pricing-grid" style={{ marginTop: "1rem" }}>
-              <MetricCard label="Customer price" value={formatMoney(simResult.result?.customer_price)} />
-              <MetricCard label="Driver earnings" value={formatMoney(simResult.result?.driver_earnings)} />
-              <MetricCard label="Company commission" value={formatMoney(simResult.result?.company_commission)} />
-              <MetricCard label="Legacy price" value={formatMoney(simResult.legacy_comparison?.customer_price)} sub={`Δ ${formatMoney(simResult.delta_customer_price)}`} />
+              <MetricCard label="Customer price" value={formatMoneyOrDash(simResult.result?.customer_price)} />
+              <MetricCard label="Driver earnings" value={formatMoneyOrDash(simResult.result?.driver_earnings)} />
+              <MetricCard label="Company commission" value={formatMoneyOrDash(simResult.result?.company_commission)} />
+              <MetricCard label="Legacy price" value={formatMoneyOrDash(simResult.legacy_comparison?.customer_price)} sub={`Δ ${formatMoneyOrDash(simResult.delta_customer_price)}`} />
             </div>
           ) : null}
         </section>
@@ -356,10 +356,10 @@ export default function SmartPricingDispatchCenter() {
 
       {tab === "ceo" ? (
         <section className="smart-pricing-grid">
-          <MetricCard label="Total revenue" value={formatMoney(ceoData?.revenue_impact?.total_revenue)} />
-          <MetricCard label="Surge revenue" value={formatMoney(ceoData?.surge_revenue)} />
-          <MetricCard label="Average fare" value={formatMoney(ceoData?.average_fare)} />
-          <MetricCard label="Profit per ride" value={formatMoney(ceoData?.profit_per_ride)} />
+          <MetricCard label="Total revenue" value={formatMoneyOrDash(ceoData?.revenue_impact?.total_revenue)} />
+          <MetricCard label="Surge revenue" value={formatMoneyOrDash(ceoData?.surge_revenue)} />
+          <MetricCard label="Average fare" value={formatMoneyOrDash(ceoData?.average_fare)} />
+          <MetricCard label="Profit per ride" value={formatMoneyOrDash(ceoData?.profit_per_ride)} />
           <MetricCard label="Dispatch efficiency" value={ceoData?.dispatch_efficiency?.acceptance_rate_pct != null ? `${ceoData.dispatch_efficiency.acceptance_rate_pct}% accept` : "—"} />
           <MetricCard label="Driver utilization" value={ceoData?.driver_utilization_pct != null ? `${ceoData.driver_utilization_pct}%` : "—"} />
         </section>

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 
-import { formatMoney } from "../../marketConfig";
+import { formatMoneyOrDash } from "../components/library/utils/formatters";
 import {
   exportComplianceReport,
   exportFinanceCenter,
@@ -131,14 +131,14 @@ export default function BusinessHub() {
             <button type="button" className="launch__btn" onClick={() => handleExportFinance("pdf")}>Export PDF</button>
           </div>
           <div className="launch__grid">
-            <MetricCard label="Daily Revenue" value={formatMoney(finance.daily_revenue)} />
-            <MetricCard label="Outstanding Withdrawals" value={formatMoney(finance.outstanding_withdrawals?.amount)} />
-            <MetricCard label="Pending Refunds" value={formatMoney(finance.pending_refunds?.amount)} />
-            <MetricCard label="Wallet Balance" value={formatMoney(finance.cash_flow?.wallet_balance)} />
-            <MetricCard label="Commission" value={formatMoney(finance.commission)} />
-            <MetricCard label="Tax Estimate (18%)" value={formatMoney(finance.taxes_estimate)} />
-            <MetricCard label="Monthly Net P/L" value={formatMoney(finance.monthly_profit_loss?.net_profit)} />
-            <MetricCard label="Cash In Today" value={formatMoney(finance.cash_flow?.cash_in_today)} />
+            <MetricCard label="Daily Revenue" value={formatMoneyOrDash(finance.daily_revenue)} />
+            <MetricCard label="Outstanding Withdrawals" value={formatMoneyOrDash(finance.outstanding_withdrawals?.amount)} />
+            <MetricCard label="Pending Refunds" value={formatMoneyOrDash(finance.pending_refunds?.amount)} />
+            <MetricCard label="Wallet Balance" value={formatMoneyOrDash(finance.cash_flow?.wallet_balance)} />
+            <MetricCard label="Commission" value={formatMoneyOrDash(finance.commission)} />
+            <MetricCard label="Tax Estimate (18%)" value={formatMoneyOrDash(finance.taxes_estimate)} />
+            <MetricCard label="Monthly Net P/L" value={formatMoneyOrDash(finance.monthly_profit_loss?.net_profit)} />
+            <MetricCard label="Cash In Today" value={formatMoneyOrDash(finance.cash_flow?.cash_in_today)} />
           </div>
         </section>
       )}
@@ -242,7 +242,7 @@ export default function BusinessHub() {
             <MetricCard label="Active Programs" value={incentives.summary?.active_programs ?? 0} />
             <MetricCard label="In Progress" value={incentives.summary?.participants ?? 0} />
             <MetricCard label="Completed (Month)" value={incentives.summary?.completed_this_month ?? 0} />
-            <MetricCard label="Bonuses Paid (Month)" value={formatMoney(incentives.summary?.bonuses_paid_month)} />
+            <MetricCard label="Bonuses Paid (Month)" value={formatMoneyOrDash(incentives.summary?.bonuses_paid_month)} />
           </div>
           <h3 className="biz__section-title">Leaderboard</h3>
           <div className="launch__table-wrap">
@@ -250,7 +250,7 @@ export default function BusinessHub() {
               <thead><tr><th>Driver</th><th>Total Bonus</th><th>Completions</th></tr></thead>
               <tbody>
                 {(incentives.leaderboard || []).map((row) => (
-                  <tr key={row.driver_id}><td>{row.name}</td><td>{formatMoney(row.total_bonus)}</td><td>{row.completions}</td></tr>
+                  <tr key={row.driver_id}><td>{row.name}</td><td>{formatMoneyOrDash(row.total_bonus)}</td><td>{row.completions}</td></tr>
                 ))}
               </tbody>
             </table>
@@ -272,7 +272,7 @@ export default function BusinessHub() {
                 {(partners.partners || []).map((p) => (
                   <tr key={p.id}>
                     <td>{p.name}</td><td>{p.type}</td><td>{p.status}</td>
-                    <td>{p.total_orders}</td><td>{formatMoney(p.revenue)}</td><td>{formatMoney(p.payouts_pending)}</td>
+                    <td>{p.total_orders}</td><td>{formatMoneyOrDash(p.revenue)}</td><td>{formatMoneyOrDash(p.payouts_pending)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -296,7 +296,7 @@ export default function BusinessHub() {
                 {(corporate.accounts || []).map((a) => (
                   <tr key={`${a.account_type}-${a.id}`}>
                     <td>{a.company_name}</td><td>{a.account_type}</td><td>{a.billing_type}</td>
-                    <td>{formatMoney(a.balance)}</td><td>{a.employees}</td><td>{a.is_active ? "Yes" : "No"}</td>
+                    <td>{formatMoneyOrDash(a.balance)}</td><td>{a.employees}</td><td>{a.is_active ? "Yes" : "No"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -325,7 +325,7 @@ export default function BusinessHub() {
       {tab === "bi" && (
         <section>
           <div className="launch__grid">
-            <MetricCard label="Revenue (7d)" value={formatMoney(bi.growth_trends?.revenue_this_week)} />
+            <MetricCard label="Revenue (7d)" value={formatMoneyOrDash(bi.growth_trends?.revenue_this_week)} />
             <MetricCard label="Growth %" value={bi.growth_trends?.growth_percent != null ? `${bi.growth_trends.growth_percent}%` : "—"} />
             <MetricCard label="Open Tickets" value={bi.ceo_report?.support?.open_tickets ?? 0} />
             <MetricCard label="Security Alerts" value={bi.ceo_report?.security_alerts ?? 0} />
@@ -336,7 +336,7 @@ export default function BusinessHub() {
               <thead><tr><th>City</th><th>Revenue</th></tr></thead>
               <tbody>
                 {(bi.city_comparison || []).map((c) => (
-                  <tr key={c.city_id}><td>{c.city_name}</td><td>{formatMoney(c.revenue_7d)}</td></tr>
+                  <tr key={c.city_id}><td>{c.city_name}</td><td>{formatMoneyOrDash(c.revenue_7d)}</td></tr>
                 ))}
               </tbody>
             </table>
@@ -347,7 +347,7 @@ export default function BusinessHub() {
               <thead><tr><th>Driver ID</th><th>Trips</th><th>Earnings</th></tr></thead>
               <tbody>
                 {(bi.driver_productivity || []).slice(0, 10).map((d) => (
-                  <tr key={d.driver_id}><td>{d.driver_id}</td><td>{d.trips}</td><td>{formatMoney(d.earnings)}</td></tr>
+                  <tr key={d.driver_id}><td>{d.driver_id}</td><td>{d.trips}</td><td>{formatMoneyOrDash(d.earnings)}</td></tr>
                 ))}
               </tbody>
             </table>

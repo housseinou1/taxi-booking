@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
-import { formatMoney } from "../../marketConfig";
+import { formatMoneyOrDash } from "../components/library/utils/formatters";
 import {
   exportIncidentReport,
   fetchOperationsCenter,
@@ -440,7 +440,7 @@ export default function OperationsCenter() {
                     <div>ETA {trip.eta_minutes ?? "—"} min</div>
                     <div>Wait {formatDuration(trip.waiting_seconds)}</div>
                   </td>
-                  <td>{formatMoney(trip.fare)}</td>
+                  <td>{formatMoneyOrDash(trip.fare)}</td>
                   <td>
                     <div className="ops-center__actions">
                       <button type="button" className="ops-center__btn" onClick={() => runAction("Reassign", () => postReassignRide(trip.id))}>Reassign</button>
@@ -587,7 +587,7 @@ export default function OperationsCenter() {
             <div className="ops-center__metric"><div className="ops-center__metric-label">Cancellation</div><div className="ops-center__metric-value">{metric(data?.analytics?.cancellation_rate)}%</div></div>
             <div className="ops-center__metric"><div className="ops-center__metric-label">Avg ETA</div><div className="ops-center__metric-value">{metric(data?.analytics?.average_eta_minutes)}m</div></div>
             <div className="ops-center__metric"><div className="ops-center__metric-label">Avg Wait</div><div className="ops-center__metric-value">{metric(data?.analytics?.average_wait_minutes)}m</div></div>
-            <div className="ops-center__metric"><div className="ops-center__metric-label">Revenue / hr</div><div className="ops-center__metric-value">{data?.analytics?.revenue_per_hour === undefined || data?.analytics?.revenue_per_hour === null ? "—" : formatMoney(data.analytics.revenue_per_hour)}</div></div>
+            <div className="ops-center__metric"><div className="ops-center__metric-label">Revenue / hr</div><div className="ops-center__metric-value">{data?.analytics?.revenue_per_hour === undefined || data?.analytics?.revenue_per_hour === null ? "—" : formatMoneyOrDash(data.analytics.revenue_per_hour)}</div></div>
           </div>
         </div>
       )}

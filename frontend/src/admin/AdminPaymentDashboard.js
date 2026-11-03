@@ -6,7 +6,7 @@ import {
   StatusChip,
   DataTable,
   ExportMenu,
-  formatMoney,
+  formatMoneyOrDash,
 } from "./components/library";
 import { apiErrorMessage } from "./layouts/errors/apiErrorMessage";
 import {
@@ -57,7 +57,7 @@ function readInitialTab() {
 }
 
 function money(value) {
-  return formatMoney(value);
+  return formatMoneyOrDash(value);
 }
 
 function countAndAmount(block) {

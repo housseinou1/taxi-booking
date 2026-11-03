@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
-import { formatMoney } from "../../marketConfig";
+import { formatMoneyOrDash } from "../components/library/utils/formatters";
 import { exportGrowthReport, fetchGrowthDashboard } from "./growthApi";
 import "../beta/BetaDashboard.css";
 import "./GrowthExpansionDashboard.css";
@@ -43,7 +43,7 @@ function TrendChart({ items, valueKey = "revenue" }) {
             key={item.date || item.label}
             className="growth-chart__bar"
             style={{ height: `${height}%` }}
-            title={`${item.label || item.date}: ${formatMoney(value)}`}
+            title={`${item.label || item.date}: ${formatMoneyOrDash(value)}`}
           />
         );
       })}
@@ -160,11 +160,11 @@ export default function GrowthExpansionDashboard() {
       {tab === "revenue" ? (
         <section>
           <div className="beta__grid beta__grid--4">
-            <MetricCard label="Daily revenue" value={formatMoney(revenue.daily?.gross_revenue)} />
-            <MetricCard label="Weekly revenue" value={formatMoney(revenue.weekly?.gross_revenue)} />
-            <MetricCard label="Monthly revenue" value={formatMoney(revenue.monthly?.gross_revenue)} />
-            <MetricCard label="Avg revenue / ride" value={formatMoney(revenue.average_revenue_per_ride)} />
-            <MetricCard label="Avg revenue / delivery" value={formatMoney(revenue.average_revenue_per_delivery)} />
+            <MetricCard label="Daily revenue" value={formatMoneyOrDash(revenue.daily?.gross_revenue)} />
+            <MetricCard label="Weekly revenue" value={formatMoneyOrDash(revenue.weekly?.gross_revenue)} />
+            <MetricCard label="Monthly revenue" value={formatMoneyOrDash(revenue.monthly?.gross_revenue)} />
+            <MetricCard label="Avg revenue / ride" value={formatMoneyOrDash(revenue.average_revenue_per_ride)} />
+            <MetricCard label="Avg revenue / delivery" value={formatMoneyOrDash(revenue.average_revenue_per_delivery)} />
           </div>
           <div className="beta__panel" style={{ marginTop: "1rem" }}>
             <h3>Revenue trend (30 days)</h3>
@@ -178,7 +178,7 @@ export default function GrowthExpansionDashboard() {
           <div className="beta__grid beta__grid--4">
             <MetricCard label="Promo code usages" value={marketing.promo_code_usage?.total_usages} sub={`${marketing.promo_code_usage?.active || 0} active codes`} />
             <MetricCard label="Promo redemptions (30d)" value={marketing.analytics?.promo_redemptions_30d} />
-            <MetricCard label="Est. CAC" value={formatMoney(marketing.customer_acquisition_cost_estimate)} />
+            <MetricCard label="Est. CAC" value={formatMoneyOrDash(marketing.customer_acquisition_cost_estimate)} />
             <MetricCard label="Rider retention (7d)" value={marketing.retention_rate_pct != null ? `${marketing.retention_rate_pct}%` : "—"} />
             <MetricCard label="Repeat riders" value={marketing.repeat_riders} sub={`${marketing.repeat_rider_rate_pct || 0}% repeat rate`} />
             <MetricCard label="Reactivated users (30d)" value={marketing.reactivated_users_30d} />
@@ -250,8 +250,8 @@ export default function GrowthExpansionDashboard() {
         <section>
           <div className="beta__grid beta__grid--4">
             <MetricCard label="Monthly growth" value={forecast.monthly_growth_pct != null ? `${forecast.monthly_growth_pct}%` : "—"} />
-            <MetricCard label="Revenue forecast (daily)" value={formatMoney(forecast.revenue_forecast?.daily)} />
-            <MetricCard label="Revenue forecast (monthly)" value={formatMoney(forecast.revenue_forecast?.monthly)} />
+            <MetricCard label="Revenue forecast (daily)" value={formatMoneyOrDash(forecast.revenue_forecast?.daily)} />
+            <MetricCard label="Revenue forecast (monthly)" value={formatMoneyOrDash(forecast.revenue_forecast?.monthly)} />
             <MetricCard label="Driver demand estimate" value={forecast.driver_demand_estimate} />
             <MetricCard label="Additional drivers needed" value={forecast.fleet_requirements?.additional_drivers_recommended} />
             <MetricCard label="Fleet utilization" value={`${forecast.fleet_requirements?.utilization_pct ?? "—"}%`} />

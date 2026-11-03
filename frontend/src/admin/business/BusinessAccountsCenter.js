@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 
-import { formatMoney } from "../../marketConfig";
+import { formatMoneyOrDash } from "../components/library/utils/formatters";
 import {
   corporateAccountAction,
   exportCorporateInvoice,
@@ -118,9 +118,9 @@ export default function BusinessAccountsCenter() {
       <section className="beta__section">
         <h2 className="beta__section-title">CEO Dashboard</h2>
         <div className="beta__grid beta__grid--wide">
-          <MetricCard label="Corporate revenue (MTD)" value={formatMoney(ceo.corporate_revenue_mtd)} />
-          <MetricCard label="Monthly recurring revenue" value={formatMoney(ceo.monthly_recurring_revenue)} />
-          <MetricCard label="Outstanding invoices" value={formatMoney(ceo.outstanding_invoices)} />
+          <MetricCard label="Corporate revenue (MTD)" value={formatMoneyOrDash(ceo.corporate_revenue_mtd)} />
+          <MetricCard label="Monthly recurring revenue" value={formatMoneyOrDash(ceo.monthly_recurring_revenue)} />
+          <MetricCard label="Outstanding invoices" value={formatMoneyOrDash(ceo.outstanding_invoices)} />
           <MetricCard label="Approved companies" value={ceo.approved_companies} />
           <MetricCard label="Pending approval" value={ceo.pending_companies} />
         </div>
@@ -147,7 +147,7 @@ export default function BusinessAccountsCenter() {
                   <td>{account.status || (account.is_active ? "approved" : "suspended")}</td>
                   <td>{account.billing_type}</td>
                   <td>{account.employees}</td>
-                  <td>{formatMoney(account.balance)}</td>
+                  <td>{formatMoneyOrDash(account.balance)}</td>
                   <td>
                     <button type="button" className="beta__btn" onClick={() => openAccount(account)}>
                       Manage
@@ -228,9 +228,9 @@ export default function BusinessAccountsCenter() {
                   <td>
                     {invoice.period_start} → {invoice.period_end}
                   </td>
-                  <td>{formatMoney(invoice.subtotal)}</td>
-                  <td>{formatMoney(invoice.tax_amount)}</td>
-                  <td>{formatMoney(invoice.amount)}</td>
+                  <td>{formatMoneyOrDash(invoice.subtotal)}</td>
+                  <td>{formatMoneyOrDash(invoice.tax_amount)}</td>
+                  <td>{formatMoneyOrDash(invoice.amount)}</td>
                   <td>{invoice.status}</td>
                   <td>
                     <button type="button" className="beta__btn" onClick={() => markInvoicePaid(invoice.id)}>

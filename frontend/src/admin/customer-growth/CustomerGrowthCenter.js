@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 
-import { formatMoney } from "../../marketConfig";
+import { formatMoneyOrDash } from "../components/library/utils/formatters";
 import {
   createGrowthCampaign,
   createGrowthPromo,
@@ -198,7 +198,7 @@ export default function CustomerGrowthCenter() {
           <div className="beta__grid">
             <MetricCard label="Active promo codes" value={promotions.active_codes} />
             <MetricCard label="Usages (30d)" value={promotions.usages_30d} />
-            <MetricCard label="Discount spend (30d)" value={formatMoney(promotions.discount_spend_30d)} />
+            <MetricCard label="Discount spend (30d)" value={formatMoneyOrDash(promotions.discount_spend_30d)} />
           </div>
           <section className="customer-growth-panel">
             <h3>Create promo code</h3>
@@ -243,10 +243,10 @@ export default function CustomerGrowthCenter() {
       {tab === "finance" && financeData ? (
         <div className="beta__grid">
           <MetricCard label="Loyalty liability (pts)" value={financeData.loyalty_liability_points} />
-          <MetricCard label="Loyalty liability est." value={formatMoney(financeData.loyalty_liability_estimate_mru)} />
-          <MetricCard label="Promo cost (30d)" value={formatMoney(financeData.promo_cost_30d)} />
-          <MetricCard label="Referral payouts (30d)" value={formatMoney(financeData.referral_payouts_30d)} />
-          <MetricCard label="Campaign spending (30d)" value={formatMoney(financeData.campaign_spending_30d)} />
+          <MetricCard label="Loyalty liability est." value={formatMoneyOrDash(financeData.loyalty_liability_estimate_mru)} />
+          <MetricCard label="Promo cost (30d)" value={formatMoneyOrDash(financeData.promo_cost_30d)} />
+          <MetricCard label="Referral payouts (30d)" value={formatMoneyOrDash(financeData.referral_payouts_30d)} />
+          <MetricCard label="Campaign spending (30d)" value={formatMoneyOrDash(financeData.campaign_spending_30d)} />
         </div>
       ) : null}
 
@@ -256,9 +256,9 @@ export default function CustomerGrowthCenter() {
             <MetricCard label="New riders (30d)" value={ceoData.new_riders_30d} />
             <MetricCard label="Loyalty participation" value={`${ceoData.loyalty_participation_rate}%`} />
             <MetricCard label="Referral conversion" value={`${ceoData.referral_conversion_rate}%`} />
-            <MetricCard label="Est. CLV" value={formatMoney(ceoData.estimated_customer_lifetime_value)} />
+            <MetricCard label="Est. CLV" value={formatMoneyOrDash(ceoData.estimated_customer_lifetime_value)} />
             <MetricCard label="Campaign ROI proxy" value={ceoData.campaign_roi_proxy} />
-            <MetricCard label="Promo spend (30d)" value={formatMoney(ceoData.promo_spend_30d)} />
+            <MetricCard label="Promo spend (30d)" value={formatMoneyOrDash(ceoData.promo_spend_30d)} />
           </div>
           <section className="customer-growth-panel">
             <h3>Customer growth (weekly)</h3>

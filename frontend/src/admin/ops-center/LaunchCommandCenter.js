@@ -9,7 +9,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import authenticatedApi from "../../auth/authenticatedApi";
 import { API_URL } from "../../apiConfig";
 import { fetchOpsDashboard } from "./opsDashboardApi";
-import { formatMoney } from "../../marketConfig";
+import { formatMoneyOrDash } from "../components/library/utils/formatters";
 import "./LaunchCommandCenter.css";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -160,9 +160,9 @@ export default function LaunchCommandCenter() {
           <Kpi icon="🟠" label="Online Couriers" value={d.online_couriers || 0} tone="orange" />
           <Kpi icon="🛣️" label="Trips Today" value={d.trips_today || d.completed_rides || 0} tone="neutral" />
           <Kpi icon="📦" label="Deliveries Today" value={d.deliveries_today || 0} tone="orange" />
-          <Kpi icon="💰" label="Revenue Today" value={formatMoney(d.today_revenue || 0)} tone="green" />
-          <Kpi icon="🚗" label="Driver Earnings" value={formatMoney(d.total_driver_earnings || 0)} tone="neutral" />
-          <Kpi icon="📦" label="Courier Earnings" value={formatMoney(d.total_courier_earnings || 0)} tone="neutral" />
+          <Kpi icon="💰" label="Revenue Today" value={formatMoneyOrDash(d.today_revenue || 0)} tone="green" />
+          <Kpi icon="🚗" label="Driver Earnings" value={formatMoneyOrDash(d.total_driver_earnings || 0)} tone="neutral" />
+          <Kpi icon="📦" label="Courier Earnings" value={formatMoneyOrDash(d.total_courier_earnings || 0)} tone="neutral" />
         </div>
       </section>
 

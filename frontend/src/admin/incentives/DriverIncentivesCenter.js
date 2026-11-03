@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 
-import { formatMoney } from "../../marketConfig";
+import { formatMoneyOrDash } from "../components/library/utils/formatters";
 import {
   bonusExportUrl,
   createIncentiveCampaign,
@@ -162,7 +162,7 @@ export default function DriverIncentivesCenter() {
               <article key={campaign.id} className={`incentive-campaign ${campaign.status === "draft" ? "incentive-campaign--draft" : ""}`}>
                 <strong>{campaign.name}</strong> · {campaign.campaign_type.replaceAll("_", " ")}
                 <p>{campaign.description || "No description"}</p>
-                <p>Target {campaign.target_value} · {formatMoney(campaign.reward)} · {campaign.reward_type} · Status: {campaign.status}</p>
+                <p>Target {campaign.target_value} · {formatMoneyOrDash(campaign.reward)} · {campaign.reward_type} · Status: {campaign.status}</p>
                 <p>{campaign.participants} participants · {campaign.completed_count} completed</p>
                 {campaign.status === "draft" ? (
                   <div className="incentive-actions">
@@ -181,7 +181,7 @@ export default function DriverIncentivesCenter() {
             <MetricCard label="Active campaigns" value={ops.summary.active_campaigns} />
             <MetricCard label="Participation rate" value={`${ops.summary.participation_rate}%`} />
             <MetricCard label="Completion rate" value={`${ops.summary.completion_rate}%`} />
-            <MetricCard label="Bonuses earned" value={formatMoney(ops.summary.total_bonuses_earned)} />
+            <MetricCard label="Bonuses earned" value={formatMoneyOrDash(ops.summary.total_bonuses_earned)} />
             <MetricCard label="ROI estimate" value={`${ops.summary.roi_estimate_percent}%`} />
           </div>
           <section className="incentive-panel">
@@ -195,20 +195,20 @@ export default function DriverIncentivesCenter() {
 
       {tab === "ceo" && ceoData ? (
         <div className="incentive-grid">
-          <MetricCard label="Incentive cost (30d)" value={formatMoney(ceoData.incentive_cost_30d)} />
+          <MetricCard label="Incentive cost (30d)" value={formatMoneyOrDash(ceoData.incentive_cost_30d)} />
           <MetricCard label="Additional rides" value={ceoData.additional_rides_generated} />
-          <MetricCard label="Revenue increase est." value={formatMoney(ceoData.revenue_increase_estimate)} />
+          <MetricCard label="Revenue increase est." value={formatMoneyOrDash(ceoData.revenue_increase_estimate)} />
           <MetricCard label="Driver retention" value={`${ceoData.driver_retention_rate}%`} />
-          <MetricCard label="Pending payouts" value={formatMoney(ceoData.pending_payouts)} />
+          <MetricCard label="Pending payouts" value={formatMoneyOrDash(ceoData.pending_payouts)} />
         </div>
       ) : null}
 
       {tab === "finance" && financeData ? (
         <>
           <div className="incentive-grid">
-            <MetricCard label="Pending bonus" value={formatMoney(financeData.summary?.pending_bonus)} />
-            <MetricCard label="Paid bonus" value={formatMoney(financeData.summary?.paid_bonus)} />
-            <MetricCard label="Earned bonus" value={formatMoney(financeData.summary?.earned_bonus)} />
+            <MetricCard label="Pending bonus" value={formatMoneyOrDash(financeData.summary?.pending_bonus)} />
+            <MetricCard label="Paid bonus" value={formatMoneyOrDash(financeData.summary?.paid_bonus)} />
+            <MetricCard label="Earned bonus" value={formatMoneyOrDash(financeData.summary?.earned_bonus)} />
           </div>
           <section className="incentive-panel">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -219,7 +219,7 @@ export default function DriverIncentivesCenter() {
               <div key={row.id} className="incentive-payout-row">
                 <div>
                   <strong>{row.driver_name}</strong>
-                  <div>{row.program_name} · {formatMoney(row.amount)}</div>
+                  <div>{row.program_name} · {formatMoneyOrDash(row.amount)}</div>
                 </div>
                 <span>{row.payout_status}</span>
                 <div className="incentive-actions">
