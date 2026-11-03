@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import { formatMoneyOrDash } from "../components/library/utils/formatters";
+import { apiErrorMessage } from "../layouts/errors/apiErrorMessage";
 import {
   approveWithdrawal as approveWithdrawalApi,
   exportExecutiveReport,
@@ -27,6 +28,18 @@ function MetricCard({ label, value, tone = "" }) {
       <div className={`executive__metric-value executive__metric-value--${tone}`}>{value}</div>
     </div>
   );
+}
+
+/**
+ * A count that distinguishes a genuine zero from data the backend did not report.
+ *
+ * The cards previously used `value ?? 0`, so an absent field rendered "0" — the same
+ * fabricated-zero problem as the money cards, and inconsistent with the money cards
+ * and with "Avg Response Time", which already rendered "—". A real 0 still renders 0.
+ */
+function formatCount(value) {
+  if (value === null || value === undefined || value === "") return "—";
+  return value;
 }
 
 function QueueTable({ title, rows, columns }) {
@@ -138,6 +151,7 @@ export default function ExecutiveDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState("");
 
   const [pendingWithdrawals, setPendingWithdrawals] = useState([]);
   const [actionLoading, setActionLoading] = useState({});
@@ -168,8 +182,10 @@ export default function ExecutiveDashboard() {
           message: payload.maintenance_mode.message || "",
         });
       }
-    } catch {
-      setError("Unable to load executive dashboard.");
+    } catch (err) {
+      // Route through the shared mapper so a 404/500/network cause is named instead
+      // of a generic sentence that hides whether the backend is deployed.
+      setError(apiErrorMessage(err, { resource: "executive dashboard", action: "load" }));
     } finally {
       setLoading(false);
     }
@@ -183,15 +199,45 @@ export default function ExecutiveDashboard() {
 
   const handleExport = async (format) => {
     setExporting(true);
+    setExportError("");
     try {
       const response = await exportExecutiveReport({ export_format: format, period });
-      const blob = new Blob([response.data]);
+
+      // Do not trust a 200: verify the payload really is the requested file.
+      // The backend currently returns DRF-JSON-encoded bytes for csv/xlsx (so the
+      // "download" is a JSON string literal, not a spreadsheet) and 500s for pdf.
+      // Without this check the browser happily saves a file that Excel cannot open.
+      const contentType = String(
+        response?.headers?.["content-type"] || response?.headers?.["Content-Type"] || ""
+      );
+      const data = response?.data;
+      const looksJson =
+        (typeof data === "string" && /^\s*["{]/.test(data)) ||
+        contentType.includes("application/json") ||
+        contentType.includes("text/html");
+
+      if (looksJson) {
+        // A response that is not the requested file is a backend export problem, not a
+        // connectivity problem — say so rather than routing through the generic mapper,
+        // which would report "could not reach the backend" for a payload that arrived.
+        setExportError(
+          `The backend did not return a ${format.toUpperCase()} file ` +
+            `(content-type: ${contentType || "unknown"}). This is a backend export problem, not a connectivity issue.`
+        );
+        return;
+      }
+
+      const blob = new Blob([data], { type: contentType || "application/octet-stream" });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
       link.download = `yala-executive-report.${format === "xlsx" ? "xlsx" : format}`;
       link.click();
       window.URL.revokeObjectURL(url);
+    } catch (err) {
+      // Previously this had no catch at all, so a failed export (including the
+      // backend's 500 on PDF) produced no download AND no message.
+      setExportError(apiErrorMessage(err, { resource: `${format.toUpperCase()} export`, action: "generate" }));
     } finally {
       setExporting(false);
     }
@@ -310,24 +356,30 @@ export default function ExecutiveDashboard() {
         </div>
       </div>
 
+      {exportError ? (
+        <div className="executive__error" role="alert">
+          {exportError}
+        </div>
+      ) : null}
+
       <div className="executive__section-title">Live Metrics</div>
       <div className="executive__grid executive__grid--metrics">
-        <MetricCard label="Active Drivers" value={live.active_drivers ?? 0} tone="green" />
-        <MetricCard label="Active Couriers" value={live.active_couriers ?? 0} tone="orange" />
-        <MetricCard label="Active Riders" value={live.active_riders ?? 0} tone="blue" />
-        <MetricCard label="Active Deliveries" value={live.active_deliveries ?? 0} tone="purple" />
-        <MetricCard label="Active Trips" value={live.active_trips ?? 0} tone="blue" />
+        <MetricCard label="Active Drivers" value={formatCount(live.active_drivers)} tone="green" />
+        <MetricCard label="Active Couriers" value={formatCount(live.active_couriers)} tone="orange" />
+        <MetricCard label="Active Riders" value={formatCount(live.active_riders)} tone="blue" />
+        <MetricCard label="Active Deliveries" value={formatCount(live.active_deliveries)} tone="purple" />
+        <MetricCard label="Active Trips" value={formatCount(live.active_trips)} tone="blue" />
       </div>
 
       <div className="executive__section-title">Today</div>
       <div className="executive__grid executive__grid--metrics">
-        <MetricCard label="Trips" value={today.trips ?? 0} />
-        <MetricCard label="Deliveries" value={today.deliveries ?? 0} />
+        <MetricCard label="Trips" value={formatCount(today.trips)} />
+        <MetricCard label="Deliveries" value={formatCount(today.deliveries)} />
         <MetricCard label="Revenue" value={formatMoneyOrDash(today.revenue)} tone="gold" />
         <MetricCard label="Driver Earnings" value={formatMoneyOrDash(today.driver_earnings)} tone="green" />
         <MetricCard label="Platform Commission" value={formatMoneyOrDash(today.platform_commission)} tone="gold" />
-        <MetricCard label="Withdrawal Requests" value={today.withdrawal_requests ?? 0} />
-        <MetricCard label="Refund Requests" value={today.refund_requests ?? 0} tone="red" />
+        <MetricCard label="Withdrawal Requests" value={formatCount(today.withdrawal_requests)} />
+        <MetricCard label="Refund Requests" value={formatCount(today.refund_requests)} tone="red" />
       </div>
 
       <div className="executive__section-title">Financial Dashboard</div>
@@ -373,25 +425,29 @@ export default function ExecutiveDashboard() {
 
       <div className="executive__section-title">Fraud & Security</div>
       <div className="executive__grid executive__grid--metrics">
-        <MetricCard label="Blocked Accounts" value={security.blocked_accounts ?? 0} tone="red" />
-        <MetricCard label="Suspended Drivers" value={security.suspended_drivers ?? 0} tone="orange" />
-        <MetricCard label="Expired Documents" value={security.expired_documents ?? 0} />
-        <MetricCard label="High Cancellation Drivers" value={security.high_cancellation_drivers ?? 0} />
-        <MetricCard label="Duplicate Accounts" value={security.duplicate_accounts ?? 0} />
-        <MetricCard label="Failed Logins (24h)" value={security.failed_logins_24h ?? 0} />
+        <MetricCard label="Blocked Accounts" value={formatCount(security.blocked_accounts)} tone="red" />
+        <MetricCard label="Suspended Drivers" value={formatCount(security.suspended_drivers)} tone="orange" />
+        <MetricCard label="Expired Documents" value={formatCount(security.expired_documents)} />
+        <MetricCard label="High Cancellation Drivers" value={formatCount(security.high_cancellation_drivers)} />
+        <MetricCard label="Duplicate Accounts" value={formatCount(security.duplicate_accounts)} />
+        <MetricCard label="Failed Logins (24h)" value={formatCount(security.failed_logins_24h)} />
         <MetricCard
           label="2FA Enabled"
-          value={`${security.admin_2fa?.enabled ?? 0}/${security.admin_2fa?.total ?? 0}`}
+          value={
+            security.admin_2fa?.total
+              ? `${security.admin_2fa.enabled ?? 0}/${security.admin_2fa.total}`
+              : "—"
+          }
         />
-        <MetricCard label="Open Fraud Flags" value={security.open_fraud_flags ?? 0} tone="red" />
+        <MetricCard label="Open Fraud Flags" value={formatCount(security.open_fraud_flags)} tone="red" />
       </div>
 
       <div className="executive__section-title">Customer Support</div>
       <div className="executive__grid executive__grid--metrics">
-        <MetricCard label="Open Tickets" value={support.open_tickets ?? 0} />
-        <MetricCard label="Urgent Tickets" value={support.urgent_tickets ?? 0} tone="red" />
-        <MetricCard label="Refund Requests" value={support.refund_requests ?? 0} />
-        <MetricCard label="Disputes" value={support.disputes ?? 0} />
+        <MetricCard label="Open Tickets" value={formatCount(support.open_tickets)} />
+        <MetricCard label="Urgent Tickets" value={formatCount(support.urgent_tickets)} tone="red" />
+        <MetricCard label="Refund Requests" value={formatCount(support.refund_requests)} />
+        <MetricCard label="Disputes" value={formatCount(support.disputes)} />
         <MetricCard
           label="Avg Response Time"
           value={support.average_response_minutes ? `${support.average_response_minutes} min` : "—"}
@@ -519,8 +575,8 @@ export default function ExecutiveDashboard() {
         <MetricCard label="Gross (Operations)" value={formatMoneyOrDash(qa.gross_revenue_operations)} />
         <MetricCard label="Wallet Balance" value={formatMoneyOrDash(qa.wallet_balance)} />
         <MetricCard label="Pending Withdrawals" value={formatMoneyOrDash(qa.pending_withdrawals)} />
-        <MetricCard label="Driver Trips Today" value={qa.driver_trips_today ?? 0} />
-        <MetricCard label="Deliveries Today" value={qa.deliveries_today ?? 0} />
+        <MetricCard label="Driver Trips Today" value={formatCount(qa.driver_trips_today)} />
+        <MetricCard label="Deliveries Today" value={formatCount(qa.deliveries_today)} />
       </div>
       <div className="executive__card">
         <p className={qaPass ? "executive__qa-ok" : "executive__qa-fail"}>
