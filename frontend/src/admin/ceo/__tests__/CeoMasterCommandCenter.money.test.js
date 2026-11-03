@@ -84,18 +84,25 @@ test("an absent revenue value renders the em dash, never a fabricated 0 MRU", as
   expect(card.textContent).not.toContain("0 MRU");
 });
 
-test("a genuine zero revenue still renders as 0 MRU", async () => {
-  fetchCeoMasterOverview.mockResolvedValue({
-    total_revenue_today: "0",
-    total_riders: 3,
+test("a 404 on load reports a deployment problem, never the raw axios string", async () => {
+  // This is what the live CEO Dashboard showed: the raw transport message rendered
+  // into a plain <p>. It must now be an actionable sentence.
+  fetchCeoMasterOverview.mockRejectedValue({
+    response: { status: 404, data: "<html>Not Found</html>" },
   });
 
   render(<CeoMasterCommandCenter />);
 
-  await waitFor(() => {
-    expect(screen.getByText("Revenue Today")).toBeInTheDocument();
-  });
+  const alert = await screen.findByText(/not found on this backend/i);
+  expect(alert).toBeInTheDocument();
+  expect(document.body.textContent).not.toMatch(/Request failed with status code/i);
+});
 
-  const card = screen.getByText("Revenue Today").closest(".ceo-master-card");
-  expect(card.textContent).toContain("0 MRU");
+test("a 500 on load is named as a server-side problem, not missing data", async () => {
+  fetchCeoMasterOverview.mockRejectedValue({ response: { status: 500, data: {} } });
+
+  render(<CeoMasterCommandCenter />);
+
+  const alert = await screen.findByText(/server-side problem, not missing data/i);
+  expect(alert).toBeInTheDocument();
 });

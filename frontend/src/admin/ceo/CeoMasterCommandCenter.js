@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 
 import { formatMoneyOrDash } from "../components/library/utils/formatters";
+import { apiErrorMessage } from "../layouts/errors/apiErrorMessage";
 import { fetchExecutiveMetrics } from "./executiveMetricsApi";
 import {
   ceoMasterReportUrl,
@@ -106,7 +107,7 @@ export default function CeoMasterCommandCenter() {
       })
       .catch((err) => {
         if (cancelled) return;
-        setError(err?.response?.data?.detail || err?.message || "Failed to load CEO Master Command Center");
+        setError(apiErrorMessage(err, { resource: "CEO dashboard", action: "load" }));
       })
       .finally(() => {
         if (!cancelled) setOverviewLoading(false);
@@ -135,7 +136,7 @@ export default function CeoMasterCommandCenter() {
       })
       .catch((err) => {
         if (seq === detailRequestSeq.current) {
-          setError(err?.response?.data?.detail || err?.message || "Failed to load CEO Master Command Center");
+          setError(apiErrorMessage(err, { resource: "CEO dashboard", action: "load" }));
         }
       })
       .finally(() => {
@@ -152,7 +153,7 @@ export default function CeoMasterCommandCenter() {
       setMessage(`Broadcast sent to ${result.segment}: ${result.sent} recipients`);
       setBroadcastForm({ title: "", message: "", segment: "all" });
     } catch (err) {
-      setError(err?.response?.data?.detail || err?.message);
+      setError(apiErrorMessage(err, { resource: "executive action", action: "apply" }));
     }
   };
 
@@ -162,7 +163,7 @@ export default function CeoMasterCommandCenter() {
       setMessage(`Platform freeze set to ${result.maintenance_mode}`);
       setFreezeReason("");
     } catch (err) {
-      setError(err?.response?.data?.detail || err?.message);
+      setError(apiErrorMessage(err, { resource: "executive action", action: "apply" }));
     }
   };
 
@@ -176,7 +177,7 @@ export default function CeoMasterCommandCenter() {
       });
       setMessage(`Approved ${result.entity_type} #${result.entity_id}`);
     } catch (err) {
-      setError(err?.response?.data?.detail || err?.message);
+      setError(apiErrorMessage(err, { resource: "executive action", action: "apply" }));
     }
   };
 
@@ -189,7 +190,7 @@ export default function CeoMasterCommandCenter() {
       });
       setMessage(`Approved payout #${result.id} — ${formatMoneyOrDash(result.amount)}`);
     } catch (err) {
-      setError(err?.response?.data?.detail || err?.message);
+      setError(apiErrorMessage(err, { resource: "executive action", action: "apply" }));
     }
   };
 
@@ -202,7 +203,7 @@ export default function CeoMasterCommandCenter() {
       });
       setMessage(`Activated incentive campaign: ${result.name}`);
     } catch (err) {
-      setError(err?.response?.data?.detail || err?.message);
+      setError(apiErrorMessage(err, { resource: "executive action", action: "apply" }));
     }
   };
 

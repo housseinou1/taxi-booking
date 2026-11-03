@@ -415,14 +415,23 @@
 
 /* Responsive */
 @media (max-width: 768px) {
+  /*
+   * Nine tabs stacked full-width pushed roughly 400px of navigation above the first
+   * KPI card on a phone. A horizontal scroll strip keeps the tab bar one row tall and
+   * preserves the desktop reading order, which is the standard enterprise pattern.
+   */
   .ceo-master-tabs {
-    flex-direction: column;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    padding-bottom: 8px;
   }
 
   .ceo-master-tab {
-    width: 100%;
-    justify-content: center;
-    gap: 12px;
+    flex: 0 0 auto;
+    white-space: nowrap;
   }
 
   .ceo-master-content {
