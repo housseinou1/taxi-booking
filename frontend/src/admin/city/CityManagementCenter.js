@@ -20,6 +20,7 @@ import {
   updateCityPricing,
 } from "./cityManagementApi";
 import { formatMoneyOrDash } from "../components/library/utils/formatters";
+import { apiErrorMessage } from "../layouts/errors/apiErrorMessage";
 import "./CityManagementCenter.css";
 
 /**
@@ -104,6 +105,28 @@ function money(value) {
   return formatMoneyOrDash(value);
 }
 
+/**
+ * Coordinates for the registry table.
+ *
+ * `Number(city.latitude).toFixed(4)` renders "NaN" for a city registered without
+ * coordinates, which reads as a measured value. Absent coordinates are shown as a dash.
+ */
+function coords(city) {
+  const lat = city?.latitude;
+  const lng = city?.longitude;
+  const latNum = lat === null || lat === undefined || lat === "" ? NaN : Number(lat);
+  const lngNum = lng === null || lng === undefined || lng === "" ? NaN : Number(lng);
+  if (Number.isNaN(latNum) || Number.isNaN(lngNum)) return "—";
+  return `${latNum.toFixed(4)}, ${lngNum.toFixed(4)}`;
+}
+
+/** Columns the registry can be sorted by. Sorting is client-side over the loaded page. */
+const SORTABLE = {
+  name: (city) => String(city.name || "").toLowerCase(),
+  region: (city) => String(city.region || "").toLowerCase(),
+  operational_status: (city) => String(city.operational_status || "").toLowerCase(),
+};
+
 export default function CityManagementCenter() {
   const [cities, setCities] = useState([]);
   const [regions, setRegions] = useState([]);
@@ -114,6 +137,7 @@ export default function CityManagementCenter() {
   const [search, setSearch] = useState("");
   const [regionFilter, setRegionFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [sort, setSort] = useState({ key: "name", direction: "asc" });
 
   const [selectedId, setSelectedId] = useState(null);
   const [detail, setDetail] = useState(null);
@@ -147,10 +171,7 @@ export default function CityManagementCenter() {
       setRegions(response.data.regions || []);
       setCapabilities(response.data.capabilities || null);
     } catch (err) {
-      setError(
-        err?.response?.data?.detail ||
-          "City Management could not be loaded. Check your access level and try again."
-      );
+      setError(apiErrorMessage(err, { resource: "City Management" }));
     } finally {
       setLoading(false);
     }
@@ -191,7 +212,7 @@ export default function CityManagementCenter() {
         )
       );
     } catch (err) {
-      setError(err?.response?.data?.detail || "City details could not be loaded.");
+      setError(apiErrorMessage(err, { resource: "city details" }));
     }
   }, []);
 
@@ -211,6 +232,27 @@ export default function CityManagementCenter() {
     [cities, selectedId, detail]
   );
 
+  // Client-side sort over the loaded registry. The table headers toggle it.
+  const sortedCities = useMemo(() => {
+    const read = SORTABLE[sort.key];
+    if (!read) return cities;
+    const next = [...cities].sort((a, b) => {
+      const left = read(a);
+      const right = read(b);
+      if (left < right) return -1;
+      if (left > right) return 1;
+      return 0;
+    });
+    return sort.direction === "desc" ? next.reverse() : next;
+  }, [cities, sort]);
+
+  const toggleSort = (key) =>
+    setSort((prev) =>
+      prev.key === key
+        ? { key, direction: prev.direction === "asc" ? "desc" : "asc" }
+        : { key, direction: "asc" }
+    );
+
   const run = useCallback(async (action, successMessage) => {
     setBusy(true);
     setError("");
@@ -222,10 +264,7 @@ export default function CityManagementCenter() {
       }
       return response;
     } catch (err) {
-      setError(
-        err?.response?.data?.detail ||
-          "The action could not be completed. Nothing was changed."
-      );
+      setError(apiErrorMessage(err, { resource: "the city action", action: "complete" }));
       return null;
     } finally {
       setBusy(false);
@@ -358,6 +397,57 @@ export default function CityManagementCenter() {
           <button type="button" className="cmc-link" onClick={() => setDuplicates(null)}>
             dismiss
           </button>
+
+          {/*
+            The count alone is not actionable - an administrator cannot identify which
+            cities collide from a number. Each group is listed by normalised name with the
+            exact rows, so a decision can be made and handed to the backend. This panel is
+            strictly read-only: nothing here deletes, merges or edits a record.
+          */}
+          {Object.entries(duplicates.groups || {}).length === 0 ? (
+            <p className="cmc-hint">No duplicate groups found.</p>
+          ) : (
+            <div className="cmc-duplicates">
+              {Object.entries(duplicates.groups || {}).map(([key, rows]) => (
+                <div className="cmc-duplicate-group" key={key}>
+                  <div className="cmc-duplicate-head">
+                    <strong>{rows[0]?.name || key}</strong>
+                    <span className="cmc-hint">{rows.length} records</span>
+                  </div>
+                  <table className="cmc-table cmc-table-compact">
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>French</th>
+                        <th>Region</th>
+                        <th>Coordinates</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map((row) => (
+                        <tr key={row.id}>
+                          <td className="cmc-mono">{row.id}</td>
+                          <td>
+                            <strong>{row.name}</strong>
+                          </td>
+                          <td>{row.name_fr || "—"}</td>
+                          <td>{row.region || "—"}</td>
+                          <td className="cmc-mono">{coords(row)}</td>
+                          <td>{row.operational_status || row.status || "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ))}
+              <p className="cmc-hint">
+                Read-only report. Nothing on this page deletes, merges or edits these rows —
+                consolidation is a backend decision.
+              </p>
+            </div>
+          )}
         </div>
       )}
 
@@ -471,16 +561,28 @@ export default function CityManagementCenter() {
             <table className="cmc-table">
               <thead>
                 <tr>
-                  <th>City</th>
-                  <th>Region</th>
+                  <th aria-sort={sort.key === "name" ? (sort.direction === "asc" ? "ascending" : "descending") : "none"}>
+                    <button type="button" className="cmc-sort" onClick={() => toggleSort("name")}>
+                      City {sort.key === "name" ? (sort.direction === "asc" ? "▲" : "▼") : ""}
+                    </button>
+                  </th>
+                  <th aria-sort={sort.key === "region" ? (sort.direction === "asc" ? "ascending" : "descending") : "none"}>
+                    <button type="button" className="cmc-sort" onClick={() => toggleSort("region")}>
+                      Region {sort.key === "region" ? (sort.direction === "asc" ? "▲" : "▼") : ""}
+                    </button>
+                  </th>
                   <th>Arabic</th>
                   <th>Coordinates</th>
-                  <th>Status</th>
+                  <th aria-sort={sort.key === "operational_status" ? (sort.direction === "asc" ? "ascending" : "descending") : "none"}>
+                    <button type="button" className="cmc-sort" onClick={() => toggleSort("operational_status")}>
+                      Status {sort.key === "operational_status" ? (sort.direction === "asc" ? "▲" : "▼") : ""}
+                    </button>
+                  </th>
                   <th />
                 </tr>
               </thead>
               <tbody>
-                {cities.map((city) => (
+                {sortedCities.map((city) => (
                   <tr
                     key={city.id}
                     className={city.id === selectedId ? "cmc-row-selected" : ""}
@@ -491,9 +593,7 @@ export default function CityManagementCenter() {
                     </td>
                     <td>{city.region}</td>
                     <td dir="rtl">{city.name_ar || "—"}</td>
-                    <td className="cmc-mono">
-                      {Number(city.latitude).toFixed(4)}, {Number(city.longitude).toFixed(4)}
-                    </td>
+                    <td className="cmc-mono">{coords(city)}</td>
                     <td>
                       <span className={statusClass(city.operational_status)}>
                         {STATUS_LABELS[city.operational_status] || city.operational_status}

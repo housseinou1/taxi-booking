@@ -395,3 +395,66 @@
   gap: 8px;
 }
 
+/* ── Sortable registry headers ────────────────────────────────────────────── */
+
+.cmc-sort {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.cmc-sort:hover {
+  text-decoration: underline;
+}
+
+.cmc-sort:focus-visible {
+  outline: 2px solid #c9a227;
+  outline-offset: 2px;
+}
+
+/* ── Duplicate review: read-only group listing ────────────────────────────── */
+
+.cmc-duplicates {
+  margin-top: 12px;
+}
+
+.cmc-duplicate-group {
+  margin-bottom: 14px;
+}
+
+.cmc-duplicate-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.cmc-table-compact th,
+.cmc-table-compact td {
+  padding: 6px 10px;
+  font-size: 0.82rem;
+}
+
+.cmc-table-compact {
+  min-width: 640px;
+}
+
+/* Keep the group tables scrollable on narrow screens instead of breaking the page. */
+.cmc-duplicate-group .cmc-table {
+  display: block;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .cmc-table-compact {
+    min-width: 520px;
+  }
+}
+
+
