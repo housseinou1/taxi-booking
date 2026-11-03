@@ -440,6 +440,191 @@
   font-size: 0.82rem;
 }
 
+/* ── YALA geographical identification ─────────────────────────────────────── */
+
+/* Code badges. An assigned code is solid; a proposed one is dashed and muted so it can
+   never be mistaken for a value the server actually holds. */
+.cmc-code {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 5px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.cmc-code--set {
+  background: #e7f3ec;
+  border: 1px solid #9dc9b0;
+  color: #1c6b3f;
+}
+
+.cmc-code--proposed {
+  background: transparent;
+  border: 1px dashed #b9a24a;
+  color: #8a7420;
+}
+
+.cmc-code--none {
+  background: transparent;
+  border: 1px solid #d8dde5;
+  color: #8a94a3;
+}
+
+.cmc-flag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 4px;
+  background: #fdf3d7;
+  border: 1px solid #e4cf8a;
+  color: #7a6415;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  vertical-align: middle;
+}
+
+.cmc-flag--dup {
+  background: #fdeeee;
+  border-color: #e8b4b4;
+  color: #8a2020;
+}
+
+.cmc-identity-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 14px;
+}
+
+.cmc-identity-bar__item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: #f3f5f8;
+  border: 1px solid #e0e5ec;
+  color: #46505f;
+  font-size: 0.8rem;
+}
+
+.cmc-identity-bar__item strong {
+  font-size: 0.95rem;
+  color: #1d2530;
+}
+
+.cmc-identity-bar__item--ok {
+  background: #e7f3ec;
+  border-color: #9dc9b0;
+  color: #1c6b3f;
+}
+
+.cmc-identity-bar__item--proposed {
+  background: #fdf9e8;
+  border-color: #e4cf8a;
+  color: #7a6415;
+}
+
+.cmc-identity-bar__item--warn {
+  background: #fdeeee;
+  border-color: #e8b4b4;
+  color: #8a2020;
+}
+
+/* Identification block in the city detail panel. */
+.cmc-identity {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px 18px;
+  margin: 10px 0 0;
+  padding: 12px 14px;
+  background: #f7f9fc;
+  border: 1px solid #e0e5ec;
+  border-radius: 8px;
+}
+
+.cmc-identity dt {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6b7686;
+  margin-bottom: 3px;
+}
+
+.cmc-identity dd {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #1d2530;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ── Nouakchott: one capital, three boroughs ──────────────────────────────── */
+
+.cmc-borough-row > td {
+  background: #f7f9fc;
+  padding: 0 !important;
+  border-bottom: 2px solid #e0e5ec;
+}
+
+.cmc-boroughs {
+  padding: 12px 16px 14px 34px;
+}
+
+.cmc-boroughs__title {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #1d2530;
+}
+
+.cmc-boroughs__list {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.cmc-boroughs__list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 9px;
+  font-size: 0.85rem;
+}
+
+.cmc-boroughs__name {
+  font-weight: 600;
+  color: #26303d;
+  min-width: 150px;
+}
+
+.cmc-boroughs__note {
+  color: #6b7686;
+  font-size: 0.78rem;
+}
+
+@media (max-width: 640px) {
+  .cmc-boroughs {
+    padding-left: 16px;
+  }
+
+  .cmc-boroughs__name {
+    min-width: 0;
+  }
+}
+
+
 .cmc-table-compact {
   min-width: 640px;
 }

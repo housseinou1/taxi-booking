@@ -21,6 +21,13 @@ import {
 } from "./cityManagementApi";
 import { formatMoneyOrDash } from "../components/library/utils/formatters";
 import { apiErrorMessage } from "../layouts/errors/apiErrorMessage";
+import {
+  CLASSIFICATIONS,
+  WILAYAS,
+  isNouakchott,
+  nouakchottBoroughs,
+  resolveCityIdentity,
+} from "./mauritaniaGeoIdentity";
 import "./CityManagementCenter.css";
 
 /**
@@ -118,6 +125,29 @@ function coords(city) {
   const lngNum = lng === null || lng === undefined || lng === "" ? NaN : Number(lng);
   if (Number.isNaN(latNum) || Number.isNaN(lngNum)) return "—";
   return `${latNum.toFixed(4)}, ${lngNum.toFixed(4)}`;
+}
+
+/** A YALA identification code. Proposals are visibly distinct from assigned codes. */
+function CodeBadge({ code, assigned, label }) {
+  if (!code) {
+    return (
+      <span className="cmc-code cmc-code--none" title={`No ${label} code assigned yet.`}>
+        —
+      </span>
+    );
+  }
+  return (
+    <span
+      className={`cmc-code ${assigned ? "cmc-code--set" : "cmc-code--proposed"}`}
+      title={
+        assigned
+          ? `Assigned ${label} code`
+          : `Proposed ${label} code — not yet assigned on the server.`
+      }
+    >
+      {code}
+    </span>
+  );
 }
 
 /** Columns the registry can be sorted by. Sorting is client-side over the loaded page. */
@@ -246,12 +276,66 @@ export default function CityManagementCenter() {
     return sort.direction === "desc" ? next.reverse() : next;
   }, [cities, sort]);
 
+  /** Full YALA identification for the city currently open in the detail panel. */
+  const selectedGeo = useMemo(
+    () =>
+      selectedCity
+        ? resolveCityIdentity({
+            cityName: selectedCity.name,
+            regionName: selectedCity.region,
+            serverCode: selectedCity.code,
+            isoCountryCode: selectedCity.iso_country_code,
+          })
+        : null,
+    [selectedCity]
+  );
+
   const toggleSort = (key) =>
     setSort((prev) =>
       prev.key === key
         ? { key, direction: prev.direction === "asc" ? "desc" : "asc" }
         : { key, direction: "asc" }
     );
+
+  /**
+   * YALA identification for every loaded city, plus the codes carried by the server.
+   * Derived on the client so the registry shows codes immediately; nothing is written back.
+   */
+  const geoRows = useMemo(() => {
+    const rows = sortedCities.map((city) => ({
+      city,
+      geo: resolveCityIdentity({
+        cityName: city.name,
+        regionName: city.region,
+        serverCode: city.code,
+        isoCountryCode: city.iso_country_code,
+      }),
+    }));
+
+    // Two rows sharing a YALA identification are the same place registered twice. The code
+    // is what makes the collision obvious, so flag it here rather than leaving the CEO to
+    // spot two identical strings in a 60-row table.
+    const counts = rows.reduce((map, row) => {
+      const id = row.geo.yalaId;
+      if (id) map[id] = (map[id] || 0) + 1;
+      return map;
+    }, {});
+
+    return rows.map((row) => ({
+      ...row,
+      duplicateId: row.geo.yalaId && counts[row.geo.yalaId] > 1 ? counts[row.geo.yalaId] : 0,
+    }));
+  }, [sortedCities]);
+
+  /** Counts that make the identification coverage visible at a glance. */
+  const codeCoverage = useMemo(() => {
+    const assigned = geoRows.filter((row) => row.geo.cityCode && row.geo.assigned).length;
+    const proposed = geoRows.filter((row) => row.geo.cityCode && !row.geo.assigned).length;
+    const missing = geoRows.filter((row) => !row.geo.cityCode).length;
+    const legacy = geoRows.filter((row) => row.geo.isLegacyRegion).length;
+    const duplicates = geoRows.filter((row) => row.duplicateId).length;
+    return { assigned, proposed, missing, legacy, duplicates, total: geoRows.length };
+  }, [geoRows]);
 
   const run = useCallback(async (action, successMessage) => {
     setBusy(true);
@@ -552,6 +636,48 @@ export default function CityManagementCenter() {
           </div>
         </div>
 
+        {/*
+          Identification coverage. Shows how much of the registry already carries a permanent
+          YALA code, so the gap is visible rather than implied. Proposals are counted
+          separately from codes the server actually holds.
+        */}
+        <div className="cmc-identity-bar">
+          <span className="cmc-identity-bar__item">
+            <strong>{WILAYAS.length}</strong>
+            wilayas in the scheme
+          </span>
+          <span className="cmc-identity-bar__item cmc-identity-bar__item--ok">
+            <strong>{codeCoverage.assigned}</strong>
+            assigned codes
+          </span>
+          <span className="cmc-identity-bar__item cmc-identity-bar__item--proposed">
+            <strong>{codeCoverage.proposed}</strong>
+            proposed codes
+          </span>
+          <span className="cmc-identity-bar__item">
+            <strong>{codeCoverage.missing}</strong>
+            awaiting a code
+          </span>
+          {codeCoverage.legacy > 0 ? (
+            <span
+              className="cmc-identity-bar__item cmc-identity-bar__item--warn"
+              title="Rows filed under a region named after the city itself. They resolve to the correct wilaya code but the backend still lists them as separate regions."
+            >
+              <strong>{codeCoverage.legacy}</strong>
+              legacy region rows
+            </span>
+          ) : null}
+          {codeCoverage.duplicates > 0 ? (
+            <span
+              className="cmc-identity-bar__item cmc-identity-bar__item--warn"
+              title="Rows that resolve to the same YALA identification — the same place registered more than once. Reported only; nothing is merged or deleted here."
+            >
+              <strong>{codeCoverage.duplicates}</strong>
+              duplicate identifications
+            </span>
+          ) : null}
+        </div>
+
         {loading ? (
           <p className="cmc-hint">Loading the city registry…</p>
         ) : cities.length === 0 ? (
@@ -568,50 +694,106 @@ export default function CityManagementCenter() {
                   </th>
                   <th aria-sort={sort.key === "region" ? (sort.direction === "asc" ? "ascending" : "descending") : "none"}>
                     <button type="button" className="cmc-sort" onClick={() => toggleSort("region")}>
-                      Region {sort.key === "region" ? (sort.direction === "asc" ? "▲" : "▼") : ""}
+                      Region / Wilaya {sort.key === "region" ? (sort.direction === "asc" ? "▲" : "▼") : ""}
                     </button>
                   </th>
-                  <th>Arabic</th>
-                  <th>Coordinates</th>
+                  <th>Region Code</th>
+                  <th>City Code</th>
+                  <th>YALA Identification</th>
+                  <th>Classification</th>
                   <th aria-sort={sort.key === "operational_status" ? (sort.direction === "asc" ? "ascending" : "descending") : "none"}>
                     <button type="button" className="cmc-sort" onClick={() => toggleSort("operational_status")}>
-                      Status {sort.key === "operational_status" ? (sort.direction === "asc" ? "▲" : "▼") : ""}
+                      Service Status {sort.key === "operational_status" ? (sort.direction === "asc" ? "▲" : "▼") : ""}
                     </button>
                   </th>
                   <th />
                 </tr>
               </thead>
               <tbody>
-                {sortedCities.map((city) => (
-                  <tr
-                    key={city.id}
-                    className={city.id === selectedId ? "cmc-row-selected" : ""}
-                  >
-                    <td>
-                      <strong>{city.name}</strong>
-                      <div className="cmc-sub">{city.name_fr || "—"}</div>
-                    </td>
-                    <td>{city.region}</td>
-                    <td dir="rtl">{city.name_ar || "—"}</td>
-                    <td className="cmc-mono">{coords(city)}</td>
-                    <td>
-                      <span className={statusClass(city.operational_status)}>
-                        {STATUS_LABELS[city.operational_status] || city.operational_status}
-                      </span>
-                    </td>
-                    <td>
-                      <button
-                        type="button"
-                        className="cmc-btn cmc-btn-ghost"
-                        onClick={() => {
-                          setSelectedId(city.id);
-                          setTab("details");
-                        }}
-                      >
-                        Manage
-                      </button>
-                    </td>
-                  </tr>
+                {geoRows.map(({ city, geo, duplicateId }) => (
+                  <React.Fragment key={city.id}>
+                    <tr className={city.id === selectedId ? "cmc-row-selected" : ""}>
+                      <td>
+                        <strong>{city.name}</strong>
+                        <div className="cmc-sub">
+                          {city.name_fr && city.name_fr !== city.name ? `${city.name_fr} · ` : ""}
+                          <span dir="rtl">{city.name_ar || "—"}</span>
+                        </div>
+                      </td>
+                      <td>
+                        {geo.regionName}
+                        {geo.isLegacyRegion ? (
+                          <span
+                            className="cmc-flag"
+                            title="This row is filed under a region named after the city itself. The backend lists it as a separate region; it belongs to the wilaya shown."
+                          >
+                            legacy region
+                          </span>
+                        ) : null}
+                      </td>
+                      <td>
+                        <CodeBadge code={geo.regionCode} assigned label="region" />
+                      </td>
+                      <td>
+                        <CodeBadge code={geo.cityCode} assigned={geo.assigned} label="city" />
+                      </td>
+                      <td className="cmc-mono">
+                        {geo.yalaId || "—"}
+                        {duplicateId ? (
+                          <span
+                            className="cmc-flag cmc-flag--dup"
+                            title={`${duplicateId} registry rows resolve to this same identification. They are the same place registered more than once. Consolidation is a backend decision; nothing here changes a record.`}
+                          >
+                            duplicate id
+                          </span>
+                        ) : null}
+                      </td>
+                      <td>{geo.classification}</td>
+                      <td>
+                        <span className={statusClass(city.operational_status)}>
+                          {STATUS_LABELS[city.operational_status] || city.operational_status}
+                        </span>
+                      </td>
+                      <td>
+                        <button
+                          type="button"
+                          className="cmc-btn cmc-btn-ghost"
+                          onClick={() => {
+                            setSelectedId(city.id);
+                            setTab("details");
+                          }}
+                        >
+                          Manage
+                        </button>
+                      </td>
+                    </tr>
+                    {isNouakchott(city.name) ? (
+                      <tr className="cmc-borough-row">
+                        <td colSpan={8}>
+                          <div className="cmc-boroughs">
+                            <span className="cmc-boroughs__title">
+                              Capital boroughs of {city.name} — one city, three boroughs
+                            </span>
+                            <ul className="cmc-boroughs__list">
+                              {nouakchottBoroughs().map((borough) => (
+                                <li key={borough.code}>
+                                  <span className="cmc-boroughs__name">{borough.name}</span>
+                                  <span className="cmc-code cmc-code--set">{borough.code}</span>
+                                  <span className="cmc-boroughs__note">
+                                    Wilaya: {borough.regionCode} · separate operational reporting
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                            <span className="cmc-hint">
+                              The boroughs are not separate cities in the registry yet. Registering
+                              them is a backend step; nothing here creates a record.
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : null}
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>
@@ -631,10 +813,47 @@ export default function CityManagementCenter() {
                 </span>
               </h3>
               <p className="cmc-hint">
-                {selectedCity.region} · {selectedCity.country} ·{" "}
+                {selectedGeo?.regionName || selectedCity.region} · {selectedCity.country} ·{" "}
                 {selectedCity.iso_country_code} · {selectedCity.timezone}
-                {selectedCity.code ? ` · code ${selectedCity.code}` : ""}
               </p>
+              {selectedGeo ? (
+                <dl className="cmc-identity">
+                  <div>
+                    <dt>Region / Wilaya</dt>
+                    <dd>
+                      {selectedGeo.regionName}{" "}
+                      <CodeBadge code={selectedGeo.regionCode} assigned label="region" />
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>City</dt>
+                    <dd>
+                      {selectedCity.name}{" "}
+                      <CodeBadge
+                        code={selectedGeo.cityCode}
+                        assigned={selectedGeo.assigned}
+                        label="city"
+                      />
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>YALA Identification</dt>
+                    <dd className="cmc-mono">{selectedGeo.yalaId || "—"}</dd>
+                  </div>
+                  <div>
+                    <dt>Classification</dt>
+                    <dd>{selectedGeo.classification}</dd>
+                  </div>
+                  <div>
+                    <dt>Borough</dt>
+                    <dd>{selectedGeo.borough || "—"}</dd>
+                  </div>
+                  <div>
+                    <dt>Coordinates</dt>
+                    <dd className="cmc-mono">{coords(selectedCity)}</dd>
+                  </div>
+                </dl>
+              ) : null}
             </div>
             <div className="cmc-header-actions">
               <button

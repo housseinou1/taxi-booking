@@ -46,9 +46,9 @@ jest.mock("../../layouts/AdminShell", () => ({
 }));
 
 const CITIES = [
-  { id: 1, name: "Zouerate", name_fr: "Zouérat", name_ar: "", region: "Tiris Zemmour", latitude: 22.7, longitude: -12.5, operational_status: "registered", is_active: true, is_live: false },
-  { id: 2, name: "Atar", name_fr: "Atar", name_ar: "أطار", region: "Adrar", latitude: null, longitude: null, operational_status: "registered", is_active: true, is_live: false },
-  { id: 3, name: "Aleg", name_fr: "Aleg", name_ar: "", region: "Brakna", latitude: 17.05, longitude: -13.9, operational_status: "live", is_active: true, is_live: true },
+  { id: 1, name: "Zouerate", name_fr: "Zouérat", name_ar: "", region: "Tiris Zemmour", latitude: 22.7, longitude: -12.5, operational_status: "registered", is_active: true, is_live: false, code: "ZOU", iso_country_code: "MR" },
+  { id: 2, name: "Atar", name_fr: "Atar", name_ar: "أطار", region: "Adrar", latitude: null, longitude: null, operational_status: "registered", is_active: true, is_live: false, code: "ATR", iso_country_code: "MR" },
+  { id: 3, name: "Aleg", name_fr: "Aleg", name_ar: "", region: "Brakna", latitude: 17.05, longitude: -13.9, operational_status: "live", is_active: true, is_live: true, code: "", iso_country_code: "MR" },
 ];
 
 beforeEach(() => {
@@ -84,8 +84,28 @@ test("never renders NaN for a city registered without coordinates", async () => 
   expect(atar.textContent).not.toContain("NaN");
   expect(atar.textContent).toContain("—");
 
-  // A city that does have coordinates still shows them.
-  expect(rowFor("Zouerate").textContent).toContain("22.7000, -12.5000");
+  // Coordinates now live in the detail panel, where a real value still renders.
+  fireEvent.click(within(rowFor("Zouerate")).getByRole("button", { name: "Manage" }));
+  await waitFor(() =>
+    expect(document.body.textContent).toContain("22.7000, -12.5000")
+  );
+});
+
+test("the registry shows the YALA region and city identification codes", async () => {
+  render(<CityManagementCenter />);
+  await waitForTable();
+
+  // Zouerate carries ZOU from the server; its wilaya is Tiris Zemmour (TZM).
+  const zou = rowFor("Zouerate");
+  expect(zou.textContent).toContain("TZM");
+  expect(zou.textContent).toContain("ZOU");
+  expect(zou.textContent).toContain("MR-TZM-ZOU");
+
+  // Atar is the Adrar wilaya seat, so its code comes from the scheme (ATR).
+  const atar = rowFor("Atar");
+  expect(atar.textContent).toContain("ADR");
+  expect(atar.textContent).toContain("ATR");
+  expect(atar.textContent).toContain("MR-ADR-ATR");
 });
 
 test("the registry can be sorted by name, toggling direction", async () => {
@@ -132,6 +152,35 @@ test("the duplicate panel lists the colliding rows, not just a count", async () 
   expect(panel.textContent).toMatch(/read-only/i);
   // Nothing in the panel may offer a destructive control.
   expect(within(panel).queryByRole("button", { name: /delete|merge|remove/i })).not.toBeInTheDocument();
+});
+
+test("flags two registry rows that share one YALA identification", async () => {
+  fetchCities.mockResolvedValue({
+    data: {
+      cities: [
+        { id: 8, name: "Atar", name_fr: "Atar", name_ar: "", region: "Adrar", latitude: 20.51, longitude: -13.04, operational_status: "registered", is_active: true, is_live: false, code: "ATR", iso_country_code: "MR" },
+        { id: 3, name: "Atar", name_fr: "Atar", name_ar: "", region: "Atar", latitude: 20.51, longitude: -13.04, operational_status: "registered", is_active: true, is_live: false, code: "", iso_country_code: "MR" },
+      ],
+      regions: [],
+      capabilities: { can_manage: true, can_ceo_actions: true, city_management_ready: true },
+    },
+  });
+
+  render(<CityManagementCenter />);
+  await waitForTable();
+
+  // Both rows resolve to MR-ADR-ATR, which is what exposes the duplication.
+  const flagged = document.querySelectorAll(".cmc-flag--dup");
+  expect(flagged.length).toBe(2);
+  expect(document.body.textContent).toMatch(/duplicate identifications/i);
+});
+
+test("a unique city is never flagged as a duplicate identification", async () => {
+  render(<CityManagementCenter />);
+  await waitForTable();
+
+  expect(rowFor("Zouerate").textContent).not.toMatch(/duplicate id/i);
+  expect(rowFor("Aleg").textContent).not.toMatch(/duplicate id/i);
 });
 
 test("a 404 names a deployment problem rather than the raw axios string", async () => {
