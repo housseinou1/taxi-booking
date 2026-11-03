@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { API_URL } from "../../apiConfig";
 import authenticatedApi from "../../auth/authenticatedApi";
 import { formatMoneyOrDash } from "../components/library/utils/formatters";
+import { apiErrorMessage } from "../layouts/errors/apiErrorMessage";
 import { fetchExecutiveDashboard, fetchPendingWithdrawals } from "../executive/executiveApi";
 import {
   ceoMasterReportUrl,
@@ -152,7 +153,7 @@ export default function CeoExecutiveDashboard() {
       setWithdrawals(pending.slice(0, 15));
       setLastRefresh(new Date());
     } catch (err) {
-      setError(err?.response?.data?.detail || err?.message || "Failed to load CEO dashboard");
+      setError(apiErrorMessage(err, { resource: "Business Performance dashboard", action: "load" }));
     } finally {
       setLoading(false);
     }
@@ -211,7 +212,7 @@ export default function CeoExecutiveDashboard() {
       setMessage(`Approved ${entityType} #${entityId}`);
       await load();
     } catch (err) {
-      setError(err?.response?.data?.detail || err?.message || "Approval failed");
+      setError(apiErrorMessage(err, { resource: "approval", action: "apply" }));
     } finally {
       setActionLoading((s) => ({ ...s, [key]: false }));
     }
@@ -225,7 +226,7 @@ export default function CeoExecutiveDashboard() {
       setMessage(approve ? `Withdrawal #${id} approved` : `Withdrawal #${id} rejected`);
       await load();
     } catch (err) {
-      setError(err?.response?.data?.error || err?.message || "Withdrawal action failed");
+      setError(apiErrorMessage(err, { resource: "withdrawal action", action: "apply" }));
     } finally {
       setActionLoading((s) => ({ ...s, [`w-${id}`]: false }));
     }
@@ -238,7 +239,7 @@ export default function CeoExecutiveDashboard() {
       setMessage(`Broadcast sent: ${result.sent} recipients (${result.segment})`);
       setBroadcastForm({ title: "", message: "", segment: "all" });
     } catch (err) {
-      setError(err?.response?.data?.detail || err?.message);
+      setError(apiErrorMessage(err, { resource: "action", action: "apply" }));
     }
   };
 
@@ -249,7 +250,7 @@ export default function CeoExecutiveDashboard() {
       setFreezeReason("");
       await load();
     } catch (err) {
-      setError(err?.response?.data?.detail || err?.message);
+      setError(apiErrorMessage(err, { resource: "action", action: "apply" }));
     }
   };
 
@@ -372,12 +373,35 @@ export default function CeoExecutiveDashboard() {
         <div className="ceo-exec__grid ceo-exec__grid--metrics">
           <MetricCard
             label="Ride Completion Rate"
-            value={`${Math.max(0, 100 - (overview.cancellation_rate_pct || 0)).toFixed(1)}%`}
+            value={
+              overview.cancellation_rate_pct == null
+                ? "—"
+                : `${Math.max(0, 100 - overview.cancellation_rate_pct).toFixed(1)}%`
+            }
             tone="green"
           />
-          <MetricCard label="Driver Acceptance Rate" value={`${overview.driver_acceptance_rate_pct}%`} />
-          <MetricCard label="Average ETA / Wait" value={`${overview.average_eta_minutes ?? fleet.average_wait_time_minutes ?? "—"} min`} />
-          <MetricCard label="Average Rating" value={overview.customer_satisfaction || "—"} tone="gold" />
+          <MetricCard
+            label="Driver Acceptance Rate"
+            value={
+              overview.driver_acceptance_rate_pct == null
+                ? "—"
+                : `${overview.driver_acceptance_rate_pct}%`
+            }
+          />
+          <MetricCard
+            label="Average ETA / Wait"
+            value={
+              (overview.average_eta_minutes ?? fleet.average_wait_time_minutes) == null
+                ? "—"
+                : `${overview.average_eta_minutes ?? fleet.average_wait_time_minutes} min`
+            }
+          />
+          {/*
+            No `|| "—"` here: the backend reports customer_satisfaction as a genuine 0,
+            and `0 || "—"` renders "—", which hides a real zero and reads as
+            unavailable. MetricCard already maps null/undefined to "—".
+          */}
+          <MetricCard label="Average Rating" value={overview.customer_satisfaction} tone="gold" />
           <MetricCard label="Cancelled Rides Today" value={overview.cancelled_rides_today} tone="red" />
           <MetricCard label="Failed Payments" value={overview.failed_payments_today} tone="red" />
           <MetricCard label="Support Tickets" value={ops.support_queue ?? support.open_tickets} tone="orange" />
