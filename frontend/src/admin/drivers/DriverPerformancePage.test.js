@@ -41,6 +41,7 @@ import {
   getDriverPerformanceSummary,
   getSafetyIncidents,
 } from "./driverAdminApi";
+import { getDriverEarnings, getDriverRideHistory } from "./driversApi";
 
 const SUMMARY = {
   average_score: 82.5,
@@ -219,3 +220,166 @@ describe("DriverPerformancePage", () => {
     expect(await screen.findByText("Awa Diallo")).toBeInTheDocument();
   });
 });
+
+/**
+ * Driver Performance profile — earnings, charts, history and the date range.
+ *
+ * The date-range assertion matters: the ride-history endpoint applies date_from /
+ * date_to server-side, so this proves the selector is wired to the API rather than
+ * silently filtering a client-side slice.
+ */
+const EARNINGS = {
+  today: { earnings_mru: "150.00", commission_mru: "25.00", payout_mru: "150.00", ride_count: 2 },
+  week: { earnings_mru: "900.00", commission_mru: "150.00", payout_mru: "900.00", ride_count: 11 },
+  month: { earnings_mru: "4100.00", commission_mru: "700.00", payout_mru: "4100.00", ride_count: 48 },
+  total: {
+    earnings_mru: "91200.00",
+    commission_mru: "15800.00",
+    payout_mru: "91200.00",
+    ride_count: 1204,
+  },
+  currency: "MRU",
+};
+
+const rideAt = (daysAgo) => {
+  const date = new Date();
+  date.setHours(12, 0, 0, 0);
+  date.setDate(date.getDate() - daysAgo);
+  return date.toISOString();
+};
+
+const HISTORY = {
+  count: 2,
+  page: 1,
+  page_size: 100,
+  total_pages: 1,
+  summary: {
+    total_rides: 10,
+    completed_rides: 7,
+    cancelled_rides: 2,
+    total_earnings_mru: "91200.00",
+    average_earning_mru: "76.00",
+  },
+  results: [
+    {
+      id: 501,
+      status: "completed",
+      fare: "200.00",
+      driver_earning: "160.00",
+      rating: 5,
+      created_at: rideAt(0),
+      completed_at: rideAt(0),
+    },
+    {
+      id: 502,
+      status: "cancelled",
+      fare: "150.00",
+      driver_earning: null,
+      rating: null,
+      created_at: rideAt(1),
+      completed_at: null,
+    },
+  ],
+};
+
+const openProfile = async () => {
+  render(<DriverPerformancePage mode="performance" />);
+  const viewButtons = await screen.findAllByRole("button", { name: "View profile" });
+  fireEvent.click(viewButtons[0]);
+  await waitFor(() => expect(screen.getByText(/performance profile/)).toBeInTheDocument());
+};
+
+describe("DriverPerformanceProfile", () => {
+  beforeEach(() => {
+    getDriverEarnings.mockResolvedValue(EARNINGS);
+    getDriverRideHistory.mockResolvedValue(HISTORY);
+  });
+
+  it("renders real earnings buckets instead of a raw payload", async () => {
+    await openProfile();
+    await screen.findByText("Earnings today");
+
+    // Read the KPI value cell directly: the same number can legitimately appear in
+    // the ride-history table too.
+    const kpiValue = (label) =>
+      screen.getByText(label).closest(".admin-kpi").querySelector(".admin-kpi__value").textContent;
+
+    expect(kpiValue("Earnings today")).toContain("150 MRU");
+    expect(kpiValue("This month")).toContain("4,100 MRU");
+    expect(kpiValue("All-time earnings")).toContain("91,200 MRU");
+  });
+
+  it("renders the chart set built from backend data", async () => {
+    await openProfile();
+    expect(await screen.findByText("Driver earnings by period (MRU)")).toBeInTheDocument();
+    expect(screen.getByText("Platform commission by period (MRU)")).toBeInTheDocument();
+    expect(screen.getByText(/Completed trips — last 14 days/)).toBeInTheDocument();
+    expect(screen.getByText("Average customer rating over time")).toBeInTheDocument();
+    expect(screen.getByText("Ride outcomes (lifetime)")).toBeInTheDocument();
+  });
+
+  it("renders the ride history table with real fares, earnings and ratings", async () => {
+    await openProfile();
+    expect(await screen.findByText("Ride history")).toBeInTheDocument();
+    expect(await screen.findByText(/160 MRU/)).toBeInTheDocument();
+    expect(screen.getByText("5.0 / 5")).toBeInTheDocument();
+    expect(screen.getByText("Not rated")).toBeInTheDocument();
+  });
+
+  it("applies the date range server-side through the history API", async () => {
+    await openProfile();
+    await waitFor(() => expect(getDriverRideHistory).toHaveBeenCalled());
+
+    const dateInputs = document.querySelectorAll('input[type="date"]');
+    expect(dateInputs.length).toBeGreaterThanOrEqual(2);
+    fireEvent.change(dateInputs[0], { target: { value: "2026-01-01" } });
+    fireEvent.change(dateInputs[1], { target: { value: "2026-01-31" } });
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+
+    await waitFor(() =>
+      expect(getDriverRideHistory).toHaveBeenCalledWith(
+        10,
+        expect.objectContaining({ date_from: "2026-01-01", date_to: "2026-01-31" })
+      )
+    );
+  });
+
+  it("shows an inline error when earnings cannot be loaded", async () => {
+    getDriverEarnings.mockRejectedValue(new Error("Request failed (HTTP 500)."));
+    await openProfile();
+    expect(await screen.findByText(/Request failed \(HTTP 500\)\./)).toBeInTheDocument();
+  });
+
+  it("discloses when the charts are limited by pagination", async () => {
+    // 437 matching rides but only the first page is returned.
+    getDriverRideHistory.mockResolvedValue({ ...HISTORY, count: 437 });
+    await openProfile();
+
+    expect(
+      await screen.findByText("These charts cover only part of this driver's history")
+    ).toBeInTheDocument();
+    // The exact window must be stated, not implied.
+    expect(screen.getByText("437")).toBeInTheDocument();
+    expect(screen.getAllByText(/Partial window/).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Narrow the date range below/)).toBeInTheDocument();
+  });
+
+  it("states the full window when nothing is truncated", async () => {
+    await openProfile();
+    expect(await screen.findByText(/Built from all 2 rides/)).toBeInTheDocument();
+    expect(
+      screen.queryByText("These charts cover only part of this driver's history")
+    ).not.toBeInTheDocument();
+    expect(screen.getAllByText(/All 2 rides in this filter/).length).toBeGreaterThan(0);
+  });
+
+  it("reports missing money values as 'No data' rather than 0", async () => {
+    getDriverEarnings.mockResolvedValue({
+      ...EARNINGS,
+      today: { earnings_mru: null, commission_mru: null, ride_count: 0 },
+    });
+    await openProfile();
+    expect((await screen.findAllByText("No data")).length).toBeGreaterThan(0);
+  });
+});
+
