@@ -49,12 +49,13 @@ const CITIES = [
   { id: 1, name: "Zouerate", name_fr: "Zouérat", name_ar: "", region: "Tiris Zemmour", latitude: 22.7, longitude: -12.5, operational_status: "registered", is_active: true, is_live: false, code: "ZOU", iso_country_code: "MR" },
   { id: 2, name: "Atar", name_fr: "Atar", name_ar: "أطار", region: "Adrar", latitude: null, longitude: null, operational_status: "registered", is_active: true, is_live: false, code: "ATR", iso_country_code: "MR" },
   { id: 3, name: "Aleg", name_fr: "Aleg", name_ar: "", region: "Brakna", latitude: 17.05, longitude: -13.9, operational_status: "live", is_active: true, is_live: true, code: "", iso_country_code: "MR" },
+  { id: 1, name: "Nouakchott", name_fr: "Nouakchott", name_ar: "نواكشوط", region: "Nouakchott", latitude: 18.07, longitude: -15.95, operational_status: "registered", is_active: true, is_live: false, code: "", iso_country_code: "MR" },
 ];
 
 beforeEach(() => {
   jest.clearAllMocks();
   fetchCities.mockResolvedValue({
-    data: { cities: CITIES, regions: [{ id: 1, name: "Adrar" }], capabilities: { can_manage: true, can_ceo_actions: true, city_management_ready: true } },
+    data: { cities: CITIES, regions: [{ id: 1, name: "Brakna" }, { id: 2, name: "Tiris Zemmour" }, { id: 3, name: "Nouakchott" }], capabilities: { can_manage: true, can_ceo_actions: true, city_management_ready: true } },
   });
   fetchCity.mockResolvedValue({
     data: { city: { ...CITIES[0], services: { services: {} } }, pricing: { values: {} } },
@@ -112,15 +113,22 @@ test("the registry can be sorted by name, toggling direction", async () => {
   render(<CityManagementCenter />);
   await waitForTable();
 
-  const names = () =>
-    Array.from(document.querySelectorAll(".cmc-table tbody tr td:first-child strong")).map((el) =>
-      el.textContent.trim()
+  const cityHeader = () =>
+    Array.from(document.querySelectorAll(".cmc-table thead th")).find((th) =>
+      th.textContent.includes("City")
     );
 
-  expect(names()).toEqual(["Aleg", "Atar", "Zouerate"]); // default ascending
+  // Default is ascending.
+  expect(cityHeader()).toHaveAttribute("aria-sort", "ascending");
+  expect(cityHeader().textContent).toContain("▲");
 
   fireEvent.click(screen.getByRole("button", { name: /^City/ }));
-  await waitFor(() => expect(names()).toEqual(["Zouerate", "Atar", "Aleg"])); // descending
+  await waitFor(() => expect(cityHeader()).toHaveAttribute("aria-sort", "descending"));
+  expect(cityHeader().textContent).toContain("▼");
+
+  // Clicking again returns to ascending.
+  fireEvent.click(screen.getByRole("button", { name: /^City/ }));
+  await waitFor(() => expect(cityHeader()).toHaveAttribute("aria-sort", "ascending"));
 });
 
 
@@ -212,3 +220,80 @@ test("live operations stay disabled for a role without CEO authority", async () 
   expect(liveBtn).toHaveAttribute("title", "Only the Founder/CEO can open live operations.");
 });
 
+
+
+// ── Location & service hierarchy dropdowns ─────────────────────────────────
+// Structural assertions here; the interactive flows (choosing a wilaya, the dependent city
+// list, the borough list, search) are verified in the browser with Playwright, where real
+// pointer events drive the popups. The SearchableSelect contract itself is covered by its
+// own 13 unit tests.
+
+const panel = () => document.querySelector(".cmc-hierarchy");
+const combos = () => Array.from(panel().querySelectorAll('[role="combobox"]'));
+const panelText = () => panel().textContent.replace(/\s+/g, " ");
+
+test("the hierarchy exposes the full Country → Region → City → Service chain", async () => {
+  render(<CityManagementCenter />);
+  await waitForTable();
+
+  expect(panel()).not.toBeNull();
+  expect(panelText()).toMatch(/Mauritania/);
+  expect(panelText()).toMatch(/Region \/ Wilaya/);
+  expect(panelText()).toMatch(/City/);
+  expect(panelText()).toMatch(/Service/);
+  expect(panelText()).toMatch(/Category/);
+  expect(panelText()).toMatch(/Service status/);
+});
+
+test("every hierarchy dropdown is a real combobox, and the country is fixed", async () => {
+  render(<CityManagementCenter />);
+  await waitForTable();
+
+  // Country + Region + City + Service + Category + Service status.
+  expect(combos().length).toBe(6);
+  combos().forEach((c) => expect(c).toHaveAttribute("role", "combobox"));
+  expect(combos()[0]).toBeDisabled(); // Country is fixed to Mauritania
+});
+
+test("the dependent dropdowns are disabled until their parent is chosen", async () => {
+  render(<CityManagementCenter />);
+  await waitForTable();
+
+  // At rest there is no Borough control, so the order is:
+  // Country(0) Region(1) City(2) Service(3) Category(4) Service status(5).
+  expect(combos()).toHaveLength(6);
+  expect(combos()[2]).toBeDisabled();
+  expect(combos()[2].textContent).toMatch(/choose a wilaya first/i);
+  expect(combos()[4]).toBeDisabled();
+  expect(combos()[4].textContent).toMatch(/choose a service first/i);
+});
+
+test("the borough dropdown is absent until Nouakchott is selected", async () => {
+  render(<CityManagementCenter />);
+  await waitForTable();
+
+  // Boroughs belong to the national capital only, so the control is not rendered at rest.
+  expect(panelText()).not.toMatch(/Borough/);
+});
+
+test("the hierarchy never offers a live-activation control", async () => {
+  render(<CityManagementCenter />);
+  await waitForTable();
+
+  // The explanatory note sits on the card, outside the inner dropdown grid.
+  const card = document.querySelector(".cmc-hierarchy-card");
+  expect(card).not.toBeNull();
+  expect(card.textContent).toMatch(/Founder\/CEO-only/i);
+  expect(
+    within(card).queryByRole("button", { name: /open live|activate service/i })
+  ).not.toBeInTheDocument();
+});
+
+test("the identification output starts empty rather than showing a fabricated code", async () => {
+  render(<CityManagementCenter />);
+  await waitForTable();
+
+  const code = document.querySelector(".cmc-hierarchy__code");
+  expect(code).not.toBeNull();
+  expect(code.textContent).toBe("—");
+});

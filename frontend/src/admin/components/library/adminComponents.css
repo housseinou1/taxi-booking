@@ -542,4 +542,277 @@
   .admin-table-scroll {
     overflow-x: auto;
   }
+
+/* ── SearchableSelect ─────────────────────────────────────────────────────── */
+
+.ss {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.ss__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--admin-text-muted, #94a3b8);
+}
+
+.ss__icon {
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.ss__required {
+  color: var(--admin-danger, #e05252);
+}
+
+.ss__trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 38px;
+  padding: 6px 10px;
+  border: 1px solid var(--admin-border, #334155);
+  border-radius: 8px;
+  background: var(--admin-surface-alt, rgba(148, 163, 184, 0.1));
+  color: var(--admin-text, #f8fafc);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ss__trigger:hover:not(:disabled) {
+  border-color: var(--admin-accent, #c9a227);
+}
+
+.ss__trigger:focus-visible {
+  outline: 2px solid var(--admin-accent, #c9a227);
+  outline-offset: 1px;
+}
+
+.ss__trigger:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.ss__value {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.ss__value-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ss__value--placeholder {
+  color: var(--admin-text-muted, #94a3b8);
+}
+
+.ss__code {
+  flex: 0 0 auto;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(201, 162, 39, 0.16);
+  border: 1px solid rgba(201, 162, 39, 0.4);
+  color: var(--admin-accent, #c9a227);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.ss__chevron {
+  flex: 0 0 auto;
+  font-size: 0.7rem;
+  color: var(--admin-text-muted, #94a3b8);
+}
+
+.ss[data-open="true"] .ss__chevron {
+  transform: rotate(180deg);
+}
+
+.ss__clear {
+  flex: 0 0 auto;
+  padding: 0 4px;
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--admin-text-muted, #94a3b8);
+  cursor: pointer;
+}
+
+.ss__clear:hover {
+  color: var(--admin-danger, #e05252);
+}
+
+.ss__error {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--admin-danger, #e05252);
+}
+
+.ss__popup {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  min-width: 220px;
+  max-height: 320px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--admin-border, #334155);
+  border-radius: 10px;
+  background: var(--admin-surface, #1e293b);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+
+.ss__search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--admin-border, #334155);
+}
+
+.ss__search-icon {
+  color: var(--admin-text-muted, #94a3b8);
+}
+
+.ss__search-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--admin-text, #f8fafc);
+  font: inherit;
+  outline: none;
+}
+
+.ss__list {
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  overflow-y: auto;
+  max-height: 250px;
+}
+
+.ss__option {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 7px 9px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.ss__option-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ss__option-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ss__option-desc {
+  font-size: 0.75rem;
+  color: var(--admin-text-muted, #94a3b8);
+}
+
+.ss__option--active {
+  background: var(--admin-surface-alt, rgba(148, 163, 184, 0.16));
+}
+
+.ss__option--selected .ss__option-label {
+  font-weight: 700;
+  color: var(--admin-accent, #c9a227);
+}
+
+/* A disabled option stays visible so the user understands why it is unavailable,
+   but it can never be committed — an invalid selection is impossible. */
+.ss__option--disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.ss__state {
+  padding: 10px 12px;
+  font-size: 0.82rem;
+  color: var(--admin-text-muted, #94a3b8);
+}
+
+.ss__state--inline {
+  border-top: 1px solid var(--admin-border, #334155);
+  margin: 0;
+}
+
+/* ── Hierarchy panel: Country → Region → City → Borough → Service ─────────── */
+
+.cmc-hierarchy {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+
+.cmc-hierarchy__result {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--admin-border, #334155);
+  border-radius: 10px;
+  background: var(--admin-surface-alt, rgba(148, 163, 184, 0.08));
+}
+
+.cmc-hierarchy__result-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--admin-text-muted, #94a3b8);
+}
+
+.cmc-hierarchy__code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--admin-accent, #c9a227);
+}
+
+.cmc-hierarchy__path {
+  font-size: 0.85rem;
+  color: var(--admin-text-muted, #94a3b8);
+}
+
+@media (max-width: 640px) {
+  .cmc-hierarchy {
+    grid-template-columns: 1fr;
+  }
+
+  .ss__popup {
+    max-height: 260px;
+  }
+}
+
 }

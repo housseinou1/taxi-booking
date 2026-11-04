@@ -567,6 +567,39 @@
   gap: 6px;
 }
 
+/* ── Location & service hierarchy panel ───────────────────────────────────── */
+
+.cmc-hierarchy-card {
+  margin-bottom: 14px;
+}
+
+.cmc-hierarchy-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 4px;
+  font-size: 1rem;
+  color: #1d2530;
+}
+
+/* Keep the filter dropdowns a sensible width inside the existing filter row. */
+.cmc-filter-select {
+  min-width: 190px;
+  max-width: 260px;
+}
+
+.cmc-hierarchy__code--empty {
+  color: #8a94a3;
+}
+
+@media (max-width: 640px) {
+  .cmc-filter-select {
+    min-width: 0;
+    max-width: none;
+    width: 100%;
+  }
+}
+
 /* ── Nouakchott: one capital, three boroughs ──────────────────────────────── */
 
 .cmc-borough-row > td {

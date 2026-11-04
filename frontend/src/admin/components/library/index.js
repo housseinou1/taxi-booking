@@ -56,6 +56,8 @@ export {
 } from "./maps/MapComponents";
 
 // Forms
+export { default as SearchableSelect } from "./forms/SearchableSelect";
+
 export {
   default as SearchBar,
   FilterBar,

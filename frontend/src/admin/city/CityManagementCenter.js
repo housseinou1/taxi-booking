@@ -20,15 +20,36 @@ import {
   updateCityPricing,
 } from "./cityManagementApi";
 import { formatMoneyOrDash } from "../components/library/utils/formatters";
+import { SearchableSelect } from "../components/library";
 import { apiErrorMessage } from "../layouts/errors/apiErrorMessage";
 import {
   CLASSIFICATIONS,
+  NOUAKCHOTT,
   WILAYAS,
   isNouakchott,
   nouakchottBoroughs,
   resolveCityIdentity,
+  resolveRegion,
 } from "./mauritaniaGeoIdentity";
 import "./CityManagementCenter.css";
+
+/** The service families the platform sells, with a small icon for the dropdown. */
+const HIERARCHY_SERVICES = [
+  { value: "rider", label: "YALA Rider", icon: "🚕" },
+  { value: "driver", label: "YALA Driver", icon: "🧑‍✈️" },
+  { value: "delivery", label: "YALA Delivery", icon: "📦" },
+];
+
+const SERVICE_STATUS_OPTIONS = [
+  { value: "inactive", label: "Inactive", description: "Not offered in this city" },
+  { value: "active", label: "Active", description: "Configured, awaiting the live gate" },
+];
+
+const OPERATIONAL_STATUS_OPTIONS = [
+  { value: "inactive", label: "Inactive", description: "Hidden from riders and drivers" },
+  { value: "registered", label: "Registered — not live", description: "Recorded, no live operations" },
+  { value: "live", label: "Live", description: "Founder/CEO authorised live operations" },
+];
 
 /**
  * City Management — Yala Admin → CEO Command Center.
@@ -168,6 +189,18 @@ export default function CityManagementCenter() {
   const [regionFilter, setRegionFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [sort, setSort] = useState({ key: "name", direction: "asc" });
+  /**
+   * Location & service hierarchy: Country → Region/Wilaya → City → Borough → Service →
+   * Category → Status. Purely a selection state; nothing here writes to the backend.
+   */
+  const [hierarchy, setHierarchy] = useState({
+    region: "",
+    cityId: "",
+    borough: "",
+    service: "",
+    category: "",
+    status: "",
+  });
 
   const [selectedId, setSelectedId] = useState(null);
   const [detail, setDetail] = useState(null);
@@ -289,6 +322,126 @@ export default function CityManagementCenter() {
         : null,
     [selectedCity]
   );
+
+  /**
+   * Dropdown option sets. Every list is derived from API data plus the identification
+   * reference — no city list is hardcoded, so a city added on the backend appears here
+   * without a frontend change.
+   */
+  const regionOptions = useMemo(
+    () =>
+      regions
+        .map((region) => {
+          const geo = resolveRegion(region.name);
+          return {
+            value: region.name,
+            label: geo.wilaya || region.name,
+            hint: geo.regionCode || undefined,
+            description: geo.isLegacy ? "Legacy region row — belongs to the wilaya shown" : undefined,
+          };
+        })
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    [regions]
+  );
+
+  /** Cities belonging to the selected wilaya, matched through the legacy-region mapping. */
+  const cityOptions = useMemo(() => {
+    if (!hierarchy.region) return [];
+    const target = resolveRegion(hierarchy.region);
+    return cities
+      .filter((city) => {
+        const cityRegion = resolveRegion(city.region);
+        return (
+          city.region === hierarchy.region ||
+          (cityRegion.wilaya && cityRegion.wilaya === target.wilaya)
+        );
+      })
+      .map((city) => {
+        const geo = resolveCityIdentity({
+          cityName: city.name,
+          regionName: city.region,
+          serverCode: city.code,
+          isoCountryCode: city.iso_country_code,
+        });
+        return {
+          value: String(city.id),
+          label: city.name,
+          hint: geo.cityCode || undefined,
+          description: geo.yalaId || undefined,
+        };
+      })
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [cities, hierarchy.region]);
+
+  const selectedHierarchyCity = useMemo(
+    () => cities.find((city) => String(city.id) === String(hierarchy.cityId)) || null,
+    [cities, hierarchy.cityId]
+  );
+
+  /** Boroughs appear only for the national capital. */
+  const boroughOptions = useMemo(
+    () =>
+      nouakchottBoroughs().map((borough) => ({
+        value: borough.code,
+        label: borough.name,
+        hint: borough.code,
+        description: `Wilaya ${borough.regionCode} · separate operational reporting`,
+      })),
+    []
+  );
+
+  const showBoroughs = Boolean(selectedHierarchyCity && isNouakchott(selectedHierarchyCity.name));
+
+  /** Service categories depend on the chosen service. */
+  const categoryOptions = useMemo(() => {
+    if (!hierarchy.service) return [];
+    return (SERVICE_CATALOG[hierarchy.service] || []).map((entry) => ({
+      value: entry.category,
+      label: entry.label,
+    }));
+  }, [hierarchy.service]);
+
+  /** The identification generated from the current location selection. */
+  const hierarchyIdentity = useMemo(() => {
+    if (!hierarchy.region) return null;
+    const region = resolveRegion(hierarchy.region);
+
+    if (hierarchy.borough) {
+      const borough = nouakchottBoroughs().find((b) => b.code === hierarchy.borough);
+      return {
+        code: hierarchy.borough,
+        path: `Mauritania → ${NOUAKCHOTT.wilaya} → ${NOUAKCHOTT.name} → ${borough?.name || ""}`,
+        classification: CLASSIFICATIONS.borough,
+        regionCode: NOUAKCHOTT.regionCode,
+      };
+    }
+
+    if (!selectedHierarchyCity) {
+      return {
+        code: null,
+        path: `Mauritania → ${region.wilaya || hierarchy.region} → select a city`,
+        classification: null,
+        regionCode: region.regionCode,
+      };
+    }
+
+    const geo = resolveCityIdentity({
+      cityName: selectedHierarchyCity.name,
+      regionName: selectedHierarchyCity.region,
+      serverCode: selectedHierarchyCity.code,
+      isoCountryCode: selectedHierarchyCity.iso_country_code,
+    });
+
+    return {
+      code: geo.yalaId,
+      path: `Mauritania → ${geo.regionName} → ${geo.cityName}`,
+      classification: geo.classification,
+      regionCode: geo.regionCode,
+      assigned: geo.assigned,
+    };
+  }, [hierarchy.region, hierarchy.borough, selectedHierarchyCity]);
+
+  const selectedServiceMeta = HIERARCHY_SERVICES.find((s) => s.value === hierarchy.service) || null;
 
   const toggleSort = (key) =>
     setSort((prev) =>
@@ -562,22 +715,18 @@ export default function CityManagementCenter() {
                 />
               </label>
             ))}
-            <label className="cmc-field">
-              <span>Region / Wilaya *</span>
-              <input
-                type="text"
-                list="cmc-region-options"
-                value={addForm.region}
-                onChange={(event) =>
-                  setAddForm((form) => ({ ...form, region: event.target.value }))
-                }
-              />
-              <datalist id="cmc-region-options">
-                {regions.map((region) => (
-                  <option key={region.id} value={region.name} />
-                ))}
-              </datalist>
-            </label>
+            <SearchableSelect
+              label="Region / Wilaya"
+              icon="🌍"
+              required
+              clearable
+              value={addForm.region}
+              onChange={(value) => setAddForm((form) => ({ ...form, region: value }))}
+              options={regionOptions}
+              placeholder="Select the wilaya this city belongs to"
+              searchPlaceholder="Search wilayas or codes…"
+              emptyLabel="No wilaya available"
+            />
           </div>
           <div className="cmc-actions">
             <button
@@ -603,33 +752,37 @@ export default function CityManagementCenter() {
               onChange={(event) => setSearch(event.target.value)}
             />
           </label>
-          <label className="cmc-field">
-            <span>Region</span>
-            <select
-              value={regionFilter}
-              onChange={(event) => setRegionFilter(event.target.value)}
-            >
-              <option value="">All regions</option>
-              {regions.map((region) => (
-                <option key={region.id} value={region.name}>
-                  {region.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="cmc-field">
-            <span>Status</span>
-            <select
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value)}
-            >
-              <option value="">All</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-              <option value="live">Live</option>
-              <option value="registered">Registered (not live)</option>
-            </select>
-          </label>
+          <SearchableSelect
+            label="Region / Wilaya"
+            icon="🌍"
+            clearable
+            clearLabel="Show all regions"
+            className="cmc-filter-select"
+            value={regionFilter}
+            onChange={(value) => setRegionFilter(value)}
+            options={regionOptions}
+            placeholder="All regions"
+            searchPlaceholder="Search wilayas…"
+            emptyLabel="No wilaya available"
+          />
+          <SearchableSelect
+            label="Service status"
+            icon="📶"
+            clearable
+            clearLabel="Show all statuses"
+            className="cmc-filter-select"
+            value={statusFilter}
+            onChange={(value) => setStatusFilter(value)}
+            options={[
+              { value: "active", label: "Active" },
+              { value: "inactive", label: "Inactive" },
+              { value: "live", label: "Live" },
+              { value: "registered", label: "Registered (not live)" },
+            ]}
+            placeholder="All"
+            searchable={false}
+            emptyLabel="No status available"
+          />
           <div className="cmc-counter">
             <strong>{cities.length}</strong>
             <span>cities shown</span>
@@ -677,6 +830,162 @@ export default function CityManagementCenter() {
             </span>
           ) : null}
         </div>
+
+        {/*
+          Location & service hierarchy. Each dropdown is derived from API data, so a city
+          registered on the backend appears here without a frontend change. Selecting a
+          location generates the YALA identification automatically. Nothing on this panel
+          writes to the backend — it is a scoped selector, not a form.
+        */}
+        <section className="cmc-card cmc-hierarchy-card">
+          <h3 className="cmc-hierarchy-title">
+            <span aria-hidden="true">🗺️</span> Location &amp; service selection
+          </h3>
+          <p className="cmc-hint">
+            Country → Region / Wilaya → City → Borough → Service → Category → Status.
+            The identification code is generated from the location you select.
+          </p>
+
+          <div className="cmc-hierarchy">
+            <SearchableSelect
+              label="Country"
+              icon="🇲🇷"
+              value="MR"
+              onChange={() => {}}
+              disabled
+              searchable={false}
+              options={[{ value: "MR", label: "Mauritania", hint: "MR" }]}
+              placeholder="Mauritania"
+            />
+
+            <SearchableSelect
+              label="Region / Wilaya"
+              icon="🌍"
+              required
+              clearable
+              value={hierarchy.region}
+              onChange={(value) =>
+                setHierarchy({
+                  region: value,
+                  cityId: "",
+                  borough: "",
+                  service: hierarchy.service,
+                  category: "",
+                  status: hierarchy.status,
+                })
+              }
+              options={regionOptions}
+              loading={loading && regionOptions.length === 0}
+              placeholder="Select a wilaya"
+              searchPlaceholder="Search wilayas or codes…"
+              emptyLabel="No wilaya available"
+            />
+
+            <SearchableSelect
+              label="City"
+              icon="🏙️"
+              required
+              clearable
+              value={hierarchy.cityId}
+              disabled={!hierarchy.region}
+              onChange={(value) =>
+                setHierarchy((prev) => ({ ...prev, cityId: value, borough: "" }))
+              }
+              options={cityOptions}
+              placeholder={hierarchy.region ? "Select a city" : "Choose a wilaya first"}
+              searchPlaceholder="Search cities…"
+              emptyLabel="No city registered in this wilaya yet"
+            />
+
+            {showBoroughs ? (
+              <SearchableSelect
+                label="Borough"
+                icon="🏘️"
+                required
+                clearable
+                value={hierarchy.borough}
+                onChange={(value) => setHierarchy((prev) => ({ ...prev, borough: value }))}
+                options={boroughOptions}
+                placeholder="Select a borough"
+                searchPlaceholder="Search boroughs…"
+                emptyLabel="No borough available"
+              />
+            ) : null}
+
+            <SearchableSelect
+              label="Service"
+              icon="🧩"
+              value={hierarchy.service}
+              onChange={(value) =>
+                setHierarchy((prev) => ({ ...prev, service: value, category: "" }))
+              }
+              options={HIERARCHY_SERVICES.map((s) => ({ value: s.value, label: s.label }))}
+              placeholder="Select a service"
+              searchPlaceholder="Search services…"
+              emptyLabel="No service available"
+            />
+
+            <SearchableSelect
+              label="Category"
+              icon="🏷️"
+              value={hierarchy.category}
+              disabled={!hierarchy.service}
+              onChange={(value) => setHierarchy((prev) => ({ ...prev, category: value }))}
+              options={categoryOptions}
+              placeholder={hierarchy.service ? "Select a category" : "Choose a service first"}
+              searchPlaceholder="Search categories…"
+              emptyLabel="No category for this service"
+            />
+
+            <SearchableSelect
+              label="Service status"
+              icon="📶"
+              value={hierarchy.status}
+              onChange={(value) => setHierarchy((prev) => ({ ...prev, status: value }))}
+              options={SERVICE_STATUS_OPTIONS}
+              placeholder="Select a status"
+              searchable={false}
+              emptyLabel="No status available"
+            />
+          </div>
+
+          <div className="cmc-hierarchy__result" aria-live="polite">
+            <span className="cmc-hierarchy__result-label">YALA identification</span>
+            {hierarchyIdentity?.code ? (
+              <span className="cmc-hierarchy__code">{hierarchyIdentity.code}</span>
+            ) : (
+              <span className="cmc-hierarchy__code cmc-hierarchy__code--empty">—</span>
+            )}
+            {hierarchyIdentity?.path ? (
+              <span className="cmc-hierarchy__path">{hierarchyIdentity.path}</span>
+            ) : null}
+            {hierarchyIdentity?.classification ? (
+              <span className="cmc-hierarchy__path">· {hierarchyIdentity.classification}</span>
+            ) : null}
+            {selectedServiceMeta ? (
+              <span className="cmc-hierarchy__path">
+                · {selectedServiceMeta.label}
+                {hierarchy.category
+                  ? ` / ${
+                      categoryOptions.find((c) => c.value === hierarchy.category)?.label ||
+                      hierarchy.category
+                    }`
+                  : ""}
+                {hierarchy.status ? ` · ${hierarchy.status}` : ""}
+              </span>
+            ) : null}
+            {hierarchyIdentity && !hierarchyIdentity.code && hierarchy.region ? (
+              <span className="cmc-hierarchy__path">
+                Select a city to generate the full code.
+              </span>
+            ) : null}
+          </div>
+          <p className="cmc-hint">
+            Read-only selector. Activating a service or opening live operations stays
+            Founder/CEO-only and is never triggered from here.
+          </p>
+        </section>
+
 
         {loading ? (
           <p className="cmc-hint">Loading the city registry…</p>
