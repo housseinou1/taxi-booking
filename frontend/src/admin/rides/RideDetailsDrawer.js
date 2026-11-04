@@ -91,6 +91,11 @@ export default function RideDetailsDrawer({ ride, loading, error, onClose, onRet
               {onRetry ? (
                 <button type="button" className="admin-lib-btn" onClick={onRetry}>
                   Retry
+                </button>
+              ) : null}
+            </InlineError>
+          ) : null}
+
           {ride && !loading && !error ? (
             <>
               <section className="admin-drawer__section">
@@ -147,11 +152,6 @@ export default function RideDetailsDrawer({ ride, loading, error, onClose, onRet
                 </section>
               ) : null}
             </>
-          ) : null}
-
-                </button>
-              ) : null}
-            </InlineError>
           ) : null}
         </div>
       </aside>
