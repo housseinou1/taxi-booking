@@ -51,6 +51,12 @@ const OPERATIONAL_STATUS_OPTIONS = [
   { value: "live", label: "Live", description: "Founder/CEO authorised live operations" },
 ];
 
+/** Registry state of the city record itself (is_active), distinct from live operations. */
+const CITY_STATUS_OPTIONS = [
+  { value: "active", label: "Active", description: "Offered in the city registry" },
+  { value: "inactive", label: "Inactive", description: "Withdrawn from the registry" },
+];
+
 /**
  * City Management — Yala Admin → CEO Command Center.
  *
@@ -200,6 +206,8 @@ export default function CityManagementCenter() {
     service: "",
     category: "",
     status: "",
+    cityStatus: "",
+    operationalStatus: "",
   });
 
   const [selectedId, setSelectedId] = useState(null);
@@ -442,6 +450,20 @@ export default function CityManagementCenter() {
   }, [hierarchy.region, hierarchy.borough, selectedHierarchyCity]);
 
   const selectedServiceMeta = HIERARCHY_SERVICES.find((s) => s.value === hierarchy.service) || null;
+
+  /**
+   * The identification the Add City form will produce, shown BEFORE anything is saved so the
+   * registrar can see the permanent code the city will carry. Derived only; nothing is
+   * written until the backend accepts the record.
+   */
+  const addFormIdentity = useMemo(() => {
+    if (!addForm.name || !addForm.region) return null;
+    return resolveCityIdentity({
+      cityName: addForm.name,
+      regionName: addForm.region,
+      serverCode: addForm.code,
+    });
+  }, [addForm.name, addForm.region, addForm.code]);
 
   const toggleSort = (key) =>
     setSort((prev) =>
@@ -728,6 +750,37 @@ export default function CityManagementCenter() {
               emptyLabel="No wilaya available"
             />
           </div>
+
+          {/*
+            The code the new city will carry. Shown before saving so the registrar sees the
+            permanent identification, and so a proposed code is visibly a proposal rather
+            than an assigned value.
+          */}
+          <div className="cmc-hierarchy__result" aria-live="polite">
+            <span className="cmc-hierarchy__result-label">YALA identification</span>
+            {addFormIdentity?.yalaId ? (
+              <span className="cmc-hierarchy__code">{addFormIdentity.yalaId}</span>
+            ) : (
+              <span className="cmc-hierarchy__code cmc-hierarchy__code--empty">—</span>
+            )}
+            {addFormIdentity?.yalaId ? (
+              <>
+                <span className="cmc-hierarchy__path">
+                  {addFormIdentity.regionName} → {addFormIdentity.cityName} ·{" "}
+                  {addFormIdentity.classification}
+                </span>
+                <span className="cmc-hierarchy__path">
+                  {addFormIdentity.assigned
+                    ? "Code taken from the assigned scheme or the operations code you entered."
+                    : "Proposed code — it becomes permanent once the backend stores it."}
+                </span>
+              </>
+            ) : (
+              <span className="cmc-hierarchy__path">
+                Enter a city name and choose its wilaya to preview the identification.
+              </span>
+            )}
+          </div>
           <div className="cmc-actions">
             <button
               type="button"
@@ -845,6 +898,11 @@ export default function CityManagementCenter() {
             Country → Region / Wilaya → City → Borough → Service → Category → Status.
             The identification code is generated from the location you select.
           </p>
+          <p className="cmc-hint">
+            Mauritania is the only country with a live YALA region set, so the country control
+            is fixed. Adding another country requires its wilayas and cities in the registry
+            first — this control does not imply that any other country is operational.
+          </p>
 
           <div className="cmc-hierarchy">
             <SearchableSelect
@@ -854,7 +912,14 @@ export default function CityManagementCenter() {
               onChange={() => {}}
               disabled
               searchable={false}
-              options={[{ value: "MR", label: "Mauritania", hint: "MR" }]}
+              options={[
+                {
+                  value: "MR",
+                  label: "Mauritania",
+                  hint: "MR",
+                  description: "The only country with a live YALA region set",
+                },
+              ]}
               placeholder="Mauritania"
             />
 
@@ -944,6 +1009,30 @@ export default function CityManagementCenter() {
               onChange={(value) => setHierarchy((prev) => ({ ...prev, status: value }))}
               options={SERVICE_STATUS_OPTIONS}
               placeholder="Select a status"
+              searchable={false}
+              emptyLabel="No status available"
+            />
+
+            <SearchableSelect
+              label="City status"
+              icon="🏛️"
+              value={hierarchy.cityStatus}
+              onChange={(value) => setHierarchy((prev) => ({ ...prev, cityStatus: value }))}
+              options={CITY_STATUS_OPTIONS}
+              placeholder="Select a city status"
+              searchable={false}
+              emptyLabel="No status available"
+            />
+
+            <SearchableSelect
+              label="Operational status"
+              icon="🚦"
+              value={hierarchy.operationalStatus}
+              onChange={(value) =>
+                setHierarchy((prev) => ({ ...prev, operationalStatus: value }))
+              }
+              options={OPERATIONAL_STATUS_OPTIONS}
+              placeholder="Select an operational status"
               searchable={false}
               emptyLabel="No status available"
             />
@@ -1232,6 +1321,29 @@ export default function CityManagementCenter() {
 
           {tab === "details" && editForm && (
             <div>
+              {/*
+                The permanent identification, shown while editing. Read-only: changing it
+                would break the stability guarantee, so it is displayed rather than edited.
+              */}
+              {selectedGeo ? (
+                <div className="cmc-hierarchy__result">
+                  <span className="cmc-hierarchy__result-label">YALA identification</span>
+                  {selectedGeo.yalaId ? (
+                    <span className="cmc-hierarchy__code">{selectedGeo.yalaId}</span>
+                  ) : (
+                    <span className="cmc-hierarchy__code cmc-hierarchy__code--empty">—</span>
+                  )}
+                  <span className="cmc-hierarchy__path">
+                    {selectedGeo.regionName} ({selectedGeo.regionCode || "—"}) →{" "}
+                    {selectedCity.name} ({selectedGeo.cityCode || "—"}) ·{" "}
+                    {selectedGeo.classification}
+                  </span>
+                  <span className="cmc-hierarchy__path">
+                    Identification is derived from the location and the wilaya code. It is not
+                    edited here.
+                  </span>
+                </div>
+              ) : null}
               <div className="cmc-grid">
                 {[
                   ["name", "City name (English)"],

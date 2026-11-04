@@ -249,8 +249,8 @@ test("every hierarchy dropdown is a real combobox, and the country is fixed", as
   render(<CityManagementCenter />);
   await waitForTable();
 
-  // Country + Region + City + Service + Category + Service status.
-  expect(combos().length).toBe(6);
+  // Country, Region, City, Service, Category, Service status, City status, Operational status.
+  expect(combos()).toHaveLength(8);
   combos().forEach((c) => expect(c).toHaveAttribute("role", "combobox"));
   expect(combos()[0]).toBeDisabled(); // Country is fixed to Mauritania
 });
@@ -260,8 +260,9 @@ test("the dependent dropdowns are disabled until their parent is chosen", async 
   await waitForTable();
 
   // At rest there is no Borough control, so the order is:
-  // Country(0) Region(1) City(2) Service(3) Category(4) Service status(5).
-  expect(combos()).toHaveLength(6);
+  // Country(0) Region(1) City(2) Service(3) Category(4) Service status(5) City status(6)
+  // Operational status(7).
+  expect(combos()).toHaveLength(8);
   expect(combos()[2]).toBeDisabled();
   expect(combos()[2].textContent).toMatch(/choose a wilaya first/i);
   expect(combos()[4]).toBeDisabled();
@@ -296,4 +297,54 @@ test("the identification output starts empty rather than showing a fabricated co
   const code = document.querySelector(".cmc-hierarchy__code");
   expect(code).not.toBeNull();
   expect(code.textContent).toBe("—");
+});
+
+
+// ── Identification codes in registration and editing ───────────────────────
+
+test("the Add City form previews the identification and never guesses a code", async () => {
+  render(<CityManagementCenter />);
+  await waitForTable();
+
+  fireEvent.click(screen.getByRole("button", { name: /add city/i }));
+
+  const addCard = Array.from(document.querySelectorAll(".cmc-card")).find((c) =>
+    c.textContent.includes("Add City")
+  );
+  expect(addCard).not.toBeNull();
+
+  const preview = () => addCard.querySelector(".cmc-hierarchy__code")?.textContent;
+
+  // Nothing selected yet: a dash, never an invented code.
+  expect(preview()).toBe("—");
+
+  // A name alone is not enough — the wilaya is required for the region code.
+  fireEvent.change(within(addCard).getByLabelText(/City name \(English\)/i), {
+    target: { value: "Kiffa" },
+  });
+  expect(preview()).toBe("—");
+  expect(addCard.textContent).toMatch(/Enter a city name and choose its wilaya/i);
+});
+
+test("the city detail panel shows the permanent identification while editing", async () => {
+  render(<CityManagementCenter />);
+  await waitForTable();
+
+  fireEvent.click(within(rowFor("Zouerate")).getByRole("button", { name: "Manage" }));
+
+  // Wait for the DETAIL panel specifically. "MR-TZM-ZOU" also appears in the registry table,
+  // so asserting on that alone would resolve before the panel had rendered.
+  await waitFor(() =>
+    expect(document.body.textContent).toMatch(/Identification is derived from the location/i)
+  );
+  expect(document.body.textContent).toMatch(/not\s+edited here/i);
+
+  // The region and city codes are shown alongside the names.
+  const panel = Array.from(document.querySelectorAll(".cmc-hierarchy__result")).find((el) =>
+    /Tiris Zemmour/.test(el.textContent)
+  );
+  expect(panel).toBeTruthy();
+  expect(panel.textContent).toContain("MR-TZM-ZOU");
+  expect(panel.textContent).toContain("TZM");
+  expect(panel.textContent).toContain("ZOU");
 });
