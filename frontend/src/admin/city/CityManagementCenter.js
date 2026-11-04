@@ -1406,10 +1406,20 @@ export default function CityManagementCenter() {
                             >
                               {isActive ? "Active" : "Inactive"}
                             </span>
+                            {/* Activating a service makes it sellable in this city, which is a
+                                commercial commitment reserved for the Founder/CEO - consistent with
+                                the live-operations toggle and live-pricing activation above.
+                                DEACTIVATING stays an operational action so an Operations Manager
+                                can still switch a broken service off without waiting for the CEO. */}
                             <button
                               type="button"
                               className="cmc-btn cmc-btn-ghost"
-                              disabled={!canManage || busy}
+                              disabled={busy || (isActive ? !canManage : !canCeo)}
+                              title={
+                                !isActive && !canCeo
+                                  ? "Only the Founder/CEO can activate a service."
+                                  : undefined
+                              }
                               onClick={() =>
                                 setConfirm({
                                   title: isActive

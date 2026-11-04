@@ -205,7 +205,7 @@ export default function MarketingCenter() {
           <button type="button" className="admin-lib-btn admin-lib-btn--ghost" onClick={load}>
             Refresh
           </button>
-          <a className="admin-lib-btn admin-lib-btn--ghost" href="/admin/launch-growth">
+          <a className="admin-lib-btn admin-lib-btn--ghost" href="/admin/growth">
             Launch Growth
           </a>
           <a className="admin-lib-btn admin-lib-btn--ghost" href="/admin/customer-growth">

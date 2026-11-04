@@ -62,6 +62,9 @@ export const PATH_MODULE_MAP = {
   "/admin/withdrawals": "finance",
   "/admin/withdrawal-accounts": "finance",
   "/admin/finance-ops": "finance",
+  // Dedicated refund / payout approval surface. FinanceDashboard existed but had no
+  // route, so its approval controls were unreachable.
+  "/admin/finance-approvals": "finance",
   "/admin/payments": "finance",
   "/admin/incentives": "finance",
   "/admin/support": "support",

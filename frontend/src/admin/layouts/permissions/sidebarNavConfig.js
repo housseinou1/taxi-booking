@@ -164,6 +164,7 @@ export const SIDEBAR_NAV_ITEMS = [
       { id: "financial-overview", module: "finance", label: "Financial Overview", path: "/admin/ops-center/finance", icon: "💵" },
       { id: "payments", module: "finance", label: "Payment Management", path: "/admin/payments", icon: "🧾" },
       { id: "finance-ops", module: "finance", label: "Finance Operations", path: "/admin/finance-ops", icon: "💳" },
+      { id: "finance-approvals", module: "finance", label: "Refund & Payout Approvals", path: "/admin/finance-approvals", icon: "✅" },
       { id: "withdrawals", module: "finance", label: "Driver & Courier Payouts", path: "/admin/withdrawals", icon: "🏦" },
       { id: "withdrawal-accounts", module: "finance", label: "Settlement Accounts", path: "/admin/withdrawal-accounts", icon: "🏛" },
       { id: "incentives", module: "finance", label: "Driver Incentives", path: "/admin/incentives", icon: "🎁" },

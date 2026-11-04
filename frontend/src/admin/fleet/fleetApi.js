@@ -46,6 +46,32 @@ export function notifyFleetDriver(driverId, payload) {
   return authenticatedApi.post(`${BASE}/drivers/${driverId}/notify/`, payload);
 }
 
+/**
+ * Bulk notify. The backend exposes only the per-driver endpoint
+ * (`/operations/fleet/drivers/<id>/notify/`) — there is no bulk route — so this
+ * fans out over the existing, working endpoint and reports how many succeeded.
+ * No backend contract is invented.
+ */
+export async function bulkNotifyFleetDrivers(payload = {}) {
+  const { message, title = "Driver Operations", audience = "all", city_id } = payload;
+  const listResponse = await fetchFleetDrivers(city_id ? { city_id } : {});
+  const drivers = listResponse?.data?.drivers || listResponse?.data || [];
+  const targets = drivers.filter((driver) => {
+    if (audience === "all") return true;
+    if (audience === "pending_documents") {
+      return driver.document_state === "pending" || driver.documents_pending;
+    }
+    if (audience === "suspended") return driver.status === "suspended";
+    return true;
+  });
+
+  const results = await Promise.allSettled(
+    targets.map((driver) => notifyFleetDriver(driver.id, { title, message }))
+  );
+  const sent = results.filter((r) => r.status === "fulfilled").length;
+  return { sent, total: targets.length };
+}
+
 export function assignFleetTraining(driverId, payload) {
   return authenticatedApi.post(`${BASE}/drivers/${driverId}/training/`, payload);
 }

@@ -287,8 +287,11 @@ export default function OpsManagerDashboard() {
             ]}
             exportScope="reports"
           />
-          <a className="admin-lib-btn admin-lib-btn--ghost" href="/admin/ops-control">
-            Legacy OCC
+          {/* Was href="/admin/ops-control", which App.js does not route — clicking it
+              404'd. OperationsControlCenter is unreachable dead code (see the route
+              audit), so this points at the live Operations surface instead. */}
+          <a className="admin-lib-btn admin-lib-btn--ghost" href="/admin/operations">
+            Operations Control
           </a>
         </div>
       </header>

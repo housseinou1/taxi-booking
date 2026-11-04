@@ -35,6 +35,7 @@ import DeliveriesDirectory from "./admin/delivery/DeliveriesDirectory";
 import CityAnalytics from "./admin/delivery/CityAnalytics";
 import "./admin/delivery/delivery.css";
 import WithdrawalsMonitoring from "./admin/finance/WithdrawalsMonitoring";
+import FinanceDashboard from "./admin/finance/FinanceDashboard";
 import "./admin/finance/withdrawals.css";
 import CeoControlCenter from "./admin/ceo/CeoControlCenter";
 import "./admin/ceo/CeoControlCenter.css";
@@ -43,6 +44,10 @@ import "./admin/ceo/CeoReportingCenter.css";
 import RolesPermissionsCenter from "./admin/roles/RolesPermissionsCenter";
 import SecurityOperationsCenter from "./admin/security/SecurityOperationsCenter";
 import { AdminShellPage } from "./admin/layouts/AdminShell";
+import {
+  ADMIN_HOME_ROUTE_CONFIG,
+  renderAdminHomePage,
+} from "./admin/layouts/adminPageWrapper";
 import AdminDashboard from "./admin/AdminDashboard";
 import ExecutiveDashboard from "./admin/executive/ExecutiveDashboard";
 import OpsCenterHome from "./admin/ops-center/OpsCenterHome";
@@ -511,6 +516,14 @@ function App() {
     else if (currentPath === "/admin/verification") setPage("admin-verification");
     else if (currentPath === "/admin/break-notifications") setPage("admin-break-notifications");
     else if (currentPath === "/admin/finance-ops") setPage("admin-finance-ops");
+    else if (currentPath === "/admin/finance-approvals") setPage("admin-finance-approvals");
+    // Role home routes. The backend advertises `home_route` values like
+    // /admin/home/ceo and /admin/home/ops (operations/admin_permissions_service.py
+    // HOME_ROUTES), but App.js handled none of them — so every login redirect and
+    // the AdminEntryRedirect fallback landed on a 404. These are the paths the
+    // backend actually hands out.
+    else if (ADMIN_HOME_ROUTE_CONFIG.some((entry) => entry.path === currentPath))
+      setPage("admin-role-home");
     else if (currentPath === "/admin/command" || currentPath === "/admin/operations-command") setPage("admin-command");
     else if (currentPath === "/admin/growth") setPage("admin-growth");
     else if (currentPath === "/admin/multi-city") setPage("admin-multi-city");
@@ -1404,6 +1417,33 @@ function App() {
     return withInstall(
       <AdminShellPage pathname="/admin/finance-ops" title="Finance Operations Center">
         <FinanceOperationsCenter />
+      </AdminShellPage>
+    );
+  }
+
+  if (page === "admin-role-home") {
+    // The backend hands out `home_route` values under /admin/home/<role>; render the
+    // matching role dashboard from the shared config instead of 404-ing.
+    const homeConfig = ADMIN_HOME_ROUTE_CONFIG.find((entry) => entry.path === currentPath);
+    if (homeConfig) {
+      return withInstall(
+        renderAdminHomePage(homeConfig.path, homeConfig.role, homeConfig.title)
+      );
+    }
+    return withInstall(
+      <AdminShellPage pathname={currentPath} title="Workspace">
+        <AdminModuleHub />
+      </AdminShellPage>
+    );
+  }
+
+  if (page === "admin-finance-approvals") {
+    // Dedicated refund / payout approval surface. FinanceDashboard carries the
+    // financial controls (confirmation dialog, admin note, dual-approval indicator,
+    // permission-gated approve/reject) but previously had no route at all.
+    return withInstall(
+      <AdminShellPage pathname="/admin/finance-approvals" title="Refund & Payout Approvals">
+        <FinanceDashboard />
       </AdminShellPage>
     );
   }

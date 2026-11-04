@@ -12,12 +12,20 @@ from rest_framework.response import Response
 from deliveries.models import Delivery
 from merchants.models import MerchantOrder
 from merchants.permissions import IsMerchantOwner
+from security.services.audit_service import log_from_request
 
+from .admin_driver_serializers import AdminDriverWithdrawalSerializer
 from .admin_rider_serializers import (
     AdminRiderPaymentSerializer,
     AdminRiderRefundSerializer,
 )
-from .models import MerchantWithdrawalRequest, Payment, PaymentRecord, RefundRequest
+from .models import (
+    MerchantWithdrawalRequest,
+    Payment,
+    PaymentRecord,
+    RefundRequest,
+    WithdrawalRequest,
+)
 from .serializers import (
     MerchantWithdrawalRequestSerializer,
     PaymentRecordSerializer,
@@ -187,6 +195,17 @@ def admin_approve_refund(request, refund_id):
         return Response({"error": "Refund not found."}, status=status.HTTP_404_NOT_FOUND)
     except SettlementError as exc:
         return Response({"error": exc.message, "code": exc.code}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Refund decisions are a financial control and must be traceable. This mirrors
+    # _log_withdrawal_audit so refund and withdrawal audit records are symmetric.
+    log_from_request(
+        request,
+        action="admin_action",
+        entity_type="payment",
+        entity_id=refund.id,
+        summary=f"Refund #{refund.id} approved",
+        details={"admin_note": refund.admin_note, "amount": str(refund.amount)},
+    )
     return Response(RefundRequestSerializer(refund).data)
 
 
@@ -198,6 +217,19 @@ def admin_reject_refund(request, refund_id):
         refund = reject_refund(refund, admin_note=request.data.get("admin_note", ""))
     except RefundRequest.DoesNotExist:
         return Response({"error": "Refund not found."}, status=status.HTTP_404_NOT_FOUND)
+    except SettlementError as exc:
+        # reject_refund now refuses to re-decide a settled refund; surface that as a
+        # 400 rather than letting it become a 500.
+        return Response({"error": exc.message, "code": exc.code}, status=status.HTTP_400_BAD_REQUEST)
+
+    log_from_request(
+        request,
+        action="admin_action",
+        entity_type="payment",
+        entity_id=refund.id,
+        summary=f"Refund #{refund.id} rejected",
+        details={"admin_note": refund.admin_note, "amount": str(refund.amount)},
+    )
     return Response(RefundRequestSerializer(refund).data)
 
 
@@ -322,6 +354,69 @@ def admin_rider_payments(request, rider_id):
             "total_pages": paginator.page.paginator.num_pages,
             "results": serializer.data,
             "refunds": refunds,
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+class AdminDriverPayoutsPagination(PageNumberPagination):
+    """Server-side pagination for the admin driver payout-history endpoint."""
+
+    page_size = 25
+    page_size_query_param = "page_size"
+    max_page_size = 100
+
+
+@api_view(["GET"])
+@permission_classes([IsAdminUser])
+def admin_driver_payouts(request, driver_id):
+    """Admin-only withdrawal (payout) history for a single driver.
+
+    The URL <driver_id> is a DriverProfile.id. The profile is resolved first,
+    then WithdrawalRequest rows are filtered by profile.user_id (WithdrawalRequest
+    keys off the USER id) for strict data isolation. Returns 404 ONLY when the
+    DriverProfile id is missing; the rider '404 when user has a driver_profile'
+    rule does NOT apply here.
+
+    Serialized payloads NEVER include a nested payout method, a PaymentRecord, a
+    provider_token, or a full card/PAN ΓÇö only the whitelisted WithdrawalRequest
+    fields plus a redacted payout_method_label (AdminDriverWithdrawalSerializer).
+
+    Additive endpoint only: it does not touch any existing view, serializer,
+    route, or auth behavior (driver_wallet_summary / GET /payments/withdrawals/
+    is left unchanged).
+    """
+    from taxi.drivers.models import DriverProfile
+
+    profile = get_object_or_404(DriverProfile, id=driver_id)
+
+    qs = (
+        WithdrawalRequest.objects.filter(driver_id=profile.user_id)
+        .select_related("payout_method")
+        .order_by("-created_at")
+    )
+
+    # Optional status filter: validate against the model's status choices.
+    # An unknown status value is ignored (no filtering applied).
+    status_filter = request.query_params.get("status")
+    if status_filter:
+        valid_statuses = [c[0] for c in WithdrawalRequest.STATUS_CHOICES]
+        if status_filter in valid_statuses:
+            qs = qs.filter(status=status_filter)
+
+    paginator = AdminDriverPayoutsPagination()
+    page = paginator.paginate_queryset(qs, request)
+    serializer = AdminDriverWithdrawalSerializer(page, many=True)
+
+    page_number = paginator.page.number
+    page_size = paginator.get_page_size(request)
+    return Response(
+        {
+            "count": paginator.page.paginator.count,
+            "page": page_number,
+            "page_size": page_size,
+            "total_pages": paginator.page.paginator.num_pages,
+            "results": serializer.data,
         },
         status=status.HTTP_200_OK,
     )

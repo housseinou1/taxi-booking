@@ -23,14 +23,17 @@ import {
   approveFleetDocument,
   bulkNotifyFleetDrivers,
   exportFleetReport,
-  fetchDisciplinaryActions,
   fetchFleetDashboard,
   notifyFleetDriver,
-  postDisciplinaryAction,
   reactivateFleetDriver,
   rejectFleetDocument,
   suspendFleetDriver,
 } from "../fleet/fleetApi";
+// NOTE: fetchDisciplinaryActions / postDisciplinaryAction were imported here but
+// are exported by nothing, and the backend has no driver-disciplinary endpoint
+// (only employee-scoped HR discipline at /employees/hr/discipline/). The broken
+// imports failed the whole production build. The disciplinary UI below is now
+// explicitly marked unavailable rather than faking an empty log.
 import authenticatedApi from "../../auth/authenticatedApi";
 import { API_URL } from "../../apiConfig";
 import "../finance/FinanceDashboard.css";
@@ -49,7 +52,6 @@ export default function DriverOpsDashboard() {
   const { cityId, canEdit } = usePermissions();
   const { push } = useToast();
   const [data, setData] = useState(null);
-  const [disciplinary, setDisciplinary] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [loadMs, setLoadMs] = useState(null);
@@ -72,12 +74,8 @@ export default function DriverOpsDashboard() {
     try {
       setError("");
       const params = cityId ? { city_id: cityId } : {};
-      const [dash, actions] = await Promise.all([
-        fetchFleetDashboard(params),
-        fetchDisciplinaryActions().catch(() => ({ actions: [] })),
-      ]);
+      const [dash] = await Promise.all([fetchFleetDashboard(params)]);
       setData(dash.data || dash);
-      setDisciplinary(actions.data?.actions || actions.actions || []);
       setLoadMs(Math.round(performance.now() - started));
       setLastRefresh(new Date());
     } catch (err) {
@@ -133,13 +131,6 @@ export default function DriverOpsDashboard() {
         await suspendFleetDriver(confirm.userId, { reason, action_type: "permanent_suspension" });
       } else if (confirm.type === "reactivate") {
         await reactivateFleetDriver(confirm.userId, { reason });
-      } else if (confirm.type === "appeal") {
-        await postDisciplinaryAction({
-          driver_id: confirm.userId,
-          action_type: "appeal_note",
-          reason,
-          status: "appealed",
-        });
       } else if (confirm.type === "notify_one") {
         await notifyFleetDriver(confirm.userId, { title: "Driver Operations", message: reason });
       }
@@ -420,19 +411,6 @@ export default function DriverOpsDashboard() {
               >
                 Reactivate
               </button>
-              <button
-                type="button"
-                className="admin-lib-btn admin-lib-btn--ghost"
-                onClick={() =>
-                  setConfirm({
-                    type: "appeal",
-                    userId: row.user_id || row.driver_id,
-                    label: `Appeal note for ${row.driver_name}`,
-                  })
-                }
-              >
-                Appeal note
-              </button>
             </div>
           )}
         />
@@ -441,21 +419,12 @@ export default function DriverOpsDashboard() {
       <div className="drv-dash__grid">
         <section className="drv-dash__panel">
           <h2>Disciplinary Log</h2>
-          <DataTable
-            searchable
-            exportFilename="disciplinary"
-            exportScope="reports"
-            columns={[
-              { id: "driver_email", label: "Driver" },
-              { id: "action_type", label: "Action" },
-              { id: "status", label: "Status" },
-              { id: "reason", label: "Reason" },
-              { id: "actor", label: "Actor" },
-              { id: "created_at", label: "When", render: (r) => formatTimestamp(r.created_at) },
-            ]}
-            rows={disciplinary}
-            emptyLabel="No disciplinary actions yet"
-          />
+          <p className="beta__card-sub" role="note">
+            Not available. There is no driver-disciplinary endpoint on the backend, so this log
+            cannot be populated. It is shown as unavailable rather than as an empty table, which
+            would falsely read as &ldquo;no disciplinary actions&rdquo;. Requested from the
+            backend team.
+          </p>
         </section>
 
         <section className="drv-dash__panel">

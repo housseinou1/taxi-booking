@@ -31,7 +31,9 @@ const TABS = [
 ];
 
 const PERIODS = ["daily", "weekly", "monthly", "quarterly", "annual"];
-const EXPORT_FORMATS = ["csv", "excel", "pdf", "presentation"];
+// `presentation` is gone: the backend returned byte-identical PDF bytes for it, so
+// it duplicated the PDF button without offering a different format.
+const EXPORT_FORMATS = ["csv", "excel", "pdf"];
 const EXPORT_REPORTS = [
   { id: "full", label: "Full Suite" },
   { id: "executive", label: "Executive Summary" },
@@ -428,15 +430,15 @@ export default function BoardReportingSuite() {
   const renderExport = () => (
     <Section title="One-Click Board Exports">
       <p className="beta__subtitle">
-        Export reports as CSV, Excel, PDF, or Executive Presentation ({periodLabel}).
+        Export reports as CSV, Excel, or PDF ({periodLabel}).
       </p>
 
       <div className="board-report-export-warning" role="note">
-        <strong>Backend limitation:</strong> the Excel, PDF and Presentation downloads are produced by
-        <code> report_export.py</code>, whose optional dependencies (<code>openpyxl</code>,{" "}
-        <code>reportlab</code>) are not installed and are absent from <code>requirements.txt</code>. Excel
-        therefore returns CSV bytes, and PDF returns plain text, both under a mismatched content type and file
-        extension. <strong>Only CSV is a genuine file today.</strong> This is reported to the backend team.
+        <strong>Excel exports are not yet genuine files.</strong> The export helper falls back to CSV
+        bytes when <code>openpyxl</code> is unavailable, and it is not installed, so an{" "}
+        <strong>XLSX download is really CSV</strong> under an <code>.xlsx</code> name.{" "}
+        <strong>CSV and PDF are both genuine files</strong> (PDF is produced by <code>reportlab</code>,
+        which is installed). Reported to the backend team — installing <code>openpyxl</code> fixes it.
       </div>
 
       {exportNotice ? (
@@ -462,7 +464,7 @@ export default function BoardReportingSuite() {
                     disabled={busy}
                     aria-busy={busy}
                   >
-                    {busy ? "Preparing…" : fmt === "presentation" ? "Presentation" : fmt.toUpperCase()}
+                    {busy ? "Preparing…" : fmt.toUpperCase()}
                   </button>
                 );
               })}

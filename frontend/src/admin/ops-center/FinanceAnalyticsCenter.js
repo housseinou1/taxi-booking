@@ -10,7 +10,26 @@ import { formatMoneyOrDash } from "../components/library/utils/formatters";
 import authenticatedApi from "../../auth/authenticatedApi";
 import { API_URL } from "../../apiConfig";
 import { fetchOpsDashboard } from "./opsDashboardApi";
+import { usePermissions } from "../permissions/PermissionContext";
 import "./FinanceAnalyticsCenter.css";
+
+/**
+ * Shown in place of the money sections when the operator lacks the Finance
+ * capability. Operations Managers and Supervisors legitimately need the
+ * operational sections below, but must not see revenue, commission, payout or
+ * wallet figures — and must be told so explicitly rather than shown zeros.
+ */
+function RestrictedSection() {
+  return (
+    <section className="fin-section" aria-label="Restricted">
+      <h2 className="fin-section__title">Restricted</h2>
+      <p className="fin-unavailable">
+        Restricted — financial figures require the Finance capability. Your role can
+        view operational performance only. Ask the Founder/CEO to grant finance access.
+      </p>
+    </section>
+  );
+}
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -157,6 +176,11 @@ function InsightCard({ label, current, previous, unit = "", isCurrency = false, 
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function FinanceAnalyticsCenter() {
+  const { canView } = usePermissions();
+  // Operations Managers and Supervisors must see operational information only.
+  // `canView` is true for the CEO/elevated tiers and for roles whose modules
+  // include "finance"; it is fail-closed for everyone else.
+  const canSeeFinancials = canView("finance");
   const [period, setPeriod] = useState("30d");
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -272,7 +296,12 @@ export default function FinanceAnalyticsCenter() {
         </div>
       </header>
 
-      {/* FINANCIAL SUMMARY — grouped so distinct concepts are never conflated. */}
+      {/* FINANCIAL SUMMARY — grouped so distinct concepts are never conflated.
+          Sections A–D are money figures and are withheld from roles without the
+          Finance capability; the operational sections below stay visible. */}
+      {!canSeeFinancials ? <RestrictedSection /> : null}
+      {canSeeFinancials ? (
+        <>
       <section className="fin-section" aria-label="Revenue">
         <h2 className="fin-section__title">A. Revenue</h2>
         <div className="fin-kpi-grid">
@@ -337,6 +366,8 @@ export default function FinanceAnalyticsCenter() {
           <strong>Finance Operations</strong> (Daily Reconciliation → Wallets).
         </p>
       </section>
+        </>
+      ) : null}
 
       {/* Charts */}
       <section className="fin-section" aria-label="Analytics charts">

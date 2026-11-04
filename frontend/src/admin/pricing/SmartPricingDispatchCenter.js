@@ -1,8 +1,11 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
-import { formatMoneyOrDash } from "../components/library/utils/formatters";
+import { SearchableSelect, formatMoneyOrDash } from "../components/library";
+import { resolveRegion } from "../city/mauritaniaGeoIdentity";
+import { apiErrorMessage } from "../layouts/errors/apiErrorMessage";
 import {
   fetchCeoDashboard,
+  fetchRegionCityTree,
   fetchSmartEngineDashboard,
   runPricingSimulation,
   updateDispatchRules,
@@ -20,6 +23,21 @@ const TABS = [
   { id: "analytics", label: "Dispatch Analytics" },
   { id: "simulator", label: "Pricing Simulator" },
   { id: "ceo", label: "CEO Dashboard" },
+];
+
+/**
+ * Ride types the smart-engine pricing rules are keyed by.
+ *
+ * The engine stores pricing per ride type and the simulator is priced the same
+ * way, so the operator must be able to choose the type they are editing. The
+ * previous version hard-coded "regular" and offered no control, which silently
+ * wrote every pricing edit against the `regular` row.
+ */
+const RIDE_TYPE_OPTIONS = [
+  { value: "regular", label: "Regular" },
+  { value: "xl", label: "XL" },
+  { value: "comfort", label: "Comfort" },
+  { value: "share", label: "Share" },
 ];
 
 function MetricCard({ label, value, sub }) {
@@ -52,11 +70,24 @@ export default function SmartPricingDispatchCenter() {
   const [selectedCityId, setSelectedCityId] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  // Separate from `error` so a failed *save* never masks a successful *load*.
+  // Every write handler used to swallow its rejection entirely, so a rejected
+  // PATCH produced no feedback at all and the control silently reverted.
+  const [actionError, setActionError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState("");
+  // Which ride type the pricing rules and the simulator are scoped to. Previously
+  // hard-coded to "regular", so every pricing edit silently hit the regular row.
+  const [rideType, setRideType] = useState("regular");
+  // Geography for the dependent Region/Wilaya -> City filters. `selectedCityId`
+  // (above) is the value the smart-engine actually consumes.
+  const [regions, setRegions] = useState([]);
+  const [selectedRegion, setSelectedRegion] = useState("");
+  const [geoError, setGeoError] = useState("");
   const [simInput, setSimInput] = useState({
     distance_km: 8,
     duration_minutes: 20,
     waiting_minutes: 0,
-    ride_type: "regular",
     surge_multiplier: 1.0,
     use_engine: true,
     is_holiday: false,
@@ -69,6 +100,7 @@ export default function SmartPricingDispatchCenter() {
   const load = useCallback(async () => {
     try {
       setError("");
+      setLoading(true);
       const params = selectedCityId ? { city_id: selectedCityId } : {};
       const payload = await fetchSmartEngineDashboard(params);
       setData(payload);
@@ -77,7 +109,9 @@ export default function SmartPricingDispatchCenter() {
         setCeoData(ceo);
       }
     } catch (err) {
-      setError(err?.response?.data?.detail || err?.message || "Failed to load smart engine");
+      // Shared mapper: a 401/403/404/5xx/unreachable backend each produce a
+      // distinct, actionable message instead of a raw axios string.
+      setError(apiErrorMessage(err, { resource: "the smart engine", action: "load" }));
     } finally {
       setLoading(false);
     }
@@ -86,6 +120,138 @@ export default function SmartPricingDispatchCenter() {
   useEffect(() => {
     load();
   }, [load]);
+  /**
+   * Load the Region (wilaya) -> City tree once.
+   *
+   * Kept separate from `load()` so switching tabs or saving a setting does not
+   * refetch geography. A failure here degrades only the filters: the page falls
+   * back to the cities the smart engine itself reports, so the operator is never
+   * left without a city control, and the error is still surfaced rather than hidden.
+   */
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const tree = await fetchRegionCityTree();
+        if (!cancelled) setRegions(Array.isArray(tree) ? tree : []);
+      } catch (err) {
+        if (!cancelled) {
+          setGeoError(apiErrorMessage(err, { resource: "the region list", action: "load" }));
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  /**
+   * Region (wilaya) options.
+   *
+   * The value is the region NAME, matching the convention already established by
+   * City Management; the label is the canonical wilaya name resolved through the
+   * shared geo-identity module so the two pages agree.
+   */
+  const regionOptions = useMemo(
+    () => [
+      { value: "", label: "All regions", description: "No region filter" },
+      ...regions.map((region) => {
+        const geo = resolveRegion(region.name);
+        const wilaya = geo.wilaya || region.name;
+        // `Region` holds BOTH true wilayas and city-seat rows (Nouakchott,
+        // Nouadhibou, Atar, Kaedi, Rosso). `resolveRegion` maps a seat to its
+        // parent wilaya, so two rows can resolve to the SAME label — e.g. "Adrar"
+        // (4 cities) and "Atar" (1 city) both display as "Adrar". Disambiguate with
+        // the raw name so the operator can tell them apart and filter correctly.
+        const label = wilaya === region.name ? wilaya : `${wilaya} (${region.name})`;
+        return {
+          value: region.name,
+          label,
+          description: `${(region.cities || []).length} cities`,
+        };
+      }),
+    ],
+    [regions]
+  );
+
+  /**
+   * City options — DEPENDENT on the selected region.
+   *
+   * With a region chosen, only that region's cities are offered. With no region,
+   * every city is offered. If the geography request failed we fall back to the
+   * smart engine's own city list so the control is never empty.
+   */
+  const cityOptions = useMemo(() => {
+    const base = [{ value: "", label: "All cities", description: "No city filter" }];
+    if (regions.length === 0) {
+      return [
+        ...base,
+        ...(data?.cities || []).map((city) => ({
+          value: String(city.id),
+          label: city.name,
+        })),
+      ];
+    }
+    const scoped = selectedRegion
+      ? regions.filter((region) => region.name === selectedRegion)
+      : regions;
+    const seen = new Set();
+    const cities = [];
+    scoped.forEach((region) => {
+      (region.cities || []).forEach((city) => {
+        const value = String(city.id);
+        if (seen.has(value)) return;
+        seen.add(value);
+        cities.push({ value, label: city.name, description: region.name });
+      });
+    });
+    return [...base, ...cities];
+  }, [regions, selectedRegion, data]);
+
+  /**
+   * Changing the region must clear the city: the previously chosen city may not
+   * belong to the newly chosen region, and the engine would otherwise stay scoped
+   * to a city outside the region the operator just selected.
+   */
+  const handleRegionChange = useCallback((value) => {
+    setSelectedRegion(value || "");
+    setSelectedCityId("");
+  }, []);
+
+
+
+
+  /**
+   * Wrap a write so a rejected PATCH/POST can never fail silently.
+   *
+   * Before this, every handler below was `async` with no catch: a 400/403/500
+   * produced an unhandled rejection, the operator saw nothing, and the control
+   * simply reverted on the next load. Now a failure is surfaced and the panel is
+   * reloaded only when the write actually succeeded.
+   */
+  const runWrite = useCallback(
+    async (fn, { successLabel } = {}) => {
+      setActionError("");
+      setNotice("");
+      setSaving(true);
+      try {
+        await fn();
+        await load();
+        if (successLabel) setNotice(successLabel);
+        return true;
+      } catch (err) {
+        setActionError(
+          apiErrorMessage(err, { resource: "the smart engine settings", action: "save" })
+        );
+        // Re-read so the UI reflects the server's true state, not the optimistic one.
+        await load();
+        return false;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [load]
+  );
 
   const flags = data?.engine_flags || {};
   const dispatchRules = data?.dispatch_rules || {};
@@ -95,34 +261,57 @@ export default function SmartPricingDispatchCenter() {
   const insights = data?.dispatch_insights?.rides || [];
   const auditTrail = data?.audit_trail || [];
 
-  const handleFlagToggle = async (key) => {
-    await updateEngineFlags({ [key]: !flags[key] });
-    await load();
+  const handleFlagToggle = async (key) =>
+    runWrite(() => updateEngineFlags({ [key]: !flags[key] }), {
+      successLabel: "Engine flag updated.",
+    });
+
+  /**
+   * Persist one dispatch-scoring weight.
+   *
+   * This is wired to `onBlur`, not `onChange`. It previously ran on every
+   * keystroke, so typing "0.5" issued three PATCHes ("0", "0.", "0.5") — and
+   * `parseFloat("0.") || 0` wrote 0 in between.
+   */
+  const handleWeightSave = async (key, value) => {
+    const parsed = Number.parseFloat(value);
+    if (Number.isNaN(parsed)) {
+      setActionError(`"${key}" must be a number between 0 and 1. Nothing was saved.`);
+      return false;
+    }
+    const weights = { ...(dispatchRules.weights || {}), [key]: parsed };
+    return runWrite(() => updateDispatchRules({ weights }, selectedCityId || undefined), {
+      successLabel: `Dispatch weight "${key}" saved.`,
+    });
   };
 
-  const handleWeightChange = async (key, value) => {
-    const weights = { ...(dispatchRules.weights || {}), [key]: parseFloat(value) || 0 };
-    await updateDispatchRules({ weights }, selectedCityId || undefined);
-    await load();
-  };
+  const handlePricingSave = async (field, value) =>
+    runWrite(() => updatePricingRules({ [field]: value }, selectedCityId || undefined, rideType), {
+      successLabel: `Pricing rule "${field}" saved for ${rideType}.`,
+    });
 
-  const handlePricingSave = async (field, value) => {
-    await updatePricingRules({ [field]: value }, selectedCityId || undefined, simInput.ride_type);
-    await load();
-  };
-
-  const handleSurgeSave = async (payload) => {
-    await updateSurgeConfig(payload);
-    await load();
-  };
+  const handleSurgeSave = async (payload) =>
+    runWrite(() => updateSurgeConfig(payload), { successLabel: "Surge configuration saved." });
 
   const handleSimulate = async () => {
-    const payload = {
-      ...simInput,
-      city_id: selectedCityId ? Number(selectedCityId) : undefined,
-    };
-    const result = await runPricingSimulation(payload);
-    setSimResult(result);
+    setActionError("");
+    setNotice("");
+    setSaving(true);
+    try {
+      const payload = {
+        ...simInput,
+        ride_type: rideType,
+        city_id: selectedCityId ? Number(selectedCityId) : undefined,
+      };
+      const result = await runPricingSimulation(payload);
+      setSimResult(result);
+    } catch (err) {
+      setActionError(
+        apiErrorMessage(err, { resource: "the pricing simulation", action: "run" })
+      );
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (loading && !data) {
@@ -137,21 +326,59 @@ export default function SmartPricingDispatchCenter() {
           <p className="beta__subtitle">Intelligent dispatch, dynamic pricing, surge, and analytics</p>
         </div>
         <div className="smart-pricing-toolbar">
-          <select value={selectedCityId} onChange={(e) => setSelectedCityId(e.target.value)}>
-            <option value="">All cities</option>
-            {(data?.cities || []).map((city) => (
-              <option key={city.id} value={city.id}>
-                {city.name}
-              </option>
-            ))}
-          </select>
-          <button type="button" className="beta__btn" onClick={load}>
-            Refresh
+          <SearchableSelect
+            label="Region / Wilaya"
+            icon="🗺"
+            value={selectedRegion}
+            onChange={handleRegionChange}
+            options={regionOptions}
+            placeholder="All regions"
+            searchPlaceholder="Search region…"
+            disabled={regions.length === 0}
+          />
+          <SearchableSelect
+            label="City"
+            icon="📍"
+            value={selectedCityId}
+            onChange={(value) => setSelectedCityId(value ?? "")}
+            options={cityOptions}
+            placeholder={selectedRegion ? "All cities in region" : "All cities"}
+            searchPlaceholder="Search city…"
+            disabled={regions.length === 0 && (data?.cities || []).length === 0}
+          />
+          <SearchableSelect
+            label="Ride type"
+            icon="🚕"
+            value={rideType}
+            onChange={(value) => setRideType(value || "regular")}
+            options={RIDE_TYPE_OPTIONS}
+            placeholder="Regular"
+            searchPlaceholder="Search ride type…"
+          />
+          <button type="button" className="beta__btn" onClick={load} disabled={saving}>
+            {saving ? "Working…" : "Refresh"}
           </button>
         </div>
       </header>
 
       {error ? <div className="beta__error">{error}</div> : null}
+      {geoError ? (
+        // The region/city filters degrade to the engine's own city list, so this is
+        // a warning about reduced filtering, not a page failure. Shown, never hidden.
+        <div className="beta__error" role="status">
+          {geoError} Region and city filters are limited to the cities the engine reports.
+        </div>
+      ) : null}
+      {actionError ? (
+        <div className="beta__error" role="alert">
+          {actionError}
+        </div>
+      ) : null}
+      {notice ? (
+        <div className="beta__card-sub" role="status">
+          {notice}
+        </div>
+      ) : null}
 
       <div className="smart-pricing-panel">
         <h3>Engine feature flags</h3>
@@ -192,15 +419,18 @@ export default function SmartPricingDispatchCenter() {
             <h3>Dispatch scoring weights</h3>
             <div className="smart-pricing-form">
               {WEIGHT_FIELDS.map(({ key, label }) => (
-                <label key={key}>
+                // The label key includes the stored value so the input remounts
+                // after a successful save+reload and shows the server's value.
+                <label key={`${key}-${dispatchRules.weights?.[key] ?? 0}`}>
                   {label}
                   <input
                     type="number"
                     step="0.01"
                     min="0"
                     max="1"
-                    value={dispatchRules.weights?.[key] ?? 0}
-                    onChange={(e) => handleWeightChange(key, e.target.value)}
+                    defaultValue={dispatchRules.weights?.[key] ?? 0}
+                    disabled={saving}
+                    onBlur={(e) => handleWeightSave(key, e.target.value)}
                   />
                 </label>
               ))}
@@ -230,10 +460,18 @@ export default function SmartPricingDispatchCenter() {
 
       {tab === "pricing" ? (
         <section className="smart-pricing-panel">
-          <h3>Dynamic pricing rules</h3>
+          <h3>Dynamic pricing rules — {rideType}</h3>
+          <p className="beta__card-sub">
+            These values apply to the <strong>{rideType}</strong> ride type
+            {selectedCityId ? " in the selected city" : " platform-wide"}. Change the
+            Ride type control in the header to edit another type.
+          </p>
           <div className="smart-pricing-form">
             {[
               ["base_fare", "Base fare (MRU)"],
+              // Returned by the API but previously not editable in the UI.
+              // A scalar money value; null means "no floor configured".
+              ["minimum_fare", "Minimum fare (MRU)"],
               ["distance_fare_per_km", "Distance fare / km"],
               ["time_fare_per_minute", "Time fare / min"],
               ["waiting_fee_per_minute", "Waiting fee / min"],
@@ -276,8 +514,24 @@ export default function SmartPricingDispatchCenter() {
                   step="0.1"
                   min="1"
                   max="5"
-                  defaultValue={surge.config?.max_multiplier ?? 2.5}
-                  onBlur={(e) => handleSurgeSave({ max_multiplier: parseFloat(e.target.value) || 2.5 })}
+                  // Keyed on the server value so a reload shows the saved number.
+                  key={`surge-max-${surge.config?.max_multiplier ?? "unset"}`}
+                  defaultValue={surge.config?.max_multiplier ?? ""}
+                  disabled={saving}
+                  onBlur={(e) => {
+                    const raw = e.target.value;
+                    // No fabricated fallback: an empty or non-numeric entry is
+                    // reported instead of silently saving 2.5.
+                    if (raw === "") return;
+                    const parsed = Number.parseFloat(raw);
+                    if (Number.isNaN(parsed)) {
+                      setActionError(
+                        "Max multiplier must be a number between 1 and 5. Nothing was saved."
+                      );
+                      return;
+                    }
+                    handleSurgeSave({ max_multiplier: parsed });
+                  }}
                 />
               </label>
             </div>
@@ -314,6 +568,11 @@ export default function SmartPricingDispatchCenter() {
       {tab === "simulator" ? (
         <section className="smart-pricing-panel">
           <h3>Pricing simulator (dry run — no production impact)</h3>
+          <p className="beta__card-sub">
+            Simulated as the <strong>{rideType}</strong> ride type
+            {selectedCityId ? " in the selected city" : ""}. Change the Ride type
+            control in the header to simulate another type.
+          </p>
           <div className="smart-pricing-form">
             <label>
               Distance (km)
@@ -340,8 +599,14 @@ export default function SmartPricingDispatchCenter() {
               Use smart engine pricing
             </label>
           </div>
-          <button type="button" className="beta__btn" onClick={handleSimulate} style={{ marginTop: "1rem" }}>
-            Run simulation
+          <button
+            type="button"
+            className="beta__btn"
+            onClick={handleSimulate}
+            disabled={saving}
+            style={{ marginTop: "1rem" }}
+          >
+            {saving ? "Running…" : "Run simulation"}
           </button>
           {simResult ? (
             <div className="smart-pricing-grid" style={{ marginTop: "1rem" }}>

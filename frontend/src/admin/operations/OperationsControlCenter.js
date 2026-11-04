@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import { formatMoneyOrDash } from "../components/library/utils/formatters";
+import ProtectedActionButton from "../components/guards/ProtectedActionButton";
 import { getStoredUser } from "../../auth/session";
 import { updateSupportTicket } from "../beta/supportApi";
 import {
@@ -430,8 +431,26 @@ function SupportModule({ bundle, runAction, reload }) {
                 <td>
                   {row.status === "requested" && (
                     <div className="ops-center__actions">
-                      <button type="button" className="ops-center__btn" onClick={() => runAction("Approve refund", () => approveRefund(row.id).then(reload))}>Approve</button>
-                      <button type="button" className="ops-center__btn danger" onClick={() => runAction("Reject refund", () => rejectRefund(row.id).then(reload))}>Reject</button>
+                      {/* Refund approvals are a financial control: they are hidden from
+                          operators without `finance.approve_refund`, matching the
+                          withdrawal approval pattern. Previously these were plain
+                          buttons with no permission check at all. */}
+                      <ProtectedActionButton
+                        approve="refund"
+                        mode="hide"
+                        className="ops-center__btn"
+                        onClick={() => runAction("Approve refund", () => approveRefund(row.id).then(reload))}
+                      >
+                        Approve
+                      </ProtectedActionButton>
+                      <ProtectedActionButton
+                        approve="refund"
+                        mode="hide"
+                        className="ops-center__btn danger"
+                        onClick={() => runAction("Reject refund", () => rejectRefund(row.id).then(reload))}
+                      >
+                        Reject
+                      </ProtectedActionButton>
                     </div>
                   )}
                 </td>

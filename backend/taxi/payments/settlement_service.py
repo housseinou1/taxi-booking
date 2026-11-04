@@ -472,6 +472,12 @@ def approve_refund(refund: RefundRequest, admin_note=""):
 
 @transaction.atomic
 def reject_refund(refund: RefundRequest, admin_note=""):
+    # Guard against re-deciding a settled refund. Without this, an ALREADY
+    # REFUNDED refund could be flipped to "rejected": the customer keeps the
+    # wallet credit while the record claims the refund was refused, leaving the
+    # ledger and the record permanently inconsistent.
+    if refund.status != "requested":
+        raise SettlementError("Refund already processed.", code="invalid_status")
     refund.status = "rejected"
     refund.admin_note = admin_note
     refund.resolved_at = timezone.now()

@@ -60,3 +60,22 @@ export async function fetchAuditTrail(limit = 50) {
   const response = await authenticatedApi.get(`${BASE}/audit/?limit=${limit}`);
   return response.data;
 }
+
+/**
+ * Region (wilaya) → City tree for the geography filters.
+ *
+ * `GET /cities/` returns regions with their cities nested, which is exactly the
+ * shape a dependent dropdown needs — one request, no client-side join.
+ *
+ * NOTE: this is the same endpoint family used by City Management. It is reused,
+ * not reimplemented. The smart-engine's own `city_id` parameter is a plain key
+ * (it falls back to platform defaults for unknown ids), so a city from this
+ * broader list is safe to pass through.
+ */
+export async function fetchRegionCityTree() {
+  const response = await authenticatedApi.get(`${API_URL}/cities/`);
+  const data = response.data;
+  if (Array.isArray(data)) return data;
+  return data?.regions || [];
+}
+

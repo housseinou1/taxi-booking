@@ -4,8 +4,11 @@ import authenticatedApi from "../../auth/authenticatedApi";
 export async function fetchExecutiveDashboard(params = {}) {
   const query = new URLSearchParams(params).toString();
   const suffix = query ? `?${query}` : "";
+  // The route is registered as `executive/dashboard/` (trailing slash). Without it
+  // Django answers 404 (APPEND_SLASH does not apply to a querystring-carrying GET
+  // through the SPA), which is why the Executive Overview failed to load.
   const response = await authenticatedApi.get(
-    `${API_URL}/operations/executive/dashboard${suffix}`
+    `${API_URL}/operations/executive/dashboard/${suffix}`
   );
   return response.data;
 }

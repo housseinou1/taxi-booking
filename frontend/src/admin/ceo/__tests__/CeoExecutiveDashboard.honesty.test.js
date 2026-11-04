@@ -31,6 +31,20 @@ jest.mock("../../executive/executiveApi", () => ({
   fetchPendingWithdrawals: jest.fn(),
 }));
 
+// CeoExecutiveDashboard calls authenticatedApi directly for the health check
+// (`/api/health/status/`). That call was NOT mocked, so it hit the real network on
+// every run and made this suite intermittently fail under load. Mocking the shared
+// client makes the suite deterministic and keeps the network out of unit tests.
+jest.mock("../../../auth/authenticatedApi", () => ({
+  __esModule: true,
+  default: {
+    get: jest.fn(() => Promise.resolve({ data: { status: "ok", healthy: true } })),
+    post: jest.fn(() => Promise.resolve({ data: {} })),
+    patch: jest.fn(() => Promise.resolve({ data: {} })),
+    delete: jest.fn(() => Promise.resolve({ data: {} })),
+  },
+}));
+
 jest.mock("../../layouts/AdminShell", () => ({
   AdminShellPage: ({ children }) => children,
 }));

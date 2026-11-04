@@ -17,18 +17,25 @@ import {
   formatTimestamp,
 } from "../components/library";
 import ProtectedActionButton from "../components/guards/ProtectedActionButton";
+import { apiErrorMessage } from "../layouts/errors/apiErrorMessage";
 import { usePermissions } from "../permissions/PermissionContext";
 import {
   REPORT_TYPES,
-  approveRefund,
   approveWithdrawal,
   exportFinanceReport,
   fetchFinanceOperations,
-  fetchRefundQueue,
   markWithdrawalPaid,
-  rejectRefund,
   rejectWithdrawal,
 } from "./financeOpsApi";
+// The refund queue and its actions live in the operations control client. They were
+// previously imported from financeOpsApi, which does NOT export them, so
+// `fetchRefundQueue` was `undefined` and the whole dashboard failed to load for the
+// finance role.
+import {
+  approveRefund,
+  fetchRefundQueue,
+  rejectRefund,
+} from "../operations/operationsControlApi";
 import "./FinanceDashboard.css";
 
 const LARGE_REFUND_MRU = 50000;
@@ -72,7 +79,9 @@ export default function FinanceDashboard() {
       setLoadMs(Math.round(performance.now() - started));
       setLastRefresh(new Date());
     } catch (err) {
-      setError(err?.response?.data?.detail || err?.message || "Failed to load finance dashboard");
+      // 403 here means the operator cannot view finance at all - say so precisely
+      // instead of rendering a raw axios string.
+      setError(apiErrorMessage(err, { resource: "the finance dashboard", action: "load" }));
     } finally {
       setLoading(false);
     }
@@ -83,20 +92,30 @@ export default function FinanceDashboard() {
   }, [load]);
 
   const kpis = useMemo(() => {
-    const s = data?.kpi_summary || {};
+    // The endpoint returns NO `kpi_summary` (verified: `has kpi_summary? False`),
+    // so every card previously rendered an em dash. The authoritative figures live
+    // in `reconciliation.totals`; `revenue_analytics.summary` is a fallback for the
+    // subset of fields it carries. Labels follow the backend's own definitions.
+    const t = data?.reconciliation?.totals || {};
+    const s = data?.revenue_analytics?.summary || {};
+    const withdrawals = data?.withdrawals?.summary || {};
+    const pick = (primary, fallback) =>
+      primary === undefined || primary === null ? fallback : primary;
     return [
-      { id: "rev_today", label: "Revenue Today", value: s.revenue_today, format: "currency", tone: "success" },
-      { id: "rev_week", label: "Revenue This Week", value: s.revenue_week, format: "currency" },
-      { id: "rev_month", label: "Revenue This Month", value: s.revenue_month, format: "currency" },
-      { id: "gross", label: "Gross Bookings", value: s.gross_bookings, format: "currency" },
-      { id: "net", label: "Net Revenue", value: s.net_revenue, format: "currency" },
-      { id: "fees", label: "Platform Fees", value: s.platform_fees, format: "currency" },
-      { id: "earnings", label: "Driver Earnings", value: s.driver_earnings, format: "currency" },
-      { id: "pending", label: "Pending Payouts", value: s.pending_payouts, format: "currency", tone: "warning", href: "#finance-payouts" },
-      { id: "completed", label: "Completed Payouts", value: s.completed_payouts, format: "currency" },
-      { id: "refunds", label: "Refunds Today", value: s.refunds_today, href: "#finance-refunds" },
-      { id: "failed", label: "Failed Payments", value: s.failed_payments, tone: "danger" },
-      { id: "outstanding", label: "Outstanding Balances", value: s.outstanding_balances, format: "currency" },
+      // Ride commission is the platform's cut of rides: `ride_revenue` is the ride
+      // gross and `platform_commission` the commission actually earned.
+      { id: "ride_rev", label: "Ride Revenue", value: t.ride_revenue, format: "currency", tone: "success" },
+      { id: "delivery_rev", label: "Delivery Revenue", value: t.delivery_revenue, format: "currency" },
+      { id: "gross", label: "Gross Revenue", value: pick(t.gross_revenue, s.gross_revenue), format: "currency" },
+      { id: "commission", label: "Platform Commission (Rides)", value: pick(t.platform_commission, s.platform_commission), format: "currency", tone: "success" },
+      { id: "driver", label: "Driver Earnings", value: pick(t.driver_earnings, s.driver_earnings), format: "currency" },
+      { id: "courier", label: "Courier Earnings", value: pick(t.courier_earnings, s.courier_earnings), format: "currency" },
+      { id: "wallet", label: "Wallet Balance", value: pick(t.wallet_balance, s.wallet_balance), format: "currency" },
+      { id: "pending_wd", label: "Pending Withdrawals", value: pick(t.pending_withdrawals, withdrawals?.pending?.amount), format: "currency", tone: "warning", href: "#finance-payouts" },
+      { id: "paid_wd", label: "Paid Withdrawals", value: withdrawals?.paid?.amount, format: "currency" },
+      { id: "refunds", label: "Refunds", value: pick(t.refunds, s.refund_total), format: "currency", href: "#finance-refunds" },
+      { id: "failed", label: "Failed Payments", value: t.failed_payments, tone: "danger" },
+      { id: "settlements", label: "Pending Settlements", value: t.pending_settlements, format: "currency" },
     ];
   }, [data]);
 
@@ -113,16 +132,18 @@ export default function FinanceDashboard() {
   const rejectedWithdrawals = withdrawals.filter((w) => w.status === "rejected");
 
   const refundLimit = permissions?.approval_limits?.refund_mru ?? LARGE_REFUND_MRU;
-  const canApproveRefund = canApprove("refund");
+  // Refund approvals are gated by the `approve="refund"` prop on
+  // ProtectedActionButton (which resolves to finance.approve_refund), so no
+  // separate boolean is needed here.
   const canApproveWithdrawal = canApprove("withdrawal");
 
   const runConfirm = async () => {
     if (!confirm) return;
     try {
       if (confirm.type === "refund_approve") {
-        await approveRefund(confirm.id, { admin_note: note });
+        await approveRefund(confirm.id, note);
       } else if (confirm.type === "refund_reject") {
-        await rejectRefund(confirm.id, { admin_note: note });
+        await rejectRefund(confirm.id, note);
       } else if (confirm.type === "wd_approve") {
         await approveWithdrawal(confirm.id, { admin_note: note });
       } else if (confirm.type === "wd_reject") {
@@ -140,10 +161,16 @@ export default function FinanceDashboard() {
       setSelectedPayouts(new Set());
       await load();
     } catch (err) {
+      // Second 403 scenario: the operator can view finance but the backend refuses
+      // the state transition (permission changed, or the role lacks the action).
+      // Name the exact action so the message is actionable, never a bare axios string.
       push({
         tone: "danger",
         title: "Action failed",
-        message: err?.response?.data?.error || err?.response?.data?.detail || err?.message,
+        message: apiErrorMessage(err, {
+          resource: "this withdrawal or refund action",
+          action: confirm.actionVerb || "approve",
+        }),
       });
     }
   };
@@ -154,7 +181,11 @@ export default function FinanceDashboard() {
       downloadBlob(response, `${type || kind}.${format === "xlsx" ? "xlsx" : format === "pdf" ? "pdf" : "csv"}`);
       push({ tone: "success", title: "Export ready" });
     } catch (err) {
-      push({ tone: "danger", title: "Export failed", message: err?.message });
+      push({
+        tone: "danger",
+        title: "Export failed",
+        message: apiErrorMessage(err, { resource: "the finance report", action: "export" }),
+      });
     }
   };
 
@@ -317,13 +348,14 @@ export default function FinanceDashboard() {
             <div className="fin-dash__row-actions">
               <ProtectedActionButton
                 approve="refund"
+                mode="hide"
                 className="admin-lib-btn admin-lib-btn--ghost"
-                disabled={!canApproveRefund}
                 onClick={() =>
                   setConfirm({
                     type: "refund_approve",
                     id: row.id,
                     label: `Approve refund #${row.id}`,
+                    actionVerb: "approve",
                   })
                 }
               >
@@ -331,8 +363,16 @@ export default function FinanceDashboard() {
               </ProtectedActionButton>
               <ProtectedActionButton
                 approve="refund"
+                mode="hide"
                 className="admin-lib-btn admin-lib-btn--ghost"
-                onClick={() => setConfirm({ type: "refund_reject", id: row.id, label: `Reject refund #${row.id}` })}
+                onClick={() =>
+                  setConfirm({
+                    type: "refund_reject",
+                    id: row.id,
+                    label: `Reject refund #${row.id}`,
+                    actionVerb: "reject",
+                  })
+                }
               >
                 Reject
               </ProtectedActionButton>
@@ -402,15 +442,31 @@ export default function FinanceDashboard() {
                 <>
                   <ProtectedActionButton
                     approve="withdrawal"
+                    mode="hide"
                     className="admin-lib-btn admin-lib-btn--ghost"
-                    onClick={() => setConfirm({ type: "wd_approve", id: row.id, label: `Approve payout #${row.id}` })}
+                    onClick={() =>
+                      setConfirm({
+                        type: "wd_approve",
+                        id: row.id,
+                        label: `Approve payout #${row.id}`,
+                        actionVerb: "approve",
+                      })
+                    }
                   >
                     Approve
                   </ProtectedActionButton>
                   <ProtectedActionButton
                     approve="withdrawal"
+                    mode="hide"
                     className="admin-lib-btn admin-lib-btn--ghost"
-                    onClick={() => setConfirm({ type: "wd_reject", id: row.id, label: `Reject payout #${row.id}` })}
+                    onClick={() =>
+                      setConfirm({
+                        type: "wd_reject",
+                        id: row.id,
+                        label: `Reject payout #${row.id}`,
+                        actionVerb: "reject",
+                      })
+                    }
                   >
                     Reject
                   </ProtectedActionButton>
@@ -419,12 +475,14 @@ export default function FinanceDashboard() {
               {row.status === "approved" ? (
                 <ProtectedActionButton
                   approve="withdrawal"
+                  mode="hide"
                   className="admin-lib-btn admin-lib-btn--ghost"
                   onClick={() =>
                     setConfirm({
                       type: "wd_paid",
                       id: row.id,
                       label: `Mark paid / retry payout #${row.id}`,
+                      actionVerb: "mark paid",
                     })
                   }
                 >

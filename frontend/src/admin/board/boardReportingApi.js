@@ -68,10 +68,12 @@ export const EXPORT_CONTENT_TYPES = {
   csv: ["text/csv"],
   excel: ["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"],
   pdf: ["application/pdf"],
-  presentation: ["application/pdf"],
 };
 
-export const EXPORT_EXTENSIONS = { csv: "csv", excel: "xlsx", pdf: "pdf", presentation: "pdf" };
+// `presentation` was removed: the backend answered it with byte-identical PDF
+// bytes (verified: 3990 == 3990 for the full suite), so it was a duplicate
+// control that offered the operator no additional format.
+export const EXPORT_EXTENSIONS = { csv: "csv", excel: "xlsx", pdf: "pdf" };
 
 /**
  * Download a board report export through the authenticated client.

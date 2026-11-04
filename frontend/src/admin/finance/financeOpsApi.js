@@ -27,12 +27,14 @@ export async function exportFinanceReport(params = {}) {
   return response;
 }
 
-export async function approveWithdrawal(id) {
-  return authenticatedApi.post(`${API_URL}/payments/withdrawals/${id}/approve/`, {});
+export async function approveWithdrawal(id, payload = {}) {
+  // Accepts a payload so the operator's admin_note reaches the backend. It was
+  // previously `(id)` only, so every approval note was silently discarded.
+  return authenticatedApi.post(`${API_URL}/payments/withdrawals/${id}/approve/`, payload);
 }
 
-export async function rejectWithdrawal(id) {
-  return authenticatedApi.post(`${API_URL}/payments/withdrawals/${id}/reject/`, {});
+export async function rejectWithdrawal(id, payload = {}) {
+  return authenticatedApi.post(`${API_URL}/payments/withdrawals/${id}/reject/`, payload);
 }
 
 export async function markWithdrawalPaid(id, payload = {}) {
