@@ -296,16 +296,22 @@ class DriverComplimentAdmin(admin.ModelAdmin):
 class SupportTicketAdmin(admin.ModelAdmin):
     list_display = (
         "id",
+        "reference",
+        "source",
         "driver",
+        "contact_email",
         "ticket_type",
+        "category",
+        "language",
         "status",
         "subject",
         "created_at",
         "resolved_at",
     )
-    list_filter = ("ticket_type", "status")
-    search_fields = ("driver__user__email", "subject", "message")
-    raw_id_fields = ("driver",)
+    list_filter = ("source", "ticket_type", "category", "status", "language")
+    search_fields = ("reference", "driver__user__email", "contact_email", "contact_name", "subject", "message")
+    raw_id_fields = ("driver", "requester")
+    readonly_fields = ("reference", "ip_hash", "user_agent_hash", "consent_at")
 
 
 @admin.register(HeatmapZone)

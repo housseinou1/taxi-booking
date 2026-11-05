@@ -72,6 +72,7 @@ class AuditLog(models.Model):
         ("reactivate", "Reactivated"),
         ("reintegrate", "Reintegrated"),
         ("approval_blocked", "Approval Blocked"),
+        ("support_ticket_created", "Support Ticket Created"),
     ]
 
     ENTITY_CHOICES = [
@@ -89,6 +90,7 @@ class AuditLog(models.Model):
         # reintegrate / blocked approval attempts). Added so driver actions have
         # a first-class audit entity instead of being logged as "payment".
         ("driver", "Driver"),
+        ("support_ticket", "Support Ticket"),
     ]
 
     actor = models.ForeignKey(

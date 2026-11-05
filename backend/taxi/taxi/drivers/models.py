@@ -815,11 +815,56 @@ class SupportTicket(models.Model):
         ("closed", "Closed"),
     ]
 
+    SOURCE_CHOICES = [
+        ("app", "App"),
+        ("website", "Website"),
+        ("email", "Email"),
+        ("whatsapp", "WhatsApp"),
+        ("phone", "Phone"),
+    ]
+    CATEGORY_CHOICES = [
+        ("ride", "Ride"),
+        ("driver", "Driver"),
+        ("delivery", "Delivery"),
+        ("payment", "Payment"),
+        ("account", "Account"),
+        ("safety", "Safety"),
+        ("other", "Other"),
+    ]
+    PRIORITY_CHOICES = [
+        ("low", "Low"),
+        ("normal", "Normal"),
+        ("high", "High"),
+        ("urgent", "Urgent"),
+    ]
+
+    # Optional: website / email tickets have no driver.
     driver = models.ForeignKey(
         DriverProfile,
         on_delete=models.CASCADE,
         related_name="support_tickets",
+        null=True,
+        blank=True,
     )
+    requester = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="support_requests",
+    )
+    reference = models.CharField(max_length=24, unique=True, null=True, blank=True)
+    source = models.CharField(max_length=20, choices=SOURCE_CHOICES, default="app")
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, blank=True, default="")
+    priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default="normal")
+    language = models.CharField(max_length=2, blank=True, default="")
+    contact_name = models.CharField(max_length=120, blank=True, default="")
+    contact_email = models.EmailField(blank=True, default="")
+    contact_phone = models.CharField(max_length=24, blank=True, default="")
+    consent_at = models.DateTimeField(null=True, blank=True)
+    # Keyed hashes only; the raw IP / user agent are never stored.
+    ip_hash = models.CharField(max_length=64, blank=True, default="")
+    user_agent_hash = models.CharField(max_length=64, blank=True, default="")
     ticket_type = models.CharField(max_length=20, choices=TICKET_TYPES)
     status = models.CharField(
         max_length=20, choices=STATUS_CHOICES, default="open"
@@ -832,7 +877,8 @@ class SupportTicket(models.Model):
     resolved_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
-        return f"{self.driver} - {self.get_ticket_type_display()} ({self.status})"
+        who = self.driver or self.contact_email or self.reference or "anonymous"
+        return f"{who} - {self.get_ticket_type_display()} ({self.status})"
 
 
 class HeatmapZone(models.Model):

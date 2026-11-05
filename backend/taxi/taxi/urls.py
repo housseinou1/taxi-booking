@@ -9,6 +9,7 @@ from taxi.drivers.urls import admin_document_urlpatterns, admin_qr_urlpatterns
 from taxi.drivers.views_verification import VerifyDriverView
 from taxi.rides.share_admin_views import share_analytics, share_analytics_chart
 from taxi.ai_support import support_ai
+from taxi.drivers.views_public_contact import public_contact
 from health.views import readiness
 from payments.withdrawal_accounts_views import admin_withdrawal_accounts_view
 
@@ -34,6 +35,7 @@ urlpatterns = [
     path("api/admin/share/analytics/", share_analytics, name="share-analytics"),
     path("api/admin/share/analytics/chart/", share_analytics_chart, name="share-analytics-chart"),
     path("support/ai/", support_ai, name="support-ai"),
+    path("support/contact/", public_contact, name="support-public-contact"),
 
     # Pricing management dashboard (before the admin catch-all)
     path("admin/pricing/", include("app_settings.urls")),
