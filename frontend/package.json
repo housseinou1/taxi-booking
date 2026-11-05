@@ -38,7 +38,8 @@
     "start:admin": "powershell -NoProfile -Command \"Copy-Item .env.admin .env.local -Force; npm run start\"",
     "start:delivery": "powershell -NoProfile -Command \"Copy-Item .env.delivery .env.local -Force; npm run start\"",
     "build": "react-scripts build",
-    "build:production": "node -e \"require('fs').copyFileSync('.env.production.example','.env.production')\" && react-scripts build",
+    "build:web": "node scripts/build-web.js",
+    "build:production": "node -e \"require('fs').copyFileSync('.env.production.example','.env.production')\" && node scripts/build-web.js",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },

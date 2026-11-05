@@ -55,6 +55,7 @@ import LiveOperationsCenter from "./admin/ops-center/LiveOperationsCenter";
 import FinanceAnalyticsCenter from "./admin/ops-center/FinanceAnalyticsCenter";
 import ExecutiveCommandCenter from "./admin/ops-center/ExecutiveCommandCenter";
 import OperationsCenter from "./admin/operations/OperationsCenter";
+import OperationsControlCenter from "./admin/operations/OperationsControlCenter";
 import AIOperationsDashboard from "./admin/ai/AIOperationsDashboard";
 import ProductionStatus from "./admin/status/ProductionStatus";
 import LaunchHub from "./admin/launch/LaunchHub";
@@ -102,6 +103,7 @@ import RiderPayments from "./payments/PaymentPage";
 import { DriverProfilePage, RiderProfilePage } from "./profile/ProfilePages";
 import SupportCenter from "./support/SupportCenter";
 import LandingPage from "./landing/LandingPage";
+import WebsiteApp from "./website/WebsiteApp";
 import RiderRideHistory from "./rider/components/RideHistory";
 import RiderShell from "./rider/components/RiderShell";
 import DriverShell from "./driver/components/DriverShell";
@@ -158,6 +160,56 @@ const DELIVERY_LOGO_SRC = "/yala-delivery-logo.png";
 function getBrandLogoSrc() {
   return getAppType() === "delivery" ? DELIVERY_LOGO_SRC : LOGO_SRC;
 }
+
+/* ============================================================================
+   YALA PUBLIC WEBSITE (Slice 1)
+   ----------------------------------------------------------------------------
+   The redesigned marketing site. Path mapping is deliberately conservative:
+   "/rider", "/driver", "/delivery" and "/support" are ALREADY the operational
+   Rider / Driver / Delivery apps and the support page, so the website's
+   marketing pages for those services live under "/website/*" instead. That
+   guarantees the live applications cannot be shadowed.
+
+   Set USE_NEW_WEBSITE_HOME to true to serve the redesigned Home at "/".
+   Enabled: the website's early return in render() runs BEFORE the
+   isProtectedPage/LoginRequiredRedirect guard, so "/" now renders the new
+   Home instead of bouncing unauthenticated visitors to "/login".
+   ========================================================================== */
+const USE_NEW_WEBSITE_HOME = true;
+
+const WEBSITE_SIMPLE_PATHS = {
+  "/about": "about",
+  "/safety": "safety",
+  "/contact": "contact",
+};
+
+const WEBSITE_PREFIX_PATHS = {
+  "/website/rider": "rider",
+  "/website/driver": "driver",
+  "/website/delivery": "delivery",
+  "/website/support": "support",
+};
+
+function getWebsiteRoute(pathname) {
+  // Only the public web build serves the marketing site; native and role builds
+  // (rider, driver, delivery, admin) keep their own "/" behaviour.
+  if (getAppType() !== "web") return null;
+  const p = (pathname || "/").replace(/\/+$/, "") || "/";
+  if (WEBSITE_SIMPLE_PATHS[p]) return WEBSITE_SIMPLE_PATHS[p];
+  if (WEBSITE_PREFIX_PATHS[p]) return WEBSITE_PREFIX_PATHS[p];
+  if (p === "/" && USE_NEW_WEBSITE_HOME) return "home";
+  return null;
+}
+
+function websitePath(route) {
+  if (route === "home") return "/";
+  const simple = Object.keys(WEBSITE_SIMPLE_PATHS).find((k) => WEBSITE_SIMPLE_PATHS[k] === route);
+  if (simple) return simple;
+  const prefixed = Object.keys(WEBSITE_PREFIX_PATHS).find((k) => WEBSITE_PREFIX_PATHS[k] === route);
+  if (prefixed) return prefixed;
+  return "/";
+}
+
 
 // Route filtering for native apps — only show relevant routes per app type
 const RIDER_ROUTES = ['/rider', '/rider-dashboard', '/rider/legal', '/rider-history', '/history', '/rider-reviews', '/saved-places', '/rider-profile', '/rider-payments', '/wallet', '/ride/share', '/delivery', '/merchant', '/merchant/register', '/services', '/login', '/register', '/settings', '/support', '/terms', '/privacy'];
@@ -517,6 +569,13 @@ function App() {
     else if (currentPath === "/admin/break-notifications") setPage("admin-break-notifications");
     else if (currentPath === "/admin/finance-ops") setPage("admin-finance-ops");
     else if (currentPath === "/admin/finance-approvals") setPage("admin-finance-approvals");
+    // Operations Control Center. `adminRouteAccess.js` already mapped
+    // "/admin/operations-control" -> "ops" and AdminBreadcrumbs already labels it
+    // "Operations Center", but App.js routed neither this path nor the legacy
+    // "/admin/ops-control" alias — so the component was unreachable dead code and
+    // the nav link 404'd. Both paths now resolve.
+    else if (currentPath === "/admin/operations-control" || currentPath === "/admin/ops-control")
+      setPage("admin-operations-control");
     // Role home routes. The backend advertises `home_route` values like
     // /admin/home/ceo and /admin/home/ops (operations/admin_permissions_service.py
     // HOME_ROUTES), but App.js handled none of them — so every login redirect and
@@ -827,6 +886,24 @@ function App() {
     else setPage("rider");
     window.history.replaceState(null, "", resolvedPath);
   };
+
+  // ---- YALA public website (Slice 1) ---------------------------------------
+  // Rendered from currentPath directly so it cannot be affected by the page
+  // state machine. "/rider", "/driver", "/delivery" and "/support" are NOT
+  // matched here, so the operational apps keep their routes untouched.
+  const websiteRoute = getWebsiteRoute(currentPath);
+  if (websiteRoute) {
+    return withInstall(
+      <WebsiteApp
+        route={websiteRoute}
+        onNavigate={(next) => {
+          window.history.pushState({}, "", websitePath(next));
+          setNavCounter((n) => n + 1);
+        }}
+      />,
+      { showNotifications: false }
+    );
+  }
 
   if (page === "login") return withInstall(<Login onLogin={handleLoginSuccess} />, { showNotifications: false });
   if (page === "register") return withInstall(<Register />, { showNotifications: false });
@@ -1444,6 +1521,20 @@ function App() {
     return withInstall(
       <AdminShellPage pathname="/admin/finance-approvals" title="Refund & Payout Approvals">
         <FinanceDashboard />
+      </AdminShellPage>
+    );
+  }
+
+  if (page === "admin-operations-control") {
+    // Unified Operations Control Center: dispatch, fleet, incidents, support and
+    // CEO overview in one polling surface. All of its endpoints exist on the
+    // backend (operations/urls.py: center/dashboard, fleet/dashboard,
+    // fleet/documents, launch/incidents, launch/control, support, ceo-master) and
+    // fetchOperationsControlBundle uses Promise.allSettled, so a single failing
+    // panel degrades to a fallback instead of blanking the page.
+    return withInstall(
+      <AdminShellPage pathname="/admin/operations-control" title="Operations Control Center">
+        <OperationsControlCenter />
       </AdminShellPage>
     );
   }
