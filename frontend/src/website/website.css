@@ -57,11 +57,11 @@
 .yala-site .ys-wrap { max-width: var(--ys-maxw); margin: 0 auto; padding: 0 24px; }
 
 .yala-site .ys-skip {
-  position: absolute; left: -9999px; top: 0; z-index: 99;
+  position: absolute; inset-inline-start: 0; top: 0; z-index: 99; transform: translateY(-120%);
   background: var(--ys-primary-dark); color: #fff; padding: 12px 20px;
   border-radius: 0 0 var(--ys-r-sm) 0;
 }
-.yala-site .ys-skip:focus { left: 0; }
+.yala-site .ys-skip:focus { transform: none; }
 
 /* ---------------------------------------------------------------- header */
 .yala-site .ys-hdr {
@@ -511,7 +511,7 @@
 .yala-site .ys-consent { display: flex; gap: 11px; align-items: flex-start; font-size: 13.5px; color: var(--ys-ink-soft); line-height: 1.55; }
 .yala-site .ys-consent input { width: 20px; height: 20px; margin: 1px 0 0; flex-shrink: 0; accent-color: var(--ys-primary); cursor: pointer; }
 .yala-site .ys-consent a { color: var(--ys-primary-deep); font-weight: 700; text-decoration: underline; }
-.yala-site .ys-hp { position: absolute !important; left: -9999px !important; width: 1px; height: 1px; overflow: hidden; }
+.yala-site .ys-hp { position: absolute !important; inset-inline-start: 0; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
 .yala-site .ys-status { border-radius: var(--ys-r-sm); padding: 13px 16px; font-size: 14px; font-weight: 600; display: none; line-height: 1.55; }
 .yala-site .ys-status.ys-show { display: block; }
 .yala-site .ys-status.ys-ok { background: rgba(5,150,105,.1); border: 1px solid rgba(5,150,105,.3); color: #046b4a; }
