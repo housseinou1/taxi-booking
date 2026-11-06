@@ -4,6 +4,7 @@ import {
   payRideWithWallet,
   withPaymentRetry,
 } from "./paymentApi";
+import { beginMoosylCheckout, isMoosylMethod } from "./moosylCheckout";
 
 const DIGITAL_METHODS = new Set(["bankily", "masrvi", "seddad", "card"]);
 
@@ -26,8 +27,10 @@ function buildStatusMessage(method, payment) {
   }
 
   if (method === "cash") {
-    // Phase 11 — cashless platform: cash is never a valid payment path.
-    return "Cash is not available on Yala. Please choose a digital payment method.";
+    // Cash is available when the owner relaxes the cashless policy. The ride is NOT
+    // settled on the rider's word: it stays pending until the driver confirms receipt,
+    // and the normal 30/70 commission is recorded either way.
+    return "Cash recorded. The driver will confirm receipt.";
   }
 
   if (DIGITAL_METHODS.has(method)) {
@@ -41,7 +44,7 @@ function buildStatusMessage(method, payment) {
  * Submit ride payment using existing backend endpoints only.
  * Amounts are always calculated server-side from ride.fare.
  */
-export async function submitRidePayment({ rideId, method, tipPercentage = 0 }) {
+export async function submitRidePayment({ rideId, method, tipPercentage = 0, phoneNumber = "" }) {
   if (!rideId) {
     throw new Error("Ride ID is required.");
   }
@@ -57,6 +60,21 @@ export async function submitRidePayment({ rideId, method, tipPercentage = 0 }) {
       payment,
       message: buildStatusMessage("wallet", payment),
       pendingVerification: false,
+    };
+  }
+
+  if (isMoosylMethod(normalizedMethod)) {
+    // Route bank apps through Moosyl's hosted checkout. The backend records the exact
+    // whole-MRU amount and the 30/70 commission when the session is created; the ride
+    // is settled only when the signature-verified webhook arrives, so this returns a
+    // *handoff*, never a paid payment.
+    const checkout = await beginMoosylCheckout({ rideId, phoneNumber });
+    return {
+      payment: null,
+      checkout,
+      awaitingBackend: true,
+      pendingVerification: true,
+      message: "Complete the payment in your bank app. We confirm it automatically.",
     };
   }
 
