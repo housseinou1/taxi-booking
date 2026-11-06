@@ -2,6 +2,7 @@ from datetime import timedelta
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from django.contrib.auth.hashers import make_password
 from django.test import TestCase
 from django.utils import timezone
@@ -47,11 +48,15 @@ class WalletWithdrawalFlowTests(TestCase):
             password="adminpass123",
             is_staff=True,
         )
+        # module-gated admin endpoint: the acting admin needs an explicit role
+        self.admin_user.groups.add(Group.objects.get_or_create(name="CEO")[0])
         self.accountant = User.objects.create_user(
             email="accountant@yala.test",
             password="accountantpass123",
             is_staff=True,
         )
+        # module-gated admin endpoint: the acting admin needs an explicit role
+        self.accountant.groups.add(Group.objects.get_or_create(name="CEO")[0])
         self.accountant.groups.create(name="Accountant")
         self.regular_user = User.objects.create_user(
             email="regular@yala.test",

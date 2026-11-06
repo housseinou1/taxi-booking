@@ -8,6 +8,7 @@ trail so a refund decision can never again be made untraceably.
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from django.test import TestCase
 from rest_framework.test import APIClient
 
@@ -26,6 +27,8 @@ class RefundAuditTests(TestCase):
             user_type="admin",
             is_staff=True,
         )
+        # module-gated admin endpoint: the acting admin needs an explicit role
+        self.admin.groups.add(Group.objects.get_or_create(name="CEO")[0])
         self.customer = User.objects.create_user(
             email="refund.customer@yala.test",
             password="customerpass123",

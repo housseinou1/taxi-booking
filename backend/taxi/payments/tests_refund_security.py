@@ -20,6 +20,7 @@ from decimal import Decimal
 from unittest import skipUnless
 
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from django.db import connection, connections
 from django.test import TestCase, TransactionTestCase
 from rest_framework.test import APIClient
@@ -64,6 +65,8 @@ class RefundIdempotencyTests(RefundSafetyMixin, TestCase):
         self.admin = User.objects.create_user(
             email="fin.admin@yala.test", password="x", user_type="admin", is_staff=True
         )
+        # module-gated admin endpoint: the acting admin needs an explicit role
+        self.admin.groups.add(Group.objects.get_or_create(name="CEO")[0])
         self.customer = User.objects.create_user(
             email="fin.customer@yala.test", password="x", user_type="rider"
         )
@@ -148,6 +151,8 @@ class RefundAuthorizationTests(RefundSafetyMixin, TestCase):
         self.admin = User.objects.create_user(
             email="auth.admin@yala.test", password="x", user_type="admin", is_staff=True
         )
+        # module-gated admin endpoint: the acting admin needs an explicit role
+        self.admin.groups.add(Group.objects.get_or_create(name="CEO")[0])
 
     def test_anonymous_cannot_approve(self):
         refund = self._make_refund()
@@ -192,6 +197,8 @@ class RefundConcurrencyTests(RefundSafetyMixin, TransactionTestCase):
         self.admin = User.objects.create_user(
             email="race.admin@yala.test", password="x", user_type="admin", is_staff=True
         )
+        # module-gated admin endpoint: the acting admin needs an explicit role
+        self.admin.groups.add(Group.objects.get_or_create(name="CEO")[0])
 
     @skipUnless(
         connection.vendor == "postgresql",
