@@ -39,7 +39,26 @@ from .utils import build_gateway_analytics, build_gateway_ceo_dashboard, dispatc
 
 
 GRACE_PERIOD_DAYS = 7
-DOCS_DIR = Path(__file__).resolve().parents[3] / "release"
+
+
+def _docs_dir() -> Path:
+    """Locate the repository ``release/`` directory.
+
+    ``parents[3]`` only resolves in a full checkout (``backend/taxi/api_gateway/``).
+    In the production container the code root is ``/app``, where ``parents[3]`` is
+    out of range: the IndexError is raised at import time, which takes down the
+    entire URLconf and therefore the whole application. Walk up until a
+    ``release`` directory is found instead, and never raise.
+    """
+    here = Path(__file__).resolve()
+    for parent in here.parents:
+        candidate = parent / "release"
+        if candidate.is_dir():
+            return candidate
+    return here.parent / "release"
+
+
+DOCS_DIR = _docs_dir()
 
 
 # ─── Developer Portal Permissions ──────────────────────────────
