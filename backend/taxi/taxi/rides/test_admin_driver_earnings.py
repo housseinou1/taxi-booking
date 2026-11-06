@@ -5,6 +5,7 @@ data isolation, Decimal-safe money (strings or null, never float/0), the
 total/today/week/month buckets, and regression of the shared mobile contract
 driver_earnings_summary (/rides/driver/earnings/).
 """
+from django.contrib.auth.models import Group
 
 from decimal import Decimal
 
@@ -52,6 +53,8 @@ class AdminDriverEarningsTests(TestCase):
             password="StrongPass123",
             is_staff=True,
         )
+        # module-gated admin endpoint: give the acting admin an explicit role
+        self.admin.groups.add(Group.objects.get_or_create(name="CEO")[0])
 
         # Diverge the DriverProfile id sequence from the User id sequence.
         throwaway_user = _make_user(

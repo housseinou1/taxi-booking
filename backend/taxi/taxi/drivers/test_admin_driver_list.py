@@ -1,3 +1,5 @@
+from django.contrib.auth.models import Group
+
 from decimal import Decimal
 
 from authapp.models import User
@@ -16,6 +18,8 @@ class AdminDriverListFieldsTests(APITestCase):
             password="Test1234!",
             is_staff=True,
         )
+        # module-gated admin endpoint: give the acting admin an explicit role
+        self.admin.groups.add(Group.objects.get_or_create(name="CEO")[0])
         self.driver_user = User.objects.create_user(
             email="rated-driver@test.local",
             password="Test1234!",

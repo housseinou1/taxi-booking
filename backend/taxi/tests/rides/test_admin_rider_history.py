@@ -3,6 +3,7 @@
 Covers authorization, strict rider data isolation, pagination caps,
 status/date filtering, malformed-date handling, and Decimal-safe summary stats.
 """
+from django.contrib.auth.models import Group
 
 from decimal import Decimal
 
@@ -37,6 +38,8 @@ class AdminRiderRideHistoryTests(TestCase):
             password="StrongPass123",
             is_staff=True,
         )
+        # module-gated admin endpoint: give the acting admin an explicit role
+        self.admin.groups.add(Group.objects.get_or_create(name="CEO")[0])
         self.rider = _make_rider("hist-rider@example.com", "+22233100001", "2222000001")
         self.other_rider = _make_rider(
             "hist-other@example.com", "+22233100002", "2222000002"

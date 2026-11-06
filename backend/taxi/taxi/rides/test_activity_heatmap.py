@@ -2,6 +2,7 @@ from datetime import timedelta
 
 import pytest
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from django.utils.timezone import now
 from rest_framework.test import APIClient
 
@@ -30,6 +31,8 @@ def _ride(rider, pickup, lat, lng, status="requested", hours_ago=0):
 
 def test_admin_heatmap_aggregates_demand_coverage_and_peak_hours():
     admin = User.objects.create_user(email="admin@heatmap.test", password="test", is_staff=True)
+    # module-gated admin endpoint: give the acting admin an explicit role
+    admin.groups.add(Group.objects.get_or_create(name="CEO")[0])
     rider = User.objects.create_user(email="rider@heatmap.test", password="test")
     driver = User.objects.create_user(email="driver@heatmap.test", password="test")
     DriverProfile.objects.create(

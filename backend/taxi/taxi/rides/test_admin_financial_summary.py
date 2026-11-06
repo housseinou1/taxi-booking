@@ -78,6 +78,9 @@ class FinancialSummaryBase(APITestCase):
     @classmethod
     def setUpTestData(cls):
         cls.staff = cls._user("staff", is_staff=True)
+        # module-gated admin endpoint: the acting admin needs an explicit role,
+        # otherwise it resolves to the minimal "staff" module set (HTTP 403).
+        Group.objects.get_or_create(name="CEO")[0].user_set.add(cls.staff)
         cls.ceo = cls._user("ceo", is_staff=True)
         Group.objects.get_or_create(name="CEO")[0].user_set.add(cls.ceo)
         cls.rider = cls._user("rider")

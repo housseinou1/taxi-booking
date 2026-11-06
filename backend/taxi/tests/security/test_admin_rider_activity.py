@@ -4,6 +4,7 @@ entry, and the admin rider activity endpoint)."""
 from datetime import date, timedelta
 
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APIClient
@@ -20,6 +21,8 @@ class AdminAuditLogFilterTests(TestCase):
         self.admin = User.objects.create_user(
             email="admin@test.local", password="testpass123", is_staff=True
         )
+        # module-gated admin endpoint: give the acting admin an explicit role
+        self.admin.groups.add(Group.objects.get_or_create(name="CEO")[0])
         self.rider = User.objects.create_user(
             email="rider@test.local", password="testpass123", is_staff=False
         )
@@ -95,6 +98,8 @@ class DeleteRiderAuditTests(TestCase):
         self.admin = User.objects.create_user(
             email="admin2@test.local", password="testpass123", is_staff=True
         )
+        # module-gated admin endpoint: give the acting admin an explicit role
+        self.admin.groups.add(Group.objects.get_or_create(name="CEO")[0])
         self.rider = User.objects.create_user(
             email="victim@test.local", password="testpass123", is_staff=False
         )
@@ -122,6 +127,8 @@ class AdminRiderActivityTests(TestCase):
         self.admin = User.objects.create_user(
             email="admin3@test.local", password="testpass123", is_staff=True
         )
+        # module-gated admin endpoint: give the acting admin an explicit role
+        self.admin.groups.add(Group.objects.get_or_create(name="CEO")[0])
         self.rider = User.objects.create_user(
             email="activerider@test.local", password="testpass123", is_staff=False
         )

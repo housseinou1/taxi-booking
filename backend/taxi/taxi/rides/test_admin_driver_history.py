@@ -6,6 +6,7 @@ Decimal-safe summary stats, and regression of the shared mobile contracts
 (driver_earnings_summary at /rides/driver/earnings/ and serialize_driver at
 /drivers/me/).
 """
+from django.contrib.auth.models import Group
 
 from decimal import Decimal
 
@@ -55,6 +56,8 @@ class AdminDriverRideHistoryTests(TestCase):
             password="StrongPass123",
             is_staff=True,
         )
+        # module-gated admin endpoint: give the acting admin an explicit role
+        self.admin.groups.add(Group.objects.get_or_create(name="CEO")[0])
 
         # Burn a DriverProfile id so surviving profile ids diverge from user ids:
         # create a throwaway driver+profile, then delete both. The User and

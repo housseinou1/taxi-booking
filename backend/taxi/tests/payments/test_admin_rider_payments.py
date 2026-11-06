@@ -4,6 +4,7 @@ Covers authorization, strict rider data isolation, pagination caps, optional
 status filtering, refunds exposure, and the guarantee that no payment token or
 full card data ever appears in the serialized payload.
 """
+from django.contrib.auth.models import Group
 
 from decimal import Decimal
 
@@ -80,6 +81,8 @@ class AdminRiderPaymentsTests(TestCase):
             password="StrongPass123",
             is_staff=True,
         )
+        # module-gated admin endpoint: give the acting admin an explicit role
+        self.admin.groups.add(Group.objects.get_or_create(name="CEO")[0])
         self.rider = _make_rider("pay-rider@example.com", "+22233200001", "2223000001")
         self.other_rider = _make_rider(
             "pay-other@example.com", "+22233200002", "2223000002"
