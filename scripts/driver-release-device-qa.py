@@ -12,6 +12,18 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+# ── Credentials come from the environment only (never hardcode, never print) ──
+import os as _cred_os
+import sys as _cred_sys
+
+
+def _required_env(name):
+    value = _cred_os.environ.get(name, "")
+    if not value:
+        _cred_sys.exit(f"Missing required environment variable: {name} (values are never printed)")
+    return value
+
+
 API = "https://api.yalataxi.live"
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "release" / "device-qa-driver-release"
@@ -19,9 +31,9 @@ ADB = Path(r"C:\Users\Housseinou\AppData\Local\Android\Sdk\platform-tools\adb.ex
 PKG = "com.yala.driver.mr"
 
 RIDER_EMAIL = "qa-rider-profile-fix@test.local"
-RIDER_PASSWORD = "QaRiderFix!2026"
+RIDER_PASSWORD = _required_env("YALA_QA_RIDER_PASSWORD")
 DRIVER_EMAIL = "amadou.diallo@yala.mr"
-DRIVER_PASSWORD = "Test1234!"
+DRIVER_PASSWORD = _required_env("YALA_QA_DEFAULT_PASSWORD")
 
 PROD_HOST = "root@142.93.99.142"
 PREP_SCRIPT = ROOT / "scripts" / "prepare-prod-driver-release-qa.py"

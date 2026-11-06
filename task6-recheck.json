@@ -1,0 +1,411 @@
+{
+  "viewports": {
+    "desktop": {
+      "shell": 1,
+      "sidebars": 1,
+      "headers": 1,
+      "h1Count": 1,
+      "lastUpdated": "Last updated 10/28/2026, 12:25:57 PM",
+      "kpiCount": 10,
+      "kpis": [
+        {
+          "label": "Total deliveries",
+          "value": "30",
+          "subtitle": null
+        },
+        {
+          "label": "Active deliveries",
+          "value": "1",
+          "subtitle": "In progress right now"
+        },
+        {
+          "label": "Pending deliveries",
+          "value": "—",
+          "subtitle": "Not provided by the delivery API"
+        },
+        {
+          "label": "Completed deliveries",
+          "value": "18",
+          "subtitle": null
+        },
+        {
+          "label": "Cancelled deliveries",
+          "value": "11",
+          "subtitle": null
+        },
+        {
+          "label": "Available couriers",
+          "value": "38",
+          "subtitle": "Approved, delivery mode on, not suspended"
+        },
+        {
+          "label": "Busy couriers",
+          "value": "—",
+          "subtitle": "Not provided by the delivery API"
+        },
+        {
+          "label": "Offline couriers",
+          "value": "—",
+          "subtitle": "Not provided by the delivery API"
+        },
+        {
+          "label": "Pending courier approvals",
+          "value": "4",
+          "subtitle": null
+        },
+        {
+          "label": "Delivery revenue",
+          "value": "1,598.40 MRU",
+          "subtitle": "Sum of delivered fares"
+        }
+      ],
+      "panels": [
+        {
+          "title": "Couriers",
+          "rows": [
+            "Total=42",
+            "Approved=38",
+            "Pending review=4",
+            "Rejected=0",
+            "Suspended=0",
+            "Available now=38"
+          ]
+        },
+        {
+          "title": "Merchants",
+          "rows": [
+            "Total=20",
+            "Approved=19",
+            "Pending review=0",
+            "Suspended=1"
+          ]
+        },
+        {
+          "title": "Exceptions & disputes",
+          "rows": [
+            "Delivery exceptions=0",
+            "Open disputes=0"
+          ]
+        }
+      ],
+      "liveRows": [
+        [
+          "#30",
+          "On the way",
+          "Marieme Diop",
+          "Motorcycle",
+          "5 min",
+          "18.07350, -15.95820",
+          "Show map"
+        ]
+      ],
+      "liveEmptyText": null,
+      "moduleCards": 5,
+      "moduleCardLabels": [
+        "Courier Management",
+        "Merchant Directory",
+        "Courier Approvals",
+        "Business Accounts",
+        "Trust & Safety"
+      ],
+      "recentTableRows": 11,
+      "overflow": 0,
+      "skeletons": 0,
+      "errorBanner": null
+    },
+    "tablet": {
+      "shell": 1,
+      "sidebars": 1,
+      "headers": 1,
+      "h1Count": 1,
+      "lastUpdated": "Last updated 10/28/2026, 12:26:14 PM",
+      "kpiCount": 10,
+      "kpis": [
+        {
+          "label": "Total deliveries",
+          "value": "30",
+          "subtitle": null
+        },
+        {
+          "label": "Active deliveries",
+          "value": "1",
+          "subtitle": "In progress right now"
+        },
+        {
+          "label": "Pending deliveries",
+          "value": "—",
+          "subtitle": "Not provided by the delivery API"
+        },
+        {
+          "label": "Completed deliveries",
+          "value": "18",
+          "subtitle": null
+        },
+        {
+          "label": "Cancelled deliveries",
+          "value": "11",
+          "subtitle": null
+        },
+        {
+          "label": "Available couriers",
+          "value": "38",
+          "subtitle": "Approved, delivery mode on, not suspended"
+        },
+        {
+          "label": "Busy couriers",
+          "value": "—",
+          "subtitle": "Not provided by the delivery API"
+        },
+        {
+          "label": "Offline couriers",
+          "value": "—",
+          "subtitle": "Not provided by the delivery API"
+        },
+        {
+          "label": "Pending courier approvals",
+          "value": "4",
+          "subtitle": null
+        },
+        {
+          "label": "Delivery revenue",
+          "value": "1,598.40 MRU",
+          "subtitle": "Sum of delivered fares"
+        }
+      ],
+      "panels": [
+        {
+          "title": "Couriers",
+          "rows": [
+            "Total=42",
+            "Approved=38",
+            "Pending review=4",
+            "Rejected=0",
+            "Suspended=0",
+            "Available now=38"
+          ]
+        },
+        {
+          "title": "Merchants",
+          "rows": [
+            "Total=20",
+            "Approved=19",
+            "Pending review=0",
+            "Suspended=1"
+          ]
+        },
+        {
+          "title": "Exceptions & disputes",
+          "rows": [
+            "Delivery exceptions=0",
+            "Open disputes=0"
+          ]
+        }
+      ],
+      "liveRows": [
+        [
+          "#30",
+          "On the way",
+          "Marieme Diop",
+          "Motorcycle",
+          "5 min",
+          "18.07350, -15.95820",
+          "Show map"
+        ]
+      ],
+      "liveEmptyText": null,
+      "moduleCards": 5,
+      "moduleCardLabels": [
+        "Courier Management",
+        "Merchant Directory",
+        "Courier Approvals",
+        "Business Accounts",
+        "Trust & Safety"
+      ],
+      "recentTableRows": 11,
+      "overflow": 0,
+      "skeletons": 0,
+      "errorBanner": null
+    },
+    "mobile": {
+      "shell": 1,
+      "sidebars": 1,
+      "headers": 1,
+      "h1Count": 1,
+      "lastUpdated": "Last updated 10/28/2026, 12:26:32 PM",
+      "kpiCount": 10,
+      "kpis": [
+        {
+          "label": "Total deliveries",
+          "value": "30",
+          "subtitle": null
+        },
+        {
+          "label": "Active deliveries",
+          "value": "1",
+          "subtitle": "In progress right now"
+        },
+        {
+          "label": "Pending deliveries",
+          "value": "—",
+          "subtitle": "Not provided by the delivery API"
+        },
+        {
+          "label": "Completed deliveries",
+          "value": "18",
+          "subtitle": null
+        },
+        {
+          "label": "Cancelled deliveries",
+          "value": "11",
+          "subtitle": null
+        },
+        {
+          "label": "Available couriers",
+          "value": "38",
+          "subtitle": "Approved, delivery mode on, not suspended"
+        },
+        {
+          "label": "Busy couriers",
+          "value": "—",
+          "subtitle": "Not provided by the delivery API"
+        },
+        {
+          "label": "Offline couriers",
+          "value": "—",
+          "subtitle": "Not provided by the delivery API"
+        },
+        {
+          "label": "Pending courier approvals",
+          "value": "4",
+          "subtitle": null
+        },
+        {
+          "label": "Delivery revenue",
+          "value": "1,598.40 MRU",
+          "subtitle": "Sum of delivered fares"
+        }
+      ],
+      "panels": [
+        {
+          "title": "Couriers",
+          "rows": [
+            "Total=42",
+            "Approved=38",
+            "Pending review=4",
+            "Rejected=0",
+            "Suspended=0",
+            "Available now=38"
+          ]
+        },
+        {
+          "title": "Merchants",
+          "rows": [
+            "Total=20",
+            "Approved=19",
+            "Pending review=0",
+            "Suspended=1"
+          ]
+        },
+        {
+          "title": "Exceptions & disputes",
+          "rows": [
+            "Delivery exceptions=0",
+            "Open disputes=0"
+          ]
+        }
+      ],
+      "liveRows": [
+        [
+          "#30",
+          "On the way",
+          "Marieme Diop",
+          "Motorcycle",
+          "5 min",
+          "18.07350, -15.95820",
+          "Show map"
+        ]
+      ],
+      "liveEmptyText": null,
+      "moduleCards": 5,
+      "moduleCardLabels": [
+        "Courier Management",
+        "Merchant Directory",
+        "Courier Approvals",
+        "Business Accounts",
+        "Trust & Safety"
+      ],
+      "recentTableRows": 11,
+      "overflow": 0,
+      "skeletons": 0,
+      "errorBanner": null
+    }
+  },
+  "map": {
+    "liveRowsWithMapButton": 1,
+    "afterClick": {
+      "mapWrapper": 1,
+      "leafletContainer": 1,
+      "leafletTiles": 15,
+      "markers": 3,
+      "emptyNote": "",
+      "errorNote": "",
+      "mapHeight": 360
+    }
+  },
+  "themes": {
+    "dark": {
+      "themeAttr": "dark",
+      "kpiBg": "rgb(15,33,25)",
+      "kpiValue": "30",
+      "valueContrast": "16.03",
+      "labelContrast": "11.30",
+      "panelBg": "rgb(15,33,25)",
+      "panelDtContrast": "11.30",
+      "panelDdContrast": "16.03",
+      "hintContrast": "11.30"
+    },
+    "light": {
+      "themeAttr": "light",
+      "kpiBg": "rgb(255,255,255)",
+      "kpiValue": "30",
+      "valueContrast": "17.85",
+      "labelContrast": "7.58",
+      "panelBg": "rgb(255,255,255)",
+      "panelDtContrast": "7.58",
+      "panelDdContrast": "17.85",
+      "hintContrast": "7.58"
+    }
+  },
+  "console": {
+    "desktop": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "badResponses": []
+    },
+    "tablet": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "badResponses": []
+    },
+    "mobile": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "badResponses": []
+    },
+    "map": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "badResponses": []
+    },
+    "theme-dark": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "badResponses": []
+    },
+    "theme-light": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "badResponses": []
+    }
+  }
+}

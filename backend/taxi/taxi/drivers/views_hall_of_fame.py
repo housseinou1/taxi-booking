@@ -11,6 +11,7 @@ from .hall_of_fame import (
     sync_monthly_rankings,
 )
 from .models import DriverProfile, HallOfFameRecognition
+from operations.admin_module_permissions import HasAdminModule
 
 
 class DriverHallOfFameView(APIView):
@@ -62,7 +63,8 @@ class DriverHallOfFameView(APIView):
 
 
 class AdminHallOfFameView(APIView):
-    permission_classes = [IsAdminUser]
+    permission_classes = [HasAdminModule]
+    admin_module = "drivers"
 
     def get(self, request):
         year = int(request.query_params.get("year") or timezone.localdate().year)

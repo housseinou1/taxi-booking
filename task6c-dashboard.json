@@ -1,0 +1,28 @@
+{
+  "authed": true,
+  "shell": 1,
+  "h1": 1,
+  "kpis": 10,
+  "skeletons": 0,
+  "liveRows": [
+    [
+      "#30",
+      "On the way",
+      "Marieme Diop",
+      "Motorcycle",
+      "5 min",
+      "18.07350, -15.95820",
+      "Show map"
+    ]
+  ],
+  "trackingRequests": [
+    "http://localhost:8000/deliveries/30/tracking/"
+  ],
+  "hint": "Positions are the courier's real last reported coordinates from the delivery tracking endpoint. Tracking is only requested once a courier is assigned, so opening this panel can never re-run dispatch. The delivery API exposes no active-delivery collection, so this panel lists the non-terminal records among the ten most recent deliveries (the API reports 1 active in total).",
+  "overflow": 0,
+  "errors": {
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": []
+  }
+}

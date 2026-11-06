@@ -11,6 +11,18 @@ import urllib.request
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+# ── Credentials come from the environment only (never hardcode, never print) ──
+import os as _cred_os
+import sys as _cred_sys
+
+
+def _required_env(name):
+    value = _cred_os.environ.get(name, "")
+    if not value:
+        _cred_sys.exit(f"Missing required environment variable: {name} (values are never printed)")
+    return value
+
+
 ADB = Path(r"C:/Users/Housseinou/AppData/Local/Android/Sdk/platform-tools/adb.exe")
 SERIAL = "R5CN80M3ZYJ"
 API = "https://api.yalataxi.live"
@@ -24,9 +36,9 @@ CTX.check_hostname = False
 CTX.verify_mode = ssl.CERT_NONE
 
 DRIVER_EMAIL = "amadou.diallo@yala.mr"
-DRIVER_PASSWORD = "Test1234!"
+DRIVER_PASSWORD = _required_env("YALA_QA_DEFAULT_PASSWORD")
 RIDER_EMAIL = "qa-rider-profile-fix@test.local"
-RIDER_PASSWORD = "QaRiderFix!2026"
+RIDER_PASSWORD = _required_env("YALA_QA_RIDER_PASSWORD")
 
 
 def adb(*args: str) -> subprocess.CompletedProcess[str]:

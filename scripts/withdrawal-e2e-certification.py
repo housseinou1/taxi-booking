@@ -9,19 +9,31 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
+# ── Credentials come from the environment only (never hardcode, never print) ──
+import os as _cred_os
+import sys as _cred_sys
+
+
+def _required_env(name):
+    value = _cred_os.environ.get(name, "")
+    if not value:
+        _cred_sys.exit(f"Missing required environment variable: {name} (values are never printed)")
+    return value
+
+
 API = "https://www.yalataxi.live"
 CTX = ssl.create_default_context()
 CTX.check_hostname = False
 CTX.verify_mode = ssl.CERT_NONE
 
 DRIVER_EMAIL = "amadou.diallo@yala.mr"
-DRIVER_PASSWORD = "Test1234!"
+DRIVER_PASSWORD = _required_env("YALA_QA_DEFAULT_PASSWORD")
 OTP_CODE = "246810"
 WITHDRAWAL_PATH = "/payments/withdrawals/request/"
-ADMIN_EMAIL = "sakho@admin.mr"
-ADMIN_PASSWORD = "Admin2026!"
+ADMIN_EMAIL = _required_env("YALA_CEO_EMAIL")
+ADMIN_PASSWORD = _required_env("YALA_CEO_PASSWORD")
 OTHER_DRIVER_EMAIL = "qa-driver-profile-fix@test.local"
-OTHER_DRIVER_PASSWORD = "QaDriverFix!2026"
+OTHER_DRIVER_PASSWORD = _required_env("YALA_QA_DRIVER2_PASSWORD")
 
 OUT = Path(__file__).resolve().parents[1] / "release" / "device-qa-driver-withdrawal"
 OUT.mkdir(parents=True, exist_ok=True)

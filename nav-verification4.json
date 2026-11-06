@@ -1,0 +1,402 @@
+{
+  "pages": [
+    {
+      "path": "/admin/drivers/dashboard",
+      "finalPath": "/admin/drivers/dashboard",
+      "shell": 1,
+      "sidebars": 1,
+      "headers": 1,
+      "h1": "Drivers Dashboard",
+      "crumb": "Admin Driver Ops Dashboard",
+      "forbidden": false,
+      "kpiCount": 0,
+      "kpis": [],
+      "tableRows": 0,
+      "dashNote": "Live fleet figures.",
+      "alert": ""
+    },
+    {
+      "path": "/admin/riders/dashboard",
+      "finalPath": "/admin/riders/dashboard",
+      "shell": 1,
+      "sidebars": 1,
+      "headers": 1,
+      "h1": "Riders Dashboard",
+      "crumb": "Admin Riders Dashboard",
+      "forbidden": false,
+      "kpiCount": 10,
+      "kpis": [
+        {
+          "label": "Total Riders",
+          "value": "155"
+        },
+        {
+          "label": "Active",
+          "value": "155"
+        },
+        {
+          "label": "Approved",
+          "value": "155"
+        },
+        {
+          "label": "Pending Review",
+          "value": "0"
+        },
+        {
+          "label": "Rejected",
+          "value": "0"
+        },
+        {
+          "label": "Blocked",
+          "value": "0"
+        },
+        {
+          "label": "Phone Verified",
+          "value": "100"
+        },
+        {
+          "label": "National ID on File",
+          "value": "1"
+        },
+        {
+          "label": "Profile Photo",
+          "value": "1"
+        },
+        {
+          "label": "Cities Covered",
+          "value": "1"
+        }
+      ],
+      "tableRows": 10,
+      "dashNote": "Totals from the rider service. Verification counts cover the 100 of 155 riders loaded for this view.",
+      "alert": ""
+    },
+    {
+      "path": "/admin/drivers",
+      "finalPath": "/admin/drivers",
+      "shell": 1,
+      "sidebars": 1,
+      "headers": 1,
+      "h1": "Drivers Management",
+      "crumb": "Admin Driver Ops",
+      "forbidden": false,
+      "kpiCount": 0,
+      "kpis": [],
+      "tableRows": 0,
+      "dashNote": "",
+      "alert": ""
+    },
+    {
+      "path": "/admin/riders",
+      "finalPath": "/admin/riders",
+      "shell": 1,
+      "sidebars": 1,
+      "headers": 1,
+      "h1": "Riders Management",
+      "crumb": "Admin Riders",
+      "forbidden": false,
+      "kpiCount": 0,
+      "kpis": [],
+      "tableRows": 0,
+      "dashNote": "",
+      "alert": ""
+    },
+    {
+      "path": "/admin/fleet",
+      "finalPath": "/admin/fleet",
+      "shell": 1,
+      "sidebars": 1,
+      "headers": 1,
+      "h1": "Fleet Performance Center",
+      "crumb": "Admin Fleet",
+      "forbidden": false,
+      "kpiCount": 0,
+      "kpis": [],
+      "tableRows": 0,
+      "dashNote": "",
+      "alert": ""
+    },
+    {
+      "path": "/admin/vehicles",
+      "finalPath": "/admin/vehicles",
+      "shell": 1,
+      "sidebars": 1,
+      "headers": 1,
+      "h1": "Vehicle Management",
+      "crumb": "Admin Vehicles",
+      "forbidden": false,
+      "kpiCount": 0,
+      "kpis": [],
+      "tableRows": 0,
+      "dashNote": "",
+      "alert": ""
+    },
+    {
+      "path": "/admin/approvals",
+      "finalPath": "/admin/approvals",
+      "shell": 1,
+      "sidebars": 1,
+      "headers": 1,
+      "h1": "Approval Center",
+      "crumb": "Admin Approvals",
+      "forbidden": false,
+      "kpiCount": 0,
+      "kpis": [],
+      "tableRows": 0,
+      "dashNote": "",
+      "alert": ""
+    },
+    {
+      "path": "/admin/academy",
+      "finalPath": "/admin/academy",
+      "shell": 1,
+      "sidebars": 1,
+      "headers": 1,
+      "h1": "Academy Center",
+      "crumb": "Admin Academy",
+      "forbidden": false,
+      "kpiCount": 0,
+      "kpis": [],
+      "tableRows": 0,
+      "dashNote": "",
+      "alert": ""
+    },
+    {
+      "path": "/admin/hall-of-fame",
+      "finalPath": "/admin/hall-of-fame",
+      "shell": 1,
+      "sidebars": 1,
+      "headers": 1,
+      "h1": "Hall of Fame",
+      "crumb": "Admin Hall Of Fame",
+      "forbidden": false,
+      "kpiCount": 0,
+      "kpis": [],
+      "tableRows": 0,
+      "dashNote": "",
+      "alert": ""
+    },
+    {
+      "path": "/admin/operations",
+      "finalPath": "/admin/operations",
+      "shell": 1,
+      "sidebars": 1,
+      "headers": 1,
+      "h1": "Operations Center",
+      "crumb": "Admin Operations Center",
+      "forbidden": false,
+      "kpiCount": 0,
+      "kpis": [],
+      "tableRows": 0,
+      "dashNote": "",
+      "alert": ""
+    },
+    {
+      "path": "/admin/rides",
+      "finalPath": "/admin/rides",
+      "shell": 1,
+      "sidebars": 1,
+      "headers": 1,
+      "h1": "Rides Management",
+      "crumb": "Admin Rides",
+      "forbidden": false,
+      "kpiCount": 5,
+      "kpis": [
+        {
+          "label": "Total rides",
+          "value": "79"
+        },
+        {
+          "label": "Active now",
+          "value": "0"
+        },
+        {
+          "label": "Completed",
+          "value": "55"
+        },
+        {
+          "label": "Cancelled",
+          "value": "24"
+        },
+        {
+          "label": "Completed fare",
+          "value": "31504.00 MRU"
+        }
+      ],
+      "tableRows": 0,
+      "dashNote": "",
+      "alert": ""
+    },
+    {
+      "path": "/admin/ceo-master",
+      "finalPath": "/admin/ceo-master",
+      "shell": 1,
+      "sidebars": 1,
+      "headers": 1,
+      "h1": "CEO Command Center",
+      "crumb": "Admin CEO Command",
+      "forbidden": false,
+      "kpiCount": 0,
+      "kpis": [],
+      "tableRows": 0,
+      "dashNote": "",
+      "alert": ""
+    }
+  ],
+  "nav": {
+    "groupCount": 11,
+    "groups": [
+      {
+        "label": "👔\nExecutive Command Center",
+        "children": [
+          "CEO Command Center",
+          "Executive Dashboard",
+          "Executive Overview",
+          "CEO Control Center",
+          "CEO Reports",
+          "Board Reports",
+          "City Management",
+          "Roles & Permissions"
+        ]
+      },
+      {
+        "label": "📡\nOperations",
+        "children": [
+          "Operations Overview",
+          "Ops Center Home",
+          "Live Operations",
+          "Ride Management",
+          "Live Rides",
+          "Ride Reports",
+          "Smart Pricing Dispatch",
+          "Multi-City Operations",
+          "AI Operations"
+        ]
+      },
+      {
+        "label": "🚕\nDrivers & Fleet",
+        "children": [
+          "Drivers Dashboard",
+          "Driver Management",
+          "Driver Approvals",
+          "Fleet Management",
+          "Vehicle Management",
+          "Driver Academy",
+          "Hall of Fame"
+        ]
+      },
+      {
+        "label": "👥\nRiders",
+        "children": [
+          "Riders Dashboard",
+          "Rider Management"
+        ]
+      },
+      {
+        "label": "📦\nYala Delivery",
+        "children": [
+          "Delivery Dashboard",
+          "Courier Management",
+          "Merchant Management",
+          "Merchant Platform"
+        ]
+      },
+      {
+        "label": "🧑‍💼\nEmployees & Human Resources",
+        "children": [
+          "Employees",
+          "HR Management",
+          "Attendance Management",
+          "Employee Verification",
+          "Break Notifications"
+        ]
+      },
+      {
+        "label": "🎧\nCustomer Support",
+        "children": [
+          "Support Dashboard",
+          "Beta Feedback",
+          "Beta Program"
+        ]
+      },
+      {
+        "label": "💰\nFinance",
+        "children": [
+          "Financial Overview",
+          "Payment Management",
+          "Transactions",
+          "Driver & Courier Payouts",
+          "Settlement Accounts",
+          "Driver Incentives"
+        ]
+      },
+      {
+        "label": "🛡\nSecurity & Compliance",
+        "children": [
+          "Security Dashboard",
+          "Trust & Safety",
+          "Compliance"
+        ]
+      },
+      {
+        "label": "📈\nGrowth & Analytics",
+        "children": [
+          "Reports & Analytics",
+          "BI Warehouse",
+          "Marketing",
+          "Customer Growth"
+        ]
+      },
+      {
+        "label": "⚙\nPlatform Management",
+        "children": [
+          "Launch Hub",
+          "Launch Command",
+          "Operations Command",
+          "System Status",
+          "API Gateway",
+          "Business Hub",
+          "Business Accounts",
+          "Partner Platform"
+        ]
+      }
+    ],
+    "duplicateChildren": []
+  },
+  "errors": {
+    "consoleErrors": [
+      "WebSocket connection to 'ws://localhost:8000/ws/rides/?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzkzMTk2NDc4LCJpYXQiOjE3OTMxODkyNzgsImp0aS",
+      "WebSocket connection to 'ws://localhost:8000/ws/rides/?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzkzMTk2NDc4LCJpYXQiOjE3OTMxODkyNzgsImp0aS",
+      "WebSocket connection to 'ws://localhost:8000/ws/rides/?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzkzMTk2NDc4LCJpYXQiOjE3OTMxODkyNzgsImp0aS",
+      "WebSocket connection to 'ws://localhost:8000/ws/rides/?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzkzMTk2NDc4LCJpYXQiOjE3OTMxODkyNzgsImp0aS",
+      "WebSocket connection to 'ws://localhost:8000/ws/rides/?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzkzMTk2NDc4LCJpYXQiOjE3OTMxODkyNzgsImp0aS",
+      "WebSocket connection to 'ws://localhost:8000/ws/rides/?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzkzMTk2NDc4LCJpYXQiOjE3OTMxODkyNzgsImp0aS",
+      "WebSocket connection to 'ws://localhost:8000/ws/rides/?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzkzMTk2NDc4LCJpYXQiOjE3OTMxODkyNzgsImp0aS",
+      "WebSocket connection to 'ws://localhost:8000/ws/rides/?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzkzMTk2NDc4LCJpYXQiOjE3OTMxODkyNzgsImp0aS",
+      "WebSocket connection to 'ws://localhost:8000/ws/rides/?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzkzMTk2NDc4LCJpYXQiOjE3OTMxODkyNzgsImp0aS",
+      "WebSocket connection to 'ws://localhost:8000/ws/rides/?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzkzMTk2NDc4LCJpYXQiOjE3OTMxODkyNzgsImp0aS",
+      "WebSocket connection to 'ws://localhost:8000/ws/rides/?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzkzMTk2NDc4LCJpYXQiOjE3OTMxODkyNzgsImp0aS",
+      "WebSocket connection to 'ws://localhost:8000/ws/rides/?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzkzMTk2NDc4LCJpYXQiOjE3OTMxODkyNzgsImp0aS",
+      "WebSocket connection to 'ws://localhost:8000/ws/rides/?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzkzMTk2NDc4LCJpYXQiOjE3OTMxODkyNzgsImp0aS",
+      "WebSocket connection to 'ws://localhost:8000/ws/rides/?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzkzMTk2NDc4LCJpYXQiOjE3OTMxODkyNzgsImp0aS",
+      "WebSocket connection to 'ws://localhost:8000/ws/rides/?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzkzMTk2NDc4LCJpYXQiOjE3OTMxODkyNzgsImp0aS",
+      "WebSocket connection to 'ws://localhost:8000/ws/rides/?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzkzMTk2NDc4LCJpYXQiOjE3OTMxODkyNzgsImp0aS",
+      "WebSocket connection to 'ws://localhost:8000/ws/rides/?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzkzMTk2NDc4LCJpYXQiOjE3OTMxODkyNzgsImp0aS",
+      "WebSocket connection to 'ws://localhost:8000/ws/rides/?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzkzMTk2NDc4LCJpYXQiOjE3OTMxODkyNzgsImp0aS",
+      "WebSocket connection to 'ws://localhost:8000/ws/rides/?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzkzMTk2NDc4LCJpYXQiOjE3OTMxODkyNzgsImp0aS",
+      "WebSocket connection to 'ws://localhost:8000/ws/rides/?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzkzMTk2NDc4LCJpYXQiOjE3OTMxODkyNzgsImp0aS",
+      "WebSocket connection to 'ws://localhost:8000/ws/rides/?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzkzMTk2NDc4LCJpYXQiOjE3OTMxODkyNzgsImp0aS",
+      "WebSocket connection to 'ws://localhost:8000/ws/rides/?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzkzMTk2NDc4LCJpYXQiOjE3OTMxODkyNzgsImp0aS",
+      "WebSocket connection to 'ws://localhost:8000/ws/rides/?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzkzMTk2NDc4LCJpYXQiOjE3OTMxODkyNzgsImp0aS",
+      "WebSocket connection to 'ws://localhost:8000/ws/rides/?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzkzMTk2NDc4LCJpYXQiOjE3OTMxODkyNzgsImp0aS",
+      "WebSocket connection to 'ws://localhost:8000/ws/rides/?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzkzMTk2NDc4LCJpYXQiOjE3OTMxODkyNzgsImp0aS",
+      "WebSocket connection to 'ws://localhost:8000/ws/rides/?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzkzMTk2NDc4LCJpYXQiOjE3OTMxODkyNzgsImp0aS",
+      "WebSocket connection to 'ws://localhost:8000/ws/rides/?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzkzMTk2NDc4LCJpYXQiOjE3OTMxODkyNzgsImp0aS",
+      "WebSocket connection to 'ws://localhost:8000/ws/rides/?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzkzMTk2NDc4LCJpYXQiOjE3OTMxODkyNzgsImp0aS",
+      "WebSocket connection to 'ws://localhost:8000/ws/rides/?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzkzMTk2NDc4LCJpYXQiOjE3OTMxODkyNzgsImp0aS",
+      "WebSocket connection to 'ws://localhost:8000/ws/rides/?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzkzMTk2NDc4LCJpYXQiOjE3OTMxODkyNzgsImp0aS"
+    ],
+    "pageErrors": [],
+    "badResponses": []
+  }
+}

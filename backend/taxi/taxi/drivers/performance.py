@@ -35,32 +35,93 @@ def score_recommendation(score, cancellation_rate, rating_average, on_time_rate)
     return "Needs admin review before incentives or priority dispatch."
 
 
-def calculate_driver_performance(profile):
+def _ride_stats_for_profile(profile):
+    """Per-driver ride inputs for calculate_driver_performance (the original per-driver queries)."""
     assigned_rides = Ride.objects.filter(driver=profile.user)
     completed_rides = assigned_rides.filter(status="completed")
     cancelled_rides = assigned_rides.filter(status="cancelled")
     arrived_rides = assigned_rides.filter(driver_arrived_at__isnull=False)
 
-    assigned_count = assigned_rides.count()
-    completed_count = completed_rides.count()
-    cancelled_count = cancelled_rides.count()
+    return {
+        "assigned": assigned_rides.count(),
+        "completed": completed_rides.count(),
+        "cancelled": cancelled_rides.count(),
+        "rating_average": completed_rides.filter(rating__isnull=False).aggregate(
+            average=Avg("rating")
+        )["average"],
+        "arrivals": [
+            (ride.scheduled_at, ride.created_at, ride.driver_arrived_at)
+            for ride in arrived_rides.only("created_at", "scheduled_at", "driver_arrived_at")
+        ],
+    }
+
+
+def bulk_driver_ride_stats(user_ids):
+    """Same inputs as _ride_stats_for_profile for many drivers in two queries.
+
+    Returns {user_id: stats}. Pass stats to calculate_driver_performance(profile, ride_stats=...)
+    to avoid ~6 queries per driver; the scoring formula itself is unchanged.
+    """
+    user_ids = list(user_ids)
+    stats = {
+        uid: {"assigned": 0, "completed": 0, "cancelled": 0, "rating_average": None, "arrivals": []}
+        for uid in user_ids
+    }
+    if not user_ids:
+        return stats
+
+    rows = (
+        Ride.objects.filter(driver_id__in=user_ids)
+        .order_by()
+        .values("driver_id")
+        .annotate(
+            assigned=Count("id"),
+            completed=Count("id", filter=Q(status="completed")),
+            cancelled=Count("id", filter=Q(status="cancelled")),
+            rating_average=Avg("rating", filter=Q(status="completed", rating__isnull=False)),
+        )
+    )
+    for row in rows:
+        entry = stats[row["driver_id"]]
+        entry["assigned"] = row["assigned"]
+        entry["completed"] = row["completed"]
+        entry["cancelled"] = row["cancelled"]
+        entry["rating_average"] = row["rating_average"]
+
+    arrivals = (
+        Ride.objects.filter(driver_id__in=user_ids, driver_arrived_at__isnull=False)
+        .order_by("driver_id", "id")
+        .values_list("driver_id", "scheduled_at", "created_at", "driver_arrived_at")
+    )
+    for driver_id, scheduled_at, created_at, arrived_at in arrivals:
+        stats[driver_id]["arrivals"].append((scheduled_at, created_at, arrived_at))
+    return stats
+
+
+def calculate_driver_performance(profile, ride_stats=None):
+    # ride_stats is optional pre-loaded input (see bulk_driver_ride_stats). When omitted the
+    # function queries per driver exactly as before. The formula below is unchanged either way.
+    if ride_stats is None:
+        ride_stats = _ride_stats_for_profile(profile)
+
+    assigned_count = ride_stats["assigned"]
+    completed_count = ride_stats["completed"]
+    cancelled_count = ride_stats["cancelled"]
     received_count = max(profile.total_rides_received or 0, assigned_count)
     accepted_count = max(profile.total_rides_accepted or 0, assigned_count)
     missed_count = profile.total_rides_missed or 0
     declined_count = profile.total_rides_declined or 0
 
-    rating_average = completed_rides.filter(rating__isnull=False).aggregate(
-        average=Avg("rating")
-    )["average"] or Decimal("0")
+    rating_average = ride_stats["rating_average"] or Decimal("0")
 
     on_time_window_minutes = getattr(settings, "YALA_ON_TIME_ARRIVAL_MINUTES", 15)
     on_time_count = 0
     arrival_count = 0
-    for ride in arrived_rides.only("created_at", "scheduled_at", "driver_arrived_at"):
-        target_time = ride.scheduled_at or ride.created_at
-        if target_time and ride.driver_arrived_at:
+    for scheduled_at, created_at, driver_arrived_at in ride_stats["arrivals"]:
+        target_time = scheduled_at or created_at
+        if target_time and driver_arrived_at:
             arrival_count += 1
-            if ride.driver_arrived_at <= target_time + timezone.timedelta(
+            if driver_arrived_at <= target_time + timezone.timedelta(
                 minutes=on_time_window_minutes
             ):
                 on_time_count += 1

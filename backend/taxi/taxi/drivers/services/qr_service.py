@@ -35,11 +35,32 @@ class QRGenerationError(Exception):
     pass
 
 
+class QRIneligibleDriverError(QRGenerationError):
+    """Raised when a driver is not eligible for a verification QR code.
+
+    Eligible means status == "approved" AND a complete driver e-signature.
+    `code` is a stable machine-readable reason; `str(exc)` is a clear message.
+    """
+
+    def __init__(self, code: str, message: str):
+        super().__init__(message)
+        self.code = code
+        self.message = message
+
+
 class QRCodeService:
     """
     Service responsible for generating, signing, verifying, and managing
     QR codes for driver profiles.
     """
+
+    def ensure_eligible(self, driver_profile: DriverProfile) -> None:
+        """Raise QRIneligibleDriverError unless the driver may hold a QR code."""
+        from legal.services import QR_INELIGIBLE_MESSAGES, qr_ineligibility_reason
+
+        reason = qr_ineligibility_reason(driver_profile)
+        if reason is not None:
+            raise QRIneligibleDriverError(reason, QR_INELIGIBLE_MESSAGES[reason])
 
     def create_signed_token(self, qr_uuid: str, driver_code: str) -> str:
         """
@@ -130,8 +151,13 @@ class QRCodeService:
             A tuple of (qr_uuid, image_path).
 
         Raises:
+            QRIneligibleDriverError: If the driver is not approved or has no
+                complete e-signature (nothing is generated or stored).
             QRGenerationError: If a unique UUID cannot be generated after 5 attempts.
         """
+        # Eligibility is checked BEFORE any UUID, image or storage write.
+        self.ensure_eligible(driver_profile)
+
         qr_uuid = self._generate_unique_uuid()
         driver_code = driver_profile.driver_code or ""
 

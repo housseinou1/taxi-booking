@@ -19,6 +19,8 @@ from .models import (
     SurgeZone, SurgeHistory,
 )
 
+from operations.admin_module_permissions import require_admin_module
+
 
 # ─── Airport Pickup ───────────────────────────────────────────────────────────
 
@@ -110,7 +112,7 @@ def my_corporate_account(request):
 
 
 @api_view(["POST"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("ops")])
 def create_corporate_account(request):
     account = CorporateAccount.objects.create(
         company_name=request.data.get("company_name", ""),
@@ -166,7 +168,7 @@ def my_lost_items(request):
 
 
 @api_view(["GET", "PATCH"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("ops")])
 def admin_lost_items(request):
     if request.method == "GET":
         items = LostItem.objects.all()[:100]
@@ -239,7 +241,7 @@ def active_surges(request):
 
 
 @api_view(["POST"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("ops")])
 def create_surge(request):
     """Admin: create a surge pricing zone."""
     from cities.models import City
@@ -257,7 +259,7 @@ def create_surge(request):
 
 
 @api_view(["POST"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("ops")])
 def deactivate_surge(request, zone_id):
     zone = get_object_or_404(SurgeZone, id=zone_id)
     zone.is_active = False

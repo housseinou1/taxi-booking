@@ -1,4 +1,16 @@
 import os, django, sys
+
+# ── Credentials come from the environment only (never hardcode, never print) ──
+import os as _cred_os
+import sys as _cred_sys
+
+
+def _required_env(name):
+    value = _cred_os.environ.get(name, "")
+    if not value:
+        _cred_sys.exit(f"Missing required environment variable: {name} (values are never printed)")
+    return value
+
 # Try both local and production directory structures
 if os.path.exists(os.path.join(os.path.dirname(__file__), 'backend', 'taxi')):
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'backend', 'taxi'))
@@ -11,18 +23,18 @@ from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
-# 2 Delivery persons with password Test1234!
+# 2 Delivery persons; password from $YALA_QA_DEFAULT_PASSWORD (never printed)
 delivery_persons_data = [
     {
         'email': 'courier1@yala.mr',
-        'password': 'Test1234!',
+        'password': _required_env("YALA_QA_DEFAULT_PASSWORD"),
         'first_name': 'Ahmed',
         'last_name': 'Mint',
         'phone_number': '+22237001123',
     },
     {
         'email': 'courier2@yala.mr',
-        'password': 'Test1234!',
+        'password': _required_env("YALA_QA_DEFAULT_PASSWORD"),
         'first_name': 'Fatou',
         'last_name': 'Bamba',
         'phone_number': '+22236112234',
@@ -66,4 +78,4 @@ for person in delivery_persons_data:
 
     print(f'Created user: {person["first_name"]} {person["last_name"]} | {person["email"]} | user_type=driver')
 
-print('\nDone! 2 users created. All passwords: Test1234!')
+print('\nDone! 2 users created. Password: value of YALA_QA_DEFAULT_PASSWORD (not shown)')

@@ -1,0 +1,334 @@
+{
+  "viewports": {
+    "desktop": {
+      "viewport": "1440x900",
+      "shell": 1,
+      "sidebars": 1,
+      "headers": 1,
+      "h1": [
+        "Real-Time Operations Center"
+      ],
+      "tabs": [
+        {
+          "label": "Overview",
+          "active": true,
+          "role": "tab",
+          "ariaSelected": "true"
+        },
+        {
+          "label": "Trips",
+          "active": false,
+          "role": "tab",
+          "ariaSelected": "false"
+        },
+        {
+          "label": "Deliveries",
+          "active": false,
+          "role": "tab",
+          "ariaSelected": "false"
+        },
+        {
+          "label": "Emergency",
+          "active": false,
+          "role": "tab",
+          "ariaSelected": "false"
+        },
+        {
+          "label": "Alerts",
+          "active": false,
+          "role": "tab",
+          "ariaSelected": "false"
+        },
+        {
+          "label": "Timeline",
+          "active": false,
+          "role": "tab",
+          "ariaSelected": "false"
+        },
+        {
+          "label": "Analytics",
+          "active": false,
+          "role": "tab",
+          "ariaSelected": "false"
+        }
+      ],
+      "kpis": [
+        {
+          "label": "Online Drivers",
+          "value": "13"
+        },
+        {
+          "label": "Busy Drivers",
+          "value": "0"
+        },
+        {
+          "label": "Offline Drivers",
+          "value": "81"
+        },
+        {
+          "label": "Available Couriers",
+          "value": "1"
+        },
+        {
+          "label": "Active Trips",
+          "value": "0"
+        },
+        {
+          "label": "Active Deliveries",
+          "value": "1"
+        },
+        {
+          "label": "Waiting Riders",
+          "value": "0"
+        },
+        {
+          "label": "Emergency Alerts",
+          "value": "0"
+        }
+      ],
+      "mapCanvas": 1,
+      "mapEmptyState": false,
+      "mapStateText": "",
+      "mapFilters": 6,
+      "leafletTiles": 10,
+      "overflow": 0,
+      "skeleton": 0
+    },
+    "tablet": {
+      "viewport": "768x1024",
+      "shell": 1,
+      "sidebars": 1,
+      "headers": 1,
+      "h1": [
+        "Real-Time Operations Center"
+      ],
+      "tabs": [
+        {
+          "label": "Overview",
+          "active": true,
+          "role": "tab",
+          "ariaSelected": "true"
+        },
+        {
+          "label": "Trips",
+          "active": false,
+          "role": "tab",
+          "ariaSelected": "false"
+        },
+        {
+          "label": "Deliveries",
+          "active": false,
+          "role": "tab",
+          "ariaSelected": "false"
+        },
+        {
+          "label": "Emergency",
+          "active": false,
+          "role": "tab",
+          "ariaSelected": "false"
+        },
+        {
+          "label": "Alerts",
+          "active": false,
+          "role": "tab",
+          "ariaSelected": "false"
+        },
+        {
+          "label": "Timeline",
+          "active": false,
+          "role": "tab",
+          "ariaSelected": "false"
+        },
+        {
+          "label": "Analytics",
+          "active": false,
+          "role": "tab",
+          "ariaSelected": "false"
+        }
+      ],
+      "kpis": [
+        {
+          "label": "Online Drivers",
+          "value": "13"
+        },
+        {
+          "label": "Busy Drivers",
+          "value": "0"
+        },
+        {
+          "label": "Offline Drivers",
+          "value": "81"
+        },
+        {
+          "label": "Available Couriers",
+          "value": "1"
+        },
+        {
+          "label": "Active Trips",
+          "value": "0"
+        },
+        {
+          "label": "Active Deliveries",
+          "value": "1"
+        },
+        {
+          "label": "Waiting Riders",
+          "value": "0"
+        },
+        {
+          "label": "Emergency Alerts",
+          "value": "0"
+        }
+      ],
+      "mapCanvas": 1,
+      "mapEmptyState": false,
+      "mapStateText": "",
+      "mapFilters": 6,
+      "leafletTiles": 6,
+      "overflow": 0,
+      "skeleton": 0
+    },
+    "mobile": {
+      "viewport": "390x844",
+      "shell": 1,
+      "sidebars": 1,
+      "headers": 1,
+      "h1": [
+        "Real-Time Operations Center"
+      ],
+      "tabs": [
+        {
+          "label": "Overview",
+          "active": true,
+          "role": "tab",
+          "ariaSelected": "true"
+        },
+        {
+          "label": "Trips",
+          "active": false,
+          "role": "tab",
+          "ariaSelected": "false"
+        },
+        {
+          "label": "Deliveries",
+          "active": false,
+          "role": "tab",
+          "ariaSelected": "false"
+        },
+        {
+          "label": "Emergency",
+          "active": false,
+          "role": "tab",
+          "ariaSelected": "false"
+        },
+        {
+          "label": "Alerts",
+          "active": false,
+          "role": "tab",
+          "ariaSelected": "false"
+        },
+        {
+          "label": "Timeline",
+          "active": false,
+          "role": "tab",
+          "ariaSelected": "false"
+        },
+        {
+          "label": "Analytics",
+          "active": false,
+          "role": "tab",
+          "ariaSelected": "false"
+        }
+      ],
+      "kpis": [
+        {
+          "label": "Online Drivers",
+          "value": "13"
+        },
+        {
+          "label": "Busy Drivers",
+          "value": "0"
+        },
+        {
+          "label": "Offline Drivers",
+          "value": "81"
+        },
+        {
+          "label": "Available Couriers",
+          "value": "1"
+        },
+        {
+          "label": "Active Trips",
+          "value": "0"
+        },
+        {
+          "label": "Active Deliveries",
+          "value": "1"
+        },
+        {
+          "label": "Waiting Riders",
+          "value": "0"
+        },
+        {
+          "label": "Emergency Alerts",
+          "value": "0"
+        }
+      ],
+      "mapCanvas": 1,
+      "mapEmptyState": false,
+      "mapStateText": "",
+      "mapFilters": 6,
+      "leafletTiles": 6,
+      "overflow": 0,
+      "skeleton": 0
+    }
+  },
+  "tabsTested": [
+    {
+      "active": "Overview",
+      "panelText": "YALA Admin YALA Technologies 🔍 Global search SOON Ctrl K City All cities Nouakchott Nouad"
+    },
+    {
+      "active": "Trips",
+      "panelText": "YALA Admin YALA Technologies 🔍 Global search SOON Ctrl K City All cities Nouakchott Nouad"
+    },
+    {
+      "active": "Deliveries",
+      "panelText": "YALA Admin YALA Technologies 🔍 Global search SOON Ctrl K City All cities Nouakchott Nouad"
+    },
+    {
+      "active": "Emergency",
+      "panelText": "YALA Admin YALA Technologies 🔍 Global search SOON Ctrl K City All cities Nouakchott Nouad"
+    },
+    {
+      "active": "Alerts",
+      "panelText": "YALA Admin YALA Technologies 🔍 Global search SOON Ctrl K City All cities Nouakchott Nouad"
+    },
+    {
+      "active": "Timeline",
+      "panelText": "YALA Admin YALA Technologies 🔍 Global search SOON Ctrl K City All cities Nouakchott Nouad"
+    },
+    {
+      "active": "Analytics",
+      "panelText": "YALA Admin YALA Technologies 🔍 Global search SOON Ctrl K City All cities Nouakchott Nouad"
+    }
+  ],
+  "errors": {
+    "desktop": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "badResponses": []
+    },
+    "tablet": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "badResponses": []
+    },
+    "mobile": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "badResponses": []
+    }
+  },
+  "buildChecks": {}
+}

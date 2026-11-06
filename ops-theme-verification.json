@@ -1,0 +1,50 @@
+{
+  "modes": {
+    "dark": {
+      "themeAttr": "dark",
+      "h1Count": 1,
+      "h1Texts": [
+        "Real-Time Operations Center"
+      ],
+      "pageTitle": "Real-Time Operations Center",
+      "kpiCount": 8,
+      "kpiBg": "rgb(15,33,25)",
+      "kpiValueColor": "rgb(248,250,252)",
+      "valueContrast": "16.03",
+      "labelContrast": "11.30",
+      "tabVisible": "rgb(255, 255, 255)",
+      "activeTabBg": "rgb(0, 166, 81)",
+      "mapFrameBg": "rgba(148, 163, 184, 0.08)",
+      "leafletTiles": 10
+    },
+    "light": {
+      "themeAttr": "light",
+      "h1Count": 1,
+      "h1Texts": [
+        "Real-Time Operations Center"
+      ],
+      "pageTitle": "Real-Time Operations Center",
+      "kpiCount": 8,
+      "kpiBg": "rgb(255,255,255)",
+      "kpiValueColor": "rgb(15,23,42)",
+      "valueContrast": "17.85",
+      "labelContrast": "7.58",
+      "tabVisible": "rgb(255, 255, 255)",
+      "activeTabBg": "rgb(0, 166, 81)",
+      "mapFrameBg": "rgb(248, 250, 252)",
+      "leafletTiles": 10
+    }
+  },
+  "errors": {
+    "dark": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "badResponses": []
+    },
+    "light": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "badResponses": []
+    }
+  }
+}

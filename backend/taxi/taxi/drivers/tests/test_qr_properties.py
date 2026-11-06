@@ -17,6 +17,7 @@ from hypothesis.extra.django import TestCase as HypothesisTestCase
 
 from django.conf import settings as django_settings
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from django.test import override_settings
 from django.utils import timezone
 
@@ -25,6 +26,20 @@ from taxi.drivers.services.qr_service import QRCodeService
 
 
 User = get_user_model()
+
+
+def _sign(profile):
+    """Give `profile` a complete driver e-signature (no file is uploaded).
+
+    Verification QR codes now require approved status AND a complete signature.
+    """
+    profile.driver_terms_accepted = True
+    profile.driver_signed_full_name = "Signed Test Driver"
+    profile.driver_legal_declaration_accepted = True
+    profile.driver_signature_image = "legal/driver_signatures/test-fixture.png"
+    profile.save()
+    return profile
+
 
 # Regex for valid UUID4 format: 8-4-4-4-12 hexadecimal with hyphens
 UUID_REGEX = re.compile(
@@ -194,6 +209,7 @@ class TestQRGenerationUniqueIdentifiers(HypothesisTestCase):
                 status="approved",
                 driver_code=unique_suffix[:6],
             )
+            _sign(profile)
 
             # Generate QR code directly via service (bypassing signal)
             qr_uuid, _ = service.generate_qr_code(profile)
@@ -251,12 +267,16 @@ class TestRegenerationProducesDistinctQRCode(HypothesisTestCase):
             last_name="User",
             is_staff=True,
         )
+        # Admin endpoints are module-gated on the backend: the staff account must
+        # hold a role that owns the drivers module.
+        admin_user.groups.add(Group.objects.get_or_create(name="Operations Manager")[0])
         driver_code = data.draw(valid_driver_code_strategy())
         profile = DriverProfile.objects.create(
             user=user,
             status="approved",
             driver_code=driver_code,
         )
+        _sign(profile)
 
         # Generate initial QR code
         original_uuid, _ = service.generate_qr_code(profile)
@@ -331,6 +351,7 @@ class TestExistingQRPreservedOnReApproval(HypothesisTestCase):
             status="approved",
             driver_code=driver_code,
         )
+        _sign(profile)
 
         # Generate a QR code directly (bypassing signal to avoid double-trigger)
         qr_uuid, image_path = service.generate_qr_code(profile)
@@ -522,6 +543,7 @@ class TestScanApprovedDriverReturnsCompleteInfo(HypothesisTestCase):
             vehicle_color=vehicle_color,
             plate_number=plate_number,
         )
+        _sign(profile)
 
         # Generate QR code
         qr_uuid, _ = service.generate_qr_code(profile)
@@ -585,8 +607,9 @@ class TestScanInactiveDriverReturnsLimitedInfo(HypothesisTestCase):
     Property 6: Scan of inactive driver returns limited information
 
     For any driver profile whose status is "rejected" or "suspended" after
-    QR code generation, verifying the token should return only the driver's
-    name and driver_code with status "inactive_driver", withholding vehicle details.
+    QR code generation, verifying the token should return status
+    "inactive_driver" and withhold ALL driver details (name, driver_code,
+    photo and vehicle). Updated: it previously returned name and driver_code.
 
     **Validates: Requirements 2.4, 4.5**
     """
@@ -611,8 +634,8 @@ class TestScanInactiveDriverReturnsLimitedInfo(HypothesisTestCase):
     ):
         """
         For any driver whose status became rejected/suspended after QR generation,
-        the verification response contains only name and driver_code with
-        status='inactive_driver', and vehicle details are withheld (null).
+        the verification response has status='inactive_driver' and every driver
+        detail (name, driver_code, photo, vehicle) is withheld (null).
         """
         from rest_framework.test import APIRequestFactory
 
@@ -638,6 +661,7 @@ class TestScanInactiveDriverReturnsLimitedInfo(HypothesisTestCase):
             vehicle_color="White",
             plate_number="ABC123",
         )
+        _sign(profile)
 
         # Generate QR code while approved
         qr_uuid, _ = service.generate_qr_code(profile)
@@ -677,10 +701,11 @@ class TestScanInactiveDriverReturnsLimitedInfo(HypothesisTestCase):
             f"Expected 'inactive_driver', got '{data_resp['status']}'"
         )
 
-        # Should return name and driver_code
-        expected_name = driver_user.get_full_name() or driver_user.email
-        assert data_resp["driver_name"] == expected_name
-        assert data_resp["driver_code"] == driver_code
+        # Privacy: an ineligible QR code discloses NOTHING about the driver. This
+        # replaces the earlier contract that returned name and driver_code.
+        assert data_resp["driver_name"] is None
+        assert data_resp["driver_code"] is None
+        assert data_resp["driver_photo"] is None
 
         # Vehicle details should be withheld (null)
         assert data_resp["vehicle_make"] is None, (
@@ -807,6 +832,7 @@ class TestInvalidTokensProduceErrorAndAuditRecord(HypothesisTestCase):
             status="approved",
             driver_code=driver_code,
         )
+        _sign(profile)
         qr_uuid, _ = service.generate_qr_code(profile)
         profile.refresh_from_db()
 
@@ -925,6 +951,7 @@ class TestVerificationRecordCreationForAllScanTypes(HypothesisTestCase):
             vehicle_color="Blue",
             plate_number="XYZ789",
         )
+        _sign(profile)
         qr_uuid, _ = service.generate_qr_code(profile)
         profile.refresh_from_db()
         token = service.create_signed_token(qr_uuid, driver_code)
@@ -1011,6 +1038,7 @@ class TestVerificationRecordCreationForAllScanTypes(HypothesisTestCase):
             status="approved",
             driver_code=driver_code,
         )
+        _sign(profile)
         qr_uuid, _ = service.generate_qr_code(profile)
         profile.refresh_from_db()
 

@@ -32,7 +32,7 @@ docker compose -p yala exec -T django python manage.py check --deploy 2>&1 | gre
 # 5. Smoke test login (use QA account)
 curl -sS -X POST https://api.yalataxi.live/auth/login/ \
   -H "Content-Type: application/json" \
-  -d '{"email":"qa-rider-profile-fix@test.local","password":"QaRiderFix!2026"}'
+  -d "{\"email\":\"qa-rider-profile-fix@test.local\",\"password\":\"$YALA_QA_RIDER_PASSWORD\"}"
 ```
 
 ## Rollback

@@ -1,0 +1,870 @@
+{
+  "cities": {
+    "desktop": {
+      "authed": true,
+      "url": "http://localhost:3000/admin/delivery/cities",
+      "shell": 1,
+      "sidebars": 1,
+      "headers": 1,
+      "h1": 1,
+      "h1Text": "Delivery City Analytics",
+      "kpis": [
+        {
+          "label": "Total deliveries",
+          "value": "30"
+        },
+        {
+          "label": "Completed",
+          "value": "18"
+        },
+        {
+          "label": "Cancelled",
+          "value": "11"
+        },
+        {
+          "label": "Active",
+          "value": "1"
+        },
+        {
+          "label": "Exceptions",
+          "value": "0"
+        },
+        {
+          "label": "Delivered revenue",
+          "value": "1,598.40 MRU"
+        }
+      ],
+      "tableRows": [
+        [
+          "Nouakchott",
+          "30",
+          "18",
+          "11",
+          "1",
+          "0",
+          "1,598.40 MRU"
+        ]
+      ],
+      "overflow": 0,
+      "skeletons": 0,
+      "landing": false
+    },
+    "tablet": {
+      "authed": true,
+      "url": "http://localhost:3000/admin/delivery/cities",
+      "shell": 1,
+      "sidebars": 1,
+      "headers": 1,
+      "h1": 1,
+      "h1Text": "Delivery City Analytics",
+      "kpis": [
+        {
+          "label": "Total deliveries",
+          "value": "30"
+        },
+        {
+          "label": "Completed",
+          "value": "18"
+        },
+        {
+          "label": "Cancelled",
+          "value": "11"
+        },
+        {
+          "label": "Active",
+          "value": "1"
+        },
+        {
+          "label": "Exceptions",
+          "value": "0"
+        },
+        {
+          "label": "Delivered revenue",
+          "value": "1,598.40 MRU"
+        }
+      ],
+      "tableRows": [
+        [
+          "Nouakchott",
+          "30",
+          "18",
+          "11",
+          "1",
+          "0",
+          "1,598.40 MRU"
+        ]
+      ],
+      "overflow": 0,
+      "skeletons": 0,
+      "landing": false
+    },
+    "mobile": {
+      "authed": true,
+      "url": "http://localhost:3000/admin/delivery/cities",
+      "shell": 1,
+      "sidebars": 1,
+      "headers": 1,
+      "h1": 1,
+      "h1Text": "Delivery City Analytics",
+      "kpis": [
+        {
+          "label": "Total deliveries",
+          "value": "30"
+        },
+        {
+          "label": "Completed",
+          "value": "18"
+        },
+        {
+          "label": "Cancelled",
+          "value": "11"
+        },
+        {
+          "label": "Active",
+          "value": "1"
+        },
+        {
+          "label": "Exceptions",
+          "value": "0"
+        },
+        {
+          "label": "Delivered revenue",
+          "value": "1,598.40 MRU"
+        }
+      ],
+      "tableRows": [
+        [
+          "Nouakchott",
+          "30",
+          "18",
+          "11",
+          "1",
+          "0",
+          "1,598.40 MRU"
+        ]
+      ],
+      "overflow": 0,
+      "skeletons": 0,
+      "landing": false
+    }
+  },
+  "legacyOrders": {
+    "dark": {
+      "authed": true,
+      "url": "http://localhost:3000/admin?section=deliveries&tab=deliveries",
+      "shell": 1,
+      "sidebars": 1,
+      "headers": 1,
+      "h1": 3,
+      "h1Text": "Operations Console; Admin operations center; Yala Delivery",
+      "kpis": [],
+      "tableRows": [
+        [
+          "#30",
+          "in transit",
+          "Parcel",
+          "Nouakchott",
+          "UATRider72da Ba",
+          "Waiting",
+          "Tevragh Zeina → Nouakchott Airport",
+          "132.00 MRU",
+          "—"
+        ],
+        [
+          "#29",
+          "cancelled",
+          "Parcel",
+          "Nouakchott",
+          "UATRider72da Ba",
+          "Waiting",
+          "Tevragh Zeina → Nouakchott Airport",
+          "132.00 MRU",
+          "—"
+        ],
+        [
+          "#28",
+          "cancelled",
+          "Parcel",
+          "Nouakchott",
+          "UATRider72da Ba",
+          "Waiting",
+          "Tevragh Zeina → Nouakchott Airport",
+          "132.00 MRU",
+          "—"
+        ],
+        [
+          "#27",
+          "cancelled",
+          "Parcel",
+          "Nouakchott",
+          "UATRider72da Ba",
+          "Waiting",
+          "Tevragh Zeina → Nouakchott Airport",
+          "132.00 MRU",
+          "—"
+        ],
+        [
+          "#26",
+          "cancelled",
+          "Pharmacy / Medicine",
+          "Nouakchott",
+          "Rider 30",
+          "Waiting",
+          "Pharmacy → Dar Naim",
+          "79.20 MRU",
+          "—"
+        ],
+        [
+          "#25",
+          "cancelled",
+          "Parcel",
+          "Nouakchott",
+          "Rider 2",
+          "Waiting",
+          "Sebkha Market → Tevragh Zeina",
+          "88.80 MRU",
+          "—"
+        ],
+        [
+          "#24",
+          "cancelled",
+          "Parcel",
+          "Nouakchott",
+          "Rider 2",
+          "Waiting",
+          "Sebkha Market → Tevragh Zeina",
+          "88.80 MRU",
+          "—"
+        ],
+        [
+          "#23",
+          "delivered",
+          "Parcel",
+          "Nouakchott",
+          "Rider 2",
+          "Waiting",
+          "Sebkha Market → Tevragh Zeina",
+          "88.80 MRU",
+          "—"
+        ],
+        [
+          "#22",
+          "delivered",
+          "Parcel",
+          "Nouakchott",
+          "Rider 2",
+          "Waiting",
+          "Sebkha Market → Tevragh Zeina",
+          "88.80 MRU",
+          "—"
+        ],
+        [
+          "#21",
+          "delivered",
+          "Parcel",
+          "Nouakchott",
+          "Rider 2",
+          "Waiting",
+          "Sebkha Market → Tevragh Zeina",
+          "88.80 MRU",
+          "—"
+        ],
+        [
+          "#20",
+          "delivered",
+          "Parcel",
+          "Nouakchott",
+          "Rider 2",
+          "Waiting",
+          "Sebkha Market → Tevragh Zeina",
+          "88.80 MRU",
+          "—"
+        ],
+        [
+          "#19",
+          "delivered",
+          "Parcel",
+          "Nouakchott",
+          "Rider 2",
+          "Waiting",
+          "Sebkha Market → Tevragh Zeina",
+          "88.80 MRU",
+          "—"
+        ],
+        [
+          "#18",
+          "delivered",
+          "Parcel",
+          "Nouakchott",
+          "Rider 2",
+          "Waiting",
+          "Sebkha Market → Tevragh Zeina",
+          "88.80 MRU",
+          "—"
+        ],
+        [
+          "#17",
+          "cancelled",
+          "Parcel",
+          "Nouakchott",
+          "Rider 2",
+          "Waiting",
+          "Sebkha Market → Tevragh Zeina",
+          "88.80 MRU",
+          "—"
+        ],
+        [
+          "#16",
+          "cancelled",
+          "Parcel",
+          "Nouakchott",
+          "Rider 2",
+          "Waiting",
+          "Sebkha Market → Tevragh Zeina",
+          "88.80 MRU",
+          "—"
+        ],
+        [
+          "#15",
+          "delivered",
+          "Parcel",
+          "Nouakchott",
+          "Rider 2",
+          "Waiting",
+          "Sebkha Market → Tevragh Zeina",
+          "88.80 MRU",
+          "—"
+        ],
+        [
+          "#14",
+          "delivered",
+          "Parcel",
+          "Nouakchott",
+          "Rider 2",
+          "Waiting",
+          "Sebkha Market → Tevragh Zeina",
+          "88.80 MRU",
+          "—"
+        ],
+        [
+          "#13",
+          "delivered",
+          "Parcel",
+          "Nouakchott",
+          "Rider 2",
+          "Waiting",
+          "Sebkha Market → Tevragh Zeina",
+          "88.80 MRU",
+          "—"
+        ],
+        [
+          "#12",
+          "delivered",
+          "Parcel",
+          "Nouakchott",
+          "Rider 2",
+          "Waiting",
+          "Sebkha Market → Tevragh Zeina",
+          "88.80 MRU",
+          "—"
+        ],
+        [
+          "#11",
+          "delivered",
+          "Parcel",
+          "Nouakchott",
+          "Rider 2",
+          "Waiting",
+          "Sebkha Market → Tevragh Zeina",
+          "88.80 MRU",
+          "—"
+        ],
+        [
+          "#10",
+          "delivered",
+          "Parcel",
+          "Nouakchott",
+          "Rider 2",
+          "Waiting",
+          "Sebkha Market → Tevragh Zeina",
+          "88.80 MRU",
+          "—"
+        ],
+        [
+          "#9",
+          "cancelled",
+          "Pharmacy / Medicine",
+          "Nouakchott",
+          "Rider 3",
+          "Waiting",
+          "Pharmacy → Dar Naim",
+          "79.20 MRU",
+          "—"
+        ],
+        [
+          "#8",
+          "cancelled",
+          "Parcel",
+          "Nouakchott",
+          "Rider 2",
+          "Waiting",
+          "Sebkha Market → Tevragh Zeina",
+          "88.80 MRU",
+          "—"
+        ],
+        [
+          "#7",
+          "cancelled",
+          "Parcel",
+          "Nouakchott",
+          "Rider 2",
+          "Waiting",
+          "Sebkha Market → Tevragh Zeina",
+          "88.80 MRU",
+          "—"
+        ],
+        [
+          "#6",
+          "delivered",
+          "Parcel",
+          "Nouakchott",
+          "Rider 2",
+          "Waiting",
+          "Sebkha Market → Tevragh Zeina",
+          "88.80 MRU",
+          "—"
+        ],
+        [
+          "#5",
+          "delivered",
+          "Parcel",
+          "Nouakchott",
+          "Rider 2",
+          "Waiting",
+          "Sebkha Market → Tevragh Zeina",
+          "88.80 MRU",
+          "—"
+        ],
+        [
+          "#4",
+          "delivered",
+          "Parcel",
+          "Nouakchott",
+          "Rider 2",
+          "Waiting",
+          "Sebkha Market → Tevragh Zeina",
+          "88.80 MRU",
+          "—"
+        ],
+        [
+          "#3",
+          "delivered",
+          "Parcel",
+          "Nouakchott",
+          "Rider 2",
+          "Waiting",
+          "Sebkha Market → Tevragh Zeina",
+          "88.80 MRU",
+          "—"
+        ],
+        [
+          "#2",
+          "delivered",
+          "Parcel",
+          "Nouakchott",
+          "Rider 2",
+          "Waiting",
+          "Sebkha Market → Tevragh Zeina",
+          "88.80 MRU",
+          "—"
+        ],
+        [
+          "#1",
+          "delivered",
+          "Parcel",
+          "Nouakchott",
+          "Rider 2",
+          "Waiting",
+          "Sebkha Market → Tevragh Zeina",
+          "88.80 MRU",
+          "—"
+        ]
+      ],
+      "overflow": 0,
+      "skeletons": 0,
+      "landing": false
+    },
+    "light": {
+      "authed": true,
+      "url": "http://localhost:3000/admin?section=deliveries&tab=deliveries",
+      "shell": 1,
+      "sidebars": 1,
+      "headers": 1,
+      "h1": 3,
+      "h1Text": "Operations Console; Admin operations center; Yala Delivery",
+      "kpis": [],
+      "tableRows": [
+        [
+          "#30",
+          "in transit",
+          "Parcel",
+          "Nouakchott",
+          "UATRider72da Ba",
+          "Waiting",
+          "Tevragh Zeina → Nouakchott Airport",
+          "132.00 MRU",
+          "—"
+        ],
+        [
+          "#29",
+          "cancelled",
+          "Parcel",
+          "Nouakchott",
+          "UATRider72da Ba",
+          "Waiting",
+          "Tevragh Zeina → Nouakchott Airport",
+          "132.00 MRU",
+          "—"
+        ],
+        [
+          "#28",
+          "cancelled",
+          "Parcel",
+          "Nouakchott",
+          "UATRider72da Ba",
+          "Waiting",
+          "Tevragh Zeina → Nouakchott Airport",
+          "132.00 MRU",
+          "—"
+        ],
+        [
+          "#27",
+          "cancelled",
+          "Parcel",
+          "Nouakchott",
+          "UATRider72da Ba",
+          "Waiting",
+          "Tevragh Zeina → Nouakchott Airport",
+          "132.00 MRU",
+          "—"
+        ],
+        [
+          "#26",
+          "cancelled",
+          "Pharmacy / Medicine",
+          "Nouakchott",
+          "Rider 30",
+          "Waiting",
+          "Pharmacy → Dar Naim",
+          "79.20 MRU",
+          "—"
+        ],
+        [
+          "#25",
+          "cancelled",
+          "Parcel",
+          "Nouakchott",
+          "Rider 2",
+          "Waiting",
+          "Sebkha Market → Tevragh Zeina",
+          "88.80 MRU",
+          "—"
+        ],
+        [
+          "#24",
+          "cancelled",
+          "Parcel",
+          "Nouakchott",
+          "Rider 2",
+          "Waiting",
+          "Sebkha Market → Tevragh Zeina",
+          "88.80 MRU",
+          "—"
+        ],
+        [
+          "#23",
+          "delivered",
+          "Parcel",
+          "Nouakchott",
+          "Rider 2",
+          "Waiting",
+          "Sebkha Market → Tevragh Zeina",
+          "88.80 MRU",
+          "—"
+        ],
+        [
+          "#22",
+          "delivered",
+          "Parcel",
+          "Nouakchott",
+          "Rider 2",
+          "Waiting",
+          "Sebkha Market → Tevragh Zeina",
+          "88.80 MRU",
+          "—"
+        ],
+        [
+          "#21",
+          "delivered",
+          "Parcel",
+          "Nouakchott",
+          "Rider 2",
+          "Waiting",
+          "Sebkha Market → Tevragh Zeina",
+          "88.80 MRU",
+          "—"
+        ],
+        [
+          "#20",
+          "delivered",
+          "Parcel",
+          "Nouakchott",
+          "Rider 2",
+          "Waiting",
+          "Sebkha Market → Tevragh Zeina",
+          "88.80 MRU",
+          "—"
+        ],
+        [
+          "#19",
+          "delivered",
+          "Parcel",
+          "Nouakchott",
+          "Rider 2",
+          "Waiting",
+          "Sebkha Market → Tevragh Zeina",
+          "88.80 MRU",
+          "—"
+        ],
+        [
+          "#18",
+          "delivered",
+          "Parcel",
+          "Nouakchott",
+          "Rider 2",
+          "Waiting",
+          "Sebkha Market → Tevragh Zeina",
+          "88.80 MRU",
+          "—"
+        ],
+        [
+          "#17",
+          "cancelled",
+          "Parcel",
+          "Nouakchott",
+          "Rider 2",
+          "Waiting",
+          "Sebkha Market → Tevragh Zeina",
+          "88.80 MRU",
+          "—"
+        ],
+        [
+          "#16",
+          "cancelled",
+          "Parcel",
+          "Nouakchott",
+          "Rider 2",
+          "Waiting",
+          "Sebkha Market → Tevragh Zeina",
+          "88.80 MRU",
+          "—"
+        ],
+        [
+          "#15",
+          "delivered",
+          "Parcel",
+          "Nouakchott",
+          "Rider 2",
+          "Waiting",
+          "Sebkha Market → Tevragh Zeina",
+          "88.80 MRU",
+          "—"
+        ],
+        [
+          "#14",
+          "delivered",
+          "Parcel",
+          "Nouakchott",
+          "Rider 2",
+          "Waiting",
+          "Sebkha Market → Tevragh Zeina",
+          "88.80 MRU",
+          "—"
+        ],
+        [
+          "#13",
+          "delivered",
+          "Parcel",
+          "Nouakchott",
+          "Rider 2",
+          "Waiting",
+          "Sebkha Market → Tevragh Zeina",
+          "88.80 MRU",
+          "—"
+        ],
+        [
+          "#12",
+          "delivered",
+          "Parcel",
+          "Nouakchott",
+          "Rider 2",
+          "Waiting",
+          "Sebkha Market → Tevragh Zeina",
+          "88.80 MRU",
+          "—"
+        ],
+        [
+          "#11",
+          "delivered",
+          "Parcel",
+          "Nouakchott",
+          "Rider 2",
+          "Waiting",
+          "Sebkha Market → Tevragh Zeina",
+          "88.80 MRU",
+          "—"
+        ],
+        [
+          "#10",
+          "delivered",
+          "Parcel",
+          "Nouakchott",
+          "Rider 2",
+          "Waiting",
+          "Sebkha Market → Tevragh Zeina",
+          "88.80 MRU",
+          "—"
+        ],
+        [
+          "#9",
+          "cancelled",
+          "Pharmacy / Medicine",
+          "Nouakchott",
+          "Rider 3",
+          "Waiting",
+          "Pharmacy → Dar Naim",
+          "79.20 MRU",
+          "—"
+        ],
+        [
+          "#8",
+          "cancelled",
+          "Parcel",
+          "Nouakchott",
+          "Rider 2",
+          "Waiting",
+          "Sebkha Market → Tevragh Zeina",
+          "88.80 MRU",
+          "—"
+        ],
+        [
+          "#7",
+          "cancelled",
+          "Parcel",
+          "Nouakchott",
+          "Rider 2",
+          "Waiting",
+          "Sebkha Market → Tevragh Zeina",
+          "88.80 MRU",
+          "—"
+        ],
+        [
+          "#6",
+          "delivered",
+          "Parcel",
+          "Nouakchott",
+          "Rider 2",
+          "Waiting",
+          "Sebkha Market → Tevragh Zeina",
+          "88.80 MRU",
+          "—"
+        ],
+        [
+          "#5",
+          "delivered",
+          "Parcel",
+          "Nouakchott",
+          "Rider 2",
+          "Waiting",
+          "Sebkha Market → Tevragh Zeina",
+          "88.80 MRU",
+          "—"
+        ],
+        [
+          "#4",
+          "delivered",
+          "Parcel",
+          "Nouakchott",
+          "Rider 2",
+          "Waiting",
+          "Sebkha Market → Tevragh Zeina",
+          "88.80 MRU",
+          "—"
+        ],
+        [
+          "#3",
+          "delivered",
+          "Parcel",
+          "Nouakchott",
+          "Rider 2",
+          "Waiting",
+          "Sebkha Market → Tevragh Zeina",
+          "88.80 MRU",
+          "—"
+        ],
+        [
+          "#2",
+          "delivered",
+          "Parcel",
+          "Nouakchott",
+          "Rider 2",
+          "Waiting",
+          "Sebkha Market → Tevragh Zeina",
+          "88.80 MRU",
+          "—"
+        ],
+        [
+          "#1",
+          "delivered",
+          "Parcel",
+          "Nouakchott",
+          "Rider 2",
+          "Waiting",
+          "Sebkha Market → Tevragh Zeina",
+          "88.80 MRU",
+          "—"
+        ]
+      ],
+      "overflow": 0,
+      "skeletons": 0,
+      "landing": false
+    }
+  },
+  "errors": {
+    "cities-desktop": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "badResponses": []
+    },
+    "cities-tablet": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "badResponses": []
+    },
+    "cities-mobile": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "badResponses": []
+    },
+    "orders-dark": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "badResponses": []
+    },
+    "orders-light": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "badResponses": []
+    }
+  }
+}

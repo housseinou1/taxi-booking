@@ -6,11 +6,23 @@ import subprocess
 import time
 import urllib.request
 
+# ── Credentials come from the environment only (never hardcode, never print) ──
+import os as _cred_os
+import sys as _cred_sys
+
+
+def _required_env(name):
+    value = _cred_os.environ.get(name, "")
+    if not value:
+        _cred_sys.exit(f"Missing required environment variable: {name} (values are never printed)")
+    return value
+
+
 API = "https://api.yalataxi.live"
 ADB = r"C:\Users\Housseinou\AppData\Local\Android\Sdk\platform-tools\adb.exe"
 S = "R5CN80M3ZYJ"
 EMAIL = "amadou.diallo@yala.mr"
-PASSWORD = "Test1234!"
+PASSWORD = _required_env("YALA_QA_DEFAULT_PASSWORD")
 CTX = ssl.create_default_context()
 CTX.check_hostname = False
 CTX.verify_mode = ssl.CERT_NONE

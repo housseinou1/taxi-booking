@@ -119,6 +119,11 @@ class DeliveryFlowTests(APITestCase):
                 "courier_type_required": "motorcycle",
                 "package_description": "Signed documents",
                 "distance_km": "12",
+                # Yala is 100% cashless: `payment_method` is mandatory and only digital
+                # methods are accepted (card, bankily, sedad, masravi). Cash is not a
+                # valid choice, so a request without a payment method is correctly
+                # rejected with HTTP 400.
+                "payment_method": "bankily",
             },
             format="json",
         )
@@ -493,6 +498,13 @@ class DeliveryCourierOnboardingTests(APITestCase):
             vehicle_color="",
             plate_number="",
             vehicle_plate="",
+            # Submission requires a complete courier e-signature (courier_profile_setup_submit,
+            # since 2026-07-02). Signed here so the test exercises its real subject: a bicycle
+            # courier is not asked for motor-vehicle fields or documents.
+            terms_accepted=True,
+            signature_image="legal/courier_signatures/test.png",
+            signed_full_name="Bike Courier",
+            legal_declaration_accepted=True,
         )
         DriverDeliverySettings.objects.create(
             driver=courier,
@@ -1107,6 +1119,16 @@ class DeliveryTaskTests(APITestCase):
 
     @patch("notifications.push.send_push_to_user")
     def test_remind_cash_settlement(self, mock_push):
+        """Under the cashless policy the legacy cash reminder must be a no-op.
+
+        ``payments.cashless`` is the single source of truth for the platform rule and
+        ``is_enforced()`` defaults to True, so the task reports the skip, sends nothing
+        and mutates no record. A legacy ``cash`` row is created on purpose: historical
+        records must stay readable and untouched by the policy.
+
+        This previously asserted ``reminded == 1``, which encoded the pre-cashless
+        behaviour and could only pass by re-introducing cash settlement reminders.
+        """
         from .tasks import remind_cash_settlement
 
         driver = User.objects.create_user(
@@ -1119,7 +1141,7 @@ class DeliveryTaskTests(APITestCase):
             national_id_number="7788990022",
             user_type="driver",
         )
-        Delivery.objects.create(
+        delivery = Delivery.objects.create(
             customer=self.customer,
             driver=driver,
             pickup="A",
@@ -1133,7 +1155,13 @@ class DeliveryTaskTests(APITestCase):
             delivered_at=timezone.now() - timedelta(minutes=45),
         )
         result = remind_cash_settlement()
-        self.assertEqual(result["reminded"], 1)
+
+        self.assertEqual(result["reminded"], 0)
+        self.assertEqual(result["skipped"], "cashless_policy")
+        mock_push.assert_not_called()
+
+        delivery.refresh_from_db()
+        self.assertEqual(delivery.payment_status, "pending")
 
 
 # ── Geofence Tests ────────────────────────────────────────────────────────────

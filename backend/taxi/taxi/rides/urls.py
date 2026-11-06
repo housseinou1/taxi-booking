@@ -22,7 +22,11 @@ from .views import (
     rate_rider,
     driver_earnings_summary,
     record_rider_call_attempt,
+    admin_ride_detail,
+    admin_rides_list,
     admin_rider_ride_history,
+    admin_driver_ride_history,
+    admin_driver_earnings,
 )
 from .views_stops import (
     RideStopListCreateView,
@@ -37,6 +41,7 @@ from .analytics import (
     rider_analytics,
 )
 from .dispatch_admin import admin_dispatch_dashboard, admin_dispatch_ride_history
+from .admin_financial_summary import admin_financial_summary
 from features.views import (
     list_airports,
     book_airport_pickup,
@@ -102,6 +107,17 @@ urlpatterns = [
 
     # Admin rider ride history + statistics (additive, IsAdminUser-gated)
     path("admin/rider/<int:rider_id>/history/", admin_rider_ride_history),
+
+    # Rides Management: admin ride list + detail (additive, IsAdminUser-gated)
+    path("admin/rides/", admin_rides_list),
+    path("admin/rides/<int:ride_id>/", admin_ride_detail),
+
+    # Admin driver ride history + earnings (additive, IsAdminUser-gated)
+    path("admin/driver/<int:driver_id>/history/", admin_driver_ride_history),
+    path("admin/driver/<int:driver_id>/earnings/", admin_driver_earnings),
+
+    # Admin financial summary for the legacy /admin dashboard (additive, IsAdminUser-gated)
+    path("admin/financial-summary/", admin_financial_summary),
 
     # Share Ride endpoints
     path("share/", include("taxi.rides.share_urls")),

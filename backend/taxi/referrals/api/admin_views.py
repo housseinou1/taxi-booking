@@ -15,10 +15,11 @@ from referrals.models import FlaggedReferral
 from referrals.services.analytics_service import AnalyticsService
 from referrals.services.fraud_detection_service import FraudDetectionService
 from referrals.services.reward_config_service import RewardConfigService
+from operations.admin_module_permissions import require_admin_module
 
 
 @api_view(["GET", "PUT"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("marketing")])
 def admin_config(request):
     """GET: Return the current active reward configuration.
     PUT: Validate and update the reward configuration.
@@ -107,7 +108,7 @@ class FlaggedReferralPagination(PageNumberPagination):
 
 
 @api_view(["GET"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("marketing")])
 def admin_flagged_list(request):
     """GET: Return a paginated list of flagged referrals."""
     queryset = FlaggedReferral.objects.select_related(
@@ -121,7 +122,7 @@ def admin_flagged_list(request):
 
 
 @api_view(["POST"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("marketing")])
 def admin_flagged_approve(request, pk):
     """POST: Approve a flagged referral, releasing withheld rewards."""
     service = FraudDetectionService()
@@ -144,7 +145,7 @@ def admin_flagged_approve(request, pk):
 
 
 @api_view(["POST"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("marketing")])
 def admin_flagged_reject(request, pk):
     """POST: Reject a flagged referral, revoking associated rewards."""
     service = FraudDetectionService()
@@ -167,7 +168,7 @@ def admin_flagged_reject(request, pk):
 
 
 @api_view(["GET"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("marketing")])
 def admin_analytics(request):
     """GET: Return referral analytics for the given date range.
 

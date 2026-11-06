@@ -8,17 +8,19 @@ these tests pin the safety properties:
   * the ledger carries exactly one `refund:<id>` transaction
   * anonymous / non-staff callers cannot approve or reject
 
-Concurrency note: `TransactionTestCase` is used so each thread gets its own
-connection. SQLite serialises writes, so a genuine row-level race cannot be
-reproduced here. The sequential-duplicate and ledger-integrity properties ARE
-fully exercised.
+Concurrency note: a genuine row-level race cannot be reproduced on SQLite —
+concurrent writers hit `database table is locked` instead of interleaving, so
+`test_concurrent_approvals_credit_once` is gated to Postgres. The
+sequential-duplicate, ledger-integrity and authorization properties ARE fully
+exercised on every backend, and those are what actually pin the invariant.
 """
 
 import threading
 from decimal import Decimal
+from unittest import skipUnless
 
 from django.contrib.auth import get_user_model
-from django.db import connections
+from django.db import connection, connections
 from django.test import TestCase, TransactionTestCase
 from rest_framework.test import APIClient
 
@@ -191,6 +193,11 @@ class RefundConcurrencyTests(RefundSafetyMixin, TransactionTestCase):
             email="race.admin@yala.test", password="x", user_type="admin", is_staff=True
         )
 
+    @skipUnless(
+        connection.vendor == "postgresql",
+        "Row-level race test: SQLite serialises writes and raises "
+        "'database table is locked' instead of interleaving the four approvals.",
+    )
     def test_concurrent_approvals_credit_once(self):
         refund = self._make_refund()
         results = []
@@ -213,5 +220,3 @@ class RefundConcurrencyTests(RefundSafetyMixin, TransactionTestCase):
         self.assertEqual(len(results), 4)
         self.assertEqual(self._wallet_balance(), AMOUNT, f"statuses={results}")
         self.assertEqual(self._refund_tx_count(refund.id), 1, f"statuses={results}")
-
-        return WalletTransaction.objects.filter(reference=f"refund:{refund_id}").count()

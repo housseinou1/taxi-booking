@@ -18,12 +18,23 @@ from pathlib import Path
 
 API = os.environ.get("YALA_API_BASE", "https://api.yalataxi.live").rstrip("/")
 RIDER_EMAIL = os.environ.get("YALA_PILOT_RIDER", "qa-rider-profile-fix@test.local")
-RIDER_PASSWORD = os.environ.get("YALA_PILOT_RIDER_PW", "QaRiderFix!2026")
+
+
+def _required_env(name):
+    """Credentials come from the environment only; values are never printed."""
+    value = os.environ.get(name, "")
+    if not value:
+        sys.exit(f"Missing required environment variable: {name} (values are never printed)")
+    return value
+
+
+RIDER_PASSWORD = _required_env("YALA_PILOT_RIDER_PW")
 DRIVER_EMAIL = os.environ.get("YALA_PILOT_DRIVER", "qa-driver-final-qa@test.local")
-DRIVER_PASSWORD = os.environ.get("YALA_PILOT_DRIVER_PW", "QaDriverFinal!2026")
+DRIVER_PASSWORD = _required_env("YALA_PILOT_DRIVER_PW")
 # Fallback driver if final-qa unavailable
 DRIVER_EMAIL_ALT = "qa-driver-profile-fix@test.local"
-DRIVER_PASSWORD_ALT = "QaDriverFix!2026"
+# Optional: only tried when set
+DRIVER_PASSWORD_ALT = os.environ.get("YALA_PILOT_DRIVER_ALT_PW", "")
 
 OUT = Path(__file__).resolve().parents[1] / "docs" / "release" / "sprint0_pilot_results.json"
 CTX = ssl._create_unverified_context()
@@ -101,7 +112,7 @@ def main() -> int:
     rider = login(RIDER_EMAIL, RIDER_PASSWORD)
     record("Rider login", bool(rider), RIDER_EMAIL)
     driver = login(DRIVER_EMAIL, DRIVER_PASSWORD)
-    if not driver:
+    if not driver and DRIVER_PASSWORD_ALT:
         driver = login(DRIVER_EMAIL_ALT, DRIVER_PASSWORD_ALT)
         record("Driver login (alt)", bool(driver), DRIVER_EMAIL_ALT)
     else:

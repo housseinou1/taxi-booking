@@ -7,10 +7,11 @@ from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 
 from taxi.rides.models import DispatchOfferLog, Ride
+from operations.admin_module_permissions import require_admin_module
 
 
 @api_view(["GET"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("ops")])
 def admin_dispatch_dashboard(request):
     """
     GET /rides/analytics/admin/dispatch/
@@ -112,7 +113,7 @@ def admin_dispatch_dashboard(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("ops")])
 def admin_dispatch_ride_history(request, ride_id):
     """GET /rides/analytics/admin/dispatch/<ride_id>/"""
     ride = Ride.objects.filter(pk=ride_id).first()

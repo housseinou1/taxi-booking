@@ -6,7 +6,7 @@ from datetime import timedelta
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
-from django.db.models import Count, Sum
+from django.db.models import Count, Q, Sum
 from django.utils import timezone
 
 from .chart_utils import build_daily_payment_chart
@@ -79,7 +79,13 @@ def _payment_qs(start, end):
 
 def build_live_metrics(city_id=None) -> dict:
     today = timezone.localdate()
-    drivers_online = DriverProfile.objects.filter(is_available=True, status="approved")
+    # Ride drivers only — courier profiles are excluded using the canonical definition in
+    # operations.fleet_metrics, so this dashboard never double-counts a courier as a driver.
+    from operations.fleet_metrics import courier_user_ids
+
+    drivers_online = DriverProfile.objects.filter(
+        is_available=True, status="approved"
+    ).exclude(user_id__in=courier_user_ids())
     if city_id:
         drivers_online = drivers_online.filter(user__city_id=city_id)
 
@@ -311,7 +317,9 @@ def build_operations_queues(city_id=None) -> dict:
 
 def build_security_panel() -> dict:
     blocked_accounts = User.objects.filter(is_active=False, is_staff=False).count()
-    suspended_drivers = DriverProfile.objects.filter(account_under_review=True).count()
+    suspended_drivers = DriverProfile.objects.filter(
+        Q(suspension_active=True) | Q(account_under_review=True)
+    ).count()
     expired_documents = DriverDocument.objects.filter(
         expires_at__lt=timezone.localdate()
     ).count()

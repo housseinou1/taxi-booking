@@ -1,0 +1,289 @@
+{
+  "baseline": {
+    "rows": 25,
+    "firstCell": "Yala Delivery Tester",
+    "kpiValues": [
+      "42",
+      "38",
+      "4",
+      "38",
+      "0"
+    ],
+    "pagerText": "",
+    "inputs": [
+      {
+        "tag": "SELECT",
+        "type": null,
+        "placeholder": null,
+        "value": ""
+      },
+      {
+        "tag": "INPUT",
+        "type": "search",
+        "placeholder": "Search name, email, phone or plate…",
+        "value": ""
+      },
+      {
+        "tag": "SELECT",
+        "type": null,
+        "placeholder": null,
+        "value": "all"
+      },
+      {
+        "tag": "SELECT",
+        "type": null,
+        "placeholder": null,
+        "value": ""
+      },
+      {
+        "tag": "INPUT",
+        "type": "checkbox",
+        "placeholder": null,
+        "value": "on"
+      },
+      {
+        "tag": "INPUT",
+        "type": "checkbox",
+        "placeholder": null,
+        "value": "on"
+      },
+      {
+        "tag": "INPUT",
+        "type": "checkbox",
+        "placeholder": null,
+        "value": "on"
+      },
+      {
+        "tag": "INPUT",
+        "type": "checkbox",
+        "placeholder": null,
+        "value": "on"
+      },
+      {
+        "tag": "INPUT",
+        "type": "checkbox",
+        "placeholder": null,
+        "value": "on"
+      },
+      {
+        "tag": "INPUT",
+        "type": "checkbox",
+        "placeholder": null,
+        "value": "on"
+      },
+      {
+        "tag": "INPUT",
+        "type": "checkbox",
+        "placeholder": null,
+        "value": "on"
+      },
+      {
+        "tag": "INPUT",
+        "type": "checkbox",
+        "placeholder": null,
+        "value": "on"
+      },
+      {
+        "tag": "INPUT",
+        "type": "checkbox",
+        "placeholder": null,
+        "value": "on"
+      }
+    ]
+  },
+  "afterSearchA": {
+    "rows": 25,
+    "firstCell": "Yala Delivery Tester",
+    "kpiValues": [
+      "42",
+      "38",
+      "4",
+      "38",
+      "0"
+    ],
+    "pagerText": "",
+    "inputs": [
+      {
+        "tag": "SELECT",
+        "type": null,
+        "placeholder": null,
+        "value": ""
+      },
+      {
+        "tag": "INPUT",
+        "type": "search",
+        "placeholder": "Search name, email, phone or plate…",
+        "value": "a"
+      },
+      {
+        "tag": "SELECT",
+        "type": null,
+        "placeholder": null,
+        "value": "all"
+      },
+      {
+        "tag": "SELECT",
+        "type": null,
+        "placeholder": null,
+        "value": ""
+      },
+      {
+        "tag": "INPUT",
+        "type": "checkbox",
+        "placeholder": null,
+        "value": "on"
+      },
+      {
+        "tag": "INPUT",
+        "type": "checkbox",
+        "placeholder": null,
+        "value": "on"
+      },
+      {
+        "tag": "INPUT",
+        "type": "checkbox",
+        "placeholder": null,
+        "value": "on"
+      },
+      {
+        "tag": "INPUT",
+        "type": "checkbox",
+        "placeholder": null,
+        "value": "on"
+      },
+      {
+        "tag": "INPUT",
+        "type": "checkbox",
+        "placeholder": null,
+        "value": "on"
+      },
+      {
+        "tag": "INPUT",
+        "type": "checkbox",
+        "placeholder": null,
+        "value": "on"
+      },
+      {
+        "tag": "INPUT",
+        "type": "checkbox",
+        "placeholder": null,
+        "value": "on"
+      },
+      {
+        "tag": "INPUT",
+        "type": "checkbox",
+        "placeholder": null,
+        "value": "on"
+      },
+      {
+        "tag": "INPUT",
+        "type": "checkbox",
+        "placeholder": null,
+        "value": "on"
+      }
+    ]
+  },
+  "afterSearchNoMatch": {
+    "rows": 1,
+    "firstCell": "No couriers match these filters.",
+    "kpiValues": [
+      "42",
+      "38",
+      "4",
+      "38",
+      "0"
+    ],
+    "pagerText": "",
+    "inputs": [
+      {
+        "tag": "SELECT",
+        "type": null,
+        "placeholder": null,
+        "value": ""
+      },
+      {
+        "tag": "INPUT",
+        "type": "search",
+        "placeholder": "Search name, email, phone or plate…",
+        "value": "zzzzzz"
+      },
+      {
+        "tag": "SELECT",
+        "type": null,
+        "placeholder": null,
+        "value": "all"
+      },
+      {
+        "tag": "SELECT",
+        "type": null,
+        "placeholder": null,
+        "value": ""
+      },
+      {
+        "tag": "INPUT",
+        "type": "checkbox",
+        "placeholder": null,
+        "value": "on"
+      },
+      {
+        "tag": "INPUT",
+        "type": "checkbox",
+        "placeholder": null,
+        "value": "on"
+      },
+      {
+        "tag": "INPUT",
+        "type": "checkbox",
+        "placeholder": null,
+        "value": "on"
+      },
+      {
+        "tag": "INPUT",
+        "type": "checkbox",
+        "placeholder": null,
+        "value": "on"
+      },
+      {
+        "tag": "INPUT",
+        "type": "checkbox",
+        "placeholder": null,
+        "value": "on"
+      },
+      {
+        "tag": "INPUT",
+        "type": "checkbox",
+        "placeholder": null,
+        "value": "on"
+      },
+      {
+        "tag": "INPUT",
+        "type": "checkbox",
+        "placeholder": null,
+        "value": "on"
+      },
+      {
+        "tag": "INPUT",
+        "type": "checkbox",
+        "placeholder": null,
+        "value": "on"
+      },
+      {
+        "tag": "INPUT",
+        "type": "checkbox",
+        "placeholder": null,
+        "value": "on"
+      }
+    ]
+  },
+  "selectCount": 3,
+  "firstSelectOptions": [
+    "",
+    "nouakchott",
+    "nouadhibou"
+  ],
+  "errors": {
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": []
+  }
+}

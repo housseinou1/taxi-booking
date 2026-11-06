@@ -653,7 +653,7 @@
 
 .fleet-table__sort--active .fleet-table__sort-arrow {
   opacity: 1;
-  color: var(--admin-accent, #00a651);
+  color: var(--admin-accent-text, #00a651);
 }
 
 .fleet-table__num {

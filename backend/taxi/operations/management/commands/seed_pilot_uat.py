@@ -7,12 +7,14 @@ Defaults:
 Usage:
   python manage.py seed_pilot_uat
   python manage.py seed_pilot_uat --riders 50 --drivers 20 --couriers 10
-  python manage.py seed_pilot_uat --password 'PilotUAT2026!'
+  python manage.py seed_pilot_uat --password "$YALA_PILOT_UAT_PASSWORD"
   python manage.py seed_pilot_uat --dry-run
 """
 
 from __future__ import annotations
 
+import os
+import secrets
 from datetime import timedelta
 
 from django.contrib.auth.models import Group
@@ -32,7 +34,8 @@ PILOT_SIGNATURE_PNG = (
     b"\x00\x00\x00\x0cIDATx\x9cc\xf8\x0f\x00\x00\x01\x01\x00\x05\x18\xd8N\x00\x00\x00\x00IEND\xaeB`\x82"
 )
 
-PILOT_PASSWORD_DEFAULT = "PilotUAT2026!"
+# $YALA_PILOT_UAT_PASSWORD, or a random per-run value: never a shared default, never printed.
+PILOT_PASSWORD_DEFAULT = os.environ.get("YALA_PILOT_UAT_PASSWORD") or secrets.token_urlsafe(18)
 EMAIL_DOMAIN = "pilot.yala.test"
 
 STAFF_SEEDS = [
@@ -204,7 +207,7 @@ class Command(BaseCommand):
             f"drivers~{driver_created} couriers~{courier_created}"
         ))
         self.stdout.write(
-            f"Shared password: {password}\n"
+            "Shared password not shown: pass --password or set YALA_PILOT_UAT_PASSWORD to choose it (random per run otherwise).\n"
             f"Staff example: ceo@{EMAIL_DOMAIN}\n"
             f"Rider example: rider001@{EMAIL_DOMAIN}\n"
             f"Driver example: driver001@{EMAIL_DOMAIN}\n"

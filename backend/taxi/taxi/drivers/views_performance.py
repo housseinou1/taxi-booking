@@ -1,13 +1,15 @@
-from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from operations.admin_module_permissions import HasAdminModule
 
 from .models import DriverProfile
 from .performance import driver_performance_summary
 
 
 class AdminDriverPerformanceView(APIView):
-    permission_classes = [IsAdminUser]
+    permission_classes = [HasAdminModule]
+    admin_module = "drivers"
 
     def get(self, request):
         profiles = DriverProfile.objects.select_related("user").order_by("user__first_name")

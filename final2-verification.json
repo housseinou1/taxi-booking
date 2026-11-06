@@ -1,0 +1,148 @@
+{
+  "responsive": {
+    "desktop": {
+      "viewport": "1440x900",
+      "shell": 1,
+      "sidebars": 1,
+      "headers": 1,
+      "breadcrumbs": 1,
+      "h1Count": 1,
+      "groups": 11,
+      "overflow": 0,
+      "hamburgerVisible": false,
+      "sidebarOffscreen": false,
+      "navScrolls": true,
+      "drawer": null
+    },
+    "tablet": {
+      "viewport": "768x1024",
+      "shell": 1,
+      "sidebars": 1,
+      "headers": 1,
+      "breadcrumbs": 1,
+      "h1Count": 1,
+      "groups": 11,
+      "overflow": 0,
+      "hamburgerVisible": true,
+      "sidebarOffscreen": true,
+      "navScrolls": true,
+      "drawer": {
+        "open": true,
+        "backdrop": true
+      }
+    },
+    "mobile": {
+      "viewport": "390x844",
+      "shell": 1,
+      "sidebars": 1,
+      "headers": 1,
+      "breadcrumbs": 1,
+      "h1Count": 1,
+      "groups": 11,
+      "overflow": 0,
+      "hamburgerVisible": true,
+      "sidebarOffscreen": true,
+      "navScrolls": true,
+      "drawer": {
+        "open": true,
+        "backdrop": true
+      }
+    }
+  },
+  "ceoTabs": {
+    "expected": [
+      "Executive Overview",
+      "Financial Overview",
+      "Operations",
+      "Growth",
+      "Fleet",
+      "AI Insights",
+      "Launch Readiness",
+      "Executive Reports",
+      "Executive Actions"
+    ],
+    "labelsFound": [
+      "Executive Overview",
+      "Financial Overview",
+      "Operations",
+      "Growth",
+      "Fleet",
+      "AI Insights",
+      "Launch Readiness",
+      "Executive Reports",
+      "Executive Actions"
+    ],
+    "count": 9,
+    "tabs": [
+      {
+        "active": "Executive Overview",
+        "contentLen": 925,
+        "error": ""
+      },
+      {
+        "active": "Financial Overview",
+        "contentLen": 290,
+        "error": ""
+      },
+      {
+        "active": "Operations",
+        "contentLen": 193,
+        "error": ""
+      },
+      {
+        "active": "Growth",
+        "contentLen": 164,
+        "error": ""
+      },
+      {
+        "active": "Fleet",
+        "contentLen": 153,
+        "error": ""
+      },
+      {
+        "active": "AI Insights",
+        "contentLen": 0,
+        "error": ""
+      },
+      {
+        "active": "Launch Readiness",
+        "contentLen": 985,
+        "error": ""
+      },
+      {
+        "active": "Executive Reports",
+        "contentLen": 180,
+        "error": ""
+      },
+      {
+        "active": "Executive Actions",
+        "contentLen": 258,
+        "error": ""
+      }
+    ]
+  },
+  "errors": {
+    "desktop": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "badResponses": []
+    },
+    "tablet": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "badResponses": []
+    },
+    "mobile": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "badResponses": []
+    },
+    "ceoTabs": {
+      "consoleErrors": [
+        "Warning: Each child in a list should have a unique \"key\" prop.%s%s See https://reactjs.org/link/warning-keys for more information.%s \n\nCheck the rende"
+      ],
+      "pageErrors": [],
+      "badResponses": []
+    }
+  }
+}

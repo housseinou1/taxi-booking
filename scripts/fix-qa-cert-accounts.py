@@ -1,5 +1,6 @@
 """Ensure RC2 certification QA accounts exist and pass ride-flow gates."""
 import os
+import sys
 import django
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "taxi.settings")
@@ -13,10 +14,19 @@ from taxi.rides.models import Ride
 User = get_user_model()
 now = timezone.now()
 
+
+def _required_env(name):
+    """Credentials come from the environment only; values are never printed."""
+    value = os.environ.get(name, "")
+    if not value:
+        sys.exit(f"Missing required environment variable: {name} (values are never printed)")
+    return value
+
+
 ACCOUNTS = [
-    ("qa-rider-profile-fix@test.local", "QaRiderFix!2026", "rider"),
-    ("qa-driver-profile-fix@test.local", "QaDriverFix!2026", "driver"),
-    ("qa-driver-final-qa@test.local", "QaDriverFinal!2026", "driver"),
+    ("qa-rider-profile-fix@test.local", _required_env("YALA_QA_RIDER_PASSWORD"), "rider"),
+    ("qa-driver-profile-fix@test.local", _required_env("YALA_QA_DRIVER2_PASSWORD"), "driver"),
+    ("qa-driver-final-qa@test.local", _required_env("YALA_QA_DRIVER_PASSWORD"), "driver"),
 ]
 
 OPEN_STATUSES = ["requested", "scheduled", "driver_arriving", "driver_arrived", "in_progress"]

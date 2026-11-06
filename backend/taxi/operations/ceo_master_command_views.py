@@ -214,7 +214,13 @@ def ceo_master_action_approve_onboarding(request):
         approved = True
     elif entity_type in ("driver", "courier"):
         from taxi.drivers.models import DriverProfile
+        from legal.services import approval_signature_block
+
         profile = get_object_or_404(DriverProfile, user_id=entity_id)
+        # Drivers and couriers sign different agreements; check the matching one.
+        signature_block = approval_signature_block(profile, entity_type, request)
+        if signature_block is not None:
+            return Response(signature_block, status=status.HTTP_400_BAD_REQUEST)
         profile.status = "approved"
         profile.save(update_fields=["status"])
         approved = True

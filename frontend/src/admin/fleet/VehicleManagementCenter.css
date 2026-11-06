@@ -19,7 +19,7 @@
 }
 
 .veh-crumbs a {
-  color: var(--admin-accent, #00a651);
+  color: var(--admin-accent-text, #00a651);
   text-decoration: none;
   font-weight: 600;
 }

@@ -12,6 +12,7 @@ from taxi.drivers.models import DriverProfile
 
 from .models import Delivery, DeliveryChatReport, DeliveryDispute, DeliveryMessage, DriverDeliverySettings
 from .services.chat_privacy import admin_can_view_chat, get_chat_case_reasons
+from operations.admin_module_permissions import require_admin_module
 
 
 def _image_url(msg, request):
@@ -62,7 +63,7 @@ def _serialize_case(delivery, request=None):
 
 
 @api_view(["GET"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("delivery")])
 def admin_chat_cases(request):
     deliveries = Delivery.objects.select_related("customer", "driver").order_by("-updated_at")[:300]
     cases = [case for case in (_serialize_case(delivery, request) for delivery in deliveries) if case["case_reasons"]]
@@ -96,7 +97,7 @@ def admin_chat_cases(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("delivery")])
 def admin_chat_history(request, delivery_id):
     delivery = get_object_or_404(Delivery.objects.select_related("customer", "driver"), id=delivery_id)
     if not admin_can_view_chat(delivery):
@@ -150,7 +151,7 @@ def admin_chat_history(request, delivery_id):
 
 
 @api_view(["POST"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("delivery")])
 def admin_hide_message(request, message_id):
     msg = get_object_or_404(
         DeliveryMessage.objects.select_related("delivery"),
@@ -178,7 +179,7 @@ def admin_hide_message(request, message_id):
 
 
 @api_view(["POST"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("delivery")])
 def admin_warn_chat_user(request, delivery_id):
     delivery = get_object_or_404(Delivery.objects.select_related("driver", "customer"), id=delivery_id)
     if not admin_can_view_chat(delivery):
@@ -207,7 +208,7 @@ def admin_warn_chat_user(request, delivery_id):
 
 
 @api_view(["POST"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("delivery")])
 def admin_suspend_chat_user(request, delivery_id):
     delivery = get_object_or_404(Delivery.objects.select_related("driver"), id=delivery_id)
     if not admin_can_view_chat(delivery):
@@ -236,7 +237,7 @@ def admin_suspend_chat_user(request, delivery_id):
 
 
 @api_view(["POST"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("delivery")])
 def admin_attach_chat_to_dispute(request, delivery_id):
     delivery = get_object_or_404(Delivery, id=delivery_id)
     report_id = request.data.get("report_id")
@@ -259,7 +260,7 @@ def admin_attach_chat_to_dispute(request, delivery_id):
 
 
 @api_view(["POST"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("delivery")])
 def admin_review_chat_report(request, report_id):
     report = get_object_or_404(DeliveryChatReport.objects.select_related("delivery"), id=report_id)
     action = (request.data.get("action") or "reviewed").strip().lower()

@@ -8,10 +8,22 @@ import uuid
 import urllib.error
 import urllib.request
 
+# ── Credentials come from the environment only (never hardcode, never print) ──
+import os as _cred_os
+import sys as _cred_sys
+
+
+def _required_env(name):
+    value = _cred_os.environ.get(name, "")
+    if not value:
+        _cred_sys.exit(f"Missing required environment variable: {name} (values are never printed)")
+    return value
+
+
 API = "https://api.yalataxi.live"
 CTX = ssl._create_unverified_context()
 EMAIL = "qa-rider-profile-fix@test.local"
-PASSWORD = "QaRiderFix!2026"
+PASSWORD = _required_env("YALA_QA_RIDER_PASSWORD")
 fail = 0
 
 

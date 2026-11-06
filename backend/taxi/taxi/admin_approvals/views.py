@@ -26,6 +26,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from authapp.models import User
+from legal.services import approval_signature_block
 from taxi.drivers.models import DriverProfile, DriverDocument
 from .models import ApprovalAction
 
@@ -219,7 +220,14 @@ def _serialize_driver(profile, target_type="driver"):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated, IsAdminUser])
 def approval_stats(request):
-    """Dashboard statistics for the approval center."""
+    """Dashboard statistics for the approval center.
+
+    Deliberately staff-wide (not module-gated): this payload is aggregate COUNTS
+    only - pending/active riders, drivers and couriers - with no personal data,
+    and it feeds the home dashboard that every admin role lands on. Gating it
+    would blank four KPI tiles for Finance, HR and Platform. The row-level
+    approval queues next to it remain module-gated.
+    """
     today = timezone.now().date()
 
     pending_riders = User.objects.filter(user_type="rider", rider_status="pending").count()
@@ -247,8 +255,11 @@ def approval_stats(request):
         action="reject", created_at__date=today
     ).count()
 
-    # Suspended: drivers with account_under_review or delivery settings suspended
-    suspended_drivers = DriverProfile.objects.filter(account_under_review=True).count()
+    # Suspended: an explicit administrative suspension (B7) or the legacy review-flag
+    # marker, plus couriers suspended on the delivery side.
+    suspended_drivers = DriverProfile.objects.filter(
+        Q(suspension_active=True) | Q(account_under_review=True)
+    ).count()
     suspended_couriers = DriverDeliverySettings.objects.filter(is_suspended=True).count()
     suspended_accounts = suspended_drivers + suspended_couriers
 
@@ -340,7 +351,7 @@ def driver_queue(request):
 
     if status_filter and status_filter != "all":
         if status_filter == "suspended":
-            qs = qs.filter(account_under_review=True)
+            qs = qs.filter(Q(suspension_active=True) | Q(account_under_review=True))
         else:
             qs = qs.filter(status=status_filter)
 
@@ -396,7 +407,7 @@ def courier_queue(request):
 
     if status_filter and status_filter != "all":
         if status_filter == "suspended":
-            qs = qs.filter(account_under_review=True)
+            qs = qs.filter(Q(suspension_active=True) | Q(account_under_review=True))
         else:
             qs = qs.filter(status=status_filter)
 
@@ -503,6 +514,34 @@ def rider_action(request, user_id, action):
     return Response({"detail": f"Rider {action}d successfully.", "status": user.rider_status})
 
 
+def _log_driver_audit_row(request, profile, action, reason=""):
+    """Mirror an approval-center driver action into the admin audit trail.
+
+    The ApprovalAction table already records the approval-center workflow; this
+    adds a security.AuditLog row (entity_type="driver") so driver history shows
+    up in the unified audit feed and in the driver drawer. Never stores
+    documents or signature images. Auditing must not break the action.
+    """
+    try:
+        from security.services.audit_service import log_from_request
+
+        log_from_request(
+            request,
+            action=action if action in {"approve", "reject", "suspend", "reactivate"} else "status_change",
+            entity_type="driver",
+            entity_id=str(profile.pk),
+            summary=f"Approval center {action}: {profile.user.email}"[:255],
+            details={
+                "previous_status": getattr(profile, "_audit_previous_status", ""),
+                "new_status": profile.status,
+                "reason": reason,
+                "source": "approval_center",
+            },
+        )
+    except Exception:
+        logger.exception("Failed to write audit row for approval-center driver %s", profile.pk)
+
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated, IsAdminUser])
 def driver_action(request, user_id, action):
@@ -536,6 +575,18 @@ def driver_action(request, user_id, action):
         ceo_block = _check_ceo_protection(request, user, "driver")
         if ceo_block is not None:
             return ceo_block
+
+        # E-signature gate: approving, or reactivating a rejected driver back to
+        # approved, requires a complete driver signature. Nothing is written yet.
+        if action == "approve" or (action == "reactivate" and profile.status == "rejected"):
+            signature_block = approval_signature_block(profile, "driver", request)
+            if signature_block is not None:
+                return Response(
+                    {**signature_block, "detail": signature_block["error"]},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        profile._audit_previous_status = profile.status
 
         if action == "approve":
             profile.status = "approved"
@@ -582,6 +633,8 @@ def driver_action(request, user_id, action):
     except Exception:
         logger.exception("Failed to send approval notification to driver %s", user_id)
 
+    _log_driver_audit_row(request, profile, action, reason)
+
     return Response({"detail": f"Driver {action}d successfully.", "status": profile.status})
 
 
@@ -618,6 +671,38 @@ def courier_action(request, user_id, action):
         ceo_block = _check_ceo_protection(request, user, "courier")
         if ceo_block is not None:
             return ceo_block
+
+        # E-signature gate for couriers uses the COURIER agreement fields, which
+        # are separate from the taxi driver agreement.
+        if action == "approve" or (action == "reactivate" and profile.status == "rejected"):
+            signature_block = approval_signature_block(profile, "courier", request)
+            if signature_block is not None:
+                return Response(
+                    {**signature_block, "detail": signature_block["error"]},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Phase 12 — vehicle-type document requirement gate (same canonical
+            # helper used by security.views.admin_courier_action, so both approval
+            # screens enforce identical rules).
+            from deliveries.courier_onboarding import get_courier_approval_blockers
+
+            blockers = get_courier_approval_blockers(profile)
+            if blockers["blocked"]:
+                return Response(
+                    {
+                        "detail": "Courier requirements are incomplete. Cannot approve.",
+                        "error": "Courier requirements are incomplete. Cannot approve.",
+                        "reasons": blockers["reasons"],
+                        "vehicle_type": blockers["vehicle_type"],
+                        "vehicle_label": blockers["vehicle_label"],
+                        "required_document_types": blockers["required_document_types"],
+                        "missing_document_types": blockers["missing_document_types"],
+                        "expired_document_types": blockers["expired_document_types"],
+                        "signature_complete": blockers["signature_complete"],
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
         if action == "approve":
             profile.status = "approved"
@@ -686,6 +771,7 @@ def bulk_action(request, target_type):
 
     success = 0
     blocked = 0
+    unsigned = 0
 
     for user_id in ids:
         try:
@@ -712,6 +798,11 @@ def bulk_action(request, target_type):
                         blocked += 1
                         continue
                     if action == "approve":
+                        # Unsigned profiles are counted as blocked and left untouched.
+                        sig_kind = "courier" if target_type == "couriers" else "driver"
+                        if approval_signature_block(profile, sig_kind, request) is not None:
+                            unsigned += 1
+                            continue
                         profile.status = "approved"
                         profile.application_rejection_reason = ""
                     elif action == "reject":
@@ -727,7 +818,24 @@ def bulk_action(request, target_type):
     if blocked > 0:
         detail += f" {blocked} item(s) skipped due to CEO decision protection."
 
-    return Response({"detail": detail, "success_count": success, "blocked_count": blocked, "total": len(ids)})
+    if unsigned > 0:
+        detail += f" {unsigned} item(s) skipped: electronic signature incomplete."
+
+    http_status = status.HTTP_200_OK
+    if unsigned > 0 and success == 0 and blocked == 0 and unsigned == len(ids):
+        # Nothing could be approved only because of missing signatures.
+        http_status = status.HTTP_400_BAD_REQUEST
+
+    return Response(
+        {
+            "detail": detail,
+            "success_count": success,
+            "blocked_count": blocked,
+            "unsigned_count": unsigned,
+            "total": len(ids),
+        },
+        status=http_status,
+    )
 
 
 @api_view(["GET"])

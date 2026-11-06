@@ -7,6 +7,18 @@ import time
 import urllib.error
 import urllib.request
 
+# ── Credentials come from the environment only (never hardcode, never print) ──
+import os as _cred_os
+import sys as _cred_sys
+
+
+def _required_env(name):
+    value = _cred_os.environ.get(name, "")
+    if not value:
+        _cred_sys.exit(f"Missing required environment variable: {name} (values are never printed)")
+    return value
+
+
 API = "https://api.yalataxi.live"
 ADB = r"C:\Users\Housseinou\AppData\Local\Android\Sdk\platform-tools\adb.exe"
 SERIAL = "R5CN80M3ZYJ"
@@ -49,8 +61,8 @@ def tap_pattern(xml, pattern):
     return True
 
 
-driver = req("POST", "/auth/login/", body={"email": "qa-driver-final-qa@test.local", "password": "QaDriverFinal!2026"})[1]["access"]
-rider = req("POST", "/auth/login/", body={"email": "qa-rider-profile-fix@test.local", "password": "QaRiderFix!2026"})[1]["access"]
+driver = req("POST", "/auth/login/", body={"email": "qa-driver-final-qa@test.local", "password": _required_env("YALA_QA_DRIVER_PASSWORD")})[1]["access"]
+rider = req("POST", "/auth/login/", body={"email": "qa-rider-profile-fix@test.local", "password": _required_env("YALA_QA_RIDER_PASSWORD")})[1]["access"]
 
 st, verified = req("POST", "/rides/verify-pin/21/", driver, {"pickup_pin": "8626"})
 print("verify", st, verified.get("pickup_pin_verified"), verified.get("status"))

@@ -254,6 +254,19 @@ export function usePermissions() {
   return ctx;
 }
 
+/**
+ * Null-safe variant of `usePermissions`.
+ *
+ * Returns `null` when there is no `PermissionProvider` above the caller (a
+ * component rendered in isolation, or a unit test that mounts it directly)
+ * instead of throwing. Use this from components that can still do useful work
+ * without a permission context - e.g. the admin home dashboard, which simply
+ * fetches every data source when no role filter is available.
+ */
+export function useOptionalPermissions() {
+  return useContext(PermissionContext);
+}
+
 /** Backward-compatible alias used by Sprint 1 layout modules */
 export const useAdminLayout = usePermissions;
 

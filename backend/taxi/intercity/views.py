@@ -12,6 +12,7 @@ from rest_framework import status
 
 from taxi.market import calculate_app_fee
 from .models import IntercityRoute, IntercityTrip, IntercityDriverMode
+from operations.admin_module_permissions import require_admin_module
 
 
 def serialize_route(route):
@@ -176,7 +177,7 @@ def complete_intercity_trip(request, trip_id):
 # ─── Admin ─────────────────────────────────────────────────────────────────────
 
 @api_view(["POST"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("ops")])
 def admin_create_route(request):
     """Admin creates a new intercity route."""
     from cities.models import City
@@ -200,7 +201,7 @@ def admin_create_route(request):
 
 
 @api_view(["PATCH"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("ops")])
 def admin_update_route(request, route_id):
     """Admin updates route pricing/details."""
     route = get_object_or_404(IntercityRoute, id=route_id)
@@ -215,7 +216,7 @@ def admin_update_route(request, route_id):
 
 
 @api_view(["GET"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("ops")])
 def admin_intercity_analytics(request):
     """Admin intercity analytics: revenue, popular routes."""
     completed = IntercityTrip.objects.filter(status="completed")

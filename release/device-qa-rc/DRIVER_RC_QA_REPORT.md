@@ -104,7 +104,7 @@ adb install -r release\device-qa-rc\yala-driver-1.2.5-20-rc-debug.apk
 python scripts\device-qa-driver-pin-flow.py
 ```
 
-**QA accounts:** `qa-driver-final-qa@test.local` / `QaDriverFinal!2026`
+**QA accounts:** `qa-driver-final-qa@test.local` / password in `$YALA_QA_DRIVER_PASSWORD` (not stored in the repo)
 
 ---
 

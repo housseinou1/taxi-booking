@@ -1,8 +1,29 @@
 from django.urls import path
 
-from . import views
+from . import admin_console_views, views
 
 urlpatterns = [
+    # Phase 11 — Security Operations Center (CEO-tier, read-only)
+    path(
+        "admin/console/overview/",
+        admin_console_views.security_console_overview,
+        name="security-console-overview",
+    ),
+    path(
+        "admin/console/audit-stream/",
+        admin_console_views.security_audit_stream,
+        name="security-console-audit-stream",
+    ),
+    path(
+        "admin/console/access-review/",
+        admin_console_views.security_access_review,
+        name="security-console-access-review",
+    ),
+    path(
+        "admin/console/outstanding-issues/",
+        admin_console_views.security_outstanding_issues,
+        name="security-console-outstanding-issues",
+    ),
     # Customer verification
     path("customer/verification/", views.customer_verification, name="security-customer-verification"),
     path("customer/profile-photo/", views.customer_profile_photo, name="security-customer-photo"),

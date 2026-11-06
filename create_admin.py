@@ -6,10 +6,22 @@ Or copy-paste into: python manage.py shell
 """
 from django.contrib.auth import get_user_model
 
+# ── Credentials come from the environment only (never hardcode, never print) ──
+import os as _cred_os
+import sys as _cred_sys
+
+
+def _required_env(name):
+    value = _cred_os.environ.get(name, "")
+    if not value:
+        _cred_sys.exit(f"Missing required environment variable: {name} (values are never printed)")
+    return value
+
+
 User = get_user_model()
 
-email = "sakho@admin.mr"
-password = "Admin2026!"
+email = _required_env("YALA_CEO_EMAIL")
+password = _required_env("YALA_CEO_PASSWORD")
 
 # Create or get the user
 user, created = User.objects.get_or_create(

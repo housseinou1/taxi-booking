@@ -11,6 +11,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from .models import IncentiveProgram, DriverIncentiveProgress, BonusPayment
+from operations.admin_module_permissions import require_admin_module
 
 
 # ─── Driver endpoints ──────────────────────────────────────────────────────────
@@ -110,7 +111,7 @@ def my_bonus_history(request):
 # ─── Admin endpoints ───────────────────────────────────────────────────────────
 
 @api_view(["GET", "POST"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("drivers")])
 def admin_programs(request):
     """Admin: list or create incentive programs."""
     if request.method == "GET":
@@ -140,7 +141,7 @@ def admin_programs(request):
 
 
 @api_view(["POST"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("drivers")])
 def admin_pay_bonus(request):
     """Admin: manually pay a bonus to a driver."""
     from django.contrib.auth import get_user_model
@@ -169,7 +170,7 @@ def admin_pay_bonus(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("drivers")])
 def admin_incentive_analytics(request):
     """Admin: incentive program analytics."""
     total_programs = IncentiveProgram.objects.count()

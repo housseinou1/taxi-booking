@@ -13,10 +13,12 @@ from .serializers import (
     RegionSerializer,
 )
 from .services import city_analytics
+from operations.admin_module_permissions import HasAdminModule
 
 
 class RegionListCreateView(APIView):
-    permission_classes = [IsAdminUser]
+    permission_classes = [HasAdminModule]
+    admin_module = "ops"
 
     def get(self, request):
         return Response(RegionSerializer(Region.objects.all(), many=True).data)
@@ -29,7 +31,8 @@ class RegionListCreateView(APIView):
 
 
 class DepartmentListCreateView(APIView):
-    permission_classes = [IsAdminUser]
+    permission_classes = [HasAdminModule]
+    admin_module = "ops"
 
     def get(self, request):
         queryset = Department.objects.select_related("region")
@@ -46,7 +49,8 @@ class DepartmentListCreateView(APIView):
 
 
 class DepartmentDetailView(APIView):
-    permission_classes = [IsAdminUser]
+    permission_classes = [HasAdminModule]
+    admin_module = "ops"
 
     def patch(self, request, department_id):
         department = Department.objects.get(id=department_id)
@@ -57,7 +61,8 @@ class DepartmentDetailView(APIView):
 
 
 class CommuneListCreateView(APIView):
-    permission_classes = [IsAdminUser]
+    permission_classes = [HasAdminModule]
+    admin_module = "ops"
 
     def get(self, request):
         queryset = Commune.objects.select_related("department", "department__region")
@@ -74,7 +79,8 @@ class CommuneListCreateView(APIView):
 
 
 class CommuneDetailView(APIView):
-    permission_classes = [IsAdminUser]
+    permission_classes = [HasAdminModule]
+    admin_module = "ops"
 
     def patch(self, request, commune_id):
         commune = Commune.objects.get(id=commune_id)
@@ -85,7 +91,8 @@ class CommuneDetailView(APIView):
 
 
 class LocalityListCreateView(APIView):
-    permission_classes = [IsAdminUser]
+    permission_classes = [HasAdminModule]
+    admin_module = "ops"
 
     def get(self, request):
         queryset = Locality.objects.select_related(
@@ -106,7 +113,8 @@ class LocalityListCreateView(APIView):
 
 
 class LocalityDetailView(APIView):
-    permission_classes = [IsAdminUser]
+    permission_classes = [HasAdminModule]
+    admin_module = "ops"
 
     def patch(self, request, locality_id):
         locality = Locality.objects.get(id=locality_id)
@@ -140,7 +148,8 @@ class CityListCreateView(APIView):
 
 
 class CityDetailView(APIView):
-    permission_classes = [IsAdminUser]
+    permission_classes = [HasAdminModule]
+    admin_module = "ops"
 
     def patch(self, request, city_id):
         city = City.objects.get(id=city_id)
@@ -151,7 +160,8 @@ class CityDetailView(APIView):
 
 
 class CityPricingListCreateView(APIView):
-    permission_classes = [IsAdminUser]
+    permission_classes = [HasAdminModule]
+    admin_module = "ops"
 
     def get(self, request):
         queryset = CityPricing.objects.select_related("city", "city__region")
@@ -168,7 +178,8 @@ class CityPricingListCreateView(APIView):
 
 
 class CityPricingDetailView(APIView):
-    permission_classes = [IsAdminUser]
+    permission_classes = [HasAdminModule]
+    admin_module = "ops"
 
     def patch(self, request, pricing_id):
         pricing = CityPricing.objects.get(id=pricing_id)
@@ -179,7 +190,8 @@ class CityPricingDetailView(APIView):
 
 
 class CityAnalyticsView(APIView):
-    permission_classes = [IsAdminUser]
+    permission_classes = [HasAdminModule]
+    admin_module = "ops"
 
     def get(self, request):
         rows = []

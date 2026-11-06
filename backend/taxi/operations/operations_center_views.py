@@ -14,6 +14,7 @@ from security.services.audit_service import log_from_request
 from taxi.rides.models import Ride
 
 from .executive_permissions import IsExecutiveStaff, can_dispatch_operations, can_ceo_actions
+from .admin_module_permissions import require_admin_module
 from .operations_center_service import (
     build_active_deliveries,
     build_active_trips,
@@ -54,7 +55,7 @@ def _permissions_payload(user):
 
 
 @api_view(["GET"])
-@permission_classes([IsExecutiveStaff])
+@permission_classes([require_admin_module("ops")])
 def operations_center_dashboard(request):
     city = _city_id(request)
     payload = build_operations_center_dashboard(city)

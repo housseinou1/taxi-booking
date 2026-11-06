@@ -21,7 +21,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 API = os.environ.get("YALA_API_BASE", "http://127.0.0.1:8000").rstrip("/")
-PASSWORD = os.environ.get("YALA_UAT_PASSWORD", "PilotUAT2026!")
+PASSWORD = os.environ.get("YALA_UAT_PASSWORD") or sys.exit(
+    "Missing required environment variable: YALA_UAT_PASSWORD (values are never printed)"
+)
 OUT = Path(__file__).resolve().parents[1] / "docs" / "uat" / "uat_results.json"
 
 ACCOUNTS = {

@@ -13,7 +13,7 @@ from deliveries.models import Delivery
 from payments.models import PaymentRecord, RefundRequest, WithdrawalRequest
 from security.models import FraudFlag
 from taxi.drivers.models import DriverDocument, DriverProfile
-from taxi.drivers.performance import calculate_driver_performance
+from taxi.drivers.performance import bulk_driver_ride_stats, calculate_driver_performance
 from taxi.drivers.services.document_service import DocumentService
 from taxi.rides.models import DispatchOfferLog, Ride
 from taxi.rides.services.driver_dispatch_service import (
@@ -310,8 +310,12 @@ def build_predictive_alerts() -> list[dict]:
         )
 
     doc_service = DocumentService()
-    for profile in DriverProfile.objects.filter(status="approved")[:100]:
-        for doc in doc_service.get_expiring_documents(profile, days=14)[:2]:
+    # Perf: one bulk document query (and user join) instead of one query per driver. Same filters
+    # and the same days_remaining calculation as get_expiring_documents().
+    doc_profiles = list(DriverProfile.objects.filter(status="approved").select_related("user")[:100])
+    expiring_by_driver = doc_service.get_expiring_documents_bulk(doc_profiles, days=14)
+    for profile in doc_profiles:
+        for doc in expiring_by_driver[profile.id][:2]:
             alerts.append(
                 {
                     "id": f"pred-doc-{profile.user_id}-{doc.get('document_type', 'doc')}",
@@ -349,18 +353,29 @@ def build_predictive_alerts() -> list[dict]:
 
 
 def build_driver_performance_scores(limit: int = 100) -> dict:
-    profiles = DriverProfile.objects.filter(status="approved").select_related("user")[:limit]
+    profiles = list(DriverProfile.objects.filter(status="approved").select_related("user")[:limit])
+    user_ids = [profile.user_id for profile in profiles]
+    # Perf: ride inputs and safety counts are loaded for all drivers at once (3 queries) instead of
+    # ~6 queries per driver. calculate_driver_performance applies the same scoring formula.
+    ride_stats = bulk_driver_ride_stats(user_ids)
+    safety_counts = {}
+    try:
+        from safety.models import SafetyIncident
+
+        safety_counts = dict(
+            SafetyIncident.objects.filter(reported_user_id__in=user_ids)
+            .order_by()
+            .values("reported_user_id")
+            .annotate(total=Count("id"))
+            .values_list("reported_user_id", "total")
+        )
+    except Exception:
+        pass
     drivers = []
     for profile in profiles:
-        perf = calculate_driver_performance(profile)
+        perf = calculate_driver_performance(profile, ride_stats=ride_stats[profile.user_id])
         band = perf["score_band"]
-        safety_events = 0
-        try:
-            from safety.models import SafetyIncident
-
-            safety_events = SafetyIncident.objects.filter(reported_user=profile.user).count()
-        except Exception:
-            pass
+        safety_events = safety_counts.get(profile.user_id, 0)
         drivers.append(
             {
                 **perf,

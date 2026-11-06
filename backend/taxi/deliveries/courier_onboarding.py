@@ -15,7 +15,7 @@ from legal.services import (
 )
 
 from .models import DriverDeliverySettings
-from .vehicle_types import normalize_delivery_vehicle_type
+from .vehicle_types import get_delivery_vehicle_label, normalize_delivery_vehicle_type
 
 BICYCLE_COURIER_VEHICLE_TYPES = ("bicycle",)
 MOTOR_VEHICLE_COURIER_TYPES = ("motorcycle", "car")
@@ -53,6 +53,82 @@ COURIER_STEP_DEFINITIONS = [
 ]
 
 PROFILE_SETUP_PATH = "/delivery/profile-setup"
+
+DOCUMENT_LABELS = {
+    "national_id": "National ID",
+    "license": "Driver License",
+    "carte_grise": "Carte Grise (Vehicle Registration)",
+    "insurance": "Insurance",
+    "vignette": "Vignette",
+    "vehicle_registration": "Vehicle Registration",
+    "plate_number_photo": "Plate Number Photo",
+    "profile_photo": "Profile Photo",
+}
+
+
+def _settings_vehicle_type(profile: DriverProfile) -> str:
+    settings = DriverDeliverySettings.objects.filter(driver=profile.user).first()
+    return getattr(settings, "delivery_vehicle_type", "") or ""
+
+
+def get_courier_approval_blockers(
+    profile: DriverProfile, delivery_vehicle_type: str = ""
+) -> dict:
+    """Everything that must be satisfied before a courier may be approved.
+
+    This is the single server-side gate used by every courier approval path
+    (`security.views.admin_courier_action` and
+    `admin_approvals.views.courier_action`), so an approval can never succeed while
+    the vehicle-type requirements are incomplete — whichever admin screen is used.
+
+    Rules:
+    * Only the documents required for the courier's own vehicle type are demanded —
+      a bicycle courier is never asked for automobile documents (license, carte
+      grise, insurance).
+    * A rejected or expired document counts as unsatisfied; a document that is
+      uploaded and pending review satisfies "uploaded" (the review itself is a
+      separate, audited admin step).
+    * The courier e-signature agreement is a hard gate as well.
+    """
+    vehicle_type = normalize_delivery_vehicle_type(
+        delivery_vehicle_type or _settings_vehicle_type(profile)
+    )
+    required_types = list(get_required_courier_document_types(vehicle_type))
+    state = _courier_documents_complete(profile, vehicle_type)
+
+    from legal.services import courier_has_complete_signature
+
+    signature_complete = bool(courier_has_complete_signature(profile))
+
+    missing = list(state["missing_document_types"])
+    expired = list(state["expired_document_types"])
+    reasons: list[str] = []
+    if missing:
+        reasons.append(
+            "Missing or rejected document(s): "
+            + ", ".join(DOCUMENT_LABELS.get(doc, doc) for doc in missing)
+        )
+    if expired:
+        reasons.append(
+            "Expired document(s): "
+            + ", ".join(DOCUMENT_LABELS.get(doc, doc) for doc in expired)
+        )
+    if not signature_complete:
+        reasons.append("Courier agreement signature is incomplete")
+
+    return {
+        "vehicle_type": vehicle_type,
+        "vehicle_label": get_delivery_vehicle_label(vehicle_type),
+        "required_document_types": required_types,
+        "required_document_labels": [
+            DOCUMENT_LABELS.get(doc, doc) for doc in required_types
+        ],
+        "missing_document_types": missing,
+        "expired_document_types": expired,
+        "signature_complete": signature_complete,
+        "blocked": bool(missing or expired or not signature_complete),
+        "reasons": reasons,
+    }
 
 
 def get_required_courier_document_types(delivery_vehicle_type: str) -> list[str]:

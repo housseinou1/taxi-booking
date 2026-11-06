@@ -13,6 +13,7 @@ from taxi.drivers.models import DriverDocument, DriverProfile
 from taxi.drivers.services.document_service import DocumentService
 
 from .executive_permissions import IsFleetStaff, can_manage_fleet
+from .admin_module_permissions import require_admin_module
 from .fleet_performance_service import (
     build_document_monitoring,
     build_driver_performance_rows,
@@ -47,7 +48,7 @@ def _require_manage(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsFleetStaff])
+@permission_classes([require_admin_module("drivers", "ops", "fleet")])
 def fleet_dashboard(request):
     return Response(build_fleet_dashboard(city_id=_city_id(request)))
 

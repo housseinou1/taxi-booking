@@ -4,18 +4,20 @@
  * The reused admin component library (adminComponents.css) is driven entirely
  * by the `--admin-*` CSS variables, which are declared ONLY on `.admin-shell`.
  * The legacy AdminDashboard renders OUTSIDE `.admin-shell`, so we re-declare the
- * same dark-green brand tokens (copied from AdminShell.css dark theme) scoped to
+ * same navy/YALA-yellow brand tokens (copied from AdminShell.css dark theme) scoped to
  * `.drivers-management` so the library components render on-brand here without
  * adding the full shell class or editing AdminShell.css.
  */
 .drivers-management {
-  --admin-bg: #0a1410;
-  --admin-panel: rgba(15, 33, 25, 0.92);
-  --admin-border: rgba(110, 231, 183, 0.22);
+  --admin-bg: #0b1220;
+  --admin-panel: rgba(11, 22, 44, 0.94);
+  --admin-border: rgba(148, 163, 184, 0.22);
   --admin-text: #f8fafc;
-  --admin-text-muted: #cbd5e1;
-  --admin-accent: #00a651;
-  --admin-accent-soft: rgba(110, 231, 183, 0.14);
+  --admin-text-muted: #c7d3e6;
+  --admin-accent: #ffc400;
+  --admin-accent-text: #ffd633;
+  --admin-accent-contrast: #0b1220;
+  --admin-accent-soft: rgba(255, 196, 0, 0.14);
   --admin-danger: #fecaca;
 
   color: var(--admin-text);
@@ -64,7 +66,7 @@
   display: grid;
   place-items: center;
   background: var(--admin-accent);
-  color: #fff;
+  color: var(--admin-accent-contrast);
   font-size: 0.8rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -127,7 +129,7 @@
 .drivers-actions .drivers-details-btn {
   background: var(--admin-accent);
   border-color: var(--admin-accent);
-  color: #fff;
+  color: var(--admin-accent-contrast);
   font-weight: 600;
   white-space: nowrap;
 }
@@ -266,7 +268,7 @@
 
 .admin-drawer:has(.drivers-detail-root) .admin-drawer__head .admin-lib-btn:hover {
   background: var(--admin-accent);
-  color: #fff;
+  color: var(--admin-accent-contrast);
 }
 
 .admin-drawer:has(.drivers-detail-root) .admin-drawer__head h3 {
@@ -338,7 +340,7 @@
 }
 
 .drivers-detail__doc-link {
-  color: var(--admin-accent);
+  color: var(--admin-accent-text);
 }
 
 .drivers-detail__actions {

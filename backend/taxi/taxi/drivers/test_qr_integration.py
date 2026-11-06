@@ -15,6 +15,27 @@ from taxi.drivers.models import DriverProfile
 
 User = get_user_model()
 
+# Verification QR codes now require a complete driver e-signature in addition to
+# approved status, so fixtures that expect a QR must be signed. The three
+# non-image fields below are enough for driver_has_complete_signature once the
+# signature image is attached by _signed().
+_SIGNED_FIELDS = dict(
+    driver_terms_accepted=True,
+    driver_signed_full_name="Signed Test Driver",
+    driver_legal_declaration_accepted=True,
+)
+
+
+def _signed(profile):
+    """Mark `profile` as signed without writing any file to disk.
+
+    The signature image is referenced by storage name only (no upload), so these
+    fixtures never create files in the project's media directory.
+    """
+    profile.driver_signature_image = "legal/driver_signatures/test-fixture.png"
+    profile.save()
+    return profile
+
 
 @override_settings(
     CELERY_TASK_ALWAYS_EAGER=True,
@@ -41,7 +62,9 @@ class QRCodeEndToEndWiringTest(TestCase):
             user=self.user,
             status="pending",
             driver_code="123456",
+            **_SIGNED_FIELDS,
         )
+        _signed(profile)
 
         # Approve the driver — this should trigger the signal → task → QR gen
         profile.status = "approved"
@@ -56,26 +79,29 @@ class QRCodeEndToEndWiringTest(TestCase):
         assert profile.qr_code_image.name != "", "qr_code_image should have a file path"
         assert profile.qr_code_generated_at is not None, "qr_code_generated_at should be set"
 
-    def test_approval_without_driver_code_rejects(self):
+    def test_approval_without_driver_code_auto_assigns(self):
         """
-        End-to-end: approving a driver without driver_code should raise
-        ValueError and revert status.
+        End-to-end: approving a driver without driver_code now auto-assigns a
+        unique code and generates a QR code.
         """
         profile = DriverProfile.objects.create(
             user=self.user,
             status="pending",
             driver_code=None,
+            **_SIGNED_FIELDS,
         )
+        _signed(profile)
 
-        # Approve should raise because driver_code is missing
         profile.status = "approved"
-        with pytest.raises(ValueError, match="Driver Code must be assigned"):
-            profile.save()
+        profile.save()
 
-        # Verify status was reverted
         profile.refresh_from_db()
-        assert profile.status == "pending"
-        assert profile.qr_code_uuid is None
+        assert profile.status == "approved"
+        assert profile.driver_code is not None
+        assert profile.qr_code_uuid is not None
+        assert profile.qr_code_image is not None
+        assert profile.qr_code_image.name != ""
+        assert profile.qr_code_generated_at is not None
 
     def test_reapproval_preserves_existing_qr(self):
         """
@@ -87,7 +113,9 @@ class QRCodeEndToEndWiringTest(TestCase):
             user=self.user,
             status="pending",
             driver_code="654321",
+            **_SIGNED_FIELDS,
         )
+        _signed(profile)
         profile.status = "approved"
         profile.save()
         profile.refresh_from_db()

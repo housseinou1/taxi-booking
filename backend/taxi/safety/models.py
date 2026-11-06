@@ -36,7 +36,15 @@ class SafetyIncident(models.Model):
         ("report_rider", "Rider Report"),
         ("report_courier", "Courier Report"),
         ("report_merchant", "Merchant Report"),
+        # Restored to match the applied migration 0005 (columns/values already live).
         ("delivery_problem", "Delivery Problem"),
+        ("accident", "Accident"),
+        ("vehicle_breakdown", "Vehicle Breakdown"),
+        ("unsafe_passenger", "Unsafe Passenger"),
+        ("harassment", "Harassment"),
+        ("lost_property", "Lost Property"),
+        ("medical_emergency", "Medical Emergency"),
+        ("other", "Other"),
     ]
     STATUS_CHOICES = [
         ("open", "Open"),

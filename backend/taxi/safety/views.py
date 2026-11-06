@@ -9,6 +9,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 
+from operations.admin_module_permissions import require_admin_module
+
 from taxi.rides.models import Ride
 
 from deliveries.models import Delivery
@@ -304,7 +306,7 @@ def shared_trip(request, token):
 
 
 @api_view(["GET"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("trust_safety", "drivers")])
 def admin_incidents(request):
     queryset = SafetyIncident.objects.select_related(
         "reporter", "reported_user", "assigned_to", "ride"
@@ -337,7 +339,7 @@ def admin_incidents(request):
 
 
 @api_view(["PATCH"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("trust_safety", "drivers")])
 def admin_incident_detail(request, incident_id):
     incident = get_object_or_404(SafetyIncident, id=incident_id)
     next_status = request.data.get("status")
@@ -437,7 +439,7 @@ def monitoring_respond(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("trust_safety", "drivers")])
 def admin_active_trips(request):
     rides = (
         Ride.objects.filter(status__in=ACTIVE_RIDE_STATUSES)
@@ -472,7 +474,7 @@ def admin_active_trips(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("trust_safety", "drivers")])
 def admin_trip_replay(request, ride_id):
     ride = get_object_or_404(Ride, id=ride_id)
     pings = TripLocationPing.objects.filter(ride=ride).order_by("recorded_at")[:500]
@@ -497,7 +499,7 @@ def admin_trip_replay(request, ride_id):
 
 
 @api_view(["GET"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("trust_safety", "drivers")])
 def admin_response_log(request):
     incident_id = request.query_params.get("incident_id")
     queryset = SafetyResponseLog.objects.select_related("incident", "actor").order_by("-created_at")

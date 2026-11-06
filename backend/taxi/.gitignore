@@ -5,6 +5,7 @@
 __pycache__
 db.sqlite3
 media
+protected_media
 
 # Note: migrations are NOT ignored — they must be committed for deployment
 # Backup files # 

@@ -295,6 +295,7 @@ def base_eligible_queryset(ride, excluded_user_ids: Optional[list[int]] = None):
             is_available=True,
             user__is_active=True,
             account_under_review=False,
+            suspension_active=False,
         )
         .exclude(user_id__in=active_driver_ids)
         .select_related("user")

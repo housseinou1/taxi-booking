@@ -145,7 +145,15 @@ class DriverStatsView(APIView):
         total_declined = driver_profile.total_rides_declined
 
         # Calculate rates
-        acceptance_rate = driver_profile.acceptance_rate_points or 0
+        # NOTE: acceptance_rate is a PERCENTAGE derived from accepted/received.
+        # It must not be read from acceptance_rate_points, which is a 0-100
+        # performance SCORE with a default of 100 (that made new drivers with no
+        # rides report a 100% acceptance rate).
+        acceptance_rate = (
+            round((total_accepted / total_received) * 100, 1)
+            if total_received > 0
+            else 0
+        )
         completion_rate = (
             round((total_completed / total_accepted) * 100, 1)
             if total_accepted > 0

@@ -1,0 +1,135 @@
+{
+  "views": {
+    "desktop": {
+      "authed": true,
+      "url": "http://localhost:3000/admin",
+      "shell": 1,
+      "sidebars": 1,
+      "headers": 1,
+      "h1": 5,
+      "hasRevenue": true,
+      "hasOwnerCommission": true,
+      "hasAvgFare": false,
+      "hasPaidRides": false,
+      "rideRows": 0,
+      "searchInputs": 0,
+      "downloadButtons": 0,
+      "overflow": 0,
+      "skeletons": 0,
+      "landing": false,
+      "bodySample": "YALA Admin YALA Technologies 🔍 Global search SOON Ctrl K City All cities Nouakchott Nouadhibou CEO ☾ 🔔 AD Admin Sakho NAVIGATION « 🏠 Home Dashboard 👔 Executive Command Center ▸ 📡 Operations ▸ 🚕 Drivers & Fleet ▸ 👥 Riders ▸ 📦 Yala Delivery ▸ 🧑‍💼 Employees & Human Resources ▸ 🎧 Customer Support ▸ 💰 Finance ▸ ",
+      "financialSummaryCalls": 1,
+      "rideHistoryCalls": 1,
+      "allRideCalls": 3
+    },
+    "tablet": {
+      "authed": true,
+      "url": "http://localhost:3000/admin",
+      "shell": 1,
+      "sidebars": 1,
+      "headers": 1,
+      "h1": 5,
+      "hasRevenue": true,
+      "hasOwnerCommission": true,
+      "hasAvgFare": false,
+      "hasPaidRides": false,
+      "rideRows": 0,
+      "searchInputs": 0,
+      "downloadButtons": 0,
+      "overflow": 0,
+      "skeletons": 0,
+      "landing": false,
+      "bodySample": "☰ YALA Admin YALA Technologies City All cities Nouakchott Nouadhibou CEO ☾ 🔔 AD NAVIGATION « 🏠 Home Dashboard 👔 Executive Command Center ▸ 📡 Operations ▸ 🚕 Drivers & Fleet ▸ 👥 Riders ▸ 📦 Yala Delivery ▸ 🧑‍💼 Employees & Human Resources ▸ 🎧 Customer Support ▸ 💰 Finance ▸ 🛡 Security & Compliance ▸ 📈 Growth & ",
+      "financialSummaryCalls": 1,
+      "rideHistoryCalls": 1,
+      "allRideCalls": 3
+    },
+    "mobile": {
+      "authed": true,
+      "url": "http://localhost:3000/admin",
+      "shell": 1,
+      "sidebars": 1,
+      "headers": 1,
+      "h1": 5,
+      "hasRevenue": true,
+      "hasOwnerCommission": true,
+      "hasAvgFare": false,
+      "hasPaidRides": false,
+      "rideRows": 0,
+      "searchInputs": 0,
+      "downloadButtons": 0,
+      "overflow": 0,
+      "skeletons": 0,
+      "landing": false,
+      "bodySample": "☰ YALA Admin YALA Technologies City All cities Nouakchott Nouadhibou ☾ 🔔 AD NAVIGATION « 🏠 Home Dashboard 👔 Executive Command Center ▸ 📡 Operations ▸ 🚕 Drivers & Fleet ▸ 👥 Riders ▸ 📦 Yala Delivery ▸ 🧑‍💼 Employees & Human Resources ▸ 🎧 Customer Support ▸ 💰 Finance ▸ 🛡 Security & Compliance ▸ 📈 Growth & Anal",
+      "financialSummaryCalls": 1,
+      "rideHistoryCalls": 1,
+      "allRideCalls": 3
+    },
+    "payments-dark": {
+      "authed": true,
+      "url": "http://localhost:3000/admin?section=payments",
+      "shell": 1,
+      "sidebars": 1,
+      "headers": 1,
+      "h1": 4,
+      "hasRevenue": false,
+      "hasOwnerCommission": false,
+      "hasAvgFare": false,
+      "hasPaidRides": false,
+      "rideRows": 0,
+      "searchInputs": 0,
+      "downloadButtons": 0,
+      "overflow": 0,
+      "skeletons": 0,
+      "landing": false,
+      "bodySample": "YALA Admin YALA Technologies 🔍 Global search SOON Ctrl K City All cities Nouakchott Nouadhibou CEO ☾ 🔔 AD Admin Sakho NAVIGATION « 🏠 Home Dashboard 👔 Executive Command Center ▸ 📡 Operations ▸ 🚕 Drivers & Fleet ▸ 👥 Riders ▸ 📦 Yala Delivery ▸ 🧑‍💼 Employees & Human Resources ▸ 🎧 Customer Support ▸ 💰 Finance ▸ "
+    },
+    "payments-light": {
+      "authed": true,
+      "url": "http://localhost:3000/admin?section=payments",
+      "shell": 1,
+      "sidebars": 1,
+      "headers": 1,
+      "h1": 4,
+      "hasRevenue": false,
+      "hasOwnerCommission": false,
+      "hasAvgFare": false,
+      "hasPaidRides": false,
+      "rideRows": 0,
+      "searchInputs": 0,
+      "downloadButtons": 0,
+      "overflow": 0,
+      "skeletons": 0,
+      "landing": false,
+      "bodySample": "YALA Admin YALA Technologies 🔍 Global search SOON Ctrl K City All cities Nouakchott Nouadhibou CEO ☀ 🔔 AD Admin Sakho NAVIGATION « 🏠 Home Dashboard 👔 Executive Command Center ▸ 📡 Operations ▸ 🚕 Drivers & Fleet ▸ 👥 Riders ▸ 📦 Yala Delivery ▸ 🧑‍💼 Employees & Human Resources ▸ 🎧 Customer Support ▸ 💰 Finance ▸ "
+    }
+  },
+  "errors": {
+    "admin-desktop": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "badResponses": []
+    },
+    "admin-tablet": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "badResponses": []
+    },
+    "admin-mobile": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "badResponses": []
+    },
+    "payments-dark": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "badResponses": []
+    },
+    "payments-light": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "badResponses": []
+    }
+  }
+}

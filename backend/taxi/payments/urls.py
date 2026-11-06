@@ -23,9 +23,15 @@ from .views import (
     admin_wallet_adjustment,
     wallet_pay_ride,
 )
+from .admin_finance_views import (
+    admin_finance_overview,
+    admin_withdrawal_detail,
+    admin_withdrawals_monitoring,
+)
 from .wallet_views import (
     admin_approve_merchant_payout,
     admin_approve_refund,
+    admin_driver_payouts,
     admin_payment_dashboard_view,
     admin_payment_records,
     admin_refund_queue,
@@ -46,7 +52,17 @@ from .wallet_views import (
 from .webhooks import stripe_webhook
 from .withdrawal_accounts_views import platform_withdrawal_accounts_view
 
+from .admin_payment_views import (
+    payment_providers,
+    payments_oversight,
+)
+from .webhook_views import provider_webhook
+
 urlpatterns = [
+    # Phase 11 — CEO payment oversight (read-only) + authenticated webhooks
+    path("admin/payments/oversight/", payments_oversight),
+    path("admin/payments/providers/", payment_providers),
+    path("webhooks/<str:provider_code>/", provider_webhook),
     path("methods/save/", save_payment_method),
     path("methods/", my_payment_methods),
     path("methods/<int:method_id>/", delete_payment_method),
@@ -84,11 +100,28 @@ urlpatterns = [
     path("refunds/", my_refund_requests),
     path("refunds/request/", create_refund_request),
     path("admin/dashboard/", admin_payment_dashboard_view),
+    # Phase 7 — read-only finance & withdrawal monitoring (admin-only, additive)
+    path(
+        "admin/finance/overview/",
+        admin_finance_overview,
+        name="payments-admin-finance-overview",
+    ),
+    path(
+        "admin/withdrawals/",
+        admin_withdrawals_monitoring,
+        name="payments-admin-withdrawals",
+    ),
+    path(
+        "admin/withdrawals/<int:withdrawal_id>/",
+        admin_withdrawal_detail,
+        name="payments-admin-withdrawal-detail",
+    ),
     path("admin/records/", admin_payment_records),
     path("admin/refunds/", admin_refund_queue),
     path("admin/refunds/<int:refund_id>/approve/", admin_approve_refund),
     path("admin/refunds/<int:refund_id>/reject/", admin_reject_refund),
     path("admin/merchant-payouts/<int:payout_id>/approve/", admin_approve_merchant_payout),
     path("admin/rider/<int:rider_id>/payments/", admin_rider_payments),
+    path("admin/driver/<int:driver_id>/payouts/", admin_driver_payouts),
     path("webhooks/stripe/", stripe_webhook),
 ]

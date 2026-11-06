@@ -2,12 +2,14 @@ import logging
 import threading
 
 from django.contrib.auth import get_user_model
-from django.db.models import Avg
+from django.db.models import Avg, Count, Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from django.utils.dateparse import parse_date
 
 from rest_framework import generics, status
 from rest_framework.decorators import api_view, permission_classes
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 
@@ -33,6 +35,7 @@ from taxi.security.abuse import client_ip, rate_limit, record_device_account, ch
 from admin_2fa.models import AdminTOTP
 from admin_2fa.pending import issue_pending_token
 from security.services.audit_service import log_from_request
+from operations.admin_module_permissions import require_admin_module
 
 User = get_user_model()
 
@@ -187,6 +190,27 @@ def serialize_user(user):
         "driver_rating_count": user.driver_rides.filter(rating__isnull=False).count(),
         "rider_rating_count": user.rider_rides.filter(driver_rating__isnull=False).count(),
     }
+
+
+# Identity-document fields that must never be carried by a BULK listing. They
+# remain available, to authorised roles only, through the dedicated per-entity
+# endpoints (e.g. /auth/admin/riders/<id>/, /auth/admin/riders/<id>/document/,
+# /admin/approvals/drivers/ and the driver document review endpoints).
+_USER_LIST_REDACTED_FIELDS = ("national_id_number", "national_id_document")
+
+
+def serialize_user_summary(user):
+    """Directory-safe projection of :func:`serialize_user`.
+
+    ``GET /auth/users/`` is a bulk listing (every user on the platform), so it
+    must not ship identity-document data for the whole population. The boolean
+    ``has_national_id_document`` is kept because the admin UIs render it as a
+    status column and it discloses nothing about the document itself.
+    """
+    data = serialize_user(user)
+    for field in _USER_LIST_REDACTED_FIELDS:
+        data.pop(field, None)
+    return data
 
 
 class RegisterView(generics.CreateAPIView):
@@ -415,10 +439,109 @@ def _enforce_concurrent_device_limit(user):
 
 
 @api_view(["GET"])
-@permission_classes([IsAdminUser])
+# Least privilege: only the roles that actually administer rider and driver
+# accounts may read the directory. NOTE: "ops" is deliberately NOT in this list.
+# MODULES_BY_ROLE["staff"] (the set an UNCLASSIFIED staff account receives) is
+# {home, ops, status}, so including "ops" here would hand the full 293-record
+# user directory - including national-ID metadata - to any unclassified staff
+# account. Every real role that needs this directory also holds "riders" or
+# "drivers", so nothing is lost by omitting it.
+@permission_classes([require_admin_module("riders", "drivers", "support")])
 def user_list(request):
+    """GET /auth/users/ — the admin user directory.
+
+    Least privilege: only the roles that actually administer rider and driver
+    accounts may read the directory (CEO, Operations, Support, Driver
+    Operations). Previously this view used ``IsAdminUser``, so every staff
+    account — Finance, HR, Platform, Marketing — received the full 293-record
+    payload, including national ID numbers.
+
+    Identity documents are stripped by ``serialize_user_summary``. The audited,
+    per-entity path for that data is ``/auth/admin/riders/<id>/document/``.
+    """
     users = User.objects.all().order_by("-id")
-    return Response([serialize_user(user) for user in users])
+    return Response([serialize_user_summary(user) for user in users])
+
+
+class AdminRidersPagination(PageNumberPagination):
+    """Server-side pagination for the admin Riders Management table."""
+
+    page_size = 25
+    page_size_query_param = "page_size"
+    max_page_size = 100
+
+    def get_paginated_response(self, data):
+        page_size = self.get_page_size(self.request) or self.page_size
+        return Response(
+            {
+                "count": self.page.paginator.count,
+                "page": self.page.number,
+                "page_size": page_size,
+                "total_pages": self.page.paginator.num_pages,
+                "next": self.get_next_link(),
+                "previous": self.get_previous_link(),
+                "results": data,
+            }
+        )
+
+
+ADMIN_RIDER_SORT_FIELDS = {
+    "id": "id",
+    "-id": "-id",
+    "email": "email",
+    "-email": "-email",
+    "date_joined": "date_joined",
+    "-date_joined": "-date_joined",
+    "last_login": "last_login",
+    "-last_login": "-last_login",
+    "rider_status": "rider_status",
+    "-rider_status": "-rider_status",
+}
+
+
+def _rider_queryset():
+    """Riders = non-staff, non-superuser users that are not drivers.
+
+    Mirrors serialize_user()'s role rule so the admin list matches the rest of
+    the app (a "rider" is a User with role == "rider").
+    """
+    driver_user_ids = DriverProfile.objects.values_list("user_id", flat=True)
+    return (
+        User.objects.filter(is_staff=False, is_superuser=False)
+        .exclude(user_type="driver")
+        .exclude(id__in=driver_user_ids)
+        .select_related("city", "city__region")
+    )
+
+
+def _serialize_admin_rider(user):
+    """Trimmed, read-only rider row for the admin table.
+
+    Privacy: never returns the national ID document URL (served only through the
+    authenticated admin document endpoint) and never returns the storage path.
+    Contact details are included because this is an admin-only endpoint.
+    """
+    return {
+        "id": user.id,
+        "email": user.email,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "full_name": f"{user.first_name} {user.last_name}".strip() or user.email,
+        "phone_number": user.phone_number or "",
+        "city_name": user.city.name if user.city else "",
+        "rider_status": user.rider_status,
+        "rider_status_label": user.get_rider_status_display(),
+        "rider_rejection_reason": user.rider_rejection_reason or "",
+        "is_active": user.is_active,
+        "phone_verified": bool(getattr(user, "phone_verified_at", None)),
+        "phone_verified_at": user.phone_verified_at,
+        "rider_verified_at": getattr(user, "rider_verified_at", None),
+        "has_national_id_document": bool(user.national_id_document),
+        "has_profile_picture": bool(user.profile_picture),
+        "national_id_number": getattr(user, "national_id_number", "") or "",
+        "date_joined": user.date_joined,
+        "last_login": user.last_login,
+    }
 
 
 @api_view(["GET"])
@@ -431,6 +554,257 @@ def me(request):
         "profile_picture": file_url(request, request.user.profile_picture),
         "has_profile_picture": bool(request.user.profile_picture),
     })
+
+@api_view(["GET"])
+@permission_classes([require_admin_module("riders")])
+def admin_riders_list(request):
+    """Admin-only, paginated Riders Management list (additive endpoint).
+
+    Query params:
+      q            - search name, email, phone or national ID number
+      status       - rider_status value (validated; 400 when invalid)
+      state        - "active" | "inactive" (account access state)
+      has_document - "true" | "false"
+      date_from    - YYYY-MM-DD on date_joined (400 when malformed)
+      date_to      - YYYY-MM-DD on date_joined (400 when malformed)
+      ordering     - whitelisted sort field (default -date_joined)
+      page, page_size
+    """
+    queryset = _rider_queryset().order_by("-date_joined")
+
+    search = (request.query_params.get("q") or "").strip()
+    if search:
+        queryset = queryset.filter(
+            Q(first_name__icontains=search)
+            | Q(last_name__icontains=search)
+            | Q(email__icontains=search)
+            | Q(phone_number__icontains=search)
+            | Q(national_id_number__icontains=search)
+        )
+
+    status_filter = request.query_params.get("status")
+    if status_filter:
+        valid = [value for value, _label in User.RIDER_STATUS_CHOICES]
+        if status_filter not in valid:
+            return Response(
+                {"detail": "Invalid status.", "valid_statuses": valid},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        queryset = queryset.filter(rider_status=status_filter)
+
+    state = request.query_params.get("state")
+    if state:
+        if state not in {"active", "inactive"}:
+            return Response(
+                {"detail": "Invalid state.", "valid_states": ["active", "inactive"]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        queryset = queryset.filter(is_active=(state == "active"))
+
+    has_document = request.query_params.get("has_document")
+    if has_document in {"true", "false"}:
+        if has_document == "true":
+            queryset = queryset.exclude(
+                Q(national_id_document="") | Q(national_id_document__isnull=True)
+            )
+        else:
+            queryset = queryset.filter(
+                Q(national_id_document="") | Q(national_id_document__isnull=True)
+            )
+
+    date_from_raw = request.query_params.get("date_from")
+    if date_from_raw:
+        date_from = parse_date(date_from_raw)
+        if date_from is None:
+            return Response(
+                {"detail": "Invalid date_from; expected YYYY-MM-DD."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        queryset = queryset.filter(date_joined__date__gte=date_from)
+
+    date_to_raw = request.query_params.get("date_to")
+    if date_to_raw:
+        date_to = parse_date(date_to_raw)
+        if date_to is None:
+            return Response(
+                {"detail": "Invalid date_to; expected YYYY-MM-DD."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        queryset = queryset.filter(date_joined__date__lte=date_to)
+
+    ordering = request.query_params.get("ordering") or "-date_joined"
+    queryset = queryset.order_by(ADMIN_RIDER_SORT_FIELDS.get(ordering, "-date_joined"))
+
+    paginator = AdminRidersPagination()
+    page = paginator.paginate_queryset(queryset, request)
+
+    agg = queryset.aggregate(
+        total=Count("id"),
+        active=Count("id", filter=Q(is_active=True)),
+        blocked=Count("id", filter=Q(is_active=False)),
+        pending=Count("id", filter=Q(rider_status="pending")),
+        approved=Count("id", filter=Q(rider_status="approved")),
+        rejected=Count("id", filter=Q(rider_status="rejected")),
+    )
+    response = paginator.get_paginated_response(
+        [_serialize_admin_rider(user) for user in page]
+    )
+    response.data["summary"] = {
+        "total": agg["total"] or 0,
+        "active": agg["active"] or 0,
+        "blocked": agg["blocked"] or 0,
+        "pending": agg["pending"] or 0,
+        "approved": agg["approved"] or 0,
+        "rejected": agg["rejected"] or 0,
+    }
+    return response
+
+
+@api_view(["GET"])
+@permission_classes([require_admin_module("riders")])
+def admin_rider_detail(request, rider_id):
+    """Admin-only rider profile detail (read-only)."""
+    user = get_object_or_404(User, pk=rider_id)
+    return Response(_serialize_admin_rider(user))
+
+
+@api_view(["GET"])
+@permission_classes([require_admin_module("riders")])
+def admin_rider_document(request, rider_id):
+    """Admin-only, authenticated access to a rider's identity document.
+
+    Identity documents must not be served from the public media URL. This streams
+    the file to authenticated administrators only and never exposes the storage
+    path. Returns 404 when the rider has no document.
+    """
+    from django.http import FileResponse
+
+    user = get_object_or_404(User, pk=rider_id)
+    if not user.national_id_document:
+        return Response({"detail": "No identity document on file."}, status=404)
+
+    try:
+        handle = user.national_id_document.open("rb")
+    except FileNotFoundError:
+        return Response({"detail": "Identity document file is missing."}, status=404)
+
+    return FileResponse(handle, as_attachment=False, filename=f"rider-{user.id}-identity")
+
+
+def _log_rider_access_change(request, user, operation, reason):
+    """Record a rider access change (suspend/reactivate) in the audit trail."""
+    from security.services.audit_service import log_from_request
+
+    past_tense = {"suspend": "suspended", "reactivate": "reactivated"}
+    log_from_request(
+        request,
+        action="status_change",
+        entity_type="customer",
+        entity_id=str(user.id),
+        summary=f"Rider {past_tense.get(operation, operation)}: {user.email}",
+        details={
+            "operation": operation,
+            "reason": reason,
+            "new_state": "active" if user.is_active else "inactive",
+        },
+    )
+
+
+@api_view(["GET"])
+@permission_classes([require_admin_module("riders")])
+def admin_rider_support(request, rider_id):
+    """Admin-only rider support history (read-only).
+
+    Reuses the existing support/feedback model (operations.BetaFeedback), which is
+    already linked to the submitting user. Riders raise ride, payment, safety and
+    account issues there, so this surfaces their support trail without inventing a
+    second ticket system.
+
+    Query params: status (validated), limit (default 50, max 200).
+    """
+    from operations.models import BetaFeedback
+
+    user = get_object_or_404(User, pk=rider_id)
+    queryset = BetaFeedback.objects.filter(user=user).order_by("-created_at")
+
+    status_filter = request.query_params.get("status")
+    if status_filter:
+        valid = [value for value, _label in BetaFeedback.STATUS_CHOICES]
+        if status_filter not in valid:
+            return Response(
+                {"detail": "Invalid status.", "valid_statuses": valid},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        queryset = queryset.filter(status=status_filter)
+
+    try:
+        limit = min(int(request.query_params.get("limit", 50)), 200)
+    except (TypeError, ValueError):
+        limit = 50
+
+    rows = [
+        {
+            "id": ticket.id,
+            "reference": ticket.reference,
+            "app_type": ticket.app_type,
+            "category": ticket.category,
+            "severity": ticket.severity,
+            "subject": ticket.subject or "",
+            "status": ticket.status,
+            "is_emergency": ticket.is_emergency,
+            "created_at": ticket.created_at,
+            "resolved_at": ticket.resolved_at,
+        }
+        for ticket in queryset[:limit]
+    ]
+
+    return Response(
+        {
+            "count": queryset.count(),
+            "open_count": queryset.exclude(status__in=["resolved", "closed"]).count(),
+            "results": rows,
+        }
+    )
+
+
+@api_view(["POST"])
+@permission_classes([require_admin_module("riders")])
+def suspend_rider(request, user_id):
+    """Suspend a rider account (distinct from the generic block action).
+
+    Requires a reason, keeps every ride/payment record intact, and records an
+    administrative audit row. A reversible access restriction, NOT a deletion.
+    """
+    user = get_object_or_404(User, pk=user_id)
+    if user.is_staff or user.is_superuser:
+        return Response({"error": "Staff accounts cannot be suspended here."}, status=400)
+
+    reason = str(request.data.get("reason", "")).strip()
+    if len(reason) < 5:
+        return Response({"error": "A clear suspension reason is required."}, status=400)
+
+    user.is_active = False
+    user.save(update_fields=["is_active"])
+    _log_rider_access_change(request, user, "suspend", reason)
+    return Response({"message": "Rider suspended", "is_active": user.is_active})
+
+
+@api_view(["POST"])
+@permission_classes([require_admin_module("riders")])
+def reactivate_rider(request, user_id):
+    """Reactivate a suspended/blocked rider account (reversible)."""
+    user = get_object_or_404(User, pk=user_id)
+    if user.is_staff or user.is_superuser:
+        return Response({"error": "Staff accounts cannot be reactivated here."}, status=400)
+
+    reason = str(request.data.get("reason", "")).strip()
+    user.is_active = True
+    user.save(update_fields=["is_active"])
+    _log_rider_access_change(request, user, "reactivate", reason)
+    return Response({"message": "Rider reactivated", "is_active": user.is_active})
+
+
+
 
 
 @api_view(["POST", "PATCH"])
@@ -578,7 +952,7 @@ def my_devices(request):
 
 
 @api_view(["POST"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("riders")])
 def block_user(request, user_id):
     try:
         user = User.objects.get(id=user_id)
@@ -610,7 +984,7 @@ def block_user(request, user_id):
 
 
 @api_view(["POST"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("riders")])
 def unblock_user(request, user_id):
     try:
         user = User.objects.get(id=user_id)
@@ -633,7 +1007,7 @@ def unblock_user(request, user_id):
 
 
 @api_view(["POST"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("riders")])
 def approve_rider(request, user_id):
     try:
         user = User.objects.get(id=user_id)
@@ -687,7 +1061,7 @@ def approve_rider(request, user_id):
 
 
 @api_view(["POST"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("riders")])
 def reject_rider(request, user_id):
     try:
         user = User.objects.get(id=user_id)
@@ -725,7 +1099,7 @@ def reject_rider(request, user_id):
 
 
 @api_view(["DELETE"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("riders")])
 def delete_rider(request, user_id):
     try:
         user = User.objects.get(id=user_id)
@@ -758,7 +1132,7 @@ def delete_rider(request, user_id):
 
 
 @api_view(["GET"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("riders")])
 def admin_rider_activity(request, rider_id):
     """Admin-only last-login / last-seen activity for a single rider.
 
@@ -780,6 +1154,35 @@ def admin_rider_activity(request, rider_id):
 
     return Response({
         "last_login": user.last_login,
+        "last_seen": latest_session.last_seen_at if latest_session else None,
+        "last_seen_device": latest_session.device_name if latest_session else None,
+    })
+
+
+@api_view(["GET"])
+@permission_classes([require_admin_module("drivers")])
+def admin_driver_activity(request, driver_id):
+    """Admin-only last-login / last-seen activity for a single driver.
+
+    The URL <driver_id> is a DriverProfile.id. The profile is resolved first,
+    then activity is read from profile.user.last_login and the newest
+    DeviceSession for profile.user_id (DeviceSession keys off the USER id).
+
+    Unlike the rider endpoint, the '404 when the user has a driver_profile'
+    rule is NOT applied here (it is inverted for drivers). This endpoint returns
+    404 ONLY when the DriverProfile id is missing. Values are null when
+    unavailable and are never fabricated.
+    """
+    profile = get_object_or_404(DriverProfile, id=driver_id)
+
+    latest_session = (
+        DeviceSession.objects.filter(user_id=profile.user_id)
+        .order_by("-last_seen_at")
+        .first()
+    )
+
+    return Response({
+        "last_login": profile.user.last_login,
         "last_seen": latest_session.last_seen_at if latest_session else None,
         "last_seen_device": latest_session.device_name if latest_session else None,
     })

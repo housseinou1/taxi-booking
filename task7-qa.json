@@ -1,0 +1,528 @@
+{
+  "routes": {
+    "desktop": {
+      "dashboard": {
+        "authed": true,
+        "shell": 1,
+        "sidebars": 1,
+        "headers": 1,
+        "h1": 1,
+        "h1Text": "Yala Delivery",
+        "kpis": [
+          {
+            "label": "Total deliveries",
+            "value": "30"
+          },
+          {
+            "label": "Active deliveries",
+            "value": "1"
+          },
+          {
+            "label": "Pending deliveries",
+            "value": "0"
+          },
+          {
+            "label": "Scheduled pending",
+            "value": "0"
+          },
+          {
+            "label": "Completed deliveries",
+            "value": "18"
+          },
+          {
+            "label": "Cancelled deliveries",
+            "value": "11"
+          },
+          {
+            "label": "Available couriers",
+            "value": "37"
+          },
+          {
+            "label": "Busy couriers",
+            "value": "1"
+          },
+          {
+            "label": "Couriers in exception",
+            "value": "0"
+          },
+          {
+            "label": "Offline couriers",
+            "value": "0"
+          },
+          {
+            "label": "Pending courier approvals",
+            "value": "4"
+          },
+          {
+            "label": "Delivery revenue",
+            "value": "1,598.40 MRU"
+          }
+        ],
+        "tableRows": 11,
+        "filters": 0,
+        "overflow": 0,
+        "skeletons": 0,
+        "landing": false
+      },
+      "directory": {
+        "authed": true,
+        "shell": 1,
+        "sidebars": 1,
+        "headers": 1,
+        "h1": 1,
+        "h1Text": "Delivery Directory",
+        "kpis": [
+          {
+            "label": "Deliveries",
+            "value": "30"
+          },
+          {
+            "label": "Active",
+            "value": "1"
+          },
+          {
+            "label": "Pending (requested)",
+            "value": "0"
+          },
+          {
+            "label": "Delivered",
+            "value": "18"
+          },
+          {
+            "label": "Cancelled",
+            "value": "11"
+          },
+          {
+            "label": "Delivered revenue",
+            "value": "1,598.40 MRU"
+          }
+        ],
+        "tableRows": 25,
+        "filters": 6,
+        "overflow": 0,
+        "skeletons": 0,
+        "landing": false
+      },
+      "couriers": {
+        "authed": true,
+        "shell": 1,
+        "sidebars": 1,
+        "headers": 1,
+        "h1": 1,
+        "h1Text": "Courier Management",
+        "kpis": [
+          {
+            "label": "Total couriers",
+            "value": "42"
+          },
+          {
+            "label": "Approved",
+            "value": "38"
+          },
+          {
+            "label": "Pending approval",
+            "value": "4"
+          },
+          {
+            "label": "Online now",
+            "value": "38"
+          },
+          {
+            "label": "Suspended",
+            "value": "0"
+          }
+        ],
+        "tableRows": 25,
+        "filters": 2,
+        "overflow": 0,
+        "skeletons": 0,
+        "landing": false
+      },
+      "merchants": {
+        "authed": true,
+        "shell": 1,
+        "sidebars": 1,
+        "headers": 1,
+        "h1": 1,
+        "h1Text": "Merchant Directory",
+        "kpis": [
+          {
+            "label": "Merchants",
+            "value": "20"
+          },
+          {
+            "label": "Approved",
+            "value": "19"
+          },
+          {
+            "label": "Pending",
+            "value": "0"
+          },
+          {
+            "label": "Suspended",
+            "value": "1"
+          }
+        ],
+        "tableRows": 20,
+        "filters": 2,
+        "overflow": 0,
+        "skeletons": 0,
+        "landing": false
+      },
+      "operations": {
+        "authed": true,
+        "shell": 1,
+        "sidebars": 1,
+        "headers": 1,
+        "h1": 1,
+        "h1Text": "Real-Time Operations Center",
+        "kpis": [],
+        "tableRows": 0,
+        "filters": 0,
+        "overflow": 0,
+        "skeletons": 0,
+        "landing": false
+      },
+      "ceoMaster": {
+        "authed": true,
+        "shell": 1,
+        "sidebars": 1,
+        "headers": 1,
+        "h1": 1,
+        "h1Text": "CEO Command Center",
+        "kpis": [],
+        "tableRows": 0,
+        "filters": 0,
+        "overflow": 0,
+        "skeletons": 0,
+        "landing": false
+      }
+    },
+    "tablet": {
+      "dashboard": {
+        "authed": true,
+        "shell": 1,
+        "sidebars": 1,
+        "headers": 1,
+        "h1": 1,
+        "h1Text": "Yala Delivery",
+        "kpis": [
+          {
+            "label": "Total deliveries",
+            "value": "30"
+          },
+          {
+            "label": "Active deliveries",
+            "value": "1"
+          },
+          {
+            "label": "Pending deliveries",
+            "value": "0"
+          },
+          {
+            "label": "Scheduled pending",
+            "value": "0"
+          },
+          {
+            "label": "Completed deliveries",
+            "value": "18"
+          },
+          {
+            "label": "Cancelled deliveries",
+            "value": "11"
+          },
+          {
+            "label": "Available couriers",
+            "value": "37"
+          },
+          {
+            "label": "Busy couriers",
+            "value": "1"
+          },
+          {
+            "label": "Couriers in exception",
+            "value": "0"
+          },
+          {
+            "label": "Offline couriers",
+            "value": "0"
+          },
+          {
+            "label": "Pending courier approvals",
+            "value": "4"
+          },
+          {
+            "label": "Delivery revenue",
+            "value": "1,598.40 MRU"
+          }
+        ],
+        "tableRows": 11,
+        "filters": 0,
+        "overflow": 0,
+        "skeletons": 0,
+        "landing": false
+      },
+      "directory": {
+        "authed": true,
+        "shell": 1,
+        "sidebars": 1,
+        "headers": 1,
+        "h1": 1,
+        "h1Text": "Delivery Directory",
+        "kpis": [
+          {
+            "label": "Deliveries",
+            "value": "30"
+          },
+          {
+            "label": "Active",
+            "value": "1"
+          },
+          {
+            "label": "Pending (requested)",
+            "value": "0"
+          },
+          {
+            "label": "Delivered",
+            "value": "18"
+          },
+          {
+            "label": "Cancelled",
+            "value": "11"
+          },
+          {
+            "label": "Delivered revenue",
+            "value": "1,598.40 MRU"
+          }
+        ],
+        "tableRows": 25,
+        "filters": 6,
+        "overflow": 0,
+        "skeletons": 0,
+        "landing": false
+      }
+    },
+    "mobile": {
+      "dashboard": {
+        "authed": true,
+        "shell": 1,
+        "sidebars": 1,
+        "headers": 1,
+        "h1": 1,
+        "h1Text": "Yala Delivery",
+        "kpis": [
+          {
+            "label": "Total deliveries",
+            "value": "30"
+          },
+          {
+            "label": "Active deliveries",
+            "value": "1"
+          },
+          {
+            "label": "Pending deliveries",
+            "value": "0"
+          },
+          {
+            "label": "Scheduled pending",
+            "value": "0"
+          },
+          {
+            "label": "Completed deliveries",
+            "value": "18"
+          },
+          {
+            "label": "Cancelled deliveries",
+            "value": "11"
+          },
+          {
+            "label": "Available couriers",
+            "value": "37"
+          },
+          {
+            "label": "Busy couriers",
+            "value": "1"
+          },
+          {
+            "label": "Couriers in exception",
+            "value": "0"
+          },
+          {
+            "label": "Offline couriers",
+            "value": "0"
+          },
+          {
+            "label": "Pending courier approvals",
+            "value": "4"
+          },
+          {
+            "label": "Delivery revenue",
+            "value": "1,598.40 MRU"
+          }
+        ],
+        "tableRows": 11,
+        "filters": 0,
+        "overflow": 0,
+        "skeletons": 0,
+        "landing": false
+      },
+      "directory": {
+        "authed": true,
+        "shell": 1,
+        "sidebars": 1,
+        "headers": 1,
+        "h1": 1,
+        "h1Text": "Delivery Directory",
+        "kpis": [
+          {
+            "label": "Deliveries",
+            "value": "30"
+          },
+          {
+            "label": "Active",
+            "value": "1"
+          },
+          {
+            "label": "Pending (requested)",
+            "value": "0"
+          },
+          {
+            "label": "Delivered",
+            "value": "18"
+          },
+          {
+            "label": "Cancelled",
+            "value": "11"
+          },
+          {
+            "label": "Delivered revenue",
+            "value": "1,598.40 MRU"
+          }
+        ],
+        "tableRows": 25,
+        "filters": 6,
+        "overflow": 0,
+        "skeletons": 0,
+        "landing": false
+      }
+    }
+  },
+  "directory": {
+    "detailButtons": 25,
+    "drawer": {
+      "open": true,
+      "title": "Delivery #30",
+      "hasMap": 1,
+      "leafletTiles": 3,
+      "positionText": "Courier position 18.07350, -15.95820 (the platform stores no position timestamp)",
+      "timelineItems": 5
+    }
+  },
+  "themes": {
+    "dark": {
+      "authed": true,
+      "shell": 1,
+      "sidebars": 1,
+      "headers": 1,
+      "h1": 1,
+      "h1Text": "Delivery Directory",
+      "kpis": [
+        {
+          "label": "Deliveries",
+          "value": "30"
+        },
+        {
+          "label": "Active",
+          "value": "1"
+        },
+        {
+          "label": "Pending (requested)",
+          "value": "0"
+        },
+        {
+          "label": "Delivered",
+          "value": "18"
+        },
+        {
+          "label": "Cancelled",
+          "value": "11"
+        },
+        {
+          "label": "Delivered revenue",
+          "value": "1,598.40 MRU"
+        }
+      ],
+      "tableRows": 25,
+      "filters": 6,
+      "overflow": 0,
+      "skeletons": 0,
+      "landing": false
+    },
+    "light": {
+      "authed": true,
+      "shell": 1,
+      "sidebars": 1,
+      "headers": 1,
+      "h1": 1,
+      "h1Text": "Delivery Directory",
+      "kpis": [
+        {
+          "label": "Deliveries",
+          "value": "30"
+        },
+        {
+          "label": "Active",
+          "value": "1"
+        },
+        {
+          "label": "Pending (requested)",
+          "value": "0"
+        },
+        {
+          "label": "Delivered",
+          "value": "18"
+        },
+        {
+          "label": "Cancelled",
+          "value": "11"
+        },
+        {
+          "label": "Delivered revenue",
+          "value": "1,598.40 MRU"
+        }
+      ],
+      "tableRows": 25,
+      "filters": 6,
+      "overflow": 0,
+      "skeletons": 0,
+      "landing": false
+    }
+  },
+  "errors": {
+    "desktop": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "badResponses": []
+    },
+    "tablet": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "badResponses": []
+    },
+    "mobile": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "badResponses": []
+    },
+    "theme-dark": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "badResponses": []
+    },
+    "theme-light": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "badResponses": []
+    }
+  }
+}

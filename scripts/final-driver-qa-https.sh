@@ -2,7 +2,11 @@
 set -euo pipefail
 API="https://api.yalataxi.live"
 EMAIL="qa-driver-final-qa@test.local"
-PASS="QaDriverFinal!2026"
+# Credentials come from the environment only (never hardcoded, never printed).
+require_env() { local n; for n in "$@"; do if [ -z "${!n:-}" ]; then echo "Missing required environment variable: $n (values are never printed)" >&2; exit 1; fi; export "$n"; done; }
+login_json() { python3 -c 'import json,os,sys; print(json.dumps({"email": sys.argv[1], "password": os.environ[sys.argv[2]]}))' "$1" "$2"; }
+require_env YALA_QA_DRIVER_PASSWORD
+PASS="$YALA_QA_DRIVER_PASSWORD"
 PNG="/tmp/qa-sig.png"
 printf '\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\x0cIDATx\x9cc\xf8\x0f\x00\x01\x01\x01\x00\x18\xdd\x8d\xb4\x00\x00\x00\x00IEND\xaeB`\x82' > "$PNG"
 
@@ -12,13 +16,13 @@ fail() { echo "[FAIL] $1${2:+ — $2}"; FAILED=1; }
 FAILED=0
 
 echo "=== Setup unsigned driver on production ==="
-docker exec -i yala-django-1 python manage.py shell <<'PY'
+docker exec -i -e YALA_QA_DRIVER_PASSWORD yala-django-1 python manage.py shell <<'PY'
 from django.contrib.auth import get_user_model
 from taxi.drivers.models import DriverProfile
 User=get_user_model()
 email="qa-driver-final-qa@test.local"
 user, created = User.objects.get_or_create(email=email, defaults={"user_type":"driver","first_name":"Final","last_name":"QA"})
-user.set_password("QaDriverFinal!2026")
+user.set_password(__import__("os").environ["YALA_QA_DRIVER_PASSWORD"])
 user.user_type = "driver"
 user.save()
 p, _ = DriverProfile.objects.get_or_create(user=user)

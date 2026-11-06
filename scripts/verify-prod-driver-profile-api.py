@@ -5,6 +5,18 @@ from rest_framework.test import APIClient
 
 from taxi.drivers.models import DriverProfile
 
+# ── Credentials come from the environment only (never hardcode, never print) ──
+import os as _cred_os
+import sys as _cred_sys
+
+
+def _required_env(name):
+    value = _cred_os.environ.get(name, "")
+    if not value:
+        _cred_sys.exit(f"Missing required environment variable: {name} (values are never printed)")
+    return value
+
+
 PATHS = [
     "/drivers/me/",
     "/drivers/me/profile/",
@@ -24,7 +36,7 @@ driver, created = User.objects.get_or_create(
     defaults={"user_type": "driver", "first_name": "QA", "last_name": "Driver"},
 )
 if created:
-    driver.set_password("QaDriverFix!2026")
+    driver.set_password(_required_env("YALA_QA_DRIVER2_PASSWORD"))
     driver.save()
 DriverProfile.objects.filter(user=driver).delete()
 client.force_authenticate(user=driver)
@@ -39,7 +51,7 @@ rider, created = User.objects.get_or_create(
     defaults={"user_type": "rider", "first_name": "QA", "last_name": "Rider"},
 )
 if created:
-    rider.set_password("QaRiderFix!2026")
+    rider.set_password(_required_env("YALA_QA_RIDER_PASSWORD"))
     rider.save()
 DriverProfile.objects.filter(user=rider).delete()
 client.force_authenticate(user=rider)

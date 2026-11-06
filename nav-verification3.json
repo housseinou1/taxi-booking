@@ -1,0 +1,284 @@
+{
+  "pages": [
+    {
+      "path": "/admin",
+      "finalPath": "/admin",
+      "shell": 1,
+      "sidebar": 1,
+      "header": 1,
+      "h1": "Operations Console",
+      "crumb": "Admin",
+      "forbidden": false
+    },
+    {
+      "path": "/admin/ceo-master",
+      "finalPath": "/admin/ceo-master",
+      "shell": 1,
+      "sidebar": 1,
+      "header": 1,
+      "h1": "CEO Command Center",
+      "crumb": "Admin CEO Command",
+      "forbidden": false
+    },
+    {
+      "path": "/admin/operations",
+      "finalPath": "/admin/operations",
+      "shell": 1,
+      "sidebar": 1,
+      "header": 1,
+      "h1": "Operations Center",
+      "crumb": "Admin Operations Center",
+      "forbidden": false
+    },
+    {
+      "path": "/admin/ops-center",
+      "finalPath": "/admin/ops-center",
+      "shell": 1,
+      "sidebar": 1,
+      "header": 1,
+      "h1": "Ops Center Home",
+      "crumb": "Admin Ops Center",
+      "forbidden": false
+    },
+    {
+      "path": "/admin/ops-center/live",
+      "finalPath": "/admin/ops-center/live",
+      "shell": 1,
+      "sidebar": 1,
+      "header": 1,
+      "h1": "Live Operations Center",
+      "crumb": "Admin Ops Center Live",
+      "forbidden": false
+    },
+    {
+      "path": "/admin/business-intelligence",
+      "finalPath": "/admin/business-intelligence",
+      "shell": 1,
+      "sidebar": 1,
+      "header": 1,
+      "h1": "BIAnalytics Center",
+      "crumb": "Admin Business Intelligence",
+      "forbidden": false
+    },
+    {
+      "path": "/admin/bi",
+      "finalPath": "/admin/bi",
+      "shell": 1,
+      "sidebar": 1,
+      "header": 1,
+      "h1": "BIAnalytics Center",
+      "crumb": "Admin Business Intelligence",
+      "forbidden": false
+    },
+    {
+      "path": "/admin/growth",
+      "finalPath": "/admin/growth",
+      "shell": 1,
+      "sidebar": 1,
+      "header": 1,
+      "h1": "Growth Expansion Dashboard",
+      "crumb": "Admin Growth",
+      "forbidden": false
+    },
+    {
+      "path": "/admin/customer-growth",
+      "finalPath": "/admin/customer-growth",
+      "shell": 1,
+      "sidebar": 1,
+      "header": 1,
+      "h1": "Customer Growth Center",
+      "crumb": "Admin Loyalty",
+      "forbidden": false
+    },
+    {
+      "path": "/admin/launch",
+      "finalPath": "/admin/launch",
+      "shell": 1,
+      "sidebar": 1,
+      "header": 1,
+      "h1": "Launch Command Center",
+      "crumb": "Admin Launch Hub",
+      "forbidden": false
+    },
+    {
+      "path": "/admin/partner-platform",
+      "finalPath": "/admin/partner-platform",
+      "shell": 1,
+      "sidebar": 1,
+      "header": 1,
+      "h1": "Partner Platform Center",
+      "crumb": "Admin Partners",
+      "forbidden": false
+    },
+    {
+      "path": "/admin/payments",
+      "finalPath": "/admin/payments",
+      "shell": 1,
+      "sidebar": 1,
+      "header": 1,
+      "h1": "Payment Management Center",
+      "crumb": "Admin Payments",
+      "forbidden": false
+    },
+    {
+      "path": "/admin/ceo",
+      "finalPath": "/admin/ceo",
+      "shell": 1,
+      "sidebar": 1,
+      "header": 1,
+      "h1": "Executive Overview",
+      "crumb": "Admin CEO",
+      "forbidden": false
+    }
+  ],
+  "nav": {
+    "directLinks": [
+      "Home Dashboard"
+    ],
+    "groupCount": 9,
+    "groups": [
+      {
+        "label": "Executive Command Center",
+        "children": 8
+      },
+      {
+        "label": "Operations",
+        "children": 0
+      },
+      {
+        "label": "Yala Delivery",
+        "children": 0
+      },
+      {
+        "label": "Employees & Human Resources",
+        "children": 0
+      },
+      {
+        "label": "Customer Support",
+        "children": 0
+      },
+      {
+        "label": "Finance",
+        "children": 0
+      },
+      {
+        "label": "Security & Compliance",
+        "children": 0
+      },
+      {
+        "label": "Growth & Analytics",
+        "children": 0
+      },
+      {
+        "label": "Platform Management",
+        "children": 0
+      }
+    ],
+    "details": [
+      {
+        "open": 0,
+        "children": []
+      },
+      {
+        "open": 1,
+        "children": [
+          "Operations Overview",
+          "Ops Center Home",
+          "Live Operations",
+          "Ride Management",
+          "Live Rides",
+          "Ride Reports",
+          "Smart Pricing Dispatch",
+          "Multi-City Operations",
+          "AI Operations",
+          "Driver Management",
+          "Driver Approvals",
+          "Fleet Management",
+          "Vehicle Management",
+          "Driver Academy",
+          "Hall of Fame",
+          "Rider Management"
+        ]
+      },
+      {
+        "open": 1,
+        "children": [
+          "Delivery Dashboard",
+          "Courier Management",
+          "Merchant Management",
+          "Merchant Platform"
+        ]
+      },
+      {
+        "open": 1,
+        "children": [
+          "Employees",
+          "HR Management",
+          "Attendance Management",
+          "Employee Verification",
+          "Break Notifications"
+        ]
+      },
+      {
+        "open": 1,
+        "children": [
+          "Support Dashboard",
+          "Beta Feedback",
+          "Beta Program"
+        ]
+      },
+      {
+        "open": 1,
+        "children": [
+          "Financial Overview",
+          "Payment Management",
+          "Transactions",
+          "Driver & Courier Payouts",
+          "Settlement Accounts",
+          "Driver Incentives"
+        ]
+      },
+      {
+        "open": 1,
+        "children": [
+          "Security Dashboard",
+          "Trust & Safety",
+          "Compliance"
+        ]
+      },
+      {
+        "open": 1,
+        "children": [
+          "Reports & Analytics",
+          "BI Warehouse",
+          "Marketing",
+          "Customer Growth"
+        ]
+      },
+      {
+        "open": 1,
+        "children": [
+          "Launch Hub",
+          "Launch Command",
+          "Operations Command",
+          "System Status",
+          "API Gateway",
+          "Business Hub",
+          "Business Accounts",
+          "Partner Platform"
+        ]
+      }
+    ]
+  },
+  "errors": {
+    "pageErrors": [],
+    "badResponses": [
+      "404 http://localhost:8000/operations/admin/dashboard/",
+      "404 http://localhost:8000/operations/admin/dashboard/",
+      "404 http://localhost:8000/operations/admin/dashboard/",
+      "404 http://localhost:8000/operations/admin/dashboard/",
+      "404 http://localhost:8000/operations/admin/dashboard/",
+      "404 http://localhost:8000/operations/admin/dashboard/"
+    ]
+  }
+}

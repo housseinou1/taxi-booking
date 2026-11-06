@@ -4,6 +4,12 @@
 # runs migrations, then verifies the six previous device-QA failures.
 set -euo pipefail
 
+# Credentials come from the environment only (never hardcoded, never printed).
+require_env() { local n; for n in "$@"; do if [ -z "${!n:-}" ]; then echo "Missing required environment variable: $n (values are never printed)" >&2; exit 1; fi; export "$n"; done; }
+login_json() { python3 -c 'import json,os,sys; print(json.dumps({"email": sys.argv[1], "password": os.environ[sys.argv[2]]}))' "$1" "$2"; }
+# Checked before anything is deployed so the post-deploy verification cannot fail late.
+require_env YALA_QA_RIDER_PASSWORD
+
 REMOTE="${YALA_PROD_HOST:-root@142.93.99.142}"
 APP_DIR="${YALA_PROD_APP_DIR:-/opt/yala}"
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -100,7 +106,7 @@ import json, ssl, urllib.request, urllib.error, uuid
 API = "https://api.yalataxi.live"
 CTX = ssl._create_unverified_context()
 EMAIL = "qa-rider-profile-fix@test.local"
-PASSWORD = "QaRiderFix!2026"
+PASSWORD = __import__("os").environ["YALA_QA_RIDER_PASSWORD"]
 fail = 0
 
 def req(method, path, token=None, body=None, headers=None):

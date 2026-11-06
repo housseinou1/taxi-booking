@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# YALA pre-commit secret check (local only; never prints secret values).
+#
+# Activate for your clone (opt-in, per developer):
+#     git config core.hooksPath scripts/git-hooks
+# Deactivate:
+#     git config --unset core.hooksPath
+#
+# Runs gitleaks on the staged changes when it is installed, then the Python fallback scanner
+# (scripts/secret_scan.py --staged), which also refuses staged .env files.
+# Overrides: GITLEAKS_BIN, SECRET_SCAN_PYTHON, SECRET_SCAN_SCRIPT.
+set -u
+
+root="$(git rev-parse --show-toplevel)"
+status=0
+
+gitleaks_bin="${GITLEAKS_BIN:-$(command -v gitleaks 2>/dev/null || true)}"
+if [ -n "$gitleaks_bin" ] && [ -x "$gitleaks_bin" ]; then
+  config_args=()
+  [ -f "$root/.gitleaks.toml" ] && config_args=(--config "$root/.gitleaks.toml")
+  if "$gitleaks_bin" git --help >/dev/null 2>&1; then
+    "$gitleaks_bin" git --pre-commit --staged --redact --no-banner "${config_args[@]}" || status=1
+  else
+    "$gitleaks_bin" protect --staged --redact --no-banner "${config_args[@]}" || status=1
+  fi
+else
+  echo "secret-scan: gitleaks not installed; using the Python fallback scanner only." >&2
+fi
+
+python_bin="${SECRET_SCAN_PYTHON:-}"
+if [ -z "$python_bin" ]; then
+  for candidate in python3 python py; do
+    if command -v "$candidate" >/dev/null 2>&1 && "$candidate" -c "import sys" >/dev/null 2>&1; then
+      python_bin="$candidate"
+      break
+    fi
+  done
+fi
+scanner="${SECRET_SCAN_SCRIPT:-$root/scripts/secret_scan.py}"
+if [ -n "$python_bin" ] && [ -f "$scanner" ]; then
+  "$python_bin" "$scanner" --staged || status=1
+else
+  echo "secret-scan: Python or scripts/secret_scan.py not found; fallback scan skipped." >&2
+fi
+
+if [ "$status" -ne 0 ]; then
+  echo "secret-scan: commit blocked. Remove the secret (use an environment variable) and re-stage." >&2
+  echo "Reviewed false positive? Add 'secret-scan: allow' to that line (python) / '#gitleaks:allow' (gitleaks)." >&2
+fi
+exit "$status"

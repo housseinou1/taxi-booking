@@ -1,0 +1,32 @@
+{
+  "initial": {
+    "backdrop": 0,
+    "sidebarMobileOpen": 0
+  },
+  "afterOpen1": {
+    "backdrop": 1,
+    "sidebarMobileOpen": 1
+  },
+  "afterEscape": {
+    "backdrop": 0,
+    "sidebarMobileOpen": 0
+  },
+  "afterOpen2": {
+    "backdrop": 1,
+    "sidebarMobileOpen": 1
+  },
+  "afterBackdropClick": {
+    "backdrop": 0,
+    "sidebarMobileOpen": 0
+  },
+  "afterLinkClick": {
+    "url": "http://localhost:3000/admin/delivery/couriers",
+    "backdrop": 0,
+    "sidebarMobileOpen": 0
+  },
+  "errors": {
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": []
+  }
+}

@@ -1,9 +1,27 @@
 #!/usr/bin/env python3
-"""YALA PLATFORM RC1 — end-to-end production smoke test (API-level)."""
+"""YALA PLATFORM RC1 — end-to-end smoke test (API-level).
+
+CONFIGURATION (environment variables only — never hardcode or commit credentials):
+
+  YALA_SMOKE_API_URL            target API base URL, e.g. https://staging.example (required)
+  YALA_SMOKE_RIDER_EMAIL        QA rider / delivery customer account (required)
+  YALA_SMOKE_RIDER_PASSWORD
+  YALA_SMOKE_DRIVER_EMAIL       QA driver / courier account (required)
+  YALA_SMOKE_DRIVER_PASSWORD
+  YALA_SMOKE_ADMIN_EMAIL        staff account for TEST3-ADMIN (optional; TEST3 skipped if unset).
+  YALA_SMOKE_ADMIN_PASSWORD     Use a dedicated QA staff account, never the CEO account.
+  YALA_SMOKE_DELIVERY_PAYMENT_METHOD   card | bankily | sedad | masravi (default: bankily)
+  YALA_SMOKE_INSECURE_TLS=1     opt-in only, for a local self-signed test server
+
+Passwords are read from the environment, sent only in the login request body and never
+printed or written to the report. Delivery uses the cashless contract: a digital
+``payment_method`` is sent on both the request and the pay step (cash is rejected by the API).
+"""
 from __future__ import annotations
 
 import io
 import json
+import os
 import ssl
 import sys
 import time
@@ -11,16 +29,43 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-API = "https://api.yalataxi.live"
-RIDER_EMAIL = "qa-rider-profile-fix@test.local"
-RIDER_PASSWORD = "QaRiderFix!2026"
-DRIVER_EMAIL = "qa-driver-final-qa@test.local"
-DRIVER_PASSWORD = "QaDriverFinal!2026"
-ADMIN_EMAIL = "sakho@admin.mr"
-ADMIN_PASSWORD = "Admin2026!"
+API = os.environ.get("YALA_SMOKE_API_URL", "").strip().rstrip("/")
+RIDER_EMAIL = os.environ.get("YALA_SMOKE_RIDER_EMAIL", "").strip()
+RIDER_PASSWORD = os.environ.get("YALA_SMOKE_RIDER_PASSWORD", "")
+DRIVER_EMAIL = os.environ.get("YALA_SMOKE_DRIVER_EMAIL", "").strip()
+DRIVER_PASSWORD = os.environ.get("YALA_SMOKE_DRIVER_PASSWORD", "")
+ADMIN_EMAIL = os.environ.get("YALA_SMOKE_ADMIN_EMAIL", "").strip()
+ADMIN_PASSWORD = os.environ.get("YALA_SMOKE_ADMIN_PASSWORD", "")
+#: The delivery endpoints accept only these digital methods (deliveries.serializers +
+#: settle_payment). Cash is deliberately not allowed: the platform is cashless.
+DIGITAL_PAYMENT_METHODS = ("card", "bankily", "sedad", "masravi")
+DELIVERY_PAYMENT_METHOD = (
+    os.environ.get("YALA_SMOKE_DELIVERY_PAYMENT_METHOD", "bankily").strip().lower() or "bankily"
+)
 OUT = Path(__file__).resolve().parents[1] / "release" / "device-qa-rc"
 
-CTX = ssl._create_unverified_context()
+# TLS certificates are verified by default (the JWTs below must not travel over an
+# unauthenticated channel). Disabling verification is an explicit local-only opt-in.
+CTX = (
+    ssl._create_unverified_context()
+    if os.environ.get("YALA_SMOKE_INSECURE_TLS") == "1"
+    else ssl.create_default_context()
+)
+
+
+def missing_configuration() -> list[str]:
+    """Names (never values) of required settings that are not set."""
+    required = {
+        "YALA_SMOKE_API_URL": API,
+        "YALA_SMOKE_RIDER_EMAIL": RIDER_EMAIL,
+        "YALA_SMOKE_RIDER_PASSWORD": RIDER_PASSWORD,
+        "YALA_SMOKE_DRIVER_EMAIL": DRIVER_EMAIL,
+        "YALA_SMOKE_DRIVER_PASSWORD": DRIVER_PASSWORD,
+    }
+    missing = [name for name, value in required.items() if not value]
+    if bool(ADMIN_EMAIL) != bool(ADMIN_PASSWORD):
+        missing.append("YALA_SMOKE_ADMIN_EMAIL and YALA_SMOKE_ADMIN_PASSWORD (set both or neither)")
+    return missing
 results: list[tuple[str, str, str, str]] = []  # test, step, status, detail
 issues: list[str] = []
 
@@ -224,6 +269,8 @@ def test2_delivery(customer_t: str, courier_t: str) -> int | None:
             "distance_km": "10",
             "delivery_terms_accepted": True,
             "privacy_policy_accepted": True,
+            # Required by POST /deliveries/request/ (UAT-D-010: omitting it returned HTTP 400).
+            "payment_method": DELIVERY_PAYMENT_METHOD,
         },
     )
     ok_req = st in (200, 201) and delivery.get("id")
@@ -276,8 +323,18 @@ def test2_delivery(customer_t: str, courier_t: str) -> int | None:
     earn_after_val = earn_after.get("today_earnings", 0) if st == 200 else 0
     check(test, "Courier earnings updated", earn_after_val >= earn_before_val, f"{earn_before_val} -> {earn_after_val}")
 
-    st, pay = api("POST", f"/deliveries/{delivery_id}/pay/", customer_t, {"payment_method": "cash"})
-    check(test, "Payment recorded", st in (200, 201, 400), f"HTTP {st} {pay.get('detail', pay.get('error', ''))}")
+    # Cashless policy: settle with the same digital method used on the request. A 400 is now a
+    # failure (it previously counted as a pass, which hid the cash rejection).
+    st, pay = api(
+        "POST", f"/deliveries/{delivery_id}/pay/", customer_t, {"payment_method": DELIVERY_PAYMENT_METHOD}
+    )
+    check(
+        test,
+        "Payment recorded",
+        st in (200, 201),
+        f"HTTP {st} status={pay.get('payment_status', '')} {pay.get('code', '')} "
+        f"{pay.get('detail', pay.get('error', ''))}".strip(),
+    )
 
     return delivery_id
 
@@ -323,7 +380,9 @@ def test4_security(rider_t: str, rider_refresh: str) -> None:
 
     # HTTPS
     try:
-        http_req = urllib.request.Request("http://api.yalataxi.live/health/", method="GET")
+        http_req = urllib.request.Request(
+            "http://" + API.split("://", 1)[-1] + "/health/", method="GET"
+        )
         with urllib.request.urlopen(http_req, timeout=15, context=CTX) as resp:
             https_ok = resp.geturl().startswith("https://")
     except urllib.error.HTTPError as exc:
@@ -363,7 +422,8 @@ def test4_security(rider_t: str, rider_refresh: str) -> None:
         import websocket  # type: ignore
 
         try:
-            ws = websocket.create_connection("wss://api.yalataxi.live/ws/rides/", timeout=8)
+            ws_base = ("wss://" if API.startswith("https://") else "ws://") + API.split("://", 1)[-1]
+            ws = websocket.create_connection(f"{ws_base}/ws/rides/", timeout=8)
             ws.close()
             check(test, "WebSocket reconnect/auth", False, "anonymous connected")
             issue("Anonymous WebSocket connection allowed")
@@ -441,8 +501,21 @@ def write_report(verdict: str) -> Path:
 
 
 def main() -> int:
+    missing = missing_configuration()
+    if missing:
+        print("Smoke test not started. Missing environment variables (values are never printed):")
+        for name in missing:
+            print(f"  - {name}")
+        return 2
+    if DELIVERY_PAYMENT_METHOD not in DIGITAL_PAYMENT_METHODS:
+        print(
+            "YALA_SMOKE_DELIVERY_PAYMENT_METHOD must be one of "
+            f"{', '.join(DIGITAL_PAYMENT_METHODS)} (cash is not accepted)."
+        )
+        return 2
     print("=" * 60)
     print("YALA PLATFORM RC1 SMOKE TEST")
+    print(f"Target: {API}")
     print("=" * 60)
 
     # Health
@@ -469,12 +542,15 @@ def main() -> int:
     except Exception as exc:
         issue(f"Delivery flow exception: {exc}")
 
-    try:
-        admin_t, _, _ = login(ADMIN_EMAIL, ADMIN_PASSWORD)
-        test3_admin(admin_t, ride_id, delivery_id)
-    except RuntimeError:
-        check("TEST3-ADMIN", "Admin login", False, "401 — sakho@admin.mr not on prod")
-        issue("Admin account sakho@admin.mr not provisioned on production — TEST 3 blocked")
+    if not ADMIN_EMAIL:
+        check("TEST3-ADMIN", "Admin checks", True, "skipped — YALA_SMOKE_ADMIN_EMAIL not set")
+    else:
+        try:
+            admin_t, _, _ = login(ADMIN_EMAIL, ADMIN_PASSWORD)
+            test3_admin(admin_t, ride_id, delivery_id)
+        except RuntimeError:
+            check("TEST3-ADMIN", "Admin login", False, "login failed for the configured QA staff account")
+            issue("Configured QA staff account could not log in — TEST 3 blocked")
 
     try:
         test4_security(rider_t, rider_refresh)

@@ -27,6 +27,14 @@ Pillow
 qrcode[pil]>=7.0
 pyotp>=2.9.0
 
+# ── Report exports ────────────────────────────────────────────────────────────
+# report_export.py imports these lazily and silently falls back when they are
+# absent: without openpyxl an "Excel" download is really CSV bytes under an
+# .xlsx name, and without reportlab a PDF download is plain text. Neither was
+# declared, so a fresh environment regressed both exports.
+openpyxl==3.1.5
+reportlab>=4.0
+
 # ── Environment ───────────────────────────────────────────────────────────────
 python-dotenv
 

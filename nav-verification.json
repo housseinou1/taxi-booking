@@ -1,0 +1,210 @@
+{
+  "categories": [
+    {
+      "label": "👔\nExecutive Command Center\n▾",
+      "children": []
+    },
+    {
+      "label": "📡\nOperations\n▸",
+      "children": [
+        "🗂\nOperations Overview",
+        "🎛\nOps Control Center",
+        "🧮\nOps Center Home",
+        "📍\nLive Operations",
+        "🚕\nRide Management",
+        "🛰\nLive Rides",
+        "📈\nRide Reports",
+        "💹\nSmart Pricing Dispatch",
+        "🌍\nMulti-City Operations",
+        "🤖\nAI Operations",
+        "🧑‍✈️\nDriver Management",
+        "✅\nDriver Approvals",
+        "🚙\nFleet Management",
+        "🚗\nVehicle Management",
+        "🎓\nDriver Academy",
+        "🏆\nHall of Fame",
+        "👥\nRider Management"
+      ]
+    },
+    {
+      "label": "📦\nYala Delivery\n▸",
+      "children": [
+        "🚚\nDelivery Dashboard",
+        "🧑‍🔧\nCourier Management",
+        "🏪\nMerchant Management",
+        "🤝\nMerchant Platform"
+      ]
+    },
+    {
+      "label": "🧑‍💼\nEmployees & Human Resources\n▸",
+      "children": [
+        "🗂\nEmployees",
+        "📋\nHR Management",
+        "⏰\nAttendance Management",
+        "🪪\nEmployee Verification",
+        "🔔\nBreak Notifications"
+      ]
+    },
+    {
+      "label": "🎧\nCustomer Support\n▸",
+      "children": [
+        "📞\nSupport Dashboard",
+        "💬\nBeta Feedback",
+        "🧪\nBeta Program"
+      ]
+    },
+    {
+      "label": "💰\nFinance\n▸",
+      "children": [
+        "💵\nFinancial Overview",
+        "🧾\nPayment Management",
+        "💳\nTransactions",
+        "🏦\nDriver & Courier Payouts",
+        "🏛\nSettlement Accounts",
+        "🎁\nDriver Incentives"
+      ]
+    },
+    {
+      "label": "🛡\nSecurity & Compliance\n▸",
+      "children": [
+        "🔐\nSecurity Dashboard",
+        "🚨\nTrust & Safety",
+        "📜\nCompliance"
+      ]
+    },
+    {
+      "label": "📈\nGrowth & Analytics\n▸",
+      "children": [
+        "🧠\nReports & Analytics",
+        "📊\nBI Warehouse",
+        "🔗\nShare Analytics",
+        "📣\nMarketing",
+        "🌱\nCustomer Growth"
+      ]
+    },
+    {
+      "label": "⚙\nPlatform Management\n▸",
+      "children": [
+        "🚀\nLaunch Hub",
+        "🧭\nLaunch Command",
+        "🎯\nOperations Command",
+        "🩺\nSystem Status",
+        "🔌\nAPI Gateway",
+        "🏢\nBusiness Hub",
+        "🧾\nBusiness Accounts",
+        "🔗\nPartner Platform",
+        "📋\nLegacy Admin Hub"
+      ]
+    }
+  ],
+  "links": [],
+  "checks": {
+    "initialShell": {
+      "adminShell": 1,
+      "sidebars": 1,
+      "headers": 1,
+      "breadcrumbs": 1,
+      "sidebarWidth": 260,
+      "collapsedClass": false,
+      "h1Count": 1,
+      "h1Text": "CEO Command Center",
+      "crumbText": "Admin CEO Command",
+      "forbidden": false,
+      "bodyText": "YALA Admin\nYALA Technologies\n🔍\nGlobal search\nSOON\nCtrl K\nCity\nAll cities\nNouakchott\nNouadhibou\nCEO\n☾\n🔔\nAD\nAdmin Sakho\nNAVIGATION\n«\n🏠\nHome Dashboard\n👔\nExecut",
+      "scrollW": 1440,
+      "clientW": 1440
+    },
+    "collapse": {
+      "expandedWidth": 260,
+      "collapsed": {
+        "width": 72,
+        "collapsedClass": true,
+        "labelVisible": false,
+        "persisted": "1",
+        "tooltipAttr": "Home Dashboard"
+      },
+      "reexpandedWidth": 260
+    },
+    "groups": [
+      {
+        "index": 1,
+        "label": "👔\nExecutive Command Center\n▾",
+        "openGroups": 0,
+        "childCount": 0
+      },
+      {
+        "index": 2,
+        "label": "📡\nOperations\n▸",
+        "openGroups": 1,
+        "childCount": 17
+      },
+      {
+        "index": 3,
+        "label": "📦\nYala Delivery\n▸",
+        "openGroups": 1,
+        "childCount": 4
+      },
+      {
+        "index": 4,
+        "label": "🧑‍💼\nEmployees & Human Resources\n▸",
+        "openGroups": 1,
+        "childCount": 5
+      },
+      {
+        "index": 5,
+        "label": "🎧\nCustomer Support\n▸",
+        "openGroups": 1,
+        "childCount": 3
+      },
+      {
+        "index": 6,
+        "label": "💰\nFinance\n▸",
+        "openGroups": 1,
+        "childCount": 6
+      },
+      {
+        "index": 7,
+        "label": "🛡\nSecurity & Compliance\n▸",
+        "openGroups": 1,
+        "childCount": 3
+      },
+      {
+        "index": 8,
+        "label": "📈\nGrowth & Analytics\n▸",
+        "openGroups": 1,
+        "childCount": 5
+      },
+      {
+        "index": 9,
+        "label": "⚙\nPlatform Management\n▸",
+        "openGroups": 1,
+        "childCount": 9
+      }
+    ],
+    "expectedCategories": [
+      "Executive Command Center",
+      "Operations",
+      "Yala Delivery",
+      "Employees & Human Resources",
+      "Customer Support",
+      "Finance",
+      "Security & Compliance",
+      "Growth & Analytics",
+      "Platform Management"
+    ]
+  },
+  "responsive": {},
+  "errors": {
+    "desktop": {
+      "consoleErrors": [
+        "WebSocket connection to 'ws://localhost:8000/ws/rides/?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzkzMTY0Njc3LCJpYXQiOjE3OTMxNTc0NzcsImp0aSI6IjViYTQxZTI0YjVkMz",
+        "WebSocket connection to 'ws://localhost:8000/ws/rides/?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzkzMTY0Njc3LCJpYXQiOjE3OTMxNTc0NzcsImp0aSI6IjViYTQxZTI0YjVkMz",
+        "WebSocket connection to 'ws://localhost:8000/ws/rides/?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzkzMTY0Njc3LCJpYXQiOjE3OTMxNTc0NzcsImp0aSI6IjViYTQxZTI0YjVkMz",
+        "WebSocket connection to 'ws://localhost:8000/ws/rides/?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzkzMTY0Njc3LCJpYXQiOjE3OTMxNTc0NzcsImp0aSI6IjViYTQxZTI0YjVkMz",
+        "WebSocket connection to 'ws://localhost:8000/ws/rides/?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzkzMTY0Njc3LCJpYXQiOjE3OTMxNTc0NzcsImp0aSI6IjViYTQxZTI0YjVkMz"
+      ],
+      "pageErrors": [],
+      "badResponses": []
+    }
+  }
+}

@@ -44,6 +44,7 @@ from .settlement_service import (
     wallet_top_up,
 )
 from .wallet_ledger import get_or_create_wallet
+from operations.admin_module_permissions import require_admin_module
 
 
 @api_view(["POST"])
@@ -186,7 +187,7 @@ def my_refund_requests(request):
 
 
 @api_view(["POST"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("finance")])
 def admin_approve_refund(request, refund_id):
     try:
         refund = RefundRequest.objects.get(id=refund_id)
@@ -210,7 +211,7 @@ def admin_approve_refund(request, refund_id):
 
 
 @api_view(["POST"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("finance")])
 def admin_reject_refund(request, refund_id):
     try:
         refund = RefundRequest.objects.get(id=refund_id)
@@ -234,27 +235,27 @@ def admin_reject_refund(request, refund_id):
 
 
 @api_view(["GET"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("finance")])
 def admin_payment_dashboard_view(request):
     return Response(admin_payment_dashboard())
 
 
 @api_view(["GET"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("finance")])
 def admin_payment_records(request):
     qs = PaymentRecord.objects.all()[:100]
     return Response(PaymentRecordSerializer(qs, many=True).data)
 
 
 @api_view(["GET"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("finance")])
 def admin_refund_queue(request):
     qs = RefundRequest.objects.filter(status="requested")[:50]
     return Response(RefundRequestSerializer(qs, many=True).data)
 
 
 @api_view(["POST"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("finance")])
 def admin_approve_merchant_payout(request, payout_id):
     try:
         payout = MerchantWithdrawalRequest.objects.select_related("merchant").get(id=payout_id)
@@ -294,7 +295,7 @@ class AdminRiderPaymentsPagination(PageNumberPagination):
 
 
 @api_view(["GET"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("riders")])
 def admin_rider_payments(request, rider_id):
     """Admin-only payment history + refunds for a single rider.
 
@@ -368,7 +369,7 @@ class AdminDriverPayoutsPagination(PageNumberPagination):
 
 
 @api_view(["GET"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("drivers")])
 def admin_driver_payouts(request, driver_id):
     """Admin-only withdrawal (payout) history for a single driver.
 

@@ -1,0 +1,82 @@
+{
+  "operations": {
+    "shell": 1,
+    "sidebars": 1,
+    "headers": 1,
+    "h1Count": 1,
+    "h1Texts": [
+      "Real-Time Operations Center"
+    ],
+    "kpis": 8,
+    "leafletTiles": 10,
+    "tables": 0,
+    "tableRows": 0,
+    "overflow": 0,
+    "skeletons": 0,
+    "errors": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "badResponses": []
+    }
+  },
+  "ceoMaster": {
+    "shell": 1,
+    "sidebars": 1,
+    "headers": 1,
+    "h1Count": 1,
+    "h1Texts": [
+      "CEO Command Center"
+    ],
+    "kpis": 0,
+    "leafletTiles": 0,
+    "tables": 0,
+    "tableRows": 0,
+    "overflow": 0,
+    "skeletons": 0,
+    "errors": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "badResponses": []
+    }
+  },
+  "couriers": {
+    "shell": 1,
+    "sidebars": 1,
+    "headers": 1,
+    "h1Count": 1,
+    "h1Texts": [
+      "Courier Management"
+    ],
+    "kpis": 5,
+    "leafletTiles": 0,
+    "tables": 1,
+    "tableRows": 25,
+    "overflow": 0,
+    "skeletons": 0,
+    "errors": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "badResponses": []
+    }
+  },
+  "merchants": {
+    "shell": 1,
+    "sidebars": 1,
+    "headers": 1,
+    "h1Count": 1,
+    "h1Texts": [
+      "Merchant Directory"
+    ],
+    "kpis": 4,
+    "leafletTiles": 0,
+    "tables": 1,
+    "tableRows": 20,
+    "overflow": 0,
+    "skeletons": 0,
+    "errors": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "badResponses": []
+    }
+  }
+}

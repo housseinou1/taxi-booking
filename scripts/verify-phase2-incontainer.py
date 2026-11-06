@@ -7,13 +7,25 @@ import uuid
 
 import django
 
+# ── Credentials come from the environment only (never hardcode, never print) ──
+import os as _cred_os
+import sys as _cred_sys
+
+
+def _required_env(name):
+    value = _cred_os.environ.get(name, "")
+    if not value:
+        _cred_sys.exit(f"Missing required environment variable: {name} (values are never printed)")
+    return value
+
+
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "taxi.settings")
 django.setup()
 
 from django.test import Client
 
 EMAIL = "qa-rider-profile-fix@test.local"
-PASSWORD = "QaRiderFix!2026"
+PASSWORD = _required_env("YALA_QA_RIDER_PASSWORD")
 device = f"incontainer-{uuid.uuid4().hex[:8]}"
 c = Client()
 fail = 0

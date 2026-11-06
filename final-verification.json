@@ -1,0 +1,374 @@
+{
+  "drivers": {
+    "kpis": [
+      {
+        "label": "Registered Drivers",
+        "value": "104"
+      },
+      {
+        "label": "Approved Drivers",
+        "value": "95"
+      },
+      {
+        "label": "Online Now",
+        "value": "13"
+      },
+      {
+        "label": "On a Trip",
+        "value": "0"
+      },
+      {
+        "label": "Offline",
+        "value": "81"
+      },
+      {
+        "label": "Suspended",
+        "value": "0"
+      },
+      {
+        "label": "Expired Documents",
+        "value": "1"
+      },
+      {
+        "label": "Active Trips",
+        "value": "0"
+      },
+      {
+        "label": "Riders Waiting",
+        "value": "0"
+      }
+    ],
+    "skeletons": 0,
+    "rows": 8,
+    "note": "Live fleet figures — generated 10/28/2026, 9:05:23 AM.",
+    "error": false,
+    "shell": 1,
+    "sidebars": 1,
+    "headers": 1,
+    "h1": "Drivers Dashboard"
+  },
+  "riders": {
+    "kpis": [
+      {
+        "label": "Total Riders",
+        "value": "155"
+      },
+      {
+        "label": "Active",
+        "value": "155"
+      },
+      {
+        "label": "Approved",
+        "value": "155"
+      },
+      {
+        "label": "Pending Review",
+        "value": "0"
+      },
+      {
+        "label": "Rejected",
+        "value": "0"
+      },
+      {
+        "label": "Blocked",
+        "value": "0"
+      },
+      {
+        "label": "Phone Verified",
+        "value": "148"
+      },
+      {
+        "label": "National ID on File",
+        "value": "1"
+      },
+      {
+        "label": "Profile Photo",
+        "value": "1"
+      },
+      {
+        "label": "Cities Covered",
+        "value": "1"
+      }
+    ],
+    "skeletons": 0,
+    "rows": 10,
+    "note": "Totals from the rider service (server-computed). Verification counts cover all 155 riders.",
+    "error": false,
+    "shell": 1,
+    "sidebars": 1,
+    "headers": 1,
+    "h1": "Riders Dashboard",
+    "apiChecks": {
+      "page1": {
+        "status": 200,
+        "count": 155,
+        "rows": 100,
+        "summary": {
+          "total": 155,
+          "active": 155,
+          "blocked": 0,
+          "pending": 0,
+          "approved": 155,
+          "rejected": 0
+        }
+      },
+      "page2": {
+        "status": 200,
+        "count": 155,
+        "rows": 55,
+        "summary": {
+          "total": 155,
+          "active": 155,
+          "blocked": 0,
+          "pending": 0,
+          "approved": 155,
+          "rejected": 0
+        }
+      },
+      "search": {
+        "status": 200,
+        "count": 147,
+        "rows": 10,
+        "summary": {
+          "total": 147,
+          "active": 147,
+          "blocked": 0,
+          "pending": 0,
+          "approved": 147,
+          "rejected": 0
+        }
+      },
+      "blocked": {
+        "status": 400,
+        "rows": 0
+      }
+    }
+  },
+  "dropdowns": {
+    "groupCount": 11,
+    "groups": [
+      {
+        "label": "👔\nExecutive Command Center",
+        "groupsOpenBefore": 1,
+        "childrenShown": 0,
+        "children": [],
+        "groupsOpenWhileOpen": 0,
+        "groupsOpenAfterCollapse": 1
+      },
+      {
+        "label": "📡\nOperations",
+        "groupsOpenBefore": 1,
+        "childrenShown": 9,
+        "children": [
+          "Operations Overview",
+          "Ops Center Home",
+          "Live Operations",
+          "Ride Management",
+          "Live Rides",
+          "Ride Reports",
+          "Smart Pricing Dispatch",
+          "Multi-City Operations",
+          "AI Operations"
+        ],
+        "groupsOpenWhileOpen": 1,
+        "groupsOpenAfterCollapse": 0
+      },
+      {
+        "label": "🚕\nDrivers & Fleet",
+        "groupsOpenBefore": 0,
+        "childrenShown": 7,
+        "children": [
+          "Drivers Dashboard",
+          "Driver Management",
+          "Driver Approvals",
+          "Fleet Management",
+          "Vehicle Management",
+          "Driver Academy",
+          "Hall of Fame"
+        ],
+        "groupsOpenWhileOpen": 1,
+        "groupsOpenAfterCollapse": 0
+      },
+      {
+        "label": "👥\nRiders",
+        "groupsOpenBefore": 0,
+        "childrenShown": 2,
+        "children": [
+          "Riders Dashboard",
+          "Rider Management"
+        ],
+        "groupsOpenWhileOpen": 1,
+        "groupsOpenAfterCollapse": 0
+      },
+      {
+        "label": "📦\nYala Delivery",
+        "groupsOpenBefore": 0,
+        "childrenShown": 4,
+        "children": [
+          "Delivery Dashboard",
+          "Courier Management",
+          "Merchant Management",
+          "Merchant Platform"
+        ],
+        "groupsOpenWhileOpen": 1,
+        "groupsOpenAfterCollapse": 0
+      },
+      {
+        "label": "🧑‍💼\nEmployees & Human Resources",
+        "groupsOpenBefore": 0,
+        "childrenShown": 5,
+        "children": [
+          "Employees",
+          "HR Management",
+          "Attendance Management",
+          "Employee Verification",
+          "Break Notifications"
+        ],
+        "groupsOpenWhileOpen": 1,
+        "groupsOpenAfterCollapse": 0
+      },
+      {
+        "label": "🎧\nCustomer Support",
+        "groupsOpenBefore": 0,
+        "childrenShown": 3,
+        "children": [
+          "Support Dashboard",
+          "Beta Feedback",
+          "Beta Program"
+        ],
+        "groupsOpenWhileOpen": 1,
+        "groupsOpenAfterCollapse": 0
+      },
+      {
+        "label": "💰\nFinance",
+        "groupsOpenBefore": 0,
+        "childrenShown": 6,
+        "children": [
+          "Financial Overview",
+          "Payment Management",
+          "Transactions",
+          "Driver & Courier Payouts",
+          "Settlement Accounts",
+          "Driver Incentives"
+        ],
+        "groupsOpenWhileOpen": 1,
+        "groupsOpenAfterCollapse": 0
+      },
+      {
+        "label": "🛡\nSecurity & Compliance",
+        "groupsOpenBefore": 0,
+        "childrenShown": 3,
+        "children": [
+          "Security Dashboard",
+          "Trust & Safety",
+          "Compliance"
+        ],
+        "groupsOpenWhileOpen": 1,
+        "groupsOpenAfterCollapse": 0
+      },
+      {
+        "label": "📈\nGrowth & Analytics",
+        "groupsOpenBefore": 0,
+        "childrenShown": 4,
+        "children": [
+          "Reports & Analytics",
+          "BI Warehouse",
+          "Marketing",
+          "Customer Growth"
+        ],
+        "groupsOpenWhileOpen": 1,
+        "groupsOpenAfterCollapse": 0
+      },
+      {
+        "label": "⚙\nPlatform Management",
+        "groupsOpenBefore": 0,
+        "childrenShown": 8,
+        "children": [
+          "Launch Hub",
+          "Launch Command",
+          "Operations Command",
+          "System Status",
+          "API Gateway",
+          "Business Hub",
+          "Business Accounts",
+          "Partner Platform"
+        ],
+        "groupsOpenWhileOpen": 1,
+        "groupsOpenAfterCollapse": 0
+      }
+    ],
+    "sidebar": {
+      "navOverflowY": "auto",
+      "navScrolls": false,
+      "sidebarHeightPx": 1565,
+      "viewportHeightPx": 900,
+      "activeLabel": "👔\nExecutive Command Center\n▸",
+      "activeCount": 1
+    }
+  },
+  "responsive": {
+    "tablet": {
+      "viewport": "768x1024",
+      "closed": {
+        "shell": 1,
+        "sidebars": 1,
+        "headers": 1,
+        "offscreen": true,
+        "hamburger": true,
+        "overflow": 0,
+        "kpis": 9
+      },
+      "drawer": {
+        "open": true,
+        "backdrop": true
+      }
+    },
+    "mobile": {
+      "viewport": "390x844",
+      "closed": {
+        "shell": 1,
+        "sidebars": 1,
+        "headers": 1,
+        "offscreen": true,
+        "hamburger": true,
+        "overflow": 0,
+        "kpis": 9
+      },
+      "drawer": {
+        "open": true,
+        "backdrop": true
+      }
+    }
+  },
+  "errors": {
+    "drivers": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "badResponses": []
+    },
+    "riders": {
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 400 (Bad Request)"
+      ],
+      "pageErrors": [],
+      "badResponses": [
+        "400 http://localhost:8000/auth/admin/riders/?status=blocked&page_size=10"
+      ]
+    },
+    "dropdowns": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "badResponses": []
+    },
+    "tablet": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "badResponses": []
+    },
+    "mobile": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "badResponses": []
+    }
+  }
+}

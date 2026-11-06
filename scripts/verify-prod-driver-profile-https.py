@@ -4,6 +4,18 @@ import json
 import urllib.error
 import urllib.request
 
+# ── Credentials come from the environment only (never hardcode, never print) ──
+import os as _cred_os
+import sys as _cred_sys
+
+
+def _required_env(name):
+    value = _cred_os.environ.get(name, "")
+    if not value:
+        _cred_sys.exit(f"Missing required environment variable: {name} (values are never printed)")
+    return value
+
+
 API = "https://api.yalataxi.live"
 PATHS = [
     "/drivers/me/",
@@ -42,7 +54,7 @@ for path in PATHS:
 
 print("=== DRIVER LOGIN ===")
 driver_email = "qa-driver-profile-fix@test.local"
-driver_password = "QaDriverFix!2026"
+driver_password = _required_env("YALA_QA_DRIVER2_PASSWORD")
 status, login = request(
     "POST",
     "/auth/login/",
@@ -69,7 +81,7 @@ for path in PATHS:
 
 print("=== RIDER LOGIN ===")
 rider_email = "qa-rider-profile-fix@test.local"
-rider_password = "QaRiderFix!2026"
+rider_password = _required_env("YALA_QA_RIDER_PASSWORD")
 status, login = request(
     "POST",
     "/auth/login/",

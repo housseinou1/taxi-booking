@@ -6,11 +6,23 @@ import sys
 import time
 from pathlib import Path
 
+# ── Credentials come from the environment only (never hardcode, never print) ──
+import os as _cred_os
+import sys as _cred_sys
+
+
+def _required_env(name):
+    value = _cred_os.environ.get(name, "")
+    if not value:
+        _cred_sys.exit(f"Missing required environment variable: {name} (values are never printed)")
+    return value
+
+
 ADB = r"C:\Users\Housseinou\AppData\Local\Android\Sdk\platform-tools\adb.exe"
 SERIAL = "R5CN80M3ZYJ"
 PKG = "com.yala.driver.mr"
 EMAIL = "qa-driver-final-qa@test.local"
-PASSWORD = "QaDriverFinal!2026"
+PASSWORD = _required_env("YALA_QA_DRIVER_PASSWORD")
 OUT = Path(r"C:\Users\Housseinou\Projects\Django\taxi-booking\release\device-qa-v2")
 W, H = 1080, 2316
 

@@ -1,6 +1,6 @@
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from django.utils.dateparse import parse_date
+from django.utils.dateparse import parse_date as _django_parse_date
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
@@ -43,6 +43,7 @@ from .serializers import (
 )
 from .services.audit_service import log_from_request
 from .services.fraud_service import run_user_fraud_checks
+from operations.admin_module_permissions import require_admin_module
 
 DOCUMENT_FIELD_MAP = {
     "business_license": "business_license_status",
@@ -259,8 +260,23 @@ def merchant_verification(request):
 # ─── Admin: audit logs ────────────────────────────────────────────────────────
 
 
+def _parse_date_safe(raw):
+    """Non-raising date parse: invalid input returns ``None`` instead of raising.
+
+    ``django.utils.dateparse.parse_date("2026-13-01")`` raises ``ValueError``, so a
+    malformed query parameter used to produce a 500. Phase 11 fixes the existing
+    audit-log endpoint to answer 400 (consistent with Phases 7–10).
+    """
+    if not raw:
+        return None
+    try:
+        return _django_parse_date(str(raw).strip())
+    except (TypeError, ValueError):
+        return None
+
+
 @api_view(["GET"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("security")])
 def admin_audit_logs(request):
     logs = AuditLog.objects.select_related("actor").all()
     action = request.query_params.get("action")
@@ -280,7 +296,7 @@ def admin_audit_logs(request):
     # with the admin rider ride-history/payment endpoints (FEAT-001/FEAT-002).
     date_from_raw = request.query_params.get("date_from")
     if date_from_raw:
-        date_from = parse_date(date_from_raw)
+        date_from = _parse_date_safe(date_from_raw)
         if date_from is None:
             return Response(
                 {"detail": "Invalid date_from; expected YYYY-MM-DD."},
@@ -290,7 +306,7 @@ def admin_audit_logs(request):
 
     date_to_raw = request.query_params.get("date_to")
     if date_to_raw:
-        date_to = parse_date(date_to_raw)
+        date_to = _parse_date_safe(date_to_raw)
         if date_to is None:
             return Response(
                 {"detail": "Invalid date_to; expected YYYY-MM-DD."},
@@ -306,7 +322,7 @@ def admin_audit_logs(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("security")])
 def admin_fraud_flags(request):
     flags = FraudFlag.objects.select_related("user").filter(
         status=request.query_params.get("status", "open")
@@ -319,7 +335,7 @@ def admin_fraud_flags(request):
 
 
 @api_view(["POST"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("security")])
 def admin_fraud_flag_review(request, flag_id):
     flag = get_object_or_404(FraudFlag, pk=flag_id)
     new_status = request.data.get("status", "reviewed")
@@ -345,7 +361,7 @@ def admin_fraud_flag_review(request, flag_id):
 
 
 @api_view(["GET"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("delivery", "trust_safety", "security")])
 def admin_pending_couriers(request):
     queue = request.query_params.get("queue", "review").strip().lower()
     courier_user_ids = DriverDeliverySettings.objects.values_list("driver_id", flat=True)
@@ -386,7 +402,7 @@ def admin_pending_couriers(request):
 
 
 @api_view(["POST"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("delivery", "trust_safety", "security")])
 def admin_courier_action(request, driver_id):
     profile = get_object_or_404(DriverProfile, pk=driver_id)
     action = request.data.get("action", "").strip().lower()
@@ -401,6 +417,29 @@ def admin_courier_action(request, driver_id):
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        # Phase 12 — vehicle-type document requirement gate. Only the documents the
+        # courier's own vehicle type requires are demanded (a bicycle courier is
+        # never asked for automobile documents), and an approval can never succeed
+        # while a required document is missing, rejected or expired.
+        from deliveries.courier_onboarding import get_courier_approval_blockers
+
+        blockers = get_courier_approval_blockers(profile)
+        if blockers["blocked"]:
+            return Response(
+                {
+                    "error": "Courier requirements are incomplete. Cannot approve.",
+                    "reasons": blockers["reasons"],
+                    "vehicle_type": blockers["vehicle_type"],
+                    "vehicle_label": blockers["vehicle_label"],
+                    "required_document_types": blockers["required_document_types"],
+                    "missing_document_types": blockers["missing_document_types"],
+                    "expired_document_types": blockers["expired_document_types"],
+                    "signature_complete": blockers["signature_complete"],
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         from taxi.drivers.driver_code import ensure_driver_code
 
         profile.status = "approved"
@@ -462,7 +501,7 @@ def admin_courier_action(request, driver_id):
 
 
 @api_view(["GET"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("merchants", "delivery", "security")])
 def admin_pending_merchants(request):
     merchants = Merchant.objects.select_related("owner").filter(
         status__in=["pending", "suspended"]
@@ -483,7 +522,7 @@ def admin_pending_merchants(request):
 
 
 @api_view(["POST"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("merchants", "delivery", "security")])
 def admin_merchant_document_review(request, merchant_id):
     merchant = get_object_or_404(Merchant, pk=merchant_id)
     doc_field = request.data.get("document", "").strip()
@@ -519,7 +558,7 @@ def admin_merchant_document_review(request, merchant_id):
 
 
 @api_view(["POST"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("merchants", "delivery", "security")])
 def admin_merchant_action(request, merchant_id):
     merchant = get_object_or_404(Merchant, pk=merchant_id)
     action = request.data.get("action", "").strip().lower()
@@ -578,7 +617,7 @@ def admin_merchant_action(request, merchant_id):
 
 
 @api_view(["POST"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("security")])
 def admin_run_fraud_scan(request, user_id):
     from django.contrib.auth import get_user_model
 

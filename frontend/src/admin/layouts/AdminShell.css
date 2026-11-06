@@ -1,18 +1,24 @@
 .admin-shell {
-  --admin-bg: #0a1410;
-  --admin-panel: rgba(15, 33, 25, 0.92);
+  --admin-bg: #0b1220;
+  --admin-panel: rgba(11, 22, 44, 0.94);
   /* Card/panel surfaces. These were referenced across the admin modules
      (--admin-surface / --admin-surface-alt / --admin-surface-muted) but never
      defined, so every `var(--admin-surface, #fff)` fell back to white and produced
      white cards with near-invisible light text on the dark theme. */
-  --admin-surface: rgba(15, 33, 25, 0.72);
+  --admin-surface: rgba(16, 30, 56, 0.74);
   --admin-surface-alt: rgba(148, 163, 184, 0.1);
   --admin-surface-muted: rgba(148, 163, 184, 0.08);
-  --admin-border: rgba(110, 231, 183, 0.22);
+  --admin-border: rgba(148, 163, 184, 0.22);
   --admin-text: #f8fafc;
-  --admin-text-muted: #cbd5e1;
-  --admin-accent: #00a651;
-  --admin-accent-soft: rgba(110, 231, 183, 0.14);
+  --admin-text-muted: #c7d3e6;
+  /* YALA brand yellow. It is the accent/CTA colour only, so any text painted ON an
+     accent background must use --admin-accent-contrast, and any accent-coloured
+     text on a page background must use --admin-accent-text (readable in both
+     themes). White-on-yellow would fail WCAG AA, which is why both tokens exist. */
+  --admin-accent: #ffc400;
+  --admin-accent-text: #ffd633;
+  --admin-accent-contrast: #0b1220;
+  --admin-accent-soft: rgba(255, 196, 0, 0.14);
   --admin-danger: #fecaca;
   --admin-success: #34d399;
   --admin-warning: #fbbf24;
@@ -21,12 +27,12 @@
   --admin-sidebar-w: 260px;
   --admin-sidebar-collapsed-w: 72px;
 
-  /* YALA enterprise sidebar palette — dark green */
-  --admin-sidebar-bg: #071b14;
-  --admin-sidebar-hover: #123b2b;
-  --admin-sidebar-active: #00a651;
+  /* YALA enterprise sidebar palette — professional navy blue, YALA yellow active state. */
+  --admin-sidebar-bg: #081428;
+  --admin-sidebar-hover: #14294f;
+  --admin-sidebar-active: #ffc400;
   --admin-sidebar-text: #ffffff;
-  --admin-sidebar-text-muted: #b8d0c4;
+  --admin-sidebar-text-muted: #9db2d4;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -36,19 +42,28 @@
 }
 
 [data-admin-theme="light"] .admin-shell {
-  --admin-bg: #f4f7f5;
+  --admin-bg: #f5f7fb;
   --admin-panel: #ffffff;
   --admin-surface: #ffffff;
   --admin-surface-alt: #f1f5f9;
   --admin-surface-muted: #f8fafc;
-  --admin-border: rgba(0, 166, 81, 0.2);
+  --admin-border: rgba(11, 18, 32, 0.14);
   --admin-text: #0f172a;
   --admin-text-muted: #475569;
-  --admin-accent-soft: rgba(0, 166, 81, 0.08);
+  /* Yellow is a background/CTA colour, so accent-coloured text needs a darker
+     amber to stay readable on the light page background. */
+  --admin-accent-text: #8a6d00;
+  --admin-accent-soft: rgba(255, 196, 0, 0.18);
   --admin-danger: #b91c1c;
   --admin-success: #047857;
   --admin-warning: #b45309;
   --admin-info: #1d4ed8;
+  /* The sidebar is the brand surface and stays navy in both themes. */
+  --admin-sidebar-bg: #081428;
+  --admin-sidebar-hover: #14294f;
+  --admin-sidebar-active: #ffc400;
+  --admin-sidebar-text: #ffffff;
+  --admin-sidebar-text-muted: #9db2d4;
 }
 
 .admin-shell__header {
@@ -96,14 +111,73 @@
   object-fit: contain;
 }
 
+/* Mauritanian flag lockup — inline SVG (see admin/employees/MauritaniaFlag.js).
+   The 🇲🇷 emoji renders as the letters "MR" on Windows, so the vector flag is used. */
+.admin-shell__brand-flag {
+  width: 26px;
+  height: auto;
+  flex-shrink: 0;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px var(--admin-border);
+}
+
 .admin-shell__brand-title {
   font-weight: 700;
   font-size: 0.95rem;
+  color: var(--admin-accent-text);
+  letter-spacing: 0.02em;
 }
 
 .admin-shell__brand-sub {
   font-size: 0.72rem;
   color: var(--admin-text-muted);
+}
+
+/* ── Sidebar brand lockup ─────────────────────────────────────────────────────
+ * Replaces the previous bare "Navigation" label so the navy rail carries the
+ * YALA Technologies branding + the Mauritanian flag, matching the header.
+ */
+.admin-shell__sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.admin-shell__sidebar-brand-flag {
+  width: 24px;
+  height: auto;
+  flex-shrink: 0;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px var(--admin-border);
+}
+
+.admin-shell__sidebar-brand-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.admin-shell__sidebar-brand-name {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--admin-sidebar-active);
+  white-space: nowrap;
+}
+
+.admin-shell__sidebar-brand-sub {
+  font-size: 0.64rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--admin-sidebar-text-muted);
+  white-space: nowrap;
+}
+
+/* Collapsed rail is only 72px wide: hide the lockup so it cannot overflow and
+   leave just the expand/collapse control, exactly as before. */
+.admin-shell__sidebar--collapsed .admin-shell__sidebar-brand {
+  display: none;
 }
 
 .admin-shell__body {
@@ -192,13 +266,13 @@
   outline-offset: -2px;
 }
 
-/* Active page: YALA green fill with dark text keeps contrast ≈7:1 (WCAG AA). */
+/* Active page: YALA yellow fill with navy text keeps contrast >12:1 (WCAG AA). */
 .admin-shell__nav-item--active,
 .admin-shell__nav-item--active:hover {
   background: var(--admin-sidebar-active);
-  color: #06231a;
+  color: var(--admin-accent-contrast);
   font-weight: 600;
-  box-shadow: inset 3px 0 0 0 #ffffff;
+  box-shadow: inset 3px 0 0 0 var(--admin-accent-contrast);
 }
 
 .admin-shell__nav-icon {
@@ -247,7 +321,7 @@
   left: calc(100% + 10px);
   top: 50%;
   transform: translateY(-50%);
-  background: #06231a;
+  background: var(--admin-sidebar-bg);
   color: var(--admin-sidebar-text);
   border: 1px solid var(--admin-accent);
   padding: 6px 10px;
@@ -295,7 +369,7 @@
 }
 
 .admin-shell__breadcrumbs a {
-  color: var(--admin-accent);
+  color: var(--admin-accent-text);
   text-decoration: none;
 }
 
@@ -325,7 +399,7 @@
   padding: 0 16px;
   width: auto;
   background: var(--admin-accent);
-  color: #fff;
+  color: var(--admin-accent-contrast);
   font-weight: 600;
 }
 
@@ -417,7 +491,7 @@
   height: 36px;
   border-radius: 50%;
   background: var(--admin-accent);
-  color: #fff;
+  color: var(--admin-accent-contrast);
   display: grid;
   place-items: center;
   font-size: 0.75rem;

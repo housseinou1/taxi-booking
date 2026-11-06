@@ -7,6 +7,18 @@ from legal.constants import DRIVER_AGREEMENT_VERSION
 from legal.services import driver_has_complete_signature
 from taxi.drivers.models import DriverProfile
 
+# ── Credentials come from the environment only (never hardcode, never print) ──
+import os as _cred_os
+import sys as _cred_sys
+
+
+def _required_env(name):
+    value = _cred_os.environ.get(name, "")
+    if not value:
+        _cred_sys.exit(f"Missing required environment variable: {name} (values are never printed)")
+    return value
+
+
 User = get_user_model()
 
 PNG = (
@@ -16,7 +28,7 @@ PNG = (
 )
 
 EMAIL = "qa-driver-final-qa@test.local"
-PASSWORD = "QaDriverFinal!2026"
+PASSWORD = _required_env("YALA_QA_DRIVER_PASSWORD")
 
 results = []
 

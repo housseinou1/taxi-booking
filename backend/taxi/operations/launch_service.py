@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from collections import Counter, defaultdict
 from datetime import timedelta
 from decimal import Decimal
 
@@ -38,7 +39,7 @@ TRAFFIC = {"healthy": "healthy", "warning": "warning", "critical": "critical"}
 def _traffic(status: str) -> str:
     if status in ("ok", "healthy"):
         return TRAFFIC["healthy"]
-    if status in ("degraded", "unknown", "warning"):
+    if status in ("degraded", "unknown", "warning", "not_configured", "no_workers"):
         return TRAFFIC["warning"]
     return TRAFFIC["critical"]
 
@@ -46,7 +47,10 @@ def _traffic(status: str) -> str:
 def _infra_snapshot() -> dict:
     db = _check_database()
     redis = _check_redis()
-    celery, workers = _check_celery()
+    # ``health.views._check_celery`` returns ``(status, worker_count, broker_url)``.
+    # This previously unpacked only two values and raised ValueError, which surfaced to
+    # operators as a 500 on the Board Reports page.
+    celery, workers, _broker_url = _check_celery()
     api = "ok" if db == "ok" and redis == "ok" else "degraded"
     return {
         "api": {"status": api, "traffic": _traffic(api)},
@@ -633,13 +637,64 @@ def _retention_rate(user_ids_prev: set, user_ids_curr: set) -> float | None:
     return round(100 * retained / len(user_ids_prev), 1)
 
 
+def _local_day(value):
+    """Local calendar date of a datetime — what the ORM ``__date`` lookup compares in SQL."""
+    return timezone.localtime(value).date()
+
+
+def _daily_activity(start, end, city_id=None) -> dict:
+    """Per-day inputs for the KPI growth chart over [start, end] in five queries.
+
+    Produces exactly what the per-day calls did:
+      completed_rides[d]      == _ride_qs(d, d, city_id).filter(status="completed").count()
+      completed_deliveries[d] == _delivery_qs(d, d, city_id).filter(status="delivered").count()
+      active_ids[d]           == the id set counted by _active_users_between(d, d)
+    The DB applies the same local-date window; rows are then bucketed by local date.
+    """
+    completed_rides = Counter(
+        _local_day(ts)
+        for ts in _ride_qs(start, end, city_id).filter(status="completed").values_list("created_at", flat=True)
+    )
+    completed_deliveries = Counter(
+        _local_day(ts)
+        for ts in _delivery_qs(start, end, city_id).filter(status="delivered").values_list("created_at", flat=True)
+    )
+    active_ids: dict = defaultdict(set)
+    # _active_users_between is not city-scoped, so these are not either.
+    for rider_id, ts in Ride.objects.filter(created_at__date__gte=start, created_at__date__lte=end).values_list(
+        "rider_id", "created_at"
+    ):
+        active_ids[_local_day(ts)].add(rider_id)
+    for customer_id, ts in Delivery.objects.filter(
+        created_at__date__gte=start, created_at__date__lte=end
+    ).values_list("customer_id", "created_at"):
+        active_ids[_local_day(ts)].add(customer_id)
+    for user_id, ts in User.objects.filter(last_login__date__gte=start, last_login__date__lte=end).values_list(
+        "id", "last_login"
+    ):
+        active_ids[_local_day(ts)].add(user_id)
+    for ids in active_ids.values():
+        ids.discard(None)
+    return {
+        "completed_rides": completed_rides,
+        "completed_deliveries": completed_deliveries,
+        "active_ids": active_ids,
+    }
+
+
 def build_business_kpis(city_id=None) -> dict:
     today = timezone.localdate()
     week_start = today - timedelta(days=6)
     month_start = today.replace(day=1)
+    chart_start = today - timedelta(days=13)
 
-    dau = _active_users_between(today, today)
-    wau = _active_users_between(week_start, today)
+    # Perf: the 14-day chart and DAU/WAU come from one bulk pass (5 queries) instead of
+    # 5 queries per day plus 6 for DAU/WAU. DAU/WAU are unions of the same per-day id sets
+    # that _active_users_between would collect, so the counts are identical.
+    activity = _daily_activity(chart_start, today, city_id)
+    active_ids = activity["active_ids"]
+    dau = len(active_ids.get(today, set()))
+    wau = len(set().union(*(active_ids.get(week_start + timedelta(days=i), set()) for i in range(7))))
     mau = _active_users_between(month_start, today)
 
     drivers_prev = set(
@@ -684,11 +739,11 @@ def build_business_kpis(city_id=None) -> dict:
     avg_delivery = completed_deliveries.aggregate(avg=Avg("fare"))["avg"] or Decimal("0")
 
     growth = []
-    cursor = today - timedelta(days=13)
+    cursor = chart_start
     while cursor <= today:
-        day_rides = _ride_qs(cursor, cursor, city_id).filter(status="completed").count()
-        day_deliveries = _delivery_qs(cursor, cursor, city_id).filter(status="delivered").count()
-        day_users = _active_users_between(cursor, cursor)
+        day_rides = activity["completed_rides"].get(cursor, 0)
+        day_deliveries = activity["completed_deliveries"].get(cursor, 0)
+        day_users = len(active_ids.get(cursor, set()))
         growth.append(
             {
                 "date": cursor.isoformat(),

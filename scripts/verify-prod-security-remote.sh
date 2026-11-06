@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
+# Credentials come from the environment only (never hardcoded, never printed).
+require_env() { local n; for n in "$@"; do if [ -z "${!n:-}" ]; then echo "Missing required environment variable: $n (values are never printed)" >&2; exit 1; fi; export "$n"; done; }
+login_json() { python3 -c 'import json,os,sys; print(json.dumps({"email": sys.argv[1], "password": os.environ[sys.argv[2]]}))' "$1" "$2"; }
+require_env YALA_TEST_PASSWORD YALA_DRIVER_PASSWORD
 
 API="${API_BASE:-https://api.yalataxi.live}"
 RIDER_EMAIL="${YALA_TEST_EMAIL:-qa-rider-profile-fix@test.local}"
-RIDER_PASSWORD="${YALA_TEST_PASSWORD:-QaRiderFix!2026}"
+RIDER_PASSWORD="$YALA_TEST_PASSWORD"
 DRIVER_EMAIL="${YALA_DRIVER_EMAIL:-qa-driver-final-qa@test.local}"
-DRIVER_PASSWORD="${YALA_DRIVER_PASSWORD:-QaDriverFinal!2026}"
+DRIVER_PASSWORD="$YALA_DRIVER_PASSWORD"
 
 pass=0
 fail=0
@@ -84,7 +88,7 @@ import urllib.request
 
 API = os.environ.get("API_BASE", "https://api.yalataxi.live")
 driver_email = os.environ.get("YALA_DRIVER_EMAIL", "qa-driver-final-qa@test.local")
-driver_password = os.environ.get("YALA_DRIVER_PASSWORD", "QaDriverFinal!2026")
+driver_password = os.environ["YALA_DRIVER_PASSWORD"]
 
 def post(path, payload, token=None):
     req = urllib.request.Request(

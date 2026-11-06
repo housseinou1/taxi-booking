@@ -70,6 +70,7 @@ from payments.settlement_service import courier_balance_summary
 from taxi.security.abuse import rate_limit
 from admin_2fa.integrity import require_integrity
 from taxi.security.upload_validation import validate_image_upload
+from operations.admin_module_permissions import require_admin_module
 
 
 def _validated_delivery_image(file, label="Image"):
@@ -809,21 +810,21 @@ def _resolve_delivery_exception(request, delivery_id, resolution):
 
 
 @api_view(["POST"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("delivery")])
 def approve_delivery_exception(request, delivery_id):
     """Admin approves proof and marks a no-PIN delivery as delivered."""
     return _resolve_delivery_exception(request, delivery_id, "approved")
 
 
 @api_view(["POST"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("delivery")])
 def reject_delivery_exception(request, delivery_id):
     """Admin rejects proof and closes a no-PIN delivery."""
     return _resolve_delivery_exception(request, delivery_id, "rejected")
 
 
 @api_view(["POST"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("delivery")])
 def refund_delivery_exception(request, delivery_id):
     """Admin rejects proof and marks the delivery payment as failed/refund-needed."""
     return _resolve_delivery_exception(request, delivery_id, "refunded")
@@ -1331,7 +1332,7 @@ def create_dispute(request, delivery_id):
 
 
 @api_view(["GET"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("delivery")])
 def admin_disputes(request):
     """List all disputes with optional filters."""
     qs = DeliveryDispute.objects.select_related("delivery", "rider", "resolved_by")
@@ -1347,7 +1348,7 @@ def admin_disputes(request):
 
 
 @api_view(["POST"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("delivery")])
 def resolve_dispute(request, dispute_id):
     """Admin resolves a dispute."""
     dispute = get_object_or_404(DeliveryDispute, id=dispute_id)
@@ -1376,7 +1377,7 @@ def resolve_dispute(request, dispute_id):
 
 
 @api_view(["GET"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("delivery")])
 def admin_analytics(request):
     """Delivery analytics with optional filters."""
     qs = Delivery.objects.all()
@@ -1447,7 +1448,7 @@ def admin_analytics(request):
 
 
 @api_view(["GET", "POST"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("delivery")])
 def business_accounts_list(request):
     """List or create business accounts."""
     if request.method == "GET":
@@ -1465,7 +1466,7 @@ def business_accounts_list(request):
 
 
 @api_view(["GET", "PATCH", "DELETE"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("delivery")])
 def business_account_detail(request, account_id):
     """Retrieve, update, or deactivate a business account."""
     account = get_object_or_404(BusinessAccount, id=account_id)
@@ -1729,27 +1730,22 @@ def courier_location(request):
     if not profile:
         return Response({"detail": "Courier profile not found."}, status=status.HTTP_400_BAD_REQUEST)
 
-    prev_lat = profile.current_lat
-    prev_lng = profile.current_lng
-    prev_updated = profile.updated_at
+    # Same validation as the ride-driver endpoint (taxi.drivers.views.update_location):
+    # numeric input inside GPS bounds (NaN rejected), an approved profile, and the
+    # speed-plausibility check that raises a fake_location fraud flag. The previous code read
+    # ``profile.updated_at`` — a field DriverProfile does not have — so every update from a
+    # courier with a stored position raised AttributeError (HTTP 500), and non-numeric input
+    # crashed in float() (HTTP 500).
+    from taxi.security.abuse import validate_driver_location
 
-    profile.current_lat = float(lat)
-    profile.current_lng = float(lng)
+    try:
+        lat, lng = validate_driver_location(profile, lat, lng)
+    except ValueError as exc:
+        return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+    profile.current_lat = lat
+    profile.current_lng = lng
     profile.save(update_fields=["current_lat", "current_lng"])
-
-    if prev_lat is not None and prev_lng is not None and prev_updated:
-        elapsed = (timezone.now() - prev_updated).total_seconds()
-        if elapsed > 0:
-            from security.services.fraud_service import check_fake_location_movement
-
-            check_fake_location_movement(
-                request.user,
-                prev_lat=prev_lat,
-                prev_lng=prev_lng,
-                new_lat=profile.current_lat,
-                new_lng=profile.current_lng,
-                elapsed_seconds=elapsed,
-            )
 
     active_delivery = (
         Delivery.objects.filter(

@@ -1,0 +1,111 @@
+{
+  "pages": [
+    {
+      "route": "/admin",
+      "name": "admin",
+      "msToFirstContent": -1,
+      "observationWindowMs": 63624,
+      "totalRequests": 35,
+      "totalBytes": 1229466,
+      "heavyRidesHistoryCalls": 2,
+      "heavyRidesHistoryBytes": 484730,
+      "fourOhFour": [],
+      "topUrls": [
+        "/rides/history/ x2 = 484730B",
+        "/drivers/list/ x1 = 300260B",
+        "/auth/users/ x1 = 250446B",
+        "/drivers/performance/ x2 = 146326B",
+        "/auth/me/ x1 = 27917B",
+        "/drivers/rewards/admin/ x2 = 7346B",
+        "/payments/withdrawals/ x2 = 4936B",
+        "/operations/admin/me/permissions/ x2 = 3632B",
+        "/payments/owner-payout/ x2 = 1724B",
+        "/admin/withdrawal-accounts/ x2 = 860B"
+      ]
+    },
+    {
+      "route": "/admin/drivers/dashboard",
+      "name": "drivers-dashboard",
+      "msToFirstContent": 4112,
+      "observationWindowMs": 24116,
+      "totalRequests": 13,
+      "totalBytes": 242562,
+      "heavyRidesHistoryCalls": 0,
+      "heavyRidesHistoryBytes": 0,
+      "fourOhFour": [],
+      "topUrls": [
+        "/operations/fleet/drivers/ x2 = 194734B",
+        "/auth/me/ x1 = 27917B",
+        "/operations/fleet/overview/ x2 = 16232B",
+        "/operations/admin/me/permissions/ x2 = 3632B",
+        "/operations/admin/audit/client-event/ x1 = 37B",
+        "/notifications/history/ x5 = 10B"
+      ]
+    },
+    {
+      "route": "/admin/riders/dashboard",
+      "name": "riders-dashboard",
+      "msToFirstContent": 2051,
+      "observationWindowMs": 22060,
+      "totalRequests": 13,
+      "totalBytes": 191138,
+      "heavyRidesHistoryCalls": 0,
+      "heavyRidesHistoryBytes": 0,
+      "fourOhFour": [],
+      "topUrls": [
+        "/auth/admin/riders/?page_size=100&ordering=-date_joined&page=1 x2 = 103760B",
+        "/auth/admin/riders/?page_size=100&ordering=-date_joined&page=2 x2 = 55782B",
+        "/auth/me/ x1 = 27917B",
+        "/operations/admin/me/permissions/ x2 = 3632B",
+        "/operations/admin/audit/client-event/ x1 = 37B",
+        "/notifications/history/ x5 = 10B"
+      ]
+    },
+    {
+      "route": "/admin/ops-center",
+      "name": "ops-center",
+      "msToFirstContent": 3353,
+      "observationWindowMs": 23359,
+      "totalRequests": 15,
+      "totalBytes": 96993,
+      "heavyRidesHistoryCalls": 0,
+      "heavyRidesHistoryBytes": 0,
+      "fourOhFour": [],
+      "topUrls": [
+        "/operations/command/ x1 = 38752B",
+        "/auth/me/ x1 = 27917B",
+        "/rides/analytics/admin/ x2 = 16488B",
+        "/operations/executive/dashboard/?period=daily x1 = 9919B",
+        "/operations/admin/me/permissions/ x2 = 3632B",
+        "/health/ x2 = 238B",
+        "/operations/admin/audit/client-event/ x1 = 37B",
+        "/notifications/history/ x5 = 10B"
+      ]
+    },
+    {
+      "route": "/admin/ops-center/finance",
+      "name": "ops-center-finance",
+      "msToFirstContent": -1,
+      "observationWindowMs": 60901,
+      "totalRequests": 19,
+      "totalBytes": 96765,
+      "heavyRidesHistoryCalls": 0,
+      "heavyRidesHistoryBytes": 0,
+      "fourOhFour": [],
+      "topUrls": [
+        "/operations/command/ x1 = 38752B",
+        "/auth/me/ x1 = 27917B",
+        "/rides/analytics/admin/?period=30d x2 = 16488B",
+        "/operations/executive/dashboard/?period=30d x1 = 9917B",
+        "/operations/admin/me/permissions/ x2 = 3632B",
+        "/operations/admin/audit/client-event/ x1 = 37B",
+        "/notifications/history/ x11 = 22B"
+      ]
+    }
+  ],
+  "consoleErrors": [
+    "admin: Error fetching drivers: AxiosError: timeout of 15000ms exceeded\n    at XMLHttpRequest.handleTimeout (http://localhost:3000/static/js/bundle.",
+    "admin: Error fetching users: AxiosError: timeout of 15000ms exceeded\n    at XMLHttpRequest.handleTimeout (http://localhost:3000/static/js/bundle.js"
+  ],
+  "badResponses": []
+}

@@ -46,6 +46,7 @@ from legal.services import (
 )
 from merchants.models import Merchant
 from security.services.audit_service import log_from_request
+from operations.admin_module_permissions import require_admin_module
 
 
 @require_GET
@@ -316,7 +317,7 @@ accept_ride_legal = accept_rider_legal
 
 
 @api_view(["GET"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("security", "compliance")])
 def admin_compliance_logs(request):
     agreement_type = request.query_params.get("type", "").strip()
     logs = LegalComplianceLog.objects.select_related("user").order_by("-created_at")[:200]
@@ -351,7 +352,7 @@ def admin_compliance_logs(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("security", "compliance")])
 def admin_signed_agreements(request):
     """Legal center summary for admin review."""
     from deliveries.models import DriverDeliverySettings

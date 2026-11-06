@@ -1,11 +1,21 @@
 """
 Fresh seed: 3 drivers with vehicles + photos, 5 riders with photos.
-All passwords: Test1234!
+Passwords: $YALA_SEED_DEFAULT_PASSWORD, or a random per-run value if unset; never printed.
 """
 import os
 import sys
 from PIL import Image, ImageDraw, ImageFont
 import tempfile
+
+# ── Seed passwords come from the environment; otherwise a random per-run value ──
+# (never a shared default, never printed — set the variable to choose a known password)
+import os as _cred_os
+import secrets as _cred_secrets
+
+
+def _seed_password(name):
+    return _cred_os.environ.get(name) or _cred_secrets.token_urlsafe(18)
+
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "taxi.settings")
 import django
@@ -18,7 +28,7 @@ import io
 
 User = get_user_model()
 
-PASSWORD = "Test1234!"
+PASSWORD = _seed_password("YALA_SEED_DEFAULT_PASSWORD")
 
 
 def generate_avatar(initials, bg_color, size=200):
@@ -174,13 +184,13 @@ print()
 print("=" * 50)
 print("ACCOUNTS READY")
 print("=" * 50)
-print(f"  Admin:   admin@sakho.com / Admin123!")
+print("  Admin:   admin@sakho.com (existing account; password not shown)")
 print()
-print("  Drivers (all password: Test1234!):")
+print("  Drivers (password: $YALA_SEED_DEFAULT_PASSWORD, or a random per-run value if unset; never printed):")
 for d in DRIVERS:
     print(f"    {d['email']} — {d['vehicle_make']} {d['vehicle_model']} ({d['plate']})")
 print()
-print("  Riders (all password: Test1234!):")
+print("  Riders (password: $YALA_SEED_DEFAULT_PASSWORD, or a random per-run value if unset; never printed):")
 for r in RIDERS:
     print(f"    {r['email']}")
 print()

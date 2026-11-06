@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 
 import { usePermissions } from "../permissions/PermissionContext";
+import MauritaniaFlag from "../employees/MauritaniaFlag";
 import { useAdminTheme } from "./theme/AdminThemeContext";
 
 const CITIES = [
@@ -42,9 +43,10 @@ export default function AdminHeader({ onOpenMobileNav, onOpenSearch }) {
         </button>
         <div className="admin-shell__brand">
           <img src="/yala-admin-logo.png" alt="" className="admin-shell__logo" />
+          <MauritaniaFlag className="admin-shell__brand-flag" />
           <div>
-            <div className="admin-shell__brand-title">YALA Admin</div>
-            <div className="admin-shell__brand-sub">YALA Technologies</div>
+            <div className="admin-shell__brand-title">YALA TECHNOLOGIES</div>
+            <div className="admin-shell__brand-sub">Admin Console</div>
           </div>
         </div>
       </div>

@@ -443,14 +443,28 @@ def request_refund(payment_record, customer, reason, note=""):
 
 @transaction.atomic
 def approve_refund(refund: RefundRequest, admin_note=""):
-    if refund.status != "requested":
+    # Atomic compare-and-set on the status guard.
+    #
+    # A plain `if refund.status != "requested"` is a read-then-write and does NOT
+    # serialise concurrent approvals: every racing transaction reads "requested"
+    # before any of them writes, so they all proceed and all credit the wallet.
+    # Reproduced on PostgreSQL: 4 concurrent approvals returned 200 and credited
+    # the customer 4x (wallet 200.00 instead of 50.00).
+    #
+    # A conditional UPDATE is evaluated under the row lock, so only ONE
+    # transaction can move the refund out of "requested"; the losers match zero
+    # rows and are rejected. This is what actually closes the race.
+    claimed = RefundRequest.objects.filter(pk=refund.pk, status="requested").update(
+        status="approved", admin_note=admin_note
+    )
+    if not claimed:
         raise SettlementError("Refund already processed.", code="invalid_status")
+
+    # Re-read so the caller and the checks below see the committed state.
+    refund.refresh_from_db(fields=["status", "admin_note"])
+
     if refund.fraud_flag:
         raise SettlementError("Flagged for fraud review.", code="fraud_flag")
-
-    refund.status = "approved"
-    refund.admin_note = admin_note
-    refund.save(update_fields=["status", "admin_note"])
 
     wallet = get_or_create_wallet(refund.customer)
     wallet_tx = apply_wallet_transaction(

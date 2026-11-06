@@ -20,6 +20,7 @@ from rest_framework import status
 from .models import Ride
 from taxi.drivers.models import DriverProfile
 from locations.models import City
+from operations.admin_module_permissions import require_admin_module
 
 User = get_user_model()
 
@@ -528,7 +529,7 @@ def admin_analytics(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("rides")])
 def admin_activity_heatmap(request):
     """Return demand, live driver coverage, and peak-hour analytics by area."""
     period = request.query_params.get("period", "daily").lower()

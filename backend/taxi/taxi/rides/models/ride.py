@@ -98,14 +98,6 @@ class Ride(models.Model):
         help_text="When driver search began for this ride request.",
     )
 
-    city = models.ForeignKey(
-        "cities.City",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="rides",
-    )
-
     pickup = models.CharField(max_length=255)
     destination = models.CharField(max_length=255)
 

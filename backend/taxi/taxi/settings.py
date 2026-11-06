@@ -76,6 +76,7 @@ INSTALLED_APPS = [
     "referrals",
     "loyalty",
     "operations",
+    "employees",
     "health",
     "taxi.admin_approvals",
     "django_celery_beat",
@@ -169,6 +170,28 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
+# Protected (non-public) storage for sensitive assets such as employee ID
+# photographs. This path MUST NOT be exposed by nginx or Django's static/media
+# serving — files are only reachable through authenticated, HR-gated views
+# (see employees.services.photo_storage). Configurable via env for prod.
+PROTECTED_MEDIA_ROOT = Path(
+    os.getenv("PROTECTED_MEDIA_ROOT", str(BASE_DIR / "protected_media"))
+)
+# Max accepted upload size (bytes) and max image dimensions for employee photos.
+EMPLOYEE_PHOTO_MAX_BYTES = int(os.getenv("EMPLOYEE_PHOTO_MAX_BYTES", str(5 * 1024 * 1024)))
+EMPLOYEE_PHOTO_MAX_DIMENSION = int(os.getenv("EMPLOYEE_PHOTO_MAX_DIMENSION", "4000"))
+
+# Electronic employee signatures live in the same protected tree (never public /media/).
+# They are normalized to PNG so a transparent background survives, hence a smaller byte cap.
+EMPLOYEE_SIGNATURE_MAX_BYTES = int(os.getenv("EMPLOYEE_SIGNATURE_MAX_BYTES", str(2 * 1024 * 1024)))
+EMPLOYEE_SIGNATURE_MAX_DIMENSION = int(os.getenv("EMPLOYEE_SIGNATURE_MAX_DIMENSION", "2000"))
+
+# ── Hourly employee verification ─────────────────────────────────────────────
+# SMS delivery for verification codes. LOCAL DEVELOPMENT ONLY: the "mock" provider records the
+# delivery attempt and sends nothing. Activating real SMS delivery requires explicit
+# Founder/CEO authorization plus an approved provider adapter (none is implemented).
+YALA_SMS_PROVIDER = os.getenv("YALA_SMS_PROVIDER", "mock")
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 AUTH_USER_MODEL = "authapp.User"
@@ -246,8 +269,29 @@ CORS_ALLOW_HEADERS = [
     "x-api-key",
     "x-api-signature",
     "x-api-timestamp",
+    "x-device-id",
 ]
 CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS")
+
+# ── Local development CORS/CSRF (DEBUG-only) ────────────────────────────────────
+# When DEBUG=True (local dev), allow the React dev server origins so a browser on
+# http://localhost:3000 can call the local Django API on http://localhost:8000
+# without a CORS block. This is an EXPLICIT, narrow dev-origin allowlist — NOT
+# allow-all (CORS_ALLOW_ALL_ORIGINS is left untouched), so it respects the
+# "never imply allow-all from DEBUG alone" rule above. It is additive: any
+# env-provided CORS_ALLOWED_ORIGINS / CSRF_TRUSTED_ORIGINS are preserved. The
+# whole block is skipped when DEBUG=False, so PRODUCTION CORS SECURITY IS
+# UNCHANGED, and it is skipped under tests to keep the test env deterministic.
+if DEBUG and not _IN_TEST:
+    _LOCAL_DEV_ORIGINS = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ]
+    for _origin in _LOCAL_DEV_ORIGINS:
+        if _origin not in CORS_ALLOWED_ORIGINS:
+            CORS_ALLOWED_ORIGINS.append(_origin)
+        if _origin not in CSRF_TRUSTED_ORIGINS:
+            CSRF_TRUSTED_ORIGINS.append(_origin)
 
 if not DEBUG and not _IN_TEST:
     from django.core.exceptions import ImproperlyConfigured
@@ -276,10 +320,89 @@ if not DEBUG and not _IN_TEST:
         )
 
 # ── Stripe ────────────────────────────────────────────────────────────────────
+# ── Phase 11 — employee ID-card verification tokens ──────────────────────────
+# The QR code carries a signed, expiring token instead of a bare UUID. The secret
+# defaults to SECRET_KEY; CARD_QR_TOKEN_KEYS allows rotation (key_id -> secret).
+CARD_QR_TOKEN_SECRET = os.getenv("CARD_QR_TOKEN_SECRET", "")
+CARD_QR_TOKEN_TTL_SECONDS = int(os.getenv("CARD_QR_TOKEN_TTL_SECONDS", str(24 * 60 * 60)))
+CARD_QR_TOKENS_REQUIRED = env_bool("CARD_QR_TOKENS_REQUIRED", True)
+CARD_VERIFICATION_RETENTION_DAYS = int(os.getenv("CARD_VERIFICATION_RETENTION_DAYS", "90"))
+
+# Public ID-card QR verification stays OFF until the owner explicitly enables it.
+PUBLIC_QR_VERIFICATION_ENABLED = env_bool("PUBLIC_QR_VERIFICATION_ENABLED", False)
+
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
 STRIPE_PUBLIC_KEY = os.getenv("STRIPE_PUBLIC_KEY", "")
 STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY", STRIPE_PUBLIC_KEY)
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+
+# ── Phase 11 — cashless policy & payment providers ───────────────────────────
+# Yala is a 100% cashless platform. The policy is enforced server-side by default
+# (see payments/cashless.py); relaxing it requires an explicit env flag and an
+# owner decision — never client input.
+CASHLESS_POLICY_ENFORCED = env_bool("CASHLESS_POLICY_ENFORCED", True)
+
+# Provider adapter selection: "mock" (default, development/testing) or "live".
+# Live traffic additionally requires PAYMENTS_LIVE_MODE=True AND official
+# credentials; nothing activates by default.
+PAYMENT_PROVIDER_MODE = os.getenv("PAYMENT_PROVIDER_MODE", "mock")
+PAYMENTS_LIVE_MODE = env_bool("PAYMENTS_LIVE_MODE", False)
+
+# Provider credentials are read from the environment only — never hardcoded, never
+# committed. Empty values keep the provider in "unconfigured" mode.
+BANKILY_API_BASE_URL = os.getenv("BANKILY_API_BASE_URL", "")
+BANKILY_MERCHANT_ID = os.getenv("BANKILY_MERCHANT_ID", "")
+BANKILY_API_KEY = os.getenv("BANKILY_API_KEY", "")
+BANKILY_WEBHOOK_SECRET = os.getenv("BANKILY_WEBHOOK_SECRET", "")
+
+MASRAVI_API_BASE_URL = os.getenv("MASRAVI_API_BASE_URL", "")
+MASRAVI_MERCHANT_ID = os.getenv("MASRAVI_MERCHANT_ID", "")
+MASRAVI_API_KEY = os.getenv("MASRAVI_API_KEY", "")
+MASRAVI_WEBHOOK_SECRET = os.getenv("MASRAVI_WEBHOOK_SECRET", "")
+
+# Sedad (Seddad). Verified integration route is an authorized Mauritanian aggregator
+# (Bankily/Sedad/Masravi are reachable through one aggregator API); no direct public
+# Sedad merchant API documentation was found, so these stay empty until official
+# credentials exist. Empty values keep the adapter in "unconfigured" mode.
+SEDAD_API_BASE_URL = os.getenv("SEDAD_API_BASE_URL", "")
+SEDAD_MERCHANT_ID = os.getenv("SEDAD_MERCHANT_ID", "")
+SEDAD_API_KEY = os.getenv("SEDAD_API_KEY", "")
+SEDAD_WEBHOOK_SECRET = os.getenv("SEDAD_WEBHOOK_SECRET", "")
+
+# ── Employee ID card ─────────────────────────────────────────────────────────
+# Official contact information printed on the card back, CONFIRMED BY THE FOUNDER/CEO
+# (2026-10-26): phone +222 22 11 43 73, email sakho@admin.mr. These values are owned by
+# configuration so the renderer never invents or hardcodes a contact value; override with
+# YALA_CARD_SUPPORT_PHONE / YALA_CARD_CONTACT_EMAIL when they change. If either is emptied,
+# the card prints a clearly marked placeholder instead of guessing.
+# NOTE: the in-app 24/7 safety contact (frontend/src/marketConfig.js "Yala Support") still
+# lists a different number; that app-wide routing was deliberately left untouched pending
+# Founder/CEO authorization.
+YALA_CARD_SUPPORT_PHONE = os.getenv("YALA_CARD_SUPPORT_PHONE", "+222 22 11 43 73")
+YALA_CARD_CONTACT_EMAIL = os.getenv("YALA_CARD_CONTACT_EMAIL", "sakho@admin.mr")
+
+# Optional company website shown on the card back — only when explicitly configured and
+# approved for public display.
+YALA_CARD_WEBSITE = os.getenv("YALA_CARD_WEBSITE", "")
+
+# Official company slogan, printed at the BOTTOM OF THE CARD BACK (Founder/CEO directive,
+# 2026-10-26). Owned by configuration so the renderer never hardcodes marketing copy.
+# The Mauritanian flag shown beside the slogan is DRAWN AS VECTOR ART by the renderer, not
+# typeset, so pasting the whole line including the flag emoji is safe: unsupported glyphs
+# are stripped before drawing and the flag is drawn separately.
+YALA_CARD_SLOGAN = os.getenv(
+    "YALA_CARD_SLOGAN", "YALA TECHNOLOGIES — FAST • SAFE • RELIABLE"
+)
+
+BANK_TRANSFER_API_BASE_URL = os.getenv("BANK_TRANSFER_API_BASE_URL", "")
+BANK_TRANSFER_CLIENT_ID = os.getenv("BANK_TRANSFER_CLIENT_ID", "")
+BANK_TRANSFER_CLIENT_SECRET = os.getenv("BANK_TRANSFER_CLIENT_SECRET", "")
+BANK_TRANSFER_ACCOUNT_REFERENCE = os.getenv("BANK_TRANSFER_ACCOUNT_REFERENCE", "")
+
+CARD_GATEWAY_API_BASE_URL = os.getenv("CARD_GATEWAY_API_BASE_URL", "")
+CARD_GATEWAY_PUBLIC_KEY = os.getenv("CARD_GATEWAY_PUBLIC_KEY", "")
+CARD_GATEWAY_SECRET_KEY = os.getenv("CARD_GATEWAY_SECRET_KEY", "")
+CARD_GATEWAY_WEBHOOK_SECRET = os.getenv("CARD_GATEWAY_WEBHOOK_SECRET", "")
 
 # ── Email ─────────────────────────────────────────────────────────────────────
 EMAIL_BACKEND = os.getenv(
@@ -379,6 +502,23 @@ CELERY_TASK_ACKS_LATE = env_bool("CELERY_TASK_ACKS_LATE", True)
 CELERY_TASK_REJECT_ON_WORKER_LOST = env_bool("CELERY_TASK_REJECT_ON_WORKER_LOST", True)
 CELERY_TASK_ALWAYS_EAGER = os.getenv("CELERY_TASK_ALWAYS_EAGER", "False").lower() in ("true", "1", "yes")
 
+if DEBUG:
+    # Local/dev usually runs without Redis. Publishing a task to an unreachable
+    # broker used to retry the connection for tens of seconds and hang the HTTP
+    # request that triggered it (for example the CEO suspend action). Fail fast and
+    # let the caller's error handling decide.
+    CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = False
+    CELERY_BROKER_CONNECTION_MAX_RETRIES = 0
+    CELERY_BROKER_TRANSPORT_OPTIONS = {
+        "socket_connect_timeout": 2,
+        "socket_timeout": 2,
+        "retry_on_timeout": False,
+        "max_retries": 0,
+    }
+
+# NOTE: the authoritative CELERY_BEAT_SCHEDULE is defined further below (after the test-mode
+# block). Employee attendance automation entries are added there so they are not overwritten.
+
 if "test" in sys.argv:
     CELERY_BROKER_URL = "memory://"
     CELERY_TASK_ALWAYS_EAGER = True
@@ -407,6 +547,23 @@ if env_bool("YALA_UAT_LOCAL", False):
         "default": {"BACKEND": "channels.layers.InMemoryChannelLayer"},
     }
 
+# ── Local scheduler verification without a Redis broker ────────────────────────
+# Setting YALA_CELERY_FS_BROKER=1 runs Celery Beat + Worker over kombu's *filesystem*
+# transport, so the scheduled employee tasks can be verified end to end locally with no
+# external service. Local development only: the default broker (Redis) is untouched when
+# the flag is absent.
+if os.getenv("YALA_CELERY_FS_BROKER"):
+    _celery_fs_root = os.getenv(
+        "YALA_CELERY_FS_DIR", os.path.join(os.path.expanduser("~"), ".yala-celery-fs")
+    )
+    CELERY_BROKER_URL = "filesystem://"
+    CELERY_RESULT_BACKEND = "file://" + _celery_fs_root.replace("\\", "/") + "/results"
+    CELERY_BROKER_TRANSPORT_OPTIONS = {
+        "data_folder_in": os.path.join(_celery_fs_root, "in"),
+        "data_folder_out": os.path.join(_celery_fs_root, "in"),
+        "control_folder": os.path.join(_celery_fs_root, "control"),
+    }
+
 CELERY_BEAT_SCHEDULE = {
     "expire-credits-hourly": {
         "task": "referrals.tasks.periodic.expire_credits_task",
@@ -431,6 +588,19 @@ CELERY_BEAT_SCHEDULE = {
     "notify-expiring-driver-documents-daily": {
         "task": "taxi.drivers.tasks.notify_expiring_driver_documents_task",
         "schedule": 86400,  # Every 24 hours (in seconds)
+    },
+    # ── Employee attendance automation (Phase 4) ──────────────────────────────
+    # Both tasks are idempotent and delegate to the employees service layer, so a repeated or
+    # missed run cannot double-issue a verification code or duplicate a break notification.
+    # Local environments without a Redis broker run the identical work through:
+    #     python manage.py run_employee_scheduler
+    "employees-hourly-verification": {
+        "task": "employees.tasks.issue_hourly_verification_task",
+        "schedule": 60,  # Every minute; the service decides what is actually due
+    },
+    "employees-break-notifications": {
+        "task": "employees.tasks.dispatch_break_notifications_task",
+        "schedule": 60,  # Every minute; covers breakfast, lunch and clock-out reminders
     },
     # ── Delivery tasks ────────────────────────────────────────────────────────
     "delivery-check-offer-timeouts": {

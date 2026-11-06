@@ -16,6 +16,7 @@ from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 
 from taxi.rides.models import Ride, ShareRideSession
+from operations.admin_module_permissions import require_admin_module
 
 
 def _parse_date_param(value):
@@ -29,7 +30,7 @@ def _parse_date_param(value):
 
 
 @api_view(["GET"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("marketing")])
 def share_analytics(request):
     """
     GET /api/admin/share/analytics/
@@ -110,7 +111,7 @@ def share_analytics(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("marketing")])
 def share_analytics_chart(request):
     """
     GET /api/admin/share/analytics/chart/

@@ -47,6 +47,7 @@ from .operations_center_views import (
     operations_reassign_delivery,
     operations_reassign_ride,
 )
+from .ops_handover_views import ops_handover_acknowledge, ops_handovers
 from .launch_views import (
     launch_alert_ack,
     launch_alert_resolve,
@@ -65,6 +66,7 @@ from .launch_views import (
 )
 from .beta_views import beta_ceo_report, beta_dashboard
 from .beta_feedback_views import beta_feedback_dashboard, beta_feedback_detail, beta_feedback_list_create
+from .executive_integration_views import executive_metrics_view, vehicle_directory
 from .fleet_performance_views import (
     fleet_ceo,
     fleet_dashboard,
@@ -91,6 +93,14 @@ from .finance_operations_views import (
     finance_withdrawals,
 )
 from .growth_expansion_views import growth_dashboard, growth_export
+from .launch_growth_views import (
+    launch_growth_campaign,
+    launch_growth_dashboard,
+    launch_growth_partnership,
+    launch_growth_promo,
+    launch_growth_scaling,
+)
+from .city_assignment_views import city_assignments, my_city_scope, revoke_city_assignment
 from .multi_city_views import (
     multi_city_city_detail,
     multi_city_cities,
@@ -143,6 +153,7 @@ from .board_reporting_views import (
 from .bi_analytics_views import (
     bi_executive_analytics,
     bi_geographic_intelligence,
+    bi_growth_center,
     bi_overview,
     bi_predictive_analytics,
     bi_report_export,
@@ -190,6 +201,22 @@ from .customer_growth_views import (
     customer_growth_finance,
     customer_growth_flags,
     customer_growth_promo_create,
+)
+from .ceo_control_views import (
+    ceo_account_action,
+    ceo_accounts_directory,
+    ceo_approvals_inbox,
+    ceo_audit_trail,
+)
+from .roles_permissions_views import (
+    admin_role_accounts,
+    admin_role_assign,
+    admin_roles_registry,
+    admin_staff_access,
+)
+from .ceo_reporting_views import (
+    ceo_city_report,
+    ceo_security_posture,
 )
 from .ceo_master_command_views import (
     ceo_master_action_approve_incentive,
@@ -241,11 +268,19 @@ from .business_views import (
     business_partners,
 )
 from .views import complete_maintenance, maintenance_reminders
+from .admin_permissions_views import AdminClientAuditView, AdminPermissionsView
 
 urlpatterns = [
+    # Admin shell RBAC bootstrap (staff JWT only; gated by IsStaffUser).
+    path("admin/me/permissions/", AdminPermissionsView.as_view()),
+    path("admin/audit/client-event/", AdminClientAuditView.as_view()),
     path("maintenance/", maintenance_reminders),
     path("maintenance/<int:reminder_id>/complete/", complete_maintenance),
     path("center/dashboard/", operations_center_dashboard),
+    # Shift handovers — service + model existed but had no route, so the Ops
+    # dashboard's handover panel always came back empty (404).
+    path("center/handovers/", ops_handovers),
+    path("center/handovers/<int:handover_id>/acknowledge/", ops_handover_acknowledge),
     path("center/fleet/", operations_center_fleet),
     path("center/map/", operations_center_map),
     path("center/trips/", operations_center_trips),
@@ -364,6 +399,10 @@ urlpatterns = [
     path("multi-city/cities/", multi_city_cities),
     path("multi-city/cities/<int:city_id>/", multi_city_city_detail),
     path("multi-city/export/", multi_city_export),
+    # Task 8 — explicit staff city assignments (CEO-only, audited) + caller's own scope
+    path("city-assignments/", city_assignments),
+    path("city-assignments/me/", my_city_scope),
+    path("city-assignments/<int:assignment_id>/revoke/", revoke_city_assignment),
     path("smart-engine/", smart_engine_dashboard),
     path("smart-engine/flags/", smart_engine_flags),
     path("smart-engine/dispatch-rules/", smart_dispatch_rules),
@@ -410,6 +449,12 @@ urlpatterns = [
     path("partner-platform/settlements/<int:settlement_id>/approve/", partner_platform_settlement_approve),
 
     path("customer-growth/", customer_growth_dashboard),
+    # Launch & Growth sprint endpoints (views existed but were never routed).
+    path("launch-growth/", launch_growth_dashboard),
+    path("launch-growth/scaling/", launch_growth_scaling),
+    path("launch-growth/partnerships/", launch_growth_partnership),
+    path("launch-growth/promos/", launch_growth_promo),
+    path("launch-growth/campaigns/", launch_growth_campaign),
     path("customer-growth/ceo/", customer_growth_ceo),
     path("customer-growth/finance/", customer_growth_finance),
     path("customer-growth/flags/", customer_growth_flags),
@@ -431,6 +476,19 @@ urlpatterns = [
     path("ceo-master/actions/approve-payout/", ceo_master_action_approve_payout),
     path("ceo-master/actions/approve-onboarding/", ceo_master_action_approve_onboarding),
     path("ceo-master/actions/approve-incentive/", ceo_master_action_approve_incentive),
+    # Phase 8 — CEO approvals inbox, account management & CEO audit trail
+    path("ceo/approvals/", ceo_approvals_inbox),
+    path("ceo/accounts/", ceo_accounts_directory),
+    path("ceo/accounts/<int:user_id>/action/", ceo_account_action),
+    path("ceo/audit/", ceo_audit_trail),
+    # Phase 9 — CEO city reporting & security posture
+    path("ceo/reports/cities/", ceo_city_report),
+    path("ceo/security/", ceo_security_posture),
+    # Phase 10 — roles & permissions management (CEO-governed, audited)
+    path("admin/roles/", admin_roles_registry),
+    path("admin/roles/accounts/", admin_role_accounts),
+    path("admin/roles/accounts/<int:user_id>/role/", admin_role_assign),
+    path("admin/roles/accounts/<int:user_id>/access/", admin_staff_access),
 
     # Board & Investor Reporting Suite (Phase 35)
     path("board-reports/", board_reporting_suite),
@@ -445,6 +503,8 @@ urlpatterns = [
 
     # Business Intelligence & Data Warehouse (Phase 37)
     path("bi/", bi_overview),
+    # BI growth center — biGrowthApi has always called this; the route was missing.
+    path("bi/growth-center/", bi_growth_center),
     path("bi/subject-areas/", bi_subject_areas),
     path("bi/subject-areas/<str:area>/", bi_subject_area_detail),
     path("bi/executive-analytics/", bi_executive_analytics),
@@ -465,4 +525,11 @@ urlpatterns = [
     path("compliance-governance/calendar/<int:event_id>/action/", compliance_calendar_action),
     path("compliance-governance/ceo-governance/", compliance_ceo_governance),
     path("compliance-governance/reports/<str:report_type>/export/", compliance_report_export),
+    # ── Executive metrics + Vehicle Management (read-only; no models, no migrations) ─────
+    path(
+        "executive-metrics/",
+        executive_metrics_view,
+        name="operations-executive-metrics",
+    ),
+    path("vehicles/", vehicle_directory, name="operations-vehicles"),
 ]

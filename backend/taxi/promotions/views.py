@@ -22,6 +22,7 @@ from promotions.serializers import (
 )
 from promotions.services import PromoCodeService
 from taxi.security.abuse import rate_limit
+from operations.admin_module_permissions import HasAdminModule
 
 
 # --- Admin views ---
@@ -56,7 +57,8 @@ class PromoCodeAdminViewSet(ModelViewSet):
     Protected by IsAdminUser permission.
     """
 
-    permission_classes = [IsAdminUser]
+    permission_classes = [HasAdminModule]
+    admin_module = "marketing"
     filterset_class = PromoCodeFilter
 
     def get_serializer_class(self):
@@ -115,7 +117,8 @@ class OverallAnalyticsView(APIView):
     Returns total promotional spend, total redemptions, and unique codes used.
     """
 
-    permission_classes = [IsAdminUser]
+    permission_classes = [HasAdminModule]
+    admin_module = "marketing"
 
     def get(self, request):
         start_date = request.query_params.get("start_date")

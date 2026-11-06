@@ -24,6 +24,7 @@ from .bi_data_warehouse_service import (
 )
 from .cache_utils import cached_ops_call
 from .executive_permissions import IsAnalyticsStaff
+from .launch_growth_service import build_launch_growth_center
 from .report_export import export_csv, export_excel, export_pdf
 
 
@@ -59,6 +60,20 @@ def bi_overview(request):
             period=period,
         )
     )
+
+
+@api_view(["GET"])
+@permission_classes([IsAnalyticsStaff])
+def bi_growth_center(request):
+    """Phase 37 growth center.
+
+    `biGrowthApi.fetchBiGrowthCenter` has always called
+    `/operations/bi/growth-center/`, but no route or view existed, so the BI
+    growth surface 404'd. The service (`build_launch_growth_center`, itself
+    cached) already assembled the payload; this exposes it.
+    """
+    city_id = _city_id(request)
+    return Response(build_launch_growth_center(city_id=city_id))
 
 
 @api_view(["GET"])

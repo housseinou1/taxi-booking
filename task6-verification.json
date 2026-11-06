@@ -1,0 +1,432 @@
+{
+  "viewports": {
+    "desktop": {
+      "dashboard": {
+        "shell": 1,
+        "sidebars": 1,
+        "headers": 1,
+        "h1Count": 1,
+        "h1Texts": [
+          "Yala Delivery"
+        ],
+        "lastUpdated": "Not loaded yet",
+        "kpis": [],
+        "panels": [
+          {
+            "title": "Couriers",
+            "rows": [
+              "Total=—",
+              "Approved=—",
+              "Pending review=—",
+              "Rejected=—",
+              "Suspended=—",
+              "Available now=—"
+            ]
+          },
+          {
+            "title": "Merchants",
+            "rows": [
+              "Total=—",
+              "Approved=—",
+              "Pending review=—",
+              "Suspended=—"
+            ]
+          },
+          {
+            "title": "Exceptions & disputes",
+            "rows": [
+              "Delivery exceptions=—",
+              "Open disputes=—"
+            ]
+          }
+        ],
+        "liveHint": "Positions are the courier's real last reported coordinates from the delivery tracking endpoint. The delivery API exposes no active-delivery collection, so this panel lists the non-terminal records among the ten most recent deliveries.",
+        "liveRows": [],
+        "moduleCards": 5,
+        "moduleCardLabels": [
+          "Courier Management",
+          "Merchant Directory",
+          "Courier Approvals",
+          "Business Accounts",
+          "Trust & Safety"
+        ],
+        "recentTableRows": 0,
+        "overflow": 0,
+        "skeletons": 18
+      },
+      "couriers": {
+        "shell": 1,
+        "sidebars": 1,
+        "headers": 1,
+        "h1Count": 1,
+        "h1Texts": [
+          "Courier Management"
+        ],
+        "kpis": [
+          {
+            "label": "Total couriers",
+            "value": "42"
+          },
+          {
+            "label": "Approved",
+            "value": "38"
+          },
+          {
+            "label": "Pending approval",
+            "value": "4"
+          },
+          {
+            "label": "Online now",
+            "value": "38"
+          },
+          {
+            "label": "Suspended",
+            "value": "0"
+          }
+        ],
+        "tableRows": 25,
+        "inputs": 13,
+        "buttons": 66,
+        "overflow": 0,
+        "skeletons": 0
+      },
+      "merchants": {
+        "shell": 1,
+        "sidebars": 1,
+        "headers": 1,
+        "h1Count": 1,
+        "h1Texts": [
+          "Merchant Directory"
+        ],
+        "kpis": [
+          {
+            "label": "Merchants",
+            "value": "20"
+          },
+          {
+            "label": "Approved",
+            "value": "19"
+          },
+          {
+            "label": "Pending",
+            "value": "0"
+          },
+          {
+            "label": "Suspended",
+            "value": "1"
+          }
+        ],
+        "tableRows": 20,
+        "inputs": 13,
+        "buttons": 41,
+        "overflow": 0,
+        "skeletons": 0
+      }
+    },
+    "tablet": {
+      "dashboard": {
+        "shell": 1,
+        "sidebars": 1,
+        "headers": 1,
+        "h1Count": 1,
+        "h1Texts": [
+          "Yala Delivery"
+        ],
+        "lastUpdated": "Not loaded yet",
+        "kpis": [],
+        "panels": [
+          {
+            "title": "Couriers",
+            "rows": [
+              "Total=—",
+              "Approved=—",
+              "Pending review=—",
+              "Rejected=—",
+              "Suspended=—",
+              "Available now=—"
+            ]
+          },
+          {
+            "title": "Merchants",
+            "rows": [
+              "Total=—",
+              "Approved=—",
+              "Pending review=—",
+              "Suspended=—"
+            ]
+          },
+          {
+            "title": "Exceptions & disputes",
+            "rows": [
+              "Delivery exceptions=—",
+              "Open disputes=—"
+            ]
+          }
+        ],
+        "liveHint": "Positions are the courier's real last reported coordinates from the delivery tracking endpoint. The delivery API exposes no active-delivery collection, so this panel lists the non-terminal records among the ten most recent deliveries.",
+        "liveRows": [],
+        "moduleCards": 5,
+        "moduleCardLabels": [
+          "Courier Management",
+          "Merchant Directory",
+          "Courier Approvals",
+          "Business Accounts",
+          "Trust & Safety"
+        ],
+        "recentTableRows": 0,
+        "overflow": 0,
+        "skeletons": 18
+      },
+      "couriers": {
+        "shell": 1,
+        "sidebars": 1,
+        "headers": 1,
+        "h1Count": 1,
+        "h1Texts": [
+          "Courier Management"
+        ],
+        "kpis": [
+          {
+            "label": "Total couriers",
+            "value": "42"
+          },
+          {
+            "label": "Approved",
+            "value": "38"
+          },
+          {
+            "label": "Pending approval",
+            "value": "4"
+          },
+          {
+            "label": "Online now",
+            "value": "38"
+          },
+          {
+            "label": "Suspended",
+            "value": "0"
+          }
+        ],
+        "tableRows": 25,
+        "inputs": 13,
+        "buttons": 66,
+        "overflow": 0,
+        "skeletons": 0
+      },
+      "merchants": {
+        "shell": 1,
+        "sidebars": 1,
+        "headers": 1,
+        "h1Count": 1,
+        "h1Texts": [
+          "Merchant Directory"
+        ],
+        "kpis": [
+          {
+            "label": "Merchants",
+            "value": "20"
+          },
+          {
+            "label": "Approved",
+            "value": "19"
+          },
+          {
+            "label": "Pending",
+            "value": "0"
+          },
+          {
+            "label": "Suspended",
+            "value": "1"
+          }
+        ],
+        "tableRows": 20,
+        "inputs": 13,
+        "buttons": 41,
+        "overflow": 0,
+        "skeletons": 0
+      }
+    },
+    "mobile": {
+      "dashboard": {
+        "shell": 1,
+        "sidebars": 1,
+        "headers": 1,
+        "h1Count": 1,
+        "h1Texts": [
+          "Yala Delivery"
+        ],
+        "lastUpdated": "Not loaded yet",
+        "kpis": [],
+        "panels": [
+          {
+            "title": "Couriers",
+            "rows": [
+              "Total=—",
+              "Approved=—",
+              "Pending review=—",
+              "Rejected=—",
+              "Suspended=—",
+              "Available now=—"
+            ]
+          },
+          {
+            "title": "Merchants",
+            "rows": [
+              "Total=—",
+              "Approved=—",
+              "Pending review=—",
+              "Suspended=—"
+            ]
+          },
+          {
+            "title": "Exceptions & disputes",
+            "rows": [
+              "Delivery exceptions=—",
+              "Open disputes=—"
+            ]
+          }
+        ],
+        "liveHint": "Positions are the courier's real last reported coordinates from the delivery tracking endpoint. The delivery API exposes no active-delivery collection, so this panel lists the non-terminal records among the ten most recent deliveries.",
+        "liveRows": [],
+        "moduleCards": 5,
+        "moduleCardLabels": [
+          "Courier Management",
+          "Merchant Directory",
+          "Courier Approvals",
+          "Business Accounts",
+          "Trust & Safety"
+        ],
+        "recentTableRows": 0,
+        "overflow": 0,
+        "skeletons": 18
+      },
+      "couriers": {
+        "shell": 1,
+        "sidebars": 1,
+        "headers": 1,
+        "h1Count": 1,
+        "h1Texts": [
+          "Courier Management"
+        ],
+        "kpis": [
+          {
+            "label": "Total couriers",
+            "value": "42"
+          },
+          {
+            "label": "Approved",
+            "value": "38"
+          },
+          {
+            "label": "Pending approval",
+            "value": "4"
+          },
+          {
+            "label": "Online now",
+            "value": "38"
+          },
+          {
+            "label": "Suspended",
+            "value": "0"
+          }
+        ],
+        "tableRows": 25,
+        "inputs": 13,
+        "buttons": 66,
+        "overflow": 0,
+        "skeletons": 0
+      },
+      "merchants": {
+        "shell": 1,
+        "sidebars": 1,
+        "headers": 1,
+        "h1Count": 1,
+        "h1Texts": [
+          "Merchant Directory"
+        ],
+        "kpis": [
+          {
+            "label": "Merchants",
+            "value": "20"
+          },
+          {
+            "label": "Approved",
+            "value": "19"
+          },
+          {
+            "label": "Pending",
+            "value": "0"
+          },
+          {
+            "label": "Suspended",
+            "value": "1"
+          }
+        ],
+        "tableRows": 20,
+        "inputs": 13,
+        "buttons": 41,
+        "overflow": 0,
+        "skeletons": 0
+      }
+    }
+  },
+  "themes": {
+    "dark": {
+      "themeAttr": "dark",
+      "kpiBg": null,
+      "kpiValueColor": null,
+      "valueContrast": null,
+      "labelContrast": null,
+      "panelBg": "rgb(255,255,255)",
+      "panelDtContrast": "1.48",
+      "panelDdContrast": "1.05",
+      "hintContrast": null
+    },
+    "light": {
+      "themeAttr": "light",
+      "kpiBg": null,
+      "kpiValueColor": null,
+      "valueContrast": null,
+      "labelContrast": null,
+      "panelBg": "rgb(255,255,255)",
+      "panelDtContrast": "7.58",
+      "panelDdContrast": "17.85",
+      "hintContrast": null
+    }
+  },
+  "map": {
+    "liveRowsWithMapButton": 0
+  },
+  "console": {
+    "desktop": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "badResponses": []
+    },
+    "tablet": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "badResponses": []
+    },
+    "mobile": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "badResponses": []
+    },
+    "map": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "badResponses": []
+    },
+    "theme-dark": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "badResponses": []
+    },
+    "theme-light": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "badResponses": []
+    }
+  }
+}

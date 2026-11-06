@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { filterNavItems, resolveNavPath } from "./permissions/sidebarNavConfig";
 import { usePermissions } from "../permissions/PermissionContext";
+import MauritaniaFlag from "../employees/MauritaniaFlag";
 
 const COLLAPSE_KEY = "yala_admin_sidebar_collapsed";
 
@@ -136,7 +137,13 @@ export default function AdminSidebar({ pathname, mobileOpen, onMobileClose }) {
         aria-label="Admin navigation"
       >
         <div className="admin-shell__sidebar-head">
-          <span className="admin-shell__sidebar-title">Navigation</span>
+          <div className="admin-shell__sidebar-brand">
+            <MauritaniaFlag className="admin-shell__sidebar-brand-flag" />
+            <span className="admin-shell__sidebar-brand-text">
+              <span className="admin-shell__sidebar-brand-name">YALA TECHNOLOGIES</span>
+              <span className="admin-shell__sidebar-brand-sub">Fast • Safe • Reliable</span>
+            </span>
+          </div>
           <button
             type="button"
             className="admin-shell__icon-btn admin-shell__sidebar-toggle"

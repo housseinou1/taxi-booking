@@ -1,0 +1,65 @@
+# Gitleaks configuration for the YALA repository (local scans and the pre-commit hook).
+#   gitleaks git --redact --config .gitleaks.toml              # full history
+#   gitleaks git --pre-commit --staged --redact                # staged changes (scripts/git-hooks/pre-commit)
+#   gitleaks dir . --redact --config .gitleaks.toml            # working tree
+# Always pass --redact so values are never printed. Keep real values out of this file.
+
+title = "YALA gitleaks config"
+
+[extend]
+# Start from the built-in gitleaks rules (Stripe, Google, AWS, GitHub, private keys, JWT, ...).
+useDefault = true
+
+[[rules]]
+id = "yala-hardcoded-password"
+description = "Password literal assigned in code, JSON or kwargs"
+regex = '''(?i)["']?\b[a-z_]*(?:password|passwd|pwd|_pw)\b["']?[ \t]*(?:=|:|,)[ \t]*[rbu]?["']([^"'\s$<{(]{6,})["']'''
+secretGroup = 1
+entropy = 2.5
+keywords = ["password", "passwd", "pwd", "_pw"]
+
+[[rules]]
+id = "yala-password-env-default"
+description = "Secret used as the default of an environment lookup"
+regex = '''(?i)(?:environ\.get|getenv)\(\s*["'][A-Z0-9_]*(?:PASS|PW|SECRET|TOKEN)[A-Z0-9_]*["']\s*,\s*["']([^"'\n]{6,})["']'''
+secretGroup = 1
+keywords = ["environ.get", "getenv"]
+
+[[rules]]
+id = "yala-shell-password-default"
+description = "Secret used as a shell parameter default"
+regex = '''\$\{[A-Z0-9_]*(?:PASS|PW|SECRET|TOKEN)[A-Z0-9_]*:-([^}\s]{6,})\}'''
+secretGroup = 1
+keywords = ["pass", "_pw", "secret", "token"]
+
+[[rules]]
+id = "yala-url-with-password"
+description = "Connection URL with an embedded password (DATABASE_URL, REDIS_URL, ...)"
+regex = '''\b[a-z][a-z0-9+.-]{1,20}://[^\s:/@'"]+:([^\s@/'"$<{]{4,})@[^\s'"]+'''
+secretGroup = 1
+keywords = ["://"]
+
+[[rules]]
+id = "yala-django-secret-key"
+description = "Django SECRET_KEY literal"
+regex = '''(?i)\b(?:DJANGO_)?SECRET_KEY\b["']?\s*[:=]\s*["']?([^\s"',)(]{20,})'''
+secretGroup = 1
+entropy = 3.0
+keywords = ["secret_key"]
+
+[allowlist]
+description = "Placeholders, env lookups, examples and vendored/build output"
+paths = [
+  '''(^|/)node_modules/''',
+  '''(^|/)\.worktrees/''',
+  '''(^|/)(venv|\.venv)/''',
+  '''(^|/)(frontend/build|driver-app/www|rider-app/www|delivery-app/www|admin-app/www)/''',
+  '''\.(png|jpe?g|gif|webp|ico|pdf|zip|gz|apk|aab|woff2?|ttf|map)$''',
+  '''(^|/)\.gitleaks\.toml$''',
+  '''(^|/)scripts/secret_scan\.py$''',
+]
+regexes = [
+  '''(?i)(change[-_ ]?me|replace[-_ ]?me|your[-_ ]|example|placeholder|dummy|redacted|test[-_]?only|fake|sample|insecure)''',
+  '''^\$\{?[A-Z_][A-Z0-9_]*\}?$''',
+  '''^<[^>]*>$''',
+]

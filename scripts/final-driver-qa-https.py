@@ -6,9 +6,21 @@ import urllib.error
 import urllib.request
 from io import BytesIO
 
+# ── Credentials come from the environment only (never hardcode, never print) ──
+import os as _cred_os
+import sys as _cred_sys
+
+
+def _required_env(name):
+    value = _cred_os.environ.get(name, "")
+    if not value:
+        _cred_sys.exit(f"Missing required environment variable: {name} (values are never printed)")
+    return value
+
+
 API = "https://api.yalataxi.live"
 EMAIL = "qa-driver-final-qa@test.local"
-PASSWORD = "QaDriverFinal!2026"
+PASSWORD = _required_env("YALA_QA_DRIVER_PASSWORD")
 PNG = bytes([
     0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D,
     0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
@@ -91,13 +103,13 @@ print("=== Setup unsigned driver ===")
 import subprocess
 subprocess.run(
     [
-        "docker", "exec", "-i", "yala-django-1", "python", "manage.py", "shell", "-c",
+        "docker", "exec", "-i", "-e", "YALA_QA_DRIVER_PASSWORD", "yala-django-1", "python", "manage.py", "shell", "-c",
         (
             "from django.contrib.auth import get_user_model;"
             "from taxi.drivers.models import DriverProfile;"
             "User=get_user_model();"
             "u,_=User.objects.get_or_create(email='qa-driver-final-qa@test.local',defaults={'user_type':'driver','first_name':'Final','last_name':'QA'});"
-            "u.set_password('QaDriverFinal!2026'); u.user_type='driver'; u.save();"
+            "import os; u.set_password(os.environ['YALA_QA_DRIVER_PASSWORD']); u.user_type='driver'; u.save();"
             "p,_=DriverProfile.objects.get_or_create(user=u);"
             "p.driver_terms_accepted=False; p.driver_signature_image=None; p.driver_signed_full_name='';"
             "p.driver_legal_declaration_accepted=False; p.is_available=False; p.status='approved'; p.save()"

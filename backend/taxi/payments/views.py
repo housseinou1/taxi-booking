@@ -15,6 +15,15 @@ from taxi.rides.models import Ride
 from taxi.market import get_app_fee_percent_display
 from notifications.push import notify_courier_payout, notify_payment_completed, notify_payment_successful
 from .services import calculate_payment_amounts
+from .cashless import (
+    CASHLESS_VIOLATION_CODE,
+    UNVERIFIED_CONFIRMATION_MESSAGE,
+    CashlessPolicyViolation,
+    assert_cashless,
+    is_cash_method,
+    is_enforced as cashless_enforced,
+    violation_reason,
+)
 from .wallet_ledger import apply_wallet_transaction, get_or_create_wallet
 
 from .models import (
@@ -49,6 +58,8 @@ from .serializers import (
     WalletTransactionSerializer,
 )
 
+from operations.admin_module_permissions import require_admin_module
+
 
 def driver_withdrawal_balance(driver):
     return Decimal(driver_wallet_summary(driver)["available_balance"])
@@ -68,7 +79,7 @@ def my_wallet(request):
 
 
 @api_view(["POST"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("finance")])
 def admin_wallet_adjustment(request):
     from django.contrib.auth import get_user_model
 
@@ -188,6 +199,16 @@ def create_payment(request):
             status=status.HTTP_429_TOO_MANY_REQUESTS,
             headers={"Retry-After": str(retry_after)},
         )
+
+    # Phase 11 — strict cashless policy: no cash method may start a payment.
+    requested_method = request.data.get("method")
+    cashless_refusal = violation_reason(method=requested_method)
+    if cashless_refusal:
+        return Response(
+            {"error": cashless_refusal, "code": CASHLESS_VIOLATION_CODE},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
     try:
         ride_id = request.data.get("ride_id")
         tip_percentage = Decimal(str(request.data.get("tip_percentage", 0)))
@@ -373,6 +394,15 @@ def rider_mark_paid(request, ride_id):
                 {"message": "Payment already confirmed", "payment": PaymentSerializer(payment).data}
             )
 
+        # Phase 11 — a rider may only flag an intent for verification; a cash
+        # method can never be marked paid at all on a cashless platform.
+        cashless_refusal = violation_reason(method=payment.method)
+        if cashless_refusal:
+            return Response(
+                {"error": cashless_refusal, "code": CASHLESS_VIOLATION_CODE},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         payment.status = "pending_verification"
         payment.save()
 
@@ -416,6 +446,25 @@ def driver_confirm_payment(request, ride_id):
         if payment.method not in {"cash", "bankily", "masrvi", "seddad"}:
             return Response(
                 {"error": "This payment method must be confirmed by the payment provider or an admin."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Phase 11 — manual confirmation is disabled. A driver can never mark a
+        # payment as paid: only a verified provider confirmation may do that
+        # (see payments.provider_security.apply_verified_confirmation).
+        cashless_refusal = violation_reason(method=payment.method)
+        if cashless_refusal:
+            return Response(
+                {"error": cashless_refusal, "code": CASHLESS_VIOLATION_CODE},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if cashless_enforced():
+            return Response(
+                {
+                    "error": UNVERIFIED_CONFIRMATION_MESSAGE,
+                    "code": "unverified_confirmation_blocked",
+                },
                 status=status.HTTP_403_FORBIDDEN,
             )
 
@@ -655,7 +704,7 @@ def wallet_withdraw_request(request):
 
 
 @api_view(["POST"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("finance")])
 def approve_withdrawal(request, withdrawal_id):
     try:
         withdrawal = WithdrawalRequest.objects.get(id=withdrawal_id)
@@ -680,7 +729,7 @@ def approve_withdrawal(request, withdrawal_id):
 
 
 @api_view(["POST"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("finance")])
 def reject_withdrawal(request, withdrawal_id):
     try:
         withdrawal = WithdrawalRequest.objects.get(id=withdrawal_id)
@@ -709,7 +758,7 @@ def _can_mark_paid(user):
 
 
 @api_view(["POST"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("finance")])
 def mark_withdrawal_paid(request, withdrawal_id):
     if not _can_mark_paid(request.user):
         return Response(

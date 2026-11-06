@@ -71,14 +71,6 @@ class User(AbstractUser):
         default="",
     )
 
-    city = models.ForeignKey(
-        "locations.City",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="users",
-    )
-
     user_type = models.CharField(
         max_length=20,
         choices=USER_TYPES,

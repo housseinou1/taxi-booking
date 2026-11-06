@@ -2,6 +2,7 @@
 """List SHA fingerprints for local Android keystores (no passwords printed)."""
 from __future__ import annotations
 
+import os
 import re
 import subprocess
 import sys
@@ -43,9 +44,12 @@ def build_known_pairs() -> dict[Path, tuple[str, str]]:
     add(creds.get("YALA_DRIVER_KEYSTORE"), creds.get("YALA_DRIVER_KEY_ALIAS"), creds.get("YALA_DRIVER_STORE_PASSWORD"))
     add(creds.get("YALA_DELIVERY_KEYSTORE"), creds.get("YALA_DELIVERY_KEY_ALIAS"), creds.get("YALA_DELIVERY_STORE_PASSWORD"))
 
-    # Legacy local keystores documented in git history.
-    known[Path.home() / "yala-driver.jks"] = ("yala-driver", "YalaDriver2026!")
-    known[Path.home() / "yala-rider.jks"] = ("yala-rider", "YalaRider2026!")
+    # Legacy local keystores: passwords come from the environment only (never hardcoded).
+    # The previous values are in git history and must be treated as compromised.
+    if os.environ.get("YALA_LEGACY_DRIVER_JKS_PASSWORD"):
+        known[Path.home() / "yala-driver.jks"] = ("yala-driver", os.environ["YALA_LEGACY_DRIVER_JKS_PASSWORD"])
+    if os.environ.get("YALA_LEGACY_RIDER_JKS_PASSWORD"):
+        known[Path.home() / "yala-rider.jks"] = ("yala-rider", os.environ["YALA_LEGACY_RIDER_JKS_PASSWORD"])
     return known
 
 

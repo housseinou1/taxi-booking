@@ -8,15 +8,27 @@ import time
 import urllib.error
 import urllib.request
 
+# ── Credentials come from the environment only (never hardcode, never print) ──
+import os as _cred_os
+import sys as _cred_sys
+
+
+def _required_env(name):
+    value = _cred_os.environ.get(name, "")
+    if not value:
+        _cred_sys.exit(f"Missing required environment variable: {name} (values are never printed)")
+    return value
+
+
 API = "https://api.yalataxi.live"
 CTX = ssl.create_default_context()
 CTX.check_hostname = False
 CTX.verify_mode = ssl.CERT_NONE
 
 RIDER_EMAIL = "qa-rider-profile-fix@test.local"
-RIDER_PASSWORD = "QaRiderFix!2026"
+RIDER_PASSWORD = _required_env("YALA_QA_RIDER_PASSWORD")
 DRIVER_EMAIL = "qa-driver-final-qa@test.local"
-DRIVER_PASSWORD = "QaDriverFinal!2026"
+DRIVER_PASSWORD = _required_env("YALA_QA_DRIVER_PASSWORD")
 
 
 def api(method: str, path: str, token: str | None = None, body=None):

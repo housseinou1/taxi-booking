@@ -13,6 +13,17 @@ API = "https://api.yalataxi.live"
 ADB = r"C:\Users\Housseinou\AppData\Local\Android\Sdk\platform-tools\adb.exe"
 SERIAL = "R5CN80M3ZYJ"
 PKG = "com.yala.driver.mr"
+
+
+def _required_env(name):
+    """Credentials come from the environment only; values are never printed."""
+    value = __import__('os').environ.get(name, "")
+    if not value:
+        sys.exit(f"Missing required environment variable: {name} (values are never printed)")
+    return value
+
+RIDER_PASSWORD = _required_env("YALA_QA_RIDER_PASSWORD")
+DRIVER_PASSWORD = _required_env("YALA_QA_DRIVER_PASSWORD")
 CTX = ssl._create_unverified_context()
 results = []
 
@@ -108,8 +119,8 @@ def tap(x, y):
     adb("shell", "input", "tap", str(x), str(y))
 
 
-rider = login("qa-rider-profile-fix@test.local", "QaRiderFix!2026")
-driver = login("qa-driver-final-qa@test.local", "QaDriverFinal!2026")
+rider = login("qa-rider-profile-fix@test.local", RIDER_PASSWORD)
+driver = login("qa-driver-final-qa@test.local", DRIVER_PASSWORD)
 
 st, hist = api("GET", "/rides/history/", rider)
 rides = hist if isinstance(hist, list) else hist.get("results", [])

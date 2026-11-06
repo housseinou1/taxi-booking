@@ -278,15 +278,29 @@ def _check_sms():
 
 def _check_payments():
     stripe = getattr(settings, "STRIPE_SECRET_KEY", "") or ""
-    # Other gateways may be present via env without inventing live success.
-    bankily = os.getenv("BANKILY_API_KEY", "") or os.getenv("YALA_PAYMENT_API_KEY", "")
+    # Report every payment provider the platform models, so the health screen cannot
+    # under-report what is actually configured (Bankily, Sedad, Masravi, bank transfer,
+    # card). Configuration here means "credentials present", never "live approved":
+    # live traffic additionally requires PAYMENTS_LIVE_MODE plus owner authorization.
+    local_keys = {
+        "bankily": getattr(settings, "BANKILY_API_KEY", "") or os.getenv("YALA_PAYMENT_API_KEY", ""),
+        "sedad": getattr(settings, "SEDAD_API_KEY", ""),
+        "masravi": getattr(settings, "MASRAVI_API_KEY", ""),
+        "bank_transfer": getattr(settings, "BANK_TRANSFER_CLIENT_SECRET", ""),
+        "card": getattr(settings, "CARD_GATEWAY_SECRET_KEY", ""),
+    }
     configured = []
     if _configured(stripe):
         configured.append("stripe")
-    if _configured(bankily):
-        configured.append("local_gateway")
+    for code, value in local_keys.items():
+        if _configured(value):
+            configured.append(code)
     if configured:
-        return {"status": "configured", "gateways": configured}
+        return {
+            "status": "configured",
+            "gateways": configured,
+            "note": "credentials present; live payments still require PAYMENTS_LIVE_MODE and owner authorization",
+        }
     return {"status": "not_configured", "gateways": []}
 
 

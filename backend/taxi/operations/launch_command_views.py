@@ -16,6 +16,7 @@ from .executive_permissions import (
     can_ceo_actions,
     can_dispatch_operations,
 )
+from .admin_module_permissions import require_admin_module
 from .launch_command_service import (
     build_ceo_summary_export_rows,
     build_launch_command_dashboard,
@@ -64,7 +65,13 @@ def _export_response(rows, export_format, filename, title="Yala CEO Daily Summar
 
 
 @api_view(["GET"])
-@permission_classes([IsLaunchCommandStaff])
+# Phase 3: was `IsLaunchCommandStaff`, which resolves to `can_view_executive` and
+# is therefore True for EVERY staff member. The Operations Command payload carries
+# live_operations + ceo_summary (revenue, refunds) + alerts, so it is limited to
+# the roles that previously had legitimate access via EXECUTIVE_GROUPS /
+# OPS_DISPATCH_GROUPS (CEO, Super Admin, Accountant, Finance, Operations
+# Manager, Supervisor) plus Marketing, which owns the admin/command module.
+@permission_classes([require_admin_module("ceo", "ops", "launch", "finance")])
 def command_dashboard(request):
     period = request.query_params.get("period", "hour")
     payload = build_launch_command_dashboard(city_id=_city_id(request), period=period)

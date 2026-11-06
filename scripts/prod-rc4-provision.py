@@ -18,14 +18,26 @@ from payments.models import DriverPayoutMethod
 from taxi.drivers.models import DriverDocument, DriverProfile
 from taxi.drivers.signals import trigger_qr_generation_on_approval
 
+# ── Credentials come from the environment only (never hardcode, never print) ──
+import os as _cred_os
+import sys as _cred_sys
+
+
+def _required_env(name):
+    value = _cred_os.environ.get(name, "")
+    if not value:
+        _cred_sys.exit(f"Missing required environment variable: {name} (values are never printed)")
+    return value
+
+
 User = get_user_model()
 
-ADMIN_EMAIL = "sakho@admin.mr"
-ADMIN_PASSWORD = "Admin2026!"
+ADMIN_EMAIL = _required_env("YALA_CEO_EMAIL")
+ADMIN_PASSWORD = _required_env("YALA_CEO_PASSWORD")
 RIDER_EMAIL = "qa-rider-profile-fix@test.local"
 RIDER_PHONE = "+22240119999"
 COURIER_EMAIL = "qa-driver-final-qa@test.local"
-COURIER_PASSWORD = "QaDriverFinal!2026"
+COURIER_PASSWORD = _required_env("YALA_QA_DRIVER_PASSWORD")
 COURIER_PHONE = "+22240556677"
 
 MINIMAL_PNG = (

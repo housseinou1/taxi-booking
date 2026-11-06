@@ -39,6 +39,20 @@ def trigger_qr_generation_on_approval(sender, instance, created, **kwargs):
     if instance.status != "approved":
         return
 
+    # Only approved AND e-signed drivers may receive a new verification QR code.
+    # Unsigned drivers keep their status; they simply get no QR until they sign.
+    from legal.services import qr_ineligibility_reason
+
+    reason = qr_ineligibility_reason(instance)
+    if reason is not None:
+        logger.info(
+            "trigger_qr_generation_on_approval: DriverProfile id=%s is not eligible "
+            "for a QR code (%s). Skipping generation.",
+            instance.pk,
+            reason,
+        )
+        return
+
     # Skip if QR code already exists (Requirement 1.4)
     if instance.qr_code_uuid:
         logger.info(

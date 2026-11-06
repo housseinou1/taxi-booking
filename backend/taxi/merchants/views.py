@@ -37,6 +37,8 @@ from .services.order_service import (
     get_or_create_cart,
 )
 
+from operations.admin_module_permissions import require_admin_module
+
 User = get_user_model()
 order_service = MerchantOrderService()
 
@@ -489,7 +491,7 @@ def merchant_payouts(request):
 
 
 @api_view(["POST"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("merchants")])
 def admin_merchant_status(request, merchant_id):
     try:
         merchant = Merchant.objects.get(pk=merchant_id)

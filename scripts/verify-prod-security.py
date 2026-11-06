@@ -134,7 +134,7 @@ def main() -> int:
     import os
 
     email = os.environ.get("YALA_TEST_EMAIL", "qa-rider-profile-fix@test.local")
-    password = os.environ.get("YALA_TEST_PASSWORD", "QaRiderFix!2026")
+    password = os.environ.get("YALA_TEST_PASSWORD") or sys.exit("Missing required environment variable: YALA_TEST_PASSWORD (values are never printed)")
 
     checks = [
         ("HTTPS", lambda: check_https()),

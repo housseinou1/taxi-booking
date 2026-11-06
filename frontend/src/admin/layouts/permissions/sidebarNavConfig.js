@@ -55,6 +55,8 @@ export const SIDEBAR_NAV_ITEMS = [
     label: "Operations Management",
     icon: "📡",
     children: [
+      { id: "ops-control", module: "ops", label: "Operations Control Center", path: "/admin/operations-control", icon: "🎛" },
+
       { id: "ops-overview", module: "ops", label: "Operations Overview", path: "/admin/operations", icon: "🗂" },
       { id: "ops-center", module: "ops", label: "Ops Center Home", path: "/admin/ops-center", icon: "🧮" },
       { id: "ops-live", module: "ops", label: "Live Operations", path: "/admin/ops-center/live", icon: "📍" },

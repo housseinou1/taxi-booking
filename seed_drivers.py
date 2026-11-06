@@ -7,6 +7,10 @@ from taxi.drivers.models import DriverProfile, DriverSettings
 
 User = get_user_model()
 
+# Seed password: $YALA_SEED_DEFAULT_PASSWORD, or a random per-run value (never printed).
+import secrets
+SEED_PASSWORD = os.environ.get("YALA_SEED_DEFAULT_PASSWORD") or secrets.token_urlsafe(18)
+
 # Keep admin, delete everything else
 admin = User.objects.filter(email='admin@sakho.com').first()
 User.objects.exclude(email='admin@sakho.com').delete()
@@ -16,7 +20,7 @@ print('Cleaned database (kept admin@sakho.com)')
 drivers_data = [
     {
         'email': 'moussa.diallo@yala.mr',
-        'password': 'Driver2026!',
+        'password': SEED_PASSWORD,
         'first_name': 'Moussa',
         'last_name': 'Diallo',
         'phone_number': '+22237001122',
@@ -34,7 +38,7 @@ drivers_data = [
     },
     {
         'email': 'amadou.ba@yala.mr',
-        'password': 'Driver2026!',
+        'password': SEED_PASSWORD,
         'first_name': 'Amadou',
         'last_name': 'Ba',
         'phone_number': '+22236112233',
@@ -52,7 +56,7 @@ drivers_data = [
     },
     {
         'email': 'fatimata.mint@yala.mr',
-        'password': 'Driver2026!',
+        'password': SEED_PASSWORD,
         'first_name': 'Fatimata',
         'last_name': 'Mint Ahmed',
         'phone_number': '+22234223344',
@@ -70,7 +74,7 @@ drivers_data = [
     },
     {
         'email': 'oumar.sy@yala.mr',
-        'password': 'Driver2026!',
+        'password': SEED_PASSWORD,
         'first_name': 'Oumar',
         'last_name': 'Sy',
         'phone_number': '+22233445566',
@@ -88,7 +92,7 @@ drivers_data = [
     },
     {
         'email': 'cheikh.sow@yala.mr',
-        'password': 'Driver2026!',
+        'password': SEED_PASSWORD,
         'first_name': 'Cheikh',
         'last_name': 'Sow',
         'phone_number': '+22238556677',
@@ -149,4 +153,4 @@ for d in drivers_data:
 
     print(f'  Created: {d["first_name"]} {d["last_name"]} | {d["vehicle_make"]} {d["vehicle_model"]} ({d["vehicle_color"]}) | {d["vehicle_plate"]} | {d["phone_number"]}')
 
-print('\nDone! 5 drivers created. All passwords: Driver2026!')
+print('\nDone! 5 drivers created. Password: $YALA_SEED_DEFAULT_PASSWORD, or random per run (not shown)')

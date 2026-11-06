@@ -39,6 +39,7 @@ from .executive_service import (
 )
 from .fleet_performance_service import build_fleet_ceo_metrics
 from .growth_expansion_service import build_ceo_forecast, build_growth_metrics
+from .launch_service import build_business_kpis
 from .incentive_engine_service import build_ceo_dashboard as build_incentive_ceo_dashboard
 from .launch_command_service import (
     build_ceo_daily_summary,
@@ -284,8 +285,10 @@ def build_operations_overview(city_id=None) -> dict:
 
 
 def build_growth_overview(city_id=None) -> dict:
-    growth = build_growth_metrics(city_id=city_id)
-    forecast = build_ceo_forecast(city_id=city_id)
+    # Both builders need build_business_kpis(city_id) (~95 queries); compute it once and share it.
+    kpis = build_business_kpis(city_id=city_id)
+    growth = build_growth_metrics(city_id=city_id, kpis=kpis)
+    forecast = build_ceo_forecast(city_id=city_id, kpis=kpis)
 
     today = timezone.localdate()
     week_start = today - timedelta(days=6)
@@ -336,7 +339,10 @@ def build_growth_overview(city_id=None) -> dict:
 
 
 def build_fleet_overview(city_id=None) -> dict:
-    fleet = build_fleet_ceo_metrics(city_id=city_id)
+    # Only fleet_utilization_pct / acceptance_trend / cancellation_trend are returned, and none
+    # depend on the per-driver ranking rows. drivers=[] skips build_driver_performance_rows
+    # (an N+1 over up to 500 drivers, ~540 queries) whose output was discarded. Figures unchanged.
+    fleet = build_fleet_ceo_metrics(city_id=city_id, drivers=[])
     heat = build_city_heat_map(city_id=city_id, period="hour")
 
     approved = DriverProfile.objects.filter(status="approved")
@@ -390,13 +396,10 @@ def build_ai_insights_summary(city_id=None) -> dict:
             biggest_issue = alert
             break
 
+    # build_growth_metrics() has no per-city "cities" breakdown, so the previous lookup here always
+    # produced "" after spending ~136 queries. The call is skipped; the value is unchanged ("").
+    # No per-city growth figure is invented — the frontend hides this card when it is empty.
     fastest_growing_area = ""
-    growth = build_growth_metrics(city_id=city_id)
-    top_city = None
-    if growth.get("cities"):
-        top_city = max(growth["cities"], key=lambda c: c.get("new_users", 0))
-    if top_city:
-        fastest_growing_area = top_city.get("name", "")
 
     fraud_alerts = [
         a for a in predictions if "fraud" in (a.get("type", "")).lower() or a.get("category") == "fraud"

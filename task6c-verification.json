@@ -1,0 +1,370 @@
+{
+  "desktop": {
+    "shell": 1,
+    "sidebars": 1,
+    "headers": 1,
+    "h1Count": 1,
+    "h1Texts": [
+      "Yala Delivery"
+    ],
+    "groupCount": 11,
+    "navItems": 16,
+    "groups": [
+      {
+        "label": "Executive Command Center",
+        "expanded": "false",
+        "children": 0
+      },
+      {
+        "label": "Operations",
+        "expanded": "false",
+        "children": 0
+      },
+      {
+        "label": "Drivers & Fleet",
+        "expanded": "false",
+        "children": 0
+      },
+      {
+        "label": "Riders",
+        "expanded": "false",
+        "children": 0
+      },
+      {
+        "label": "Yala Delivery",
+        "expanded": "true",
+        "children": 4
+      },
+      {
+        "label": "Employees & Human Resources",
+        "expanded": "false",
+        "children": 0
+      },
+      {
+        "label": "Customer Support",
+        "expanded": "false",
+        "children": 0
+      },
+      {
+        "label": "Finance",
+        "expanded": "false",
+        "children": 0
+      },
+      {
+        "label": "Security & Compliance",
+        "expanded": "false",
+        "children": 0
+      },
+      {
+        "label": "Growth & Analytics",
+        "expanded": "false",
+        "children": 0
+      },
+      {
+        "label": "Platform Management",
+        "expanded": "false",
+        "children": 0
+      }
+    ],
+    "expandedCount": 1,
+    "activeLabels": [
+      "🚚Delivery Dashboard"
+    ],
+    "backdrop": 0,
+    "path": "/admin/delivery",
+    "authed": true,
+    "overflow": 0,
+    "skeletons": 0,
+    "landing": false
+  },
+  "mobile": {
+    "closed": {
+      "shell": 1,
+      "sidebars": 1,
+      "headers": 1,
+      "h1Count": 1,
+      "h1Texts": [
+        "Yala Delivery"
+      ],
+      "groupCount": 11,
+      "navItems": 16,
+      "groups": [
+        {
+          "label": "Executive Command Center",
+          "expanded": "false",
+          "children": 0
+        },
+        {
+          "label": "Operations",
+          "expanded": "false",
+          "children": 0
+        },
+        {
+          "label": "Drivers & Fleet",
+          "expanded": "false",
+          "children": 0
+        },
+        {
+          "label": "Riders",
+          "expanded": "false",
+          "children": 0
+        },
+        {
+          "label": "Yala Delivery",
+          "expanded": "true",
+          "children": 4
+        },
+        {
+          "label": "Employees & Human Resources",
+          "expanded": "false",
+          "children": 0
+        },
+        {
+          "label": "Customer Support",
+          "expanded": "false",
+          "children": 0
+        },
+        {
+          "label": "Finance",
+          "expanded": "false",
+          "children": 0
+        },
+        {
+          "label": "Security & Compliance",
+          "expanded": "false",
+          "children": 0
+        },
+        {
+          "label": "Growth & Analytics",
+          "expanded": "false",
+          "children": 0
+        },
+        {
+          "label": "Platform Management",
+          "expanded": "false",
+          "children": 0
+        }
+      ],
+      "expandedCount": 1,
+      "activeLabels": [
+        "🚚Delivery Dashboard"
+      ],
+      "backdrop": 0,
+      "path": "/admin/delivery",
+      "authed": true,
+      "overflow": 0,
+      "skeletons": 0,
+      "landing": false
+    },
+    "opened": {
+      "shell": 1,
+      "sidebars": 1,
+      "headers": 1,
+      "h1Count": 1,
+      "h1Texts": [
+        "Yala Delivery"
+      ],
+      "groupCount": 11,
+      "navItems": 16,
+      "groups": [
+        {
+          "label": "Executive Command Center",
+          "expanded": "false",
+          "children": 0
+        },
+        {
+          "label": "Operations",
+          "expanded": "false",
+          "children": 0
+        },
+        {
+          "label": "Drivers & Fleet",
+          "expanded": "false",
+          "children": 0
+        },
+        {
+          "label": "Riders",
+          "expanded": "false",
+          "children": 0
+        },
+        {
+          "label": "Yala Delivery",
+          "expanded": "true",
+          "children": 4
+        },
+        {
+          "label": "Employees & Human Resources",
+          "expanded": "false",
+          "children": 0
+        },
+        {
+          "label": "Customer Support",
+          "expanded": "false",
+          "children": 0
+        },
+        {
+          "label": "Finance",
+          "expanded": "false",
+          "children": 0
+        },
+        {
+          "label": "Security & Compliance",
+          "expanded": "false",
+          "children": 0
+        },
+        {
+          "label": "Growth & Analytics",
+          "expanded": "false",
+          "children": 0
+        },
+        {
+          "label": "Platform Management",
+          "expanded": "false",
+          "children": 0
+        }
+      ],
+      "expandedCount": 1,
+      "activeLabels": [
+        "🚚Delivery Dashboard"
+      ],
+      "backdrop": 1,
+      "path": "/admin/delivery",
+      "authed": true,
+      "overflow": 0,
+      "skeletons": 0,
+      "landing": false
+    },
+    "afterBackdrop": {
+      "backdrop": 1
+    }
+  },
+  "accordion": {
+    "afterOpeningSecond": {
+      "expandedCount": 1,
+      "expandedLabels": [
+        "📡Operations▾"
+      ],
+      "visibleChildren": 1
+    }
+  },
+  "routes": {
+    "ceoMaster": {
+      "url": "http://localhost:3000/admin/ceo-master",
+      "shell": 1,
+      "sidebars": 1,
+      "headers": 1,
+      "h1Count": 1,
+      "h1": "CEO Command Center",
+      "landing": false,
+      "authed": true,
+      "overflow": 0,
+      "skeletons": 0,
+      "bad": 0
+    },
+    "operations": {
+      "url": "http://localhost:3000/admin/operations",
+      "shell": 1,
+      "sidebars": 1,
+      "headers": 1,
+      "h1Count": 1,
+      "h1": "Real-Time Operations Center",
+      "landing": false,
+      "authed": true,
+      "overflow": 0,
+      "skeletons": 0,
+      "bad": 0
+    },
+    "deliveryDashboard": {
+      "url": "http://localhost:3000/admin/delivery",
+      "shell": 1,
+      "sidebars": 1,
+      "headers": 1,
+      "h1Count": 1,
+      "h1": "Yala Delivery",
+      "landing": false,
+      "authed": true,
+      "overflow": 0,
+      "skeletons": 0,
+      "bad": 0
+    },
+    "couriers": {
+      "url": "http://localhost:3000/admin/delivery/couriers",
+      "shell": 1,
+      "sidebars": 1,
+      "headers": 1,
+      "h1Count": 1,
+      "h1": "Courier Management",
+      "landing": false,
+      "authed": true,
+      "overflow": 0,
+      "skeletons": 0,
+      "bad": 0
+    },
+    "merchants": {
+      "url": "http://localhost:3000/admin/delivery/merchants",
+      "shell": 1,
+      "sidebars": 1,
+      "headers": 1,
+      "h1Count": 1,
+      "h1": "Merchant Directory",
+      "landing": false,
+      "authed": true,
+      "overflow": 0,
+      "skeletons": 0,
+      "bad": 0
+    },
+    "employees": {
+      "url": "http://localhost:3000/admin/employees",
+      "shell": 1,
+      "sidebars": 1,
+      "headers": 1,
+      "h1Count": 2,
+      "h1": "Employee Management; Employee Management Center",
+      "landing": false,
+      "authed": true,
+      "overflow": 0,
+      "skeletons": 0,
+      "bad": 0
+    },
+    "status": {
+      "url": "http://localhost:3000/admin/status",
+      "shell": 1,
+      "sidebars": 1,
+      "headers": 1,
+      "h1Count": 2,
+      "h1": "Production Status; Production Status",
+      "landing": false,
+      "authed": true,
+      "overflow": 0,
+      "skeletons": 0,
+      "bad": 0
+    }
+  },
+  "console": {
+    "desktop": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "badResponses": []
+    },
+    "mobile": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "badResponses": []
+    },
+    "routes": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "badResponses": []
+    },
+    "support": {
+      "consoleErrors": [],
+      "pageErrors": [],
+      "badResponses": []
+    }
+  },
+  "supportRedirect": {
+    "finalUrl": "http://localhost:3000/admin?section=deliveries&tab=disputes",
+    "activeTab": "Disputes",
+    "shell": 1
+  }
+}

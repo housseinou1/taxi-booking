@@ -58,6 +58,10 @@ from .views_heatmap import (
     DriverFavoriteAreaDeleteView,
 )
 from .views_rides import DriverRideHistoryView
+from .views_performance_hub import (
+    DriverLeaderboardOptOutView,
+    DriverPerformanceHubView,
+)
 from .views_performance import AdminDriverPerformanceView
 from .views_hall_of_fame import AdminHallOfFameView, DriverHallOfFameView
 from .views_verification import (
@@ -130,6 +134,17 @@ urlpatterns = [
 
     # Ride History endpoint
     path("me/rides/", DriverRideHistoryView.as_view(), name="driver-ride-history"),
+    # Driver performance & rewards hub (view existed but was never routed).
+    path(
+        "me/performance-hub/",
+        DriverPerformanceHubView.as_view(),
+        name="driver-performance-hub",
+    ),
+    path(
+        "me/performance-hub/leaderboard-opt-out/",
+        DriverLeaderboardOptOutView.as_view(),
+        name="driver-performance-hub-leaderboard-opt-out",
+    ),
 
     # QR Code Verification endpoints
     path("me/qr-code/", DriverQRCodeView.as_view(), name="driver-qr-code"),

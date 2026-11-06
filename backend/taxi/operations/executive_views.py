@@ -13,6 +13,7 @@ from .executive_permissions import (
     can_manage_finance,
     can_manage_operations,
 )
+from .admin_module_permissions import require_admin_module
 from .executive_service import (
     build_finance_dashboard,
     build_live_metrics,
@@ -81,7 +82,11 @@ def executive_support(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsExecutiveStaff])
+# Phase 3: was `IsExecutiveStaff` == `can_view_executive` == True for ANY staff
+# member. EXECUTIVE_GROUPS is {CEO, Super Admin, Accountant, Finance, Operations
+# Manager, Supervisor}, so those roles - plus anyone holding the finance module -
+# keep access; HR, Support, Platform and Marketing do not.
+@permission_classes([require_admin_module("ceo", "ops", "finance")])
 def executive_dashboard(request):
     city = _city_id(request)
     period = request.query_params.get("period", "daily")

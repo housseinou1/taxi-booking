@@ -35,12 +35,17 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .models import DriverProfile, VerificationRecord
+from operations.admin_module_permissions import HasAdminModule
 from .serializers_verification import (
     VerificationRecordSerializer,
     VerifyDriverRequestSerializer,
     VerifyDriverResponseSerializer,
 )
-from .services.qr_service import QRCodeService, QRGenerationError
+from .services.qr_service import (
+    QRCodeService,
+    QRGenerationError,
+    QRIneligibleDriverError,
+)
 
 User = get_user_model()
 
@@ -113,12 +118,15 @@ class VerifyDriverView(APIView):
             # Cannot create VerificationRecord without a valid driver
             return Response(serializer.data, status=status.HTTP_200_OK)
 
-        # Step 3: Check approval status and build response
-        if driver_profile.status == "approved":
+        # Step 3: "verified" requires approved status AND a complete e-signature.
+        from legal.services import is_qr_eligible
+
+        if is_qr_eligible(driver_profile):
             response_data = self._build_verified_response(driver_profile)
             scan_result = "verified"
         else:
-            # Revoked, suspended, rejected, or any non-approved status
+            # Not approved, or approved but unsigned. Never shown as verified and
+            # no driver details are disclosed for an ineligible code.
             response_data = self._build_inactive_response(driver_profile)
             scan_result = "inactive_driver"
 
@@ -192,14 +200,17 @@ class VerifyDriverView(APIView):
         }
 
     def _build_inactive_response(self, driver_profile: DriverProfile) -> dict:
-        """Build response for an inactive (revoked/suspended/rejected) driver."""
-        user = driver_profile.user
-        driver_name = user.get_full_name() or user.email
+        """Build response for an ineligible QR code (privacy-preserving).
 
+        Covers revoked/suspended/rejected/pending drivers and approved drivers
+        without a complete e-signature. Reveals NOTHING about the driver: no
+        name, no driver code, no photo, no vehicle. The status alone tells the
+        rider not to trust this code.
+        """
         return {
             "status": "inactive_driver",
-            "driver_name": driver_name,
-            "driver_code": driver_profile.driver_code,
+            "driver_name": None,
+            "driver_code": None,
             "driver_photo": None,
             "vehicle_make": None,
             "vehicle_model": None,
@@ -340,7 +351,8 @@ class AdminRegenerateQRCodeView(APIView):
     Requirements: 5.3, 5.4, 5.5, 5.6, 5.7
     """
 
-    permission_classes = [IsAdminUser]
+    permission_classes = [HasAdminModule]
+    admin_module = "drivers"
 
     def post(self, request, driver_id):
         try:
@@ -358,6 +370,16 @@ class AdminRegenerateQRCodeView(APIView):
             )
 
         qr_service = QRCodeService()
+
+        # Same eligibility as generation: approved AND e-signed. Checked first so
+        # an ineligible driver's existing QR code is left exactly as it is.
+        try:
+            qr_service.ensure_eligible(driver_profile)
+        except QRIneligibleDriverError as exc:
+            return Response(
+                {"error": exc.message, "error_code": exc.code},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         try:
             new_qr_uuid, new_image_path = qr_service.regenerate_qr_code(
@@ -392,7 +414,8 @@ class AdminDriverVerificationHistoryView(APIView):
     Requirements: 6.1, 6.2, 6.3, 6.5
     """
 
-    permission_classes = [IsAdminUser]
+    permission_classes = [HasAdminModule]
+    admin_module = "drivers"
 
     def get(self, request, driver_id):
         try:
@@ -433,7 +456,8 @@ class AdminRiderVerificationHistoryView(APIView):
     Requirements: 6.1, 6.4, 6.5
     """
 
-    permission_classes = [IsAdminUser]
+    permission_classes = [HasAdminModule]
+    admin_module = "riders"
 
     def get(self, request, rider_id):
         try:

@@ -14,9 +14,9 @@ API = os.environ.get("YALA_API_BASE", "https://api.yalataxi.live").rstrip("/")
 CTX = ssl.create_default_context()
 
 RIDER_EMAIL = os.environ.get("RC2_RIDER_EMAIL", "qa-rider-profile-fix@test.local")
-RIDER_PASSWORD = os.environ.get("RC2_RIDER_PASSWORD", "QaRiderFix!2026")
+RIDER_PASSWORD = os.environ.get("RC2_RIDER_PASSWORD") or sys.exit("Missing required environment variable: RC2_RIDER_PASSWORD (values are never printed)")
 DRIVER_EMAIL = os.environ.get("RC2_DRIVER_EMAIL", "qa-driver-profile-fix@test.local")
-DRIVER_PASSWORD = os.environ.get("RC2_DRIVER_PASSWORD", "QaDriverFix!2026")
+DRIVER_PASSWORD = os.environ.get("RC2_DRIVER_PASSWORD") or sys.exit("Missing required environment variable: RC2_DRIVER_PASSWORD (values are never printed)")
 
 
 def req(method: str, path: str, token: str | None = None, body: dict | None = None) -> tuple[int, dict]:

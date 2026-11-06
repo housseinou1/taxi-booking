@@ -10,6 +10,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from .models import DriverShift, DriverUnavailableDay, DriverOnlineLog
+from operations.admin_module_permissions import require_admin_module
 
 
 # ─── Driver endpoints ──────────────────────────────────────────────────────────
@@ -106,7 +107,7 @@ def today_shift(request):
 # ─── Admin endpoints ───────────────────────────────────────────────────────────
 
 @api_view(["GET"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("ops", "drivers")])
 def admin_driver_activity(request):
     """Admin: driver activity and coverage."""
     from taxi.drivers.models import DriverProfile
@@ -163,7 +164,7 @@ def admin_driver_activity(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAdminUser])
+@permission_classes([require_admin_module("ops", "drivers")])
 def admin_scheduled_drivers(request):
     """Admin: list of drivers scheduled today."""
     today_dow = timezone.localdate().weekday()

@@ -1,0 +1,83 @@
+{
+  "longRun": {
+    "windowSeconds": 156,
+    "totalRequests": 36,
+    "totalBytes": 902605,
+    "ridesHistoryCalls": 1,
+    "ridesHistoryBytes": 242365,
+    "requestCountsByUrl": {
+      "/auth/token/refresh/": 2,
+      "/operations/admin/me/permissions/": 4,
+      "/notifications/history/": 20,
+      "/auth/me/": 1,
+      "/payments/withdrawals/": 1,
+      "/locations/regions/": 1,
+      "/locations/cities/": 1,
+      "/operations/admin/audit/client-event/": 1,
+      "/locations/analytics/": 1,
+      "/drivers/performance/": 1,
+      "/rides/history/": 1,
+      "/drivers/list/": 1,
+      "/auth/users/": 1
+    },
+    "status404": [],
+    "status429": 0,
+    "jsErrors": [],
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: net::ERR_CONNECTION_REFUSED",
+      "Failed to load resource: net::ERR_CONNECTION_RESET"
+    ],
+    "snapshots": [
+      {
+        "label": "mid",
+        "skeletons": 0,
+        "rows": 0,
+        "bodyLen": 2206
+      },
+      {
+        "label": "end",
+        "skeletons": 0,
+        "rows": 0,
+        "bodyLen": 2206
+      }
+    ]
+  },
+  "dashboards": {
+    "drivers": {
+      "shell": 0,
+      "sidebars": 0,
+      "headers": 0,
+      "h1": "Yala Admin",
+      "kpis": [],
+      "rows": 0,
+      "skeletons": 0,
+      "badResponses": [
+        "401 http://localhost:8000/operations/admin/me/permissions/",
+        "401 http://localhost:8000/auth/token/refresh/",
+        "401 http://localhost:8000/notifications/history/"
+      ]
+    },
+    "riders": {
+      "shell": 0,
+      "sidebars": 0,
+      "headers": 0,
+      "h1": "Yala Admin",
+      "kpis": [],
+      "rows": 0,
+      "skeletons": 0,
+      "badResponses": [
+        "401 http://localhost:8000/operations/admin/me/permissions/",
+        "401 http://localhost:8000/auth/token/refresh/",
+        "401 http://localhost:8000/notifications/history/"
+      ]
+    }
+  },
+  "sidebar": {
+    "groupCount": 0,
+    "groups": [],
+    "tabs": [],
+    "activeItems": 0,
+    "navScrolls": null
+  }
+}

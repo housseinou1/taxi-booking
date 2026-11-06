@@ -115,7 +115,15 @@ def withdrawal_partner_webhooks(sender, instance, **kwargs):
 
 
 @receiver(post_save, sender="drivers.DriverProfile")
-def driver_approved_webhook(sender, instance, **kwargs):
+def driver_approved_webhook(sender, instance, created, **kwargs):
+    # Only a real approval transition may notify partners. An unrelated save on an
+    # already-approved profile — for example the CEO suspending a driver, which
+    # writes `is_available`/`account_under_review` while `status` stays "approved" —
+    # must not emit a bogus "driver.approved" event.
+    update_fields = kwargs.get("update_fields")
+    if not created and update_fields is not None and "status" not in update_fields:
+        return
+
     if instance.status == "approved":
         emit_partner_webhook(
             "driver.approved",
@@ -128,7 +136,12 @@ def driver_approved_webhook(sender, instance, **kwargs):
 
 
 @receiver(post_save, sender="merchants.Merchant")
-def merchant_approved_webhook(sender, instance, **kwargs):
+def merchant_approved_webhook(sender, instance, created, **kwargs):
+    # Same guard as the driver webhook: only a status transition notifies partners.
+    update_fields = kwargs.get("update_fields")
+    if not created and update_fields is not None and "status" not in update_fields:
+        return
+
     if instance.status == "approved":
         emit_partner_webhook(
             "merchant.approved",

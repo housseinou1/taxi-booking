@@ -7,11 +7,23 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+# ── Credentials come from the environment only (never hardcode, never print) ──
+import os as _cred_os
+import sys as _cred_sys
+
+
+def _required_env(name):
+    value = _cred_os.environ.get(name, "")
+    if not value:
+        _cred_sys.exit(f"Missing required environment variable: {name} (values are never printed)")
+    return value
+
+
 API = "https://api.yalataxi.live"
-ADMIN_EMAIL = "sakho@admin.mr"
-ADMIN_PASSWORD = "Admin2026!"
+ADMIN_EMAIL = _required_env("YALA_CEO_EMAIL")
+ADMIN_PASSWORD = _required_env("YALA_CEO_PASSWORD")
 RIDER_EMAIL = "qa-rider-profile-fix@test.local"
-RIDER_PASSWORD = "QaRiderFix!2026"
+RIDER_PASSWORD = _required_env("YALA_QA_RIDER_PASSWORD")
 OUT = Path(r"C:\Users\Housseinou\Projects\Django\taxi-booking\release\device-qa-rc")
 CTX = ssl._create_unverified_context()
 results = []

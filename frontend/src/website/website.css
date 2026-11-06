@@ -1,0 +1,674 @@
+/* =============================================================================
+   YALA public website — scoped styles
+   Every selector is prefixed with .yala-site so this never leaks into the
+   Rider / Driver / Delivery / Admin applications.
+   ============================================================================= */
+
+.yala-site {
+  --ys-primary: #00a651;
+  --ys-primary-strong: #009248;
+  --ys-primary-deep: #087a45;
+  --ys-primary-dark: #034f2f;
+  --ys-lime: #31d565;
+  --ys-gold: #f5b719;
+  --ys-gold-deep: #7c4a03;
+  --ys-ink: #0f172a;
+  --ys-ink-soft: rgba(15, 23, 42, 0.72);
+  --ys-muted: #64748b;
+  --ys-canvas: #f3f7f5;
+  --ys-line: rgba(15, 23, 42, 0.08);
+  --ys-line-strong: rgba(15, 23, 42, 0.14);
+  --ys-danger: #dc2626;
+  --ys-info: #2563eb;
+  --ys-r-sm: 12px;
+  --ys-r-md: 16px;
+  --ys-r-lg: 20px;
+  --ys-r-xl: 24px;
+  --ys-r-pill: 999px;
+  --ys-e1: 0 2px 8px rgba(15, 23, 42, 0.06);
+  --ys-e2: 0 8px 22px rgba(15, 23, 42, 0.08);
+  --ys-e3: 0 14px 34px rgba(15, 23, 42, 0.12);
+  --ys-t: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --ys-maxw: 1200px;
+
+  background: var(--ys-canvas);
+  color: var(--ys-ink);
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+/* Arabic gets a font with real Arabic coverage (Plus Jakarta Sans has none) */
+.yala-site[dir='rtl'] {
+  font-family: 'Noto Kufi Arabic', 'Plus Jakarta Sans', system-ui, sans-serif;
+}
+
+.yala-site *,
+.yala-site *::before,
+.yala-site *::after { box-sizing: border-box; }
+
+.yala-site img { max-width: 100%; display: block; }
+.yala-site button { font: inherit; cursor: pointer; border: 0; background: none; color: inherit; }
+.yala-site a { color: inherit; text-decoration: none; }
+.yala-site :focus-visible { outline: 3px solid var(--ys-gold); outline-offset: 2px; border-radius: 4px; }
+
+.yala-site .ys-wrap { max-width: var(--ys-maxw); margin: 0 auto; padding: 0 24px; }
+
+.yala-site .ys-skip {
+  position: absolute; left: -9999px; top: 0; z-index: 99;
+  background: var(--ys-primary-dark); color: #fff; padding: 12px 20px;
+  border-radius: 0 0 var(--ys-r-sm) 0;
+}
+.yala-site .ys-skip:focus { left: 0; }
+
+/* ---------------------------------------------------------------- header */
+.yala-site .ys-hdr {
+  position: sticky; top: 0; z-index: 50;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--ys-line);
+}
+.yala-site .ys-hdr-in { display: flex; align-items: center; gap: 16px; height: 74px; }
+
+.yala-site .ys-brand { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.yala-site .ys-brand-mark {
+  width: 40px; height: 40px; border-radius: 11px; flex-shrink: 0;
+  background: linear-gradient(135deg, var(--ys-primary), var(--ys-lime));
+  display: grid; place-items: center; color: #fff; font-weight: 800; font-size: 19px;
+  box-shadow: 0 4px 12px rgba(0, 166, 81, 0.32);
+}
+.yala-site .ys-brand-txt { display: grid; line-height: 1.15; }
+.yala-site .ys-brand-txt strong { font-size: 18px; font-weight: 800; letter-spacing: -0.02em; }
+.yala-site .ys-brand-txt small {
+  font-size: 11px; color: var(--ys-muted); font-weight: 600;
+  letter-spacing: 0.04em; text-transform: uppercase;
+}
+
+.yala-site .ys-nav { display: flex; align-items: center; gap: 2px; margin-inline-start: 16px; flex: 1; }
+.yala-site .ys-nav a {
+  padding: 9px 12px; border-radius: var(--ys-r-sm); font-size: 14.5px;
+  font-weight: 600; color: var(--ys-ink-soft); transition: var(--ys-t); white-space: nowrap;
+}
+.yala-site .ys-nav a:hover { background: rgba(0, 166, 81, 0.08); color: var(--ys-primary-deep); }
+.yala-site .ys-nav a[aria-current='page'] {
+  color: var(--ys-primary-deep); background: rgba(0, 166, 81, 0.1);
+}
+
+.yala-site .ys-hdr-actions { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+
+.yala-site .ys-lang {
+  display: flex; border: 1px solid var(--ys-line-strong);
+  border-radius: var(--ys-r-pill); padding: 3px; background: #fff; gap: 2px;
+}
+.yala-site .ys-lang button {
+  padding: 6px 10px; border-radius: var(--ys-r-pill); font-size: 12.5px;
+  font-weight: 700; color: var(--ys-muted); transition: var(--ys-t); min-width: 36px;
+}
+.yala-site .ys-lang button[aria-pressed='true'] {
+  background: var(--ys-primary); color: #fff; box-shadow: 0 2px 8px rgba(0, 166, 81, 0.3);
+}
+.yala-site .ys-lang button:hover:not([aria-pressed='true']) {
+  background: var(--ys-canvas); color: var(--ys-ink);
+}
+
+/* --------------------------------------------------------------- buttons */
+.yala-site .ys-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 0 20px; height: 46px; border-radius: var(--ys-r-sm);
+  font-weight: 700; font-size: 15px; transition: var(--ys-t);
+  border: 1.5px solid transparent; white-space: nowrap;
+}
+.yala-site .ys-btn:active { transform: translateY(1px); }
+.yala-site .ys-btn-primary {
+  background: var(--ys-primary); color: #fff; box-shadow: 0 4px 14px rgba(0, 166, 81, 0.28);
+}
+.yala-site .ys-btn-primary:hover {
+  background: var(--ys-primary-strong); box-shadow: 0 6px 20px rgba(0, 166, 81, 0.36);
+}
+.yala-site .ys-btn-ghost {
+  border-color: var(--ys-line-strong); background: #fff; color: var(--ys-ink);
+}
+.yala-site .ys-btn-ghost:hover {
+  border-color: var(--ys-primary); color: var(--ys-primary-deep);
+  background: rgba(0, 166, 81, 0.05);
+}
+.yala-site .ys-btn-wa { background: #25d366; color: #06331a; box-shadow: 0 4px 14px rgba(37, 211, 102, 0.3); }
+.yala-site .ys-btn-wa:hover { background: #1eb958; }
+.yala-site .ys-btn-white { background: #fff; color: var(--ys-primary-deep); }
+.yala-site .ys-btn-white:hover { background: #f0fff7; }
+.yala-site .ys-btn-outline-l { border-color: rgba(255, 255, 255, 0.5); color: #fff; }
+.yala-site .ys-btn-outline-l:hover { background: rgba(255, 255, 255, 0.14); border-color: #fff; }
+.yala-site .ys-btn-lg { height: 54px; padding: 0 26px; font-size: 16px; border-radius: var(--ys-r-md); }
+.yala-site .ys-btn-sm { height: 38px; padding: 0 15px; font-size: 13.5px; }
+.yala-site .ys-btn-block { width: 100%; }
+.yala-site .ys-btn .ys-ico { font-size: 18px; line-height: 1; }
+
+/* ---------------------------------------------------------- mobile menu */
+.yala-site .ys-burger {
+  display: none; width: 44px; height: 44px; border-radius: var(--ys-r-sm);
+  border: 1px solid var(--ys-line-strong); place-items: center; background: #fff; flex-shrink: 0;
+}
+.yala-site .ys-burger i {
+  display: block; width: 18px; height: 2px; background: var(--ys-ink);
+  border-radius: 2px; position: relative; transition: var(--ys-t);
+}
+.yala-site .ys-burger i::before,
+.yala-site .ys-burger i::after {
+  content: ''; position: absolute; left: 0; width: 18px; height: 2px;
+  background: var(--ys-ink); border-radius: 2px; transition: var(--ys-t);
+}
+.yala-site .ys-burger i::before { top: -6px; }
+.yala-site .ys-burger i::after { top: 6px; }
+.yala-site .ys-burger[aria-expanded='true'] i { background: transparent; }
+.yala-site .ys-burger[aria-expanded='true'] i::before { top: 0; transform: rotate(45deg); }
+.yala-site .ys-burger[aria-expanded='true'] i::after { top: 0; transform: rotate(-45deg); }
+
+.yala-site .ys-mmenu {
+  display: none; border-bottom: 1px solid var(--ys-line); background: #fff;
+  box-shadow: var(--ys-e2); padding: 12px 24px 20px;
+}
+.yala-site .ys-mmenu.ys-open { display: block; }
+.yala-site .ys-mmenu a {
+  display: block; padding: 13px 12px; border-radius: var(--ys-r-sm);
+  font-weight: 600; font-size: 15.5px; color: var(--ys-ink-soft);
+}
+.yala-site .ys-mmenu a:hover { background: var(--ys-canvas); }
+.yala-site .ys-mmenu hr { border: 0; border-top: 1px solid var(--ys-line); margin: 12px 0; }
+.yala-site .ys-mmenu .ys-mm-cta { display: grid; gap: 8px; margin-top: 12px; }
+
+/* ------------------------------------------------------------------ hero */
+.yala-site .ys-hero {
+  position: relative; overflow: hidden; padding: 64px 0 48px;
+  background:
+    radial-gradient(900px 480px at 88% 8%, rgba(0, 166, 81, 0.13), transparent 62%),
+    radial-gradient(700px 420px at 4% 92%, rgba(245, 183, 25, 0.12), transparent 60%),
+    linear-gradient(180deg, #fff 0%, var(--ys-canvas) 100%);
+}
+.yala-site .ys-hero-grid {
+  display: grid; grid-template-columns: 1.08fr 0.92fr; gap: 48px; align-items: center;
+}
+.yala-site .ys-badge-mr {
+  display: inline-flex; align-items: center; gap: 9px; padding: 7px 15px 7px 9px;
+  background: #fff; border: 1px solid var(--ys-line-strong); border-radius: var(--ys-r-pill);
+  font-size: 13px; font-weight: 700; color: var(--ys-primary-deep); box-shadow: var(--ys-e1);
+}
+.yala-site .ys-badge-mr .ys-flag { font-size: 17px; line-height: 1; }
+.yala-site .ys-hero h1 {
+  margin: 20px 0 16px; font-size: clamp(34px, 5vw, 58px); line-height: 1.07;
+  font-weight: 800; letter-spacing: -0.03em;
+}
+.yala-site .ys-hero h1 em {
+  font-style: normal;
+  background: linear-gradient(120deg, var(--ys-primary), var(--ys-lime));
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+}
+.yala-site .ys-hero-sub {
+  margin: 0 0 24px; font-size: 18px; line-height: 1.6;
+  color: var(--ys-ink-soft); max-width: 56ch;
+}
+.yala-site .ys-hero-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 24px; }
+.yala-site .ys-trust {
+  display: flex; flex-wrap: wrap; gap: 8px 20px; padding-top: 20px;
+  border-top: 1px solid var(--ys-line);
+}
+.yala-site .ys-trust span {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 13.5px; font-weight: 600; color: var(--ys-ink-soft);
+}
+.yala-site .ys-trust .ys-ck {
+  width: 19px; height: 19px; border-radius: 50%; background: rgba(0, 166, 81, 0.14);
+  color: var(--ys-primary-deep); display: grid; place-items: center;
+  font-size: 11px; font-weight: 800;
+}
+
+/* ------------------------------------------------------- phone mock-up */
+.yala-site .ys-hero-visual { position: relative; display: grid; place-items: center; min-height: 430px; }
+.yala-site .ys-phone {
+  width: 216px; border-radius: 30px; background: #0f172a; padding: 9px;
+  box-shadow: var(--ys-e3); position: relative;
+}
+.yala-site .ys-phone::after {
+  content: ''; position: absolute; top: 9px; left: 50%; transform: translateX(-50%);
+  width: 76px; height: 19px; background: #0f172a; border-radius: 0 0 13px 13px; z-index: 2;
+}
+.yala-site .ys-scr {
+  border-radius: 22px; background: #fff; overflow: hidden; height: 404px;
+  padding: 16px; display: flex; flex-direction: column; gap: 12px;
+}
+.yala-site .ys-bar { height: 9px; border-radius: 5px; background: var(--ys-canvas); }
+.yala-site .ys-w45 { width: 45%; }
+.yala-site .ys-mini {
+  height: 118px; border-radius: var(--ys-r-md);
+  background: linear-gradient(135deg, rgba(0, 166, 81, 0.16), rgba(49, 213, 101, 0.1));
+  border: 1px solid rgba(0, 166, 81, 0.2); display: grid; place-items: center; font-size: 34px;
+}
+.yala-site .ys-row {
+  display: flex; align-items: center; gap: 10px; padding: 10px;
+  border: 1px solid var(--ys-line); border-radius: var(--ys-r-sm);
+}
+.yala-site .ys-av {
+  width: 30px; height: 30px; border-radius: 50%; background: var(--ys-canvas);
+  display: grid; place-items: center; font-size: 14px; flex-shrink: 0;
+}
+.yala-site .ys-ln { flex: 1; display: grid; gap: 5px; }
+.yala-site .ys-ln i { height: 7px; border-radius: 4px; background: var(--ys-canvas); display: block; }
+.yala-site .ys-ln i:first-child { width: 64%; }
+
+
+/* -------------------------------------------------------------- sections */
+.yala-site .ys-sec { padding: 64px 0; }
+.yala-site .ys-sec-head { max-width: 720px; margin: 0 auto 48px; text-align: center; }
+.yala-site .ys-sec-head.ys-start { margin-inline: 0; text-align: start; }
+.yala-site .ys-eyebrow {
+  display: inline-block; font-size: 12.5px; font-weight: 800; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--ys-primary-deep); margin-bottom: 12px;
+}
+.yala-site .ys-eyebrow.ys-on-dark { color: var(--ys-lime); }
+.yala-site .ys-sec-head h1,
+.yala-site .ys-sec-head h2 {
+  margin: 0 0 16px; font-size: clamp(26px, 3.4vw, 40px); line-height: 1.15;
+  font-weight: 800; letter-spacing: -0.025em;
+}
+.yala-site .ys-sec-head p { margin: 0; font-size: 17px; line-height: 1.65; color: var(--ys-ink-soft); }
+
+.yala-site .ys-cities { background: #fff; border-block: 1px solid var(--ys-line); padding: 32px 0; }
+.yala-site .ys-cities-in {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: center;
+}
+.yala-site .ys-cities-lbl {
+  font-size: 13px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--ys-muted); margin-inline-end: 8px;
+}
+.yala-site .ys-city {
+  font-size: 13px; font-weight: 600; color: var(--ys-ink-soft); background: var(--ys-canvas);
+  border: 1px solid var(--ys-line); border-radius: var(--ys-r-pill); padding: 5px 13px;
+}
+
+/* ----------------------------------------------------------------- cards */
+.yala-site .ys-cards {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px;
+}
+.yala-site .ys-card {
+  background: #fff; border: 1px solid var(--ys-line); border-radius: var(--ys-r-xl);
+  padding: 32px; box-shadow: var(--ys-e1); transition: var(--ys-t);
+  display: flex; flex-direction: column; position: relative; overflow: hidden;
+}
+.yala-site .ys-card::before {
+  content: ''; position: absolute; inset-block-start: 0; inset-inline-start: 0;
+  width: 100%; height: 4px;
+  background: linear-gradient(90deg, var(--ys-primary), var(--ys-lime));
+  transform: scaleX(0); transform-origin: inline-start; transition: var(--ys-t);
+}
+.yala-site .ys-card:hover {
+  transform: translateY(-4px); box-shadow: var(--ys-e3); border-color: rgba(0, 166, 81, 0.28);
+}
+.yala-site .ys-card:hover::before { transform: scaleX(1); }
+.yala-site .ys-card-ico {
+  width: 54px; height: 54px; border-radius: var(--ys-r-md); display: grid; place-items: center;
+  font-size: 25px; margin-bottom: 20px; background: rgba(0, 166, 81, 0.1); color: var(--ys-primary-deep);
+}
+.yala-site .ys-card.ys-gold .ys-card-ico { background: rgba(245, 183, 25, 0.16); color: var(--ys-gold-deep); }
+.yala-site .ys-card.ys-gold::before { background: linear-gradient(90deg, var(--ys-gold), #ffd76e); }
+.yala-site .ys-card.ys-blue .ys-card-ico { background: rgba(37, 99, 235, 0.1); color: #1d4ed8; }
+.yala-site .ys-card.ys-blue::before { background: linear-gradient(90deg, var(--ys-info), #60a5fa); }
+.yala-site .ys-card h3 { margin: 0 0 12px; font-size: 21px; font-weight: 800; letter-spacing: -0.015em; }
+.yala-site .ys-card p { margin: 0 0 20px; font-size: 15px; line-height: 1.65; color: var(--ys-ink-soft); }
+.yala-site .ys-card ul { margin: 0 0 24px; padding: 0; list-style: none; display: grid; gap: 9px; }
+.yala-site .ys-card li {
+  display: flex; gap: 9px; align-items: flex-start; font-size: 14.5px; color: var(--ys-ink-soft);
+}
+.yala-site .ys-card li .ys-tick { color: var(--ys-primary); font-weight: 800; flex-shrink: 0; }
+.yala-site .ys-card .ys-card-cta { margin-top: auto; display: grid; gap: 8px; }
+.yala-site .ys-card .ys-note { font-size: 12px; color: var(--ys-muted); text-align: center; font-weight: 600; }
+
+/* ------------------------------------------------------------- features */
+.yala-site .ys-feat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+.yala-site .ys-feat {
+  background: #fff; border: 1px solid var(--ys-line); border-radius: var(--ys-r-lg);
+  padding: 24px; box-shadow: var(--ys-e1); transition: var(--ys-t);
+}
+.yala-site .ys-feat:hover { transform: translateY(-3px); box-shadow: var(--ys-e2); border-color: rgba(0,166,81,.26); }
+.yala-site .ys-feat .ys-fi {
+  width: 46px; height: 46px; border-radius: var(--ys-r-sm); display: grid; place-items: center;
+  font-size: 22px; background: rgba(0,166,81,.1); margin-bottom: 16px;
+}
+.yala-site .ys-feat h3 { margin: 0 0 8px; font-size: 16.5px; font-weight: 700; }
+.yala-site .ys-feat p { margin: 0; font-size: 14.5px; line-height: 1.62; color: var(--ys-ink-soft); }
+
+/* ------------------------------------------------------------ checklist */
+.yala-site .ys-check { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.yala-site .ys-check li { display: flex; gap: 11px; align-items: flex-start; font-size: 15px; color: var(--ys-ink-soft); }
+.yala-site .ys-check .ys-tick {
+  width: 22px; height: 22px; border-radius: 50%; background: rgba(0,166,81,.14);
+  color: var(--ys-primary-deep); display: grid; place-items: center; flex-shrink: 0;
+  font-size: 12px; font-weight: 800;
+}
+
+/* ---------------------------------------------------------------- steps */
+.yala-site .ys-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 20px; }
+.yala-site .ys-step {
+  background: #fff; border: 1px solid var(--ys-line); border-radius: var(--ys-r-lg);
+  padding: 24px; box-shadow: var(--ys-e1);
+}
+.yala-site .ys-step .ys-n {
+  width: 42px; height: 42px; border-radius: var(--ys-r-sm); display: grid; place-items: center;
+  background: var(--ys-primary); color: #fff; font-weight: 800; font-size: 15px;
+  margin-bottom: 16px; box-shadow: 0 4px 12px rgba(0,166,81,.28);
+}
+.yala-site .ys-step h3 { margin: 0 0 8px; font-size: 16.5px; font-weight: 700; }
+.yala-site .ys-step p { margin: 0; font-size: 14.5px; line-height: 1.6; color: var(--ys-ink-soft); }
+
+/* --------------------------------------------------------------- safety */
+.yala-site .ys-safety {
+  background:
+    radial-gradient(800px 420px at 12% 0%, rgba(0,166,81,.22), transparent 60%),
+    linear-gradient(160deg, var(--ys-primary-dark), #022c1a);
+  color: #fff;
+}
+.yala-site .ys-safety .ys-sec-head h2 { color: #fff; }
+.yala-site .ys-safety .ys-sec-head p { color: rgba(255,255,255,.78); }
+.yala-site .ys-sg { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
+.yala-site .ys-sg-item {
+  background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.13);
+  border-radius: var(--ys-r-lg); padding: 24px; transition: var(--ys-t);
+}
+.yala-site .ys-sg-item:hover { background: rgba(255,255,255,.1); border-color: rgba(49,213,101,.4); transform: translateY(-3px); }
+.yala-site .ys-sg-item .ys-si { font-size: 24px; margin-bottom: 12px; }
+.yala-site .ys-sg-item h3 { margin: 0 0 8px; font-size: 16.5px; font-weight: 700; color: #fff; }
+.yala-site .ys-sg-item p { margin: 0; font-size: 14px; line-height: 1.6; color: rgba(255,255,255,.76); }
+
+/* -------------------------------------------------------------- cta band */
+.yala-site .ys-cta-band {
+  background: linear-gradient(135deg, var(--ys-primary), var(--ys-primary-deep));
+  color: #fff; border-radius: var(--ys-r-xl); padding: 40px 32px;
+  text-align: center; margin-top: 48px;
+}
+.yala-site .ys-cta-band h2 {
+  margin: 0 0 12px; font-size: clamp(22px,2.8vw,30px); font-weight: 800;
+  color: #fff; letter-spacing: -0.02em;
+}
+.yala-site .ys-cta-band p { margin: 0 auto 24px; font-size: 16px; color: rgba(255,255,255,.86); max-width: 56ch; }
+.yala-site .ys-cta-band .ys-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+/* ------------------------------------------------------------------ faq */
+.yala-site .ys-faq { max-width: 860px; margin: 0 auto; display: grid; gap: 12px; }
+.yala-site .ys-faq details { background: #fff; border: 1px solid var(--ys-line); border-radius: var(--ys-r-md); overflow: hidden; }
+.yala-site .ys-faq details[open] { border-color: rgba(0,166,81,.3); box-shadow: var(--ys-e1); }
+.yala-site .ys-faq summary {
+  padding: 20px 24px; cursor: pointer; font-weight: 700; font-size: 15.5px;
+  list-style: none; display: flex; justify-content: space-between; gap: 16px; align-items: center;
+}
+.yala-site .ys-faq summary::-webkit-details-marker { display: none; }
+.yala-site .ys-faq summary::after { content: '+'; font-size: 20px; font-weight: 800; color: var(--ys-primary); }
+.yala-site .ys-faq details[open] summary::after { content: '–'; }
+.yala-site .ys-faq .ys-ans { padding: 0 24px 20px; font-size: 14.5px; line-height: 1.68; color: var(--ys-ink-soft); }
+
+/* -------------------------------------------------------------- founder */
+.yala-site .ys-founder {
+  display: flex; gap: 20px; align-items: flex-start;
+  padding: 20px 24px; background: #fff; border: 1px solid var(--ys-line);
+  border-radius: var(--ys-r-lg); box-shadow: var(--ys-e1);
+  max-width: 600px; margin-top: 32px; position: relative; overflow: hidden;
+}
+.yala-site .ys-founder::before {
+  content: ''; position: absolute; inset-block-start: 0; inset-inline-start: 0;
+  width: 4px; block-size: 100%;
+  background: linear-gradient(180deg, var(--ys-primary), var(--ys-gold));
+}
+.yala-site .ys-founder-av {
+  width: 58px; height: 58px; border-radius: var(--ys-r-md); flex-shrink: 0;
+  background: linear-gradient(135deg, var(--ys-primary), var(--ys-primary-dark));
+  color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 19px;
+  letter-spacing: 0.02em; box-shadow: 0 4px 12px rgba(0,166,81,.28);
+}
+.yala-site .ys-founder-body { display: grid; gap: 2px; min-width: 0; flex: 1; }
+.yala-site .ys-founder-eyebrow {
+  font-size: 10.5px; font-weight: 800; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--ys-muted);
+}
+.yala-site .ys-founder-name { font-size: 19px; font-weight: 800; letter-spacing: -0.015em; line-height: 1.25; }
+.yala-site .ys-founder-role { font-size: 13px; font-weight: 700; color: var(--ys-gold-deep); }
+.yala-site .ys-founder-org { font-size: 13.5px; font-weight: 600; color: var(--ys-ink-soft); }
+.yala-site .ys-founder-links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.yala-site .ys-founder-link {
+  display: inline-flex; align-items: center; gap: 7px; padding: 7px 13px;
+  border: 1px solid var(--ys-line-strong); border-radius: var(--ys-r-pill);
+  font-size: 13px; font-weight: 600; color: var(--ys-ink-soft);
+  transition: var(--ys-t); background: #fff;
+}
+.yala-site .ys-founder-link:hover {
+  border-color: var(--ys-primary); color: var(--ys-primary-deep); background: rgba(0,166,81,.05);
+}
+.yala-site .ys-founder-link .ys-fl { direction: ltr; unicode-bidi: isolate; }
+.yala-site .ys-founder-tag {
+  margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--ys-line);
+  font-size: 12.5px; font-weight: 700; color: var(--ys-primary-deep);
+}
+.yala-site .ys-founder-tag .ys-sep { color: var(--ys-gold); margin: 0 7px; font-weight: 800; }
+
+/* -------------------------------------------------------------- contact */
+.yala-site .ys-contact { background: #fff; border-block: 1px solid var(--ys-line); }
+.yala-site .ys-contact-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+  gap: 20px; margin-bottom: 48px;
+}
+.yala-site .ys-ccard {
+  background: var(--ys-canvas); border: 1px solid var(--ys-line); border-radius: var(--ys-r-xl);
+  padding: 24px; display: flex; flex-direction: column; transition: var(--ys-t);
+}
+.yala-site .ys-ccard:hover { border-color: rgba(0,166,81,.32); box-shadow: var(--ys-e2); transform: translateY(-3px); }
+.yala-site .ys-cico { width: 52px; height: 52px; border-radius: var(--ys-r-md); display: grid; place-items: center; margin-bottom: 16px; }
+.yala-site .ys-cico svg { width: 26px; height: 26px; display: block; }
+.yala-site .ys-ccard.ys-phone .ys-cico { background: rgba(0,166,81,.12); color: var(--ys-primary-deep); }
+.yala-site .ys-ccard.ys-wa .ys-cico { background: rgba(37,211,102,.14); color: #128c3e; }
+.yala-site .ys-ccard.ys-mail .ys-cico { background: rgba(37,99,235,.1); color: #1d4ed8; }
+.yala-site .ys-ccard h3 { margin: 0 0 8px; font-size: 17px; font-weight: 800; }
+.yala-site .ys-ccard .ys-cval { font-size: 19px; font-weight: 800; margin-bottom: 8px; direction: ltr; unicode-bidi: isolate; }
+.yala-site .ys-ccard p { margin: 0 0 20px; font-size: 14px; line-height: 1.6; color: var(--ys-ink-soft); flex: 1; }
+.yala-site .ys-ccard .ys-cbtn { margin-top: auto; }
+.yala-site .ys-ccard .ys-meta { font-size: 11.5px; color: var(--ys-muted); font-weight: 600; margin-top: 12px; }
+
+/* ----------------------------------------------------------------- form */
+.yala-site .ys-form-wrap { display: grid; grid-template-columns: 0.85fr 1.15fr; gap: 48px; align-items: start; }
+.yala-site .ys-form-aside h3 { margin: 0 0 16px; font-size: 24px; font-weight: 800; letter-spacing: -0.02em; }
+.yala-site .ys-form-aside p { margin: 0 0 20px; font-size: 15px; line-height: 1.7; color: var(--ys-ink-soft); }
+.yala-site .ys-secure-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; }
+.yala-site .ys-secure-list li { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; color: var(--ys-ink-soft); }
+.yala-site .ys-secure-list .ys-sh {
+  width: 22px; height: 22px; border-radius: 6px; background: rgba(0,166,81,.12);
+  color: var(--ys-primary-deep); display: grid; place-items: center; flex-shrink: 0;
+  font-size: 12px; font-weight: 800;
+}
+.yala-site .ys-cform {
+  background: var(--ys-canvas); border: 1px solid var(--ys-line);
+  border-radius: var(--ys-r-xl); padding: 32px; display: grid; gap: 20px;
+}
+.yala-site .ys-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.yala-site .ys-field { display: grid; gap: 7px; }
+.yala-site .ys-field label { font-size: 13.5px; font-weight: 700; }
+.yala-site .ys-field label .ys-req { color: var(--ys-danger); }
+.yala-site .ys-field input,
+.yala-site .ys-field textarea,
+.yala-site .ys-field select {
+  width: 100%; font: inherit; font-size: 15px; color: var(--ys-ink); background: #fff;
+  border: 1.5px solid var(--ys-line-strong); border-radius: var(--ys-r-sm);
+  padding: 0 14px; height: 48px; transition: var(--ys-t);
+}
+.yala-site .ys-field textarea { height: auto; min-height: 124px; padding: 13px 14px; resize: vertical; line-height: 1.55; }
+.yala-site .ys-field input:focus,
+.yala-site .ys-field textarea:focus,
+.yala-site .ys-field select:focus {
+  outline: none; border-color: var(--ys-primary); box-shadow: 0 0 0 3px rgba(0,166,81,.16);
+}
+.yala-site .ys-field .ys-hint { font-size: 12px; color: var(--ys-muted); }
+.yala-site .ys-field .ys-err { font-size: 12px; font-weight: 700; color: var(--ys-danger); display: none; }
+.yala-site .ys-field.ys-invalid input,
+.yala-site .ys-field.ys-invalid textarea,
+.yala-site .ys-field.ys-invalid select { border-color: var(--ys-danger); }
+.yala-site .ys-field.ys-invalid .ys-err { display: block; }
+.yala-site .ys-consent { display: flex; gap: 11px; align-items: flex-start; font-size: 13.5px; color: var(--ys-ink-soft); line-height: 1.55; }
+.yala-site .ys-consent input { width: 20px; height: 20px; margin: 1px 0 0; flex-shrink: 0; accent-color: var(--ys-primary); cursor: pointer; }
+.yala-site .ys-consent a { color: var(--ys-primary-deep); font-weight: 700; text-decoration: underline; }
+.yala-site .ys-hp { position: absolute !important; left: -9999px !important; width: 1px; height: 1px; overflow: hidden; }
+.yala-site .ys-status { border-radius: var(--ys-r-sm); padding: 13px 16px; font-size: 14px; font-weight: 600; display: none; line-height: 1.55; }
+.yala-site .ys-status.ys-show { display: block; }
+.yala-site .ys-status.ys-ok { background: rgba(5,150,105,.1); border: 1px solid rgba(5,150,105,.3); color: #046b4a; }
+.yala-site .ys-status.ys-bad { background: rgba(220,38,38,.08); border: 1px solid rgba(220,38,38,.3); color: #991b1b; }
+.yala-site .ys-form-foot { font-size: 12px; color: var(--ys-muted); line-height: 1.6; text-align: center; }
+
+/* --------------------------------------------------------------- footer */
+.yala-site .ys-ftr { background: var(--ys-ink); color: rgba(255,255,255,.72); padding: 64px 0 32px; }
+.yala-site .ys-ftr-top {
+  display: grid; grid-template-columns: 1.1fr 2.3fr; gap: 48px;
+  padding-bottom: 40px; border-bottom: 1px solid rgba(255,255,255,.12);
+}
+.yala-site .ys-ftr-brand { display: flex; gap: 12px; align-items: flex-start; }
+.yala-site .ys-ftr-brand .ys-brand-mark { box-shadow: none; }
+.yala-site .ys-ftr-brand strong { display: block; color: #fff; font-size: 17px; font-weight: 800; margin-bottom: 3px; }
+.yala-site .ys-ftr-brand span { font-size: 13.5px; line-height: 1.55; display: block; max-width: 34ch; }
+.yala-site .ys-ftr-cols { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
+.yala-site .ys-ftr-col h4 {
+  margin: 0 0 16px; font-size: 12.5px; font-weight: 800; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--ys-lime);
+}
+.yala-site .ys-ftr-col a { display: block; padding: 6px 0; font-size: 14px; color: rgba(255,255,255,.72); transition: var(--ys-t); }
+.yala-site .ys-ftr-col a:hover { color: #fff; transform: translateX(3px); }
+.yala-site[dir='rtl'] .ys-ftr-col a:hover { transform: translateX(-3px); }
+.yala-site .ys-ftr-col .ys-fc { display: flex; align-items: center; gap: 9px; padding: 7px 0; font-size: 14px; }
+.yala-site .ys-ftr-col .ys-fci {
+  width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center;
+  flex-shrink: 0; background: rgba(255,255,255,.1); font-size: 13px; line-height: 1;
+}
+.yala-site .ys-ftr-col .ys-fc.ys-wa .ys-fci { background: rgba(37,211,102,.22); }
+.yala-site .ys-ftr-col .ys-fct { display: grid; gap: 1px; line-height: 1.3; min-width: 0; }
+.yala-site .ys-ftr-col .ys-fct b { font-weight: 700; font-size: 13px; }
+.yala-site .ys-ftr-col .ys-fct i {
+  font-style: normal; font-size: 11.5px; color: rgba(255,255,255,.55);
+  direction: ltr; unicode-bidi: isolate;
+}
+.yala-site .ys-ftr-bot {
+  display: flex; flex-wrap: wrap; gap: 16px; align-items: center;
+  justify-content: space-between; padding-top: 24px; font-size: 13px;
+}
+.yala-site .ys-ftr-bot .ys-mr { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; color: #fff; }
+.yala-site .ys-ftr-bot .ys-cp { color: rgba(255,255,255,.5); }
+.yala-site .ys-ftr-note {
+  margin-top: 24px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,.1);
+  font-size: 12.5px; color: rgba(255,255,255,.45); line-height: 1.6;
+}
+
+/* ----------------------------------------------------------- responsive */
+@media (max-width: 1080px) {
+  .yala-site .ys-nav { display: none; }
+  .yala-site .ys-burger { display: grid; }
+  .yala-site .ys-brand-txt small { display: none; }
+  .yala-site .ys-hdr-actions .ys-btn-ghost { display: none; }
+}
+@media (max-width: 900px) {
+  .yala-site .ys-hero-grid,
+  .yala-site .ys-form-wrap,
+  .yala-site .ys-ftr-top { grid-template-columns: 1fr; }
+  .yala-site .ys-hero-visual { order: -1; margin-bottom: 16px; }
+  .yala-site .ys-ftr-cols { grid-template-columns: repeat(2, 1fr); }
+  .yala-site .ys-sec { padding: 48px 0; }
+  .yala-site .ys-hero { padding: 48px 0; }
+}
+@media (max-width: 640px) {
+  .yala-site .ys-wrap { padding: 0 20px; }
+  .yala-site .ys-hero h1 { font-size: 31px; }
+  .yala-site .ys-hero-sub { font-size: 16px; }
+  .yala-site .ys-hero-cta .ys-btn { width: 100%; }
+  .yala-site .ys-hero-chip { display: none; }
+  .yala-site .ys-hdr-actions .ys-btn { display: none; }
+  .yala-site .ys-lang button { padding: 6px 8px; min-width: 32px; font-size: 12px; }
+  .yala-site .ys-brand-txt strong { font-size: 16px; }
+  .yala-site .ys-row2 { grid-template-columns: 1fr; }
+  .yala-site .ys-cform { padding: 24px; }
+  .yala-site .ys-ccard { padding: 20px; }
+  .yala-site .ys-founder { flex-direction: column; gap: 16px; padding: 20px; }
+  .yala-site .ys-founder-links { width: 100%; }
+  .yala-site .ys-founder-link { flex: 1; justify-content: center; }
+  .yala-site .ys-ftr-cols { grid-template-columns: 1fr; }
+  .yala-site .ys-ftr-bot { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .yala-site .ys-cta-band { padding: 32px 20px; }
+  .yala-site .ys-cta-band .ys-row .ys-btn { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .yala-site * { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+
+/* RTL refinements */
+.yala-site[dir='rtl'] .ys-hero h1,
+.yala-site[dir='rtl'] .ys-sec-head h1,
+.yala-site[dir='rtl'] .ys-sec-head h2,
+.yala-site[dir='rtl'] .ys-card h3 { letter-spacing: 0; }
+.yala-site[dir='rtl'] .ys-brand-txt small { letter-spacing: 0; }
+.yala-site[dir='rtl'] .ys-card li .ys-tick { transform: scaleX(-1); }
+
+/* ------------------------------------------------------ sub-page hero */
+.yala-site .ys-phero {
+  padding: 64px 0 48px; position: relative; overflow: hidden;
+  background:
+    radial-gradient(820px 420px at 82% 0%, rgba(0,166,81,.14), transparent 62%),
+    linear-gradient(180deg, #fff, var(--ys-canvas));
+}
+.yala-site .ys-phero-grid { display: grid; grid-template-columns: 1.15fr .85fr; gap: 48px; align-items: center; }
+.yala-site .ys-phero h1 {
+  margin: 16px 0 16px; font-size: clamp(30px,4.2vw,46px); line-height: 1.1;
+  font-weight: 800; letter-spacing: -.028em;
+}
+.yala-site .ys-lead { margin: 0 0 24px; font-size: 17.5px; line-height: 1.65; color: var(--ys-ink-soft); max-width: 58ch; }
+.yala-site .ys-icon-badge {
+  width: 64px; height: 64px; border-radius: var(--ys-r-lg); display: grid; place-items: center;
+  font-size: 30px; background: rgba(0,166,81,.12); color: var(--ys-primary-deep);
+}
+.yala-site .ys-phero.ys-gold .ys-icon-badge { background: rgba(245,183,25,.18); color: var(--ys-gold-deep); }
+.yala-site .ys-phero.ys-blue .ys-icon-badge { background: rgba(37,99,235,.12); color: #1d4ed8; }
+.yala-site .ys-crumb { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ys-muted); font-weight: 600; flex-wrap: wrap; }
+.yala-site .ys-crumb a:hover { color: var(--ys-primary-deep); }
+.yala-site .ys-crumb .ys-sep { opacity: .5; }
+.yala-site .ys-note-line { margin: 16px 0 0; font-size: 13px; color: var(--ys-muted); }
+
+.yala-site .ys-mr-panel {
+  background: linear-gradient(150deg, var(--ys-primary-dark), #04351f);
+  border-radius: var(--ys-r-xl); padding: 32px; color: #fff; position: relative; overflow: hidden;
+}
+.yala-site .ys-mr-panel .ys-flag-big { font-size: 46px; margin-bottom: 16px; }
+.yala-site .ys-mr-panel h3 { margin: 0 0 12px; font-size: 23px; font-weight: 800; color: #fff; }
+.yala-site .ys-mr-panel p { margin: 0 0 20px; font-size: 15px; line-height: 1.65; color: rgba(255,255,255,.8); }
+.yala-site .ys-mr-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+.yala-site .ys-mr-tags span {
+  background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2);
+  border-radius: var(--ys-r-pill); padding: 5px 12px; font-size: 12.5px; font-weight: 600;
+}
+
+.yala-site .ys-stat { display: grid; gap: 4px; text-align: center; }
+.yala-site .ys-stat strong { font-size: 30px; font-weight: 800; color: var(--ys-primary-deep); line-height: 1.1; }
+.yala-site .ys-stat span { font-size: 13px; font-weight: 600; color: var(--ys-muted); }
+.yala-site .ys-founder--center { margin-inline: auto; }
+.yala-site .ys-err-show { display: block; font-size: 12px; font-weight: 700; color: var(--ys-danger); }
+
+/* disabled form controls must look and behave disabled */
+.yala-site .ys-btn[disabled] {
+  opacity: .55; cursor: not-allowed; box-shadow: none; transform: none;
+}
+.yala-site .ys-btn[disabled]:hover { background: var(--ys-primary); box-shadow: none; }
+.yala-site .ys-status.ys-note {
+  background: rgba(245,183,25,.13); border: 1px solid rgba(245,183,25,.4);
+  color: var(--ys-gold-deep);
+}
+.yala-site .ys-form-foot a { color: var(--ys-primary-deep); font-weight: 700; }
+.yala-site .ys-form-foot a:hover { text-decoration: underline; }
+
+@media (max-width: 900px) {
+  .yala-site .ys-phero-grid { grid-template-columns: 1fr; }
+  .yala-site .ys-phero { padding: 48px 0; }
+}
+
+
+
+
+
+

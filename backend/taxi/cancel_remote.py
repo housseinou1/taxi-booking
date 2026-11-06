@@ -1,6 +1,18 @@
 """Cancel stuck delivery on production server."""
 import requests
 import urllib3
+
+# ── Credentials come from the environment only (never hardcode, never print) ──
+import os as _cred_os
+import sys as _cred_sys
+
+
+def _required_env(name):
+    value = _cred_os.environ.get(name, "")
+    if not value:
+        _cred_sys.exit(f"Missing required environment variable: {name} (values are never printed)")
+    return value
+
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 BASE = "https://api.yalataxi.live"
@@ -9,7 +21,7 @@ BASE = "https://api.yalataxi.live"
 print("Logging in...")
 r = requests.post(f"{BASE}/auth/login/", json={
     "email": "mariam.ba@yala.mr",
-    "password": "Test1234!"
+    "password": _required_env("YALA_QA_DEFAULT_PASSWORD")
 }, verify=False, timeout=15)
 print(f"Login: {r.status_code}")
 

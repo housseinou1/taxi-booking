@@ -1,13 +1,20 @@
-# Yala Taxi Compliance Site
+# Yala Technologies Compliance Site
 
 Static public pages for Google Play review and user support.
 
-## URLs
+## Canonical URLs
+
+These are the URLs the Play listings must reference. They are plain static HTML,
+so they render with JavaScript enabled **and** disabled, and require no login.
 
 - Website: `https://yalataxi.live`
-- Privacy Policy: `https://yalataxi.live/privacy-policy`
+- **Privacy Policy (canonical):** `https://yalataxi.live/privacy-policy`
 - Account Deletion: `https://yalataxi.live/account-deletion`
 - Support: `support@yalataxi.live`
+
+The same policy is also served in-app at `/privacy` (React route backed by
+`frontend/src/legal/PrivacyPolicy.js`). The static page above is the canonical
+one because it does not depend on JavaScript.
 
 ## Deploy
 

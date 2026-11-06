@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
+# Credentials come from the environment only (never hardcoded, never printed).
+require_env() { local n; for n in "$@"; do if [ -z "${!n:-}" ]; then echo "Missing required environment variable: $n (values are never printed)" >&2; exit 1; fi; export "$n"; done; }
+login_json() { python3 -c 'import json,os,sys; print(json.dumps({"email": sys.argv[1], "password": os.environ[sys.argv[2]]}))' "$1" "$2"; }
+require_env YALA_QA_DRIVER2_PASSWORD YALA_QA_RIDER_PASSWORD
 API="https://api.yalataxi.live"
 PATHS=(
   "/drivers/me/"
@@ -16,7 +20,7 @@ done
 echo "=== DRIVER LOGIN ==="
 DRIVER_TOKEN=$(curl -sS -X POST "$API/auth/login/" \
   -H "Content-Type: application/json" \
-  -d '{"email":"qa-driver-profile-fix@test.local","password":"QaDriverFix!2026"}' \
+  --data-binary @- < <(login_json "qa-driver-profile-fix@test.local" YALA_QA_DRIVER2_PASSWORD) \
   | python3 -c "import sys,json; print(json.load(sys.stdin).get('access',''))")
 if [ -z "$DRIVER_TOKEN" ]; then echo "driver login failed"; exit 1; fi
 echo "driver token acquired"
@@ -31,7 +35,7 @@ done
 echo "=== RIDER LOGIN ==="
 RIDER_TOKEN=$(curl -sS -X POST "$API/auth/login/" \
   -H "Content-Type: application/json" \
-  -d '{"email":"qa-rider-profile-fix@test.local","password":"QaRiderFix!2026"}' \
+  --data-binary @- < <(login_json "qa-rider-profile-fix@test.local" YALA_QA_RIDER_PASSWORD) \
   | python3 -c "import sys,json; print(json.load(sys.stdin).get('access',''))")
 if [ -z "$RIDER_TOKEN" ]; then echo "rider login failed"; exit 1; fi
 

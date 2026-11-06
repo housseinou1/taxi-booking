@@ -1,0 +1,59 @@
+{
+  "deliveryDashboard": {
+    "url": "http://localhost:3000/admin/delivery",
+    "authed": true,
+    "landing": false,
+    "shell": 1,
+    "sidebars": 1,
+    "headers": 1,
+    "h1": 1,
+    "kpis": 10,
+    "activeTab": null,
+    "skeletons": 0,
+    "overflow": 0
+  },
+  "operations": {
+    "url": "http://localhost:3000/admin/operations",
+    "authed": true,
+    "landing": false,
+    "shell": 1,
+    "sidebars": 1,
+    "headers": 1,
+    "h1": 1,
+    "kpis": 0,
+    "activeTab": null,
+    "skeletons": 0,
+    "overflow": 0
+  },
+  "ceoMaster": {
+    "url": "http://localhost:3000/admin/ceo-master",
+    "authed": true,
+    "landing": false,
+    "shell": 1,
+    "sidebars": 1,
+    "headers": 1,
+    "h1": 1,
+    "kpis": 0,
+    "activeTab": null,
+    "skeletons": 0,
+    "overflow": 0
+  },
+  "supportRedirect": {
+    "url": "http://localhost:3000/admin?section=deliveries&tab=disputes",
+    "authed": true,
+    "landing": false,
+    "shell": 1,
+    "sidebars": 1,
+    "headers": 1,
+    "h1": 3,
+    "kpis": 0,
+    "activeTab": "Disputes",
+    "skeletons": 0,
+    "overflow": 0
+  },
+  "errors": {
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": []
+  }
+}

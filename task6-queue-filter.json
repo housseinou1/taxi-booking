@@ -1,0 +1,46 @@
+{
+  "selects": [
+    [
+      "",
+      "nouakchott",
+      "nouadhibou"
+    ],
+    [
+      "all",
+      "pending",
+      "approved",
+      "suspended",
+      "online",
+      "rejected"
+    ],
+    [
+      "",
+      "motorcycle",
+      "bicycle",
+      "car",
+      "van",
+      "truck"
+    ]
+  ],
+  "queueSelectIndex": 1,
+  "afterPending": {
+    "rows": 4,
+    "firstCell": "Ndeye Diallo",
+    "kpiValues": [
+      "42",
+      "38",
+      "4",
+      "38",
+      "0"
+    ]
+  },
+  "afterSuspended": {
+    "rows": 1,
+    "firstCell": "No couriers match these filters."
+  },
+  "errors": {
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": []
+  }
+}

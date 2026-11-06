@@ -1,0 +1,179 @@
+{
+  "pages": {
+    "admin": {
+      "path": "/admin",
+      "onLogin": false,
+      "shell": 1,
+      "sidebars": 1,
+      "headers": 1,
+      "h1": "Operations Console",
+      "kpis": [],
+      "opsKpis": [],
+      "skeletons": 0,
+      "bodyLen": 2206,
+      "newBadResponses": []
+    },
+    "ops-center": {
+      "path": "/admin/ops-center",
+      "onLogin": false,
+      "shell": 1,
+      "sidebars": 1,
+      "headers": 1,
+      "h1": "Ops Center Home",
+      "kpis": [],
+      "opsKpis": [
+        "🚗 — ACTIVE DRIVERS",
+        "📦 — ACTIVE COURIERS",
+        "👤 — ONLINE RIDERS",
+        "🛣️ — ACTIVE TRIPS",
+        "🚚 — ACTIVE DELIVERIES",
+        "✅ — COMPLETED TODAY",
+        "💰 — TODAY",
+        "📊 — THIS WEEK",
+        "📈 — THIS MONTH",
+        "⏳ — PENDING WITHDRAWALS",
+        "🪪 — DRIVER APPROVALS",
+        "📋 — COURIER APPROVALS",
+        "🎫 — SUPPORT TICKETS",
+        "❌ — CANCELLED TODAY"
+      ],
+      "skeletons": 0,
+      "bodyLen": 1344,
+      "newBadResponses": []
+    },
+    "drivers": {
+      "path": "/admin/drivers/dashboard",
+      "onLogin": false,
+      "shell": 1,
+      "sidebars": 1,
+      "headers": 1,
+      "h1": "Drivers Dashboard",
+      "kpis": [
+        "Registered Drivers=104",
+        "Approved Drivers=95",
+        "Online Now=13",
+        "On a Trip=0",
+        "Offline=81",
+        "Suspended=0",
+        "Expired Documents=1",
+        "Active Trips=0",
+        "Riders Waiting=0"
+      ],
+      "opsKpis": [],
+      "skeletons": 0,
+      "bodyLen": 1623,
+      "newBadResponses": []
+    },
+    "riders": {
+      "path": "/admin/riders/dashboard",
+      "onLogin": false,
+      "shell": 1,
+      "sidebars": 1,
+      "headers": 1,
+      "h1": "Riders Dashboard",
+      "kpis": [
+        "Total Riders=155",
+        "Active=155",
+        "Approved=155",
+        "Pending Review=0",
+        "Rejected=0",
+        "Blocked=0",
+        "Phone Verified=148",
+        "National ID on File=1",
+        "Profile Photo=1",
+        "Cities Covered=1"
+      ],
+      "opsKpis": [],
+      "skeletons": 0,
+      "bodyLen": 1822,
+      "newBadResponses": []
+    },
+    "bi": {
+      "path": "/admin/bi",
+      "onLogin": false,
+      "shell": 1,
+      "sidebars": 1,
+      "headers": 1,
+      "h1": "BIAnalytics Center",
+      "kpis": [],
+      "opsKpis": [],
+      "skeletons": 0,
+      "bodyLen": 2243,
+      "newBadResponses": []
+    }
+  },
+  "sidebar": {
+    "groupCount": 11,
+    "groups": [
+      {
+        "label": "👔\nExecutive Command Center",
+        "openGroups": 0,
+        "children": 0
+      },
+      {
+        "label": "📡\nOperations",
+        "openGroups": 1,
+        "children": 9
+      },
+      {
+        "label": "🚕\nDrivers & Fleet",
+        "openGroups": 1,
+        "children": 7
+      },
+      {
+        "label": "👥\nRiders",
+        "openGroups": 1,
+        "children": 2
+      },
+      {
+        "label": "📦\nYala Delivery",
+        "openGroups": 1,
+        "children": 4
+      },
+      {
+        "label": "🧑‍💼\nEmployees & Human Resources",
+        "openGroups": 1,
+        "children": 5
+      },
+      {
+        "label": "🎧\nCustomer Support",
+        "openGroups": 1,
+        "children": 3
+      },
+      {
+        "label": "💰\nFinance",
+        "openGroups": 1,
+        "children": 6
+      },
+      {
+        "label": "🛡\nSecurity & Compliance",
+        "openGroups": 1,
+        "children": 3
+      },
+      {
+        "label": "📈\nGrowth & Analytics",
+        "openGroups": 1,
+        "children": 4
+      },
+      {
+        "label": "⚙\nPlatform Management",
+        "openGroups": 1,
+        "children": 8
+      }
+    ],
+    "activeItems": 1,
+    "navScrolls": true,
+    "tabs": [
+      "Executive Overview",
+      "Financial Overview",
+      "Operations",
+      "Growth",
+      "Fleet",
+      "AI Insights",
+      "Launch Readiness",
+      "Executive Reports",
+      "Executive Actions"
+    ]
+  },
+  "errors": []
+}

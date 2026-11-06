@@ -24,6 +24,8 @@ from taxi.rides.share_views import DEFAULT_SIMILARITY_SCORE
 User = get_user_model()
 
 SHARE_REQUEST_URL = "/rides/share/request/"
+SHARE_ESTIMATE_URL = "/rides/share/estimate/"
+SHARE_SESSION_URL = "/rides/share/session/{session_id}/"
 LEGACY_HARDCODED_BASE = Decimal("50")
 LEGACY_HARDCODED_PER_KM = Decimal("30")
 
@@ -802,27 +804,227 @@ def test_rider_can_rate_completed_share_ride_only():
 
 
 @pytest.mark.django_db
-def test_matching_does_not_reprice_when_fare_already_set():
-    """Current: create_session skips fare recalc if ride.fare is already set.
+def test_share_estimate_matches_request_fare():
+    client = _client()
+    rider = _create_rider("share-estimate@test.com")
+    distance = Decimal("6.00")
+    _auth(client, rider)
 
-    Intended (not implemented here): reprice using session.route_similarity_score
-    after a match. This test documents current behavior so a later change is explicit.
-    """
+    estimate = client.post(
+        SHARE_ESTIMATE_URL,
+        {"distance_km": str(distance), "seats": 1},
+        format="json",
+    )
+    assert estimate.status_code == 200, estimate.data
+    assert estimate.data["fare_is_estimated"] is True
+    assert estimate.data["fare_may_change_on_match"] is True
+
+    created = client.post(
+        SHARE_REQUEST_URL,
+        _share_payload(distance_km=str(distance), seats=1),
+        format="json",
+    )
+    assert created.status_code == 201, created.data
+    assert created.data["fare"] == estimate.data["fare"]
+    assert created.data["economy_fare"] == estimate.data["economy_fare"]
+    assert created.data["fare_is_estimated"] is True
+    assert created.data["fare_may_change_on_match"] is True
+
+
+@pytest.mark.django_db
+def test_share_estimate_two_seats():
+    client = _client()
+    rider = _create_rider("share-estimate-seats@test.com")
+    distance = Decimal("4.00")
+    _auth(client, rider)
+    response = client.post(
+        SHARE_ESTIMATE_URL,
+        {"distance_km": str(distance), "seats": 2},
+        format="json",
+    )
+    assert response.status_code == 200, response.data
+    _, _, expected_fare = _expected_share_fares(None, distance, seats=2)
+    assert response.data["fare"] == int(expected_fare)
+    assert response.data["seats"] == 2
+
+
+@pytest.mark.django_db
+def test_matching_reprices_riders_when_similarity_changes():
     client = _client()
     rider_a = _create_rider("share-reprice-a@test.com")
     rider_b = _create_rider("share-reprice-b@test.com")
     first = _request_share(client, rider_a)
-    original_fare = Decimal(str(first.data["fare"]))
-    _auth(client, rider_b)
-    client.post(SHARE_REQUEST_URL, _nearby_payload(), format="json")
+    assert first.status_code == 201, first.data
     ride_a = Ride.objects.get(pk=first.data["id"])
-    assert ride_a.fare == original_fare
+    original_fare = ride_a.fare
+
+    _auth(client, rider_b)
+    second = client.post(SHARE_REQUEST_URL, _nearby_payload(), format="json")
+    assert second.status_code == 201, second.data
+
+    ride_a.refresh_from_db()
+    ride_b = Ride.objects.get(pk=second.data["id"])
     session = ride_a.share_session
-    intended = PricingEngine().calculate_share_fare(
+    assert session.id == ride_b.share_session_id
+
+    expected_a = PricingEngine().calculate_share_fare(
         ride_a.economy_fare,
         session.route_similarity_score,
         ride_a.seats,
     )
-    # May already equal original when similarity stays near 0.7; still assert current fare.
-    assert ride_a.fare == original_fare
-    assert intended > 0
+    expected_b = PricingEngine().calculate_share_fare(
+        ride_b.economy_fare,
+        session.route_similarity_score,
+        ride_b.seats,
+    )
+    assert ride_a.fare == expected_a
+    assert ride_b.fare == expected_b
+    # Repricing should reflect session similarity, not only request-time default.
+    assert ride_a.fare == expected_a
+    assert session.route_similarity_score != DEFAULT_SIMILARITY_SCORE or ride_a.fare == original_fare
+
+
+@pytest.mark.django_db
+def test_completed_ride_fare_not_overwritten_on_session_reprice():
+    client = _client()
+    rider_a = _create_rider("share-hist-a@test.com")
+    rider_b = _create_rider("share-hist-b@test.com")
+    driver = _create_driver("share-hist-d@test.com")
+
+    first = _request_share(client, rider_a)
+    _auth(client, rider_b)
+    second = client.post(SHARE_REQUEST_URL, _nearby_payload(), format="json")
+    session_id = first.data["session_id"]
+    ride_a_id = first.data["id"]
+
+    _accept_session(client, driver, session_id)
+    _auth(client, driver)
+    client.post(
+        f"/rides/share/session/{session_id}/pickup/",
+        {"ride_id": ride_a_id},
+        format="json",
+    )
+    client.post(
+        f"/rides/share/session/{session_id}/dropoff/",
+        {"ride_id": ride_a_id},
+        format="json",
+    )
+
+    ride_a = Ride.objects.get(pk=ride_a_id)
+    historical_fare = ride_a.fare
+    assert ride_a.share_status == "dropped_off"
+
+    engine = PricingEngine()
+    engine.reprice_session_rides(ride_a.share_session, 0.95)
+    ride_a.refresh_from_db()
+    assert ride_a.fare == historical_fare
+
+
+@pytest.mark.django_db
+def test_assigned_driver_can_get_session_detail():
+    client = _client()
+    rider = _create_rider("share-session-get-r@test.com")
+    driver = _create_driver("share-session-get-d@test.com")
+    created = _request_share(client, rider)
+    session_id = created.data["session_id"]
+
+    _auth(client, driver)
+    before_accept = client.get(SHARE_SESSION_URL.format(session_id=session_id))
+    assert before_accept.status_code == 403
+
+    _accept_session(client, driver, session_id)
+    _auth(client, driver)
+    detail = client.get(SHARE_SESSION_URL.format(session_id=session_id))
+    assert detail.status_code == 200, detail.data
+    assert detail.data["session_id"] == session_id
+    assert detail.data["status"] == "driver_arriving"
+    assert detail.data["passengers_count"] == 1
+    assert "driver_earnings" in detail.data
+    assert len(detail.data["rides"]) == 1
+
+
+@pytest.mark.django_db
+def test_participating_rider_can_get_session_detail():
+    client = _client()
+    rider_a = _create_rider("share-session-rider-a@test.com")
+    rider_b = _create_rider("share-session-rider-b@test.com")
+    first = _request_share(client, rider_a)
+    _auth(client, rider_b)
+    client.post(SHARE_REQUEST_URL, _nearby_payload(), format="json")
+    session_id = first.data["session_id"]
+
+    _auth(client, rider_b)
+    detail = client.get(SHARE_SESSION_URL.format(session_id=session_id))
+    assert detail.status_code == 200, detail.data
+    assert detail.data["passengers_count"] == 2
+
+
+@pytest.mark.django_db
+def test_unrelated_user_cannot_get_session_detail():
+    client = _client()
+    rider = _create_rider("share-session-owner@test.com")
+    other = _create_rider("share-session-idor@test.com")
+    other_driver = _create_driver("share-session-idor-d@test.com")
+    created = _request_share(client, rider)
+    session_id = created.data["session_id"]
+
+    _auth(client, other)
+    assert client.get(SHARE_SESSION_URL.format(session_id=session_id)).status_code == 403
+
+    _auth(client, other_driver)
+    assert client.get(SHARE_SESSION_URL.format(session_id=session_id)).status_code == 403
+
+
+@pytest.mark.django_db
+def test_staff_can_get_session_detail():
+    client = _client()
+    rider = _create_rider("share-session-staff-r@test.com")
+    created = _request_share(client, rider)
+    session_id = created.data["session_id"]
+
+    admin = User.objects.create_superuser(
+        email="share-session-staff@test.com",
+        password="Pass1234!",
+        first_name="Admin",
+        last_name="Test",
+    )
+    _auth(client, admin)
+    detail = client.get(SHARE_SESSION_URL.format(session_id=session_id))
+    assert detail.status_code == 200
+    assert detail.data["session_id"] == session_id
+
+
+@pytest.mark.django_db
+def test_driver_cannot_accept_second_active_session():
+    client = _client()
+    rider_a = _create_rider("share-double-a@test.com")
+    rider_b = _create_rider("share-double-b@test.com")
+    driver = _create_driver("share-double-d@test.com")
+
+    first = _request_share(client, rider_a)
+    _auth(client, rider_b)
+    second = client.post(
+        SHARE_REQUEST_URL,
+        _share_payload(
+            pickup="Arafat",
+            destination="Sebkha West",
+            pickup_lat=18.15,
+            pickup_lng=-15.85,
+            destination_lat=18.18,
+            destination_lng=-15.82,
+        ),
+        format="json",
+    )
+    assert first.status_code == 201
+    assert second.status_code == 201
+    session_a = first.data["session_id"]
+    session_b = second.data["session_id"]
+    assert session_a != session_b
+
+    accepted = _accept_session(client, driver, session_a)
+    assert accepted.status_code == 200, accepted.data
+
+    blocked = _accept_session(client, driver, session_b)
+    assert blocked.status_code == 400
+    assert "active Share session" in blocked.data["error"]
+    assert blocked.data["active_session_id"] == session_a
