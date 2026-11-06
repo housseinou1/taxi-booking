@@ -2,6 +2,7 @@ from datetime import timedelta
 from unittest.mock import patch
 
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import override_settings
 from django.utils import timezone
 from rest_framework.test import APITestCase
 
@@ -1117,6 +1118,7 @@ class DeliveryTaskTests(APITestCase):
         result = cleanup_stale_requests()
         self.assertEqual(result["cancelled"], 0)
 
+    @override_settings(CASHLESS_POLICY_ENFORCED=True)
     @patch("notifications.push.send_push_to_user")
     def test_remind_cash_settlement(self, mock_push):
         """Under the cashless policy the legacy cash reminder must be a no-op.
