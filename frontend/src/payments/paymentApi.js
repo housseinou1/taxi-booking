@@ -152,6 +152,55 @@ export function fetchAdminPaymentDashboard() {
 }
 
 /**
+ * The single source of truth for every checkout surface.
+ *
+ * Returns cash availability (driven by the backend cashless policy), the Moosyl bank
+ * apps enabled for this environment, the commission split, and the fact that
+ * confirmation comes only from a backend-verified webhook. The UI renders exactly this
+ * instead of re-deriving availability, so the client can never drift from the server's
+ * enforcement.
+ */
+export function fetchPaymentOptions() {
+  return paymentRequest("/options/");
+}
+
+/**
+ * Start a Moosyl hosted checkout for the caller's own ride or delivery.
+ *
+ * Returns `{ checkout_url, transaction_id, confirmation: "backend_webhook", ... }`.
+ * Opening `checkout_url` is NOT proof of payment: the order is only marked paid after
+ * the backend receives a signature-verified Moosyl webhook. Callers must refresh
+ * payment status from the backend rather than trusting the redirect.
+ */
+export function startMoosylCheckout({
+  rideId,
+  deliveryId,
+  phoneNumber = "",
+  successUrl = "",
+  cancelUrl = "",
+} = {}) {
+  const body = {};
+  if (deliveryId) {
+    body.delivery_id = deliveryId;
+  } else {
+    body.ride_id = rideId;
+  }
+  if (phoneNumber) body.phone_number = phoneNumber;
+  if (successUrl) body.success_url = successUrl;
+  if (cancelUrl) body.cancel_url = cancelUrl;
+  return paymentRequest("/moosyl/checkout/", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+/** Bank apps Moosyl currently exposes (Bankily / Masravi / Sedad). Fail-soft. */
+export function fetchMoosylMethods() {
+  return paymentRequest("/moosyl/methods/");
+}
+
+
+/**
  * CEO Payment Management Center payload.
  *
  * Returns payout totals split by driver vs courier, refunds awaiting CEO

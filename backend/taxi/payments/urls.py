@@ -55,6 +55,7 @@ from .moosyl_views import (
     moosyl_admin_overview,
     moosyl_checkout,
     moosyl_payment_methods,
+    payment_options,
 )
 
 from .admin_payment_views import (
@@ -74,6 +75,9 @@ urlpatterns = [
     path("moosyl/checkout/", moosyl_checkout),
     path("moosyl/methods/", moosyl_payment_methods),
     path("admin/moosyl/", moosyl_admin_overview),
+    # Single source of truth for every checkout UI (cash availability, Moosyl bank
+    # apps, commission split). The apps render exactly what the backend allows.
+    path("options/", payment_options),
 
     path("methods/save/", save_payment_method),
     path("methods/", my_payment_methods),

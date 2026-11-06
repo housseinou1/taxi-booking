@@ -2,8 +2,8 @@ import React, { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
-  MOBILE_MONEY_PROVIDERS,
-  PAYMENT_CATEGORIES,
+  categoriesForMethods,
+  providersForMethods,
   resolvePaymentSelection,
   selectionFromMethod,
 } from "../paymentMethods";
@@ -50,24 +50,18 @@ export default function PaymentMethodSelector({
     return { category: "", provider: "" };
   }, [value]);
 
-  // A category is offered when it is explicitly allowed, or when at least one of
-  // its methods is allowed (so `availableMethods: ["card","bankily"]` still shows
-  // the Mobile Money category with the permitted provider inside it).
-  const categories = useMemo(() => {
-    if (!availableMethods || !availableMethods.length) return PAYMENT_CATEGORIES;
-    const allowed = availableMethods.map((item) => String(item).toLowerCase());
-    return PAYMENT_CATEGORIES.filter(
-      (category) =>
-        allowed.includes(category.id) ||
-        category.methods.some((method) => allowed.includes(method))
-    );
-  }, [availableMethods]);
+  // The backend's allow-list decides what is rendered. `categoriesForMethods` also
+  // applies the opt-in rule: Cash is dropped unless the backend explicitly offers it,
+  // so a caller that forgets to pass `availableMethods` can never surface Cash.
+  const categories = useMemo(
+    () => categoriesForMethods(availableMethods),
+    [availableMethods]
+  );
 
-  const providersForCategory = useMemo(() => {
-    if (!availableMethods || !availableMethods.length) return MOBILE_MONEY_PROVIDERS;
-    const allowed = availableMethods.map((item) => String(item).toLowerCase());
-    return MOBILE_MONEY_PROVIDERS.filter((provider) => allowed.includes(provider.id));
-  }, [availableMethods]);
+  const providersForCategory = useMemo(
+    () => providersForMethods(availableMethods),
+    [availableMethods]
+  );
 
   const resolved = resolvePaymentSelection({
     category: selection.category,

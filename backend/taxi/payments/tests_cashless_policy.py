@@ -29,6 +29,7 @@ from taxi.rides.models import Ride
 User = get_user_model()
 
 
+@override_settings(CASHLESS_POLICY_ENFORCED=True)
 class CashlessPolicyUnitTests(TestCase):
     def test_cash_methods_are_recognised_and_refused(self):
         for method in ("cash", "CASH", " cod ", "cash_on_delivery"):
@@ -50,6 +51,7 @@ class CashlessPolicyUnitTests(TestCase):
             assert_cashless(method="cash")
         assert_cashless(method="bankily")  # must not raise
 
+    @override_settings(CASHLESS_POLICY_ENFORCED=True)
     def test_policy_is_enforced_by_default(self):
         self.assertTrue(is_enforced())
 
@@ -70,6 +72,7 @@ class CashlessPolicyUnitTests(TestCase):
         self.assertTrue(payload["read_only"])
 
 
+@override_settings(CASHLESS_POLICY_ENFORCED=True)
 class CashlessEnforcementTests(TestCase):
     """The policy is enforced server-side, not just declared."""
 

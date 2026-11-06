@@ -204,6 +204,7 @@ class PaymentOversightAccessTests(TestCase):
         for url in (OVERSIGHT_URL, PROVIDERS_URL):
             self.assertEqual(self.client.post(url, {}, format="json").status_code, 405, url)
 
+    @override_settings(CASHLESS_POLICY_ENFORCED=True)
     def test_oversight_reports_cashless_status_providers_and_cities(self):
         self.client.force_authenticate(user=self.ceo)
         res = self.client.get(OVERSIGHT_URL)

@@ -273,17 +273,15 @@ def moosyl_checkout(request):
 def _ensure_payment_for_delivery(delivery, amount: Decimal):
     """Create or reuse the delivery's PaymentRecord with the exact whole-MRU amount.
 
-    The platform has ONE commission policy (``RideCommissionConfig``, seeded 30/70) and
-    no separate delivery commission table exists in the codebase, so the same policy is
-    applied here rather than inventing a delivery-specific rate. Flagged in the report
-    as the one assumption to confirm with the business.
+    The split comes from ``delivery_commission_policy()``: provisionally the same 30/70
+    as rides, overridable by ``DELIVERY_PLATFORM_PERCENT`` without a migration.
     """
-    from app_settings.pricing_service import get_ride_commission_policy
-
     from .models import PaymentRecord
+    from .moosyl_settlement import delivery_commission_policy
 
-    policy = get_ride_commission_policy()
+    policy = delivery_commission_policy()
     platform_percent = Decimal(policy["platform_percent"])
+
 
     record = (
         PaymentRecord.objects.filter(source="delivery", delivery=delivery)
@@ -414,6 +412,108 @@ def moosyl_admin_overview(request):
         },
         status=status.HTTP_200_OK,
     )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def payment_options(request):
+    """Single source of truth for every customer checkout surface.
+
+    YALA Rider and YALA Delivery render exactly what this returns, so availability is
+    never re-derived in the client where it would drift from server-side enforcement:
+
+    * **cash** — available only when the cashless policy is relaxed by the owner
+      (``CASHLESS_POLICY_ENFORCED=False``). Commission still applies: the payment row is
+      created with the normal 30/70 split, and the driver confirms receipt through the
+      existing verified path, so a cash ride is accounted exactly like a digital one.
+    * **moosyl** — the bank apps Moosyl reports as enabled for this environment
+      (Bankily / Masravi / Sedad). Fail-soft: if Moosyl is unreachable the documented set
+      is returned so the UI still works.
+    * **commission** — the active ride split and the delivery split (which follows the
+      ride policy unless ``DELIVERY_PLATFORM_PERCENT`` overrides it).
+    """
+    from app_settings.pricing_service import get_ride_commission_policy
+
+    from .cashless import DIGITAL_METHODS, is_enforced, policy_payload
+    from .moosyl_settlement import delivery_commission_policy
+
+    provider, _ = _provider_or_error()
+    cashless_enforced = is_enforced()
+
+    moosyl = {
+        "available": False,
+        "methods": [],
+        "environment": getattr(provider, "environment", ""),
+        "mode": getattr(provider, "mode", ""),
+        "settlement_enabled": bool(getattr(provider, "may_settle", False)),
+        "fee_percent": str(getattr(settings, "MOOSYL_FEE_PERCENT", "1")),
+    }
+    if provider is not None and provider.is_configured():
+        moosyl["available"] = True
+        moosyl["methods"] = list(MOOSYL_BANK_APPS)
+        try:
+            configuration = provider.list_payment_methods()
+            enabled = set()
+            for item in (configuration or {}).get("data") or []:
+                if not isinstance(item, dict):
+                    continue
+                for key in ("code", "name", "id", "slug"):
+                    value = str(item.get(key, "")).strip().lower()
+                    if value:
+                        enabled.add(value)
+            narrowed = [code for code in MOOSYL_BANK_APPS if code in enabled]
+            if narrowed:
+                moosyl["methods"] = narrowed
+        except ProviderError:
+            # Keep the documented set: a discovery failure must not empty the UI.
+            logger.warning("Moosyl /configuration unavailable; using the documented set")
+
+    ride_methods = [m for m in ("card", "bankily", "masrvi", "seddad", "wallet", "bank_account")]
+    delivery_methods = [m for m in ("card", "bankily", "masravi", "sedad")]
+    if not cashless_enforced:
+        ride_methods.append("cash")
+        delivery_methods.append("cash")
+
+    ride_policy = get_ride_commission_policy()
+    delivery_policy = delivery_commission_policy()
+
+    return Response(
+        {
+            "cash": {
+                "available": not cashless_enforced,
+                "method": "cash",
+                # Cash is not "free": the same commission split is recorded, and the
+                # driver confirms receipt before the ride is considered paid.
+                "commission_applies": True,
+                "reason": (
+                    "Cash is disabled by the platform cashless policy."
+                    if cashless_enforced
+                    else ""
+                ),
+            },
+            "cashless_policy_enforced": cashless_enforced,
+            "ride_methods": ride_methods,
+            "delivery_methods": delivery_methods,
+            "digital_methods": sorted(DIGITAL_METHODS),
+            "moosyl": moosyl,
+            "commission": {
+                "ride": {
+                    "platform_percent": str(ride_policy["platform_percent"]),
+                    "driver_percent": str(ride_policy["driver_percent"]),
+                },
+                "delivery": {
+                    "platform_percent": str(delivery_policy["platform_percent"]),
+                    "driver_percent": str(delivery_policy["driver_percent"]),
+                    "source": delivery_policy["source"],
+                },
+            },
+            # The app must treat the backend webhook as the only confirmation.
+            "confirmation": "backend_webhook",
+            "policy": policy_payload(),
+        },
+        status=status.HTTP_200_OK,
+    )
+
 
 
 

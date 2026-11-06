@@ -1,5 +1,6 @@
 import {
   ALL_PAYMENT_METHODS,
+  categoriesForMethods,
   MOBILE_MONEY_PROVIDERS,
   MOBILE_MONEY_PROVIDER_IDS,
   PAYMENT_CATEGORIES,
@@ -22,14 +23,25 @@ import {
  *   payments/settlement_service.py  _normalize_method() aliases
  */
 describe("payment method catalog", () => {
-  test("offers the four primary payment categories in order", () => {
+  test("offers the five primary payment categories in order", () => {
     expect(PAYMENT_CATEGORIES.map((category) => category.id)).toEqual([
       "card",
       "mobile_money",
       "wallet",
       "bank_transfer",
+      "cash",
     ]);
   });
+
+  test("Cash is an opt-in category the backend must enable", () => {
+    const cash = PAYMENT_CATEGORIES.find((category) => category.id === "cash");
+    expect(cash).toBeDefined();
+    expect(cash.requiresBackendOptIn).toBe(true);
+    // Never offered when the backend allow-list is unknown.
+    expect(categoriesForMethods(undefined).map((c) => c.id)).not.toContain("cash");
+    expect(categoriesForMethods(["cash"]).map((c) => c.id)).toContain("cash");
+  });
+
 
   test("Mobile Money offers exactly Bankily, Masravi and Sedad", () => {
     expect(MOBILE_MONEY_PROVIDERS.map((provider) => provider.id)).toEqual([
@@ -56,6 +68,10 @@ describe("payment method catalog", () => {
       "bank_transfer",
       "wallet",
       "bank_account",
+      // `cash` is a real backend method value (Payment.PAYMENT_METHOD_CHOICES). It is
+      // offered only when the cashless policy is relaxed, but it must remain a valid
+      // catalog value so the checkout can select it.
+      "cash",
     ]);
     ALL_PAYMENT_METHODS.forEach((method) => {
       expect(backendMethods.has(method)).toBe(true);

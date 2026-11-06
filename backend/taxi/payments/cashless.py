@@ -175,8 +175,11 @@ def policy_payload() -> dict:
             {
                 "id": "rider_checkout_cash_option",
                 "description": "Rider app payment-method selection UI",
-                "status": "removed",
+                # Driven by the enforcement flag rather than hardcoded, so the audit
+                # report can never claim the cash option is absent while it is offered.
+                "status": "removed" if is_enforced() else "available",
             },
+
             {
                 "id": "model_defaults",
                 "description": (

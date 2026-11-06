@@ -393,6 +393,19 @@ MOOSYL_ALLOW_SANDBOX_SETTLEMENT = env_bool("MOOSYL_ALLOW_SANDBOX_SETTLEMENT", Fa
 # Moosyl keeps 1% of every successful payment (no monthly or setup fee).
 MOOSYL_FEE_PERCENT = os.getenv("MOOSYL_FEE_PERCENT", "1")
 
+# ── Delivery commission ───────────────────────────────────────────────────────
+# The platform has ONE commission policy (RideCommissionConfig, seeded 0.30/0.70).
+# Deliveries provisionally use the SAME 30/70 split, and this override makes it
+# configurable with no migration and no second config table:
+#
+#   DELIVERY_PLATFORM_PERCENT=0.30   # fraction
+#   DELIVERY_PLATFORM_PERCENT=30     # "30" is also accepted and normalised to 0.30
+#
+# Empty (the default) means "follow the ride policy", so the 30/70 split stays in one
+# place unless the business deliberately diverges.
+DELIVERY_PLATFORM_PERCENT = os.getenv("DELIVERY_PLATFORM_PERCENT", "")
+
+
 
 # ── Employee ID card ─────────────────────────────────────────────────────────
 # Official contact information printed on the card back, CONFIRMED BY THE FOUNDER/CEO

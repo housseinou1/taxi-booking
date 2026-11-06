@@ -116,7 +116,57 @@ export const PAYMENT_CATEGORIES = [
     methods: ["bank_account"],
     hasProviders: false,
   },
+  {
+    // Cash is only ever rendered when the backend reports it as available
+    // (`cashless_policy_enforced` false). YALA's commission is still recorded for a
+    // cash ride — the driver confirms receipt through the verified path, so a cash
+    // trip is accounted exactly like a digital one.
+    id: "cash",
+    icon: "💵",
+    labelKey: "payments.methods.cash",
+    defaultLabel: "Cash",
+    hintKey: "payments.methods.cashHint",
+    defaultHint: "Pay the driver directly — your commission is still recorded",
+    methods: ["cash"],
+    hasProviders: false,
+    requiresBackendOptIn: true,
+  },
 ];
+
+/**
+ * Categories to render for a given backend allow-list.
+ *
+ * The backend is the source of truth: a category marked `requiresBackendOptIn` (cash)
+ * is dropped unless the backend explicitly offers one of its methods. Everything else
+ * keeps its existing behaviour, so a category whose methods are partially allowed still
+ * renders (the provider step narrows it).
+ */
+export function categoriesForMethods(availableMethods) {
+  const allowed = Array.isArray(availableMethods)
+    ? availableMethods.map(normalizeToken)
+    : null;
+
+  if (!allowed || !allowed.length) {
+    // No allow-list supplied: keep the historical "everything" behaviour, except
+    // opt-in categories, which must never be offered without explicit backend approval.
+    return PAYMENT_CATEGORIES.filter((category) => !category.requiresBackendOptIn);
+  }
+
+  return PAYMENT_CATEGORIES.filter(
+    (category) =>
+      allowed.includes(category.id) ||
+      category.methods.some((method) => allowed.includes(method))
+  );
+}
+
+/** The mobile-money providers to render, narrowed to those the backend allows. */
+export function providersForMethods(availableMethods) {
+  const allowed = Array.isArray(availableMethods)
+    ? availableMethods.map(normalizeToken)
+    : null;
+  if (!allowed) return [...MOBILE_MONEY_PROVIDERS];
+  return MOBILE_MONEY_PROVIDERS.filter((provider) => allowed.includes(provider.id));
+}
 
 /** The mobile-money providers offered inside the Mobile Money dropdown. */
 export const MOBILE_MONEY_PROVIDERS = [

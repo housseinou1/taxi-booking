@@ -297,6 +297,41 @@ def moosyl_fee(amount) -> Decimal:
     )
 
 
+def delivery_commission_policy() -> dict:
+    """Delivery commission split — configurable, defaulting to the ride policy.
+
+    The platform has a single ``RideCommissionConfig`` (seeded 0.30/0.70). Deliveries
+    provisionally use the same split; setting ``DELIVERY_PLATFORM_PERCENT`` (either
+    ``0.30`` or ``30``) overrides the platform share without a migration, so the
+    business can diverge later without a code change.
+    """
+    from app_settings.pricing_service import get_ride_commission_policy
+    from django.conf import settings
+
+    raw = str(getattr(settings, "DELIVERY_PLATFORM_PERCENT", "") or "").strip()
+    if raw:
+        percent = _decimal_or_none(raw)
+        if percent is not None:
+            # Accept both "30" and "0.30" spellings, exactly like APP_FEE_PERCENT.
+            if percent > 1:
+                percent = percent / Decimal("100")
+            return {
+                "platform_percent": percent,
+                "driver_percent": Decimal("1") - percent,
+                "config_id": None,
+                "source": "DELIVERY_PLATFORM_PERCENT",
+            }
+
+    policy = get_ride_commission_policy()
+    return {
+        "platform_percent": Decimal(policy["platform_percent"]),
+        "driver_percent": Decimal(policy["driver_percent"]),
+        "config_id": policy.get("config_id"),
+        "source": "ride_policy",
+    }
+
+
+
 def _amount_problem(data: dict, expected: Decimal) -> str:
     """Validate amount + currency. Returns a rejection reason, or '' when acceptable."""
     currency = str(data.get("currency") or CURRENCY_MRU).upper()
