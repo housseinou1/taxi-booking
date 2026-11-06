@@ -34,12 +34,13 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
+    "postinstall": "node scripts/patch-react-scripts-webpack.js",
     "start": "react-scripts start",
     "start:admin": "powershell -NoProfile -Command \"Copy-Item .env.admin .env.local -Force; npm run start\"",
     "start:delivery": "powershell -NoProfile -Command \"Copy-Item .env.delivery .env.local -Force; npm run start\"",
-    "build": "node scripts/set-web-build-env.js && react-scripts build",
-    "build:admin": "node scripts/set-admin-build-env.js && react-scripts build",
-    "build:web": "node scripts/set-web-build-env.js && react-scripts build",
+    "build": "node scripts/set-web-build-env.js && node scripts/patch-react-scripts-webpack.js && node scripts/build-production.js",
+    "build:admin": "node scripts/set-admin-build-env.js && node scripts/patch-react-scripts-webpack.js && node scripts/build-production.js",
+    "build:web": "node scripts/set-web-build-env.js && node scripts/patch-react-scripts-webpack.js && node scripts/build-production.js",
     "build:production": "node -e \"require('fs').copyFileSync('.env.production.example','.env.production')\" && react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"

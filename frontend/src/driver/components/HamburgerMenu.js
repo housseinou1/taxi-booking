@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import DriverAvatar from "./DriverAvatar";
 import DriverLevelBadge from "./DriverLevelBadge";
+import "./DriverAvatar.css";
 import "./HamburgerMenu.css";
 
 const MENU_ITEMS = [

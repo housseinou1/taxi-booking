@@ -4,6 +4,11 @@
 // learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom';
 
+// Jest/jsdom may omit `fetch`; several tests use jest.spyOn(global, "fetch").
+if (typeof globalThis.fetch !== "function") {
+  globalThis.fetch = () => Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+}
+
 Object.defineProperty(window, "matchMedia", {
   writable: true,
   value: (query) => ({

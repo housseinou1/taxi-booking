@@ -223,9 +223,20 @@
 .yah-kpi__val--none { font-size: 13px !important; font-weight: 700; letter-spacing: 0; }
 .yah-kpi__lbl { font-size: 12.5px; font-weight: 600; color: var(--yah-muted); line-height: 1.3; }
 .yah-kpi__foot {
-  display: flex; align-items: flex-start; gap: 6px;
-  font-size: 11.5px; font-weight: 700; line-height: 1.35; min-height: 15px;
+  display: flex; align-items: flex-end; justify-content: flex-end; gap: 6px;
+  font-size: 11.5px; font-weight: 700; line-height: 1.35; min-height: 36px;
 }
+.yah-kpi__spark {
+  width: 100%;
+  height: 36px;
+  color: var(--yah-green-2);
+  display: block;
+}
+.yah-kpi__spark--cyan { color: #0891b2; }
+.yah-kpi__spark--amber { color: #d97706; }
+.yah-kpi__spark--blue { color: #2563eb; }
+.yah-kpi__spark--purple { color: #7c3aed; }
+.yah-kpi__spark--green { color: var(--yah-green); }
 .yah-kpi__up { color: var(--yah-green-2); }
 .yah-kpi__nodata { color: var(--yah-dim); font-weight: 600; font-size: 11.5px; line-height: 1.35; }
 .yah-kpi__live { display: inline-flex; align-items: center; gap: 6px; color: var(--yah-green-2); }
@@ -268,7 +279,7 @@
 /* ---------------------------------------------------------------- panels */
 .yah-cols { display: grid; gap: 16px; }
 .yah-cols--2 { grid-template-columns: 1.35fr 1fr; }
-.yah-cols--3 { grid-template-columns: 1fr 1fr; }
+.yah-cols--3 { grid-template-columns: 1.15fr 1fr 1fr; }
 .yah-stack { display: grid; gap: 16px; align-content: start; }
 
 .yah-rows { display: grid; gap: 2px; }
@@ -280,7 +291,7 @@
 .yah-row__ico { width: 30px; height: 30px; border-radius: 9px; flex-shrink: 0; display: grid; place-items: center; }
 .yah-row__ico svg { width: 15px; height: 15px; }
 .yah-row__txt { flex: 1; min-width: 0; font-weight: 600; color: var(--yah-ink); }
-.yah-row__txt small { display: block; font-size: 11.5px; color: var(--yah-dim); font-weight: 600; }
+.yah-row__txt small { display: block; font-size: 11px; color: var(--yah-dim); font-weight: 500; margin-top: 3px; line-height: 1.3; }
 .yah-row__meta { font-size: 11.5px; color: var(--yah-dim); font-weight: 600; white-space: nowrap; }
 .yah-row__num { font-size: 16px; font-weight: 800; color: var(--yah-ink); }
 .yah-row--ok .yah-row__ico { background: rgba(0, 166, 81, 0.16); color: var(--yah-green-2); }
@@ -333,6 +344,7 @@
   .yah-side { position: static; max-height: none; border-inline-end: 0; border-bottom: 1px solid var(--yah-line); }
   .yah-nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .yah-cols--2, .yah-cols--3 { grid-template-columns: 1fr; }
+  .yah-kpis--exec { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .yah-search { max-width: none; }
   .yah-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .yah-quick__grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
@@ -354,6 +366,261 @@
 .yah-embedded .yah-side { display: none; }
 .yah-embedded .yah-grid { grid-template-columns: 1fr; }
 .yah-embedded .yah-main { padding: 0; }
+
+/* Executive dashboard — light enterprise surface inside AdminShell (top nav) */
+.yah-embedded--exec {
+  --yah-bg: #f5f7fb;
+  --yah-panel: #ffffff;
+  --yah-panel-2: #ffffff;
+  --yah-raise: #f1f5f9;
+  --yah-line: rgba(15, 23, 42, 0.08);
+  --yah-line-2: rgba(15, 23, 42, 0.12);
+  --yah-ink: #0f172a;
+  --yah-muted: #475569;
+  --yah-dim: #64748b;
+  --yah-green: #00a651;
+  --yah-green-2: #00a651;
+  --yah-blue: #2563eb;
+  --yah-purple: #7c3aed;
+  --yah-amber: #d97706;
+  --yah-red: #dc2626;
+  background: var(--yah-bg);
+  color: var(--yah-ink);
+  border-radius: 14px;
+}
+.yah-embedded--exec .yah-panel {
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+.yah-grid--embedded .yah-main {
+  padding: 8px 4px 28px;
+  max-width: 1480px;
+  margin: 0 auto;
+}
+.yah-exec-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+.yah-exec-title {
+  margin: 0;
+  font-size: clamp(1.35rem, 2.2vw, 1.75rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--yah-ink);
+}
+.yah-exec-sub {
+  margin: 6px 0 0;
+  font-size: 0.95rem;
+  color: var(--yah-muted);
+  font-weight: 500;
+  max-width: 560px;
+  line-height: 1.45;
+}
+.yah-exec-head__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.yah-exec-range {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--yah-muted);
+  padding: 8px 12px;
+  border: 1px solid var(--yah-line-2);
+  border-radius: 10px;
+  background: var(--yah-panel);
+}
+.yah-seg {
+  display: inline-flex;
+  border-radius: 10px;
+  border: 1px solid var(--yah-line-2);
+  overflow: hidden;
+  background: var(--yah-raise);
+}
+.yah-seg__btn {
+  padding: 8px 11px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--yah-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+.yah-seg__btn.is-on {
+  background: var(--yah-green);
+  color: #fff;
+}
+.yah-btn-export {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid var(--yah-line-2);
+  background: var(--yah-green);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.yah-btn-export svg {
+  width: 17px;
+  height: 17px;
+}
+.yah-btn-export:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.yah-export-msg {
+  margin: 0 0 12px;
+  font-size: 0.85rem;
+  color: var(--yah-red);
+  font-weight: 600;
+}
+.yah-cols--charts {
+  margin-bottom: 18px;
+}
+.yah-cols--bottom {
+  margin-bottom: 18px;
+}
+.yah-cols--extras {
+  margin-bottom: 18px;
+}
+.yah-chart-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  max-width: min(100%, 520px);
+}
+.yah-btn-export--sm {
+  min-height: 32px;
+  padding: 0 10px;
+  font-size: 0.78rem;
+}
+.yah-btn-export--sm svg {
+  width: 14px;
+  height: 14px;
+}
+.yah-panel--chart {
+  min-height: 220px;
+}
+.yah-kpis--exec {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+.yah-chart__svg {
+  width: 100%;
+  height: 140px;
+  display: block;
+}
+.yah-chart__foot {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  color: var(--yah-dim);
+  font-weight: 600;
+  margin-top: 8px;
+}
+.yah-chart__skel {
+  height: 140px;
+  border-radius: 12px;
+  background: linear-gradient(90deg, var(--yah-raise) 25%, rgba(148, 163, 184, 0.2) 50%, var(--yah-raise) 75%);
+  background-size: 200% 100%;
+  animation: yah-pulse 1.4s ease-in-out infinite;
+}
+.yah-donut-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+}
+.yah-donut {
+  width: 140px;
+  height: 140px;
+  flex-shrink: 0;
+}
+.yah-donut--skel {
+  border-radius: 50%;
+  background: var(--yah-raise);
+  animation: yah-pulse 1.4s ease-in-out infinite;
+}
+.yah-donut__bg {
+  fill: none;
+  stroke: var(--yah-line-2);
+  stroke-width: 14;
+}
+.yah-donut__rides {
+  fill: var(--yah-green);
+}
+.yah-donut__del {
+  fill: var(--yah-blue);
+}
+.yah-donut__legend {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--yah-ink);
+  line-height: 1.5;
+  min-width: 200px;
+}
+.yah-donut__total {
+  margin-top: 6px;
+  font-size: 0.78rem;
+  color: var(--yah-muted);
+}
+.yah-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.yah-dot--rides {
+  background: var(--yah-green);
+}
+.yah-dot--del {
+  background: var(--yah-blue);
+}
+.yah-city-bars {
+  display: grid;
+  gap: 10px;
+}
+.yah-city-bar__head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--yah-ink);
+  margin-bottom: 4px;
+}
+.yah-city-bar__pct {
+  color: var(--yah-muted);
+}
+.yah-city-bar__track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--yah-raise);
+  overflow: hidden;
+}
+.yah-city-bar__fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--yah-green), var(--yah-blue));
+}
+.yah-hint {
+  margin: 10px 0 0;
+  font-size: 0.72rem;
+  color: var(--yah-dim);
+  line-height: 1.45;
+  font-weight: 500;
+}
 
 @media (prefers-reduced-motion: reduce) {
   .yah * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }

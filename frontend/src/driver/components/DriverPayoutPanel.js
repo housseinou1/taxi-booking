@@ -7,7 +7,6 @@ import authenticatedApi from "../../auth/authenticatedApi";
 import PlatformWithdrawalAccounts, {
   payoutTypeForMethod,
 } from "../../components/PlatformWithdrawalAccounts";
-import "./DriverPayoutPanel.css";
 
 const NON_REDIRECTING_AUTH_CONFIG = { suppressAuthRedirect: true };
 

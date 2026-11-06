@@ -248,7 +248,7 @@ export const SIDEBAR_NAV_ITEMS = [
  * `canAccessCurrentPath` for the rendered route and the Django API keeps its own
  * authorisation.
  */
-function itemAllowed(item, permissions) {
+export function itemAllowed(item, permissions) {
   if (!permissions) return false;
   if (permissions.elevated || permissions.role === "ceo") {
     return item.id !== "legacy" || permissions.role === "ceo";

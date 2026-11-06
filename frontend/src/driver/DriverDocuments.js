@@ -4,6 +4,7 @@ import { API_URL } from "../apiConfig";
 import authenticatedApi from "../auth/authenticatedApi";
 import { isDeliveryCourierApp } from "../native/platform";
 import "./DriverDocuments.css";
+import "./components/DocumentsUnderReviewBanner.css";
 import DocumentsUnderReviewBanner from "./components/DocumentsUnderReviewBanner";
 import {
   DOCUMENTS_UNDER_REVIEW_MESSAGE,

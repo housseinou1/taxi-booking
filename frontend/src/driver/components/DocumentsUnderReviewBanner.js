@@ -3,7 +3,6 @@ import {
   DOCUMENTS_UNDER_REVIEW_MESSAGE,
   DOCUMENTS_UNDER_REVIEW_TITLE,
 } from "../utils/documentReview";
-import "./DocumentsUnderReviewBanner.css";
 
 export default function DocumentsUnderReviewBanner({ compact = false }) {
   return (

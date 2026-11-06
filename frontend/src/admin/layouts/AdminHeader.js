@@ -46,7 +46,7 @@ export default function AdminHeader({ onOpenMobileNav, onOpenSearch }) {
           <MauritaniaFlag className="admin-shell__brand-flag" />
           <div>
             <div className="admin-shell__brand-title">YALA TECHNOLOGIES</div>
-            <div className="admin-shell__brand-sub">Admin Console</div>
+            <div className="admin-shell__brand-sub">Ride • Delivery • Operations</div>
           </div>
         </div>
       </div>
@@ -59,7 +59,7 @@ export default function AdminHeader({ onOpenMobileNav, onOpenSearch }) {
           title="Global search is not available yet"
         >
           <span aria-hidden="true">🔍</span>
-          <span className="admin-shell__search-label">Global search</span>
+          <span className="admin-shell__search-label">Search for rides, drivers…</span>
           <span className="admin-shell__search-soon">Soon</span>
           <kbd>Ctrl K</kbd>
         </button>

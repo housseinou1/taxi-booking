@@ -1908,7 +1908,7 @@ function App() {
     // Redesigned Admin home. Rendered INSIDE AdminShell so the existing
     // sidebar, header and RBAC filtering are all preserved.
     return withInstall(
-      <AdminShellPage pathname="/admin" title="Operations Console">
+      <AdminShellPage pathname="/admin" title="">
         <AdminHomeDashboard embedded />
       </AdminShellPage>
     );

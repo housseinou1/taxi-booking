@@ -18,6 +18,8 @@ import {
   getRequiredDocumentExpirationStatus,
   shouldShowDocumentsUnderReview,
 } from "./utils/documentReview";
+import "./components/DocumentsUnderReviewBanner.css";
+import "./components/DriverPayoutPanel.css";
 import "./DriverProfilePage.css";
 
 const DOCUMENT_TYPES = [

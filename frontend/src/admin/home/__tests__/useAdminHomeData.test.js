@@ -11,6 +11,7 @@ import useAdminHomeData, {
   buildActivity,
   buildHealth,
   buildKpis,
+  buildOrderStatusToday,
   buildPending,
   buildToday,
   sumCompletedFare,
@@ -44,8 +45,33 @@ const APPROVALS = {
 };
 
 const EXECUTIVE = {
-  live: { today: { trips: 0, deliveries: 0, revenue: "0.00" } },
-  operations: { rides: { counts: { completed: 55, cancelled: 24, in_progress: 0 } } },
+  live: {
+    today: { trips: 0, deliveries: 0, revenue: "0.00" },
+    live: { active_drivers: 95, active_riders: 136, active_couriers: 21 },
+    generated_at: "2026-11-05T16:55:08Z",
+  },
+  operations: {
+    rides: {
+      counts: {
+        completed: 55,
+        cancelled: 24,
+        in_progress: 3,
+        scheduled: 5,
+        searching: 0,
+        requested: 0,
+        driver_arriving: 0,
+        driver_arrived: 0,
+      },
+    },
+    deliveries: { counts: { delivered: 17 } },
+  },
+  finance: {
+    summary: { gross_revenue: "12345.67" },
+    chart: [{ date: "2026-11-01", label: "Nov 01", revenue: 100, commission: 10 }],
+    period: "daily",
+    start_date: "2026-11-01",
+    end_date: "2026-11-05",
+  },
 };
 
 const COMMAND = {
@@ -82,7 +108,7 @@ const FINANCE = {
 };
 
 /** Route each URL to its fixture; pass a truthy value to force that call to fail. */
-function mockEndpoints({ command, executive, rides, approvals, finance } = {}) {
+function mockEndpoints({ command, executive, rides, approvals, finance, multiCity } = {}) {
   api.get.mockImplementation((url) => {
     if (url.includes("/operations/command/")) {
       return command ? Promise.reject(new Error("x")) : Promise.resolve({ data: COMMAND });
@@ -98,6 +124,9 @@ function mockEndpoints({ command, executive, rides, approvals, finance } = {}) {
     }
     if (url.includes("/payments/admin/finance/overview/")) {
       return finance ? Promise.reject(new Error("x")) : Promise.resolve({ data: FINANCE });
+    }
+    if (url.includes("/operations/multi-city/")) {
+      return multiCity ? Promise.reject(new Error("x")) : Promise.resolve({ data: {} });
     }
     return Promise.reject(new Error("unexpected url " + url));
   });
@@ -130,30 +159,37 @@ describe("sumCompletedFare", () => {
 // ── buildKpis ────────────────────────────────────────────────────────────────
 
 describe("buildKpis", () => {
-  const kpis = buildKpis({ command: COMMAND, executive: EXECUTIVE, rides: RIDES, approvals: APPROVALS });
-  const byKey = (k) => kpis.find((x) => x.key === k);
+  const kpisExec = buildKpis({ command: COMMAND, executive: EXECUTIVE, rides: RIDES, approvals: APPROVALS });
+  const byKeyExec = (k) => kpisExec.find((x) => x.key === k);
 
-  it("reads the verified approvals fields", () => {
-    expect(byKey("riders").value).toBe(136);
-    expect(byKey("drivers").value).toBe(95);
-    expect(byKey("delivery").value).toBe(21);
+  const kpisLegacy = buildKpis({ command: COMMAND, executive: null, rides: RIDES, approvals: APPROVALS });
+  const byKeyLegacy = (k) => kpisLegacy.find((x) => x.key === k);
+
+  it("reads the verified approvals fields when executive data is unavailable", () => {
+    expect(byKeyLegacy("riders").value).toBe(136);
+    expect(byKeyLegacy("drivers").value).toBe(95);
+    expect(byKeyLegacy("delivery").value).toBe(21);
   });
 
-  it("reads completed rides from operations.rides.counts.completed", () => {
-    expect(byKey("completed").value).toBe(55);
+  it("reads KPIs from executive.dashboard when present", () => {
+    expect(byKeyExec("completed_rides").value).toBe(55);
+    expect(byKeyExec("completed_deliveries").value).toBe(17);
+    expect(byKeyExec("gross_revenue").value).toBe(12345.67);
+    expect(byKeyExec("active_drivers").value).toBe(95);
+    expect(byKeyExec("active_riders").value).toBe(136);
   });
 
-  it("reads active rides from live_operations.active_rides", () => {
-    expect(byKey("active").value).toBe(0);
+  it("reads active rides from live_operations when executive is unavailable", () => {
+    expect(byKeyLegacy("active").value).toBe(0);
   });
 
-  it("computes revenue from real completed fares", () => {
-    expect(byKey("revenue").value).toBe(120.5);
-    expect(byKey("revenue").suffix).toBe("MRU");
+  it("computes revenue from ride history when executive is unavailable", () => {
+    expect(byKeyLegacy("revenue").value).toBe(120.5);
+    expect(byKeyLegacy("revenue").suffix).toBe("MRU");
   });
 
   it("reports no trend, because the backend has no baseline", () => {
-    kpis.forEach((k) => expect(k.trend).toBeNull());
+    kpisExec.forEach((k) => expect(k.trend).toBeNull());
   });
 
   it("emits NO tiles when no source is permitted (all null)", () => {
@@ -198,7 +234,7 @@ describe("buildKpis", () => {
     expect(keys).not.toContain("active");
   });
 
-  it("shows Finance tiles alongside operational tiles for a combined role (CEO)", () => {
+  it("shows Finance module tiles after executive tiles for a combined role (CEO)", () => {
     const both = buildKpis({
       command: COMMAND,
       executive: EXECUTIVE,
@@ -207,12 +243,11 @@ describe("buildKpis", () => {
       finance: FINANCE,
     });
     expect(both.map((t) => t.key)).toEqual([
-      "riders",
-      "drivers",
-      "delivery",
-      "completed",
-      "revenue",
-      "active",
+      "completed_rides",
+      "completed_deliveries",
+      "gross_revenue",
+      "active_drivers",
+      "active_riders",
       "wallet_balance",
       "pending_withdrawals",
       "refunds_awaiting_ceo",
@@ -256,6 +291,32 @@ describe("buildPending", () => {
 });
 
 
+// ── buildOrderStatusToday ────────────────────────────────────────────────────
+
+const COMMAND_ORDER_STATUS = {
+  ...COMMAND,
+  ceo_summary: {
+    trips: { completed_rides_today: 12 },
+    deliveries: { completed_deliveries_today: 5 },
+  },
+  live_operations: {
+    ...COMMAND.live_operations,
+    active_rides: 4,
+    active_deliveries: 2,
+  },
+};
+
+describe("buildOrderStatusToday", () => {
+  it("combines live activity, CEO today completions, and executive queue counts", () => {
+    const rows = buildOrderStatusToday({ command: COMMAND_ORDER_STATUS, executive: EXECUTIVE });
+    const byKey = (k) => rows.find((r) => r.key === k);
+    expect(byKey("ongoing").value).toBe(6);
+    expect(byKey("completed_today").value).toBe(17);
+    expect(byKey("scheduled").value).toBe(5);
+    expect(byKey("cancelled").value).toBe(24);
+  });
+});
+
 // ── buildActivity / buildHealth ──────────────────────────────────────────────
 
 describe("buildActivity", () => {
@@ -271,9 +332,9 @@ describe("buildActivity", () => {
     expect(buildActivity(null)).toEqual([]);
   });
 
-  it("caps the list at 6 entries", () => {
+  it("caps the list at 8 entries", () => {
     const many = { timeline: Array.from({ length: 20 }, (_, i) => ({ summary: "e" + i })) };
-    expect(buildActivity(many)).toHaveLength(6);
+    expect(buildActivity(many)).toHaveLength(8);
   });
 });
 
@@ -281,10 +342,10 @@ describe("buildHealth", () => {
   it("maps infrastructure statuses to display rows", () => {
     const h = buildHealth(COMMAND);
     expect(h.map((x) => x.name)).toEqual([
-      "API Service", "Database", "Redis / Cache", "Background Workers", "Real-time Tracking",
+      "API Services", "Database", "Redis / Cache", "Background Workers", "Notifications",
     ]);
     expect(h.find((x) => x.name === "Database").ok).toBe(true);
-    expect(h.find((x) => x.name === "API Service").ok).toBe(false);
+    expect(h.find((x) => x.name === "API Services").ok).toBe(false);
   });
 
   it("humanises an underscore status", () => {
@@ -300,6 +361,8 @@ describe("buildHealth", () => {
 // ── the hook ─────────────────────────────────────────────────────────────────
 
 describe("useAdminHomeData", () => {
+  const only = (...modules) => (module) => modules.includes(module);
+
   it("starts in a loading state", () => {
     mockEndpoints();
     const { result } = renderHook(() => useAdminHomeData());
@@ -311,18 +374,18 @@ describe("useAdminHomeData", () => {
     const { result } = renderHook(() => useAdminHomeData());
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.error).toBeNull();
-    expect(result.current.kpis.find((k) => k.key === "riders").value).toBe(136);
+    expect(result.current.kpis.find((k) => k.key === "gross_revenue").value).toBe(12345.67);
     expect(result.current.activity).toHaveLength(2);
     expect(result.current.health).toHaveLength(5);
     expect(result.current.generatedAt).toBe("2026-11-05T16:55:08Z");
   });
 
   it("surfaces an error and null KPIs when every request fails", async () => {
-    mockEndpoints({ command: 1, executive: 1, rides: 1, approvals: 1, finance: 1 });
+    mockEndpoints({ command: 1, executive: 1, rides: 1, approvals: 1, finance: 1, multiCity: 1 });
     const { result } = renderHook(() => useAdminHomeData());
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.error).toBe("Could not reach the YALA API.");
-    expect(result.current.kpis.every((k) => k.value === null)).toBe(true);
+    expect(result.current.kpis).toEqual([]);
   });
 
   it("still succeeds when only some endpoints fail", async () => {
@@ -330,7 +393,7 @@ describe("useAdminHomeData", () => {
     const { result } = renderHook(() => useAdminHomeData());
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.error).toBeNull();
-    expect(result.current.kpis.find((k) => k.key === "riders").value).toBe(136);
+    expect(result.current.kpis.find((k) => k.key === "gross_revenue").value).toBe(12345.67);
     expect(result.current.activity).toEqual([]);
   });
 
@@ -343,26 +406,24 @@ describe("useAdminHomeData", () => {
     await waitFor(() => expect(api.get.mock.calls.length).toBeGreaterThan(before));
   });
 
-  it("calls exactly the five verified endpoints when no role filter is given", async () => {
+  it("calls the verified endpoints when no role filter is given", async () => {
     mockEndpoints();
     const { result } = renderHook(() => useAdminHomeData());
     await waitFor(() => expect(result.current.loading).toBe(false));
     const urls = api.get.mock.calls.map((c) => c[0]);
-    expect(urls).toHaveLength(5);
+    expect(urls).toHaveLength(6);
     expect(urls.some((u) => u.endsWith("/operations/command/"))).toBe(true);
     expect(urls.some((u) => u.endsWith("/operations/executive/dashboard/"))).toBe(true);
     expect(urls.some((u) => u.endsWith("/rides/stats/") || u.endsWith("/rides/history/"))).toBe(true);
     expect(urls.some((u) => u.endsWith("/admin/approvals/stats/"))).toBe(true);
     // Phase 4 added the Finance source; an unfiltered caller fetches everything.
     expect(urls.some((u) => u.endsWith("/payments/admin/finance/overview/"))).toBe(true);
+    expect(urls.some((u) => u.includes("/operations/multi-city/"))).toBe(true);
   });
 
   // ── Phase 4: role-aware fetching ───────────────────────────────────────────
 
   describe("role-aware fetching (canView)", () => {
-    /** canView stub that allows only the listed modules. */
-    const only = (...modules) => (module) => modules.includes(module);
-
     it("a Finance role calls the finance, command and executive sources - but NOT ride history", async () => {
       mockEndpoints();
       const { result } = renderHook(() => useAdminHomeData({ canView: only("finance") }));
@@ -377,7 +438,8 @@ describe("useAdminHomeData", () => {
       // must never pull the raw ride-history database.
       expect(urls.some((u) => u.includes("/rides/history/"))).toBe(false);
 
-      // Finance tiles are present alongside whatever the ops sources provided.
+      // Executive aggregates plus finance module tiles.
+      expect(result.current.kpis.some((k) => k.key === "gross_revenue")).toBe(true);
       expect(result.current.kpis.some((k) => k.key === "wallet_balance")).toBe(true);
       expect(result.current.error).toBeNull();
     });
@@ -424,8 +486,7 @@ describe("useAdminHomeData", () => {
       );
       await waitFor(() => expect(result.current.loading).toBe(false));
       const afterFirstLoad = api.get.mock.calls.length;
-      // Finance legitimately reads finance + command + executive, so expect a
-      // small fixed number - the point is that it does not keep growing.
+      // Finance reads finance overview + command + executive.
       expect(afterFirstLoad).toBeGreaterThan(0);
       expect(afterFirstLoad).toBeLessThanOrEqual(3);
 

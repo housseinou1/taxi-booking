@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import AdminBreadcrumbs, { buildBreadcrumbs } from "./AdminBreadcrumbs";
 import AdminFooter from "./AdminFooter";
 import AdminHeader from "./AdminHeader";
-import AdminSidebar from "./AdminSidebar";
+import AdminTopNav from "./AdminTopNav";
 import AdminErrorBoundary from "./errors/AdminErrorBoundary";
 import {
   AdminForbiddenPage,
@@ -70,19 +70,17 @@ function AdminShellInner({ pathname, title, children }) {
 
   const isNotFound = pathname === "/admin/404";
   const isForbidden = pathname === "/admin/unauthorized" || !canAccessCurrentPath;
+  const pathNorm = (pathname || "").replace(/\/+$/, "") || "/";
+  const isExecutiveHome = pathNorm === "/admin";
 
   return (
-    <div className="admin-shell">
+    <div className="admin-shell admin-shell--topnav">
       <AdminHeader
         onOpenMobileNav={() => setMobileNavOpen(true)}
         onOpenSearch={() => setSearchOpen(true)}
       />
-      <div className="admin-shell__body">
-        <AdminSidebar
-          pathname={pathname}
-          mobileOpen={mobileNavOpen}
-          onMobileClose={() => setMobileNavOpen(false)}
-        />
+      <AdminTopNav pathname={pathname} mobileOpen={mobileNavOpen} onMobileClose={() => setMobileNavOpen(false)} />
+      <div className="admin-shell__body admin-shell__body--full">
         <main className="admin-shell__main" id="admin-main-content">
           <AdminBreadcrumbs items={crumbs} />
           {title ? <h1 className="admin-shell__page-title">{title}</h1> : null}
@@ -96,7 +94,14 @@ function AdminShellInner({ pathname, title, children }) {
                 permissions={permissions}
               />
             ) : (
-              children
+              <div
+                className={
+                  "admin-shell__enterprise-module" +
+                  (isExecutiveHome ? " admin-shell__enterprise-module--flush" : "")
+                }
+              >
+                {children}
+              </div>
             )}
           </AdminErrorBoundary>
         </main>

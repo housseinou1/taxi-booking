@@ -1,5 +1,5 @@
 import React from "react";
-import "./DriverAvatar.css";
+/* Styles loaded once from HamburgerMenu (same chunk as this component) to keep CSS import order stable for production builds. */
 
 const getInitials = (name = "") =>
   String(name)
