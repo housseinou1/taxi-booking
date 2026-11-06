@@ -369,6 +369,31 @@ SEDAD_MERCHANT_ID = os.getenv("SEDAD_MERCHANT_ID", "")
 SEDAD_API_KEY = os.getenv("SEDAD_API_KEY", "")
 SEDAD_WEBHOOK_SECRET = os.getenv("SEDAD_WEBHOOK_SECRET", "")
 
+# ── Moosyl (aggregator: Bankily, Sedad, Masrvi, BimBank, BCI Pay, Amanty) ─────
+# Documented contract: docs.moosyl.com (retrieved 2026-11-06). ONE base URL for both
+# environments — the API key decides which one answers, so environment safety comes from
+# MOOSYL_ENVIRONMENT, not from a different host.
+#
+# Three independent gates must all be satisfied before real money can move:
+#   1. MOOSYL_SECRET_KEY + MOOSYL_WEBHOOK_SECRET present  -> the adapter is "configured"
+#   2. MOOSYL_ENVIRONMENT=production AND PAYMENTS_LIVE_MODE=True -> mode becomes "live"
+#   3. a signature-verified `completed` webhook            -> settlement may run
+# With MOOSYL_ENVIRONMENT=sandbox (the default) real money can never move: sandbox
+# settlement is refused unless MOOSYL_ALLOW_SANDBOX_SETTLEMENT is explicitly enabled,
+# which exists only so the documented end-to-end sandbox flow can be tested.
+MOOSYL_API_BASE_URL = os.getenv("MOOSYL_API_BASE_URL", "https://api.moosyl.com")
+MOOSYL_SECRET_KEY = os.getenv("MOOSYL_SECRET_KEY", "")
+# Safe to ship in the mobile/website bundles; never used to create a charge.
+MOOSYL_PUBLISHABLE_KEY = os.getenv("MOOSYL_PUBLISHABLE_KEY", "")
+# The webhook secret is NOT an API key: it is chosen by us when the webhook is created
+# in the Moosyl dashboard and is used only to verify the HMAC signature.
+MOOSYL_WEBHOOK_SECRET = os.getenv("MOOSYL_WEBHOOK_SECRET", "")
+MOOSYL_ENVIRONMENT = os.getenv("MOOSYL_ENVIRONMENT", "sandbox")
+MOOSYL_ALLOW_SANDBOX_SETTLEMENT = env_bool("MOOSYL_ALLOW_SANDBOX_SETTLEMENT", False)
+# Moosyl keeps 1% of every successful payment (no monthly or setup fee).
+MOOSYL_FEE_PERCENT = os.getenv("MOOSYL_FEE_PERCENT", "1")
+
+
 # ── Employee ID card ─────────────────────────────────────────────────────────
 # Official contact information printed on the card back, CONFIRMED BY THE FOUNDER/CEO
 # (2026-10-26): phone +222 22 11 43 73, email sakho@admin.mr. These values are owned by

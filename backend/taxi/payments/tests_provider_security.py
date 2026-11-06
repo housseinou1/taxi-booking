@@ -243,7 +243,9 @@ class PaymentOversightAccessTests(TestCase):
         codes = [row["code"] for row in res.data["providers"]["providers"]]
         self.assertEqual(
             sorted(codes),
-            sorted(["bankily", "masravi", "sedad", "bank_transfer", "card"]),
+            sorted(
+                ["bankily", "masravi", "sedad", "bank_transfer", "card", "moosyl"]
+            ),
         )
         self.assertFalse(res.data["providers"]["live_mode_enabled"])
         # No provider may claim to be activation-ready.

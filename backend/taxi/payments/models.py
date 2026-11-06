@@ -122,6 +122,7 @@ class Payment(models.Model):
         ("bankily", "Bankily"),
         ("masrvi", "Masravi"),
         ("seddad", "Seddad"),
+        ("moosyl", "Moosyl (aggregator)"),
         ("wallet", "Yala Wallet"),
         ("corporate", "Corporate Account"),
         ("test", "Test"),
@@ -429,6 +430,7 @@ class PaymentRecord(models.Model):
         ("bankily", "Bankily"),
         ("masrvi", "Masravi"),
         ("seddad", "Seddad"),
+        ("moosyl", "Moosyl (aggregator)"),
         ("promo_credit", "Promo / Credit"),
     ]
 
@@ -650,3 +652,59 @@ class PlatformWithdrawalAccounts(models.Model):
     def get_solo(cls):
         obj, _ = cls.objects.get_or_create(key=cls.PLATFORM_KEY)
         return obj
+
+
+class ProviderWebhookEvent(models.Model):
+    """Every provider webhook delivery whose signature verified.
+
+    WHY THIS EXISTS
+    ---------------
+    Moosyl retries a failed delivery up to 7 times (after 1, 2, 4, 8, 16 and 32 minutes)
+    and **reuses the same ``x-webhook-delivery-id``** on every attempt, so a handler that
+    is not deduplicated can fulfil the same order several times. ``delivery_id`` is
+    unique, which turns a replay into a no-op instead of a second payment.
+
+    The row is also the audit trail the user asked for: which event arrived, from which
+    provider environment, for which transaction, with which outcome — including the
+    rejections (amount mismatch, unknown order, sandbox settlement disabled).
+    """
+
+    provider = models.CharField(max_length=32)
+    # ``x-webhook-delivery-id`` — unique per delivery, stable across retries.
+    delivery_id = models.CharField(max_length=191, unique=True)
+    event_type = models.CharField(max_length=64)
+    # "sandbox" or "production" — the provider environment that sent the event.
+    environment = models.CharField(max_length=20, blank=True, default="")
+    # The provider's own payment id (Moosyl ``data.id``).
+    payment_reference = models.CharField(max_length=191, blank=True, default="")
+    # Our transactionId (Yala's trip/delivery identifier).
+    transaction_id = models.CharField(max_length=191, blank=True, default="")
+    status = models.CharField(max_length=32, blank=True, default="")
+    amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    currency = models.CharField(max_length=10, blank=True, default="")
+    # SHA-256 of the raw body: lets an operator prove what was actually signed.
+    payload_sha256 = models.CharField(max_length=64, blank=True, default="")
+    # settled | duplicate | ignored | rejected | error
+    outcome = models.CharField(max_length=40, blank=True, default="")
+    detail = models.TextField(blank=True, default="")
+    payment = models.ForeignKey(
+        "payments.Payment",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="provider_webhook_events",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(
+                fields=["provider", "transaction_id"], name="pwh_provider_txn_idx"
+            ),
+            models.Index(fields=["payment_reference"], name="pwh_payment_ref_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.provider} {self.event_type} {self.transaction_id} ({self.outcome})"
+

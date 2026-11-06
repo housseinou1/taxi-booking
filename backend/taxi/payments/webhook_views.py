@@ -23,6 +23,7 @@ from rest_framework.response import Response
 
 from .providers import MODE_LIVE, get_provider
 from .provider_security import WebhookRejected, verify_webhook
+from .moosyl_settlement import apply_verified_moosyl_event, payload_fingerprint
 
 
 @csrf_exempt
@@ -50,11 +51,42 @@ def provider_webhook(request, provider_code):
             status=exc.status_code,
         )
 
+    # ── Moosyl: the aggregator with a documented settlement contract ──────────
+    #
+    # Moosyl reuses x-webhook-delivery-id across retries, so that header is the replay
+    # key. If it is ever absent we fall back to a hash of the raw body, which still
+    # collapses byte-identical duplicates instead of settling twice.
+    if provider.code == "moosyl":
+        delivery_id = str(headers.get("X-Webhook-Delivery-Id") or "").strip()
+        if not delivery_id:
+            delivery_id = f"{provider.code}:{payload_fingerprint(body)}"
+
+        result = apply_verified_moosyl_event(
+            provider=provider,
+            verification=verification,
+            delivery_id=delivery_id,
+            raw_body=body,
+        )
+        return Response(
+            {
+                "provider": provider.code,
+                "mode": verification.mode,
+                "environment": verification.environment,
+                "verified": True,
+                "settled": result.settled,
+                "outcome": result.outcome,
+                "reason": result.detail,
+                "received": True,
+            },
+            status=status.HTTP_200_OK,
+        )
+
     # A verified event is recorded, but only a verified *live* success may ever
     # change a payment's financial state.
     settled = False
     if verification.mode == MODE_LIVE:
         settled = False  # live settlement is wired only after provider activation
+
 
     return Response(
         {

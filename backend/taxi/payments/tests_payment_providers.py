@@ -28,17 +28,21 @@ class ProviderRegistryTests(TestCase):
         self.assertFalse(live_mode_enabled())
 
     def test_all_supported_providers_are_modelled(self):
-        """Bankily, Masravi, Sedad, bank transfer and card must all be modelled.
+        """Bankily, Masravi, Sedad, bank transfer, card and Moosyl must all be modelled.
 
         Sedad is included because Yala's 100% cashless policy allows the ``sedad`` /
         ``seddad`` method, so the provider architecture must expose it (unconfigured)
-        rather than leave the method without an adapter.
+        rather than leave the method without an adapter. Moosyl is the authorized
+        aggregator that actually exposes Bankily/Sedad/Masrvi to merchants, so it is
+        modelled as a first-class provider with its own adapter.
         """
         readiness = provider_readiness()
         codes = [row["code"] for row in readiness["providers"]]
         self.assertEqual(sorted(codes), sorted(PROVIDER_CODES))
-        self.assertEqual(len(codes), 5)
+        self.assertEqual(len(codes), 6)
         self.assertIn("sedad", codes)
+        self.assertIn("moosyl", codes)
+
 
     def test_sedad_is_present_and_refuses_live_payouts(self):
         """Sedad has no verified B2C disbursement capability, so it must not claim one.
@@ -67,11 +71,28 @@ class ProviderRegistryTests(TestCase):
         )
 
     def test_every_active_adapter_is_a_labelled_mock(self):
+        # Moosyl is deliberately excluded: it resolves to the REAL adapter even while
+        # PAYMENT_PROVIDER_MODE=mock, because a mock would make the documented HMAC
+        # webhook contract and the exactly-once settlement path untestable. Its safety
+        # comes from its own gates, asserted in the next test.
         for code in PROVIDER_CODES:
+            if code == "moosyl":
+                continue
             provider = get_provider(code)
             self.assertTrue(provider.is_mock, code)
             self.assertEqual(provider.mode, MODE_MOCK)
             self.assertIn("mock", provider.display_name.lower())
+
+    def test_moosyl_is_the_real_adapter_and_is_inert_without_credentials(self):
+        """Moosyl is real by design, and completely inert until it is configured."""
+        provider = get_provider("moosyl")
+        self.assertFalse(provider.is_mock)
+        self.assertEqual(provider.mode, MODE_UNCONFIGURED)
+        self.assertFalse(provider.may_settle)
+        self.assertTrue(provider.missing_config())
+        with self.assertRaises(ProviderNotConfigured):
+            provider.parse_webhook(body=b"{}", headers={})
+
 
     def test_no_live_provider_is_active_and_activation_is_denied(self):
         readiness = provider_readiness()
@@ -90,7 +111,13 @@ class ProviderRegistryTests(TestCase):
 
 class MockProviderBehaviourTests(TestCase):
     def test_mock_results_are_never_verified_or_settled(self):
+        # Moosyl is skipped: it is the real adapter (see
+        # ProviderRegistryTests.test_moosyl_is_the_real_adapter_and_is_inert_without_credentials),
+        # so it correctly refuses to create a collection with no credentials rather than
+        # returning a mock result.
         for code in PROVIDER_CODES:
+            if code == "moosyl":
+                continue
             provider = get_provider(code)
             result = provider.create_collection(amount="1000", reference=f"ref-{code}")
             self.assertFalse(result.verified)

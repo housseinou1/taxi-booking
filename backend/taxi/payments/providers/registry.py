@@ -21,6 +21,7 @@ from .mock import (
     MockMasraviProvider,
     MockSedadProvider,
 )
+from .moosyl import MoosylProvider
 from .unconfigured import (
     BankTransferProvider,
     BankilyProvider,
@@ -51,6 +52,7 @@ PROVIDER_LABELS = {
     "sedad": "Sedad (Seddad)",
     "bank_transfer": "Bank transfer",
     "card": "Card (Visa/Mastercard)",
+    "moosyl": "Moosyl (Bankily, Sedad, Masrvi, BimBank, BCI Pay, Amanty)",
 }
 
 
@@ -70,6 +72,7 @@ def provider_config(code: str) -> dict:
     config = {}
     for key in (
         f"{prefix}_API_BASE_URL",
+        f"{prefix}_ENVIRONMENT",
         f"{prefix}_MERCHANT_ID",
         f"{prefix}_API_KEY",
         f"{prefix}_WEBHOOK_SECRET",
@@ -90,6 +93,14 @@ def get_provider(code: str) -> PaymentProvider:
     normalized = str(code or "").strip().lower()
     if normalized not in PROVIDER_CODES:
         raise KeyError(f"Unknown payment provider: {code}")
+    # Moosyl is ALWAYS the real adapter, including while PAYMENT_PROVIDER_MODE is
+    # "mock". Its safety comes from two explicit, independent gates instead of the
+    # global mock switch: MOOSYL_ENVIRONMENT decides sandbox vs production, and
+    # MoosylProvider.may_settle decides whether money may move. A mock Moosyl would
+    # make the documented HMAC webhook contract and the exactly-once settlement path
+    # untestable — and Moosyl's own sandbox is the correct place to test them.
+    if normalized == "moosyl":
+        return MoosylProvider(provider_config(normalized))
     if provider_mode() == MODE_LIVE:
         return REAL_ADAPTERS[normalized](provider_config(normalized))
     return MOCK_ADAPTERS[normalized](provider_config(normalized))

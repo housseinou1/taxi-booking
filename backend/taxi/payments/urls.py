@@ -51,6 +51,11 @@ from .wallet_views import (
 )
 from .webhooks import stripe_webhook
 from .withdrawal_accounts_views import platform_withdrawal_accounts_view
+from .moosyl_views import (
+    moosyl_admin_overview,
+    moosyl_checkout,
+    moosyl_payment_methods,
+)
 
 from .admin_payment_views import (
     payment_providers,
@@ -63,6 +68,13 @@ urlpatterns = [
     path("admin/payments/oversight/", payments_oversight),
     path("admin/payments/providers/", payment_providers),
     path("webhooks/<str:provider_code>/", provider_webhook),
+    # ── Moosyl collection flow (rider / delivery / admin finance) ─────────────
+    # Start a hosted checkout session. Confirmation comes only from the verified
+    # webhook above; the app's redirect back is never trusted.
+    path("moosyl/checkout/", moosyl_checkout),
+    path("moosyl/methods/", moosyl_payment_methods),
+    path("admin/moosyl/", moosyl_admin_overview),
+
     path("methods/save/", save_payment_method),
     path("methods/", my_payment_methods),
     path("methods/<int:method_id>/", delete_payment_method),

@@ -27,6 +27,7 @@ from django.utils import timezone
 
 from .providers import (
     MODE_LIVE,
+    ProviderNotConfigured,
     ProviderResponseUnverified,
     WebhookVerification,
     get_provider,
@@ -66,18 +67,34 @@ def verify_webhook(provider_code: str, body: bytes, headers: dict) -> WebhookVer
             "configured; webhooks cannot be trusted."
         )
 
-    signature = _header(headers, SIGNATURE_HEADER)
-    if not signature:
+    raw_signature = ""
+    for header_name in getattr(provider, "signature_headers", ()) or (SIGNATURE_HEADER,):
+        raw_signature = _header(headers, header_name)
+        if raw_signature:
+            break
+    if not raw_signature:
         raise WebhookRejected("Missing webhook signature.")
 
+    # Normalise the provider's scheme prefix (Moosyl sends ``sha256=<hex>``) before the
+    # constant-time comparison, so verification has exactly one implementation.
+    signature = provider.parse_signature(raw_signature)
     expected = compute_signature(secret, body)
     if not hmac.compare_digest(str(signature), expected):
         raise WebhookRejected("Invalid webhook signature.")
 
-    verification = provider.parse_webhook(body=body, headers=headers)
+    try:
+        verification = provider.parse_webhook(body=body, headers=headers)
+    except ProviderNotConfigured as exc:
+        # An unconfigured provider must never interpret a payload. Fail closed with a
+        # clean 403 rather than letting the provider error become a 500, which the
+        # provider would then retry for 32 minutes.
+        raise WebhookRejected(
+            f"{provider.display_name or provider.code}: {exc}"
+        ) from exc
     if not verification.verified:
         raise WebhookRejected(verification.reason or "Webhook could not be verified.")
     return verification
+
 
 
 def _header(headers, name: str) -> str:

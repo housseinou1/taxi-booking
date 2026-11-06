@@ -25,11 +25,16 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone as dt_timezone
 from typing import Any
 
-PROVIDER_CODES = ("bankily", "masravi", "sedad", "bank_transfer", "card")
+PROVIDER_CODES = ("bankily", "masravi", "sedad", "bank_transfer", "card", "moosyl")
 
 MODE_MOCK = "mock"
 MODE_LIVE = "live"
 MODE_UNCONFIGURED = "unconfigured"
+# A real provider running against its own sandbox/test environment: the requests and
+# signatures are genuine, but no real money moves. Distinct from MODE_MOCK (no network
+# at all) and from MODE_LIVE (real money).
+MODE_SANDBOX = "sandbox"
+
 
 
 class ProviderError(Exception):
@@ -96,6 +101,9 @@ class WebhookVerification:
     mode: str = MODE_UNCONFIGURED
     reason: str = ""
     event: dict[str, Any] = field(default_factory=dict)
+    # ``sandbox`` or ``production`` — which provider environment produced this event.
+    # Recorded for audit; it never replaces signature verification.
+    environment: str = ""
 
 
 def _now() -> str:
@@ -109,6 +117,16 @@ class PaymentProvider:
     display_name: str = ""
     capabilities = ProviderCapabilities()
     is_mock = False
+
+    # Webhook signature header(s) this provider sends, in priority order, and how the
+    # value is normalised before the constant-time comparison. Moosyl (and Stripe-style
+    # providers) wrap the digest in a scheme prefix — ``sha256=<hex>`` — so the raw value
+    # must be normalised in exactly one place rather than in every verifier.
+    signature_headers: tuple[str, ...] = ("X-Yala-Signature",)
+
+    def parse_signature(self, raw_value: str) -> str:
+        """Normalise a signature header value (strip any scheme prefix)."""
+        return str(raw_value or "").strip()
 
     def __init__(self, config: dict[str, Any] | None = None):
         self.config = config or {}
