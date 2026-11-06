@@ -291,4 +291,73 @@ class UnclassifiedStaffAuthorizationTests(TestCase):
         )
 
 
+class AdminPermissionBootstrapTests(TestCase):
+    """The admin shell bootstraps from GET /operations/admin/me/permissions/.
+
+    A release that loses that route makes the entire admin dashboard fail to
+    initialize, so it is pinned here. (The deployed production tree carried this
+    route as an untracked file while `ee96e1ed` did not register it - exactly the
+    divergence a naive sync would have shipped.)
+    """
+
+    URL = "/operations/admin/me/permissions/"
+
+    def setUp(self):
+        self.client = APIClient()
+
+    def test_route_is_registered(self):
+        from django.urls import resolve
+
+        match = resolve(self.URL)
+        self.assertIsNotNone(match.func)
+
+    def test_anonymous_is_rejected(self):
+        self.client.force_authenticate(user=None)
+        response = self.client.get(self.URL)
+        self.assertIn(response.status_code, (401, 403))
+
+    def test_non_staff_is_rejected(self):
+        user = User.objects.create_user(
+            email="plain.bootstrap@yala.test", password="SecTest!2026", is_staff=False
+        )
+        self.client.force_authenticate(user=user)
+        response = self.client.get(self.URL)
+        self.assertIn(response.status_code, (401, 403))
+
+    def test_staff_receives_the_full_permissions_payload(self):
+        group, _ = Group.objects.get_or_create(name="CEO")
+        user = User.objects.create_user(
+            email="ceo.bootstrap@yala.test", password="SecTest!2026", is_staff=True
+        )
+        user.groups.add(group)
+        self.client.force_authenticate(user=user)
+
+        response = self.client.get(self.URL)
+        self.assertEqual(response.status_code, 200)
+
+        data = response.json()
+        for key in (
+            "role",
+            "role_label",
+            "modules",
+            "actions",
+            "home_route",
+            "permissions_version",
+            "feature_flags",
+            "approval_limits",
+        ):
+            self.assertIn(key, data, msg=f"bootstrap payload is missing {key!r}")
+        self.assertEqual(data["role"], "ceo")
+        self.assertIn("home", data["modules"])
+        self.assertIn("ceo", data["modules"])
+        self.assertTrue(response["ETag"])
+
+    def test_audit_client_event_route_is_registered(self):
+        from django.urls import resolve
+
+        match = resolve("/operations/admin/audit/client-event/")
+        self.assertIsNotNone(match.func)
+
+
+
 
