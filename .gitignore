@@ -9,6 +9,10 @@
 !.env.pilot.example
 firebase-service-account.json
 **/firebase-service-account.json
+# Local credential files for operator/QA scripts (e.g. scripts/qa-credentials.env);
+# commit only the placeholder *.env.example copies.
+*.env
+!*.env.example
 
 # Android keystores and signing credentials — NEVER commit these
 signing/
@@ -72,3 +76,8 @@ backend/taxi/media/
 # Extra mobile build artifacts tracked during prior builds
 rider-app/rider-apk/
 release/device-qa*
+
+# Agent scratch / task reports and local verification artefacts. These are working
+# notes, not application code, and were previously polluting the reviewable diff.
+.agents/**
+!.agents/.gitkeep
