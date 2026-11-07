@@ -2,7 +2,7 @@
 
 **Date:** 2026-11-07 (session re-verify)  
 **RC branch:** `release/coordinated-admin-moosyl-rc1`  
-**RC tag (staging):** `coordinated-admin-moosyl-rc1.4` → *commit after seed/outbox fix* (prior: `.1` `52f8f7a5`, `.2` `3ac53832`, base `coordinated-admin-moosyl-rc1` `23de3a2a`)  
+**RC tag (staging):** `coordinated-admin-moosyl-rc1.4` → **`3af1b7d1`** (prior: `.1` `52f8f7a5`, `.2` `3ac53832`, base `coordinated-admin-moosyl-rc1` `23de3a2a`)  
 **Production / live Moosyl:** **HOLD** (G1 / G2)
 
 ---
