@@ -2,7 +2,8 @@
 
 **Status:** Staging **does not exist** today (`staging.yalataxi.live` — no DNS).  
 **Production reference (do not reuse):** `142.93.99.142` (`marketplace-s-1vcpu-2gb-fra1`, FRA1).  
-**Authoritative deploy shape:** repo root `docker-compose.yml` (nginx + django + replicas + postgres + redis + celery worker/beat).
+**Authoritative deploy shape (prod):** `docker-compose.yml` — nginx, **3×** Daphne (`django` + 2 replicas), Postgres `yala_db`, Redis AOF, **2×** Celery workers + beat, Let’s Encrypt, SPA at `/opt/yala/frontend/build`.  
+**Staging stack (repo):** `docker-compose.staging.yml`, `nginx/nginx.staging.conf`, `backend/taxi/env.staging.template`, `scripts/staging-first-boot.md`, `scripts/deploy-staging-coordinated.ps1` (mandatory `-Remote`, blocks prod IP).
 
 ---
 
@@ -55,24 +56,26 @@ Internet
 
 ---
 
-## 3. Estimated monthly cost (DigitalOcean, FRA1)
+## 3. Droplet recommendation & monthly cost (DigitalOcean, FRA1)
 
-Figures are **planning estimates** — confirm in DO Control Panel before purchase.
+Production runs a **heavy** stack (3 Daphne + 2 Celery workers). Staging uses **1 Daphne + 1 worker** (`docker-compose.staging.yml`).
 
-| Resource | Spec (suggested) | ~USD/mo |
-|----------|------------------|--------|
-| Droplet | 2 vCPU / 4 GB RAM / 80 GB SSD | **$24** |
-| Block storage (optional media growth) | +50 GB | **$5** |
-| Managed PostgreSQL (optional) | 1 vCPU / 1 GB (if not in-compose) | **$15** |
-| Spaces (staging backups only) | 250 GB tier, low egress | **$5** |
-| Floating IP (optional) | 1 | **$4** |
+| Option | Spec | Fits | ~USD/mo | Verdict |
+|--------|------|------|---------|---------|
+| **Minimum viable** | 1 vCPU / 2 GB / 50 GB SSD (same class as prod) | Tight under load tests | **~$12** | OK for smoke QA only |
+| **Recommended (smallest suitable)** | 2 vCPU / 4 GB / 80 GB SSD | Admin + Rider/Driver/Delivery + Celery + Moosyl drills | **~$24** | **CEO approval default** |
 
-| Layout | ~Total/mo |
-|--------|-----------|
-| **A — All-in-one compose** (Postgres + Redis on droplet) | **~$29–34** |
-| **B — Managed DB** (app on droplet, DO Postgres) | **~$44–49** |
+Additional (optional):
 
-No production resources are shared; second droplet is mandatory for isolation.
+| Add-on | ~USD/mo |
+|--------|---------|
+| Spaces (staging backups, separate prefix) | **~$5** |
+| Floating IP | **~$4** |
+| Managed Postgres (if not in-compose) | **~$15** |
+
+| **Recommended total (all-in-one compose on 4 GB droplet)** | **~$24–29/mo** |
+
+No droplet purchased from engineering; no production server changes.
 
 ---
 

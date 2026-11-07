@@ -1,0 +1,139 @@
+# YALA STAGING — isolated stack (do not point at production DB, Redis, or Moosyl live keys).
+#
+# Usage on the staging droplet ONLY:
+#   cp backend/taxi/.env.staging.template backend/taxi/.env.staging   # fill from vault
+#   cp .env.staging.compose.example .env                             # POSTGRES_PASSWORD
+#   docker compose -f docker-compose.staging.yml up -d --build
+#
+# Production uses docker-compose.yml on 142.93.99.142 — never run this file there.
+
+name: yala-staging
+
+services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.staging.conf:/etc/nginx/nginx.conf:ro
+      - ./frontend/build:/usr/share/nginx/html:ro
+      - ./backend/taxi/staticfiles:/usr/share/nginx/static:ro
+      - ./backend/taxi/media:/usr/share/nginx/media:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot
+    depends_on:
+      django:
+        condition: service_healthy
+    restart: unless-stopped
+
+  django:
+    build:
+      context: ./backend/taxi
+      dockerfile: Dockerfile
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --noinput &&
+             daphne -b 0.0.0.0 -p 8000 taxi.asgi:application"
+    volumes:
+      - ./backend/taxi/media:/app/media
+    env_file:
+      - ./backend/taxi/.env.staging
+    environment:
+      DATABASE_URL: postgres://yala_staging_user:${POSTGRES_PASSWORD}@postgres:5432/yala_staging
+      DATABASE_SSL_REQUIRE: "False"
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      SENTRY_ENVIRONMENT: staging
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health/ready/', timeout=5)\""]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
+  postgres:
+    image: postgres:15-alpine
+    command: postgres -c max_connections=100
+    volumes:
+      - postgres_staging_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: yala_staging
+      POSTGRES_USER: yala_staging_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    restart: unless-stopped
+    expose:
+      - "5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U yala_staging_user -d yala_staging"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_staging_data:/data
+    restart: unless-stopped
+    expose:
+      - "6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  celery-worker:
+    build:
+      context: ./backend/taxi
+      dockerfile: Dockerfile
+    command: sh -c "celery -A taxi.celery worker --loglevel=info --concurrency=2"
+    env_file:
+      - ./backend/taxi/.env.staging
+    environment:
+      DATABASE_URL: postgres://yala_staging_user:${POSTGRES_PASSWORD}@postgres:5432/yala_staging
+      DATABASE_SSL_REQUIRE: "False"
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  celery-beat:
+    build:
+      context: ./backend/taxi
+      dockerfile: Dockerfile
+    command: sh -c "celery -A taxi.celery beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler"
+    env_file:
+      - ./backend/taxi/.env.staging
+    environment:
+      DATABASE_URL: postgres://yala_staging_user:${POSTGRES_PASSWORD}@postgres:5432/yala_staging
+      DATABASE_SSL_REQUIRE: "False"
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_staging_data:
+  redis_staging_data:
