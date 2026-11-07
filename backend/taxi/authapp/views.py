@@ -2,6 +2,7 @@ import logging
 import threading
 
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Avg, Count, Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -861,6 +862,33 @@ def update_identity(request):
             return Response(
                 {"error": "Selected city was not found."},
                 status=status.HTTP_400_BAD_REQUEST,
+            )
+        old_city_id = request.user.city_id
+        if old_city_id != city.id and request.user.user_type == "driver":
+            return Response(
+                {
+                    "error": (
+                        "Driver operating city changes require CEO approval. "
+                        "Submit a transfer request from the app or contact operations."
+                    ),
+                    "code": "driver_city_transfer_requires_ceo",
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        try:
+            _has_delivery = request.user.delivery_settings is not None
+        except ObjectDoesNotExist:
+            _has_delivery = False
+        if old_city_id != city.id and _has_delivery:
+            return Response(
+                {
+                    "error": (
+                        "Courier operating city changes require CEO approval. "
+                        "Submit a transfer request from the app or contact operations."
+                    ),
+                    "code": "courier_city_transfer_requires_ceo",
+                },
+                status=status.HTTP_403_FORBIDDEN,
             )
         request.user.city = city
 

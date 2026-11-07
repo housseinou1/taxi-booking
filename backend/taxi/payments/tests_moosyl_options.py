@@ -10,9 +10,11 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 
+from app_settings.pricing_service import get_ride_commission_policy
 from authapp.models import User
 from payments.models import Payment
 from payments.moosyl_settlement import delivery_commission_policy
+from payments.settlement_service import get_commission_config, split_delivery_amount
 from taxi.drivers.models import DriverProfile
 from taxi.rides.models import Ride
 
@@ -24,6 +26,13 @@ MOOSYL_CONFIGURED = dict(
     MOOSYL_SECRET_KEY="sandbox-key",
     MOOSYL_WEBHOOK_SECRET="sandbox-webhook-secret",
     MOOSYL_ENVIRONMENT="sandbox",
+    MOOSYL_ALLOW_SANDBOX_SETTLEMENT=False,
+)
+
+MOOSYL_UNCONFIGURED = dict(
+    MOOSYL_SECRET_KEY="",
+    MOOSYL_WEBHOOK_SECRET="",
+    MOOSYL_PUBLISHABLE_KEY="",
 )
 
 
@@ -90,6 +99,7 @@ class PaymentOptionsTests(OptionsBase):
         body = self.client.get(OPTIONS_URL).json()
         self.assertTrue(body["cash"]["commission_applies"])
 
+    @override_settings(**MOOSYL_UNCONFIGURED)
     def test_moosyl_is_unavailable_until_it_is_configured(self):
         body = self.client.get(OPTIONS_URL).json()
         self.assertFalse(body["moosyl"]["available"])
@@ -107,9 +117,9 @@ class PaymentOptionsTests(OptionsBase):
         body = self.client.get(OPTIONS_URL).json()
         self.assertEqual(body["commission"]["ride"]["platform_percent"], "0.3000")
         self.assertEqual(body["commission"]["ride"]["driver_percent"], "0.7000")
-        self.assertEqual(body["commission"]["delivery"]["platform_percent"], "0.3000")
-        self.assertEqual(body["commission"]["delivery"]["driver_percent"], "0.7000")
-        self.assertEqual(body["commission"]["delivery"]["source"], "ride_policy")
+        self.assertEqual(Decimal(body["commission"]["delivery"]["platform_percent"]), Decimal("0.20"))
+        self.assertEqual(Decimal(body["commission"]["delivery"]["driver_percent"]), Decimal("0.80"))
+        self.assertEqual(body["commission"]["delivery"]["source"], "CommissionConfig:delivery")
 
     def test_confirmation_is_backend_webhook_only(self):
         body = self.client.get(OPTIONS_URL).json()
@@ -173,28 +183,60 @@ class CashCommissionAccountingTests(OptionsBase):
 
 
 class DeliveryCommissionPolicyTests(TestCase):
-    """Delivery split: provisional 30/70, configurable without a migration."""
+    """Delivery split MUST come from CommissionConfig('delivery'), never the ride policy.
 
-    def test_defaults_to_the_ride_policy(self):
+    This is the regression guard for a real defect: the Moosyl delivery path once read
+    ``get_ride_commission_policy()`` (30/70), which would have paid a courier 70% instead
+    of the configured rate. Delivery and taxi are deliberately different verticals.
+    """
+
+    def test_delivery_reads_its_own_commission_config(self):
         policy = delivery_commission_policy()
-        self.assertEqual(policy["platform_percent"], Decimal("0.3000"))
-        self.assertEqual(policy["driver_percent"], Decimal("0.7000"))
-        self.assertEqual(policy["source"], "ride_policy")
+        self.assertEqual(policy["source"], "CommissionConfig:delivery")
+        # Platform default for the delivery vertical (Option A - unchanged).
+        self.assertEqual(policy["platform_percent"], Decimal("0.2000"))
+        self.assertEqual(policy["driver_percent"], Decimal("0.8000"))
+
+    def test_delivery_does_not_inherit_the_taxi_split(self):
+        """If this ever equals 0.30/0.70, the defect has regressed."""
+        policy = delivery_commission_policy()
+        taxi = get_ride_commission_policy()
+        self.assertEqual(taxi["platform_percent"], Decimal("0.3000"))
+        self.assertNotEqual(
+            policy["platform_percent"],
+            taxi["platform_percent"],
+            "delivery must not reuse the taxi commission policy",
+        )
+
+    def test_delivery_split_follows_a_config_change(self):
+        """Proves the value is read live from CommissionConfig, not hardcoded."""
+        cfg = get_commission_config("delivery")
+        original_courier, original_platform = cfg.courier_rate, cfg.platform_rate
+        try:
+            cfg.courier_rate = Decimal("0.7500")
+            cfg.platform_rate = Decimal("0.2500")
+            cfg.save(update_fields=["courier_rate", "platform_rate"])
+            policy = delivery_commission_policy()
+            self.assertEqual(policy["platform_percent"], Decimal("0.2500"))
+            self.assertEqual(policy["driver_percent"], Decimal("0.7500"))
+        finally:
+            cfg.courier_rate = original_courier
+            cfg.platform_rate = original_platform
+            cfg.save(update_fields=["courier_rate", "platform_rate"])
+
+    def test_200_mru_delivery_splits_160_courier_40_platform(self):
+        """Option A, verified end to end through the settlement helper."""
+        split = split_delivery_amount(Decimal("200.00"))
+        self.assertEqual(split["courier_earning"], Decimal("160.00"))
+        self.assertEqual(split["app_fee"], Decimal("40.00"))
+        self.assertEqual(
+            split["courier_earning"] + split["app_fee"], Decimal("200.00")
+        )
 
     @override_settings(DELIVERY_PLATFORM_PERCENT="25")
-    def test_whole_percent_override_is_normalised(self):
+    def test_explicit_override_wins_over_the_config(self):
         policy = delivery_commission_policy()
+        self.assertEqual(policy["source"], "DELIVERY_PLATFORM_PERCENT")
         self.assertEqual(policy["platform_percent"], Decimal("0.25"))
         self.assertEqual(policy["driver_percent"], Decimal("0.75"))
-        self.assertEqual(policy["source"], "DELIVERY_PLATFORM_PERCENT")
-
-    @override_settings(DELIVERY_PLATFORM_PERCENT="0.20")
-    def test_fraction_override_is_accepted(self):
-        policy = delivery_commission_policy()
-        self.assertEqual(policy["platform_percent"], Decimal("0.20"))
-        self.assertEqual(policy["driver_percent"], Decimal("0.80"))
-
-    @override_settings(DELIVERY_PLATFORM_PERCENT="")
-    def test_empty_override_falls_back_to_the_ride_policy(self):
-        self.assertEqual(delivery_commission_policy()["source"], "ride_policy")
 

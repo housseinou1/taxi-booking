@@ -17,6 +17,7 @@ import {
 } from "./driverAdminApi";
 import DriverPerformanceProfile from "./DriverPerformanceProfile";
 import { buildScoreBandDistribution, isEmptySeries } from "./driverPerformanceCharts";
+import { useOperatingCityOptions } from "../layouts/useOperatingCityOptions";
 import "./driverPerformance.css";
 
 /**
@@ -201,16 +202,7 @@ function DriverPerformanceInner({ mode }) {
     };
   }, [summary.data, incidents.rows]);
 
-  const cityOptions = useMemo(() => {
-    const cities = new Set();
-    rows.forEach((row) => {
-      if (row.city_name) cities.add(row.city_name);
-    });
-    return [
-      { value: "", label: "All cities" },
-      ...[...cities].sort().map((city) => ({ value: city, label: city })),
-    ];
-  }, [rows]);
+  const { nameFilterOptions: cityOptions } = useOperatingCityOptions();
 
   const categoryOptions = useMemo(() => {
     const categories = new Set();

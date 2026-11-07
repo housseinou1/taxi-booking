@@ -15,8 +15,13 @@ import { AdminPageLoader } from "./loading/AdminLoaders";
 import { AdminThemeProvider } from "./theme/AdminThemeContext";
 import { PermissionProvider, usePermissions } from "../permissions/PermissionContext";
 import { resolveRegisteredAdminHome } from "./permissions/adminRouteAccess";
-import { ToastProvider } from "../components/library";
+import { AdminModuleLayout, ToastProvider } from "../components/library";
+import MauritaniaFlag from "../employees/MauritaniaFlag";
+import "./theme/yalaAdminDesignTokens.css";
 import "./AdminShell.css";
+import "./theme/mauritaniaAdminTheme.css";
+import "./theme/adminThemeEnforcement.css";
+import "./theme/yalaAdminTricolor.css";
 
 function AdminShellInner({ pathname, title, children }) {
   const {
@@ -74,16 +79,19 @@ function AdminShellInner({ pathname, title, children }) {
   const isExecutiveHome = pathNorm === "/admin";
 
   return (
-    <div className="admin-shell admin-shell--topnav">
+    <div className="admin-shell admin-shell--topnav admin-shell--flag">
+      <div className="admin-shell__flag-band admin-shell__flag-band--top" aria-hidden="true" />
       <AdminHeader
         onOpenMobileNav={() => setMobileNavOpen(true)}
         onOpenSearch={() => setSearchOpen(true)}
       />
       <AdminTopNav pathname={pathname} mobileOpen={mobileNavOpen} onMobileClose={() => setMobileNavOpen(false)} />
-      <div className="admin-shell__body admin-shell__body--full">
+      <div className="admin-shell__body admin-shell__body--full admin-shell__flag-field">
+        <div className="admin-shell__flag-watermark" aria-hidden="true">
+          <MauritaniaFlag className="admin-shell__flag-watermark-svg" title="Decorative flag motif" />
+        </div>
         <main className="admin-shell__main" id="admin-main-content">
           <AdminBreadcrumbs items={crumbs} />
-          {title ? <h1 className="admin-shell__page-title">{title}</h1> : null}
           <AdminErrorBoundary>
             {isNotFound ? (
               <AdminNotFoundPage onGoHome={goHome} />
@@ -93,15 +101,18 @@ function AdminShellInner({ pathname, title, children }) {
                 routeDenial={routeDenial}
                 permissions={permissions}
               />
-            ) : (
-              <div
-                className={
-                  "admin-shell__enterprise-module" +
-                  (isExecutiveHome ? " admin-shell__enterprise-module--flush" : "")
-                }
-              >
+            ) : isExecutiveHome ? (
+              <div className="admin-shell__enterprise-module admin-shell__enterprise-module--flush">
                 {children}
               </div>
+            ) : (
+              <AdminModuleLayout
+                title={title || crumbs[crumbs.length - 1]?.label || "Admin"}
+                subtitle="YALA Technologies — secure operations console"
+                className="admin-shell__enterprise-module"
+              >
+                {children}
+              </AdminModuleLayout>
             )}
           </AdminErrorBoundary>
         </main>

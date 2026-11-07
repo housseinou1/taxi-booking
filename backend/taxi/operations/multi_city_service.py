@@ -9,18 +9,27 @@ from django.contrib.auth import get_user_model
 from django.db.models import Avg, Count, Q, Sum
 from django.utils import timezone
 
+from deliveries.cities import normalize_city_name
 from deliveries.models import Delivery
 from locations.models import City
 from payments.models import PaymentRecord, WalletAccount, WithdrawalRequest
 from taxi.drivers.models import DriverProfile
 from taxi.rides.models import Ride
 
+from .city_id_bridge import registry_city_ids_for_location_city
 from .executive_service import DELIVERY_ACTIVE, RIDE_ACTIVE, _dec, _payment_qs
 from .launch_service import build_business_kpis
 from .models import OpsCityProfile
 from .operations_center_service import build_fleet_snapshot, build_hourly_analytics
 
 User = get_user_model()
+
+
+def _registry_city_ids_for_location(city_id: int) -> list[int]:
+    loc = City.objects.select_related("region").filter(pk=city_id).first()
+    if loc is None:
+        return []
+    return registry_city_ids_for_location_city(loc)
 
 TARGET_CITY_NAMES = [
     "Nouakchott",
@@ -49,7 +58,13 @@ def _city_rides(city_id: int, start=None, end=None):
 
 
 def _city_deliveries(city_name: str, start=None, end=None):
-    qs = Delivery.objects.filter(service_city__icontains=city_name)
+    canon = normalize_city_name(city_name) or (city_name or "").strip() or None
+    if canon and canon.casefold() == "nouakchott":
+        qs = Delivery.objects.filter(service_city__iexact="Nouakchott")
+    elif canon:
+        qs = Delivery.objects.filter(service_city__iexact=canon)
+    else:
+        qs = Delivery.objects.filter(service_city__icontains=city_name or "")
     if start:
         qs = qs.filter(created_at__date__gte=start)
     if end:
@@ -107,14 +122,22 @@ def get_city_profile(city_id: int) -> dict | None:
 def build_city_fleet_metrics(city_id: int, city_name: str) -> dict:
     fleet = build_fleet_snapshot(city_id)
     counts = fleet.get("counts", {})
-    riders = User.objects.filter(user_type="rider", city_id=city_id).count()
-    drivers = DriverProfile.objects.filter(status="approved", user__city_id=city_id).count()
-    couriers = (
-        Delivery.objects.filter(service_city__icontains=city_name, driver__isnull=False)
-        .values("driver_id")
-        .distinct()
-        .count()
-    )
+    reg_ids = _registry_city_ids_for_location(city_id)
+    if reg_ids:
+        riders = User.objects.filter(user_type="rider", city_id__in=reg_ids).count()
+        drivers = DriverProfile.objects.filter(status="approved", user__city_id__in=reg_ids).count()
+    else:
+        riders = 0
+        drivers = 0
+    canon = normalize_city_name(city_name) or (city_name or "").strip()
+    cq = Delivery.objects.filter(driver__isnull=False)
+    if canon.casefold() == "nouakchott":
+        cq = cq.filter(service_city__iexact="Nouakchott")
+    elif canon:
+        cq = cq.filter(service_city__iexact=canon)
+    else:
+        cq = cq.filter(service_city__icontains=city_name or "")
+    couriers = cq.values("driver_id").distinct().count()
 
     return {
         "city_id": city_id,
@@ -138,12 +161,30 @@ def build_city_financial_metrics(city_id: int, city_name: str) -> dict:
     ride_revenue = rides.aggregate(total=Sum("fare"))["total"] or Decimal("0")
     commission = rides.aggregate(total=Sum("app_fee"))["total"] or Decimal("0")
 
-    payments = PaymentRecord.objects.filter(status="paid", created_at__date__gte=month_start)
-    failed = PaymentRecord.objects.filter(status="failed", created_at__date__gte=month_start).aggregate(
-        count=Count("id"), total=Sum("amount")
+    ride_ids_period = _city_rides(city_id, month_start, today).values_list("id", flat=True)
+    delivery_ids_period = _city_deliveries(city_name, month_start, today).values_list("id", flat=True)
+    payments = PaymentRecord.objects.filter(
+        status="paid",
+        created_at__date__gte=month_start,
+        created_at__date__lte=today,
+    ).filter(Q(ride_id__in=ride_ids_period) | Q(delivery_id__in=delivery_ids_period))
+    failed = (
+        PaymentRecord.objects.filter(
+            status="failed",
+            created_at__date__gte=month_start,
+            created_at__date__lte=today,
+        )
+        .filter(Q(ride_id__in=ride_ids_period) | Q(delivery_id__in=delivery_ids_period))
+        .aggregate(count=Count("id"), total=Sum("amount"))
     )
 
-    driver_ids = DriverProfile.objects.filter(user__city_id=city_id).values_list("user_id", flat=True)
+    reg_ids_fin = _registry_city_ids_for_location(city_id)
+    if reg_ids_fin:
+        driver_ids = DriverProfile.objects.filter(user__city_id__in=reg_ids_fin).values_list(
+            "user_id", flat=True
+        )
+    else:
+        driver_ids = []
     withdrawals = WithdrawalRequest.objects.filter(
         driver_id__in=driver_ids,
         created_at__date__gte=month_start,
@@ -153,9 +194,12 @@ def build_city_financial_metrics(city_id: int, city_name: str) -> dict:
         count=Count("id"),
     )
 
-    wallet_balance = WalletAccount.objects.filter(owner__city_id=city_id).aggregate(
-        total=Sum("balance")
-    )["total"] or Decimal("0")
+    if reg_ids_fin:
+        wallet_balance = WalletAccount.objects.filter(owner__city_id__in=reg_ids_fin).aggregate(
+            total=Sum("balance")
+        )["total"] or Decimal("0")
+    else:
+        wallet_balance = Decimal("0")
 
     return {
         "city_id": city_id,

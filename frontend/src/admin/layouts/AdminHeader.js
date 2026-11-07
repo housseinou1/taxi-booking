@@ -1,20 +1,19 @@
 import React, { useMemo, useState } from "react";
 
+import { SearchableSelect } from "../components/library";
 import { usePermissions } from "../permissions/PermissionContext";
 import MauritaniaFlag from "../employees/MauritaniaFlag";
 import { useAdminTheme } from "./theme/AdminThemeContext";
-
-const CITIES = [
-  { id: "", label: "All cities" },
-  { id: "nouakchott", label: "Nouakchott" },
-  { id: "nouadhibou", label: "Nouadhibou" },
-];
+import { useOperatingCityOptions } from "./useOperatingCityOptions";
+import AdminTopNavIcon from "./AdminTopNavIcons";
 
 export default function AdminHeader({ onOpenMobileNav, onOpenSearch }) {
   const { permissions, logout, cityId, setCity, notifications, hasFeature } = usePermissions();
   const { mode, setMode } = useAdminTheme();
   const [profileOpen, setProfileOpen] = useState(false);
   const [notifyOpen, setNotifyOpen] = useState(false);
+
+  const { options: cityOptions, loading: citiesLoading } = useOperatingCityOptions();
 
   const unreadCount = notifications?.length || 0;
 
@@ -39,7 +38,7 @@ export default function AdminHeader({ onOpenMobileNav, onOpenSearch }) {
           aria-label="Open navigation menu"
           onClick={onOpenMobileNav}
         >
-          ☰
+          <AdminTopNavIcon name="menu" className="admin-shell__header-icon" />
         </button>
         <div className="admin-shell__brand">
           <img src="/yala-admin-logo.png" alt="" className="admin-shell__logo" />
@@ -58,7 +57,7 @@ export default function AdminHeader({ onOpenMobileNav, onOpenSearch }) {
           onClick={onOpenSearch}
           title="Global search is not available yet"
         >
-          <span aria-hidden="true">🔍</span>
+          <AdminTopNavIcon name="search" className="admin-shell__header-icon" />
           <span className="admin-shell__search-label">Search for rides, drivers…</span>
           <span className="admin-shell__search-soon">Soon</span>
           <kbd>Ctrl K</kbd>
@@ -66,21 +65,20 @@ export default function AdminHeader({ onOpenMobileNav, onOpenSearch }) {
       </div>
 
       <div className="admin-shell__header-right">
-        <label className="admin-shell__city-select-wrap">
-          <span className="admin-shell__sr-only">City</span>
-          <select
-            className="admin-shell__city-select"
+        <div className="admin-shell__city-select-wrap">
+          <span className="admin-shell__sr-only">Operating city</span>
+          <SearchableSelect
+            label=""
             value={cityId}
-            onChange={(e) => setCity(e.target.value)}
-            aria-label="Select city"
-          >
-            {CITIES.map((c) => (
-              <option key={c.id || "all"} value={c.id}>
-                {c.label}
-              </option>
-            ))}
-          </select>
-        </label>
+            onChange={setCity}
+            options={cityOptions}
+            loading={citiesLoading}
+            placeholder="All cities"
+            searchPlaceholder="Search city or wilaya…"
+            className="admin-shell__city-searchable"
+            name="admin-operating-city"
+          />
+        </div>
 
         <span className="admin-shell__role-badge" title="Current role">
           {permissions?.role_label || "Staff"}
@@ -92,7 +90,10 @@ export default function AdminHeader({ onOpenMobileNav, onOpenSearch }) {
           aria-label={`Theme: ${themeLabel}. Click to change.`}
           onClick={cycleTheme}
         >
-          {mode === "light" ? "☀" : mode === "system" ? "◐" : "☾"}
+          <AdminTopNavIcon
+            name={mode === "light" ? "sun" : mode === "system" ? "half-moon" : "moon"}
+            className="admin-shell__header-icon"
+          />
         </button>
 
         <div className="admin-shell__dropdown-wrap">
@@ -103,7 +104,7 @@ export default function AdminHeader({ onOpenMobileNav, onOpenSearch }) {
             aria-expanded={notifyOpen}
             onClick={() => setNotifyOpen((v) => !v)}
           >
-            🔔
+            <AdminTopNavIcon name="bell" className="admin-shell__header-icon" />
             {unreadCount ? <span className="admin-shell__badge">{unreadCount}</span> : null}
           </button>
           {notifyOpen ? (

@@ -1,4 +1,4 @@
-/** Route ΓåÆ required module id for AdminRouteGuard */
+/** Route → required module id for AdminRouteGuard */
 
 export const PATH_MODULE_MAP = {
   "/admin/home/ceo": "home",
@@ -30,6 +30,7 @@ export const PATH_MODULE_MAP = {
   "/admin/approvals": "drivers",
   "/admin/hall-of-fame": "drivers",
   "/admin/cities": "ceo",
+  "/admin/administration/city-transfers": "ceo",
   "/admin/vehicles": "drivers",
   // Riders Management
   "/admin/riders": "riders",
@@ -73,6 +74,7 @@ export const PATH_MODULE_MAP = {
   "/admin/fleet": "drivers",
   "/admin/academy": "drivers",
   "/admin/employees": "employees",
+  "/admin/employees/id-cards": "employees",
   "/admin/attendance": "employees",
   "/admin/hr": "employees",
   "/admin/verification": "employees",
@@ -110,6 +112,13 @@ export const PATH_MODULE_MAP = {
   "/admin/ops-center/command": "ops",
   "/admin/ops-center/finance": "finance",
   "/admin/share-analytics": "analytics",
+  // Registered in App.js but previously missing — default-denied non-elevated roles.
+  "/admin/classic": "home",
+  "/admin/deliveries": "delivery",
+  "/admin/integration": "system",
+  "/admin/partners": "business",
+  "/admin/loyalty": "marketing",
+  "/admin/incentive-engine": "finance",
 };
 
 export const MODULE_LABELS = {

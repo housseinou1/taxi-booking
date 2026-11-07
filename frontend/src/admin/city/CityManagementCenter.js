@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
+import { isMajorOperatingCityName } from "./majorOperatingCities";
 import {
   SERVICE_CATALOG,
   SERVICE_LABELS,
@@ -360,8 +361,9 @@ export default function CityManagementCenter() {
       .filter((city) => {
         const cityRegion = resolveRegion(city.region);
         return (
-          city.region === hierarchy.region ||
-          (cityRegion.wilaya && cityRegion.wilaya === target.wilaya)
+          isMajorOperatingCityName(city.name) &&
+          (city.region === hierarchy.region ||
+            (cityRegion.wilaya && cityRegion.wilaya === target.wilaya))
         );
       })
       .map((city) => {

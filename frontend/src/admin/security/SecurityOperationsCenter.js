@@ -102,7 +102,10 @@ const ACCESS_COLUMNS = [
  * register (PDF ID cards, secure QR verification, CSS-order build warnings,
  * migration state). Nothing here can change platform state.
  */
-export default function SecurityOperationsCenter({ pathname = "/admin/security" } = {}) {
+export default function SecurityOperationsCenter({ pathname: pathnameProp } = {}) {
+  const pathname =
+    pathnameProp ||
+    (typeof window !== "undefined" ? window.location.pathname : "/admin/security");
   const [overview, setOverview] = useState(null);
   const [overviewError, setOverviewError] = useState("");
 

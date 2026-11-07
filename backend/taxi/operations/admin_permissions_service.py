@@ -377,6 +377,15 @@ def build_admin_permissions(user) -> dict:
     feature_flags = _build_feature_flags(user, role, modules)
     version = _permissions_version(user, groups)
 
+    totp_confirmed = False
+    try:
+        from admin_2fa.models import AdminTOTP
+
+        totp_obj = AdminTOTP.objects.filter(user=user).first()
+        totp_confirmed = bool(totp_obj and totp_obj.is_confirmed)
+    except Exception:
+        totp_confirmed = False
+
     return {
         "profile": profile,
         "role": role,
@@ -388,6 +397,10 @@ def build_admin_permissions(user) -> dict:
         "actions": actions,
         "approval_limits": approval_limits,
         "feature_flags": feature_flags,
+        "security": {
+            "totp_confirmed": totp_confirmed,
+            "session_timeout_enabled": bool(feature_flags.get("session_timeout")),
+        },
         "home_route": HOME_ROUTES.get(role, HOME_ROUTES["staff"]),
         "permissions_version": version,
         "elevated": bool(user.is_superuser),

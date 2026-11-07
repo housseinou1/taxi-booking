@@ -7,6 +7,7 @@ from django.contrib.auth.models import Group
 from django.test import TestCase
 from rest_framework.test import APIClient
 
+from deliveries.models import DriverDeliverySettings
 from taxi.drivers.models import DriverProfile
 
 User = get_user_model()
@@ -56,6 +57,22 @@ class FleetPerformanceTests(TestCase):
         for key in ("overview", "map", "drivers", "documents", "ceo"):
             self.assertIn(key, data)
         self.assertIn("total_registered", data["overview"])
+        self.assertEqual(data["overview"].get("population"), "taxi_drivers")
+
+    def test_fleet_overview_excludes_couriers(self):
+        courier_user = User.objects.create_user(
+            email="fleet-courier@test.local",
+            password="Pass123!",
+            user_type="driver",
+        )
+        DriverProfile.objects.create(user=courier_user, status="approved", is_available=True)
+        DriverDeliverySettings.objects.create(driver=courier_user, delivery_mode_enabled=True)
+
+        self.client.force_authenticate(self.supervisor)
+        data = self.client.get("/operations/fleet/dashboard/").json()
+        overview = data["overview"]
+        self.assertEqual(overview["total_registered"], 1)
+        self.assertEqual(overview["approved_drivers"], 1)
 
     def test_fleet_report_export_csv(self):
         self.client.force_authenticate(self.supervisor)

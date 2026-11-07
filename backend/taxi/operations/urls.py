@@ -101,6 +101,10 @@ from .launch_growth_views import (
     launch_growth_scaling,
 )
 from .city_assignment_views import city_assignments, my_city_scope, revoke_city_assignment
+from .city_transfer_views import (
+    decide_operating_city_transfer,
+    list_operating_city_transfers,
+)
 from .multi_city_views import (
     multi_city_city_detail,
     multi_city_cities,
@@ -403,6 +407,11 @@ urlpatterns = [
     path("city-assignments/", city_assignments),
     path("city-assignments/me/", my_city_scope),
     path("city-assignments/<int:assignment_id>/revoke/", revoke_city_assignment),
+    path("operating-city-transfers/", list_operating_city_transfers),
+    path(
+        "operating-city-transfers/<int:request_id>/decide/",
+        decide_operating_city_transfer,
+    ),
     path("smart-engine/", smart_engine_dashboard),
     path("smart-engine/flags/", smart_engine_flags),
     path("smart-engine/dispatch-rules/", smart_dispatch_rules),

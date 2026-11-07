@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
+import { isMajorOperatingCityName } from "../city/majorOperatingCities";
+
 import { SearchableSelect, formatMoneyOrDash } from "../components/library";
 import { resolveRegion } from "../city/mauritaniaGeoIdentity";
 import { apiErrorMessage } from "../layouts/errors/apiErrorMessage";
@@ -186,10 +188,12 @@ export default function SmartPricingDispatchCenter() {
     if (regions.length === 0) {
       return [
         ...base,
-        ...(data?.cities || []).map((city) => ({
-          value: String(city.id),
-          label: city.name,
-        })),
+        ...(data?.cities || [])
+          .filter((city) => isMajorOperatingCityName(city.name))
+          .map((city) => ({
+            value: String(city.id),
+            label: city.name,
+          })),
       ];
     }
     const scoped = selectedRegion
@@ -199,6 +203,7 @@ export default function SmartPricingDispatchCenter() {
     const cities = [];
     scoped.forEach((region) => {
       (region.cities || []).forEach((city) => {
+        if (!isMajorOperatingCityName(city.name)) return;
         const value = String(city.id);
         if (seen.has(value)) return;
         seen.add(value);

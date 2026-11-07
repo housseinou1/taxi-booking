@@ -40,6 +40,7 @@ EMAIL_DOMAIN = "pilot.yala.test"
 
 STAFF_SEEDS = [
     {"email": f"ceo@{EMAIL_DOMAIN}", "first_name": "Aicha", "last_name": "PilotCEO", "groups": ["CEO", "Super Admin"]},
+    {"email": f"hr@{EMAIL_DOMAIN}", "first_name": "Kadi", "last_name": "PilotHR", "groups": ["HR Manager"]},
     {"email": f"ops1@{EMAIL_DOMAIN}", "first_name": "Omar", "last_name": "PilotOps", "groups": ["Operations Manager"]},
     {"email": f"ops2@{EMAIL_DOMAIN}", "first_name": "Fatim", "last_name": "PilotOps", "groups": ["Supervisor"]},
     {"email": f"finance1@{EMAIL_DOMAIN}", "first_name": "Sidi", "last_name": "PilotFin", "groups": ["Finance"]},

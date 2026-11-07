@@ -67,6 +67,7 @@ import BetaFeedbackCenter from "./admin/beta/BetaFeedbackCenter";
 import FleetPerformanceCenter from "./admin/fleet/FleetPerformanceCenter";
 import VehicleManagementCenter from "./admin/fleet/VehicleManagementCenter";
 import CityManagementCenter from "./admin/city/CityManagementCenter";
+import CityTransferApprovalsCenter from "./admin/city/CityTransferApprovalsCenter";
 import EmployeeManagementCenter from "./admin/employees/EmployeeManagementCenter";
 import AttendanceManagementCenter from "./admin/employees/AttendanceManagementCenter";
 import HrManagementCenter from "./admin/employees/HrManagementCenter";
@@ -81,6 +82,8 @@ import HallOfFameAdminPanel from "./admin/HallOfFameAdminPanel";
 import BoardReportingSuite from "./admin/board/BoardReportingSuite";
 import ComplianceGovernanceCenter from "./admin/compliance/ComplianceGovernanceCenter";
 import BIAnalyticsCenter from "./admin/bi/BIAnalyticsCenter";
+import BiGrowthCenter from "./admin/bi/BiGrowthCenter";
+import LaunchGrowthCenter from "./admin/launch-growth/LaunchGrowthCenter";
 import APIGatewayCenter from "./admin/apiGateway/APIGatewayCenter";
 import AcademyCenter from "./admin/academy/AcademyCenter";
 import GrowthExpansionDashboard from "./admin/growth/GrowthExpansionDashboard";
@@ -542,8 +545,8 @@ function App() {
     else if (currentPath === "/admin/classic") setPage("admin-classic");
     else if (currentPath === "/admin") setPage("admin");
     else if (currentPath === "/admin/deliveries") {
-      window.history.replaceState(null, "", "/admin?section=deliveries");
-      setPage("admin");
+      window.history.replaceState(null, "", "/admin/delivery/directory");
+      setPage("admin-delivery-directory");
     }
     else if (currentPath === "/admin/payments") setPage("admin-payments");
     else if (currentPath === "/admin/executive") setPage("admin-executive");
@@ -561,6 +564,8 @@ function App() {
     else if (currentPath === "/admin/fleet") setPage("admin-fleet");
     else if (currentPath === "/admin/vehicles") setPage("admin-vehicles");
     else if (currentPath === "/admin/cities") setPage("admin-cities");
+    else if (currentPath === "/admin/administration/city-transfers") setPage("admin-city-transfers");
+    else if (currentPath === "/admin/employees/id-cards") setPage("admin-employees");
     else if (currentPath === "/admin/employees") setPage("admin-employees");
   else if (currentPath === "/admin/attendance") setPage("admin-attendance");
     else if (currentPath === "/admin/hr") setPage("admin-hr");
@@ -622,6 +627,12 @@ function App() {
     else if (currentPath === "/admin/delivery/cities") setPage("admin-delivery-cities");
     else if (currentPath === "/admin/delivery/couriers") setPage("admin-delivery-couriers");
     else if (currentPath === "/admin/delivery/merchants") setPage("admin-delivery-merchants");
+    else if (currentPath === "/admin/bi-growth" || currentPath === "/admin/growth-intelligence") setPage("admin-bi-growth");
+    else if (currentPath === "/admin/launch-growth" || currentPath === "/admin/growth-sprint") setPage("admin-launch-growth");
+    else if (currentPath === "/admin/legacy") {
+      window.history.replaceState(null, "", "/admin/classic");
+      setPage("admin-classic");
+    }
     else if (currentPath === "/admin/security" || currentPath === "/admin/security/audit" || currentPath === "/admin/security/fraud") setPage("admin-security");
     else if (currentPath === "/admin/withdrawals") setPage("admin-withdrawals");
   else if (currentPath === "/admin/withdrawal-accounts") setPage("admin-withdrawal-accounts");
@@ -642,6 +653,7 @@ function App() {
     else if (currentPath === "/support") setPage("support");
     else if (currentPath === "/services") setPage("services");
     else if (currentPath.match(/^\/trip-share\/[^/]+$/)) setPage("shared-trip");
+    else if (currentPath.startsWith("/admin/")) setPage("admin-unmapped");
     else setPage("home");
   }, [currentPath, navCounter]);
 
@@ -1229,6 +1241,14 @@ function App() {
     );
   }
 
+  if (page === "admin-city-transfers") {
+    return withInstall(
+      <AdminShellPage pathname="/admin/administration/city-transfers" title="City Transfer Approvals">
+        <CityTransferApprovalsCenter />
+      </AdminShellPage>
+    );
+  }
+
   if (page === "admin-cities") {
     // City Management (CEO Command Center). Backed by /cities/management/ — read access for
     // executive/operations roles, write access for the Founder/CEO and authorized
@@ -1271,12 +1291,11 @@ function App() {
     return withInstall(<CityAnalytics pathname="/admin/delivery/cities" />);
   }
   if (page === "admin-delivery-support") {
-    // `/admin/delivery/support` used to render the Delivery Dashboard, so the URL advertised
-    // a support surface that did not exist. The delivery support tooling is already built into
-    // the legacy delivery section (disputes + chat safety), so redirect there rather than
-    // duplicating a second support page. Same pattern as the `delivery-admin` redirect below.
-    window.location.replace("/admin?section=deliveries&tab=disputes");
-    return null;
+    return withInstall(
+      <AdminShellPage pathname="/admin/delivery/support" title="Delivery Support">
+        <BetaFeedbackCenter />
+      </AdminShellPage>
+    );
   }
   if (page === "admin-withdrawal-accounts") {
     // Phase E - Legacy Admin Hub integration: the platform settlement accounts section,
@@ -1347,7 +1366,7 @@ function App() {
     return withInstall(<RolesPermissionsCenter pathname="/admin/roles" />);
   }
   if (page === "admin-security") {
-    return withInstall(<SecurityOperationsCenter pathname="/admin/security" />);
+    return withInstall(<SecurityOperationsCenter pathname={currentPath} />);
   }
   if (page === "admin-rides-reports") {
     return withInstall(
@@ -1420,7 +1439,6 @@ function App() {
     // "admin-delivery" is intentionally absent: `/admin/delivery` is served by
     // DeliveryManagement (the `page === "admin-delivery"` branch above), which already renders
     // the AdminModuleHub itself. An entry here was unreachable dead code.
-    "admin-security": { hubKey: "security", pathname: "/admin/security", title: "Security" },
   };
   if (MODULE_HUB_PAGES[page]) {
     const hubPage = MODULE_HUB_PAGES[page];
@@ -1892,15 +1910,9 @@ function App() {
 
   if (page === "admin-share-analytics") {
     return withInstall(
-      <div>
-        <TopBar
-          title={`${MARKET.brandName} Share Analytics`}
-          goHome={goHome}
-          logout={logout}
-          minimalActions
-        />
+      <AdminShellPage pathname="/admin/share-analytics" title="Share Analytics">
         <ShareAdminDashboard />
-      </div>
+      </AdminShellPage>
     );
   }
 
@@ -1918,8 +1930,37 @@ function App() {
     // Legacy Operations Console, retained and genuinely reachable at
     // /admin/classic. Shares the same AdminShell chrome and RBAC.
     return withInstall(
-      <AdminShellPage pathname="/admin" title="Operations Console">
+      <AdminShellPage pathname="/admin/classic" title="Operations Console">
         <AdminDashboard embedded />
+      </AdminShellPage>
+    );
+  }
+
+  if (page === "admin-bi-growth") {
+    return withInstall(
+      <AdminShellPage pathname={currentPath} title="">
+        <BiGrowthCenter />
+      </AdminShellPage>
+    );
+  }
+
+  if (page === "admin-launch-growth") {
+    return withInstall(
+      <AdminShellPage pathname={currentPath} title="">
+        <LaunchGrowthCenter />
+      </AdminShellPage>
+    );
+  }
+
+  if (page === "admin-unmapped") {
+    return withInstall(
+      <AdminShellPage pathname={currentPath} title="Admin module">
+        <div className="admin-module-layout">
+          <p>
+            No dedicated screen is registered for <code>{currentPath}</code>. Open the{" "}
+            <a href="/admin">admin home</a> or use the top navigation.
+          </p>
+        </div>
       </AdminShellPage>
     );
   }
@@ -2038,7 +2079,6 @@ function App() {
 function isProtectedPage(page) {
   return [
     "admin",
-    "admin-classic",
     "admin-share-analytics",
     "delivery-admin",
     "driver",
@@ -2088,7 +2128,6 @@ function isProtectedPage(page) {
     "merchant-register",
     "merchant-legal-sign",
     "wallet",
-    "admin-payments",
     "share-booking",
     "share-ride",
     "share-ride-complete",

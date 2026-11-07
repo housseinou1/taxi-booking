@@ -25,23 +25,22 @@ from employees.services.number_service import (
 
 class EmployeeNumberFormatTests(TestCase):
     def test_first_employee_number(self):
-        self.assertEqual(format_employee_number(1), "YAM110001LAR")
+        self.assertEqual(format_employee_number(1), "YALA-EMP-000001")
 
     def test_sequential_format(self):
-        self.assertEqual(format_employee_number(2), "YAM110002LAR")
-        self.assertEqual(format_employee_number(3), "YAM110003LAR")
-        self.assertEqual(format_employee_number(4), "YAM110004LAR")
+        self.assertEqual(format_employee_number(2), "YALA-EMP-000002")
+        self.assertEqual(format_employee_number(3), "YALA-EMP-000003")
+        self.assertEqual(format_employee_number(4), "YALA-EMP-000004")
 
     def test_prefix_and_suffix_fixed(self):
         n = format_employee_number(42)
-        self.assertTrue(n.startswith("YAM11"))
-        self.assertTrue(n.endswith("LAR"))
-        self.assertEqual(n, "YAM110042LAR")
+        self.assertTrue(n.startswith("YALA-EMP-"))
+        self.assertEqual(n, "YALA-EMP-000042")
 
     def test_numbering_beyond_9999_widens_without_reset(self):
-        self.assertEqual(format_employee_number(9999), "YAM119999LAR")
-        self.assertEqual(format_employee_number(10000), "YAM1110000LAR")
-        self.assertEqual(format_employee_number(123456), "YAM11123456LAR")
+        self.assertEqual(format_employee_number(9999), "YALA-EMP-009999")
+        self.assertEqual(format_employee_number(10000), "YALA-EMP-010000")
+        self.assertEqual(format_employee_number(123456), "YALA-EMP-123456")
 
     def test_invalid_sequence_rejected(self):
         with self.assertRaises(ValueError):
@@ -50,12 +49,12 @@ class EmployeeNumberFormatTests(TestCase):
 
 class EmployeeNumberAllocationTests(TestCase):
     def test_first_allocation_is_0001(self):
-        self.assertEqual(allocate_employee_number(), "YAM110001LAR")
+        self.assertEqual(allocate_employee_number(), "YALA-EMP-000001")
 
     def test_sequential_allocation(self):
-        self.assertEqual(allocate_employee_number(), "YAM110001LAR")
-        self.assertEqual(allocate_employee_number(), "YAM110002LAR")
-        self.assertEqual(allocate_employee_number(), "YAM110003LAR")
+        self.assertEqual(allocate_employee_number(), "YALA-EMP-000001")
+        self.assertEqual(allocate_employee_number(), "YALA-EMP-000002")
+        self.assertEqual(allocate_employee_number(), "YALA-EMP-000003")
 
     def test_counter_row_tracks_sequence(self):
         allocate_employee_number()
@@ -67,18 +66,18 @@ class EmployeeNumberAllocationTests(TestCase):
         e1 = create_staff_employee(full_name="Aminata Ba")
         e2 = create_staff_employee(full_name="Oumar Sy")
         e3 = create_staff_employee(full_name="Mariam Diallo")
-        self.assertEqual(e1.employee_number, "YAM110001LAR")
-        self.assertEqual(e2.employee_number, "YAM110002LAR")
-        self.assertEqual(e3.employee_number, "YAM110003LAR")
+        self.assertEqual(e1.employee_number, "YALA-EMP-000001")
+        self.assertEqual(e2.employee_number, "YALA-EMP-000002")
+        self.assertEqual(e3.employee_number, "YALA-EMP-000003")
 
     def test_caller_cannot_override_employee_number(self):
         e = create_staff_employee(full_name="Fatimata Mint", employee_number="HACK0001")
-        self.assertEqual(e.employee_number, "YAM110001LAR")
+        self.assertEqual(e.employee_number, "YALA-EMP-000001")
 
     def test_employee_number_unique_constraint(self):
-        StaffEmployee.objects.create(employee_number="YAM110001LAR", full_name="A")
+        StaffEmployee.objects.create(employee_number="YALA-EMP-000001", full_name="A")
         with self.assertRaises(IntegrityError):
-            StaffEmployee.objects.create(employee_number="YAM110001LAR", full_name="B")
+            StaffEmployee.objects.create(employee_number="YALA-EMP-000001", full_name="B")
 
 
 class EmployeeNumberPermanenceTests(TestCase):
@@ -108,11 +107,11 @@ class EmployeeNumberPermanenceTests(TestCase):
     def test_sequence_not_reused_after_delete(self):
         e1 = create_staff_employee(full_name="One")
         e2 = create_staff_employee(full_name="Two")
-        self.assertEqual(e2.employee_number, "YAM110002LAR")
+        self.assertEqual(e2.employee_number, "YALA-EMP-000002")
         e2.delete()
         e3 = create_staff_employee(full_name="Three")
         # Must advance to 0003, never reuse 0002.
-        self.assertEqual(e3.employee_number, "YAM110003LAR")
+        self.assertEqual(e3.employee_number, "YALA-EMP-000003")
 
 
 class ModelValidationTests(TestCase):
@@ -142,7 +141,7 @@ class ModelValidationTests(TestCase):
 
     def test_str_representations(self):
         e = create_staff_employee(full_name="Str Test")
-        self.assertIn("YAM110001LAR", str(e))
+        self.assertIn("YALA-EMP-000001", str(e))
         card = EmployeeIDCard.objects.create(employee=e, card_number="CARD-STR")
         self.assertIn("CARD-STR", str(card))
 
@@ -180,17 +179,17 @@ class ConcurrencySafetyTests(TestCase):
         """Simulate a lost race: the next number is already taken by another
         writer. The service must detect the IntegrityError and retry to the
         following free number rather than fail or reuse."""
-        # Pre-create the employee that will take YAM110001LAR, then bump the
+        # Pre-create the employee that will take YALA-EMP-000001, then bump the
         # counter back to 0 so the next allocation re-attempts 0001 and collides.
-        StaffEmployee.objects.create(employee_number="YAM110001LAR", full_name="Pre-existing")
+        StaffEmployee.objects.create(employee_number="YALA-EMP-000001", full_name="Pre-existing")
         counter, _ = EmployeeNumberCounter.objects.get_or_create(pk=1)
         counter.current_value = 0
         counter.save(update_fields=["current_value"])
 
         emp = create_staff_employee(full_name="Racer")
         # 0001 was taken; retry must land on 0002, never reuse 0001.
-        self.assertEqual(emp.employee_number, "YAM110002LAR")
-        self.assertEqual(StaffEmployee.objects.filter(employee_number="YAM110001LAR").count(), 1)
+        self.assertEqual(emp.employee_number, "YALA-EMP-000002")
+        self.assertEqual(StaffEmployee.objects.filter(employee_number="YALA-EMP-000001").count(), 1)
 
 
 class MigrationIntegrityTests(TestCase):

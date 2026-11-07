@@ -13,6 +13,7 @@ import {
   fetchCards,
   fetchCardQr,
   fetchCardPdf,
+  fetchCeoIdCardSignaturePreview,
   fetchEmployee,
   fetchPhoto,
   fetchSignature,
@@ -35,6 +36,16 @@ import MauritaniaFlag from "./MauritaniaFlag";
  */
 export const CARD_SLOGAN = "YALA TECHNOLOGIES — FAST • SAFE • RELIABLE";
 
+function splitEmployeeName(fullName) {
+  const parts = String(fullName || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (parts.length === 0) return { first: "—", last: "—" };
+  if (parts.length === 1) return { first: parts[0], last: "—" };
+  return { first: parts[0], last: parts.slice(1).join(" ") };
+}
+
 function dateOnly(iso) {
   if (!iso) return "—";
   const formatted = formatTimestamp(iso);
@@ -52,7 +63,13 @@ const ACTIONS = {
   revoke: { label: "Revoke", tier: "administer", reason: true, confirmTone: "danger" },
 };
 
-export default function EmployeeCardPanel({ employeeNumber, canManage, canAdminister, notify }) {
+export default function EmployeeCardPanel({
+  employeeNumber,
+  canManage,
+  canAdminister,
+  canViewDob = false,
+  notify,
+}) {
   const [cards, setCards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -77,6 +94,8 @@ export default function EmployeeCardPanel({ employeeNumber, canManage, canAdmini
   const signatureUrlRef = useRef(null);
   // Employee record for the card faces (loaded from the backend — never hardcoded).
   const [employee, setEmployee] = useState(null);
+  const [ceoSignature, setCeoSignature] = useState({ loading: false, url: null });
+  const ceoSigUrlRef = useRef(null);
 
   const notifyRef = useRef(notify);
   notifyRef.current = notify;
@@ -170,9 +189,35 @@ export default function EmployeeCardPanel({ employeeNumber, canManage, canAdmini
         URL.revokeObjectURL(signatureUrlRef.current);
         signatureUrlRef.current = null;
       }
+      if (ceoSigUrlRef.current) {
+        URL.revokeObjectURL(ceoSigUrlRef.current);
+        ceoSigUrlRef.current = null;
+      }
     },
     []
   );
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const response = await fetchCeoIdCardSignaturePreview();
+        const url = URL.createObjectURL(response.data);
+        if (!active) {
+          URL.revokeObjectURL(url);
+          return;
+        }
+        if (ceoSigUrlRef.current) URL.revokeObjectURL(ceoSigUrlRef.current);
+        ceoSigUrlRef.current = url;
+        setCeoSignature({ loading: false, url });
+      } catch {
+        if (active) setCeoSignature({ loading: false, url: null });
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Load the employee record so the card faces show real backend data (name, employee
   // number, job title, department, employment status) — never sample values.
@@ -566,6 +611,21 @@ export default function EmployeeCardPanel({ employeeNumber, canManage, canAdmini
                     <strong className="emp-idcard__name">
                       {employee?.full_name || "—"}
                     </strong>
+                    {(() => {
+                      const { first, last } = splitEmployeeName(employee?.full_name);
+                      return (
+                        <>
+                          <div className="emp-idcard__field">
+                            <span>Last name</span>
+                            <b>{last}</b>
+                          </div>
+                          <div className="emp-idcard__field">
+                            <span>First name</span>
+                            <b>{first}</b>
+                          </div>
+                        </>
+                      );
+                    })()}
                     <div className="emp-idcard__field">
                       <span>Employee ID</span>
                       <b>{employee?.employee_number || "—"}</b>
@@ -578,23 +638,37 @@ export default function EmployeeCardPanel({ employeeNumber, canManage, canAdmini
                       <span>Department</span>
                       <b>{employee?.department || "—"}</b>
                     </div>
+                    {canViewDob && employee?.date_of_birth ? (
+                      <div className="emp-idcard__field">
+                        <span>Date of birth</span>
+                        <b>{dateOnly(employee.date_of_birth)}</b>
+                      </div>
+                    ) : null}
                     <div className="emp-idcard__field">
-                      <span>Employment</span>
-                      <b>{employee?.employment_status || "—"}</b>
+                      <span>Issue date</span>
+                      <b>{dateOnly(currentCard.issued_at)}</b>
                     </div>
                     <div className="emp-idcard__field">
                       <span>Expires</span>
                       <b>{dateOnly(currentCard.expires_at)}</b>
                     </div>
                   </div>
-                  <div className="emp-idcard__signature">
-                    <span className="emp-idcard__signature-label">EMPLOYEE SIGNATURE</span>
+                </div>
+                <div className="emp-idcard__sig-row">
+                  <div className="emp-idcard__sig-slot emp-idcard__sig-slot--employee">
+                    <span className="emp-idcard__signature-label">Employee signature</span>
                     {signature.url ? (
                       <img src={signature.url} alt="Employee signature" />
                     ) : (
-                      <span className="emp-idcard__signature-empty">
-                        Signature not provided
-                      </span>
+                      <span className="emp-idcard__signature-empty">Not provided</span>
+                    )}
+                  </div>
+                  <div className="emp-idcard__sig-slot emp-idcard__sig-slot--ceo">
+                    <span className="emp-idcard__signature-label">CEO authorization</span>
+                    {ceoSignature.url ? (
+                      <img src={ceoSignature.url} alt="CEO authorized signature" />
+                    ) : (
+                      <span className="emp-idcard__signature-empty">Not provided</span>
                     )}
                   </div>
                 </div>

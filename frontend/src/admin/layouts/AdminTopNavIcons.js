@@ -55,6 +55,12 @@ const PATHS = {
   percent: "M19 5 5 19M7.5 7.5a2 2 0 1 0 0-2.8 2 2 0 0 0 0 2.8Zm9 9a2 2 0 1 0 0-2.8 2 2 0 0 0 0 2.8Z",
   cpu: "M4 4h16v16H4V4Zm4 4h8v8H8V8Zm-4 4H2m20 0h-2M12 2v2m0 16v2M2 12h2m16 0h2",
   chart: "M4 20V10M10 20V4M16 20v-7M22 20H2",
+  menu: "M4 7h16M4 12h16M4 17h16",
+  search: "M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm10 2-4.35-4.35",
+  bell: "M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0",
+  sun: "M12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12Zm0 0v2M4.2 4.2l1.4 1.4M19.4 19.4l1.4 1.4M2 12h2m16 0h2M4.2 19.8l1.4-1.4M19.4 4.6l1.4-1.4",
+  moon: "M12 3a7 7 0 1 0 9 9 9 9 0 0 1-9-9Z",
+  "half-moon": "M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9Z",
 };
 
 export default function AdminTopNavIcon({ name, className = "" }) {

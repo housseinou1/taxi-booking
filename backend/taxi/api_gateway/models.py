@@ -207,3 +207,66 @@ class APIGatewayLog(models.Model):
 
     def __str__(self):
         return f"{self.method} {self.path} — {self.status_code}"
+
+
+class PartnerWebhookOutbox(models.Model):
+    """Durable, transactional outbox for partner webhook notifications.
+
+    WHY THIS EXISTS
+    ---------------
+    Settlement commits money; notifying partners is a side effect that must never be able to
+    fail, delay or duplicate the money movement. The row is written INSIDE the caller's
+    transaction (see ``api_gateway/events.py``, driven by ``post_save`` signals), so it
+    commits atomically with the settlement: if the payment committed, the notification is
+    recorded. Redis being unavailable can therefore no longer lose a notification, and can no
+    longer hold the settlement transaction open (a ``.delay()`` inside the money transaction
+    left payments stuck 'pending' and the SQLite write lock held).
+
+    DELIVERY is a separate, retryable step: a beat-driven worker claims PENDING rows, POSTs
+    them, and records the outcome. Bounded attempts with backoff; a row that exhausts its
+    attempts becomes FAILED and stays visible to operators.
+    """
+
+    STATUS_PENDING = "pending"
+    STATUS_DELIVERING = "delivering"
+    STATUS_DELIVERED = "delivered"
+    STATUS_FAILED = "failed"
+    STATUS_CHOICES = [
+        (STATUS_PENDING, "Pending"),
+        (STATUS_DELIVERING, "Delivering"),
+        (STATUS_DELIVERED, "Delivered"),
+        (STATUS_FAILED, "Failed"),
+    ]
+
+    # Deterministic per business event: makes a repeated emit a no-op instead of a second
+    # partner action.
+    idempotency_key = models.CharField(max_length=191, unique=True)
+    event_type = models.CharField(max_length=100, db_index=True)
+    payload = models.JSONField(default=dict, blank=True)
+    application = models.ForeignKey(
+        "api_gateway.PartnerApplication",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="webhook_outbox",
+    )
+    status = models.CharField(
+        max_length=15, choices=STATUS_CHOICES, default=STATUS_PENDING, db_index=True
+    )
+    attempts = models.PositiveIntegerField(default=0)
+    max_attempts = models.PositiveIntegerField(default=8)
+    next_attempt_at = models.DateTimeField(default=timezone.now, db_index=True)
+    last_error = models.TextField(blank=True, default="")
+    response_status = models.PositiveIntegerField(null=True, blank=True)
+    delivered_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["status", "next_attempt_at"], name="pwo_status_next_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.event_type} [{self.status}] attempts={self.attempts}"

@@ -54,11 +54,12 @@ export async function fetchRecognitions({ year, month, city } = {}) {
 }
 
 export async function fetchCityOptions() {
-  const response = await fetch(`${API_URL}/locations/cities/`, {
+  const response = await fetch(`${API_URL}/locations/operating-cities/`, {
     method: "GET",
     headers: authHeaders(),
   });
   if (!response.ok) return [];
-  const data = await response.json().catch(() => []);
-  return Array.isArray(data) ? data : [];
+  const data = await response.json().catch(() => ({}));
+  const rows = Array.isArray(data?.cities) ? data.cities : [];
+  return rows.map((row) => ({ id: row.id, name: row.name, region: row.region }));
 }

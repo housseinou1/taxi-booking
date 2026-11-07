@@ -44,13 +44,15 @@ describe("WebsiteApp shell", () => {
     expect(screen.getByRole("contentinfo")).toBeInTheDocument();
   });
 
-  test("exposes all eight navigation items", () => {
+  test("exposes marketing navigation (home, services, cities, partners, about, support)", () => {
     render(<WebsiteApp route="home" />);
     const nav = screen.getByRole("navigation", { name: /main navigation/i });
-    const labels = [...nav.querySelectorAll("a")].map((a) => a.textContent.trim());
-    expect(labels).toEqual([
-      "Home", "Rider", "Driver", "Delivery", "About Us", "Safety", "Contact Us", "Support",
-    ]);
+    expect(nav.textContent).toMatch(/Home/);
+    expect(nav.textContent).toMatch(/Services/);
+    expect(nav.textContent).toMatch(/Cities/);
+    expect(nav.textContent).toMatch(/Partners/);
+    expect(nav.textContent).toMatch(/About Us/);
+    expect(nav.textContent).toMatch(/Support/);
     expect(WEBSITE_ROUTES).toHaveLength(8);
   });
 
@@ -60,12 +62,12 @@ describe("WebsiteApp shell", () => {
     expect(nav.querySelector('[aria-current="page"]').getAttribute("data-route")).toBe("home");
   });
 
-  test("language switcher exposes all three with aria-pressed", () => {
+  test("language selector offers EN, FR, and AR", () => {
     render(<WebsiteApp route="home" />);
-    const group = screen.getByRole("group", { name: /language/i });
-    const buttons = [...group.querySelectorAll("button")];
-    expect(buttons.map((b) => b.textContent)).toEqual(["EN", "FR", "AR"]);
-    expect(buttons.find((b) => b.getAttribute("aria-pressed") === "true").textContent).toBe("EN");
+    const select = screen.getByLabelText(/language/i);
+    const options = [...select.querySelectorAll("option")].map((o) => o.textContent);
+    expect(options).toEqual(["EN", "FR", "AR"]);
+    expect(select.value).toBe("en");
   });
 
   test("no Admin console reference anywhere in the public site", () => {
@@ -75,13 +77,11 @@ describe("WebsiteApp shell", () => {
     expect(/admin/i.test(container.textContent)).toBe(false);
   });
 
-  test("no city list and no invented statistics", () => {
+  test("home highlights nationwide coverage without invented ops statistics", () => {
     const { container } = render(<WebsiteApp route="home" />);
     const text = container.textContent;
-    expect(container.querySelector(".ys-cities")).toBeNull();
-    ["148", "Nouakchott", "Nouadhibou", "Atar", "Kaedi"].forEach((s) => {
-      expect(text).not.toContain(s);
-    });
+    expect(text).toMatch(/13 major cities/i);
+    expect(text).not.toContain("148");
   });
 });
 
@@ -123,9 +123,10 @@ describe("founder / CEO card", () => {
     expect(CEO_CONTACT.email).not.toBe("support@yalataxi.live");
   });
 
-  test("appears on the Home page", () => {
-    const { container } = render(<HomePage t={tFor("en")} onNavigate={() => {}} />);
-    expect(container.querySelector(".ys-founder")).toBeTruthy();
+  test("is not required on the marketing hero (lives on About when needed)", () => {
+    const { container } = render(<HomePage t={tFor("en")} />);
+    expect(container.querySelector(".ys-founder")).toBeNull();
+    expect(screen.getByText("YALA Technologies")).toBeInTheDocument();
   });
 
   test("renders in French and Arabic", () => {
@@ -138,20 +139,20 @@ describe("founder / CEO card", () => {
 });
 
 describe("Home page", () => {
-  test("renders hero, three services, four steps and six safety items", () => {
-    const { container } = render(<HomePage t={tFor("en")} onNavigate={() => {}} />);
-    expect(container.querySelectorAll(".ys-card")).toHaveLength(3);
-    expect(container.querySelectorAll(".ys-step")).toHaveLength(4);
-    expect(container.querySelectorAll(".ys-sg-item")).toHaveLength(6);
+  test("renders hero, three app cards, and four why-yala pillars", () => {
+    const { container } = render(<HomePage t={tFor("en")} />);
+    expect(container.querySelector(".ys-hero-mr")).toBeTruthy();
+    expect(container.querySelectorAll(".ys-app-card")).toHaveLength(3);
+    expect(container.querySelectorAll(".ys-why__item")).toHaveLength(4);
     expect(container.querySelectorAll("h1")).toHaveLength(1);
   });
 
   test("renders French and Arabic copy", () => {
-    const fr = render(<HomePage t={tFor("fr")} onNavigate={() => {}} />);
-    expect(fr.getByText(/Circulez partout en Mauritanie/)).toBeInTheDocument();
+    const fr = render(<HomePage t={tFor("fr")} />);
+    expect(fr.getByText(/Pourquoi choisir YALA Technologies/)).toBeInTheDocument();
     fr.unmount();
-    const ar = render(<HomePage t={tFor("ar")} onNavigate={() => {}} />);
-    expect(ar.getByText(/تنقّل في موريتانيا/)).toBeInTheDocument();
+    const ar = render(<HomePage t={tFor("ar")} />);
+    expect(ar.getByText(/لماذا تختار YALA Technologies/)).toBeInTheDocument();
   });
 });
 

@@ -36,6 +36,7 @@ from employees.views_attendance import (
     WeeklyReportView,
     WorkScheduleView,
 )
+from employees.views_id_cards import CeoIdCardSignatureView, IdCardDashboardView
 from employees.views_verification import verify_card_public
 from employees.views_break_notifications import (
     BreakNotificationAckView,
@@ -81,6 +82,16 @@ urlpatterns = [
     # default: while PUBLIC_QR_VERIFICATION_ENABLED is false this path answers
     # 404, so no public surface exists until the owner explicitly activates it.
     path("verify/card/<str:scanned>/", verify_card_public, name="verify-card-public"),
+    path(
+        "employees/id-cards/dashboard/",
+        IdCardDashboardView.as_view(),
+        name="employee-id-card-dashboard",
+    ),
+    path(
+        "employees/id-cards/ceo-signature/",
+        CeoIdCardSignatureView.as_view(),
+        name="employee-ceo-id-card-signature",
+    ),
     # ── Employee attendance & time tracking (staff-gated; never public) ───────
     path("employees/attendance/clock-in/", ClockInView.as_view(), name="attendance-clock-in"),
     path("employees/attendance/clock-out/", ClockOutView.as_view(), name="attendance-clock-out"),

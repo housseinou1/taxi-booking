@@ -32,12 +32,15 @@ def add_calendar_year(start, years: int = CARD_VALIDITY_YEARS):
         # start is Feb 29 and the target year is not a leap year -> use Feb 28.
         return start.replace(year=start.year + years, day=28)
 
-# Employee-number format: fixed prefix + zero-padded sequence (min width 4) +
-# fixed suffix. Examples: YAM110001LAR, YAM110002LAR ... YAM119999LAR,
-# YAM1110000LAR (widens naturally past 9999 — never resets, never reused).
-EMPLOYEE_NUMBER_PREFIX = "YAM11"
-EMPLOYEE_NUMBER_SUFFIX = "LAR"
-EMPLOYEE_NUMBER_PAD = 4
+# Official employee-number format (CEO directive): YALA-EMP-000001 …
+# Sequence is permanent — never reset, never reused after termination.
+# Legacy rows may still store the older YAM11…LAR identifiers until a dedicated,
+# CEO-approved backfill migrates them; new allocations always use YALA-EMP-*.
+EMPLOYEE_NUMBER_PREFIX = "YALA-EMP-"
+EMPLOYEE_NUMBER_SUFFIX = ""
+EMPLOYEE_NUMBER_PAD = 6
+LEGACY_EMPLOYEE_NUMBER_PREFIX = "YAM11"
+LEGACY_EMPLOYEE_NUMBER_SUFFIX = "LAR"
 
 
 def format_employee_number(sequence: int) -> str:
@@ -45,6 +48,15 @@ def format_employee_number(sequence: int) -> str:
     if sequence < 1:
         raise ValueError("Employee number sequence must be >= 1.")
     return f"{EMPLOYEE_NUMBER_PREFIX}{sequence:0{EMPLOYEE_NUMBER_PAD}d}{EMPLOYEE_NUMBER_SUFFIX}"
+
+
+def is_legacy_employee_number(value: str) -> bool:
+    """True for pre-YALA-EMP permanent numbers still valid in HR records."""
+    if not value:
+        return False
+    return value.startswith(LEGACY_EMPLOYEE_NUMBER_PREFIX) and value.endswith(
+        LEGACY_EMPLOYEE_NUMBER_SUFFIX
+    )
 
 
 class EmploymentStatus(models.TextChoices):
@@ -280,6 +292,36 @@ class EmployeeIDCard(models.Model):
 
     def __str__(self):
         return f"Card {self.card_number} ({self.get_status_display()}) — {self.employee.employee_number}"
+
+
+class IdCardOfficialSettings(models.Model):
+    """Singleton — official CEO electronic signature used on ID card backs."""
+
+    SINGLETON_PK = 1
+
+    ceo_signature_key = models.CharField(max_length=80, blank=True, default="")
+    authorized_at = models.DateTimeField(null=True, blank=True)
+    authorized_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "ID card official settings"
+        verbose_name_plural = "ID card official settings"
+
+    def save(self, *args, **kwargs):
+        self.pk = self.SINGLETON_PK
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def load(cls) -> "IdCardOfficialSettings":
+        obj, _ = cls.objects.get_or_create(pk=cls.SINGLETON_PK)
+        return obj
 
 
 class CardVerificationRecord(models.Model):

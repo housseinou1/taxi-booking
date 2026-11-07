@@ -32,12 +32,15 @@ from .email_views import (
 from .phone_views import request_phone_verification, verify_phone
 from .password_reset_views import forgot_password, reset_password, verify_reset_code
 
+from operations.city_transfer_views import request_operating_city_transfer
+
 urlpatterns = [
     path("register/", RegisterView.as_view()),
     path("login/", login_view),
     path("token/refresh/", TokenRefreshView.as_view()),
     path("me/", me),
     path("identity/update/", update_identity),
+    path("operating-city/transfer-request/", request_operating_city_transfer),
     path("logout-all-devices/", logout_all_devices),
     path("devices/", my_devices),
     path("users/", user_list),

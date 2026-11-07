@@ -87,6 +87,9 @@ export {
 // Export
 export { default as ExportMenu, useExportAction } from "./export/ExportMenu";
 
+// Layout
+export { default as AdminModuleLayout } from "./layout/AdminModuleLayout";
+
 // Utils
 export * from "./utils/formatters";
 export * from "./utils/exportUtils";

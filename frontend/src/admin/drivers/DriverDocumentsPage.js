@@ -22,6 +22,7 @@ import {
   getDriverDirectory,
   rejectDriverDocument,
 } from "./driverAdminApi";
+import { useOperatingCityOptions } from "../layouts/useOperatingCityOptions";
 import "./driverDocuments.css";
 
 /**
@@ -259,16 +260,7 @@ function DriverDocumentsInner({ mode }) {
     [directory.rows, allRows]
   );
 
-  const cityOptions = useMemo(() => {
-    const cities = new Set();
-    directory.rows.forEach((row) => {
-      if (row.city_name) cities.add(row.city_name);
-    });
-    return [
-      { value: "", label: "All cities" },
-      ...[...cities].sort().map((city) => ({ value: city, label: city })),
-    ];
-  }, [directory.rows]);
+  const { nameFilterOptions: cityOptions } = useOperatingCityOptions();
 
   const categoryOptions = useMemo(() => {
     const categories = new Set();

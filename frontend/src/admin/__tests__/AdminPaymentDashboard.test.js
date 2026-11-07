@@ -22,6 +22,20 @@ jest.mock("../../payments/paymentApi", () => ({
   fetchPaymentsOversight: jest.fn(),
 }));
 
+jest.mock("../finance/moosylApi", () => ({
+  __esModule: true,
+  fetchMoosylOverview: jest.fn().mockResolvedValue({
+    data: {
+      provider: "moosyl",
+      environment: "sandbox",
+      mode: "sandbox",
+      may_settle: false,
+      webhook_url: "/payments/webhooks/moosyl/",
+      recent_events: [],
+    },
+  }),
+}));
+
 const { fetchAdminPaymentDashboard, fetchPaymentsOversight } = require("../../payments/paymentApi");
 
 const mockDashboard = {
@@ -118,14 +132,14 @@ describe("AdminPaymentDashboard — Payment Management Center", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("renders all five navigation tabs", async () => {
+  it("renders all six navigation tabs including Moosyl", async () => {
     render(<AdminPaymentDashboard />);
 
     await waitFor(() => {
-      expect(screen.getAllByRole("tab")).toHaveLength(5);
+      expect(screen.getAllByRole("tab")).toHaveLength(6);
     });
 
-    ["Overview", "Transactions", "Payouts", "Refunds", "Payment Providers"].forEach((label) => {
+    ["Overview", "Transactions", "Payouts", "Refunds", "Payment Providers", "Moosyl"].forEach((label) => {
       expect(screen.getByRole("tab", { name: label })).toBeInTheDocument();
     });
 

@@ -1,0 +1,318 @@
+/**
+ * YALA Enterprise Admin — Mauritania national palette
+ * Green · Gold · Red — premium nationwide operations theme
+ *
+ * Tokens are consumed by AdminShell, the component library, fleet UI, and embedded home.
+ */
+
+.admin-shell {
+  /* Official palette */
+  --yala-mr-green-deep: #064e3b;
+  --yala-mr-green-dark: #022c22;
+  --yala-mr-emerald: #047857;
+  --yala-mr-emerald-soft: rgba(4, 120, 87, 0.42);
+  --yala-mr-gold: #f5c518;
+  --yala-mr-gold-soft: rgba(245, 197, 24, 0.18);
+  --yala-mr-red: #c62828;
+  --yala-mr-red-soft: rgba(198, 40, 40, 0.2);
+  --yala-mr-ivory: #f8faf5;
+
+  --admin-bg: var(--yala-mr-green-deep);
+  --admin-panel: var(--yala-mr-green-dark);
+  --admin-surface: var(--yala-mr-emerald-soft);
+  --admin-surface-alt: rgba(2, 44, 34, 0.92);
+  --admin-surface-muted: rgba(6, 78, 59, 0.65);
+  --admin-border: rgba(248, 250, 245, 0.14);
+  --admin-text: var(--yala-mr-ivory);
+  --admin-text-muted: rgba(248, 250, 245, 0.72);
+
+  --admin-accent: var(--yala-mr-gold);
+  --admin-accent-text: var(--yala-mr-gold);
+  --admin-accent-contrast: var(--yala-mr-green-dark);
+  --admin-accent-soft: var(--yala-mr-gold-soft);
+
+  --admin-danger: #f48a8a;
+  --admin-danger-solid: var(--yala-mr-red);
+  --admin-success: #6ee7b7;
+  --admin-warning: var(--yala-mr-gold);
+  --admin-info: #93c5fd;
+
+  --admin-sidebar-bg: var(--yala-mr-green-dark);
+  --admin-sidebar-hover: rgba(4, 120, 87, 0.45);
+  --admin-sidebar-active: var(--yala-mr-gold);
+  --admin-sidebar-text: var(--yala-mr-ivory);
+  --admin-sidebar-text-muted: rgba(248, 250, 245, 0.65);
+
+  background: radial-gradient(1200px 600px at 10% -10%, rgba(4, 120, 87, 0.35), transparent 55%),
+    linear-gradient(180deg, var(--yala-mr-green-deep) 0%, #053d30 100%);
+}
+
+/* "Light" preference = slightly elevated greens — still no large white fields */
+[data-admin-theme="light"] .admin-shell {
+  --admin-bg: #065f46;
+  --admin-panel: #044a3a;
+  --admin-surface: rgba(4, 120, 87, 0.38);
+  --admin-surface-alt: rgba(2, 44, 34, 0.78);
+  --admin-surface-muted: rgba(6, 78, 59, 0.55);
+  --admin-border: rgba(248, 250, 245, 0.16);
+  --admin-text: var(--yala-mr-ivory);
+  --admin-text-muted: rgba(248, 250, 245, 0.78);
+  --admin-accent-text: var(--yala-mr-gold);
+}
+
+.admin-shell--topnav .admin-shell__header {
+  background: var(--yala-mr-flag-green, #006233);
+  border-bottom-color: rgba(255, 196, 0, 0.45);
+  box-shadow: none;
+}
+
+.admin-shell__primary-nav {
+  --admin-nav-bg: var(--yala-mr-green-dark);
+  --admin-nav-accent: var(--yala-mr-gold);
+  background: var(--admin-nav-bg);
+  border-bottom: 1px solid rgba(245, 197, 24, 0.15);
+}
+
+.admin-shell__nav-top {
+  color: rgba(248, 250, 245, 0.9);
+}
+
+.admin-shell__nav-top:hover,
+.admin-shell__nav-top:focus-visible {
+  background: rgba(245, 197, 24, 0.12);
+  outline: 2px solid rgba(245, 197, 24, 0.45);
+  outline-offset: 2px;
+}
+
+.admin-shell__nav-top--active {
+  background: rgba(245, 197, 24, 0.16);
+  color: var(--yala-mr-ivory);
+  box-shadow: inset 0 -3px 0 0 var(--yala-mr-gold);
+}
+
+.admin-shell__nav-mega {
+  background: var(--yala-mr-green-dark);
+  border-color: rgba(245, 197, 24, 0.2);
+}
+
+.admin-shell__nav-mega-item:hover,
+.admin-shell__nav-mega-item:focus-visible {
+  background: rgba(4, 120, 87, 0.45);
+  color: var(--yala-mr-ivory);
+}
+
+.admin-shell__nav-mega-item--active {
+  color: var(--yala-mr-gold);
+  font-weight: 700;
+}
+
+.admin-shell__badge {
+  background: var(--yala-mr-red);
+}
+
+.admin-shell__search {
+  background: rgba(4, 120, 87, 0.35);
+  border-color: rgba(248, 250, 245, 0.12);
+  color: var(--yala-mr-ivory);
+}
+
+.admin-shell__role-badge {
+  border-color: rgba(245, 197, 24, 0.35);
+  color: var(--yala-mr-gold);
+  background: rgba(245, 197, 24, 0.1);
+}
+
+/* Module surfaces — all themes (replaces white light-only rules) */
+.admin-shell__enterprise-module .admin-ds-page,
+.admin-shell__enterprise-module .admin-module-page,
+.admin-shell__enterprise-module .finance-dashboard,
+.admin-shell__enterprise-module .fleet-center,
+.admin-shell__enterprise-module [class*="Management"],
+.admin-shell__enterprise-module [class*="Center"] {
+  background: var(--admin-surface-alt);
+  border: 1px solid var(--admin-border);
+  border-top: 3px solid var(--yala-mr-gold);
+  border-right: 2px solid rgba(198, 40, 40, 0.35);
+  border-radius: 14px;
+  padding: 20px 22px 24px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+}
+
+.admin-shell__enterprise-module input[type="search"],
+.admin-shell__enterprise-module input[type="text"],
+.admin-shell__enterprise-module input[type="email"],
+.admin-shell__enterprise-module input[type="number"],
+.admin-shell__enterprise-module select,
+.admin-shell__enterprise-module textarea {
+  border-radius: 10px;
+  border: 1px solid var(--admin-border);
+  background: rgba(2, 44, 34, 0.75);
+  color: var(--admin-text);
+}
+
+.admin-shell__enterprise-module input::placeholder {
+  color: var(--admin-text-muted);
+}
+
+.admin-shell__enterprise-module input:focus-visible,
+.admin-shell__enterprise-module select:focus-visible,
+.admin-shell__enterprise-module textarea:focus-visible {
+  outline: 2px solid var(--yala-mr-gold);
+  outline-offset: 1px;
+  border-color: rgba(245, 197, 24, 0.5);
+}
+
+.admin-shell__enterprise-module table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+}
+
+.admin-shell__enterprise-module thead th {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--admin-text-muted);
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(245, 197, 24, 0.2);
+  text-align: left;
+  background: rgba(2, 44, 34, 0.65);
+}
+
+.admin-shell__enterprise-module tbody td {
+  padding: 12px;
+  border-bottom: 1px solid var(--admin-border);
+  vertical-align: middle;
+}
+
+.admin-shell__enterprise-module tbody tr:hover td {
+  background: rgba(4, 120, 87, 0.25);
+}
+
+/* Shared KPI library */
+.admin-kpi {
+  background: linear-gradient(145deg, rgba(4, 120, 87, 0.5), rgba(2, 44, 34, 0.85));
+  border: 1px solid rgba(245, 197, 24, 0.35);
+  border-left: 5px solid var(--yala-mr-gold);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+.admin-kpi__value {
+  color: var(--yala-mr-gold);
+  font-weight: 800;
+}
+
+.admin-kpi--success {
+  border-left-color: #6ee7b7;
+}
+
+.admin-kpi--warning {
+  border-left-color: var(--yala-mr-gold);
+  background: linear-gradient(145deg, rgba(245, 197, 24, 0.22), rgba(2, 44, 34, 0.88));
+}
+
+.admin-kpi--danger {
+  border-left-color: var(--yala-mr-red);
+  border-color: rgba(198, 40, 40, 0.5);
+  background: linear-gradient(145deg, rgba(198, 40, 40, 0.28), rgba(2, 44, 34, 0.9));
+}
+
+.admin-kpi--danger .admin-kpi__value {
+  color: #fca5a5;
+}
+
+.admin-kpi__trend--up {
+  color: #6ee7b7;
+}
+
+.admin-kpi__trend--down {
+  color: #f48a8a;
+}
+
+/* Embedded executive home (Operations Console) */
+.admin-shell .yah-embedded--exec {
+  --yah-bg: transparent;
+  --yah-panel: rgba(2, 44, 34, 0.88);
+  --yah-panel-2: rgba(6, 78, 59, 0.55);
+  --yah-raise: rgba(4, 120, 87, 0.35);
+  --yah-line: rgba(248, 250, 245, 0.1);
+  --yah-line-2: rgba(245, 197, 24, 0.22);
+  --yah-ink: var(--yala-mr-ivory);
+  --yah-muted: rgba(248, 250, 245, 0.72);
+  --yah-dim: rgba(248, 250, 245, 0.55);
+  --yah-green: var(--yala-mr-emerald);
+  --yah-green-2: #10b981;
+  --yah-blue: #60a5fa;
+  --yah-purple: #c4b5fd;
+  --yah-amber: var(--yala-mr-gold);
+  --yah-red: var(--yala-mr-red);
+  background: transparent;
+  color: var(--yah-ink);
+}
+
+.admin-shell .yah-embedded--exec .yah-kpi {
+  background: linear-gradient(160deg, rgba(4, 120, 87, 0.55), rgba(2, 44, 34, 0.92));
+  border-color: rgba(245, 197, 24, 0.2);
+}
+
+.admin-shell .yah-embedded--exec .yah-kpi--cyan,
+.admin-shell .yah-embedded--exec .yah-kpi--green,
+.admin-shell .yah-embedded--exec .yah-kpi--amber {
+  border-top: 3px solid var(--yala-mr-gold);
+}
+
+.admin-shell .yah-live-pill.is-live {
+  border-color: rgba(245, 197, 24, 0.55);
+  background: rgba(245, 197, 24, 0.12);
+  color: var(--yala-mr-gold);
+}
+
+.admin-shell .yah-secure-banner {
+  border-color: rgba(245, 197, 24, 0.45);
+  background: rgba(245, 197, 24, 0.12);
+}
+
+.admin-shell .yah-btn-export,
+.admin-shell .yah-live-bar__refresh {
+  border-color: rgba(245, 197, 24, 0.4);
+  color: var(--yala-mr-gold);
+}
+
+.admin-shell .yah-btn-export:hover:not(:disabled),
+.admin-shell .yah-live-bar__refresh:hover:not(:disabled) {
+  background: rgba(245, 197, 24, 0.14);
+}
+
+/* Searchable city select (ss__*) in header */
+.admin-shell .ss__trigger {
+  background: rgba(2, 44, 34, 0.85);
+  border-color: rgba(248, 250, 245, 0.14);
+  color: var(--yala-mr-ivory);
+}
+
+.admin-shell .ss__popup {
+  background: var(--yala-mr-green-dark);
+  border-color: rgba(245, 197, 24, 0.22);
+}
+
+.admin-shell .ss__option--active,
+.admin-shell .ss__option:hover {
+  background: rgba(4, 120, 87, 0.5);
+}
+
+.admin-shell .ss__option--selected {
+  background: rgba(245, 197, 24, 0.18);
+  color: var(--yala-mr-gold);
+}
+
+.admin-shell--topnav .admin-shell__brand-title {
+  color: var(--yala-mr-gold);
+}
+
+.admin-shell__nav-top--active .admin-shell__nav-top-icon {
+  color: var(--yala-mr-gold);
+}
+
+.admin-shell--topnav .admin-shell__brand-sub {
+  color: rgba(248, 250, 245, 0.85);
+}

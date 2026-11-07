@@ -16,6 +16,28 @@ const driverLogoSrc = "/yala-driver-logo.png";
 const adminLogoSrc = "/yala-admin-logo.png";
 const deliveryLogoSrc = "/yala-delivery-logo.png";
 
+function isLocalDevHost() {
+  if (typeof window === "undefined") return false;
+  const h = String(window.location.hostname || "").toLowerCase();
+  return h === "localhost" || h === "127.0.0.1";
+}
+
+function isConfiguredProductionApi(url) {
+  const u = String(url || "");
+  return /yalataxi\.live/i.test(u);
+}
+
+function localAdminApiMisconfigHint(apiTarget) {
+  if (!isLocalDevHost()) return "";
+  if (!isConfiguredProductionApi(apiTarget)) return "";
+  if (process.env.NODE_ENV !== "development") return "";
+  return (
+    " Local dev is pointing at production API: remove REACT_APP_API_URL from frontend/.env.local " +
+    "(or copy frontend/.env.admin.example to .env.local) so the app uses http://localhost:8000, " +
+    "then run Django on port 8000 with DEBUG=True."
+  );
+}
+
 function getLoginApiCandidates() {
   return getApiCandidates("/auth/login/");
 }
@@ -47,7 +69,7 @@ function getApiErrorMessage(error, fallback, context = "web") {
   if (error?.request) {
     const apiTarget = API_URL || window.location.origin || "the API server";
     if (context === "admin") {
-      return `Cannot reach Yala Admin API at ${apiTarget}. Check your internet, then hard-refresh (Ctrl+Shift+R).`;
+      return `Cannot reach Yala Admin API at ${apiTarget}. Check your internet, then hard-refresh (Ctrl+Shift+R).${localAdminApiMisconfigHint(apiTarget)}`;
     }
     return `Cannot reach ${apiTarget}. Check your internet connection and try again.`;
   }
@@ -96,7 +118,7 @@ function getLoginErrorMessage(error, t, context = "web") {
       return `Request timed out reaching ${apiTarget}. Check your connection and try again.`;
     }
     if (context === "admin") {
-      return `Cannot reach Yala Admin API at ${apiTarget}. Confirm you are on https://yalataxi.live/admin or run npm run start:admin, then retry. If antivirus or firewall blocks HTTPS, allow api.yalataxi.live.`;
+      return `Cannot reach Yala Admin API at ${apiTarget}. Confirm you are on https://yalataxi.live/admin or run npm run start:admin, then retry. If antivirus or firewall blocks HTTPS, allow api.yalataxi.live.${localAdminApiMisconfigHint(apiTarget)}`;
     }
     if (context === "delivery") {
       if (apiTarget.includes("api.yalataxi.live")) {

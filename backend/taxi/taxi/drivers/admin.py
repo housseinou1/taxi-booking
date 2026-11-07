@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib import admin, messages
 from django.utils.html import format_html
+from django.utils.safestring import mark_safe
 
 from legal.services import approval_signature_block
 
@@ -141,9 +142,17 @@ class DriverProfileAdmin(admin.ModelAdmin):
         return ""
 
     def qr_code_display(self, obj):
-        """Display the QR code image or a message if not assigned."""
+        """Display the QR code image or a message if not assigned.
+
+        FIXED DEFECT: the two constant-message branches called ``format_html()`` with a
+        format string and NO substitution arguments, which raises
+        ``TypeError: args or kwargs must be provided.`` (django/utils/html.py). That surfaced
+        as ERRORs across every admin test that rendered a driver without a QR code. These
+        strings are hardcoded constants with no interpolation, so ``mark_safe`` is the
+        correct tool.
+        """
         if not obj or not obj.qr_code_uuid:
-            return format_html(
+            return mark_safe(
                 '<span style="color: #999;">No QR code has been generated for this driver.</span>'
             )
         if obj.qr_code_image:
@@ -152,7 +161,7 @@ class DriverProfileAdmin(admin.ModelAdmin):
                 obj.qr_code_image.url,
                 obj.user.get_full_name() or obj.user.email,
             )
-        return format_html(
+        return mark_safe(
             '<span style="color: #999;">QR code image file not available.</span>'
         )
 

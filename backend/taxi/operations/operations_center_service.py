@@ -57,7 +57,13 @@ def _waiting_seconds(ride: Ride) -> int | None:
 
 
 def build_fleet_snapshot(city_id=None) -> dict:
-    profiles = DriverProfile.objects.filter(status="approved").select_related("user")
+    from operations.fleet_metrics import courier_user_ids
+
+    profiles = (
+        DriverProfile.objects.filter(status="approved")
+        .exclude(user_id__in=courier_user_ids())
+        .select_related("user")
+    )
     if city_id:
         profiles = profiles.filter(user__city_id=city_id)
 

@@ -90,34 +90,41 @@ def _revenue_for_drivers(user_ids: list[int], start, end) -> dict[int, Decimal]:
 
 
 def build_fleet_overview(city_id=None) -> dict:
-    profiles = DriverProfile.objects.select_related("user")
+    from operations.fleet_metrics import driver_profiles, fleet_metrics
+
+    metrics = fleet_metrics(city_id=city_id)
+    taxi_qs = driver_profiles().select_related("user")
     if city_id:
-        profiles = profiles.filter(user__city_id=city_id)
+        taxi_qs = taxi_qs.filter(user__city_id=city_id)
 
     today = timezone.localdate()
+    taxi_profile_ids = set(taxi_qs.values_list("id", flat=True))
     expired_driver_ids = set(
-        DriverDocument.objects.filter(expires_at__lt=today, status="approved").values_list("driver_id", flat=True)
+        DriverDocument.objects.filter(
+            driver_id__in=taxi_profile_ids,
+            expires_at__lt=today,
+            status="approved",
+        ).values_list("driver_id", flat=True)
     )
-
-    total_registered = profiles.count()
-    approved = profiles.filter(status="approved").count()
-    suspended = profiles.filter(user__is_active=False).count()
-    expired_docs = len(expired_driver_ids)
 
     snapshot = build_fleet_snapshot(city_id=city_id)
     counts = snapshot.get("counts", {})
 
     return {
         "generated_at": timezone.now().isoformat(),
-        "total_registered": total_registered,
-        "approved_drivers": approved,
+        "population": "taxi_drivers",
+        "total_registered": metrics["drivers"]["total"],
+        "approved_drivers": metrics["drivers"]["approved"],
         "online_drivers": counts.get("online_drivers", 0),
         "busy_drivers": counts.get("busy_drivers", 0),
         "offline_drivers": counts.get("offline_drivers", 0),
-        "suspended_drivers": suspended,
-        "expired_document_drivers": expired_docs,
+        "suspended_drivers": taxi_qs.filter(user__is_active=False).count(),
+        "expired_document_drivers": len(expired_driver_ids),
         "active_trips": counts.get("active_trips", 0),
         "waiting_riders": counts.get("waiting_riders", 0),
+        "couriers_excluded": True,
+        "courier_snapshot": metrics["couriers"],
+        "metric_definitions": metrics["definitions"],
     }
 
 
@@ -140,7 +147,9 @@ def build_fleet_map_bundle(city_id=None) -> dict:
 
 
 def build_driver_performance_rows(city_id=None, limit: int = 500) -> list[dict]:
-    profiles = DriverProfile.objects.select_related("user").order_by("-performance_points")
+    from operations.fleet_metrics import driver_profiles
+
+    profiles = driver_profiles().select_related("user").order_by("-performance_points")
     if city_id:
         profiles = profiles.filter(user__city_id=city_id)
 
@@ -216,8 +225,15 @@ def build_document_monitoring() -> dict:
     buckets["valid"] = []
     buckets["expired"] = []
 
+    from operations.fleet_metrics import driver_profiles
+
+    taxi_ids = driver_profiles().values_list("id", flat=True)
     documents = (
-        DriverDocument.objects.filter(document_type__in=tracked_types, status="approved")
+        DriverDocument.objects.filter(
+            document_type__in=tracked_types,
+            status="approved",
+            driver_id__in=taxi_ids,
+        )
         .select_related("driver__user")
         .order_by("expires_at")
     )
@@ -299,15 +315,11 @@ def build_fleet_ceo_metrics(city_id=None, drivers: list[dict] | None = None) -> 
 
     # Canonical fleet figures (operations.fleet_metrics): RIDE drivers only — courier profiles
     # are excluded, so this dashboard can never double-count a courier as a driver.
-    from operations.fleet_metrics import courier_user_ids, fleet_metrics
+    from operations.fleet_metrics import courier_user_ids, driver_profiles, fleet_metrics
 
-    fleet = fleet_metrics()
+    fleet = fleet_metrics(city_id=city_id)
     if city_id:
-        approved = (
-            DriverProfile.objects.filter(status="approved")
-            .exclude(user_id__in=courier_user_ids())
-            .filter(user__city_id=city_id)
-        )
+        approved = driver_profiles().filter(status="approved", user__city_id=city_id)
         total_approved = approved.count()
         online = approved.filter(is_available=True).count()
     else:
@@ -320,8 +332,11 @@ def build_fleet_ceo_metrics(city_id=None, drivers: list[dict] | None = None) -> 
 
     week_ago = timezone.now() - timedelta(days=7)
     two_weeks = timezone.now() - timedelta(days=14)
+    from operations.fleet_metrics import driver_profiles as ride_driver_profiles
+
     recent_acceptance = (
-        DriverProfile.objects.filter(status="approved")
+        ride_driver_profiles()
+        .filter(status="approved")
         .aggregate(avg=Avg("acceptance_rate_points"))["avg"]
         or 0
     )

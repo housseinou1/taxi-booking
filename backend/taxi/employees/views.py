@@ -88,7 +88,8 @@ class StaffEmployeeViewSet(viewsets.ModelViewSet):
     queryset = StaffEmployee.objects.all().order_by("employee_number")
     pagination_class = EmployeePagination
     lookup_field = "employee_number"
-    lookup_value_regex = r"[A-Za-z0-9]+"
+    # Official numbers use hyphens (YALA-EMP-000001); legacy IDs are alphanumeric.
+    lookup_value_regex = r"[A-Za-z0-9\-]+"
     http_method_names = ["get", "post", "patch", "head", "options"]  # no DELETE
 
     # Search is restricted to non-sensitive, authorized fields only. DOB and
@@ -649,12 +650,25 @@ class StaffEmployeeViewSet(viewsets.ModelViewSet):
             except Exception:
                 signature_bytes = None
 
+        ceo_signature_bytes = None
+        from employees.models import IdCardOfficialSettings
+        from employees.services import ceo_signature_storage
+
+        official = IdCardOfficialSettings.load()
+        if official.ceo_signature_key:
+            try:
+                with ceo_signature_storage.open_ceo_signature(official.ceo_signature_key) as handle:
+                    ceo_signature_bytes = handle.read()
+            except Exception:
+                ceo_signature_bytes = None
+
         pdf_bytes = card_pdf_service.build_card_pdf(
             employee=employee,
             card=card,
             qr_png=_qr_png_bytes(card),
             photo_bytes=photo_bytes,
             signature_bytes=signature_bytes,
+            ceo_signature_bytes=ceo_signature_bytes,
         )
 
         log_employee_event(

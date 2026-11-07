@@ -57,9 +57,9 @@ class RegistrationAndNumberingTests(ApiTestBase):
         c = self.as_(self.hr_staff)
         r1 = c.post("/employees/", {"full_name": "Aminata Ba", "department": "Eng"}, format="json")
         self.assertEqual(r1.status_code, 201, r1.content)
-        self.assertEqual(r1.json()["employee_number"], "YAM110001LAR")
+        self.assertEqual(r1.json()["employee_number"], "YALA-EMP-000001")
         r2 = c.post("/employees/", {"full_name": "Oumar Sy"}, format="json")
-        self.assertEqual(r2.json()["employee_number"], "YAM110002LAR")
+        self.assertEqual(r2.json()["employee_number"], "YALA-EMP-000002")
 
     def test_client_cannot_set_employee_number(self):
         c = self.as_(self.hr_staff)
@@ -69,7 +69,7 @@ class RegistrationAndNumberingTests(ApiTestBase):
             format="json",
         )
         self.assertEqual(r.status_code, 201)
-        self.assertEqual(r.json()["employee_number"], "YAM110001LAR")
+        self.assertEqual(r.json()["employee_number"], "YALA-EMP-000001")
 
     def test_registration_requires_full_name(self):
         c = self.as_(self.hr_staff)
@@ -110,6 +110,16 @@ class SearchRetrieveUpdateTests(ApiTestBase):
         self.assertTrue(
             AuditLog.objects.filter(details__event="employee.record_access", entity_id=self.e1.employee_number).exists()
         )
+
+    def test_retrieve_yala_emp_hyphenated_number(self):
+        """YALA-EMP-000001 must resolve — hyphens are part of the official format."""
+        emp = StaffEmployee.objects.create(
+            employee_number="YALA-EMP-000099",
+            full_name="Hyphen Route Test",
+        )
+        r = self.as_(self.hr_staff).get("/employees/YALA-EMP-000099/")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.json()["employee_number"], emp.employee_number)
 
     def test_update_permitted_fields_audited(self):
         r = self.as_(self.hr_staff).patch(

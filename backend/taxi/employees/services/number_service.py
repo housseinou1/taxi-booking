@@ -1,10 +1,10 @@
 """Concurrency-safe permanent employee-number allocation.
 
 Guarantees:
-- Starts at YAM110001LAR and increments by one per employee.
+- Starts at YALA-EMP-000001 and increments by one per employee.
 - Unique (DB ``unique=True`` on ``StaffEmployee.employee_number`` is the
   authoritative backstop) and permanent (never reused, never reset).
-- Continues past 9999 by widening the sequence (YAM1110000LAR, ...).
+- Continues past 999999 by widening the zero-padded sequence naturally.
 - Concurrency-safe: a single counter row is locked with
   ``select_for_update()`` inside ``transaction.atomic`` on PostgreSQL. On
   SQLite (dev/test) row locks are a no-op, so correctness additionally rests on

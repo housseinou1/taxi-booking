@@ -365,6 +365,7 @@ export default function EmployeeProfile({
               employeeNumber={employeeNumber}
               canManage={canManage}
               canAdminister={canAdminister}
+              canViewDob={canViewDob}
               notify={notify}
             />
           </section>

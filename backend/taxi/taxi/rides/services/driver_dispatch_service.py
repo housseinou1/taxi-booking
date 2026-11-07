@@ -19,6 +19,9 @@ from django.utils import timezone
 
 from taxi.drivers.models import DriverProfile
 
+from locations.operating_cities import is_operating_location_city_id
+from operations.city_id_bridge import registry_city_ids_for_location_city_id
+
 logger = logging.getLogger(__name__)
 
 DRIVER_ACTIVE_STATUSES = ["driver_arriving", "driver_arrived", "in_progress"]
@@ -302,9 +305,15 @@ def base_eligible_queryset(ride, excluded_user_ids: Optional[list[int]] = None):
     )
 
     if ride.city_id:
-        profiles = profiles.filter(
-            Q(user__city_id=ride.city_id) | Q(user__city__isnull=True)
-        )
+        if not is_operating_location_city_id(ride.city_id):
+            return profiles.none()
+        reg_ids = registry_city_ids_for_location_city_id(ride.city_id)
+        if reg_ids:
+            profiles = profiles.filter(
+                Q(user__city_id__in=reg_ids) | Q(user__city__isnull=True)
+            )
+        else:
+            profiles = profiles.none()
 
     excluded = set(excluded_user_ids or [])
     if ride.declined_driver_ids:

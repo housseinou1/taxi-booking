@@ -4,6 +4,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .models import City, CityPricing, Commune, Department, Locality, Region
+from .operating_cities import OPERATING_METRO_SPECS, build_operating_city_payload, invalidate_operating_city_cache
+from .operating_city_seed import ensure_operating_metro_cities
 from .serializers import (
     CityPricingSerializer,
     CitySerializer,
@@ -145,6 +147,30 @@ class CityListCreateView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=201)
+
+
+class OperatingCityListView(APIView):
+    """The 13 YALA operating metros — ``locations.City`` ids resolved from the database."""
+
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [AllowAny()]
+        return [IsAdminUser()]
+
+    def get(self, request):
+        rows = list(build_operating_city_payload())
+        if len(rows) < len(OPERATING_METRO_SPECS):
+            ensure_operating_metro_cities()
+            invalidate_operating_city_cache()
+            rows = list(build_operating_city_payload())
+        return Response(
+            {
+                "cities": rows,
+                "count": len(rows),
+                "expected_count": len(OPERATING_METRO_SPECS),
+                "schema": "locations.City",
+            }
+        )
 
 
 class CityDetailView(APIView):

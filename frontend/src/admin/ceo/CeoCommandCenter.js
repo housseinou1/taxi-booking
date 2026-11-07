@@ -24,6 +24,7 @@ import {
   MapFilters,
   PercentageIndicator,
   RetryBlock,
+  SearchableSelect,
   Select,
   StatusChip,
   SuccessBanner,
@@ -32,6 +33,7 @@ import {
 } from "../components/library";
 import { API_URL } from "../../apiConfig";
 import { usePermissions } from "../permissions/PermissionContext";
+import { useOperatingCityOptions } from "../layouts/useOperatingCityOptions";
 import { approveWithdrawal, rejectWithdrawal } from "../executive/executiveApi";
 import { ceoMasterReportUrl, postCeoApproveOnboarding } from "./ceoMasterApi";
 import {
@@ -94,6 +96,7 @@ function requiresDualApproval(amount, limits) {
 
 export default function CeoCommandCenter() {
   const { permissions, cityId, setCity } = usePermissions();
+  const { options: operatingCityOptions, loading: operatingCitiesLoading } = useOperatingCityOptions();
   const { push } = useToast();
   const {
     master,
@@ -373,17 +376,14 @@ export default function CeoCommandCenter() {
             </MapToolbar>
           </div>
           <MapFilters onReset={() => setServiceFilter("all")}>
-            <Select
+            <SearchableSelect
               label="City"
               value={cityId}
               onChange={setCity}
+              options={operatingCityOptions}
+              loading={operatingCitiesLoading}
               placeholder="All cities"
-              options={[
-                { value: "", label: "All cities" },
-                ...(permissions?.assigned_city?.id
-                  ? [{ value: String(permissions.assigned_city.id), label: permissions.assigned_city.name }]
-                  : [{ value: "nouakchott", label: "Nouakchott" }]),
-              ]}
+              searchPlaceholder="Search city…"
             />
             <Select
               label="Service"

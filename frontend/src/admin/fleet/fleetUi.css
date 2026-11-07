@@ -361,13 +361,16 @@
   min-height: 112px;
   padding: 15px 16px;
   border-radius: 12px;
-  border: 1px solid var(--admin-border, #1f2937);
-  background: var(--admin-surface, #111827);
-  transition: border-color 140ms ease, transform 140ms ease;
+  border: 1px solid rgba(255, 196, 0, 0.45);
+  border-top: 4px solid var(--yala-mr-flag-gold, #ffc400);
+  border-right: 3px solid var(--yala-mr-flag-red, #d01c1f);
+  background: linear-gradient(160deg, rgba(0, 122, 64, 0.95), rgba(0, 66, 37, 0.98));
+  transition: border-color 140ms ease, transform 140ms ease, box-shadow 140ms ease;
 }
 
 .fleet-kpi:hover {
-  border-color: var(--admin-accent, #00a651);
+  border-color: var(--yala-mr-flag-gold, #ffc400);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25), inset 0 0 0 1px rgba(208, 28, 31, 0.25);
   transform: translateY(-1px);
 }
 
@@ -384,7 +387,7 @@
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--admin-text-muted, #94a3b8);
+  color: var(--yala-mr-flag-gold, #ffc400);
   line-height: 1.35;
   min-width: 0;
 }
@@ -403,14 +406,19 @@
   border: 1px solid var(--admin-border, #1f2937);
 }
 
+.fleet-kpi__icon-svg {
+  width: 18px;
+  height: 18px;
+}
+
 .fleet-kpi__value {
   display: flex;
   align-items: baseline;
   gap: 5px;
   font-size: 1.72rem;
-  font-weight: 700;
+  font-weight: 800;
   line-height: 1.05;
-  color: var(--admin-text, #f8fafc);
+  color: var(--yala-mr-flag-gold, #ffc400);
   font-variant-numeric: tabular-nums;
   word-break: break-word;
 }

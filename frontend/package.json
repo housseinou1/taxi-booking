@@ -36,7 +36,7 @@
   "scripts": {
     "postinstall": "node scripts/patch-react-scripts-webpack.js",
     "start": "react-scripts start",
-    "start:admin": "powershell -NoProfile -Command \"Copy-Item .env.admin .env.local -Force; npm run start\"",
+    "start:admin": "node scripts/ensure-admin-dev-env.js && react-scripts start",
     "start:delivery": "powershell -NoProfile -Command \"Copy-Item .env.delivery .env.local -Force; npm run start\"",
     "build": "node scripts/set-web-build-env.js && node scripts/patch-react-scripts-webpack.js && node scripts/build-production.js",
     "build:admin": "node scripts/set-admin-build-env.js && node scripts/patch-react-scripts-webpack.js && node scripts/build-production.js",

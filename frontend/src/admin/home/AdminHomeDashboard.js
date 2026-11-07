@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import useAdminHomeData from "./useAdminHomeData";
 import { useOptionalPermissions } from "../permissions/PermissionContext";
@@ -54,6 +54,17 @@ export function Icon({ name, className = "" }) {
 }
 
 export const NO_DATA_LABEL = "Not enough data yet";
+
+function formatLiveTime(iso) {
+  if (!iso) return "—";
+  try {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "—";
+    return d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  } catch {
+    return "—";
+  }
+}
 
 /** Mauritania flag as inline SVG — emoji flags do not render on Windows Chrome. */
 export function MauritaniaFlag({ className = "yah-flag" }) {
@@ -271,17 +282,59 @@ export default function AdminHomeDashboard({
   },
   embedded = false,
 }) {
-  const permissions = useOptionalPermissions();
+  const permCtx = useOptionalPermissions();
   const [open, setOpen] = useState(null);
   const [executivePeriod, setExecutivePeriod] = useState("today");
   const [exporting, setExporting] = useState(false);
   const [exportMsg, setExportMsg] = useState(null);
 
   const data = useAdminHomeData({
-    canView: permissions?.canView,
-    cityId: permissions?.cityId,
+    canView: permCtx?.canView,
+    cityId: permCtx?.cityId,
     executivePeriod,
+    live: true,
   });
+
+  const setNotifications = permCtx?.setNotifications;
+  const needsStrongAuth = permCtx?.permissions?.security?.totp_confirmed === false;
+
+  useEffect(() => {
+    if (!setNotifications) return;
+    const items = [];
+    const alerts = Array.isArray(data.alerts) ? data.alerts : [];
+    alerts.slice(0, 6).forEach((alert, index) => {
+      items.push({
+        id: `home-alert-${alert?.id ?? index}`,
+        title: alert?.title || alert?.severity || "Operations alert",
+        message: alert?.message || alert?.summary || alert?.detail || "",
+      });
+    });
+    const p = data.pending || {};
+    const queues = [
+      { key: "drivers", label: "Driver approvals", count: p.pending_drivers },
+      { key: "riders", label: "Rider approvals", count: p.pending_riders },
+      { key: "couriers", label: "Courier approvals", count: p.pending_couriers },
+    ];
+    queues.forEach((q) => {
+      const n = Number(q.count);
+      if (Number.isFinite(n) && n > 0) {
+        items.push({
+          id: `pending-${q.key}`,
+          title: q.label,
+          message: `${n.toLocaleString("en-US")} waiting for review`,
+        });
+      }
+    });
+    const openSafety = data.today?.open_safety_reports;
+    if (typeof openSafety === "number" && openSafety > 0) {
+      items.push({
+        id: "safety-open",
+        title: "Open safety reports",
+        message: `${openSafety} require attention`,
+      });
+    }
+    setNotifications(items);
+  }, [data.alerts, data.pending, data.today, setNotifications]);
 
   const name =
     user?.full_name ||
@@ -335,7 +388,9 @@ export default function AdminHomeDashboard({
     return todayLabel;
   }, [data.executiveMeta, todayLabel]);
 
-  const canExportExecutive = permissions?.canView && (permissions.canView("ceo") || permissions.canView("ops") || permissions.canView("finance"));
+  const canExportExecutive =
+    permCtx?.canView &&
+    (permCtx.canView("ceo") || permCtx.canView("ops") || permCtx.canView("finance"));
 
   const handleExport = useCallback(async () => {
     if (!canExportExecutive || exporting) return;
@@ -502,8 +557,11 @@ export default function AdminHomeDashboard({
         <main className="yah-main">
           <header className="yah-exec-head">
             <div>
-              <h1 className="yah-exec-title">Executive Dashboard</h1>
-              <p className="yah-exec-sub">Real-time operations, performance and business overview.</p>
+              <h1 className="yah-exec-title">Operations Console</h1>
+              <p className="yah-exec-sub">
+                Live KPIs, finance, and approvals — scoped to your role and operating city. Data refreshes automatically;
+                figures are never estimated when the API is silent.
+              </p>
             </div>
             <div className="yah-exec-head__controls">
               <span className="yah-exec-range" title="Dates from the executive dashboard API for the selected period">
@@ -517,6 +575,59 @@ export default function AdminHomeDashboard({
               ) : null}
             </div>
           </header>
+
+          {embedded ? (
+            <div className="yah-live-bar" role="status" aria-live="polite">
+              <div className="yah-live-bar__left">
+                <span className={`yah-live-pill${data.live?.connected ? " is-live" : ""}`}>
+                  <span className="yah-live-pill__dot" aria-hidden="true" />
+                  {data.live?.connected
+                    ? "Live operations channel"
+                    : `Secure refresh every ${(data.live?.pollMs || 30000) / 1000}s`}
+                </span>
+                {permCtx?.permissions?.feature_flags?.session_timeout ? (
+                  <span className="yah-live-bar__session" title="Idle sessions are signed out for staff safety">
+                    <Icon name="shield" />
+                    Session guard active
+                  </span>
+                ) : null}
+                {data.refreshing ? <span className="yah-live-bar__sync">Syncing…</span> : null}
+              </div>
+              <div className="yah-live-bar__right">
+                <span className="yah-live-bar__time">
+                  Last sync {formatLiveTime(data.live?.lastUpdatedAt)}
+                  {data.live?.serverGeneratedAt ? (
+                    <>
+                      {" "}
+                      · API snapshot {formatLiveTime(data.live.serverGeneratedAt)}
+                    </>
+                  ) : null}
+                </span>
+                <button
+                  type="button"
+                  className="yah-live-bar__refresh"
+                  onClick={() => data.reload()}
+                  disabled={data.loading || data.refreshing}
+                >
+                  Refresh now
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          {needsStrongAuth ? (
+            <div className="yah-secure-banner" role="alert">
+              <Icon name="shield" />
+              <div>
+                <strong>Enable strong authentication</strong>
+                <p>
+                  Protect this workstation with an authenticator app (TOTP) before approvals or payouts.{" "}
+                  <a href="/admin/security">Open Security Console</a>
+                </p>
+              </div>
+            </div>
+          ) : null}
+
           {exportMsg ? <p className="yah-export-msg">{exportMsg}</p> : null}
 
           <div className={`yah-kpis${embedded ? " yah-kpis--exec" : ""}`}>

@@ -68,6 +68,13 @@ function loaded(overrides = {}) {
     alerts: [],
     approvals: {},
     generatedAt: "2026-11-05T16:55:08Z",
+    live: {
+      connected: false,
+      pollMs: 30000,
+      lastUpdatedAt: "2026-11-05T16:55:08Z",
+      serverGeneratedAt: "2026-11-05T16:55:08Z",
+    },
+    refreshing: false,
     reload: jest.fn(),
     ...overrides,
   };
@@ -121,9 +128,9 @@ describe("real values", () => {
     );
   });
 
-  it("renders the executive dashboard title", () => {
+  it("renders the operations console title", () => {
     render(<AdminHomeDashboard embedded />);
-    expect(screen.getByText("Executive Dashboard")).toBeTruthy();
+    expect(screen.getByText("Operations Console")).toBeTruthy();
   });
 
   it("renders recent activity from the timeline", () => {

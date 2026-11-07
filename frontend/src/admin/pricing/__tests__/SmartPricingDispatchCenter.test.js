@@ -38,7 +38,7 @@ const DASHBOARD = {
 };
 
 const TREE = [
-  { id: 7, name: "Adrar", cities: [{ id: 11, name: "Aoujeft" }, { id: 12, name: "Atar" }] },
+  { id: 7, name: "Adrar", cities: [{ id: 11, name: "Atar" }, { id: 12, name: "Atar" }] },
   { id: 8, name: "Dakhlet Nouadhibou", cities: [{ id: 30, name: "Nouadhibou" }] },
 ];
 
@@ -189,7 +189,7 @@ describe("SmartPricingDispatchCenter — Region/Wilaya -> City dependent filters
     // the identical label and the operator could not tell 4-city Adrar from
     // 1-city Atar. The raw name must appear for the seat row.
     api.fetchRegionCityTree.mockResolvedValue([
-      { id: 7, name: "Adrar", cities: [{ id: 11, name: "Aoujeft" }] },
+      { id: 7, name: "Adrar", cities: [{ id: 11, name: "Atar" }] },
       { id: 3, name: "Atar", cities: [{ id: 12, name: "Atar" }] },
     ]);
     await renderCenter();
@@ -208,7 +208,7 @@ describe("SmartPricingDispatchCenter — Region/Wilaya -> City dependent filters
     // With no region chosen, every city is offered.
     fireEvent.click(screen.getAllByRole("combobox")[1]);
     const all = (await screen.findAllByRole("option")).map((o) => o.textContent).join("|");
-    expect(all).toMatch(/Aoujeft/);
+    expect(all).toMatch(/Atar/);
     expect(all).toMatch(/Nouadhibou/);
     // Close by toggling the same trigger. A keydown on `document` does NOT reach
     // the component (it listens on its own root), which would leave the popup open
@@ -221,7 +221,7 @@ describe("SmartPricingDispatchCenter — Region/Wilaya -> City dependent filters
 
     fireEvent.click(screen.getAllByRole("combobox")[1]);
     const scoped = (await screen.findAllByRole("option")).map((o) => o.textContent).join("|");
-    expect(scoped).toMatch(/Aoujeft/);
+    expect(scoped).toMatch(/Atar/);
     expect(scoped).not.toMatch(/Nouadhibou/);
   });
 
@@ -232,9 +232,10 @@ describe("SmartPricingDispatchCenter — Region/Wilaya -> City dependent filters
     fireEvent.click(screen.getAllByRole("combobox")[0]);
     fireEvent.click(await screen.findByRole("option", { name: /Adrar/ }));
     fireEvent.click(screen.getAllByRole("combobox")[1]);
-    fireEvent.click(await screen.findByRole("option", { name: /Aoujeft/ }));
+    const atarOptions = await screen.findAllByRole("option", { name: /Atar/ });
+    fireEvent.click(atarOptions[0]);
 
-    // The engine is now scoped to Aoujeft (city id 11).
+    // The engine is now scoped to Atar (city id 11).
     await waitFor(() =>
       expect(api.fetchSmartEngineDashboard).toHaveBeenCalledWith({ city_id: "11" })
     );

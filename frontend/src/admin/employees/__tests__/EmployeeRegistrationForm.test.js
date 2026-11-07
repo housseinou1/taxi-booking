@@ -6,10 +6,24 @@ import * as api from "../employeesApi";
 
 jest.mock("../employeesApi", () => {
   const actual = jest.requireActual("../employeesApi");
-  return { ...actual, registerEmployee: jest.fn() };
+  return {
+    ...actual,
+    registerEmployee: jest.fn(),
+    uploadPhoto: jest.fn().mockResolvedValue({ data: { ok: true } }),
+  };
 });
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => {
+  jest.clearAllMocks();
+  global.URL.createObjectURL = jest.fn(() => "blob:id-photo-preview");
+  global.URL.revokeObjectURL = jest.fn();
+});
+
+function pickRequiredIdPhoto() {
+  const input = screen.getByLabelText(/employee id photograph/i);
+  const file = new File(["photo-bytes"], "id.jpg", { type: "image/jpeg" });
+  fireEvent.change(input, { target: { files: [file] } });
+}
 
 test("the form has no employee_number field", () => {
   render(<EmployeeRegistrationForm notify={jest.fn()} onRegistered={jest.fn()} />);
@@ -35,6 +49,7 @@ test("successful submit never sends employee_number or employment_status", async
 
   fireEvent.change(screen.getByLabelText(/full name/i), { target: { value: "Jane Doe" } });
   fireEvent.change(screen.getByLabelText(/department/i), { target: { value: "Ops" } });
+  pickRequiredIdPhoto();
   fireEvent.click(screen.getByRole("button", { name: /register employee/i }));
 
   await waitFor(() => expect(api.registerEmployee).toHaveBeenCalled());
@@ -55,6 +70,7 @@ test("backend 400 field errors render inline", async () => {
   });
   render(<EmployeeRegistrationForm notify={jest.fn()} onRegistered={jest.fn()} />);
   fireEvent.change(screen.getByLabelText(/full name/i), { target: { value: "Jane" } });
+  pickRequiredIdPhoto();
   fireEvent.click(screen.getByRole("button", { name: /register employee/i }));
   expect(await screen.findByText(/this field is required/i)).toBeInTheDocument();
 });
@@ -64,6 +80,7 @@ test("403 surfaces a not-authorized message", async () => {
   const notify = jest.fn();
   render(<EmployeeRegistrationForm notify={notify} onRegistered={jest.fn()} />);
   fireEvent.change(screen.getByLabelText(/full name/i), { target: { value: "Jane" } });
+  pickRequiredIdPhoto();
   fireEvent.click(screen.getByRole("button", { name: /register employee/i }));
   await waitFor(() => expect(notify).toHaveBeenCalledWith("danger", expect.stringMatching(/not authorized/i)));
 });

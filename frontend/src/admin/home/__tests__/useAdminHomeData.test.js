@@ -22,6 +22,9 @@ jest.mock("../../../auth/authenticatedApi", () => ({
   default: { get: jest.fn() },
 }));
 jest.mock("../../../apiConfig", () => ({ API_URL: "http://127.0.0.1:8000" }));
+jest.mock("../../operations/opsSocket", () => ({
+  subscribeOperationsUpdates: jest.fn(() => () => {}),
+}));
 
 const api = require("../../../auth/authenticatedApi").default;
 

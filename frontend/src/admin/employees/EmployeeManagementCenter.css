@@ -74,6 +74,22 @@
 }
 
 /* Forms */
+.emp-registration-photo {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.emp-field--photo {
+  grid-column: 1 / -1;
+}
+
+.emp-note--tight {
+  margin: 0 0 6px;
+  font-size: 0.85rem;
+}
+
 .emp-form {
   display: grid;
   gap: 16px;
@@ -369,12 +385,52 @@
   opacity: 0.9;
 }
 
+.emp-idcard--front {
+  display: flex;
+  flex-direction: column;
+}
+
 .emp-idcard__body {
   display: flex;
   gap: 2.5mm;
   padding: 2.5mm;
   flex: 1;
   min-height: 0;
+}
+
+.emp-idcard__sig-row {
+  display: flex;
+  gap: 2mm;
+  padding: 0 2.5mm 1mm;
+  border-top: 0.2mm solid #e2e8f0;
+  background: #fafafa;
+}
+
+.emp-idcard__sig-slot {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35mm;
+}
+
+.emp-idcard__sig-slot img {
+  max-height: 5mm;
+  max-width: 100%;
+  object-fit: contain;
+  object-position: left bottom;
+}
+
+.emp-idcard__sig-slot--ceo img {
+  object-position: right bottom;
+}
+
+.emp-idcard__sig-slot .emp-idcard__signature-label {
+  font-size: 1.45mm;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .emp-idcard__photo {
@@ -645,6 +701,20 @@
   font-size: 1.6mm;
   font-style: italic;
   color: #94a3b8;
+}
+
+.emp-idcard__ceo-signature {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4mm;
+  margin-top: 0.6mm;
+}
+
+.emp-idcard__ceo-signature img {
+  max-height: 6mm;
+  max-width: 28mm;
+  object-fit: contain;
+  align-self: flex-start;
 }
 
 /* Employee signature management panel */

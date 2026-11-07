@@ -1,3 +1,13 @@
+.admin-shell .launch-growth__back {
+  display: none;
+}
+
+.admin-shell .launch-growth {
+  --lg-bg: transparent;
+  min-height: auto;
+  padding-top: 0;
+}
+
 .launch-growth {
   --lg-bg: #060a12;
   --lg-card: #101827;

@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 
 import EmployeeCardPanel from "../EmployeeCardPanel";
 import * as api from "../employeesApi";
@@ -14,6 +14,7 @@ jest.mock("../employeesApi", () => {
     fetchEmployee: jest.fn(),
     fetchPhoto: jest.fn(),
     fetchSignature: jest.fn(),
+    fetchCeoIdCardSignaturePreview: jest.fn(),
     issueCard: jest.fn(),
     renewCard: jest.fn(),
     replaceCard: jest.fn(),
@@ -54,6 +55,7 @@ beforeEach(() => {
     },
   });
   api.fetchPhoto.mockResolvedValue({ data: new Blob(["png"], { type: "image/png" }) });
+  api.fetchCeoIdCardSignaturePreview.mockRejectedValue({ response: { status: 404 } });
 });
 
 function renderPanel(overrides = {}) {
@@ -222,8 +224,10 @@ test("preview front face labels the signature and states when none is provided",
 
   fireEvent.click(await screen.findByRole("button", { name: "Preview ID Card" }));
 
-  expect(await screen.findByText("EMPLOYEE SIGNATURE")).toBeInTheDocument();
-  expect(screen.getByText("Signature not provided")).toBeInTheDocument();
+  const frontCard = document.querySelector(".emp-idcard--front");
+  expect(frontCard).toBeTruthy();
+  expect(within(frontCard).getByText(/employee signature/i)).toBeInTheDocument();
+  expect(within(frontCard.querySelector(".emp-idcard__sig-slot--employee")).getByText(/not provided/i)).toBeInTheDocument();
   // A missing signature is never replaced by an invented one.
   expect(screen.queryByAltText("Employee signature")).toBeNull();
 });
@@ -237,8 +241,8 @@ test("preview front face shows the employee's stored signature", async () => {
 
   const image = await screen.findByAltText("Employee signature");
   expect(image).toBeInTheDocument();
-  expect(screen.getByText("EMPLOYEE SIGNATURE")).toBeInTheDocument();
-  expect(screen.queryByText("Signature not provided")).toBeNull();
+  expect(screen.getByText(/employee signature/i)).toBeInTheDocument();
+  expect(screen.queryByText(/signature not provided/i)).toBeNull();
 });
 
 test("preview back face shows the final Founder/CEO-confirmed contact information", async () => {

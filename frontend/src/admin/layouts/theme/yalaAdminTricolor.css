@@ -1,0 +1,234 @@
+/**
+ * YALA Admin — mandatory Green + Gold + Red (Mauritania flag).
+ * Loaded last. Every AdminShell page inherits these surfaces and KPI rules.
+ */
+
+.admin-shell {
+  --yala-mr-flag-green: #006233;
+  --yala-mr-flag-gold: #ffc400;
+  --yala-mr-flag-red: #d01c1f;
+
+  --yala-mr-green-deep: #005a2d;
+  --yala-mr-green-dark: #004225;
+  --yala-mr-emerald: #006233;
+  --yala-mr-emerald-mid: #007a40;
+  --yala-mr-emerald-soft: rgba(0, 98, 51, 0.55);
+  --yala-mr-gold: #ffc400;
+  --yala-mr-gold-soft: rgba(255, 196, 0, 0.22);
+  --yala-mr-red: #d01c1f;
+  --yala-mr-red-soft: rgba(208, 28, 31, 0.25);
+  --yala-mr-ivory: #f8faf5;
+
+  --admin-bg: var(--yala-mr-flag-green);
+  --admin-panel: var(--yala-mr-green-dark);
+  --admin-surface: var(--yala-mr-emerald-soft);
+  --admin-surface-alt: rgba(0, 66, 37, 0.94);
+  --admin-surface-muted: rgba(0, 90, 45, 0.72);
+  --admin-border: rgba(255, 196, 0, 0.28);
+  --admin-accent: var(--yala-mr-flag-gold);
+  --admin-accent-text: var(--yala-mr-flag-gold);
+  --admin-accent-contrast: var(--yala-mr-green-dark);
+  --admin-accent-soft: var(--yala-mr-gold-soft);
+  --admin-danger-solid: var(--yala-mr-flag-red);
+  --admin-warning: var(--yala-mr-flag-gold);
+
+  background: var(--yala-mr-flag-green);
+}
+
+/* ── Flag frame (red bands · green field · gold center mark) ─────────────── */
+.admin-shell--flag {
+  background: var(--yala-mr-flag-green);
+}
+
+.admin-shell--flag .admin-shell__header,
+.admin-shell--flag .admin-shell__primary-nav,
+.admin-shell--flag .admin-shell__flag-field,
+.admin-shell--flag .admin-shell__body--full {
+  background: var(--yala-mr-flag-green);
+}
+
+.admin-shell__flag-field {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.admin-shell__flag-watermark {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.admin-shell__flag-watermark-svg {
+  width: min(520px, 82vmin);
+  height: auto;
+  opacity: 0.12;
+}
+
+.admin-shell--flag .admin-shell__main {
+  position: relative;
+  z-index: 1;
+}
+
+.admin-shell__flag-footer {
+  min-height: calc(var(--yala-flag-band-h, 16px) + 2.5rem);
+  padding-top: max(10px, calc(var(--yala-flag-band-h, 16px) * 0.35));
+  background: var(--yala-mr-flag-red) !important;
+  color: var(--yala-mr-flag-gold) !important;
+  border-top: 4px solid var(--yala-mr-flag-gold) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 196, 0, 0.35);
+}
+
+/* ── Navigation (green field + gold active + gold divider) ───────────────── */
+.admin-shell--topnav .admin-shell__header {
+  border-bottom: 2px solid var(--yala-mr-flag-gold);
+  box-shadow: none;
+}
+
+.admin-shell__primary-nav {
+  --admin-nav-bg: var(--yala-mr-flag-green);
+  --admin-nav-accent: var(--yala-mr-flag-gold);
+  border-bottom: 2px solid rgba(255, 196, 0, 0.45);
+  box-shadow: inset 0 -1px 0 rgba(208, 28, 31, 0.35);
+}
+
+/* ── Page chrome ─────────────────────────────────────────────────────────── */
+.admin-shell__main h2,
+.admin-shell__main h3,
+.admin-shell__enterprise-module h2,
+.admin-shell__enterprise-module h3 {
+  color: var(--yala-mr-flag-gold);
+  border-bottom: 1px solid rgba(208, 28, 31, 0.55);
+  padding-bottom: 6px;
+  margin-bottom: 12px;
+}
+
+.admin-shell__page-title {
+  color: var(--yala-mr-flag-gold);
+  border-left: 4px solid var(--yala-mr-flag-red);
+  border-bottom: 2px solid rgba(255, 196, 0, 0.35);
+  padding-bottom: 8px;
+}
+
+/* ── KPI cards (library + fleet) — no white cards ────────────────────────── */
+.admin-shell .admin-kpi,
+.admin-shell .admin-kpi--clickable,
+.admin-shell .fleet-kpi {
+  position: relative;
+  background: linear-gradient(160deg, rgba(0, 122, 64, 0.95), rgba(0, 66, 37, 0.98)) !important;
+  border: 1px solid rgba(255, 196, 0, 0.5) !important;
+  border-top: 4px solid var(--yala-mr-flag-gold) !important;
+  border-right: 3px solid var(--yala-mr-flag-red) !important;
+  border-radius: 12px;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 196, 0, 0.12);
+  color: var(--yala-mr-ivory);
+}
+
+.admin-shell .admin-kpi::after,
+.admin-shell .fleet-kpi::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 36%;
+  height: 2px;
+  background: linear-gradient(90deg, var(--yala-mr-flag-red), transparent);
+  border-radius: 0 0 0 12px;
+  pointer-events: none;
+  opacity: 0.85;
+}
+
+.admin-shell .admin-kpi__label,
+.admin-shell .fleet-kpi__label {
+  color: var(--yala-mr-flag-gold) !important;
+  font-weight: 700;
+}
+
+.admin-shell .admin-kpi__value,
+.admin-shell .fleet-kpi__value,
+.admin-shell .fleet-kpi__value > span:first-child {
+  color: var(--yala-mr-flag-gold) !important;
+  font-weight: 800;
+}
+
+.admin-shell .admin-kpi__subtitle,
+.admin-shell .fleet-kpi__sub,
+.admin-shell .fleet-kpi__unit {
+  color: var(--yala-mr-ivory) !important;
+  opacity: 0.88;
+}
+
+.admin-shell .admin-kpi__icon,
+.admin-shell .fleet-kpi__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--yala-mr-flag-gold) !important;
+  background: rgba(0, 98, 51, 0.85) !important;
+  color: var(--yala-mr-flag-gold) !important;
+  box-shadow: 0 0 0 1px rgba(208, 28, 31, 0.35);
+}
+
+.admin-shell .admin-kpi--danger,
+.admin-shell .fleet-kpi--danger {
+  border-right-color: var(--yala-mr-flag-red) !important;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.22), inset 0 0 0 1px rgba(208, 28, 31, 0.35);
+}
+
+.admin-shell .admin-kpi--danger .admin-kpi__value,
+.admin-shell .fleet-kpi--danger .fleet-kpi__value > span:first-child {
+  color: #fecaca !important;
+}
+
+.admin-shell .fleet-kpi--warn,
+.admin-shell .admin-kpi--warning {
+  border-top-color: var(--yala-mr-flag-gold) !important;
+  background: linear-gradient(160deg, rgba(255, 196, 0, 0.18), rgba(0, 66, 37, 0.98)) !important;
+}
+
+/* Embedded Operations Console KPIs */
+.admin-shell .yah-embedded--exec .yah-kpi {
+  background: linear-gradient(160deg, rgba(0, 122, 64, 0.92), rgba(0, 66, 37, 0.98));
+  border: 1px solid rgba(255, 196, 0, 0.45);
+  border-top: 4px solid var(--yala-mr-flag-gold);
+  border-right: 3px solid var(--yala-mr-flag-red);
+}
+
+.admin-shell .yah-embedded--exec .yah-kpi__label {
+  color: var(--yala-mr-flag-gold);
+}
+
+.admin-shell .yah-embedded--exec .yah-kpi__value {
+  color: var(--yala-mr-flag-gold);
+}
+
+/* Module panels — tricolor frame on every page body */
+.admin-shell__enterprise-module .admin-ds-page,
+.admin-shell__enterprise-module .admin-module-page,
+.admin-shell__enterprise-module [class*="-page"]:not(.admin-kpi) {
+  border: 1px solid rgba(255, 196, 0, 0.35);
+  border-top: 3px solid var(--yala-mr-flag-gold);
+  border-right: 2px solid rgba(208, 28, 31, 0.45);
+  background: var(--admin-surface-alt);
+}
+
+/* Primary actions — gold buttons on green */
+.admin-shell .admin-lib-btn--primary,
+.admin-shell .admin-lib-btn[data-variant="primary"],
+.admin-shell .approval-btn--primary,
+.admin-shell button[class*="btn-primary"],
+.admin-shell .admin-shell__btn {
+  background: linear-gradient(180deg, var(--yala-mr-flag-gold), #e0ad00) !important;
+  color: var(--yala-mr-green-dark) !important;
+  border: 1px solid rgba(208, 28, 31, 0.35) !important;
+  font-weight: 700;
+}
+
+.admin-shell thead th {
+  color: var(--yala-mr-flag-gold);
+  border-bottom: 2px solid rgba(208, 28, 31, 0.4);
+  background: rgba(0, 66, 37, 0.85);
+}

@@ -56,6 +56,20 @@ OUTCOME_IGNORED = "ignored"
 OUTCOME_REJECTED = "rejected"
 OUTCOME_ERROR = "error"
 
+# Written when the delivery row is first inserted, BEFORE settlement commits. It is a
+# deliberate "not yet answered" marker: a row left in this state must never block a retry,
+# because the unique delivery_id would otherwise refuse every redelivery from Moosyl and
+# leave the payment pending forever.
+OUTCOME_PENDING = "processing"
+
+# Outcomes after which a redelivery genuinely changes nothing.
+TERMINAL_OUTCOMES = (
+    OUTCOME_SETTLED,
+    OUTCOME_DUPLICATE,
+    OUTCOME_IGNORED,
+    OUTCOME_REJECTED,
+)
+
 
 def build_transaction_id(scope: str, object_id) -> str:
     """``YALA-RIDE-1043`` / ``YALA-DELIVERY-88`` — unique per Moosyl environment."""
@@ -129,20 +143,26 @@ def _record_event(
 ) -> tuple[ProviderWebhookEvent | None, bool]:
     """Record the delivery. Returns ``(record, created)``; ``created=False`` means replay."""
     try:
-        record, created = ProviderWebhookEvent.objects.get_or_create(
-            delivery_id=delivery_id,
-            defaults={
-                "provider": provider.code,
-                "event_type": str(verification.event.get("event") or ""),
-                "environment": verification.environment,
-                "payment_reference": str(data.get("id") or ""),
-                "transaction_id": str(data.get("transactionId") or ""),
-                "status": str(data.get("status") or ""),
-                "amount": _decimal_or_none(data.get("amount")),
-                "currency": str(data.get("currency") or CURRENCY_MRU),
-                "payload_sha256": payload_fingerprint(raw_body),
-            },
-        )
+        # atomic(): the insert either commits whole or not at all, so a concurrent worker
+        # can never observe a half-written row.
+        with transaction.atomic():
+            record, created = ProviderWebhookEvent.objects.get_or_create(
+                delivery_id=delivery_id,
+                defaults={
+                    "provider": provider.code,
+                    "event_type": str(verification.event.get("event") or ""),
+                    "environment": verification.environment,
+                    "payment_reference": str(data.get("id") or ""),
+                    "transaction_id": str(data.get("transactionId") or ""),
+                    "status": str(data.get("status") or ""),
+                    "amount": _decimal_or_none(data.get("amount")),
+                    "currency": str(data.get("currency") or CURRENCY_MRU),
+                    "payload_sha256": payload_fingerprint(raw_body),
+                    # Explicitly non-terminal. finish() upgrades this inside the settlement
+                    # transaction, so 'processing' means "money has NOT moved yet".
+                    "outcome": OUTCOME_PENDING,
+                },
+            )
     except IntegrityError:
         # Another worker inserted the same delivery id a moment ago: that is a replay.
         return ProviderWebhookEvent.objects.filter(delivery_id=delivery_id).first(), False
@@ -180,11 +200,22 @@ def apply_verified_moosyl_event(
     )
 
     if not created:
-        # Replay of a delivery id we have already handled: nothing may happen twice.
-        return SettlementResult(
-            outcome=OUTCOME_DUPLICATE,
-            detail=f"Delivery {delivery_id} was already processed.",
-            event_record=record,
+        # A row already exists. Treat it as a true replay ONLY if the earlier attempt
+        # reached a terminal outcome. A row still at OUTCOME_PENDING (or OUTCOME_ERROR)
+        # means the previous attempt never committed its settlement, so this redelivery
+        # MUST be allowed to finish the work. Returning 'duplicate' here is what left
+        # payments stranded at 'pending' forever: the unique delivery_id would refuse all
+        # of Moosyl's retries and no code path could ever settle the order.
+        if record is not None and record.outcome in TERMINAL_OUTCOMES:
+            return SettlementResult(
+                outcome=OUTCOME_DUPLICATE,
+                detail=f"Delivery {delivery_id} was already processed.",
+                event_record=record,
+            )
+        logger.warning(
+            "Moosyl redelivery %s resumes an unfinished settlement (outcome=%r).",
+            delivery_id,
+            getattr(record, "outcome", None),
         )
 
     def finish(result: SettlementResult) -> SettlementResult:
@@ -298,21 +329,24 @@ def moosyl_fee(amount) -> Decimal:
 
 
 def delivery_commission_policy() -> dict:
-    """Delivery commission split — configurable, defaulting to the ride policy.
+    """Delivery commission split — read from the platform's OWN delivery config.
 
-    The platform has a single ``RideCommissionConfig`` (seeded 0.30/0.70). Deliveries
-    provisionally use the same split; setting ``DELIVERY_PLATFORM_PERCENT`` (either
-    ``0.30`` or ``30``) overrides the platform share without a migration, so the
-    business can diverge later without a code change.
+    Delivery does NOT share the ride policy. The platform already models this per
+    vertical in ``payments.settlement_service.get_commission_config("delivery")`` /
+    ``CommissionConfig`` (courier_rate, platform_rate), and that is the single source of
+    truth finance edits.
+
+    FIXED DEFECT: this previously defaulted to ``get_ride_commission_policy()`` (30/70),
+    which would have paid a courier 70% instead of the configured 80% - underpaying the
+    courier by 10 points and over-crediting YALA. The ride policy is now only a
+    last-resort fallback if the delivery config cannot be read.
     """
-    from app_settings.pricing_service import get_ride_commission_policy
     from django.conf import settings
 
     raw = str(getattr(settings, "DELIVERY_PLATFORM_PERCENT", "") or "").strip()
     if raw:
         percent = _decimal_or_none(raw)
         if percent is not None:
-            # Accept both "30" and "0.30" spellings, exactly like APP_FEE_PERCENT.
             if percent > 1:
                 percent = percent / Decimal("100")
             return {
@@ -322,13 +356,28 @@ def delivery_commission_policy() -> dict:
                 "source": "DELIVERY_PLATFORM_PERCENT",
             }
 
-    policy = get_ride_commission_policy()
-    return {
-        "platform_percent": Decimal(policy["platform_percent"]),
-        "driver_percent": Decimal(policy["driver_percent"]),
-        "config_id": policy.get("config_id"),
-        "source": "ride_policy",
-    }
+    # The platform's own per-vertical delivery configuration (authoritative).
+    try:
+        from .settlement_service import get_commission_config
+
+        cfg = get_commission_config("delivery")
+        platform = Decimal(str(cfg.platform_rate))
+        return {
+            "platform_percent": platform,
+            "driver_percent": Decimal(str(cfg.courier_rate)),
+            "config_id": cfg.id,
+            "source": "CommissionConfig:delivery",
+        }
+    except Exception:  # pragma: no cover - defensive; fall back to the ride policy
+        from app_settings.pricing_service import get_ride_commission_policy
+
+        policy = get_ride_commission_policy()
+        return {
+            "platform_percent": Decimal(policy["platform_percent"]),
+            "driver_percent": Decimal(policy["driver_percent"]),
+            "config_id": policy.get("config_id"),
+            "source": "ride_policy_fallback",
+        }
 
 
 

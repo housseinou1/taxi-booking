@@ -553,6 +553,17 @@ if DEBUG:
         "retry_on_timeout": False,
         "max_retries": 0,
     }
+    # The RESULT backend also retries. ``.delay()`` reaches it via
+    # on_task_call -> ensure -> _reconnect -> kombu retry_over_time, which blocked for tens
+    # of seconds even though the BROKER above fails fast. Bound it too, so a task publish
+    # against a missing Redis cannot stall the request that triggered it.
+    CELERY_REDIS_SOCKET_CONNECT_TIMEOUT = 2
+    CELERY_REDIS_SOCKET_TIMEOUT = 2
+    CELERY_RESULT_BACKEND_TRANSPORT_OPTIONS = {
+        "socket_connect_timeout": 2,
+        "socket_timeout": 2,
+        "retry_policy": {"max_retries": 0, "interval_start": 0},
+    }
 
 # NOTE: the authoritative CELERY_BEAT_SCHEDULE is defined further below (after the test-mode
 # block). Employee attendance automation entries are added there so they are not overwritten.

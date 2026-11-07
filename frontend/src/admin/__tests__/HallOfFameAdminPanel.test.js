@@ -206,10 +206,16 @@ function mockFetch({ members = RECOGNITIONS, ok = true, detail = "", cities = tr
   const calls = [];
   global.fetch = jest.fn((url, options) => {
     calls.push({ url: String(url), options });
-    if (String(url).includes("/locations/cities/")) {
+    if (
+      String(url).includes("/locations/operating-cities/") ||
+      String(url).includes("/locations/cities/")
+    ) {
       return Promise.resolve({
         ok: cities,
-        json: () => Promise.resolve(cities ? [{ id: "c1", name: "Nouakchott" }] : []),
+        json: () =>
+          Promise.resolve(
+            cities ? { cities: [{ id: "c1", name: "Nouakchott", region: "Nouakchott" }] } : { cities: [] }
+          ),
       });
     }
     return Promise.resolve({

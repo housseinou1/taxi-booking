@@ -2,14 +2,28 @@ import React from "react";
 import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 
 import VehicleManagementCenter from "./VehicleManagementCenter";
-import { exportFleetReport, fetchCityDirectory, fetchFleetVehicles } from "./fleetApi";
+import { exportFleetReport, fetchFleetVehicles } from "./fleetApi";
+
+jest.mock("../layouts/useOperatingCityOptions", () => ({
+  useOperatingCityOptions: () => ({
+    registryOptions: [
+      { value: "", label: "All cities" },
+      { value: "3", label: "Nouakchott" },
+    ],
+    cities: [{ name: "Nouakchott", primary_registry_city_id: 3 }],
+    options: [],
+    nameFilterOptions: [],
+    loading: false,
+    error: null,
+    reload: jest.fn(),
+  }),
+}));
 
 jest.mock("./fleetApi", () => {
   const actual = jest.requireActual("./fleetApi");
   return {
     ...actual,
     fetchFleetVehicles: jest.fn(),
-    fetchCityDirectory: jest.fn(),
     exportFleetReport: jest.fn(),
   };
 });
@@ -84,14 +98,9 @@ const VEHICLE_PAYLOAD = {
   note: "Derived from DriverProfile vehicle fields.",
 };
 
-const CITY_PAYLOAD = [
-  { id: 1, name: "Nouakchott Region", cities: [{ id: 3, name: "Nouakchott" }] },
-];
-
 beforeEach(() => {
   jest.clearAllMocks();
   fetchFleetVehicles.mockResolvedValue({ data: VEHICLE_PAYLOAD });
-  fetchCityDirectory.mockResolvedValue({ data: CITY_PAYLOAD });
   exportFleetReport.mockResolvedValue({ data: new Blob(["a,b"]) });
   window.URL.createObjectURL = jest.fn(() => "blob:mock");
   window.URL.revokeObjectURL = jest.fn();
@@ -403,14 +412,11 @@ describe("VehicleManagementCenter", () => {
     expect(screen.getByRole("button", { name: /Try again/i })).toBeInTheDocument();
   });
 
-  it("keeps working when the city directory is unavailable", async () => {
-    fetchCityDirectory.mockRejectedValue({ message: "cities down" });
-
+  it("lists operating-city filter options from the shared hook", async () => {
     await renderPage();
 
-    // Falls back to "City <id>" labels instead of failing the whole page.
     const citySelect = screen.getByLabelText(/Filter by city/i);
-    expect(within(citySelect).getByRole("option", { name: "City 3" })).toBeInTheDocument();
+    expect(within(citySelect).getByRole("option", { name: "Nouakchott" })).toBeInTheDocument();
     expect(screen.getByText("Toyota Corolla")).toBeInTheDocument();
   });
 

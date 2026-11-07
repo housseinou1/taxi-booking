@@ -98,7 +98,11 @@ def _status_label(card) -> str:
 
 
 def _date(value) -> str:
-    return value.date().isoformat() if value else "-"
+    if not value:
+        return "-"
+    if hasattr(value, "date"):
+        return value.date().isoformat()
+    return value.isoformat()
 
 
 def _draw_photo(pdf, x, y, width, height, photo_bytes):
@@ -127,7 +131,7 @@ def _draw_photo(pdf, x, y, width, height, photo_bytes):
     pdf.drawCentredString(x + width / 2, y + height / 2, "NO PHOTO")
 
 
-def _draw_signature(pdf, x, y, width, height, signature_bytes):
+def _draw_signature(pdf, x, y, width, height, signature_bytes, *, missing_label="Signature not provided"):
     """Draw the employee's own signature, or the literal "not provided" placeholder.
 
     The image is always drawn with ``preserveAspectRatio=True`` and ``mask="auto"``, so it is
@@ -157,10 +161,40 @@ def _draw_signature(pdf, x, y, width, height, signature_bytes):
             pass
     pdf.setFillColor(YALA_MUTED)
     pdf.setFont("Helvetica-Oblique", 4.4)
-    pdf.drawString(x, y + 1.4 * mm, "Signature not provided")
+    pdf.drawString(x, y + 1.4 * mm, missing_label)
 
 
-def _draw_front(pdf, *, employee, card, photo_bytes, logo_bytes, signature_bytes=None):
+def _draw_dual_signatures(pdf, *, footer_h, employee_sig, ceo_sig):
+    """Bottom row: employee signature (left), CEO signature (right)."""
+    sig_h = 6.0 * mm
+    sig_y = footer_h + 0.6 * mm
+    label_y = sig_y + sig_h + 1.0 * mm
+    pdf.setFillColor(YALA_MUTED)
+    pdf.setFont("Helvetica-Bold", 3.8)
+    pdf.drawString(3 * mm, label_y, "EMPLOYEE SIGNATURE")
+    pdf.drawString(44 * mm, label_y, "CEO AUTHORIZATION")
+    _draw_signature(pdf, 3 * mm, sig_y, 38 * mm, sig_h, employee_sig)
+    _draw_signature(
+        pdf,
+        44 * mm,
+        sig_y,
+        38 * mm,
+        sig_h,
+        ceo_sig,
+        missing_label="Authorization pending",
+    )
+
+
+def _draw_front(
+    pdf,
+    *,
+    employee,
+    card,
+    photo_bytes,
+    logo_bytes,
+    signature_bytes=None,
+    ceo_signature_bytes=None,
+):
     """Card front: logo, photograph, identity, employment, validity and signature."""
     width, height = CARD_WIDTH, CARD_HEIGHT
 
@@ -199,24 +233,28 @@ def _draw_front(pdf, *, employee, card, photo_bytes, logo_bytes, signature_bytes
     pdf.drawString(text_x, height - 7.6 * mm, "OFFICIAL EMPLOYEE IDENTIFICATION")
 
     # Photograph (protected storage bytes only; never distorted).
-    photo_w, photo_h = 19 * mm, 22 * mm
+    # Reserve the bottom band for dual signatures + green footer (see ``_draw_dual_signatures``).
+    photo_w, photo_h = 19 * mm, 20 * mm
     photo_x = 3 * mm
-    photo_y = 7 * mm
+    photo_y = 15.5 * mm
     _draw_photo(pdf, photo_x, photo_y, photo_w, photo_h, photo_bytes)
 
-    # Identity block (no date of birth, no personal identification number).
+    # Identity block (official HR fields; no national ID number).
     block_x = photo_x + photo_w + 3 * mm
+    full = (employee.full_name or "").strip()
+    parts = full.split()
+    first_name = parts[0] if parts else "-"
+    last_name = " ".join(parts[1:]) if len(parts) > 1 else "-"
     pdf.setFillColor(YALA_INK)
     pdf.setFont("Helvetica-Bold", 8.4)
-    name = (employee.full_name or "").strip() or "-"
-    pdf.drawString(block_x, height - 16 * mm, name[:30])
+    pdf.drawString(block_x, height - 16 * mm, full[:30] or "-")
 
     pdf.setFont("Helvetica", 5.8)
     lines = [
         ("Employee ID", str(employee.employee_number or "-")),
         ("Job title", employee.job_title or "-"),
         ("Department", employee.department or "-"),
-        ("Employment", employee.employment_status or "-"),
+        ("Issue date", _date(card.issued_at)),
         ("Expires", _date(card.expires_at)),
     ]
     line_y = height - 20.4 * mm
@@ -227,21 +265,19 @@ def _draw_front(pdf, *, employee, card, photo_bytes, logo_bytes, signature_bytes
         pdf.setFillColor(YALA_INK)
         pdf.setFont("Helvetica-Bold", 5.8)
         pdf.drawString(block_x + 17 * mm, line_y, str(value)[:20])
-        line_y -= 3.4 * mm
+        line_y -= 3.2 * mm
 
-    # Employee signature — bottom of the front, beneath the photograph and identity details.
-    # x starts right of the photograph (which ends at 22mm) and below the last identity line
-    # (baseline 19.98mm), so nothing overlaps the photo, name, ID number or other details.
-    sig_x = block_x
-    sig_width = 35 * mm
-    pdf.setFillColor(YALA_MUTED)
-    pdf.setFont("Helvetica-Bold", 4.6)
-    pdf.drawString(sig_x, 15.4 * mm, "EMPLOYEE SIGNATURE")
-    _draw_signature(pdf, sig_x, 7.0 * mm, sig_width, 6.6 * mm, signature_bytes)
+    footer_h = 4.6 * mm
+    _draw_dual_signatures(
+        pdf,
+        footer_h=footer_h,
+        employee_sig=signature_bytes,
+        ceo_sig=ceo_signature_bytes,
+    )
 
     # Footer: card number + real status (a printed copy can never look "more valid").
     pdf.setFillColor(YALA_GREEN)
-    pdf.rect(0, 0, width, 4.6 * mm, stroke=0, fill=1)
+    pdf.rect(0, 0, width, footer_h, stroke=0, fill=1)
     pdf.setFillColor(YALA_PAPER)
     pdf.setFont("Helvetica-Bold", 5)
     pdf.drawString(3 * mm, 1.6 * mm, f"CARD {card.card_number}")
@@ -374,7 +410,7 @@ def draw_slogan_band(pdf, *, width, top=SLOGAN_BAND_TOP):
     pdf.drawString(start_x + flag_w + gap, baseline, slogan)
 
 
-def _draw_back(pdf, *, employee, card, qr_png, logo_bytes):
+def _draw_back(pdf, *, employee, card, qr_png, logo_bytes, ceo_signature_bytes=None):
 
     """Card back: verification QR, identifiers, CEO-confirmed contact block, slogan band.
 
@@ -549,6 +585,7 @@ def build_card_pdf(
     qr_png: bytes | None = None,
     photo_bytes: bytes | None = None,
     signature_bytes: bytes | None = None,
+    ceo_signature_bytes: bytes | None = None,
     logo_bytes: bytes | None = None,
 ) -> bytes:
     """Render the employee ID card as a two-page, exact-CR80 PDF.
@@ -574,9 +611,17 @@ def build_card_pdf(
         card=card,
         photo_bytes=photo_bytes,
         signature_bytes=signature_bytes,
+        ceo_signature_bytes=ceo_signature_bytes,
         logo_bytes=logo,
     )
-    _draw_back(pdf, employee=employee, card=card, qr_png=qr_png, logo_bytes=logo)
+    _draw_back(
+        pdf,
+        employee=employee,
+        card=card,
+        qr_png=qr_png,
+        logo_bytes=logo,
+        ceo_signature_bytes=ceo_signature_bytes,
+    )
 
     pdf.save()
     return buffer.getvalue()

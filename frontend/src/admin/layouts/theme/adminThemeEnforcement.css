@@ -1,0 +1,220 @@
+/**
+ * Legacy module sweep — forces Mauritanian surfaces inside AdminShell without
+ * editing every historical CSS file. Loaded last.
+ */
+
+.admin-shell,
+.admin-shell__body,
+.admin-shell__main {
+  background-color: transparent;
+  color: var(--admin-text);
+}
+
+.admin-shell__legacy-module,
+.admin-shell__enterprise-module {
+  color: var(--admin-text);
+}
+
+/* Neutralize common light wrappers */
+.admin-shell :is(
+    .admin-ds-page,
+    .admin-module-page,
+    .dlvops-page,
+    .city-mgmt,
+    .finance-dashboard,
+    .ceo-control,
+    .board-suite,
+    .drivers-page,
+    .riders-page,
+    .rides-mgmt,
+    [class*="Management"],
+    [class*="Center"],
+    [class*="Dashboard"],
+    [class*="Hub"]
+  ):not(.admin-kpi):not(.ss__popup) {
+  color: var(--admin-text);
+}
+
+.admin-shell :is(div, section, article, main, aside, header, footer)[class*="page"],
+.admin-shell :is(div, section)[class*="Page"],
+.admin-shell :is(div, section)[class*="shell"] {
+  color: inherit;
+}
+
+/* Tables / data grids */
+.admin-shell table {
+  color: var(--admin-text);
+}
+
+.admin-shell thead th {
+  color: var(--admin-text-muted);
+}
+
+.admin-shell tbody tr:hover td {
+  background: rgba(4, 120, 87, 0.22);
+}
+
+/* Modals, drawers, overlays */
+.admin-shell .admin-modal,
+.admin-shell .admin-drawer,
+.admin-shell [class*="modal"],
+.admin-shell [class*="Modal"],
+.admin-shell [class*="drawer"],
+.admin-shell [class*="Drawer"] {
+  background: var(--admin-panel);
+  border: 1px solid var(--admin-border);
+  color: var(--admin-text);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+}
+
+/* Loading & empty states */
+.admin-shell [class*="skeleton"],
+.admin-shell [class*="Skeleton"],
+.admin-shell [class*="empty"],
+.admin-shell [class*="Empty"] {
+  color: var(--admin-text-muted);
+}
+
+/* Primary / accent buttons */
+.admin-shell button[class*="primary"],
+.admin-shell .admin-btn--primary,
+.admin-shell [class*="btn-primary"] {
+  background: linear-gradient(180deg, var(--yala-mr-gold), #d4a80f);
+  color: var(--yala-mr-green-dark);
+  border-color: rgba(245, 197, 24, 0.5);
+}
+
+.admin-shell button[class*="danger"],
+.admin-shell [class*="btn-danger"] {
+  background: var(--yala-mr-red);
+  color: var(--yala-mr-ivory);
+}
+
+/* Charts */
+.admin-shell [class*="chart"] text,
+.admin-shell .recharts-text {
+  fill: var(--admin-text-muted);
+}
+
+/* Pagination */
+.admin-shell [class*="pager"],
+.admin-shell [class*="Pager"],
+.admin-shell [class*="pagination"] {
+  color: var(--admin-text-muted);
+}
+
+.admin-shell [class*="pager"] button:hover,
+.admin-shell [class*="pagination"] button:hover {
+  background: var(--yala-mr-gold-soft);
+  color: var(--yala-mr-gold);
+}
+
+/* Tooltips */
+.admin-shell [role="tooltip"],
+.admin-shell [class*="tooltip"] {
+  background: var(--yala-mr-green-dark);
+  color: var(--yala-mr-ivory);
+  border: 1px solid rgba(245, 197, 24, 0.25);
+}
+
+/* Hard overrides for known white panels (specificity over module CSS) */
+.admin-shell .city-mgmt__panel,
+.admin-shell .city-mgmt__card,
+.admin-shell .board-suite__card,
+.admin-shell .board-suite__panel,
+.admin-shell .drivers-documents__panel {
+  background: var(--admin-surface-alt) !important;
+  border-color: var(--admin-border) !important;
+  color: var(--admin-text) !important;
+}
+
+.admin-shell .city-mgmt__warn,
+.admin-shell .city-mgmt__notice {
+  background: var(--yala-mr-gold-soft) !important;
+  border-color: rgba(245, 197, 24, 0.35) !important;
+  color: var(--yala-mr-ivory) !important;
+}
+
+/* BEM cards/panels/tables — neutralize legacy #fff module CSS */
+.admin-shell :is(
+    [class*="__card"],
+    [class*="__panel"],
+    [class*="__shell"],
+    [class*="__surface"],
+    [class*="__widget"],
+    [class*="__section"],
+    [class*="__table-wrap"],
+    [class*="__chart"]
+  ):not(.ss__popup):not(.fleet-kpi):not(.admin-kpi):not([class*="--warn"]):not([class*="--danger"]):not([class*="--success"]) {
+  background-color: var(--admin-surface-alt) !important;
+  border-color: var(--admin-border) !important;
+  border-top: 3px solid var(--yala-mr-gold) !important;
+  color: var(--admin-text) !important;
+}
+
+.admin-shell [class*="--danger"],
+.admin-shell [class*="--error"],
+.admin-shell [class*="--critical"],
+.admin-shell .admin-alert--danger,
+.admin-shell .admin-banner--danger {
+  border-left: 4px solid var(--yala-mr-red) !important;
+  background: rgba(198, 40, 40, 0.22) !important;
+  color: var(--yala-mr-ivory) !important;
+}
+
+.admin-shell [class*="--warn"],
+.admin-shell [class*="--warning"],
+.admin-shell .admin-alert--warning {
+  border-left: 4px solid var(--yala-mr-gold) !important;
+  background: rgba(245, 197, 24, 0.18) !important;
+  color: var(--yala-mr-gold) !important;
+}
+
+.admin-shell .admin-shell__main a:not(.admin-shell__dropdown-item):not(.admin-shell__nav-mega-item) {
+  color: var(--yala-mr-gold);
+}
+
+.admin-shell .admin-shell__breadcrumbs li:last-child {
+  color: var(--yala-mr-gold);
+  font-weight: 700;
+}
+
+.admin-shell :is(thead th, tbody td) {
+  background-color: transparent;
+  border-color: var(--admin-border);
+  color: inherit;
+}
+
+.admin-shell tbody tr:nth-child(even) td {
+  background: rgba(4, 120, 87, 0.12);
+}
+
+.admin-shell :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]):not([type="range"]) {
+  background: var(--admin-surface-muted) !important;
+  border-color: var(--admin-border) !important;
+  color: var(--admin-text) !important;
+}
+
+.admin-shell :is(input, select, textarea)::placeholder {
+  color: var(--admin-text-muted);
+}
+
+.admin-shell :is(
+    .ceo-master,
+    .board-suite,
+    .city-mgmt,
+    .fin-chart,
+    .fin-table-wrap,
+    .approval-center,
+    .trust-center,
+    .compliance-gov,
+    .bi-center,
+    .api-gateway,
+    .emp-mgmt,
+    .drivers-page,
+    .rides-mgmt,
+    .dlvops-page
+  ) {
+  background: transparent !important;
+  color: var(--admin-text) !important;
+}

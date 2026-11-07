@@ -429,8 +429,8 @@ def payment_options(request):
     * **moosyl** — the bank apps Moosyl reports as enabled for this environment
       (Bankily / Masravi / Sedad). Fail-soft: if Moosyl is unreachable the documented set
       is returned so the UI still works.
-    * **commission** — the active ride split and the delivery split (which follows the
-      ride policy unless ``DELIVERY_PLATFORM_PERCENT`` overrides it).
+    * **commission** — taxi 30/70 from ride policy; delivery 20/80 from
+      ``CommissionConfig:delivery`` (or ``DELIVERY_PLATFORM_PERCENT`` override).
     """
     from app_settings.pricing_service import get_ride_commission_policy
 

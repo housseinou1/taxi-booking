@@ -1,0 +1,54 @@
+/**
+ * YALA Admin Design System — Mauritania national palette (single source of truth).
+ * Every admin module should use var(--admin-*) or var(--yala-mr-*) only.
+ */
+
+:root {
+  /* Official Mauritania flag (admin mandatory palette) */
+  --yala-mr-flag-green: #006233;
+  --yala-mr-flag-gold: #ffc400;
+  --yala-mr-flag-red: #d01c1f;
+
+  --yala-mr-green-deep: #005a2d;
+  --yala-mr-green-dark: #004225;
+  --yala-mr-emerald: #006233;
+  --yala-mr-emerald-mid: #007a40;
+  --yala-mr-emerald-soft: rgba(0, 98, 51, 0.55);
+  --yala-mr-gold: #ffc400;
+  --yala-mr-gold-soft: rgba(255, 196, 0, 0.22);
+  --yala-mr-red: #d01c1f;
+  --yala-mr-red-soft: rgba(208, 28, 31, 0.25);
+  --yala-mr-ivory: #f8faf5;
+
+  --admin-focus-ring: 2px solid rgba(255, 196, 0, 0.8);
+}
+
+.admin-shell {
+  --admin-bg: var(--yala-mr-green-deep);
+  --admin-panel: var(--yala-mr-green-dark);
+  --admin-surface: var(--yala-mr-emerald-soft);
+  --admin-surface-alt: rgba(2, 44, 34, 0.92);
+  --admin-surface-muted: rgba(6, 78, 59, 0.65);
+  --admin-border: rgba(248, 250, 245, 0.14);
+  --admin-text: var(--yala-mr-ivory);
+  --admin-text-muted: rgba(248, 250, 245, 0.72);
+  --admin-accent: var(--yala-mr-gold);
+  --admin-accent-text: var(--yala-mr-gold);
+  --admin-accent-contrast: var(--yala-mr-green-dark);
+  --admin-accent-soft: var(--yala-mr-gold-soft);
+  --admin-danger: #f48a8a;
+  --admin-danger-solid: var(--yala-mr-red);
+  --admin-success: #6ee7b7;
+  --admin-warning: var(--yala-mr-gold);
+  --admin-info: #93c5fd;
+}
+
+[data-admin-theme="light"] .admin-shell {
+  --admin-bg: #065f46;
+  --admin-panel: #044a3a;
+  --admin-surface: rgba(4, 120, 87, 0.38);
+  --admin-surface-alt: rgba(2, 44, 34, 0.78);
+  --admin-surface-muted: rgba(6, 78, 59, 0.55);
+  --admin-text: var(--yala-mr-ivory);
+  --admin-text-muted: rgba(248, 250, 245, 0.78);
+}

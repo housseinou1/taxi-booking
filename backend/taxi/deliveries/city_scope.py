@@ -52,15 +52,17 @@ class DeliveryScope:
 
 
 def delivery_city_map() -> dict[str, int]:
-    """Canonical delivery city name -> locations.City id (only unambiguous one-to-one matches)."""
-    from locations.models import City as LocationCity
+    """Canonical delivery city name -> ``locations.City`` id (YALA operating metros only)."""
+    from locations.operating_cities import build_operating_city_payload
 
-    found: dict[str, list[int]] = {}
-    for city_id, name in LocationCity.objects.values_list("id", "name"):
-        canonical = normalize_city_name(name)
-        if canonical:
-            found.setdefault(canonical, []).append(city_id)
-    return {name: ids[0] for name, ids in found.items() if len(ids) == 1}
+    mapped: dict[str, int] = {}
+    for row in build_operating_city_payload():
+        canon = normalize_city_name(row.get("name") or "") or normalize_city_name(
+            row.get("canonical_name") or ""
+        )
+        if canon and canon not in mapped:
+            mapped[canon] = row["id"]
+    return mapped
 
 
 def get_delivery_scope(user) -> DeliveryScope:

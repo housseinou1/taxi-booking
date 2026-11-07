@@ -1,7 +1,9 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 import { AlertBanner, InlineError } from "../components/library";
-import { registerEmployee } from "./employeesApi";
+import { registerEmployee, uploadPhoto } from "./employeesApi";
+
+const PHOTO_ACCEPT = "image/jpeg,image/png";
 
 const INITIAL = {
   full_name: "",
@@ -16,6 +18,9 @@ export default function EmployeeRegistrationForm({ notify, onRegistered }) {
   const [fieldErrors, setFieldErrors] = useState({});
   const [formError, setFormError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [idPhotoFile, setIdPhotoFile] = useState(null);
+  const [idPhotoPreview, setIdPhotoPreview] = useState("");
+  const previewRef = useRef(null);
 
   const setField = (name) => (event) => {
     setValues((prev) => ({ ...prev, [name]: event.target.value }));
@@ -27,10 +32,40 @@ export default function EmployeeRegistrationForm({ notify, onRegistered }) {
     });
   };
 
+  useEffect(() => {
+    if (!idPhotoFile) {
+      setIdPhotoPreview("");
+      return undefined;
+    }
+    const url = URL.createObjectURL(idPhotoFile);
+    previewRef.current = url;
+    setIdPhotoPreview(url);
+    return () => {
+      URL.revokeObjectURL(url);
+      previewRef.current = null;
+    };
+  }, [idPhotoFile]);
+
+  const onPhotoPick = (event) => {
+    const file = event.target.files?.[0];
+    setFieldErrors((prev) => {
+      if (!prev.id_photo) return prev;
+      const next = { ...prev };
+      delete next.id_photo;
+      return next;
+    });
+    setIdPhotoFile(file || null);
+  };
+
   const validate = () => {
     const errors = {};
     if (!values.full_name.trim()) {
       errors.full_name = "Full name is required.";
+    }
+    if (!idPhotoFile) {
+      errors.id_photo = "ID photograph is required.";
+    } else if (!/^image\/(jpeg|png)$/i.test(idPhotoFile.type)) {
+      errors.id_photo = "Use a JPEG or PNG photograph.";
     }
     return errors;
   };
@@ -56,15 +91,39 @@ export default function EmployeeRegistrationForm({ notify, onRegistered }) {
         employment_start_date: values.employment_start_date || null,
       });
       const data = response.data || {};
-      notify?.({
-        tone: "success",
-        title: "Employee registered",
-        message: `Assigned employee number: ${data.employee_number || "—"}`,
-      });
-      setValues(INITIAL);
-      setFieldErrors({});
-      if (data.employee_number) {
-        onRegistered?.(data.employee_number);
+      const employeeNumber = data.employee_number;
+      let photoUploaded = false;
+      let photoUploadFailed = false;
+      if (employeeNumber && idPhotoFile) {
+        try {
+          await uploadPhoto(employeeNumber, idPhotoFile);
+          photoUploaded = true;
+        } catch (photoErr) {
+          photoUploadFailed = true;
+          const detail = photoErr?.response?.data?.detail;
+          setFormError(
+            detail ||
+              "Employee was registered, but the ID photograph could not be uploaded. Upload it from the profile."
+          );
+          notify?.("warning", detail || "Register succeeded; photograph upload failed — use the profile to retry.");
+        }
+      }
+      if (!photoUploadFailed) {
+        notify?.({
+          tone: "success",
+          title: "Employee registered",
+          message: employeeNumber
+            ? photoUploaded
+              ? `Assigned ${employeeNumber}. ID photograph saved securely.`
+              : `Assigned ${employeeNumber}.`
+            : "Employee record created.",
+        });
+        setValues(INITIAL);
+        setIdPhotoFile(null);
+        setFieldErrors({});
+      }
+      if (employeeNumber) {
+        onRegistered?.(employeeNumber);
       }
     } catch (err) {
       const status = err?.response?.status;
@@ -99,9 +158,7 @@ export default function EmployeeRegistrationForm({ notify, onRegistered }) {
         </AlertBanner>
       ) : null}
 
-      <p className="emp-note">
-        Employee number is assigned automatically, e.g. YAM110001LAR.
-      </p>
+      <p className="emp-note">Employee number is assigned automatically. ID photograph required.</p>
 
       <div className="emp-field-grid">
         <div className={`emp-field ${fieldErrors.full_name ? "emp-field--error" : ""}`.trim()}>
@@ -182,6 +239,29 @@ export default function EmployeeRegistrationForm({ notify, onRegistered }) {
           {fieldErrors.employment_start_date ? (
             <InlineError message={fieldErrors.employment_start_date} />
           ) : null}
+        </div>
+
+        <div
+          className={`emp-field emp-field--photo ${fieldErrors.id_photo ? "emp-field--error" : ""}`.trim()}
+        >
+          <label htmlFor="emp-id-photo">Employee ID photograph *</label>
+          <div className="emp-registration-photo">
+            {idPhotoPreview ? (
+              <img className="emp-photo" src={idPhotoPreview} alt="ID photo preview" />
+            ) : (
+              <span className="emp-photo emp-photo__placeholder">No photo selected</span>
+            )}
+            <input
+              id="emp-id-photo"
+              name="id_photo"
+              type="file"
+              accept={PHOTO_ACCEPT}
+              onChange={onPhotoPick}
+              aria-required="true"
+              aria-invalid={Boolean(fieldErrors.id_photo)}
+            />
+          </div>
+          {fieldErrors.id_photo ? <InlineError message={fieldErrors.id_photo} /> : null}
         </div>
       </div>
 

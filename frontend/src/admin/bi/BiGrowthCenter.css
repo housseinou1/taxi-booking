@@ -1,5 +1,15 @@
 /* BI & Growth Center — executive analytics theme */
 
+.admin-shell .bi-growth__back {
+  display: none;
+}
+
+.admin-shell .bi-growth {
+  --bg: transparent;
+  min-height: auto;
+  padding-top: 0;
+}
+
 .bi-growth {
   --bg: #0b0f14;
   --card: #111827;

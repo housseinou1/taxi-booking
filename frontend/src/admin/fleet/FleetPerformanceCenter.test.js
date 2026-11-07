@@ -12,6 +12,18 @@ import {
   suspendFleetDriver,
 } from "./fleetApi";
 
+jest.mock("../layouts/useOperatingCityOptions", () => ({
+  useOperatingCityOptions: () => ({
+    options: [
+      { value: "", label: "All cities" },
+      { value: "3", label: "Nouakchott — Nouakchott" },
+    ],
+    loading: false,
+    error: null,
+    reload: jest.fn(),
+  }),
+}));
+
 jest.mock("./fleetApi", () => {
   const actual = jest.requireActual("./fleetApi");
   return {
@@ -265,9 +277,9 @@ describe("FleetPerformanceCenter", () => {
   it("shows real overview counters and marks unsupported metrics as unavailable", async () => {
     await renderCenter();
 
-    expect(kpi("Total registered").getByText("62")).toBeInTheDocument();
-    expect(kpi("Approved").getByText("58")).toBeInTheDocument();
-    expect(kpi("Online").getByText("12")).toBeInTheDocument();
+    expect(kpi("Total registered (taxi)").getByText("62")).toBeInTheDocument();
+    expect(kpi("Approved (taxi)").getByText("58")).toBeInTheDocument();
+    expect(kpi("Online (taxi)").getByText("12")).toBeInTheDocument();
     expect(kpi("Completing trips").getByText("7")).toBeInTheDocument();
     expect(kpi("Waiting riders").getByText("5")).toBeInTheDocument();
 
@@ -512,7 +524,7 @@ describe("FleetPerformanceCenter", () => {
     await renderCenter();
 
     // Dashboard content still renders; only the vehicle block reports the failure.
-    expect(screen.getByText("Total registered")).toBeInTheDocument();
+    expect(screen.getByText("Total registered (taxi)")).toBeInTheDocument();
     expect(await screen.findByText("vehicles down")).toBeInTheDocument();
   });
 });

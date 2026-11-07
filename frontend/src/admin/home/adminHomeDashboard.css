@@ -367,29 +367,9 @@
 .yah-embedded .yah-grid { grid-template-columns: 1fr; }
 .yah-embedded .yah-main { padding: 0; }
 
-/* Executive dashboard — light enterprise surface inside AdminShell (top nav) */
+/* Executive dashboard inside AdminShell — Mauritania theme (see mauritaniaAdminTheme.css) */
 .yah-embedded--exec {
-  --yah-bg: #f5f7fb;
-  --yah-panel: #ffffff;
-  --yah-panel-2: #ffffff;
-  --yah-raise: #f1f5f9;
-  --yah-line: rgba(15, 23, 42, 0.08);
-  --yah-line-2: rgba(15, 23, 42, 0.12);
-  --yah-ink: #0f172a;
-  --yah-muted: #475569;
-  --yah-dim: #64748b;
-  --yah-green: #00a651;
-  --yah-green-2: #00a651;
-  --yah-blue: #2563eb;
-  --yah-purple: #7c3aed;
-  --yah-amber: #d97706;
-  --yah-red: #dc2626;
-  background: var(--yah-bg);
-  color: var(--yah-ink);
   border-radius: 14px;
-}
-.yah-embedded--exec .yah-panel {
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
 }
 .yah-grid--embedded .yah-main {
   padding: 8px 4px 28px;
@@ -434,6 +414,135 @@
   border-radius: 10px;
   background: var(--yah-panel);
 }
+
+.yah-live-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 20px;
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--yah-line-2);
+  background: linear-gradient(180deg, var(--yah-panel) 0%, var(--yah-raise) 100%);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--yah-muted);
+}
+.yah-live-bar__left,
+.yah-live-bar__right {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+}
+.yah-live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--yah-line-2);
+  background: var(--yah-panel);
+  color: var(--yah-ink);
+  font-weight: 700;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.yah-live-pill.is-live {
+  border-color: rgba(34, 197, 94, 0.45);
+  background: rgba(34, 197, 94, 0.1);
+  color: #15803d;
+}
+.yah-live-pill__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--yah-muted);
+}
+.yah-live-pill.is-live .yah-live-pill__dot {
+  background: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.25);
+  animation: yah-live-pulse 1.6s ease-in-out infinite;
+}
+@keyframes yah-live-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+.yah-live-bar__session {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: var(--yah-muted);
+}
+.yah-live-bar__session svg {
+  width: 16px;
+  height: 16px;
+}
+.yah-live-bar__sync {
+  font-style: italic;
+  font-weight: 500;
+}
+.yah-live-bar__refresh {
+  border: 1px solid var(--yah-line-2);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  background: var(--yah-panel);
+  color: var(--yah-ink);
+  cursor: pointer;
+}
+.yah-live-bar__refresh:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.yah-live-bar__refresh:hover:not(:disabled) {
+  border-color: var(--yah-green);
+  color: var(--yah-green);
+}
+.yah-secure-banner {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(234, 179, 8, 0.45);
+  background: rgba(234, 179, 8, 0.12);
+  color: var(--yah-ink);
+  font-size: 0.88rem;
+}
+.yah-secure-banner svg {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: #ca8a04;
+}
+.yah-secure-banner strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 0.92rem;
+}
+.yah-secure-banner p {
+  margin: 0;
+  line-height: 1.45;
+  color: var(--yah-muted);
+}
+.yah-secure-banner a {
+  color: var(--yah-green);
+  font-weight: 700;
+}
+
 .yah-seg {
   display: inline-flex;
   border-radius: 10px;

@@ -15,6 +15,16 @@ export const TOP_NAV_GROUPS = [
     children: [
       { id: "dash-exec", module: "home", label: "Executive Overview", path: "/admin", icon: "chart" },
       { id: "dash-live", module: "ops", label: "Live Operations", path: "/admin/ops-center/live", icon: "map-pin" },
+      {
+        id: "dash-nationwide",
+        module: "ops",
+        label: "Nationwide Operations",
+        path: "/admin/multi-city",
+        icon: "layers",
+        featureFlag: "multi_city",
+      },
+      { id: "dash-regional", module: "analytics", label: "Regional Performance", path: "/admin/business-intelligence", icon: "bar" },
+      { id: "dash-city-perf", module: "ceo", label: "City Performance", path: "/admin/cities", icon: "pin" },
     ],
   },
   {
@@ -26,6 +36,15 @@ export const TOP_NAV_GROUPS = [
       { id: "ops-dispatch", module: "ops", label: "Dispatch", path: "/admin/operations-control", icon: "radio" },
       { id: "ops-bookings", module: "ops", label: "Bookings", path: "/admin/ops-center", icon: "layers" },
       { id: "ops-trips", module: "rides", label: "Trip Monitoring", path: "/admin/rides/live", icon: "eye" },
+      { id: "ops-cities", module: "ceo", label: "Cities Management", path: "/admin/cities", icon: "pin" },
+      { id: "ops-zones", module: "ops", label: "Operating Zones", path: "/admin/smart-pricing", icon: "gear" },
+      {
+        id: "ops-transfers",
+        module: "ceo",
+        label: "City Transfer Requests",
+        path: "/admin/administration/city-transfers",
+        icon: "activity",
+      },
     ],
   },
   {
@@ -34,6 +53,7 @@ export const TOP_NAV_GROUPS = [
     icon: "users",
     children: [
       { id: "drv-mgmt", module: "drivers", label: "Driver Management", path: "/admin/drivers", icon: "user-check" },
+      { id: "drv-by-city", module: "drivers", label: "Drivers by City", path: "/admin/fleet", icon: "users", featureFlag: "fleet_center" },
       { id: "drv-apps", module: "drivers", label: "Applications & Approvals", path: "/admin/approvals", icon: "file-plus" },
       { id: "drv-docs", module: "drivers", label: "Documents", path: "/admin/driver-documents", icon: "folder" },
     ],
@@ -54,6 +74,7 @@ export const TOP_NAV_GROUPS = [
     icon: "package",
     children: [
       { id: "del-couriers", module: "delivery", label: "Couriers", path: "/admin/delivery/couriers", icon: "truck" },
+      { id: "del-couriers-city", module: "delivery", label: "Couriers by City", path: "/admin/delivery/cities", icon: "pin" },
       { id: "del-merchants", module: "delivery", label: "Merchants", path: "/admin/delivery/merchants", icon: "store" },
       { id: "del-orders", module: "delivery", label: "Delivery Orders", path: "/admin/delivery/directory", icon: "list" },
       { id: "del-track", module: "delivery", label: "Tracking", path: "/admin/delivery", icon: "map" },
@@ -84,14 +105,48 @@ export const TOP_NAV_GROUPS = [
   },
   {
     id: "hr",
-    label: "HR",
+    label: "Employees & HR",
     icon: "briefcase",
     children: [
-      { id: "hr-employees", module: "employees", label: "Employees", path: "/admin/employees", icon: "users" },
-      { id: "hr-attendance", module: "employees", label: "Attendance", path: "/admin/attendance", icon: "clock" },
-      { id: "hr-clock", module: "employees", label: "Clock In/Out", path: "/admin/attendance", icon: "log-in" },
+      {
+        id: "hr-dash",
+        module: "employees",
+        label: "Employee Dashboard",
+        path: "/admin/employees?view=dashboard",
+        icon: "chart",
+      },
+      {
+        id: "hr-register",
+        module: "employees",
+        label: "Employee Registration",
+        path: "/admin/employees?view=register",
+        icon: "user-plus",
+      },
+      {
+        id: "hr-directory",
+        module: "employees",
+        label: "Employee Directory",
+        path: "/admin/employees?view=directory",
+        icon: "users",
+      },
+      {
+        id: "hr-id-cards",
+        module: "employees",
+        label: "Employee ID Cards",
+        path: "/admin/employees/id-cards",
+        icon: "badge",
+      },
+      {
+        id: "hr-verify",
+        module: "employees",
+        label: "Employee Verification",
+        path: "/admin/verification",
+        icon: "shield",
+      },
+      { id: "hr-attendance", module: "employees", label: "Employee Attendance", path: "/admin/attendance", icon: "clock" },
+      { id: "hr-clock", module: "employees", label: "Clock In / Clock Out", path: "/admin/attendance", icon: "log-in" },
+      { id: "hr-reports", module: "employees", label: "Employee Reports", path: "/admin/hr", icon: "file-text" },
       { id: "hr-breaks", module: "employees", label: "Breaks", path: "/admin/break-notifications", icon: "coffee" },
-      { id: "hr-cards", module: "employees", label: "Employee ID Cards", path: "/admin/verification", icon: "badge" },
     ],
   },
   {
@@ -110,9 +165,28 @@ export const TOP_NAV_GROUPS = [
     label: "Reports",
     icon: "bar-chart",
     children: [
-      { id: "rep-analytics", module: "analytics", label: "Analytics", path: "/admin/business-intelligence", icon: "brain" },
+      { id: "rep-nationwide", module: "analytics", label: "Nationwide Reports", path: "/admin/business-intelligence", icon: "layers" },
+      { id: "rep-analytics", module: "analytics", label: "Analytics", path: "/admin/bi", icon: "brain" },
       { id: "rep-fin", module: "ceo", label: "Financial Reports", path: "/admin/board-reports", icon: "file-text" },
       { id: "rep-ops", module: "rides", label: "Operational Reports", path: "/admin/rides/reports", icon: "clipboard" },
+    ],
+  },
+  {
+    id: "administration",
+    label: "Administration",
+    icon: "shield",
+    children: [
+      { id: "adm-approvals", module: "drivers", label: "CEO Approvals", path: "/admin/approvals", icon: "check" },
+      {
+        id: "adm-city-transfers",
+        module: "ceo",
+        label: "City Transfer Approvals",
+        path: "/admin/administration/city-transfers",
+        icon: "activity",
+      },
+      { id: "adm-roles", module: "employees", label: "Roles & Permissions", path: "/admin/roles", icon: "key" },
+      { id: "adm-platform", module: "system", label: "Platform Settings", path: "/admin/status", icon: "sliders" },
+      { id: "adm-areas", module: "ops", label: "Operating Area Configuration", path: "/admin/smart-pricing", icon: "gear" },
     ],
   },
   {

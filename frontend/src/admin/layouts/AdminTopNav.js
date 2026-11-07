@@ -33,8 +33,19 @@ export default function AdminTopNav({ pathname, mobileOpen, onMobileClose }) {
 
   const navigate = useCallback(
     (path) => {
-      if (path && normalize(path) !== normalize(pathname)) {
-        window.location.href = path;
+      if (!path) return;
+      try {
+        const targetUrl = new URL(path, window.location.origin);
+        const currentUrl = new URL(window.location.href);
+        const pathChanged = normalize(targetUrl.pathname) !== normalize(currentUrl.pathname);
+        const queryChanged = targetUrl.search !== currentUrl.search;
+        if (pathChanged || queryChanged) {
+          window.location.href = path;
+        }
+      } catch {
+        if (normalize(path) !== normalize(pathname)) {
+          window.location.href = path;
+        }
       }
       onMobileClose?.();
       setOpenId(null);

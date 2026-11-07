@@ -3,6 +3,12 @@ import { API_URL } from "../../apiConfig";
 
 const BASE = `${API_URL}/employees`;
 
+/** Permanent employee numbers may include hyphens (YALA-EMP-000001). */
+function employeeUrl(employeeNumber, path = "") {
+  const core = `${BASE}/${encodeURIComponent(employeeNumber)}`;
+  return path ? `${core}${path.startsWith("/") ? path : `/${path}`}` : `${core}/`;
+}
+
 // ── Directory / CRUD ────────────────────────────────────────────────────────
 
 export function fetchEmployees(params = {}) {
@@ -23,7 +29,7 @@ export function registerEmployee(body = {}) {
 }
 
 export function fetchEmployee(employeeNumber) {
-  return authenticatedApi.get(`${BASE}/${employeeNumber}/`);
+  return authenticatedApi.get(employeeUrl(employeeNumber));
 }
 
 export function updateEmployee(employeeNumber, body = {}) {
@@ -35,48 +41,48 @@ export function updateEmployee(employeeNumber, body = {}) {
     job_title: body.job_title,
     employment_start_date: body.employment_start_date || null,
   };
-  return authenticatedApi.patch(`${BASE}/${employeeNumber}/`, payload);
+  return authenticatedApi.patch(employeeUrl(employeeNumber), payload);
 }
 
 export function changeEmploymentStatus(employeeNumber, body = {}) {
   // HR Manager tier (enforced server-side).
-  return authenticatedApi.post(`${BASE}/${employeeNumber}/status/`, body);
+  return authenticatedApi.post(employeeUrl(employeeNumber, "/status/"), body);
 }
 
 // ── Cards ───────────────────────────────────────────────────────────────────
 
 export function fetchCards(employeeNumber) {
-  return authenticatedApi.get(`${BASE}/${employeeNumber}/cards/`);
+  return authenticatedApi.get(employeeUrl(employeeNumber, "/cards/"));
 }
 
 export function issueCard(employeeNumber) {
-  return authenticatedApi.post(`${BASE}/${employeeNumber}/cards/issue/`);
+  return authenticatedApi.post(employeeUrl(employeeNumber, "/cards/issue/"));
 }
 
 export function renewCard(employeeNumber) {
-  return authenticatedApi.post(`${BASE}/${employeeNumber}/cards/renew/`);
+  return authenticatedApi.post(employeeUrl(employeeNumber, "/cards/renew/"));
 }
 
 export function replaceCard(employeeNumber, body = {}) {
-  return authenticatedApi.post(`${BASE}/${employeeNumber}/cards/replace/`, body);
+  return authenticatedApi.post(employeeUrl(employeeNumber, "/cards/replace/"), body);
 }
 
 export function activateCard(employeeNumber, cardPk) {
-  return authenticatedApi.post(`${BASE}/${employeeNumber}/cards/${cardPk}/activate/`);
+  return authenticatedApi.post(employeeUrl(employeeNumber, `/cards/${cardPk}/activate/`));
 }
 
 export function deactivateCard(employeeNumber, cardPk) {
-  return authenticatedApi.post(`${BASE}/${employeeNumber}/cards/${cardPk}/deactivate/`);
+  return authenticatedApi.post(employeeUrl(employeeNumber, `/cards/${cardPk}/deactivate/`));
 }
 
 export function revokeCard(employeeNumber, cardPk, body = {}) {
-  return authenticatedApi.post(`${BASE}/${employeeNumber}/cards/${cardPk}/revoke/`, body);
+  return authenticatedApi.post(employeeUrl(employeeNumber, `/cards/${cardPk}/revoke/`), body);
 }
 
 // ── Photographs (authenticated binary; never public, never persisted) ────────
 
 export function fetchPhoto(employeeNumber) {
-  return authenticatedApi.get(`${BASE}/${employeeNumber}/photo/`, {
+  return authenticatedApi.get(employeeUrl(employeeNumber, "/photo/"), {
     responseType: "blob",
   });
 }
@@ -84,7 +90,7 @@ export function fetchPhoto(employeeNumber) {
 export function uploadPhoto(employeeNumber, file) {
   const formData = new FormData();
   formData.append("photo", file);
-  return authenticatedApi.post(`${BASE}/${employeeNumber}/photo/`, formData, {
+  return authenticatedApi.post(employeeUrl(employeeNumber, "/photo/"), formData, {
     headers: { "Content-Type": "multipart/form-data" },
   });
 }
@@ -97,7 +103,7 @@ export function uploadPhoto(employeeNumber, file) {
  * authenticated client and never linked directly.
  */
 export function fetchSignature(employeeNumber) {
-  return authenticatedApi.get(`${BASE}/${employeeNumber}/signature/`, {
+  return authenticatedApi.get(employeeUrl(employeeNumber, "/signature/"), {
     responseType: "blob",
   });
 }
@@ -113,7 +119,7 @@ export function uploadSignature(employeeNumber, file, { source = "upload", conse
   formData.append("signature", file, file?.name || "signature.png");
   formData.append("source", source);
   formData.append("consent", consent ? "true" : "false");
-  return authenticatedApi.post(`${BASE}/${employeeNumber}/signature/`, formData, {
+  return authenticatedApi.post(employeeUrl(employeeNumber, "/signature/"), formData, {
     headers: { "Content-Type": "multipart/form-data" },
   });
 }
@@ -124,7 +130,7 @@ export function uploadSignature(employeeNumber, file, { source = "upload", conse
  * DELETE, matching the existing cards/<pk>/revoke convention.)
  */
 export function removeSignature(employeeNumber) {
-  return authenticatedApi.post(`${BASE}/${employeeNumber}/signature/remove/`);
+  return authenticatedApi.post(employeeUrl(employeeNumber, "/signature/remove/"));
 }
 
 // ── ID-card QR (authenticated PNG; never a public URL) ──────────────────────
@@ -135,7 +141,7 @@ export function removeSignature(employeeNumber) {
  * HR-tier gated, so it must be fetched with the authenticated client.
  */
 export function fetchCardQr(employeeNumber, cardPk, params = {}) {
-  return authenticatedApi.get(`${BASE}/${employeeNumber}/cards/${cardPk}/qr/`, {
+  return authenticatedApi.get(employeeUrl(employeeNumber, `/cards/${cardPk}/qr/`), {
     params,
     responseType: "blob",
   });
@@ -148,7 +154,7 @@ export function fetchCardQr(employeeNumber, cardPk, params = {}) {
  * activates, deactivates or revokes the card, and never changes the employee record.
  */
 export function fetchCardPdf(employeeNumber, cardPk) {
-  return authenticatedApi.get(`${BASE}/${employeeNumber}/cards/${cardPk}/pdf/`, {
+  return authenticatedApi.get(employeeUrl(employeeNumber, `/cards/${cardPk}/pdf/`), {
     responseType: "blob",
   });
 }
@@ -160,7 +166,7 @@ export function fetchCardPdf(employeeNumber, cardPk) {
  * trail for one employee. Administrator tier only (enforced server-side).
  */
 export function fetchEmployeeAuditTrail(employeeNumber, params = {}) {
-  return authenticatedApi.get(`${BASE}/${employeeNumber}/audit/`, { params });
+  return authenticatedApi.get(employeeUrl(employeeNumber, "/audit/"), { params });
 }
 
 // ── Role tier derivation ─────────────────────────────────────────────────────
@@ -282,6 +288,29 @@ export const CARD_STATUS_LABELS = {
   replaced: { label: "Replaced", tone: "neutral" },
   deactivated: { label: "Deactivated", tone: "neutral" },
 };
+
+export function fetchIdCardDashboard() {
+  return authenticatedApi.get(`${API_URL}/employees/id-cards/dashboard/`);
+}
+
+export function fetchCeoIdCardSignatureMeta() {
+  return authenticatedApi.get(`${API_URL}/employees/id-cards/ceo-signature/`);
+}
+
+export function fetchCeoIdCardSignaturePreview() {
+  return authenticatedApi.get(`${API_URL}/employees/id-cards/ceo-signature/`, {
+    params: { preview: 1 },
+    responseType: "blob",
+  });
+}
+
+export function uploadCeoIdCardSignature(file) {
+  const body = new FormData();
+  body.append("file", file);
+  return authenticatedApi.post(`${API_URL}/employees/id-cards/ceo-signature/`, body, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+}
 
 export const EXPIRING_SOON_DAYS = 60;
 

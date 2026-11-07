@@ -12,13 +12,17 @@ from django.utils import timezone
 from .chart_utils import build_daily_payment_chart
 
 from admin_2fa.models import AdminTOTP
+from deliveries.cities import normalize_city_name
 from deliveries.models import Delivery, DeliveryDispute
+from locations.models import City as LocationCity
 from payments.models import PaymentRecord, RefundRequest, WalletAccount, WithdrawalRequest
 from referrals.models import FlaggedReferral
 from safety.models import SafetyIncident
 from security.models import AuditLog, FraudFlag
 from taxi.drivers.models import DriverDocument, DriverProfile, SupportTicket
 from taxi.rides.models import Ride
+
+from .city_id_bridge import registry_city_ids_for_location_city_id
 
 User = get_user_model()
 
@@ -55,18 +59,49 @@ def _period_bounds(period: str):
     return start, today
 
 
+def _ride_city_q(city_id: int) -> Q:
+    """Rides for an operating area: one unified Nouakchott matches all NKC location rows."""
+    loc = LocationCity.objects.filter(pk=city_id).first()
+    if loc is None:
+        return Q(pk__in=[])
+    if (loc.name or "").strip().casefold() == "nouakchott":
+        return Q(city__name__iexact="Nouakchott")
+    return Q(city_id=city_id)
+
+
+def _delivery_city_q(city_id: int) -> Q:
+    """Deliveries by canonical service city name (not numeric id)."""
+    loc = LocationCity.objects.filter(pk=city_id).first()
+    if loc is None:
+        return Q(pk__in=[])
+    name = (loc.name or "").strip()
+    if name.casefold() == "nouakchott":
+        return Q(service_city__iexact="Nouakchott")
+    canon = normalize_city_name(name) or name
+    return Q(service_city__iexact=canon)
+
+
 def _ride_qs(start, end, city_id=None):
     qs = Ride.objects.filter(created_at__date__gte=start, created_at__date__lte=end)
     if city_id:
-        qs = qs.filter(city_id=city_id)
+        qs = qs.filter(_ride_city_q(city_id))
     return qs
 
 
 def _delivery_qs(start, end, city_id=None):
     qs = Delivery.objects.filter(created_at__date__gte=start, created_at__date__lte=end)
     if city_id:
-        qs = qs.filter(service_city__icontains=str(city_id))
+        qs = qs.filter(_delivery_city_q(city_id))
     return qs
+
+
+def _scoped_withdrawals(qs, city_id=None):
+    if not city_id:
+        return qs
+    reg_ids = registry_city_ids_for_location_city_id(city_id)
+    if reg_ids:
+        return qs.filter(driver__city_id__in=reg_ids)
+    return qs.none()
 
 
 def _payment_qs(start, end):
@@ -83,31 +118,42 @@ def build_live_metrics(city_id=None) -> dict:
     # operations.fleet_metrics, so this dashboard never double-counts a courier as a driver.
     from operations.fleet_metrics import courier_user_ids
 
+    reg_ids = registry_city_ids_for_location_city_id(city_id) if city_id else []
+
     drivers_online = DriverProfile.objects.filter(
         is_available=True, status="approved"
     ).exclude(user_id__in=courier_user_ids())
     if city_id:
-        drivers_online = drivers_online.filter(user__city_id=city_id)
+        if reg_ids:
+            drivers_online = drivers_online.filter(user__city_id__in=reg_ids)
+        else:
+            drivers_online = drivers_online.none()
 
     active_trip_rides = Ride.objects.filter(status__in=RIDE_ACTIVE)
     active_deliveries = Delivery.objects.filter(status__in=DELIVERY_ACTIVE)
     if city_id:
-        active_trip_rides = active_trip_rides.filter(city_id=city_id)
+        active_trip_rides = active_trip_rides.filter(_ride_city_q(city_id))
+        active_deliveries = active_deliveries.filter(_delivery_city_q(city_id))
 
-    active_courier_ids = (
-        Delivery.objects.filter(status__in=DELIVERY_ACTIVE, driver__isnull=False)
-        .values_list("driver_id", flat=True)
-        .distinct()
-    )
-    active_rider_ids = (
-        Ride.objects.filter(status__in=RIDE_ACTIVE)
-        .values_list("rider_id", flat=True)
-        .distinct()
-    )
+    courier_qs = Delivery.objects.filter(status__in=DELIVERY_ACTIVE, driver__isnull=False)
+    ride_scope = Ride.objects.filter(status__in=RIDE_ACTIVE)
+    if city_id:
+        courier_qs = courier_qs.filter(_delivery_city_q(city_id))
+        ride_scope = ride_scope.filter(_ride_city_q(city_id))
+    active_courier_ids = courier_qs.values_list("driver_id", flat=True).distinct()
+    active_rider_ids = ride_scope.values_list("rider_id", flat=True).distinct()
 
     today_rides = _ride_qs(today, today, city_id)
     today_deliveries = _delivery_qs(today, today, city_id)
-    today_payments = _payment_qs(today, today)
+    if city_id:
+        ride_ids_today = today_rides.values_list("id", flat=True)
+        del_ids_today = today_deliveries.values_list("id", flat=True)
+        today_payments = PaymentRecord.objects.filter(
+            status="paid",
+            created_at__date=today,
+        ).filter(Q(ride_id__in=ride_ids_today) | Q(delivery_id__in=del_ids_today))
+    else:
+        today_payments = _payment_qs(today, today)
 
     gross_revenue = today_payments.aggregate(total=Sum("amount"))["total"] or Decimal("0")
     platform_commission = today_payments.aggregate(total=Sum("app_fee"))["total"] or Decimal("0")
@@ -134,8 +180,8 @@ def build_live_metrics(city_id=None) -> dict:
             "driver_earnings": _dec(driver_earnings),
             "courier_earnings": _dec(courier_earnings),
             "platform_commission": _dec(platform_commission),
-            "withdrawal_requests": WithdrawalRequest.objects.filter(
-                created_at__date=today
+            "withdrawal_requests": _scoped_withdrawals(
+                WithdrawalRequest.objects.filter(created_at__date=today), city_id
             ).count(),
             "refund_requests": RefundRequest.objects.filter(created_at__date=today).count(),
         },
@@ -144,7 +190,16 @@ def build_live_metrics(city_id=None) -> dict:
 
 def build_finance_dashboard(period: str = "daily", city_id=None) -> dict:
     start, end = _period_bounds(period)
-    payments = _payment_qs(start, end)
+    if city_id:
+        ride_ids = _ride_qs(start, end, city_id).values_list("id", flat=True)
+        delivery_ids = _delivery_qs(start, end, city_id).values_list("id", flat=True)
+        payments = PaymentRecord.objects.filter(
+            status="paid",
+            created_at__date__gte=start,
+            created_at__date__lte=end,
+        ).filter(Q(ride_id__in=ride_ids) | Q(delivery_id__in=delivery_ids))
+    else:
+        payments = _payment_qs(start, end)
     rides = _ride_qs(start, end, city_id).filter(status="completed")
     deliveries = _delivery_qs(start, end, city_id).filter(status="delivered")
 
@@ -158,15 +213,35 @@ def build_finance_dashboard(period: str = "daily", city_id=None) -> dict:
         created_at__date__lte=end,
         status__in=["approved", "paid"],
     )
+    if city_id:
+        reg_scope = registry_city_ids_for_location_city_id(city_id)
+        if reg_scope:
+            withdrawals = withdrawals.filter(driver__city_id__in=reg_scope)
+        else:
+            withdrawals = withdrawals.none()
     refunds = RefundRequest.objects.filter(
         created_at__date__gte=start,
         created_at__date__lte=end,
         status="refunded",
     )
-    wallet_balance = WalletAccount.objects.aggregate(total=Sum("balance"))["total"] or Decimal("0")
-    pending_withdrawals = WithdrawalRequest.objects.filter(
-        status__in=["pending", "approved"]
-    ).aggregate(total=Sum("amount"))["total"] or Decimal("0")
+    if city_id:
+        reg_wb = registry_city_ids_for_location_city_id(city_id)
+        if reg_wb:
+            wallet_balance = WalletAccount.objects.filter(owner__city_id__in=reg_wb).aggregate(
+                total=Sum("balance")
+            )["total"] or Decimal("0")
+            pending_withdrawals = WithdrawalRequest.objects.filter(
+                status__in=["pending", "approved"],
+                driver__city_id__in=reg_wb,
+            ).aggregate(total=Sum("amount"))["total"] or Decimal("0")
+        else:
+            wallet_balance = Decimal("0")
+            pending_withdrawals = Decimal("0")
+    else:
+        wallet_balance = WalletAccount.objects.aggregate(total=Sum("balance"))["total"] or Decimal("0")
+        pending_withdrawals = WithdrawalRequest.objects.filter(
+            status__in=["pending", "approved"]
+        ).aggregate(total=Sum("amount"))["total"] or Decimal("0")
 
     chart = build_daily_payment_chart(payments, start, end)
 
@@ -189,13 +264,21 @@ def build_finance_dashboard(period: str = "daily", city_id=None) -> dict:
 
 
 def build_map_snapshot(city_id=None) -> dict:
-    drivers = []
-    for profile in DriverProfile.objects.filter(
+    dprof_qs = DriverProfile.objects.filter(
         is_available=True,
         status="approved",
         current_lat__isnull=False,
         current_lng__isnull=False,
-    ).select_related("user")[:500]:
+    )
+    if city_id:
+        reg_map = registry_city_ids_for_location_city_id(city_id)
+        if reg_map:
+            dprof_qs = dprof_qs.filter(user__city_id__in=reg_map)
+        else:
+            dprof_qs = dprof_qs.none()
+
+    drivers = []
+    for profile in dprof_qs.select_related("user")[:500]:
         drivers.append(
             {
                 "id": profile.user_id,
@@ -206,12 +289,16 @@ def build_map_snapshot(city_id=None) -> dict:
             }
         )
 
-    couriers = []
-    for delivery in Delivery.objects.filter(
+    courier_deliveries = Delivery.objects.filter(
         status__in=DELIVERY_ACTIVE,
         driver__isnull=False,
         driver__driver_profile__current_lat__isnull=False,
-    ).select_related("driver__driver_profile")[:200]:
+    )
+    if city_id:
+        courier_deliveries = courier_deliveries.filter(_delivery_city_q(city_id))
+
+    couriers = []
+    for delivery in courier_deliveries.select_related("driver__driver_profile")[:200]:
         profile = delivery.driver.driver_profile
         couriers.append(
             {
@@ -224,10 +311,12 @@ def build_map_snapshot(city_id=None) -> dict:
             }
         )
 
+    ride_map_qs = Ride.objects.filter(status__in=RIDE_ACTIVE).exclude(pickup_lat__isnull=True)
+    if city_id:
+        ride_map_qs = ride_map_qs.filter(_ride_city_q(city_id))
+
     trips = []
-    for ride in Ride.objects.filter(status__in=RIDE_ACTIVE).exclude(
-        pickup_lat__isnull=True
-    )[:200]:
+    for ride in ride_map_qs[:200]:
         trips.append(
             {
                 "id": ride.id,
@@ -238,8 +327,12 @@ def build_map_snapshot(city_id=None) -> dict:
             }
         )
 
+    dmark_qs = Delivery.objects.filter(status__in=DELIVERY_ACTIVE)
+    if city_id:
+        dmark_qs = dmark_qs.filter(_delivery_city_q(city_id))
+
     delivery_markers = []
-    for delivery in Delivery.objects.filter(status__in=DELIVERY_ACTIVE)[:200]:
+    for delivery in dmark_qs[:200]:
         delivery_markers.append(
             {
                 "id": delivery.id,
@@ -280,7 +373,7 @@ def build_map_snapshot(city_id=None) -> dict:
 def build_operations_queues(city_id=None) -> dict:
     rides = Ride.objects.all()
     if city_id:
-        rides = rides.filter(city_id=city_id)
+        rides = rides.filter(_ride_city_q(city_id))
 
     ride_counts = {status: 0 for status, _ in Ride.STATUS_CHOICES}
     ride_counts["searching"] = rides.filter(status="requested", driver__isnull=True).count()
@@ -288,6 +381,8 @@ def build_operations_queues(city_id=None) -> dict:
         ride_counts[row["status"]] = row["count"]
 
     deliveries = Delivery.objects.all()
+    if city_id:
+        deliveries = deliveries.filter(_delivery_city_q(city_id))
     delivery_counts = {status: 0 for status, _ in Delivery.STATUS_CHOICES}
     for row in deliveries.values("status").annotate(count=Count("id")):
         delivery_counts[row["status"]] = row["count"]

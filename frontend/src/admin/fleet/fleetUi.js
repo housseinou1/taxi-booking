@@ -1,9 +1,14 @@
 import React from "react";
 
-import { MARKET } from "../../marketConfig";
+import FleetKpiIcon from "./FleetKpiIcons";
 import { scoreBandMeta } from "./fleetApi";
-import { formatMoney as sharedFormatMoney } from "../components/library/utils/formatters";
-import { formatMoneyOrDash as sharedFormatMoneyOrDash } from "../components/library/utils/formatters";
+import { MARKET } from "../../marketConfig";
+import {
+  formatMoney as sharedFormatMoney,
+  formatMoneyOrDash as sharedFormatMoneyOrDash,
+} from "../components/library/utils/formatters";
+
+const EM_DASH = "\u2014";
 
 /**
  * YALA Admin — Fleet UI kit (SHARED components).
@@ -28,7 +33,7 @@ export function isNum(value) {
 }
 
 export function formatCount(value) {
-  if (!isNum(value)) return "â€”";
+  if (!isNum(value)) return EM_DASH;
   return Number(value).toLocaleString("en-US");
 }
 
@@ -54,21 +59,21 @@ export function formatMoneyOrDash(value) {
 }
 
 export function formatPct(value) {
-  if (!isNum(value)) return "â€”";
+  if (!isNum(value)) return EM_DASH;
   return `${Number(value)}%`;
 }
 
 export function formatDateTime(value) {
-  if (!value) return "â€”";
+  if (!value) return EM_DASH;
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "â€”";
+  if (Number.isNaN(date.getTime())) return EM_DASH;
   return date.toLocaleString();
 }
 
 export function formatDate(value) {
-  if (!value) return "â€”";
+  if (!value) return EM_DASH;
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "â€”";
+  if (Number.isNaN(date.getTime())) return EM_DASH;
   return date.toLocaleDateString();
 }
 
@@ -89,7 +94,7 @@ export function KpiCard({ label, value, unit, sub, icon, tone = "idle", title })
         <span className="fleet-kpi__label">{label}</span>
         {icon ? (
           <span className="fleet-kpi__icon" aria-hidden="true">
-            {icon}
+            {typeof icon === "string" ? <FleetKpiIcon name={icon} className="fleet-kpi__icon-svg" /> : icon}
           </span>
         ) : null}
       </div>
@@ -109,7 +114,7 @@ export function UnavailableKpi({ label, reason }) {
       <div className="fleet-kpi__top">
         <span className="fleet-kpi__label">{label}</span>
         <span className="fleet-kpi__icon" aria-hidden="true">
-          â€”
+          <FleetKpiIcon name="help" className="fleet-kpi__icon-svg" />
         </span>
       </div>
       <div className="fleet-kpi__value">Not available</div>
@@ -141,11 +146,11 @@ export function ScoreMeter({ score, band }) {
   );
 }
 
-export function EmptyState({ icon = "ðŸ“­", title, hint }) {
+export function EmptyState({ icon = "doc", title, hint }) {
   return (
     <div className="fleet-state">
       <span className="fleet-state__icon" aria-hidden="true">
-        {icon}
+        {typeof icon === "string" ? <FleetKpiIcon name={icon} className="fleet-kpi__icon-svg" /> : icon}
       </span>
       <span className="fleet-state__title">{title}</span>
       {hint ? <span className="fleet-state__hint">{hint}</span> : null}

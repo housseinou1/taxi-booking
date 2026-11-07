@@ -41,6 +41,7 @@ from operations.admin_module_permissions import (
     require_admin_module,
     user_can_access_module,
 )
+from operations.city_id_bridge import registry_city_ids_for_location_city_id
 
 from .models import Ride, RidePricingSnapshot, RideStop
 from .serializers import (
@@ -784,11 +785,23 @@ def accept_ride(request, ride_id):
     with transaction.atomic():
         ride = get_object_or_404(Ride.objects.select_for_update(), id=ride_id)
 
-        if request.user.city_id and ride.city_id and request.user.city_id != ride.city_id:
+        if ride.city_id and not request.user.city_id:
             return Response(
-                {"detail": "This ride belongs to a different city."},
+                {"detail": "You must have a registered operating city before accepting local rides."},
                 status=status.HTTP_403_FORBIDDEN,
             )
+        if ride.city_id and request.user.city_id:
+            allowed_registry = registry_city_ids_for_location_city_id(ride.city_id)
+            if not allowed_registry:
+                return Response(
+                    {"detail": "Operating city configuration is incomplete; contact support."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+            if request.user.city_id not in allowed_registry:
+                return Response(
+                    {"detail": "This ride belongs to a different city."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
 
         if ride.status != "requested":
             return Response(

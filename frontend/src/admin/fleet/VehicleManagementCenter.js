@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
+import { useOperatingCityOptions } from "../layouts/useOperatingCityOptions";
 import {
   DRIVER_STATUS_LABELS,
   VEHICLE_DOCUMENTS,
   exportFleetReport,
-  fetchCityDirectory,
   fetchFleetVehicles,
   vehicleDocumentState,
 } from "./fleetApi";
@@ -90,11 +90,11 @@ function DocCell({ row, docKey }) {
 }
 
 export default function VehicleManagementCenter() {
+  const { registryOptions, cities: operatingCities } = useOperatingCityOptions();
   const [rows, setRows] = useState([]);
   const [alerts, setAlerts] = useState([]);
   const [reportedCount, setReportedCount] = useState(0);
   const [expiryAlertDays, setExpiryAlertDays] = useState(30);
-  const [cityDirectory, setCityDirectory] = useState([]);
 
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [sort, setSort] = useState({ key: "driver_name", dir: "asc" });
@@ -136,29 +136,9 @@ export default function VehicleManagementCenter() {
     }
   }, []);
 
-  const loadCities = useCallback(async () => {
-    try {
-      const response = await fetchCityDirectory();
-      const regions = Array.isArray(response.data) ? response.data : [];
-      const flat = [];
-      regions.forEach((region) => {
-        (region.cities || []).forEach((city) => {
-          if (city && city.id !== undefined) {
-            flat.push({ value: String(city.id), label: city.name || `City ${city.id}` });
-          }
-        });
-      });
-      setCityDirectory(flat);
-    } catch {
-      // City labels are a nicety; the page still works without them.
-      setCityDirectory([]);
-    }
-  }, []);
-
   useEffect(() => {
     load();
-    loadCities();
-  }, [load, loadCities]);
+  }, [load]);
 
   // Filter changes reset pagination so the user never lands on an empty page.
   useEffect(() => {
@@ -167,19 +147,15 @@ export default function VehicleManagementCenter() {
 
   const cityNameById = useMemo(() => {
     const index = new Map();
-    cityDirectory.forEach((city) => index.set(city.value, city.label));
+    (operatingCities || []).forEach((city) => {
+      if (city.primary_registry_city_id != null) {
+        index.set(String(city.primary_registry_city_id), city.name);
+      }
+    });
     return index;
-  }, [cityDirectory]);
+  }, [operatingCities]);
 
-  const cityOptions = useMemo(() => {
-    const ids = [...new Set(rows.map((row) => row.city_id).filter((id) => id !== null && id !== undefined))];
-    return ids
-      .map((id) => ({
-        value: String(id),
-        label: cityNameById.get(String(id)) || `City ${id}`,
-      }))
-      .sort((a, b) => a.label.localeCompare(b.label));
-  }, [rows, cityNameById]);
+  const cityOptions = registryOptions;
 
   /* ── Filtering ─────────────────────────────────────────────────────────────── */
 
@@ -574,9 +550,8 @@ export default function VehicleManagementCenter() {
             aria-label="Filter by city"
             disabled={!cityOptions.length}
           >
-            <option value="">All cities</option>
             {cityOptions.map((option) => (
-              <option key={option.value} value={option.value}>
+              <option key={option.value || "all"} value={option.value}>
                 {option.label}
               </option>
             ))}

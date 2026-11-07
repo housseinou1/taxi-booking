@@ -1,122 +1,123 @@
 import React from "react";
-import FounderCard from "./FounderCard";
+import {
+  IconCar,
+  IconDownload,
+  IconHeadset,
+  IconMap,
+  IconPackage,
+  IconShield,
+  IconUsers,
+} from "./WebsiteIcons";
+
+const PLAY = {
+  rider: "https://play.google.com/store/apps/details?id=com.yala.rider.mr",
+  driver: "https://play.google.com/store/apps/details?id=com.yala.driver.mr",
+  delivery: "https://play.google.com/store/apps/details?id=com.yala.delivery.mr",
+};
+
+const APP_CARDS = [
+  {
+    key: "rider",
+    logo: "/yala-rider-logo.png",
+    border: "ys-app-card--rider",
+    play: PLAY.rider,
+    nameKey: "appRiderName",
+    descKey: "appRiderDesc",
+  },
+  {
+    key: "driver",
+    logo: "/yala-driver-logo.png",
+    border: "ys-app-card--driver",
+    play: PLAY.driver,
+    nameKey: "appDriverName",
+    descKey: "appDriverDesc",
+  },
+  {
+    key: "delivery",
+    logo: "/yala-delivery-logo.png",
+    border: "ys-app-card--delivery",
+    play: PLAY.delivery,
+    nameKey: "appDeliveryName",
+    descKey: "appDeliveryDesc",
+  },
+];
+
+const WHY = [
+  { icon: IconShield, title: "why1t", text: "why1x" },
+  { icon: IconUsers, title: "why2t", text: "why2x" },
+  { icon: IconMap, title: "why3t", text: "why3x" },
+  { icon: IconHeadset, title: "why4t", text: "why4x" },
+];
 
 /**
- * Slice 1 — Home page.
- * Sections: hero (+ founder card), services, how it works, safety, CTA band.
- * No city list and no invented statistics, per the CEO's decision (Option A).
+ * Public home — Mauritanian flag marketing layout (www.yalataxi.live).
  */
-
-const SERVICES = [
-  { key: "rider", mod: "", icon: "🚕", to: "rider" },
-  { key: "driver", mod: "ys-gold", icon: "🚗", to: "driver" },
-  { key: "delivery", mod: "ys-blue", icon: "📦", to: "delivery" },
-];
-
-const STEPS = [
-  { n: "01", t: "st1t", x: "st1x" },
-  { n: "02", t: "st2t", x: "st2x" },
-  { n: "03", t: "st3t", x: "st3x" },
-  { n: "04", t: "st4t", x: "st4x" },
-];
-
-const SAFETY = [
-  { icon: "🪪", t: "sf1t", x: "sf1x" },
-  { icon: "📍", t: "sf2t", x: "sf2x" },
-  { icon: "🤝", t: "sf3t", x: "sf3x" },
-  { icon: "🔒", t: "sf4t", x: "sf4x" },
-  { icon: "🛟", t: "sf5t", x: "sf5x" },
-  { icon: "💬", t: "sf6t", x: "sf6x" },
-];
-
-export default function HomePage({ t, onNavigate }) {
-  const go = (next) => (event) => {
+export default function HomePage({ t }) {
+  const scrollToApps = (event) => {
     event.preventDefault();
-    onNavigate(next);
+    document.getElementById("download-apps")?.scrollIntoView({ behavior: "smooth" });
   };
 
   return (
     <>
-      {/* ------------------------------------------------------------ hero */}
-      <section className="ys-hero">
-        <div className="ys-wrap ys-hero-grid">
-          <div>
-            <span className="ys-badge-mr">
-              <span className="ys-flag" aria-hidden="true">🇲🇷</span>
-              <span>{t("heroBadge")}</span>
-            </span>
-
-            <h1>
-              {t("heroTitle1")} <em>{t("heroTitle2")}</em>
+      <section className="ys-hero-mr" aria-labelledby="ys-hero-title">
+        <div className="ys-hero-mr__inner">
+          <div className="ys-hero-mr__copy">
+            <h1 id="ys-hero-title" className="ys-hero-mr__brand">
+              {t("heroBrand")}
             </h1>
+            <p className="ys-hero-mr__kicker">{t("heroKicker")}</p>
+            <p className="ys-hero-mr__lead">{t("heroLead")}</p>
 
-            <p className="ys-hero-sub">{t("heroSub")}</p>
+            <ul className="ys-hero-mr__feats" aria-label="Platform highlights">
+              <li>
+                <IconCar />
+                <span>{t("hf1")}</span>
+              </li>
+              <li>
+                <IconPackage />
+                <span>{t("hf2")}</span>
+              </li>
+              <li>
+                <IconShield />
+                <span>{t("hf3")}</span>
+              </li>
+              <li>
+                <IconHeadset />
+                <span>{t("hf4")}</span>
+              </li>
+            </ul>
 
-            <div className="ys-hero-cta">
-              <a className="ys-btn ys-btn-primary ys-btn-lg" href="/register?role=rider">
-                <span className="ys-ico" aria-hidden="true">🚕</span>
-                <span>{t("ctaBook")}</span>
-              </a>
-              <a className="ys-btn ys-btn-ghost ys-btn-lg" href="/register?role=driver">
-                <span className="ys-ico" aria-hidden="true">🚗</span>
-                <span>{t("ctaDrive")}</span>
-              </a>
-            </div>
-
-            <div className="ys-trust">
-              {["trust1", "trust2", "trust3", "trust4"].map((k) => (
-                <span key={k}>
-                  <i className="ys-ck" aria-hidden="true">✓</i>
-                  <span>{t(k)}</span>
-                </span>
-              ))}
-            </div>
-
-            <FounderCard t={t} />
+            <a className="ys-btn ys-btn-gold ys-btn-lg ys-hero-mr__cta" href="#download-apps" onClick={scrollToApps}>
+              <IconDownload />
+              <span>{t("downloadCta")}</span>
+            </a>
           </div>
 
-          <div className="ys-hero-visual" aria-hidden="true">
-            <div className="ys-phone">
-              <div className="ys-scr">
-                <div className="ys-bar ys-w45" />
-                <div className="ys-mini">🚕</div>
-                <div className="ys-row"><span className="ys-av">📍</span><span className="ys-ln"><i /><i /></span></div>
-                <div className="ys-row"><span className="ys-av">👤</span><span className="ys-ln"><i /><i /></span></div>
-                <div className="ys-row"><span className="ys-av">💳</span><span className="ys-ln"><i /><i /></span></div>
-              </div>
-            </div>
+          <div className="ys-hero-mr__visual" aria-hidden="true">
+            <img src="/splash-screen.png" alt="" className="ys-hero-mr__photo" />
           </div>
         </div>
       </section>
 
-      {/* -------------------------------------------------------- services */}
-      <section className="ys-sec" id="ys-services">
+      <section className="ys-app-download" id="download-apps" aria-labelledby="ys-apps-title">
         <div className="ys-wrap">
-          <div className="ys-sec-head">
-            <span className="ys-eyebrow">{t("svcEyebrow")}</span>
-            <h2>{t("svcTitle")}</h2>
-            <p>{t("svcSub")}</p>
-          </div>
-
-          <div className="ys-cards">
-            {SERVICES.map(({ key, mod, icon, to }) => (
-              <article key={key} className={`ys-card ${mod}`.trim()}>
-                <span className="ys-card-ico" aria-hidden="true">{icon}</span>
-                <h3>{t(`${key}Title`)}</h3>
-                <p>{t(`${key}Text`)}</p>
-                <ul>
-                  {[1, 2, 3, 4].map((i) => (
-                    <li key={i}>
-                      <span className="ys-tick" aria-hidden="true">✓</span>
-                      <span>{t(`${key}L${i}`)}</span>
-                    </li>
-                  ))}
-                </ul>
-                <div className="ys-card-cta">
-                  <a className="ys-btn ys-btn-primary ys-btn-block" href={`#/${to}`} onClick={go(to)}>
-                    {t(`${key}Cta`)}
+          <h2 id="ys-apps-title" className="ys-visually-hidden">
+            {t("downloadSectionTitle")}
+          </h2>
+          <div className="ys-app-download__grid">
+            {APP_CARDS.map((card) => (
+              <article key={card.key} className={`ys-app-card ${card.border}`}>
+                <img src={card.logo} alt="" className="ys-app-card__logo" />
+                <h3>{t(card.nameKey)}</h3>
+                <p>{t(card.descKey)}</p>
+                <div className="ys-store-badges">
+                  <a className="ys-store-badge" href={card.play} target="_blank" rel="noopener noreferrer">
+                    {t("playStore")}
                   </a>
-                  <span className="ys-note">{t(`${key}Note`)}</span>
+                  <span className="ys-store-badge ys-store-badge--muted" title="Coming soon">
+                    {t("appStore")}
+                  </span>
                 </div>
               </article>
             ))}
@@ -124,61 +125,31 @@ export default function HomePage({ t, onNavigate }) {
         </div>
       </section>
 
-      {/* --------------------------------------------------- how it works */}
-      <section className="ys-sec">
+      <section className="ys-why" id="cities" aria-labelledby="ys-why-title">
         <div className="ys-wrap">
-          <div className="ys-sec-head">
-            <span className="ys-eyebrow">{t("howEyebrow")}</span>
-            <h2>{t("howTitle")}</h2>
+          <div className="ys-why__head">
+            <span className="ys-why__rule" aria-hidden="true" />
+            <h2 id="ys-why-title">{t("whyTitle")}</h2>
           </div>
-          <div className="ys-steps">
-            {STEPS.map(({ n, t: titleKey, x }) => (
-              <div className="ys-step" key={n}>
-                <span className="ys-n" aria-hidden="true">{n}</span>
-                <h3>{t(titleKey)}</h3>
-                <p>{t(x)}</p>
-              </div>
+          <div className="ys-why__grid">
+            {WHY.map(({ icon: Ico, title, text }) => (
+              <article key={title} className="ys-why__item">
+                <div className="ys-why__ico" aria-hidden="true">
+                  <Ico />
+                </div>
+                <h3>{t(title)}</h3>
+                <p>{t(text)}</p>
+              </article>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ---------------------------------------------------------- safety */}
-      <section className="ys-sec ys-safety">
-        <div className="ys-wrap">
-          <div className="ys-sec-head">
-            <span className="ys-eyebrow ys-on-dark">{t("safetyEyebrow")}</span>
-            <h2>{t("safetyTitle")}</h2>
-            <p>{t("safetySub")}</p>
-          </div>
-          <div className="ys-sg">
-            {SAFETY.map(({ icon, t: titleKey, x }) => (
-              <div className="ys-sg-item" key={titleKey}>
-                <div className="ys-si" aria-hidden="true">{icon}</div>
-                <h3>{t(titleKey)}</h3>
-                <p>{t(x)}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* -------------------------------------------------------- cta band */}
-      <section className="ys-sec">
-        <div className="ys-wrap">
-          <div className="ys-cta-band">
-            <h2>{t("bandTitle")}</h2>
-            <p>{t("bandText")}</p>
-            <div className="ys-row">
-              <a className="ys-btn ys-btn-white ys-btn-lg" href="/register">{t("createAccount")}</a>
-              <a className="ys-btn ys-btn-outline-l ys-btn-lg" href="#/support" onClick={go("support")}>
-                {t("navSupport")}
-              </a>
-            </div>
-          </div>
-        </div>
-      </section>
+      <div className="ys-tricolor-ribbon" aria-hidden="true">
+        <span className="ys-tricolor-ribbon__green" />
+        <span className="ys-tricolor-ribbon__gold" />
+        <span className="ys-tricolor-ribbon__red" />
+      </div>
     </>
   );
 }
-

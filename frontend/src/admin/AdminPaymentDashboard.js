@@ -13,6 +13,7 @@ import {
   fetchAdminPaymentDashboard,
   fetchPaymentsOversight,
 } from "../payments/paymentApi";
+import MoosylPaymentPanel from "./finance/MoosylPaymentPanel";
 import "./AdminPaymentCenter.css";
 
 /**
@@ -35,6 +36,7 @@ const TABS = [
   { id: "payouts", label: "Payouts" },
   { id: "refunds", label: "Refunds" },
   { id: "providers", label: "Payment Providers" },
+  { id: "moosyl", label: "Moosyl" },
 ];
 
 const PAYOUT_STATUSES = ["pending", "approved", "paid", "rejected"];
@@ -780,6 +782,7 @@ export default function AdminPaymentDashboard() {
           {activeTab === "payouts" && renderPayouts()}
           {activeTab === "refunds" && renderRefunds()}
           {activeTab === "providers" && renderProviders()}
+          {activeTab === "moosyl" && <MoosylPaymentPanel />}
         </div>
       </div>
     </AdminShellPage>

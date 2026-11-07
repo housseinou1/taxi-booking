@@ -2,6 +2,18 @@
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
+## YALA Admin — local development (API on your machine)
+
+The login page shows `Cannot reach Yala Admin API at https://www.yalataxi.live` when **`REACT_APP_API_URL` in `frontend/.env.local`** points at production while the browser runs on `http://localhost:3000`. With that variable set, `src/apiConfig.js` treats the app as using a **remote** API and does **not** fall back to `http://localhost:8000`.
+
+**Fix:**
+
+1. Use **`npm run start:admin`** (writes `.env.local` from `.env.admin` if present, otherwise from **`.env.admin.example`**) so `REACT_APP_API_URL` is **unset** for local work.
+2. Or edit **`frontend/.env.local`** manually: remove `REACT_APP_API_URL` and `REACT_APP_WS_URL` lines that reference `yalataxi.live`, or copy `frontend/.env.admin.example` → `.env.local`.
+3. Run Django with **`DEBUG=True`** on port **8000** (defaults already allow CORS from `http://localhost:3000` in `taxi/settings.py`).
+
+Optional override (non-default host/port): `REACT_APP_API_URL=http://127.0.0.1:8000`
+
 ## Available Scripts
 
 In the project directory, you can run:

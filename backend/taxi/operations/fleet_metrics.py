@@ -95,15 +95,48 @@ def couriers_online_count() -> int:
     ).count()
 
 
-def fleet_metrics() -> dict:
+def _scoped_couriers_online(couriers: QuerySet) -> int:
+    """Online couriers within an optional pre-filtered courier profile queryset."""
+    from deliveries.models import DriverDeliverySettings
+
+    user_ids = list(couriers.values_list("user_id", flat=True))
+    if not user_ids:
+        return 0
+    return DriverDeliverySettings.objects.filter(
+        driver_id__in=user_ids,
+        delivery_mode_enabled=True,
+        is_suspended=False,
+        driver__driver_profile__status="approved",
+        driver__is_active=True,
+    ).count()
+
+
+def _scoped_courier_suspended(couriers: QuerySet) -> int:
+    from deliveries.models import DriverDeliverySettings
+
+    user_ids = list(couriers.values_list("user_id", flat=True))
+    if not user_ids:
+        return 0
+    return DriverDeliverySettings.objects.filter(driver_id__in=user_ids, is_suspended=True).count()
+
+
+def fleet_metrics(city_id=None) -> dict:
     """All canonical fleet figures in one read-only payload.
 
     Returns ``{"drivers": {...}, "couriers": {...}, "definitions": {...}}`` so a
     caller can render a number *and* explain it without guessing.
+
+    ``city_id`` scopes to ``User.city_id`` (``locations.City``).
     """
     drivers = driver_profiles()
     couriers = courier_profiles()
+    if city_id:
+        drivers = drivers.filter(user__city_id=city_id)
+        couriers = couriers.filter(user__city_id=city_id)
     courier_ids = courier_user_ids()
+
+    couriers_online = _scoped_couriers_online(couriers) if city_id else couriers_online_count()
+    couriers_suspended = _scoped_courier_suspended(couriers) if city_id else _courier_suspended_count()
 
     return {
         "drivers": {
@@ -116,8 +149,8 @@ def fleet_metrics() -> dict:
         "couriers": {
             "total": couriers.count(),
             "approved": couriers.filter(status="approved").count(),
-            "online": couriers_online_count(),
-            "suspended": _courier_suspended_count(),
+            "online": couriers_online,
+            "suspended": couriers_suspended,
             "available_any_status": couriers.filter(is_available=True).count(),
         },
         # The figure that caused the confusion: both domains combined.

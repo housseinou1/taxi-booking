@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import { AdminShellPage } from "../layouts/AdminShell";
 import { useToast } from "../components/library";
@@ -7,16 +7,37 @@ import { deriveEmployeeTier } from "./employeesApi";
 import EmployeeDirectory from "./EmployeeDirectory";
 import EmployeeRegistrationForm from "./EmployeeRegistrationForm";
 import EmployeeProfile from "./EmployeeProfile";
+import EmployeeIdCardDashboard from "./EmployeeIdCardDashboard";
 import "../beta/BetaDashboard.css";
 import "./EmployeeManagementCenter.css";
+import "./EmployeeIdCardDashboard.css";
 
 const TABS = [
+  { id: "dashboard", label: "ID Card Dashboard" },
   { id: "directory", label: "Directory" },
   { id: "register", label: "Register" },
 ];
 
+function initialTabFromLocation() {
+  if (typeof window !== "undefined" && window.location.pathname.includes("/id-cards")) {
+    return "dashboard";
+  }
+  const params = new URLSearchParams(window.location.search);
+  const view = (params.get("view") || "").toLowerCase();
+  if (view === "register" || view === "registration") return "register";
+  if (view === "directory") return "directory";
+  if (view === "dashboard" || view === "id-cards") return "dashboard";
+  return "dashboard";
+}
+
 function EmployeeManagementCenterInner() {
-  const [tab, setTab] = useState("directory");
+  const [tab, setTab] = useState(initialTabFromLocation);
+
+  useEffect(() => {
+    const sync = () => setTab(initialTabFromLocation());
+    window.addEventListener("popstate", sync);
+    return () => window.removeEventListener("popstate", sync);
+  }, []);
   const [selectedEmployeeNumber, setSelectedEmployeeNumber] = useState(null);
   // Bump to force the directory to reload after a mutation (register/edit).
   const [directoryReloadKey, setDirectoryReloadKey] = useState(0);
@@ -36,6 +57,17 @@ function EmployeeManagementCenterInner() {
     },
     [toast]
   );
+
+  const selectTab = useCallback((nextTab) => {
+    setTab(nextTab);
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set("view", nextTab);
+      window.history.replaceState({}, "", url.pathname + url.search);
+    } catch {
+      // ignore history errors in non-browser contexts
+    }
+  }, []);
 
   const openProfile = useCallback((employeeNumber) => {
     setSelectedEmployeeNumber(employeeNumber);
@@ -66,10 +98,8 @@ function EmployeeManagementCenterInner() {
     <div className="beta emp-center">
       <div className="beta__header">
         <div>
-          <h1 className="beta__title">Employee Management Center</h1>
-          <p className="beta__subtitle">
-            Directory, registration, profiles, ID cards, and photographs
-          </p>
+          <h1 className="beta__title">YALA TECHNOLOGIES — Employees &amp; HR</h1>
+          <p className="beta__subtitle">Employee ID cards, directory, and HR records</p>
         </div>
       </div>
 
@@ -81,12 +111,20 @@ function EmployeeManagementCenterInner() {
             role="tab"
             aria-selected={tab === item.id}
             className={`emp-tab ${tab === item.id ? "emp-tab--active" : ""}`.trim()}
-            onClick={() => setTab(item.id)}
+            onClick={() => selectTab(item.id)}
           >
             {item.label}
           </button>
         ))}
       </div>
+
+      {tab === "dashboard" ? (
+        <EmployeeIdCardDashboard
+          canAdminister={tier.canAdminister}
+          notify={notify}
+          onOpenDirectory={() => selectTab("directory")}
+        />
+      ) : null}
 
       {tab === "directory" ? (
         <EmployeeDirectory

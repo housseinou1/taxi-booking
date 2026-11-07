@@ -14,10 +14,21 @@
  *   - Never compute a trend without a real prior-period baseline.
  *   - Never report uptime: not recorded.
  */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import authenticatedApi from "../../auth/authenticatedApi";
 import { API_URL } from "../../apiConfig";
+import { subscribeOperationsUpdates } from "../operations/opsSocket";
+
+/** Background refresh while the dashboard is open (ops centers poll ~8–15s; home is calmer). */
+export const ADMIN_HOME_POLL_MS = 30_000;
+
+const LIVE_EVENT_TYPES = new Set([
+  "operations_update",
+  "safety_alert",
+  "ride_status_update",
+  "ride_update",
+]);
 
 const NO_DATA = null;
 
@@ -470,113 +481,162 @@ const SOURCE_MODULES = ["ceo", "ops", "launch", "rides", "drivers", "riders", "f
 
 const PERIOD_API = { today: "daily", "7d": "weekly", "30d": "monthly", "90d": "monthly", "1y": "yearly" };
 
+async function fetchAdminHomePayload({ grantKey, periodParam, cityId }) {
+  const granted = new Set(grantKey ? grantKey.split(",") : []);
+  const wants = {
+    command: granted.has("ceo") || granted.has("ops") || granted.has("launch") || granted.has("finance"),
+    executive: granted.has("ceo") || granted.has("ops") || granted.has("finance"),
+    rides: granted.has("rides"),
+    approvals: granted.has("drivers") || granted.has("riders"),
+    finance: granted.has("finance"),
+    multiCity: granted.has("ceo") || granted.has("ops"),
+  };
+
+  const execParams = { period: periodParam };
+  if (cityId) execParams.city = cityId;
+
+  const mcParams = {};
+  if (cityId) mcParams.city_id = cityId;
+
+  const spec = [
+    { on: wants.command, run: () => safeGet(`${API_URL}/operations/command/`, { timeout: 20000 }) },
+    {
+      on: wants.executive,
+      run: () =>
+        safeGet(`${API_URL}/operations/executive/dashboard/`, {
+          params: execParams,
+          timeout: 20000,
+        }),
+    },
+    { on: wants.rides, run: () => safeGet(`${API_URL}/rides/history/`) },
+    { on: wants.approvals, run: () => safeGet(`${API_URL}/admin/approvals/stats/`) },
+    {
+      on: wants.finance,
+      run: () => safeGet(`${API_URL}/payments/admin/finance/overview/`, { timeout: 20000 }),
+    },
+    {
+      on: wants.multiCity,
+      run: () => safeGet(`${API_URL}/operations/multi-city/`, { params: mcParams, timeout: 20000 }),
+    },
+  ];
+
+  const results = await Promise.all(spec.map((s) => (s.on ? s.run() : Promise.resolve(null))));
+  const [command, executive, rides, approvals, finance, multiCity] = results;
+
+  const attempted = spec.filter((s) => s.on).length;
+  const anyOk = results.some((value, index) => spec[index].on && value !== null);
+
+  const executiveFinance = executive?.finance;
+  const orderStatusToday = buildOrderStatusToday({
+    command: command || {},
+    executive: executive || {},
+  });
+
+  return {
+    error: attempted > 0 && !anyOk ? "Could not reach the YALA API." : null,
+    noPermittedSources: attempted === 0,
+    raw: { command, executive, rides, approvals, finance, multiCity },
+    kpis: buildKpis({ command, executive, rides, approvals, finance }),
+    financeChart: buildFinanceChart(executive),
+    ordersMix: buildOrdersMix(executive),
+    orderStatusToday,
+    operationsPipeline: buildOperationsPipeline(executive),
+    cityPerformance: buildCityPerformance(multiCity),
+    today: buildToday({ command, executive }),
+    pending: buildPending(approvals),
+    activity: buildActivity(command),
+    health: buildHealth(command),
+    alerts: pick(command, "alerts.alerts") || [],
+    executiveMeta: executiveFinance
+      ? {
+          period: executiveFinance.period,
+          startDate: executiveFinance.start_date,
+          endDate: executiveFinance.end_date,
+        }
+      : null,
+    approvals: approvals || {},
+    finance: finance || {},
+    generatedAt: pick(command, "generated_at") || pick(executive, "live.generated_at") || null,
+  };
+}
+
 /**
  * @param {object} options
  * @param {function(string): boolean} [options.canView]
  * @param {string} [options.cityId] - locations.City id for executive + multi-city scope
  * @param {string} [options.executivePeriod] - UI period key: today | 7d | 30d | 90d | 1y
+ * @param {boolean} [options.live] - poll + WebSocket refresh while mounted
  */
-export default function useAdminHomeData({ canView, cityId, executivePeriod = "today" } = {}) {
+export default function useAdminHomeData({ canView, cityId, executivePeriod = "today", live = true } = {}) {
   const [state, setState] = useState({ loading: true, error: null });
   const [nonce, setNonce] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+  const [liveConnected, setLiveConnected] = useState(false);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState(null);
 
   const reload = useCallback(() => setNonce((n) => n + 1), []);
   const allowed = canView || ALWAYS_TRUE;
   const grantKey = SOURCE_MODULES.filter((m) => allowed(m)).join(",");
 
   const periodParam = PERIOD_API[executivePeriod] || "daily";
+  const fetchKey = `${grantKey}|${periodParam}|${cityId || ""}`;
+
+  const loadSoft = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const payload = await fetchAdminHomePayload({ grantKey, periodParam, cityId });
+      setState((s) => ({ ...s, loading: false, ...payload }));
+      setLastUpdatedAt(new Date().toISOString());
+    } finally {
+      setRefreshing(false);
+    }
+  }, [grantKey, periodParam, cityId]);
+
+  const loadSoftRef = useRef(loadSoft);
+  loadSoftRef.current = loadSoft;
 
   useEffect(() => {
     let cancelled = false;
-    setState((s) => ({ ...s, loading: true, error: null }));
-
     (async () => {
-      const granted = new Set(grantKey ? grantKey.split(",") : []);
-      const wants = {
-        command:
-          granted.has("ceo") || granted.has("ops") || granted.has("launch") || granted.has("finance"),
-        executive: granted.has("ceo") || granted.has("ops") || granted.has("finance"),
-        rides: granted.has("rides"),
-        approvals: granted.has("drivers") || granted.has("riders"),
-        finance: granted.has("finance"),
-        multiCity: granted.has("ceo") || granted.has("ops"),
-      };
-
-      const execParams = { period: periodParam };
-      if (cityId) execParams.city = cityId;
-
-      const mcParams = {};
-      if (cityId) mcParams.city_id = cityId;
-
-      const spec = [
-        { on: wants.command, run: () => safeGet(`${API_URL}/operations/command/`, { timeout: 20000 }) },
-        {
-          on: wants.executive,
-          run: () =>
-            safeGet(`${API_URL}/operations/executive/dashboard/`, {
-              params: execParams,
-              timeout: 20000,
-            }),
-        },
-        { on: wants.rides, run: () => safeGet(`${API_URL}/rides/history/`) },
-        { on: wants.approvals, run: () => safeGet(`${API_URL}/admin/approvals/stats/`) },
-        {
-          on: wants.finance,
-          run: () => safeGet(`${API_URL}/payments/admin/finance/overview/`, { timeout: 20000 }),
-        },
-        {
-          on: wants.multiCity,
-          run: () => safeGet(`${API_URL}/operations/multi-city/`, { params: mcParams, timeout: 20000 }),
-        },
-      ];
-
-      const results = await Promise.all(spec.map((s) => (s.on ? s.run() : Promise.resolve(null))));
-      const [command, executive, rides, approvals, finance, multiCity] = results;
-
+      setState((s) => ({ ...s, loading: true, error: null }));
+      const payload = await fetchAdminHomePayload({ grantKey, periodParam, cityId });
       if (cancelled) return;
-
-      const attempted = spec.filter((s) => s.on).length;
-      const anyOk = results.some((value, index) => spec[index].on && value !== null);
-
-      const executiveFinance = executive?.finance;
-      const orderStatusToday =
-        command != null && executive != null
-          ? buildOrderStatusToday({ command, executive })
-          : buildOrderStatusToday({ command: command || {}, executive: executive || {} });
-
-      setState({
-        loading: false,
-        error: attempted > 0 && !anyOk ? "Could not reach the YALA API." : null,
-        noPermittedSources: attempted === 0,
-        raw: { command, executive, rides, approvals, finance, multiCity },
-        kpis: buildKpis({ command, executive, rides, approvals, finance }),
-        financeChart: buildFinanceChart(executive),
-        ordersMix: buildOrdersMix(executive),
-        orderStatusToday,
-        operationsPipeline: buildOperationsPipeline(executive),
-        cityPerformance: buildCityPerformance(multiCity),
-        today: buildToday({ command, executive }),
-        pending: buildPending(approvals),
-        activity: buildActivity(command),
-        health: buildHealth(command),
-        alerts: pick(command, "alerts.alerts") || [],
-        executiveMeta: executiveFinance
-          ? {
-              period: executiveFinance.period,
-              startDate: executiveFinance.start_date,
-              endDate: executiveFinance.end_date,
-            }
-          : null,
-        approvals: approvals || {},
-        finance: finance || {},
-        generatedAt: pick(command, "generated_at") || pick(executive, "live.generated_at") || null,
-      });
+      setState({ loading: false, ...payload });
+      setLastUpdatedAt(new Date().toISOString());
     })();
-
     return () => {
       cancelled = true;
     };
-  }, [nonce, grantKey, periodParam, cityId, executivePeriod]);
+  }, [nonce, grantKey, periodParam, cityId]);
 
-  return { ...state, reload };
+  useEffect(() => {
+    if (!live) return undefined;
+    const timer = window.setInterval(() => {
+      loadSoftRef.current();
+    }, ADMIN_HOME_POLL_MS);
+    return () => window.clearInterval(timer);
+  }, [live, fetchKey]);
+
+  useEffect(() => {
+    if (!live) return undefined;
+    return subscribeOperationsUpdates((message) => {
+      const type = String(message?.type || "");
+      if (type) setLiveConnected(true);
+      if (type && LIVE_EVENT_TYPES.has(type)) {
+        loadSoftRef.current();
+      }
+    });
+  }, [live, fetchKey]);
+
+  return {
+    ...state,
+    reload,
+    refreshing,
+    live: {
+      connected: liveConnected,
+      pollMs: ADMIN_HOME_POLL_MS,
+      lastUpdatedAt,
+      serverGeneratedAt: state.generatedAt,
+    },
+  };
 }

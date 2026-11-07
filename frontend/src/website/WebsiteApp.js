@@ -7,6 +7,8 @@ import {
   RiderPage, DriverPage, DeliveryPage,
   AboutPage, SafetyPage, ContactPage, SupportPage,
 } from "./Pages";
+import MauritaniaFlag from "./MauritaniaFlag";
+import { IconDownload } from "./WebsiteIcons";
 import "./website.css";
 
 /* --------------------------------------------------------------------------
@@ -15,17 +17,6 @@ import "./website.css";
    -------------------------------------------------------------------------- */
 
 export const WEBSITE_ROUTES = ["home", "rider", "driver", "delivery", "about", "safety", "contact", "support"];
-
-const NAV_KEYS = [
-  ["home", "navHome"],
-  ["rider", "navRider"],
-  ["driver", "navDriver"],
-  ["delivery", "navDelivery"],
-  ["about", "navAbout"],
-  ["safety", "navSafety"],
-  ["contact", "navContact"],
-  ["support", "navSupport"],
-];
 
 const CONTACT = {
   phoneDisplay: "+222 22 11 43 73",
@@ -37,63 +28,107 @@ const CONTACT = {
   site: "https://www.yalataxi.live",
 };
 
-/** Sticky site header with the eight-item navigation and language switcher. */
+/** Sticky marketing header — Mauritanian green/gold/red, horizontal nav. */
 function SiteHeader({ t, lang, route, onNavigate, onLangChange }) {
   const [open, setOpen] = useState(false);
+  const [servicesOpen, setServicesOpen] = useState(false);
 
   const go = useCallback(
     (next) => (event) => {
       event.preventDefault();
       setOpen(false);
+      setServicesOpen(false);
       onNavigate(next);
     },
     [onNavigate]
   );
 
+  const goHomeHash = (hash) => (event) => {
+    event.preventDefault();
+    setOpen(false);
+    if (route !== "home") {
+      onNavigate("home");
+      window.setTimeout(() => {
+        document.querySelector(hash)?.scrollIntoView({ behavior: "smooth" });
+      }, 120);
+    } else {
+      document.querySelector(hash)?.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
   return (
     <>
-      <header className="ys-hdr">
+      <header className="ys-hdr ys-hdr--mr">
         <div className="ys-wrap ys-hdr-in">
-          <a className="ys-brand" href="#/home" onClick={go("home")} aria-label="YALA Technologies — home">
-            <span className="ys-brand-mark" aria-hidden="true">Y</span>
-            <span className="ys-brand-txt">
+          <a className="ys-brand ys-brand--mr" href="#/home" onClick={go("home")} aria-label="YALA Technologies — home">
+            <img src="/yala-logo-housseinou.png" alt="" className="ys-brand-logo" />
+            <MauritaniaFlag className="ys-brand-flag" />
+            <span className="ys-brand-txt ys-brand-txt--light">
               <strong>YALA</strong>
               <small>{t("brandTag")}</small>
             </span>
           </a>
 
-          <nav className="ys-nav" aria-label="Main navigation" id="ys-mainnav">
-            {NAV_KEYS.map(([key, label]) => (
-              <a
-                key={key}
-                href={`#/${key}`}
-                data-route={key}
-                onClick={go(key)}
-                aria-current={route === key ? "page" : undefined}
+          <nav className="ys-nav ys-nav--mr" aria-label="Main navigation" id="ys-mainnav">
+            <a
+              href="#/home"
+              data-route="home"
+              onClick={go("home")}
+              className={route === "home" ? "ys-nav-active" : ""}
+              aria-current={route === "home" ? "page" : undefined}
+            >
+              {t("navHome")}
+            </a>
+            <div
+              className={`ys-nav-dd${servicesOpen ? " ys-nav-dd--open" : ""}`}
+              onMouseLeave={() => setServicesOpen(false)}
+            >
+              <button
+                type="button"
+                className="ys-nav-dd-trigger"
+                aria-expanded={servicesOpen}
+                onClick={() => setServicesOpen((v) => !v)}
               >
-                {t(label)}
-              </a>
-            ))}
+                {t("navServices")}
+                <span className="ys-chev" aria-hidden="true" />
+              </button>
+              <div className="ys-nav-dd-menu" role="menu">
+                <a href="#/rider" role="menuitem" onClick={go("rider")}>{t("navRider")}</a>
+                <a href="#/driver" role="menuitem" onClick={go("driver")}>{t("navDriver")}</a>
+                <a href="#/delivery" role="menuitem" onClick={go("delivery")}>{t("navDelivery")}</a>
+              </div>
+            </div>
+            <a href="/#cities" onClick={goHomeHash("#cities")}>{t("navCities")}</a>
+            <a href="#/contact" data-route="contact" onClick={go("contact")}>{t("navPartners")}</a>
+            <a href="#/about" data-route="about" onClick={go("about")} aria-current={route === "about" ? "page" : undefined}>
+              {t("navAbout")}
+            </a>
+            <a href="#/support" data-route="support" onClick={go("support")} aria-current={route === "support" ? "page" : undefined}>
+              {t("navSupport")}
+            </a>
           </nav>
 
           <div className="ys-hdr-actions">
-            <div className="ys-lang" role="group" aria-label="Language">
-              {WEBSITE_LANGS.map((code) => (
-                <button
-                  key={code}
-                  type="button"
-                  data-lang={code}
-                  aria-pressed={lang === code}
-                  onClick={() => onLangChange(code)}
-                >
-                  {code.toUpperCase()}
-                </button>
-              ))}
-            </div>
-            <a className="ys-btn ys-btn-ghost ys-btn-sm" href="/login">{t("signIn")}</a>
-            <a className="ys-btn ys-btn-primary ys-btn-sm" href="/register">{t("createAccount")}</a>
+            <label className="ys-lang-select">
+              <span className="ys-visually-hidden">Language</span>
+              <select
+                aria-label="Language"
+                value={lang}
+                onChange={(e) => onLangChange(e.target.value)}
+              >
+                {WEBSITE_LANGS.map((code) => (
+                  <option key={code} value={code}>
+                    {code.toUpperCase()}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <a className="ys-btn ys-btn-gold ys-btn-sm" href="/#download-apps" onClick={goHomeHash("#download-apps")}>
+              <IconDownload />
+              <span>{t("getTheApp")}</span>
+            </a>
             <button
-              className="ys-burger"
+              className="ys-burger ys-burger--light"
               type="button"
               aria-expanded={open}
               aria-controls="ys-mmenu"
@@ -106,15 +141,19 @@ function SiteHeader({ t, lang, route, onNavigate, onLangChange }) {
         </div>
       </header>
 
-      <div className={`ys-mmenu${open ? " ys-open" : ""}`} id="ys-mmenu">
-        {NAV_KEYS.map(([key, label]) => (
-          <a key={key} href={`#/${key}`} data-route={key} onClick={go(key)}>{t(label)}</a>
-        ))}
+      <div className={`ys-mmenu ys-mmenu--mr${open ? " ys-open" : ""}`} id="ys-mmenu">
+        <a href="#/home" onClick={go("home")}>{t("navHome")}</a>
+        <a href="#/rider" onClick={go("rider")}>{t("navRider")}</a>
+        <a href="#/driver" onClick={go("driver")}>{t("navDriver")}</a>
+        <a href="#/delivery" onClick={go("delivery")}>{t("navDelivery")}</a>
+        <a href="/#cities" onClick={goHomeHash("#cities")}>{t("navCities")}</a>
+        <a href="#/contact" onClick={go("contact")}>{t("navPartners")}</a>
+        <a href="#/about" onClick={go("about")}>{t("navAbout")}</a>
+        <a href="#/support" onClick={go("support")}>{t("navSupport")}</a>
         <hr />
-        <div className="ys-mm-cta">
-          <a className="ys-btn ys-btn-ghost ys-btn-block" href="/login">{t("signIn")}</a>
-          <a className="ys-btn ys-btn-primary ys-btn-block" href="/register">{t("createAccount")}</a>
-        </div>
+        <a className="ys-btn ys-btn-gold ys-btn-block" href="/#download-apps" onClick={goHomeHash("#download-apps")}>
+          {t("getTheApp")}
+        </a>
       </div>
     </>
   );
@@ -218,7 +257,7 @@ export default function WebsiteApp({ route = "home", onNavigate = () => {} }) {
   // reflect language + page in the document for a11y and SEO
   useEffect(() => {
     const previous = document.title;
-    document.title = "YALA — Mauritania";
+    document.title = "YALA Technologies — Mauritania";
     return () => { document.title = previous; };
   }, [active, lang]);
 

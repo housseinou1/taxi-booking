@@ -923,3 +923,4 @@ class DriverDisciplinaryAction(models.Model):
 
 # Task 8 — explicit staff -> city assignments (separate module; imported so Django registers it).
 from .city_assignment_models import StaffCityAssignment  # noqa: E402,F401
+from .city_transfer_models import OperatingCityTransferRequest  # noqa: E402,F401
