@@ -86,6 +86,18 @@ describe("WebsiteApp shell", () => {
   });
 });
 
+describe("footer CEO block", () => {
+  test("shows CEO name, role, mailto and slogan", () => {
+    const { container } = render(<WebsiteApp route="home" />);
+    expect(screen.getByText("Housseinou Sakho")).toBeInTheDocument();
+    expect(screen.getByText(/Chief Executive Officer \(CEO\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/Moving Mauritania Forward/i)).toBeInTheDocument();
+    expect(container.querySelector('a[href="mailto:sakho@yalataxi.live"]')).toBeTruthy();
+    expect(container.querySelector('a[href="https://www.yalataxi.live"]')).toBeTruthy();
+    expect(screen.getByText(/Created by:/i)).toBeInTheDocument();
+  });
+});
+
 describe("customer support contact", () => {
   test("footer carries phone, WhatsApp and support email", () => {
     const { container } = render(<WebsiteApp route="home" />);

@@ -7,6 +7,7 @@
 1. **Login ▼ / My Account ▼** — Rider, Driver, Delivery, and Admin sign-in via existing `/login?next=…`; authenticated users see Dashboard, My Profile, and Logout via `auth/session.js` + `roleRouting.js`.
 2. **Mauritanian flag** — Emoji 🇲🇷 replaced with `website/MauritaniaFlag.js` (green field, red top/bottom stripes, gold crescent and star) in header, footer, and About page.
 3. **Cities ▼** — Searchable dropdown for 13 wilayas; live vs planned status from `GET /locations/operating-cities/`; Nouakchott districts from `GET /locations/cities/` when available; home `#city-services` panel after selection.
+4. **Footer CEO & slogan** — Official block: Created by Housseinou Sakho, CEO role, `mailto:sakho@yalataxi.live`, link to www.yalataxi.live, slogan *YALA Technologies | Moving Mauritania Forward* (reuses `CEO_CONTACT` from `FounderCard.js`; support contacts unchanged).
 
 ## Verification (local)
 

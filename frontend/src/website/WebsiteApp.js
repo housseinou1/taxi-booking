@@ -10,6 +10,7 @@ import {
 import MauritaniaFlag from "./MauritaniaFlag";
 import { WebsiteCitiesNavDropdown, WebsiteLoginNavDropdown } from "./WebsiteNavMenus";
 import { useWebsiteAuth } from "./useWebsiteAuth";
+import { CEO_CONTACT } from "./FounderCard";
 import { IconDownload } from "./WebsiteIcons";
 import "./website.css";
 
@@ -282,6 +283,39 @@ function SiteFooter({ t, onNavigate }) {
             </div>
           </div>
         </div>
+
+        <section className="ys-ftr-ceo" aria-labelledby="ys-ftr-ceo-title" lang="en">
+          <p id="ys-ftr-ceo-title" className="ys-ftr-ceo__byline">
+            <span className="ys-ftr-ceo__label">{t("ftrCeoCreated")}</span>{" "}
+            <strong className="ys-ftr-ceo__name">{t("fdName")}</strong>
+          </p>
+          <p className="ys-ftr-ceo__role">
+            <em>{t("ftrCeoRoleOfficial")}</em>
+          </p>
+          <p className="ys-ftr-ceo__org">
+            <strong>{t("fdOrg")}</strong>
+          </p>
+          <div className="ys-ftr-ceo__links">
+            <a className="ys-ftr-ceo__link" href={`mailto:${CEO_CONTACT.email}`}>
+              <span className="ys-ftr-ceo__link-ico" aria-hidden="true">✉️</span>
+              <span>
+                <b>{t("ftrCeoEmail")}</b> {CEO_CONTACT.email}
+              </span>
+            </a>
+            <a
+              className="ys-ftr-ceo__link"
+              href={CEO_CONTACT.site}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <span className="ys-ftr-ceo__link-ico" aria-hidden="true">🌐</span>
+              <span>
+                <b>{t("ftrCeoWebsite")}</b> {CEO_CONTACT.siteLabel}
+              </span>
+            </a>
+          </div>
+          <p className="ys-ftr-ceo__slogan">{t("ftrSloganOfficial")}</p>
+        </section>
 
         <div className="ys-ftr-bot">
           <span className="ys-mr">

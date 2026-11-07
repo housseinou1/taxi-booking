@@ -132,6 +132,11 @@ const en = {
   ftrDeletion: "Account Deletion",
   ftrMade: "Proudly built in Mauritania", ftrRights: "All rights reserved.",
   ftrNote: "Preview — not deployed. Links are illustrative until the redesigned pages ship.",
+  ftrCeoCreated: "Created by:",
+  ftrCeoRoleOfficial: "Chief Executive Officer (CEO)",
+  ftrCeoEmail: "Email:",
+  ftrCeoWebsite: "Website:",
+  ftrSloganOfficial: "YALA Technologies | Moving Mauritania Forward",
 
   /* ---- Rider page ---- */
   rpTitle: "Ride with YALA",
@@ -362,6 +367,11 @@ const fr = {
   ftrTerms: "Conditions d'utilisation", ftrDeletion: "Suppression du compte",
   ftrMade: "Fièrement conçu en Mauritanie", ftrRights: "Tous droits réservés.",
   ftrNote: "Aperçu — non déployé. Les liens sont indicatifs jusqu'à la mise en ligne.",
+  ftrCeoCreated: "Créé par :",
+  ftrCeoRoleOfficial: "Chief Executive Officer (CEO)",
+  ftrCeoEmail: "E-mail :",
+  ftrCeoWebsite: "Site web :",
+  ftrSloganOfficial: "YALA Technologies | Moving Mauritania Forward",
 
   rpTitle: "Voyagez avec YALA",
   rpLead: "Demandez un chauffeur vérifié, consultez le tarif avant de confirmer et suivez votre course en temps réel, du départ à l'arrivée.",
@@ -584,6 +594,11 @@ const ar = {
   ftrTerms: "شروط الخدمة", ftrDeletion: "حذف الحساب",
   ftrMade: "صُنع بفخر في موريتانيا", ftrRights: "جميع الحقوق محفوظة.",
   ftrNote: "معاينة — غير منشورة. الروابط توضيحية حتى نشر الصفحات.",
+  ftrCeoCreated: "أنشأها:",
+  ftrCeoRoleOfficial: "Chief Executive Officer (CEO)",
+  ftrCeoEmail: "البريد الإلكتروني:",
+  ftrCeoWebsite: "الموقع:",
+  ftrSloganOfficial: "YALA Technologies | Moving Mauritania Forward",
 
   rpTitle: "تنقّل مع YALA",
   rpLead: "اطلب سائقًا موثّقًا، واطّلع على الأجرة قبل التأكيد، وتابع رحلتك مباشرة من نقطة الانطلاق إلى الوصول.",
