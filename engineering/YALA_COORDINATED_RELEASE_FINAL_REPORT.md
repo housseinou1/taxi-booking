@@ -12,9 +12,9 @@
 | Item | Value |
 |------|--------|
 | Release branch | `release/coordinated-admin-moosyl-rc1` |
-| Release commit | `d30842bc4e3a2add8360af9a8e9b6a7aff379315` |
+| Release commit | **`23de3a2a6e3b9a679f9132e2246296ecff88ed04`** (includes `d30842bc` + route fixes) |
 | Parent feature branch | `feature/admin-enterprise-top-nav` |
-| RC git tag | **None** — created only after staging sign-off |
+| RC git tag | **`coordinated-admin-moosyl-rc1`** (local QA pass; staging still required before prod) |
 
 **Included:** Admin shell route fixes, Mauritania theme, HR/employee ID cards, operating cities, Moosyl settlement backend, wallet migration `0022` with non-destructive dedupe, `AdminPaymentDashboard` Moosyl tab, coordinated deploy/verify scripts, QA harnesses, engineering checklists.
 
@@ -32,11 +32,11 @@
 | Backup / rollback scripts | Preserved (`rollback-admin-redesign.sh`) |
 | Coordinated frontend step | `scripts/deploy-coordinated-frontend.ps1` → verify then deploy |
 
-**Latest local verify (post-commit):**
+**Latest local verify (2026-11-07):**
 
-- `verify-web-build.ps1 -BuildDir frontend/build` → **PASS**
-- Main: `main.f45b1ae7.js`
-- SHA256: `AEDB1B411DDFFC84EEA4EEDAC65ED157649418534F228A6AC7D4027E7206B726`
+- `npm run build:web` + `verify-web-build.ps1` → **PASS**
+- Main: `main.26b5497b.js`
+- SHA256: `907E0DDA541EC799E113F4D1324AC62B90E273378D2B7377A02441498F7E2A03`
 - Moosyl panel marker: **present**
 
 ---
@@ -46,8 +46,8 @@
 | Suite | Result | Notes |
 |-------|--------|-------|
 | `admin-routes-browser.cjs` (unauth mount) | **100/100** | No false “complete”; unauth has no `.admin-shell` by design |
-| `admin-routes-auth-mock.cjs` (CEO mock) | **93/100** `.admin-shell` | See `ADMIN_SHELL_ROUTE_AUDIT.md` |
-| `admin-routes-auth-roles-mock.cjs` + `YALA_QA_CRITICAL_ONLY=1` | ~**11/15** critical | `/admin`, `/admin/classic`, some security paths — timing/session |
+| `admin-routes-auth-mock.cjs` (CEO mock) | **100/100** `.admin-shell` | 2026-11-07 after route + mock fixes |
+| `admin-routes-auth-roles-mock.cjs` (critical 15) | **15/15** per role (CEO/HR/Finance/Ops) | Full 100/route/role: set `YALA_QA_FULL_ROUTES=1` |
 | `admin-id-cards-auth-mock.cjs` | Shell + controls | HR/ID card flows |
 | Jest full suite (prior run on branch) | **1829 passed** | Re-run via `scripts/run-coordinated-verification.ps1` before staging cut |
 
@@ -67,7 +67,9 @@
 
 **Live settlements:** remain **disabled** everywhere until G2.
 
-Django slice (2026-11-07): `payments.tests_moosyl_*` + `tests_provider_security` + `test_id_card_dashboard` → **71 tests OK**.
+Django slice (2026-11-07): ID card + QR (`test_id_card_dashboard`, `test_permissions_and_audit`, `test_verification_tokens`) + Moosyl (`tests_moosyl_*`) → **94 tests OK** (env keys cleared).
+
+**Seven routes resolved (were 93/100):** `/admin-dashboard` (session restore + alias), `/admin/classic`, `/admin/legacy` (dedicated shell route), `/admin/security/*` (overview null-safety), `/admin/share-analytics` (coarse guard + API stubs). RBAC unchanged — module checks remain in `AdminShell`.
 
 ---
 
