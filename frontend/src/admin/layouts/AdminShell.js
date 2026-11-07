@@ -61,15 +61,23 @@ function AdminShellInner({ pathname, title, children }) {
   }, []);
 
   if (loading) {
-    return <AdminPageLoader label="Loading admin permissions…" />;
+    return (
+      <div className="admin-shell admin-shell--topnav admin-shell--flag admin-shell--boot">
+        <AdminPageLoader label="Loading admin permissions…" />
+      </div>
+    );
   }
 
   if (error) {
     return (
-      <AdminServerErrorPage
-        message={error}
-        onRetry={() => reloadPermissions(true)}
-      />
+      <div className="admin-shell admin-shell--topnav admin-shell--flag">
+        <main className="admin-shell__main" id="admin-main-content">
+          <AdminServerErrorPage
+            message={error}
+            onRetry={() => reloadPermissions(true)}
+          />
+        </main>
+      </div>
     );
   }
 

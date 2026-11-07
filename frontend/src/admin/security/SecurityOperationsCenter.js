@@ -203,7 +203,14 @@ export default function SecurityOperationsCenter({ pathname: pathnameProp } = {}
     loadIssues();
   }, [loadIssues]);
 
-  const overviewCards = overview
+  const overviewReady =
+    overview &&
+    overview.audit &&
+    overview.administrators &&
+    overview.fraud &&
+    overview.delivery_verification;
+
+  const overviewCards = overviewReady
     ? [
         { label: "Audit events (24h)", value: overview.audit.last_24h, hint: `${overview.audit.total} total` },
         { label: "High-risk actions (7d)", value: overview.audit.high_risk_last_7d },

@@ -7,6 +7,7 @@
 const { chromium } = require("@playwright/test");
 const fs = require("fs");
 const path = require("path");
+const { mockFulfill, CLEAR_PERMISSION_CACHE } = require("./admin-mock-api.cjs");
 
 const BASE = (process.argv[2] || "http://127.0.0.1:5599").replace(/\/$/, "");
 const OUT = path.join(__dirname, "admin-routes-auth-mock-report.json");
@@ -48,6 +49,7 @@ const PERMISSIONS = {
     "launch",
     "business",
     "marketing",
+    "fleet",
   ],
   feature_flags: {},
   assigned_city: { id: 1, name: "Nouakchott" },
@@ -96,23 +98,7 @@ async function installMocks(page) {
         }),
       });
     }
-    if (p.includes("/operations/admin/me/permissions/")) {
-      return route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify(PERMISSIONS),
-      });
-    }
-    if (p.includes("/locations/operating-cities")) {
-      return route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify([
-          { id: 1, name: "Nouakchott", slug: "nouakchott", is_major: true },
-        ]),
-      });
-    }
-    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({}) });
+    return mockFulfill(route, PERMISSIONS);
   });
 }
 
@@ -124,28 +110,42 @@ async function installMocks(page) {
 
   const browser = await chromium.launch(launchOpts);
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const sessionSeed = {
+    access: jwt(),
+    refresh: jwt(),
+    user: USER,
+    clearScript: CLEAR_PERMISSION_CACHE,
+  };
+  await context.addInitScript((seed) => {
+    try {
+      // eslint-disable-next-line no-eval
+      eval(seed.clearScript);
+      localStorage.setItem("access", seed.access);
+      localStorage.setItem("refresh", seed.refresh);
+      localStorage.setItem("user", JSON.stringify(seed.user));
+    } catch {
+      /* about:blank */
+    }
+  }, sessionSeed);
   const page = await context.newPage();
   await installMocks(page);
-
-  await page.goto(`${BASE}/admin`, { waitUntil: "domcontentloaded" });
-  await page.evaluate(
-    ({ access, refresh, user }) => {
-      localStorage.setItem("access", access);
-      localStorage.setItem("refresh", refresh);
-      localStorage.setItem("user", JSON.stringify(user));
-    },
-    { access: jwt(), refresh: jwt(), user: USER }
-  );
+  await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded", timeout: 20000 });
 
   const seedSession = async () => {
-    await page.evaluate(
-      ({ access, refresh, user }) => {
-        localStorage.setItem("access", access);
-        localStorage.setItem("refresh", refresh);
-        localStorage.setItem("user", JSON.stringify(user));
-      },
-      { access: jwt(), refresh: jwt(), user: USER }
-    );
+    try {
+      await page.evaluate(
+        ({ access, refresh, user, clearScript }) => {
+          // eslint-disable-next-line no-eval
+          eval(clearScript);
+          localStorage.setItem("access", access);
+          localStorage.setItem("refresh", refresh);
+          localStorage.setItem("user", JSON.stringify(user));
+        },
+        { ...sessionSeed }
+      );
+    } catch (err) {
+      if (!String(err.message || "").includes("Execution context was destroyed")) throw err;
+    }
   };
 
   const results = [];
@@ -153,9 +153,14 @@ async function installMocks(page) {
     let row = { route, mounted: 0, hasAdminShell: false, hasForbidden: false, controlCount: 0 };
     try {
       await seedSession();
-      await page.goto(`${BASE}${route}`, { waitUntil: "load", timeout: 45000 });
       try {
-        await page.waitForSelector(".admin-shell", { timeout: 12000 });
+        await page.goto(`${BASE}${route}`, { waitUntil: "load", timeout: 45000 });
+      } catch (err) {
+        if (!String(err.message || "").includes("interrupted")) throw err;
+        await page.waitForLoadState("load", { timeout: 15000 }).catch(() => {});
+      }
+      try {
+        await page.waitForSelector(".admin-shell", { timeout: 20000 });
       } catch {
         /* some routes intentionally differ */
       }

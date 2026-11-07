@@ -629,10 +629,7 @@ function App() {
     else if (currentPath === "/admin/delivery/merchants") setPage("admin-delivery-merchants");
     else if (currentPath === "/admin/bi-growth" || currentPath === "/admin/growth-intelligence") setPage("admin-bi-growth");
     else if (currentPath === "/admin/launch-growth" || currentPath === "/admin/growth-sprint") setPage("admin-launch-growth");
-    else if (currentPath === "/admin/legacy") {
-      window.history.replaceState(null, "", "/admin/classic");
-      setPage("admin-classic");
-    }
+    else if (currentPath === "/admin/legacy") setPage("admin-legacy");
     else if (currentPath === "/admin/security" || currentPath === "/admin/security/audit" || currentPath === "/admin/security/fraud") setPage("admin-security");
     else if (currentPath === "/admin/withdrawals") setPage("admin-withdrawals");
   else if (currentPath === "/admin/withdrawal-accounts") setPage("admin-withdrawal-accounts");
@@ -1919,8 +1916,10 @@ function App() {
   if (page === "admin") {
     // Redesigned Admin home. Rendered INSIDE AdminShell so the existing
     // sidebar, header and RBAC filtering are all preserved.
+    const adminHomePath =
+      currentPath === "/admin-dashboard" ? "/admin-dashboard" : "/admin";
     return withInstall(
-      <AdminShellPage pathname="/admin" title="">
+      <AdminShellPage pathname={adminHomePath} title="">
         <AdminHomeDashboard embedded />
       </AdminShellPage>
     );
@@ -1931,6 +1930,14 @@ function App() {
     // /admin/classic. Shares the same AdminShell chrome and RBAC.
     return withInstall(
       <AdminShellPage pathname="/admin/classic" title="Operations Console">
+        <AdminDashboard embedded />
+      </AdminShellPage>
+    );
+  }
+
+  if (page === "admin-legacy") {
+    return withInstall(
+      <AdminShellPage pathname="/admin/legacy" title="Operations Console">
         <AdminDashboard embedded />
       </AdminShellPage>
     );
@@ -2079,7 +2086,6 @@ function App() {
 function isProtectedPage(page) {
   return [
     "admin",
-    "admin-share-analytics",
     "delivery-admin",
     "driver",
     "driver-profile",

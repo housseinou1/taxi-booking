@@ -7,6 +7,7 @@
 const { chromium } = require("@playwright/test");
 const fs = require("fs");
 const path = require("path");
+const { mockFulfill, CLEAR_PERMISSION_CACHE } = require("./admin-mock-api.cjs");
 
 const BASE = (process.argv[2] || "http://127.0.0.1:5599").replace(/\/$/, "");
 const OUT = path.join(__dirname, "admin-routes-auth-roles-mock-report.json");
@@ -113,40 +114,22 @@ async function installMocks(page, profileKey) {
     assigned_city: { id: 1, name: "Nouakchott" },
   };
 
-  await page.route("**/*", (route) => {
-    const req = route.request();
-    const rt = req.resourceType();
-    if (rt !== "xhr" && rt !== "fetch") return route.continue();
-    const p = new URL(req.url()).pathname;
-    if (p.includes("/operations/admin/me/permissions/")) {
-      return route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify(permissions),
-      });
-    }
-    if (p.includes("/locations/operating-cities")) {
-      return route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify([{ id: 1, name: "Nouakchott", slug: "nouakchott", is_major: true }]),
-      });
-    }
-    return route.fulfill({ status: 200, contentType: "application/json", body: "{}" });
-  });
+  await page.route("**/*", (route) => mockFulfill(route, permissions));
 
   return { user, access: jwt(), refresh: jwt() };
 }
 
 async function visitRoute(page, route, session) {
-  await page.goto(`${BASE}/login`, { waitUntil: "domcontentloaded", timeout: 30000 });
+  await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded", timeout: 20000 });
   await page.evaluate(
-    ({ access, refresh, user }) => {
+    ({ access, refresh, user, clearScript }) => {
+      // eslint-disable-next-line no-eval
+      eval(clearScript);
       localStorage.setItem("access", access);
       localStorage.setItem("refresh", refresh);
       localStorage.setItem("user", JSON.stringify(user));
     },
-    session
+    { ...session, clearScript: CLEAR_PERMISSION_CACHE }
   );
   try {
     await page.goto(`${BASE}${route}`, { waitUntil: "load", timeout: 45000 });
@@ -179,7 +162,12 @@ async function visitRoute(page, route, session) {
 }
 
 (async () => {
-  const routes = process.env.YALA_QA_CRITICAL_ONLY === "1" ? CRITICAL_ROUTES : loadRoutes();
+  const routes =
+    process.env.YALA_QA_CRITICAL_ONLY === "1"
+      ? CRITICAL_ROUTES
+      : process.env.YALA_QA_FULL_ROUTES === "1"
+        ? loadRoutes()
+        : CRITICAL_ROUTES;
   const launchOpts = { headless: true };
   const exe = resolveChromium();
   if (exe) launchOpts.executablePath = exe;
