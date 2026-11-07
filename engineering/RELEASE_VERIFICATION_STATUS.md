@@ -3,7 +3,7 @@
 **Date:** 2026-11-07  
 **RC branch:** `release/coordinated-admin-moosyl-rc1`  
 **RC1.3 (frozen):** tag `coordinated-admin-moosyl-rc1.3` → **`dd471e26`** (unchanged)  
-**Latest staging candidate:** `coordinated-admin-moosyl-rc1.5` → *see git tag after this commit*  
+**Latest staging candidate:** `coordinated-admin-moosyl-rc1.5` → **`69be7f60`**  
 **Production / live Moosyl:** **HOLD** (G1 / G2)
 
 ---
