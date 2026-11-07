@@ -9,8 +9,29 @@ const SECURITY_OVERVIEW = {
 };
 
 const SECURITY_AUDIT = { results: [], count: 0, page: 1, total_pages: 1 };
-const SECURITY_ACCESS = { results: [], summary: { flagged: 0 } };
-const SECURITY_ISSUES = { items: [] };
+const SECURITY_ACCESS = {
+  results: [],
+  summary: {
+    total: 0,
+    protected: 0,
+    without_totp: 0,
+    stale_login: 0,
+    never_logged_in: 0,
+  },
+};
+const SECURITY_ISSUES = {
+  items: [
+    {
+      id: "mock-1",
+      title: "CSS order (informational)",
+      status: "tracked",
+      severity: "low",
+      summary: "Mock QA stub — no production state.",
+      owner_action: "Monitor in staging.",
+      checks: [{ name: "build", ok: true, detail: "verify-web-build" }],
+    },
+  ],
+};
 
 const SHARE_ANALYTICS = {
   total_shares: 0,

@@ -23,7 +23,9 @@
 | Admin finance panel UI | `MoosylPaymentPanel.js` + Jest |
 | Checkout spellings (masrvi/seddad legacy) | `paymentApi.js`, `moosyl_views.py` |
 
-**Automated:** `payments.tests_moosyl_options` + `tests_moosyl_webhook` + `tests_provider_security` → **70 tests OK** (local run 2026-11-07).
+**Automated:** `payments.tests_moosyl_options` + `tests_moosyl_webhook` + `tests_provider_security` (+ wallet inventory) → **194+ tests OK** in coordinated slice (local 2026-11-07).
+
+**Local verification script:** `scripts/run-coordinated-verification.ps1` (Django Moosyl + Jest + `build:web`).
 
 ---
 

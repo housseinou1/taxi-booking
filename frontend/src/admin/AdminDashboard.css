@@ -26,6 +26,18 @@
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
+/* Legacy / classic console inside horizontal AdminShell — Mauritanian tokens */
+.admin-shell .admin-dashboard {
+  min-height: auto;
+  background: transparent;
+  color: var(--admin-text, var(--text-light));
+  --primary-green: var(--yala-mr-emerald, #006233);
+  --primary-green-light: var(--yala-mr-emerald-mid, #007a40);
+  --dark-bg: transparent;
+  --panel-bg: var(--admin-surface-alt, #052538);
+  --border-color: var(--admin-border, #3a5f4b);
+}
+
 /* Header and Breadcrumb */
 .admin-header {
   background-color: var(--primary-green);

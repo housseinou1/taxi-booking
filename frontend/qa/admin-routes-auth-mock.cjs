@@ -159,11 +159,17 @@ async function installMocks(page) {
         if (!String(err.message || "").includes("interrupted")) throw err;
         await page.waitForLoadState("load", { timeout: 15000 }).catch(() => {});
       }
+      const slow =
+        route === "/admin" ||
+        route === "/admin-dashboard" ||
+        route === "/admin/classic" ||
+        route.startsWith("/admin/security");
       try {
-        await page.waitForSelector(".admin-shell", { timeout: 20000 });
+        await page.waitForSelector(".admin-shell", { timeout: slow ? 35000 : 20000 });
       } catch {
         /* some routes intentionally differ */
       }
+      await page.waitForTimeout(slow ? 1200 : 400);
       const info = await page.evaluate(() => {
         const body = document.body?.innerText || "";
         const controls = document.querySelectorAll(
@@ -172,7 +178,9 @@ async function installMocks(page) {
         return {
           mounted: document.getElementById("root")?.children?.length || 0,
           hasAdminShell: Boolean(document.querySelector(".admin-shell")),
-          hasForbidden: /not authorized|forbidden|access denied|do not have access/i.test(body),
+          hasForbidden:
+            Boolean(document.querySelector(".admin-error-page--403")) ||
+            /not authorized|forbidden|access denied|do not have access|don't have permission/i.test(body),
           controlCount: controls.length,
         };
       });

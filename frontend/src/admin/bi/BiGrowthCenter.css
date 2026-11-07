@@ -6,8 +6,17 @@
 
 .admin-shell .bi-growth {
   --bg: transparent;
+  --accent: var(--admin-accent, #ffc400);
+  --gold: var(--admin-accent, #ffc400);
+  --green: var(--admin-success, #6ee7b7);
+  --card: var(--admin-surface-alt, rgba(2, 44, 34, 0.92));
+  --border: var(--admin-border, rgba(248, 250, 245, 0.14));
+  --text: var(--admin-text, #f8faf5);
+  --muted: var(--admin-text-muted, rgba(248, 250, 245, 0.72));
   min-height: auto;
   padding-top: 0;
+  background: transparent;
+  color: var(--text);
 }
 
 .bi-growth {

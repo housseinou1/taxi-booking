@@ -8,6 +8,32 @@
   gap: 18px;
 }
 
+.sec-console__route-hint {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--admin-border, rgba(248, 250, 245, 0.14));
+  background: var(--admin-surface-muted, rgba(6, 78, 59, 0.35));
+  color: var(--admin-text-muted, rgba(248, 250, 245, 0.85));
+  font-size: 0.88rem;
+}
+
+.admin-shell .sec-console__section {
+  background: var(--admin-surface-alt, rgba(2, 44, 34, 0.92));
+  border-color: var(--admin-border, rgba(248, 250, 245, 0.14));
+  color: var(--admin-text, #f8faf5);
+}
+
+.admin-shell .sec-console__heading,
+.admin-shell .sec-console__summary {
+  color: var(--admin-text-muted, rgba(248, 250, 245, 0.85));
+}
+
+.sec-console--focus-audit .sec-console__section:first-of-type + .sec-console__section {
+  outline: 2px solid var(--admin-accent, #ffc400);
+  outline-offset: 2px;
+}
+
 .sec-console__kpis {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));

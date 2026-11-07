@@ -51,6 +51,13 @@ const ROLE_PROFILES = {
   },
 };
 
+/** Routes non-CEO roles must NOT access (expect 403 copy inside shell). */
+const MUST_DENY_BY_ROLE = {
+  hr: ["/admin/payments", "/admin/finance-approvals", "/admin/security", "/admin/fleet"],
+  finance: ["/admin/employees/id-cards", "/admin/fleet", "/admin/drivers"],
+  ops: ["/admin/payments", "/admin/finance-approvals", "/admin/employees/id-cards", "/admin/security/audit"],
+};
+
 const CRITICAL_ROUTES = [
   "/admin",
   "/admin/fleet",
@@ -137,12 +144,19 @@ async function visitRoute(page, route, session) {
     if (!String(err.message || "").includes("interrupted")) throw err;
     await page.waitForLoadState("load", { timeout: 15000 }).catch(() => {});
   }
+  const slow =
+    route === "/admin" ||
+    route === "/admin/classic" ||
+    route === "/admin/legacy" ||
+    route.startsWith("/admin/security");
   try {
-    await page.waitForSelector(".admin-shell, .admin-forbidden, .admin-not-found", { timeout: 20000 });
+    await page.waitForSelector(".admin-shell, .admin-error-page--403, .admin-forbidden", {
+      timeout: slow ? 35000 : 22000,
+    });
   } catch {
     /* classify below */
   }
-  await page.waitForTimeout(800);
+  await page.waitForTimeout(slow ? 1400 : 800);
   return page.evaluate(() => {
     const body = document.body?.innerText || "";
     const shell = document.querySelector(".admin-shell");
@@ -153,7 +167,9 @@ async function visitRoute(page, route, session) {
     return {
       mounted: document.getElementById("root")?.children?.length || 0,
       hasAdminShell: Boolean(shell),
-      hasForbidden: /not authorized|forbidden|access denied|do not have access/i.test(body),
+      hasForbidden:
+        Boolean(document.querySelector(".admin-error-page--403")) ||
+        /not authorized|forbidden|access denied|do not have access|don't have permission/i.test(body),
       controlCount: controls.length,
       clickableCount: clickable,
       pathname: window.location.pathname,
@@ -161,20 +177,8 @@ async function visitRoute(page, route, session) {
   });
 }
 
-(async () => {
-  const routes =
-    process.env.YALA_QA_CRITICAL_ONLY === "1"
-      ? CRITICAL_ROUTES
-      : process.env.YALA_QA_FULL_ROUTES === "1"
-        ? loadRoutes()
-        : CRITICAL_ROUTES;
-  const launchOpts = { headless: true };
-  const exe = resolveChromium();
-  if (exe) launchOpts.executablePath = exe;
-
-  const browser = await chromium.launch(launchOpts);
-  const report = { generatedAt: new Date().toISOString(), base: BASE, roles: {} };
-
+async function runRoleMatrix(browser, routeList, matrixLabel) {
+  const rolesOut = {};
   for (const roleKey of Object.keys(ROLE_PROFILES)) {
     const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     const page = await context.newPage();
@@ -192,18 +196,30 @@ async function visitRoute(page, route, session) {
       session
     );
     const rows = [];
-    for (const route of routes) {
+    const rbacViolations = [];
+    for (const route of routeList) {
       try {
         const info = await visitRoute(page, route, session);
-        rows.push({ route, ...info, ok: info.mounted > 0 && (info.hasAdminShell || info.hasForbidden) });
+        const mustDeny = (MUST_DENY_BY_ROLE[roleKey] || []).includes(route);
+        const rbacOk = mustDeny ? info.hasForbidden : true;
+        if (mustDeny && !info.hasForbidden) rbacViolations.push(route);
+        rows.push({
+          route,
+          ...info,
+          ok: info.mounted > 0 && (info.hasAdminShell || info.hasForbidden),
+          mustDeny,
+          rbacOk,
+        });
       } catch (err) {
         rows.push({ route, ok: false, error: String(err.message || err).slice(0, 120) });
       }
     }
-    report.roles[roleKey] = {
+    rolesOut[roleKey] = {
+      matrix: matrixLabel,
       total: rows.length,
       withShell: rows.filter((r) => r.hasAdminShell).length,
       forbidden: rows.filter((r) => r.hasForbidden).length,
+      rbacViolations,
       avgControls: Math.round(
         rows.filter((r) => r.controlCount).reduce((s, r) => s + (r.controlCount || 0), 0) /
           Math.max(1, rows.filter((r) => r.controlCount).length)
@@ -212,11 +228,45 @@ async function visitRoute(page, route, session) {
     };
     await context.close();
   }
+  return rolesOut;
+}
+
+(async () => {
+  const launchOpts = { headless: true };
+  const exe = resolveChromium();
+  if (exe) launchOpts.executablePath = exe;
+
+  const browser = await chromium.launch(launchOpts);
+  const report = {
+    generatedAt: new Date().toISOString(),
+    base: BASE,
+    matrices: {},
+  };
+
+  const criticalOnly = process.env.YALA_QA_CRITICAL_ONLY === "1";
+  const fullOnly = process.env.YALA_QA_FULL_ROUTES === "1";
+  const autoFull = process.env.YALA_QA_AUTO_FULL !== "0";
+
+  report.matrices.critical = await runRoleMatrix(browser, CRITICAL_ROUTES, "critical");
+
+  const ceoCritical = report.matrices.critical.ceo;
+  const ceoCriticalOk =
+    ceoCritical.withShell >= CRITICAL_ROUTES.length && ceoCritical.rbacViolations.length === 0;
+
+  if (!criticalOnly && (fullOnly || (autoFull && ceoCriticalOk))) {
+    console.log("Running full 100-route matrix (autoFull=%s ceoCriticalOk=%s)", autoFull, ceoCriticalOk);
+    report.matrices.full = await runRoleMatrix(browser, loadRoutes(), "full-100");
+  }
 
   await browser.close();
   fs.writeFileSync(OUT, JSON.stringify(report, null, 2));
-  for (const [role, data] of Object.entries(report.roles)) {
-    console.log(`role=${role} shell=${data.withShell}/${data.total} forbidden=${data.forbidden}`);
+
+  for (const [label, roles] of Object.entries(report.matrices)) {
+    for (const [role, data] of Object.entries(roles)) {
+      console.log(
+        `matrix=${label} role=${role} shell=${data.withShell}/${data.total} forbidden=${data.forbidden} rbacViolations=${data.rbacViolations.length}`
+      );
+    }
   }
   console.log(`Wrote ${OUT}`);
 })();

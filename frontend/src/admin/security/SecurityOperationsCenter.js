@@ -106,6 +106,12 @@ export default function SecurityOperationsCenter({ pathname: pathnameProp } = {}
   const pathname =
     pathnameProp ||
     (typeof window !== "undefined" ? window.location.pathname : "/admin/security");
+  const focus =
+    pathname.includes("/security/audit")
+      ? "audit"
+      : pathname.includes("/security/fraud")
+        ? "fraud"
+        : "overview";
   const [overview, setOverview] = useState(null);
   const [overviewError, setOverviewError] = useState("");
 
@@ -294,7 +300,14 @@ export default function SecurityOperationsCenter({ pathname: pathnameProp } = {}
 
   return (
     <AdminShellPage pathname={pathname} title="Security Operations Center">
-      <div className="sec-console">
+      <div className={`sec-console sec-console--focus-${focus}`}>
+        <p className="sec-console__route-hint" data-focus={focus}>
+          {focus === "audit"
+            ? "Audit stream focus — filters below apply to the administrative audit log."
+            : focus === "fraud"
+              ? "Fraud & access focus — review flagged administrators and outstanding items."
+              : "Security posture overview — read-only supervision."}
+        </p>
         {overviewError ? (
           <AlertBanner tone="warning" title="Posture unavailable">
             {overviewError}
@@ -312,7 +325,7 @@ export default function SecurityOperationsCenter({ pathname: pathnameProp } = {}
           public activation. Founder/CEO protections remain enforced by the API.
         </AlertBanner>
 
-        <section className="sec-console__section">
+        <section className="sec-console__section" id="sec-console-audit">
           <h3 className="sec-console__heading">Administrative audit stream</h3>
           <DataTable
             title="Audit events"

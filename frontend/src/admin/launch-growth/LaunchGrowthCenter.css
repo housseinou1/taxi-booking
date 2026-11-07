@@ -4,8 +4,16 @@
 
 .admin-shell .launch-growth {
   --lg-bg: transparent;
+  --lg-gold: var(--admin-accent, #ffc400);
+  --lg-green: var(--admin-success, #6ee7b7);
+  --lg-card: var(--admin-surface-alt, rgba(2, 44, 34, 0.92));
+  --lg-border: var(--admin-border, rgba(248, 250, 245, 0.14));
+  --lg-text: var(--admin-text, #f8faf5);
+  --lg-muted: var(--admin-text-muted, rgba(248, 250, 245, 0.72));
   min-height: auto;
   padding-top: 0;
+  background: transparent;
+  color: var(--lg-text);
 }
 
 .launch-growth {
