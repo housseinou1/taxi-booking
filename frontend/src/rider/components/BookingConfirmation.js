@@ -3,6 +3,7 @@ import PromoCodeInput from './PromoCodeInput';
 import RideTypeSelector from './RideTypeSelector';
 import RouteTimeline, { buildBookingRoutePoints } from '../../components/RouteTimeline';
 import RiderTermsAcceptance from '../../legal/components/RiderTermsAcceptance';
+import { filterRiderPaymentOptions } from '../../config/backendFeatureGates';
 import './BookingConfirmation.css';
 /**
  * Ride type display labels.
@@ -14,13 +15,15 @@ const RIDE_TYPE_LABELS = {
   share: 'Share',
 };
 
-const PAYMENT_OPTIONS = [
+const BASE_PAYMENT_OPTIONS = [
   { id: 'cash', label: 'Cash' },
   { id: 'bankily', label: 'Bankily' },
   { id: 'masrvi', label: 'Masravi' },
   { id: 'seddad', label: 'Sedad' },
   { id: 'card', label: 'Card' },
 ];
+
+const PAYMENT_OPTIONS = filterRiderPaymentOptions(BASE_PAYMENT_OPTIONS);
 
 function formatDistance(distanceKm) {
   const distance = Number(distanceKm);

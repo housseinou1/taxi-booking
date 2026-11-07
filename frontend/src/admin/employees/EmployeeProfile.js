@@ -20,6 +20,7 @@ import {
 import EmployeePhotoPanel from "./EmployeePhotoPanel";
 import EmployeeSignaturePanel from "./EmployeeSignaturePanel";
 import EmployeeCardPanel from "./EmployeeCardPanel";
+import { idCardAdminUiEnabled } from "../../config/backendFeatureGates";
 
 function dateOnly(iso) {
   if (!iso) return "—";
@@ -359,16 +360,18 @@ export default function EmployeeProfile({
             </section>
           ) : null}
 
-          <section>
-            <h3 className="beta__section-title">ID card management</h3>
-            <EmployeeCardPanel
-              employeeNumber={employeeNumber}
-              canManage={canManage}
-              canAdminister={canAdminister}
-              canViewDob={canViewDob}
-              notify={notify}
-            />
-          </section>
+          {idCardAdminUiEnabled() ? (
+            <section>
+              <h3 className="beta__section-title">ID card management</h3>
+              <EmployeeCardPanel
+                employeeNumber={employeeNumber}
+                canManage={canManage}
+                canAdminister={canAdminister}
+                canViewDob={canViewDob}
+                notify={notify}
+              />
+            </section>
+          ) : null}
 
           {canAdminister ? (
             <section>

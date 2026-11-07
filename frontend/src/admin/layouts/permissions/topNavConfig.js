@@ -6,6 +6,7 @@
  * `sidebarNavConfig.js` (same RBAC rules as the legacy sidebar).
  */
 import { itemAllowed } from "./sidebarNavConfig";
+import { idCardAdminUiEnabled } from "../../../config/backendFeatureGates";
 
 export const TOP_NAV_GROUPS = [
   {
@@ -207,7 +208,10 @@ export const TOP_NAV_GROUPS = [
  */
 export function filterTopNavItems(permissions) {
   return TOP_NAV_GROUPS.map((group) => {
-    const children = (group.children || []).filter((child) => itemAllowed(child, permissions));
+    const children = (group.children || []).filter((child) => {
+      if (child.id === "hr-id-cards" && !idCardAdminUiEnabled()) return false;
+      return itemAllowed(child, permissions);
+    });
     if (!children.length) return null;
     return { ...group, children };
   }).filter(Boolean);

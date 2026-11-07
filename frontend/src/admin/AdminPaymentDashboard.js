@@ -14,6 +14,7 @@ import {
   fetchPaymentsOversight,
 } from "../payments/paymentApi";
 import MoosylPaymentPanel from "./finance/MoosylPaymentPanel";
+import { moosylUiEnabled } from "../config/backendFeatureGates";
 import "./AdminPaymentCenter.css";
 
 /**
@@ -30,7 +31,7 @@ const PERIODS = [
   { value: "all", label: "All time" },
 ];
 
-const TABS = [
+const BASE_TABS = [
   { id: "overview", label: "Overview" },
   { id: "transactions", label: "Transactions" },
   { id: "payouts", label: "Payouts" },
@@ -39,10 +40,12 @@ const TABS = [
   { id: "moosyl", label: "Moosyl" },
 ];
 
+function paymentDashboardTabs() {
+  return BASE_TABS.filter((tab) => tab.id !== "moosyl" || moosylUiEnabled());
+}
+
 const PAYOUT_STATUSES = ["pending", "approved", "paid", "rejected"];
 const REFUND_STATUSES = ["requested", "awaiting_ceo", "approved", "rejected", "refunded"];
-
-const TAB_IDS = TABS.map((tab) => tab.id);
 
 /**
  * Reads the initial tab from `?tab=` so sections are deep-linkable
@@ -51,7 +54,8 @@ const TAB_IDS = TABS.map((tab) => tab.id);
 function readInitialTab() {
   try {
     const requested = new URLSearchParams(window.location.search).get("tab");
-    if (requested && TAB_IDS.includes(requested)) return requested;
+    const tabIds = paymentDashboardTabs().map((tab) => tab.id);
+    if (requested && tabIds.includes(requested)) return requested;
   } catch (error) {
     /* malformed query string — use the default */
   }
@@ -116,6 +120,13 @@ export default function AdminPaymentDashboard() {
   const [lastUpdated, setLastUpdated] = useState(null);
   const [failedStatusFilter, setFailedStatusFilter] = useState("all");
   const tabRefs = useRef([]);
+  const tabs = useMemo(() => paymentDashboardTabs(), []);
+
+  useEffect(() => {
+    if (activeTab === "moosyl" && !moosylUiEnabled()) {
+      setActiveTab("overview");
+    }
+  }, [activeTab]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -215,7 +226,7 @@ export default function AdminPaymentDashboard() {
   // ── Tab keyboard navigation (WAI-ARIA tabs pattern) ───────────────────────
   const handleTabKeyDown = useCallback(
     (event, index) => {
-      const lastIndex = TABS.length - 1;
+      const lastIndex = tabs.length - 1;
       let nextIndex = null;
 
       if (event.key === "ArrowRight") nextIndex = index === lastIndex ? 0 : index + 1;
@@ -226,11 +237,11 @@ export default function AdminPaymentDashboard() {
       if (nextIndex === null) return;
 
       event.preventDefault();
-      const nextTab = TABS[nextIndex];
+      const nextTab = tabs[nextIndex];
       setActiveTab(nextTab.id);
       tabRefs.current[nextIndex]?.focus();
     },
-    []
+    [tabs]
   );
 
   // Financial summary cards. Values reuse the existing backend fields verbatim.
@@ -743,7 +754,7 @@ export default function AdminPaymentDashboard() {
 
         {/* Tabs Navigation (WAI-ARIA tabs pattern with arrow-key support) */}
         <div className="admin-payment-center__tabs" role="tablist" aria-label="Payment management sections">
-          {TABS.map((tab, index) => {
+          {tabs.map((tab, index) => {
             const selected = activeTab === tab.id;
             return (
               <button

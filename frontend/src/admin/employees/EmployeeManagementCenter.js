@@ -8,6 +8,7 @@ import EmployeeDirectory from "./EmployeeDirectory";
 import EmployeeRegistrationForm from "./EmployeeRegistrationForm";
 import EmployeeProfile from "./EmployeeProfile";
 import EmployeeIdCardDashboard from "./EmployeeIdCardDashboard";
+import { idCardAdminUiEnabled } from "../../config/backendFeatureGates";
 import "../beta/BetaDashboard.css";
 import "./EmployeeManagementCenter.css";
 import "./EmployeeIdCardDashboard.css";
@@ -20,6 +21,7 @@ const TABS = [
 
 function initialTabFromLocation() {
   if (typeof window !== "undefined" && window.location.pathname.includes("/id-cards")) {
+    if (!idCardAdminUiEnabled()) return "directory";
     return "dashboard";
   }
   const params = new URLSearchParams(window.location.search);
@@ -37,6 +39,17 @@ function EmployeeManagementCenterInner() {
     const sync = () => setTab(initialTabFromLocation());
     window.addEventListener("popstate", sync);
     return () => window.removeEventListener("popstate", sync);
+  }, []);
+
+  useEffect(() => {
+    if (
+      typeof window !== "undefined" &&
+      window.location.pathname.includes("/id-cards") &&
+      !idCardAdminUiEnabled()
+    ) {
+      window.history.replaceState({}, "", "/admin/employees?view=directory");
+      setTab("directory");
+    }
   }, []);
   const [selectedEmployeeNumber, setSelectedEmployeeNumber] = useState(null);
   // Bump to force the directory to reload after a mutation (register/edit).
@@ -104,7 +117,7 @@ function EmployeeManagementCenterInner() {
       </div>
 
       <div className="emp-tabs" role="tablist" aria-label="Employee management sections">
-        {TABS.map((item) => (
+        {TABS.filter((item) => item.id !== "dashboard" || idCardAdminUiEnabled()).map((item) => (
           <button
             key={item.id}
             type="button"
@@ -118,7 +131,7 @@ function EmployeeManagementCenterInner() {
         ))}
       </div>
 
-      {tab === "dashboard" ? (
+      {tab === "dashboard" && idCardAdminUiEnabled() ? (
         <EmployeeIdCardDashboard
           canAdminister={tier.canAdminister}
           notify={notify}
