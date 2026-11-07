@@ -13,9 +13,9 @@
 | Item | Value |
 |------|--------|
 | Branch | `release/coordinated-admin-moosyl-rc1` |
-| Code commit (staging baseline) | `3ac53832a73e10626ba1f4fddf91209e25169265` |
-| HEAD (status docs) | `f37d8b41` (+ pending QA harness commit) |
-| Tag | **`coordinated-admin-moosyl-rc1.2`** (create **`rc1.3`** after final commit) |
+| **Release commit** | **`dd471e26c15e3efd6beff0ffd8543d989cd90fac`** |
+| Prior code baseline | `3ac53832` (admin security/growth/RBAC) |
+| **Tag** | **`coordinated-admin-moosyl-rc1.3`** |
 | Production artifact | `npm run build:web` → `main.e47c65c7.js`, `verify-web-build.ps1` **PASS** |
 
 ---
