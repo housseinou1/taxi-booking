@@ -1,6 +1,26 @@
 # Frontend production deploy — completed 2026-11-07
 
-**Status:** **EXECUTED** (frontend-only, CEO GO).
+**Status:** **EXECUTED** (frontend-only, CEO GO) — homepage corrections live.
+
+## Homepage corrections deploy (2026-11-07)
+
+| Field | Value |
+|-------|--------|
+| **CEO GO** | Frontend-only homepage package |
+| **UTC deploy window** | ~14:30 UTC (backup stamp `20261107-093050` local) |
+| **Git commit** | `413b3e580f04aedbad24b55854a9d6052696015f` |
+| **Bundle** | `main.8c8a9bcd.js` |
+| **Bundle SHA-256** | `D1DE5717D56DED99FEF249C1FC0F903A9CCD899FDA51EEFD0F4BF7EDD1D8804A` |
+| **index.html SHA-256** | `61DA8283EB03D105D20F313A9EDF602C701FDDE61DCF75F9B9ACD0AE9C153556` |
+| **CSS** | `main.6803c35a.css` |
+| **Pre-deploy backup** | `/home/yala/pre-website-deploy-20261107-093050` (`BACKUP_VERIFY=OK`) |
+| **Prior backup** | `/home/yala/pre-website-deploy-20261107-080137` (admin redesign era) |
+| **Rollback** | `scripts/rollback-admin-redesign.sh /home/yala/pre-website-deploy-20261107-093050` |
+| **Replaced bundle** | `main.82b6aa37.js` → `main.8c8a9bcd.js` |
+
+**Smoke:** `https://api.yalataxi.live/health/` **200**; `admin/me/permissions` **401**; `payments/options/` **404** (no live Moosyl options); www `/` `/login` `/rider` `/driver` `/delivery/courier` `/privacy` **200**; live bundle markers: `ys-ftr-ceo`, Login/Cities nav, `REACT_APP_PROD_LEGACY_BACKEND`, CEO email/slogan strings in bundle.
+
+**Backend / DB / migrations / Ride #91:** untouched.
 
 ---
 
