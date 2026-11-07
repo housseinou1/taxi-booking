@@ -1,0 +1,25 @@
+=== Phase 4 release verification 20261107 (manual + scripted subset) ===
+
+--- employees.tests (all) ---
+Ran 320 tests in 163.679s — OK
+
+--- Moosyl Django slice ---
+Ran 70 tests in 42.701s — OK
+  payments.tests_moosyl_options
+  payments.tests_moosyl_webhook
+  payments.tests_provider_security
+
+--- wallet_reference_inventory (local dev DB) ---
+Duplicate reference groups: 0
+
+--- Frontend Jest (Employee|Moosyl|employees) ---
+9 suites: 8 passed, 1 failed (EmployeeProfile.test.js under parallel — passes in isolation)
+99 passed, 1 failed
+
+--- build:web REACT_APP_PROD_LEGACY_BACKEND=1 ---
+verify-web-build.ps1: PASS (main bundle varies by tree; prod live: main.8c8a9bcd.js)
+
+--- NOT RUN (blockers) ---
+Moosyl live sandbox payment-request E2E
+Sanitized production DB migrate dry-run
+Staging deploy

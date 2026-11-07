@@ -1,7 +1,7 @@
 # YALA Technologies — Employee ID Card Management (implementation report)
 
-**Branch:** `feature/admin-enterprise-top-nav`  
-**Status:** Integrated for local/staging QA — **not production-deployed**  
+**Branch:** `release/coordinated-admin-moosyl-rc1`  
+**Status:** Integrated for local/staging QA — **not production-deployed** (see `RELEASE_A_EMPLOYEE_ID_CARDS.md`)  
 **Production migrations:** `employees.0010_idcardofficialsettings` — apply only after CEO approval
 
 ## Summary
