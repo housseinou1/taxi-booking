@@ -1,9 +1,8 @@
 # YALA — Release verification status (actual results)
 
-**Date:** 2026-11-07  
+**Date:** 2026-11-07 (session re-verify)  
 **RC branch:** `release/coordinated-admin-moosyl-rc1`  
-**RC tag:** `coordinated-admin-moosyl-rc1.2` → **`3ac53832`** (security/growth/RBAC QA)  
-Prior: `coordinated-admin-moosyl-rc1.1` (`52f8f7a5`), `coordinated-admin-moosyl-rc1` (`23de3a2a`)  
+**RC tag (staging):** `coordinated-admin-moosyl-rc1.4` → *commit after seed/outbox fix* (prior: `.1` `52f8f7a5`, `.2` `3ac53832`, base `coordinated-admin-moosyl-rc1` `23de3a2a`)  
 **Production / live Moosyl:** **HOLD** (G1 / G2)
 
 ---
@@ -14,7 +13,9 @@ Prior: `coordinated-admin-moosyl-rc1.1` (`52f8f7a5`), `coordinated-admin-moosyl-
 |------|-----------|--------|
 | Admin shell — 7 former gaps | `23de3a2a` + mock re-run | **100/100** mock CEO (`admin-routes-auth-mock.cjs`) |
 | Multi-role mock (critical 15) | RBAC forbidden detection | **15/15** shell; HR **11** forbidden, Finance **9**, Ops **10** on denied routes; **0 rbacViolations** |
-| Mock CEO 100 routes | 2026-11-07 | **100/100** |
+| **Full mock matrix (100 × 4 roles)** | `admin-routes-auth-roles-mock.cjs` | CEO **100/100**; HR/Finance/Ops **100/100** shell, **0 rbacViolations** (forbidden counts HR **82**, Finance **74**, Ops **52**) |
+| Mock CEO 100 routes | 2026-11-07 re-run | **100/100** (`/admin/security/*` mounted) |
+| Pilot `seed_pilot_uat` | nested atomic on partner outbox | **PASS** with `YALA_UAT_LOCAL=1` |
 | Moosyl commissions (taxi 70/30, delivery 80/20, methods) | `payments.tests_moosyl_options` | **PASS** (incl. Bankily / Masravi / Sedad in options API) |
 | Moosyl webhooks, idempotency, security | `tests_moosyl_webhook`, `tests_provider_security` | **PASS** (52+ tests in slice) |
 | Employee ID cards (API) | registration, PDF (no DOB/NI in PDF), QR tokens, public verify redaction, dashboard | **194 tests OK** in combined employee + Moosyl slice |
@@ -32,7 +33,7 @@ Prior: `coordinated-admin-moosyl-rc1.1` (`52f8f7a5`), `coordinated-admin-moosyl-
 | Admin UI clicks (Moosyl tab, refresh) | Pilot UI smoke did not find clickable controls in headless pass (tabs not exercised); **not** counted as functional UI test |
 | PDF print in browser | Backend PDF tests **PASS**; physical print **not** run |
 | Moosyl **per-provider** sandbox settlement (Bankily / Masravi / Sedad) | Options list **tested**; live Moosyl simulate + webhook on staging **not** run |
-| `YALA_QA_FULL_ROUTES=1` (100 routes × 4 roles) | Script ready; **not** executed (runtime) |
+| `YALA_QA_FULL_ROUTES=1` (100 routes × 4 roles) | **Executed** — see full matrix row above |
 | HR / Finance / Ops live browser sweeps | Pilot functional **API** matrix designed; full UI blocked after login rate-limit |
 
 ---
@@ -69,7 +70,7 @@ Prior: `coordinated-admin-moosyl-rc1.1` (`52f8f7a5`), `coordinated-admin-moosyl-
 
 | Scope | Verdict |
 |-------|---------|
-| **Local RC quality** | **GO** to deploy **same tag/branch** to **staging** |
+| **Local RC quality** | **GO** to deploy **`coordinated-admin-moosyl-rc1.4`** (or branch tip) to **staging** |
 | **Production** | **NO-GO** until staging matrix + backup drill + wallet prod-like inventory |
 | **Live payments** | **NO-GO** until sandbox E2E on staging and **G2** |
 

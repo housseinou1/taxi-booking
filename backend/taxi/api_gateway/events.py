@@ -40,13 +40,15 @@ def emit_partner_webhook(event_type: str, payload: dict, app_id: int | None = No
     )
     idempotency_key = hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
+    # Nested atomic: IntegrityError must not mark the caller's settlement/seed transaction dirty.
     try:
-        row = PartnerWebhookOutbox.objects.create(
-            idempotency_key=idempotency_key,
-            event_type=event_type,
-            payload=payload,
-            application_id=app_id,
-        )
+        with transaction.atomic():
+            row = PartnerWebhookOutbox.objects.create(
+                idempotency_key=idempotency_key,
+                event_type=event_type,
+                payload=payload,
+                application_id=app_id,
+            )
     except IntegrityError:
         logger.info(
             "Partner webhook %r already queued (idempotent); no second action taken.",
@@ -54,8 +56,6 @@ def emit_partner_webhook(event_type: str, payload: dict, app_id: int | None = No
         )
         return None
     except Exception:
-        # Recording failed. Never let a notification failure break the caller's transaction
-        # beyond this point; the exception is logged with the payload for manual replay.
         logger.exception(
             "Could not record partner webhook %r in the outbox. payload=%r app_id=%r",
             event_type,
