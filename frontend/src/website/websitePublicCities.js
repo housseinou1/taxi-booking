@@ -1,5 +1,8 @@
 import { API_URL } from "../apiConfig";
-import { normalizeCityNameKey } from "../admin/city/majorOperatingCities";
+import {
+  filterMajorOperatingLocationCities,
+  normalizeCityNameKey,
+} from "../admin/city/majorOperatingCities";
 import { WEBSITE_WILAYAS } from "./websiteWilayas";
 
 function canonicalKey(name) {
@@ -12,26 +15,65 @@ function canonicalKey(name) {
   return key;
 }
 
-/** Merge wilaya catalog with live operating-city API (no auth required on public list). */
+async function fetchOperatingKeysFromDedicatedEndpoint() {
+  const res = await fetch(`${API_URL}/locations/operating-cities/`, {
+    credentials: "same-origin",
+    headers: { Accept: "application/json" },
+  });
+  if (!res.ok) {
+    return { keys: null, error: `operating-cities HTTP ${res.status}` };
+  }
+  const body = await res.json();
+  const rows = Array.isArray(body?.cities) ? body.cities : [];
+  const keys = new Set();
+  rows.forEach((row) => {
+    const key = canonicalKey(row.canonical_name || row.name);
+    if (key) keys.add(key);
+  });
+  return { keys, error: null, source: "operating-cities" };
+}
+
+/** Fallback when prod backend predates /operating-cities/ — derive majors from /locations/cities/. */
+async function fetchOperatingKeysFromCityCatalog() {
+  const res = await fetch(`${API_URL}/locations/cities/`, {
+    credentials: "same-origin",
+    headers: { Accept: "application/json" },
+  });
+  if (!res.ok) {
+    return { keys: null, error: `locations/cities HTTP ${res.status}` };
+  }
+  const list = await res.json();
+  if (!Array.isArray(list)) {
+    return { keys: null, error: "locations/cities invalid JSON" };
+  }
+  const majors = filterMajorOperatingLocationCities(list);
+  const keys = new Set(majors.map((row) => canonicalKey(row.name)));
+  return { keys, error: null, source: "locations/cities" };
+}
+
+/**
+ * Merge wilaya catalog with operating-city data.
+ * serviceStatus per row: live | planned | unknown (unknown when API data unavailable).
+ */
 export async function loadWebsiteCityCatalog() {
-  let operatingKeys = new Set();
-  let nouakchottDistricts = [];
+  let operatingKeys = null;
+  let availabilitySource = null;
   let apiError = null;
+  let nouakchottDistricts = [];
 
   try {
-    const res = await fetch(`${API_URL}/locations/operating-cities/`, {
-      credentials: "same-origin",
-      headers: { Accept: "application/json" },
-    });
-    if (res.ok) {
-      const body = await res.json();
-      const rows = Array.isArray(body?.cities) ? body.cities : [];
-      rows.forEach((row) => {
-        const key = canonicalKey(row.canonical_name || row.name);
-        if (key) operatingKeys.add(key);
-      });
-    } else {
-      apiError = `HTTP ${res.status}`;
+    let result = await fetchOperatingKeysFromDedicatedEndpoint();
+    if (result.keys == null) {
+      const fallback = await fetchOperatingKeysFromCityCatalog();
+      if (fallback.keys != null) {
+        result = fallback;
+      } else {
+        apiError = result.error || fallback.error || "unavailable";
+      }
+    }
+    if (result.keys != null) {
+      operatingKeys = result.keys;
+      availabilitySource = result.source;
     }
   } catch (err) {
     apiError = err?.message || "network";
@@ -55,10 +97,27 @@ export async function loadWebsiteCityCatalog() {
     /* districts optional */
   }
 
-  const entries = WEBSITE_WILAYAS.map((row) => ({
-    ...row,
-    operational: operatingKeys.has(canonicalKey(row.canonical)),
-  }));
+  const availabilityKnown = operatingKeys != null;
 
-  return { entries, nouakchottDistricts, apiError, operatingCount: operatingKeys.size };
+  const entries = WEBSITE_WILAYAS.map((row) => {
+    const key = canonicalKey(row.canonical);
+    let serviceStatus = "unknown";
+    if (availabilityKnown) {
+      serviceStatus = operatingKeys.has(key) ? "live" : "planned";
+    }
+    return {
+      ...row,
+      operational: serviceStatus === "live",
+      serviceStatus,
+    };
+  });
+
+  return {
+    entries,
+    nouakchottDistricts,
+    apiError: availabilityKnown ? null : apiError,
+    availabilityKnown,
+    availabilitySource,
+    operatingCount: operatingKeys?.size ?? 0,
+  };
 }

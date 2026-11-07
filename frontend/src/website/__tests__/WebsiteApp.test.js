@@ -70,6 +70,15 @@ describe("WebsiteApp shell", () => {
     expect(select.value).toBe("en");
   });
 
+  test("shows Sign in to app when a session is stored", () => {
+    localStorage.setItem("access", "website-test-jwt");
+    localStorage.setItem("user", JSON.stringify({ email: "r@test.local", role: "rider" }));
+    render(<WebsiteApp route="home" />);
+    expect(screen.getByRole("button", { name: /sign in to app/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /my account/i })).toBeInTheDocument();
+    localStorage.clear();
+  });
+
   test("login menu routes through /login without exposing bare /admin links", () => {
     const { container } = render(<WebsiteApp route="home" />);
     const links = [...container.querySelectorAll("a")].map((a) => a.getAttribute("href") || "");

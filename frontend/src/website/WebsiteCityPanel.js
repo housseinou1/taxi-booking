@@ -8,7 +8,8 @@ import { IconCar, IconPackage } from "./WebsiteIcons";
 export default function WebsiteCityPanel({ t, selectedCity, onClear }) {
   if (!selectedCity) return null;
 
-  const { city, region, operational, districts = [] } = selectedCity;
+  const { city, region, operational, serviceStatus, districts = [] } = selectedCity;
+  const status = serviceStatus || (operational ? "live" : "planned");
 
   return (
     <section className="ys-city-panel" id="city-services" aria-labelledby="ys-city-panel-title">
@@ -23,11 +24,19 @@ export default function WebsiteCityPanel({ t, selectedCity, onClear }) {
           </button>
         </div>
 
-        <p className={`ys-city-panel__status${operational ? " ys-city-panel__status--on" : ""}`}>
-          {operational ? t("cityPanelOperational") : t("cityPanelPlanned")}
+        <p
+          className={`ys-city-panel__status${
+            status === "live" ? " ys-city-panel__status--on" : status === "unknown" ? " ys-city-panel__status--unknown" : ""
+          }`}
+        >
+          {status === "live"
+            ? t("cityPanelOperational")
+            : status === "planned"
+            ? t("cityPanelPlanned")
+            : t("cityPanelUnknown")}
         </p>
 
-        {operational ? (
+        {status === "live" ? (
           <ul className="ys-city-panel__services">
             <li>
               <IconCar />
@@ -38,8 +47,10 @@ export default function WebsiteCityPanel({ t, selectedCity, onClear }) {
               <span>{t("cityPanelDelivery")}</span>
             </li>
           </ul>
-        ) : (
+        ) : status === "planned" ? (
           <p className="ys-city-panel__note">{t("cityPanelNoService")}</p>
+        ) : (
+          <p className="ys-city-panel__note">{t("cityPanelUnknown")}</p>
         )}
 
         {city === "Nouakchott" && districts.length > 0 ? (

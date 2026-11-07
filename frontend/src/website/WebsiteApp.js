@@ -8,7 +8,7 @@ import {
   AboutPage, SafetyPage, ContactPage, SupportPage,
 } from "./Pages";
 import MauritaniaFlag from "./MauritaniaFlag";
-import { WebsiteCitiesNavDropdown, WebsiteLoginNavDropdown } from "./WebsiteNavMenus";
+import { WEBSITE_LOGIN_LINKS, WebsiteCitiesNavDropdown, WebsiteLoginNavDropdown } from "./WebsiteNavMenus";
 import { useWebsiteAuth } from "./useWebsiteAuth";
 import { CEO_CONTACT } from "./FounderCard";
 import { IconDownload } from "./WebsiteIcons";
@@ -209,6 +209,24 @@ function SiteHeader({ t, lang, route, onNavigate, onLangChange, onCitySelect }) 
             </a>
           ))
         )}
+        {auth.authed ? (
+          <>
+            <span className="ys-mmenu-label">{t("navLoginAs")}</span>
+            {WEBSITE_LOGIN_LINKS.map(({ key, href }) => (
+              <a
+                key={key}
+                href={href}
+                onClick={async (event) => {
+                  event.preventDefault();
+                  setOpen(false);
+                  await auth.switchToLogin(href);
+                }}
+              >
+                {t(key)}
+              </a>
+            ))}
+          </>
+        ) : null}
         <hr />
         <a className="ys-btn ys-btn-gold ys-btn-block" href="/#download-apps" onClick={goHomeHash("#download-apps")}>
           {t("getTheApp")}

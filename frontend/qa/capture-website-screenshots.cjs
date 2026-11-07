@@ -35,19 +35,14 @@ const RIDER_USER = {
   full_name: "Preview Rider",
 };
 
-async function mockCityApis(page) {
+/** Prod-like: /operating-cities/ missing; catalog used for live/planned inference. */
+async function mockCityApisProdLike(page) {
   await page.route("**/*", (route) => {
     const r = route.request();
     if (r.resourceType() !== "xhr" && r.resourceType() !== "fetch") return route.continue();
     const p = new URL(r.url()).pathname;
     if (p.includes("/locations/operating-cities")) {
-      return route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          cities: [{ name: "Nouakchott", canonical_name: "Nouakchott", id: 1 }],
-        }),
-      });
+      return route.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ detail: "Not found" }) });
     }
     if (p.includes("/locations/cities")) {
       return route.fulfill({
@@ -56,8 +51,22 @@ async function mockCityApis(page) {
         body: JSON.stringify([
           { id: 1, name: "Nouakchott", is_active: true },
           { id: 2, name: "Nouakchott Nord", is_active: true },
+          { id: 3, name: "Nouadhibou", is_active: true },
+          { id: 4, name: "Rosso", is_active: true },
         ]),
       });
+    }
+    return route.continue();
+  });
+}
+
+async function mockCityApisAllUnavailable(page) {
+  await page.route("**/*", (route) => {
+    const r = route.request();
+    if (r.resourceType() !== "xhr" && r.resourceType() !== "fetch") return route.continue();
+    const p = new URL(r.url()).pathname;
+    if (p.includes("/locations/operating-cities") || p.includes("/locations/cities")) {
+      return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "unavailable" }) });
     }
     return route.continue();
   });
@@ -79,7 +88,7 @@ async function shot(page, file, opts = {}) {
   // Desktop homepage
   {
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
-    await mockCityApis(page);
+    await mockCityApisProdLike(page);
     await page.goto(BASE, { waitUntil: "networkidle", timeout: 60000 });
     await shot(page, "website-home-desktop.png", { fullPage: true });
     await shot(page, "website-flag-header-desktop.png", {
@@ -107,7 +116,7 @@ async function shot(page, file, opts = {}) {
   // Mobile homepage
   {
     const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
-    await mockCityApis(page);
+    await mockCityApisProdLike(page);
     await page.goto(BASE, { waitUntil: "networkidle", timeout: 60000 });
     await shot(page, "website-home-mobile.png", { fullPage: true });
     const ceoM = page.locator(".ys-ftr-ceo");
@@ -125,7 +134,7 @@ async function shot(page, file, opts = {}) {
   // My Account (authenticated rider)
   {
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
-    await mockCityApis(page);
+    await mockCityApisProdLike(page);
     await page.goto(BASE, { waitUntil: "domcontentloaded" });
     await page.evaluate(
       ({ access, user }) => {
@@ -139,6 +148,32 @@ async function shot(page, file, opts = {}) {
     await page.getByRole("button", { name: /my account/i }).click();
     await page.waitForTimeout(400);
     await shot(page, "website-my-account-dropdown-desktop.png");
+    await page.keyboard.press("Escape");
+    await page.getByRole("button", { name: /sign in to app/i }).click();
+    await page.waitForTimeout(400);
+    await shot(page, "website-sign-in-to-app-dropdown-desktop.png");
+    await page.close();
+  }
+
+  // Cities unknown when APIs unavailable (desktop)
+  {
+    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+    await mockCityApisAllUnavailable(page);
+    await page.goto(BASE, { waitUntil: "networkidle", timeout: 60000 });
+    await page.getByRole("button", { name: /cities/i }).first().click();
+    await page.waitForTimeout(900);
+    await shot(page, "website-cities-unknown-status-desktop.png");
+    await page.close();
+  }
+
+  // Logged-out visitor sees Login with four apps (mobile)
+  {
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    await mockCityApisProdLike(page);
+    await page.goto(BASE, { waitUntil: "networkidle", timeout: 60000 });
+    await page.getByRole("button", { name: /^login$/i }).click();
+    await page.waitForTimeout(400);
+    await shot(page, "website-login-dropdown-mobile.png");
     await page.close();
   }
 

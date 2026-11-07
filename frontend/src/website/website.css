@@ -884,6 +884,15 @@
   color: #555;
 }
 .yala-site .ys-cities-dd-badge--on { background: rgba(0, 98, 51, 0.12); color: var(--ys-mr-green); }
+.yala-site .ys-cities-dd-badge--unknown { background: rgba(120, 120, 120, 0.15); color: #cbd5e1; }
+.yala-site .ys-nav-dd-hint {
+  margin: 0 10px 6px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--ys-muted);
+}
+.yala-site .ys-city-panel__status--unknown { color: #94a3b8; }
+.yala-site .ys-hdr-actions .ys-nav-dd--switch .ys-nav-dd-menu { min-width: 220px; }
 .yala-site .ys-cities-dd-msg { margin: 0; padding: 8px 10px; font-size: 13px; color: var(--ys-muted); }
 .yala-site .ys-cities-dd-msg--warn { color: #9a5b00; }
 .yala-site .ys-city-panel {

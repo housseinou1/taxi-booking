@@ -4,12 +4,31 @@ import { IconCar, IconMap, IconPackage, IconShield } from "./WebsiteIcons";
 import { loadWebsiteCityCatalog } from "./websitePublicCities";
 import { useWebsiteAuth } from "./useWebsiteAuth";
 
-const LOGIN_LINKS = [
+export const WEBSITE_LOGIN_LINKS = [
   { key: "loginRider", href: "/login?next=%2Frider-dashboard", Icon: IconCar },
   { key: "loginDriver", href: "/login?next=%2Fdriver", Icon: IconCar },
   { key: "loginDelivery", href: "/login?next=%2Fdelivery%2Fcourier", Icon: IconPackage },
   { key: "loginAdmin", href: "/login?next=%2Fadmin", Icon: IconShield },
 ];
+
+function LoginLinksMenu({ t, onNavigateClose, onPick }) {
+  return WEBSITE_LOGIN_LINKS.map(({ key, href, Icon }) => (
+    <a
+      key={key}
+      href={href}
+      role="menuitem"
+      className="ys-nav-dd-row"
+      onClick={(event) => {
+        event.preventDefault();
+        onPick(href);
+        onNavigateClose?.();
+      }}
+    >
+      <Icon className="ys-nav-dd-ico" />
+      <span>{t(key)}</span>
+    </a>
+  ));
+}
 
 function useNavDropdown() {
   const [open, setOpen] = useState(false);
@@ -67,32 +86,45 @@ export function WebsiteLoginNavDropdown({ t, className = "", onNavigateClose }) 
     await auth.logout();
   };
 
+  const pickLogin = (href) => {
+    close();
+    onNavigateClose?.();
+    if (auth.authed) {
+      auth.switchToLogin(href);
+    } else {
+      window.location.href = href;
+    }
+  };
+
   if (auth.authed) {
     return (
-      <div className={`ys-nav-dd${open ? " ys-nav-dd--open" : ""}${className ? ` ${className}` : ""}`} ref={ref}>
-        <button
-          type="button"
-          className="ys-nav-dd-trigger"
-          aria-expanded={open}
-          aria-haspopup="menu"
-          aria-controls={menuId}
-          onClick={toggle}
-        >
-          {t("navMyAccount")}
-          <span className="ys-chev" aria-hidden="true" />
-        </button>
-        <div className="ys-nav-dd-menu" id={menuId} role="menu">
-          <a href={auth.dashboardPath} role="menuitem" onClick={onAccountNav(auth.dashboardPath)}>
-            {t("accountDashboard")}
-          </a>
-          <a href={auth.profilePath} role="menuitem" onClick={onAccountNav(auth.profilePath)}>
-            {t("accountProfile")}
-          </a>
-          <button type="button" className="ys-nav-dd-action" role="menuitem" onClick={onLogout}>
-            {t("accountLogout")}
+      <>
+        <div className={`ys-nav-dd${open ? " ys-nav-dd--open" : ""}${className ? ` ${className}` : ""}`} ref={ref}>
+          <button
+            type="button"
+            className="ys-nav-dd-trigger"
+            aria-expanded={open}
+            aria-haspopup="menu"
+            aria-controls={menuId}
+            onClick={toggle}
+          >
+            {t("navMyAccount")}
+            <span className="ys-chev" aria-hidden="true" />
           </button>
+          <div className="ys-nav-dd-menu" id={menuId} role="menu">
+            <a href={auth.dashboardPath} role="menuitem" onClick={onAccountNav(auth.dashboardPath)}>
+              {t("accountDashboard")}
+            </a>
+            <a href={auth.profilePath} role="menuitem" onClick={onAccountNav(auth.profilePath)}>
+              {t("accountProfile")}
+            </a>
+            <button type="button" className="ys-nav-dd-action" role="menuitem" onClick={onLogout}>
+              {t("accountLogout")}
+            </button>
+          </div>
         </div>
-      </div>
+        <WebsiteSwitchLoginNavDropdown t={t} className={className} onNavigateClose={onNavigateClose} onPick={pickLogin} />
+      </>
     );
   }
 
@@ -110,12 +142,43 @@ export function WebsiteLoginNavDropdown({ t, className = "", onNavigateClose }) 
         <span className="ys-chev" aria-hidden="true" />
       </button>
       <div className="ys-nav-dd-menu" id={menuId} role="menu">
-        {LOGIN_LINKS.map(({ key, href, Icon }) => (
-          <a key={key} href={href} role="menuitem" className="ys-nav-dd-row" onClick={() => { close(); onNavigateClose?.(); }}>
-            <Icon className="ys-nav-dd-ico" />
-            <span>{t(key)}</span>
-          </a>
-        ))}
+        <LoginLinksMenu t={t} onNavigateClose={onNavigateClose} onPick={pickLogin} />
+      </div>
+    </div>
+  );
+}
+
+/** Visible when a session exists — clears session before opening the target login flow. */
+export function WebsiteSwitchLoginNavDropdown({ t, className = "", onNavigateClose, onPick }) {
+  const menuId = useId();
+  const { open, ref, toggle, close } = useNavDropdown();
+
+  return (
+    <div className={`ys-nav-dd ys-nav-dd--switch${open ? " ys-nav-dd--open" : ""}${className ? ` ${className}` : ""}`} ref={ref}>
+      <button
+        type="button"
+        className="ys-nav-dd-trigger"
+        aria-expanded={open}
+        aria-haspopup="menu"
+        aria-controls={menuId}
+        onClick={toggle}
+      >
+        {t("navLoginAs")}
+        <span className="ys-chev" aria-hidden="true" />
+      </button>
+      <div className="ys-nav-dd-menu" id={menuId} role="menu">
+        <p className="ys-nav-dd-hint">{t("loginAsHint")}</p>
+        <LoginLinksMenu
+          t={t}
+          onNavigateClose={() => {
+            close();
+            onNavigateClose?.();
+          }}
+          onPick={(href) => {
+            close();
+            onPick(href);
+          }}
+        />
       </div>
     </div>
   );
@@ -175,7 +238,8 @@ export function WebsiteCitiesNavDropdown({ t, onCitySelect, className = "", onNa
       city: row.city,
       region: row.region,
       canonical: row.canonical,
-      operational: row.operational,
+      operational: row.serviceStatus === "live",
+      serviceStatus: row.serviceStatus,
       districts: row.city === "Nouakchott" ? catalog?.nouakchottDistricts || [] : [],
     });
     setQuery("");
@@ -219,7 +283,7 @@ export function WebsiteCitiesNavDropdown({ t, onCitySelect, className = "", onNa
         ) : null}
         {!loading && loadError ? (
           <p className="ys-cities-dd-msg ys-cities-dd-msg--warn" role="status">
-            {t("citiesError")}
+            {t("citiesUnavailable")}
           </p>
         ) : null}
         <div className="ys-cities-dd-scroll" role="group" aria-label={t("navCities")}>
@@ -241,8 +305,20 @@ export function WebsiteCitiesNavDropdown({ t, onCitySelect, className = "", onNa
                   <strong>{row.city}</strong>
                   <small>{row.region}</small>
                 </span>
-                <span className={`ys-cities-dd-badge${row.operational ? " ys-cities-dd-badge--on" : ""}`}>
-                  {row.operational ? t("cityOperational") : t("cityPlanned")}
+                <span
+                  className={`ys-cities-dd-badge${
+                    row.serviceStatus === "live"
+                      ? " ys-cities-dd-badge--on"
+                      : row.serviceStatus === "unknown"
+                      ? " ys-cities-dd-badge--unknown"
+                      : ""
+                  }`}
+                >
+                  {row.serviceStatus === "live"
+                    ? t("cityOperational")
+                    : row.serviceStatus === "planned"
+                    ? t("cityPlanned")
+                    : t("cityUnknown")}
                 </span>
               </button>
             ))
