@@ -11,9 +11,10 @@
 | Item | Value |
 |------|--------|
 | Source branch | `feature/admin-enterprise-top-nav` |
-| Release branch | `release/coordinated-admin-moosyl-rc1` (after commit) |
-| RC tag | **Not created** — pending staging verification |
-| Web artifact | `npm run build:web` → `verify-web-build.ps1` **PASS** (main.f45b1ae7.js) |
+| Release branch | `release/coordinated-admin-moosyl-rc1` |
+| Release commit | `d30842bc4e3a2add8360af9a8e9b6a7aff379315` |
+| RC tag | **Not created** — pending staging verification (per G1/G2 policy) |
+| Web artifact | `npm run build:web` → `verify-web-build.ps1` **PASS** (main.f45b1ae7.js, sha256 AEDB1B41…) |
 
 ---
 
