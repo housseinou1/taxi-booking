@@ -1,5 +1,6 @@
 import React from "react";
 import FounderCard from "./FounderCard";
+import MauritaniaFlag from "./MauritaniaFlag";
 
 /* =============================================================================
    YALA public website — remaining pages (Slices 2–4)
@@ -217,12 +218,16 @@ export function AboutPage({ t }) {
   return (
     <>
       <PageHero
-        t={t} crumb={t("navAbout")} icon="🇲🇷" title={t("aboutTitle")} lead={t("aboutText1")}
+        t={t}
+        crumb={t("navAbout")}
+        icon={<MauritaniaFlag className="ys-flag-badge-svg" title="" />}
+        title={t("aboutTitle")}
+        lead={t("aboutText1")}
         cta1={{ label: t("navContact"), href: "/contact" }}
         cta2={{ label: t("navSafety"), href: "/safety" }}
         aside={
           <div className="ys-mr-panel">
-            <div className="ys-flag-big" aria-hidden="true">🇲🇷</div>
+            <MauritaniaFlag className="ys-flag-big-svg" title="" aria-hidden="true" />
             <h3>{t("mrTitle")}</h3>
             <p>{t("mrText")}</p>
             <div className="ys-mr-tags">
@@ -235,9 +240,14 @@ export function AboutPage({ t }) {
         <div className="ys-wrap">
           <div className="ys-sec-head"><p>{t("aboutText2")}</p></div>
           <div className="ys-feat-grid">
-            {[["3", "stat1"], ["3", "stat2"], ["1", "stat3"], ["🇲🇷", "stat4"]].map(([n, k]) => (
+            {[["3", "stat1"], ["3", "stat2"], ["1", "stat3"], ["flag", "stat4"]].map(([n, k]) => (
               <div className="ys-feat ys-stat" key={k}>
-                <strong>{n}</strong><span>{t(k)}</span>
+                {n === "flag" ? (
+                  <MauritaniaFlag className="ys-stat-flag" title="" aria-hidden="true" />
+                ) : (
+                  <strong>{n}</strong>
+                )}
+                <span>{t(k)}</span>
               </div>
             ))}
           </div>

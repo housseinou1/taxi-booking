@@ -695,7 +695,22 @@
 .yala-site .ys-hdr--mr .ys-hdr-in { height: 78px; }
 .yala-site .ys-brand--mr { gap: 12px; }
 .yala-site .ys-brand-logo { width: 44px; height: 44px; object-fit: contain; border-radius: 8px; }
+.yala-site .ys-brand-emblem {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 2px var(--ys-mr-gold);
+}
+.yala-site .ys-brand-flag--circle {
+  width: 100%;
+  height: 100%;
+  display: block;
+  border-radius: 50%;
+}
 .yala-site .ys-brand-flag { width: 36px; height: 24px; border-radius: 3px; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2); }
+.yala-site .ys-ftr-flag { width: 28px; height: 18px; border-radius: 2px; vertical-align: middle; margin-inline-end: 8px; }
 .yala-site .ys-brand-txt--light strong { color: #fff; font-size: 20px; }
 .yala-site .ys-brand-txt--light small { color: rgba(255, 255, 255, 0.82); }
 
@@ -747,6 +762,129 @@
   font-weight: 600;
 }
 .yala-site .ys-nav-dd-menu a:hover { background: rgba(0, 98, 51, 0.08); color: var(--ys-mr-green); }
+.yala-site .ys-nav-dd-menu--cities {
+  min-width: min(420px, 92vw);
+  max-width: 92vw;
+  padding: 10px;
+  gap: 8px;
+}
+.yala-site .ys-nav-dd-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.yala-site .ys-nav-dd-ico { width: 18px; height: 18px; flex-shrink: 0; color: var(--ys-mr-green); }
+.yala-site .ys-nav-dd-action {
+  width: 100%;
+  text-align: start;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--ys-ink);
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-weight: 600;
+  font: inherit;
+}
+.yala-site .ys-nav-dd-action:hover { background: rgba(0, 98, 51, 0.08); color: var(--ys-mr-green); }
+.yala-site .ys-cities-dd-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border: 1px solid var(--ys-line);
+  border-radius: 10px;
+  background: #f8faf8;
+}
+.yala-site .ys-cities-dd-search input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font: inherit;
+  min-width: 0;
+  padding: 8px 4px;
+}
+.yala-site .ys-cities-dd-search input:focus { outline: none; }
+.yala-site .ys-cities-dd-search-ico { width: 18px; height: 18px; color: var(--ys-mr-green); flex-shrink: 0; }
+.yala-site .ys-cities-dd-scroll {
+  max-height: min(52vh, 420px);
+  overflow: auto;
+  display: grid;
+  gap: 4px;
+}
+.yala-site .ys-cities-dd-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  text-align: start;
+  border: none;
+  background: transparent;
+  border-radius: 10px;
+  padding: 8px 10px;
+  cursor: pointer;
+  font: inherit;
+}
+.yala-site .ys-cities-dd-item:hover { background: rgba(0, 98, 51, 0.08); }
+.yala-site .ys-cities-dd-item-body { display: flex; flex-direction: column; gap: 2px; }
+.yala-site .ys-cities-dd-item-body strong { color: var(--ys-ink); font-size: 14px; }
+.yala-site .ys-cities-dd-item-body small { color: var(--ys-muted); font-size: 12px; }
+.yala-site .ys-cities-dd-item-ico { color: var(--ys-mr-green); display: flex; }
+.yala-site .ys-cities-dd-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #eee;
+  color: #555;
+}
+.yala-site .ys-cities-dd-badge--on { background: rgba(0, 98, 51, 0.12); color: var(--ys-mr-green); }
+.yala-site .ys-cities-dd-msg { margin: 0; padding: 8px 10px; font-size: 13px; color: var(--ys-muted); }
+.yala-site .ys-cities-dd-msg--warn { color: #9a5b00; }
+.yala-site .ys-city-panel {
+  background: #fff;
+  border-block: 1px solid var(--ys-line);
+  padding: 32px 0;
+}
+.yala-site .ys-city-panel__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+.yala-site .ys-city-panel__eyebrow { margin: 0; color: var(--ys-mr-green); font-weight: 700; text-transform: uppercase; font-size: 12px; letter-spacing: 0.06em; }
+.yala-site .ys-city-panel__status { font-weight: 600; margin: 0 0 16px; }
+.yala-site .ys-city-panel__status--on { color: var(--ys-mr-green); }
+.yala-site .ys-city-panel__services { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.yala-site .ys-city-panel__services li { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+.yala-site .ys-city-panel__districts { margin-top: 20px; }
+.yala-site .ys-city-panel__districts ul { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; padding: 0; margin: 8px 0 0; }
+.yala-site .ys-city-panel__districts li { background: #f3f6f4; padding: 6px 10px; border-radius: 8px; font-size: 13px; }
+.yala-site .ys-flag-big-svg { width: 120px; height: 80px; border-radius: 8px; box-shadow: var(--ys-e2); }
+.yala-site .ys-flag-badge-svg { width: 48px; height: 32px; border-radius: 4px; }
+.yala-site .ys-stat-flag { width: 40px; height: 28px; margin-bottom: 8px; }
+.yala-site .ys-mmenu-label {
+  display: block;
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.75;
+}
+.yala-site .ys-nav-dd--mobile .ys-nav-dd-menu {
+  position: static;
+  display: grid;
+  box-shadow: none;
+  background: rgba(255, 255, 255, 0.08);
+  margin-top: 6px;
+}
+.yala-site .ys-nav-dd--mobile .ys-nav-dd-menu--cities { min-width: 0; }
+.yala-site .ys-nav-dd--mobile .ys-cities-dd-item-body strong,
+.yala-site .ys-nav-dd--mobile .ys-cities-dd-item-body small { color: inherit; }
+.yala-site .ys-hdr-actions .ys-nav-dd--actions .ys-nav-dd-menu { right: 0; left: auto; }
 
 .yala-site .ys-lang-select select {
   height: 38px;
@@ -922,6 +1060,7 @@
 @media (max-width: 1050px) {
   .yala-site .ys-nav--mr { display: none; }
   .yala-site .ys-lang-select { display: none; }
+  .yala-site .ys-hdr-actions .ys-nav-dd--actions { display: inline-flex; }
   .yala-site .ys-hdr-actions .ys-btn-gold span { display: none; }
   .yala-site .ys-hero-mr__inner { grid-template-columns: 1fr; }
   .yala-site .ys-app-download__grid { grid-template-columns: 1fr; }

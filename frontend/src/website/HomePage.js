@@ -8,6 +8,7 @@ import {
   IconShield,
   IconUsers,
 } from "./WebsiteIcons";
+import WebsiteCityPanel from "./WebsiteCityPanel";
 
 const PLAY = {
   rider: "https://play.google.com/store/apps/details?id=com.yala.rider.mr",
@@ -52,7 +53,7 @@ const WHY = [
 /**
  * Public home — Mauritanian flag marketing layout (www.yalataxi.live).
  */
-export default function HomePage({ t }) {
+export default function HomePage({ t, selectedCity, onClearCity }) {
   const scrollToApps = (event) => {
     event.preventDefault();
     document.getElementById("download-apps")?.scrollIntoView({ behavior: "smooth" });
@@ -124,6 +125,8 @@ export default function HomePage({ t }) {
           </div>
         </div>
       </section>
+
+      <WebsiteCityPanel t={t} selectedCity={selectedCity} onClear={onClearCity} />
 
       <section className="ys-why" id="cities" aria-labelledby="ys-why-title">
         <div className="ys-wrap">

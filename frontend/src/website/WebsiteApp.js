@@ -8,8 +8,16 @@ import {
   AboutPage, SafetyPage, ContactPage, SupportPage,
 } from "./Pages";
 import MauritaniaFlag from "./MauritaniaFlag";
+import { WebsiteCitiesNavDropdown, WebsiteLoginNavDropdown } from "./WebsiteNavMenus";
 import { IconDownload } from "./WebsiteIcons";
 import "./website.css";
+
+const LOGIN_LINKS_MOBILE = [
+  { key: "loginRider", href: "/login?next=%2Frider-dashboard" },
+  { key: "loginDriver", href: "/login?next=%2Fdriver" },
+  { key: "loginDelivery", href: "/login?next=%2Fdelivery%2Fcourier" },
+  { key: "loginAdmin", href: "/login?next=%2Fadmin" },
+];
 
 /* --------------------------------------------------------------------------
    Slice 1: shell (header + nav + footer) and the Home page.
@@ -29,7 +37,7 @@ const CONTACT = {
 };
 
 /** Sticky marketing header — Mauritanian green/gold/red, horizontal nav. */
-function SiteHeader({ t, lang, route, onNavigate, onLangChange }) {
+function SiteHeader({ t, lang, route, onNavigate, onLangChange, onCitySelect }) {
   const [open, setOpen] = useState(false);
   const [servicesOpen, setServicesOpen] = useState(false);
 
@@ -61,8 +69,9 @@ function SiteHeader({ t, lang, route, onNavigate, onLangChange }) {
       <header className="ys-hdr ys-hdr--mr">
         <div className="ys-wrap ys-hdr-in">
           <a className="ys-brand ys-brand--mr" href="#/home" onClick={go("home")} aria-label="YALA Technologies — home">
-            <img src="/yala-logo-housseinou.png" alt="" className="ys-brand-logo" />
-            <MauritaniaFlag className="ys-brand-flag" />
+            <span className="ys-brand-emblem" aria-hidden="true">
+              <MauritaniaFlag className="ys-brand-flag--circle" title="Flag of Mauritania" />
+            </span>
             <span className="ys-brand-txt ys-brand-txt--light">
               <strong>YALA</strong>
               <small>{t("brandTag")}</small>
@@ -98,7 +107,14 @@ function SiteHeader({ t, lang, route, onNavigate, onLangChange }) {
                 <a href="#/delivery" role="menuitem" onClick={go("delivery")}>{t("navDelivery")}</a>
               </div>
             </div>
-            <a href="/#cities" onClick={goHomeHash("#cities")}>{t("navCities")}</a>
+            <WebsiteCitiesNavDropdown
+              t={t}
+              onCitySelect={onCitySelect}
+              onNavigateClose={() => {
+                setOpen(false);
+                setServicesOpen(false);
+              }}
+            />
             <a href="#/contact" data-route="contact" onClick={go("contact")}>{t("navPartners")}</a>
             <a href="#/about" data-route="about" onClick={go("about")} aria-current={route === "about" ? "page" : undefined}>
               {t("navAbout")}
@@ -123,6 +139,11 @@ function SiteHeader({ t, lang, route, onNavigate, onLangChange }) {
                 ))}
               </select>
             </label>
+            <WebsiteLoginNavDropdown
+              t={t}
+              className="ys-nav-dd--actions"
+              onNavigateClose={() => setOpen(false)}
+            />
             <a className="ys-btn ys-btn-gold ys-btn-sm" href="/#download-apps" onClick={goHomeHash("#download-apps")}>
               <IconDownload />
               <span>{t("getTheApp")}</span>
@@ -146,10 +167,24 @@ function SiteHeader({ t, lang, route, onNavigate, onLangChange }) {
         <a href="#/rider" onClick={go("rider")}>{t("navRider")}</a>
         <a href="#/driver" onClick={go("driver")}>{t("navDriver")}</a>
         <a href="#/delivery" onClick={go("delivery")}>{t("navDelivery")}</a>
-        <a href="/#cities" onClick={goHomeHash("#cities")}>{t("navCities")}</a>
+        <span className="ys-mmenu-label">{t("navCities")}</span>
+        <WebsiteCitiesNavDropdown
+          t={t}
+          className="ys-nav-dd--mobile"
+          onCitySelect={(city) => {
+            setOpen(false);
+            onCitySelect?.(city);
+          }}
+        />
         <a href="#/contact" onClick={go("contact")}>{t("navPartners")}</a>
         <a href="#/about" onClick={go("about")}>{t("navAbout")}</a>
         <a href="#/support" onClick={go("support")}>{t("navSupport")}</a>
+        <span className="ys-mmenu-label">{t("navLogin")}</span>
+        {LOGIN_LINKS_MOBILE.map(({ key, href }) => (
+          <a key={key} href={href} onClick={() => setOpen(false)}>
+            {t(key)}
+          </a>
+        ))}
         <hr />
         <a className="ys-btn ys-btn-gold ys-btn-block" href="/#download-apps" onClick={goHomeHash("#download-apps")}>
           {t("getTheApp")}
@@ -226,7 +261,10 @@ function SiteFooter({ t, onNavigate }) {
         </div>
 
         <div className="ys-ftr-bot">
-          <span className="ys-mr"><span aria-hidden="true">🇲🇷</span>{t("ftrMade")}</span>
+          <span className="ys-mr">
+            <MauritaniaFlag className="ys-ftr-flag" title="" />
+            {t("ftrMade")}
+          </span>
           <span className="ys-cp">© 2026 YALA Technologies. {t("ftrRights")}</span>
         </div>
 
@@ -246,6 +284,7 @@ export default function WebsiteApp({ route = "home", onNavigate = () => {} }) {
   const { i18n } = useTranslation();
   const lang = normalizeWebsiteLang(i18n?.language);
   const dict = WEBSITE_I18N[lang] || WEBSITE_I18N.en;
+  const [selectedCity, setSelectedCity] = useState(null);
 
   const t = useCallback(
     (key) => (dict[key] !== undefined ? dict[key] : WEBSITE_I18N.en[key] ?? key),
@@ -261,6 +300,19 @@ export default function WebsiteApp({ route = "home", onNavigate = () => {} }) {
     return () => { document.title = previous; };
   }, [active, lang]);
 
+  const handleCitySelect = useCallback(
+    (city) => {
+      setSelectedCity(city);
+      if (active !== "home") {
+        onNavigate("home");
+      }
+      window.setTimeout(() => {
+        document.getElementById("city-services")?.scrollIntoView({ behavior: "smooth" });
+      }, active !== "home" ? 160 : 40);
+    },
+    [active, onNavigate]
+  );
+
   const page = useMemo(() => {
     switch (active) {
       case "rider":    return <RiderPage t={t} />;
@@ -272,14 +324,28 @@ export default function WebsiteApp({ route = "home", onNavigate = () => {} }) {
       case "support":  return <SupportPage t={t} />;
       case "home":
       default:
-        return <HomePage t={t} onNavigate={onNavigate} />;
+        return (
+          <HomePage
+            t={t}
+            onNavigate={onNavigate}
+            selectedCity={selectedCity}
+            onClearCity={() => setSelectedCity(null)}
+          />
+        );
     }
-  }, [active, t, onNavigate]);
+  }, [active, t, onNavigate, selectedCity]);
 
   return (
     <div className="yala-site" dir={lang === "ar" ? "rtl" : "ltr"} lang={lang}>
       <a className="ys-skip" href="#ys-main">{t("skip")}</a>
-      <SiteHeader t={t} lang={lang} route={active} onNavigate={onNavigate} onLangChange={(c) => i18n.changeLanguage(c)} />
+      <SiteHeader
+        t={t}
+        lang={lang}
+        route={active}
+        onNavigate={onNavigate}
+        onLangChange={(c) => i18n.changeLanguage(c)}
+        onCitySelect={handleCitySelect}
+      />
       <main id="ys-main">{page}</main>
       <SiteFooter t={t} onNavigate={onNavigate} />
     </div>

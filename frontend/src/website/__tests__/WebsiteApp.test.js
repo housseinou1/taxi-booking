@@ -70,11 +70,12 @@ describe("WebsiteApp shell", () => {
     expect(select.value).toBe("en");
   });
 
-  test("no Admin console reference anywhere in the public site", () => {
+  test("login menu routes through /login without exposing bare /admin links", () => {
     const { container } = render(<WebsiteApp route="home" />);
     const links = [...container.querySelectorAll("a")].map((a) => a.getAttribute("href") || "");
-    expect(links.some((h) => /admin/i.test(h))).toBe(false);
-    expect(/admin/i.test(container.textContent)).toBe(false);
+    expect(links.some((h) => h === "/admin" || h.startsWith("/admin/"))).toBe(false);
+    expect(links.some((h) => h.includes("/login") && h.includes("admin"))).toBe(true);
+    expect(screen.getByRole("button", { name: /login/i })).toBeInTheDocument();
   });
 
   test("home highlights nationwide coverage without invented ops statistics", () => {
