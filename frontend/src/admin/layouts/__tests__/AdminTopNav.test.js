@@ -30,15 +30,25 @@ jest.mock("../permissions/topNavConfig", () => ({
   ],
 }));
 
-const realHref = window.location.href;
+const realLocation = window.location;
 
 beforeEach(() => {
   delete window.location;
-  window.location = { href: realHref, assign: jest.fn(), replace: jest.fn() };
+  window.location = {
+    ...realLocation,
+    href: realLocation.href,
+    hostname: realLocation.hostname || "localhost",
+    protocol: realLocation.protocol || "http:",
+    host: realLocation.host || "localhost",
+    origin: realLocation.origin || "http://localhost",
+    assign: jest.fn(),
+    replace: jest.fn(),
+  };
 });
 
 afterAll(() => {
-  window.location.href = realHref;
+  delete window.location;
+  window.location = realLocation;
 });
 
 test("ArrowDown on group button focuses first menu item", async () => {

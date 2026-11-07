@@ -1,8 +1,9 @@
 # YALA — Release verification status (actual results)
 
-**Date:** 2026-11-07 (session re-verify)  
+**Date:** 2026-11-07  
 **RC branch:** `release/coordinated-admin-moosyl-rc1`  
-**RC tag (staging):** `coordinated-admin-moosyl-rc1.4` → **`3af1b7d1`** (prior: `.1` `52f8f7a5`, `.2` `3ac53832`, base `coordinated-admin-moosyl-rc1` `23de3a2a`)  
+**RC1.3 (frozen):** tag `coordinated-admin-moosyl-rc1.3` → **`dd471e26`** (unchanged)  
+**Latest staging candidate:** `coordinated-admin-moosyl-rc1.5` → *see git tag after this commit*  
 **Production / live Moosyl:** **HOLD** (G1 / G2)
 
 ---
@@ -20,6 +21,7 @@
 | Moosyl webhooks, idempotency, security | `tests_moosyl_webhook`, `tests_provider_security` | **PASS** (52+ tests in slice) |
 | Employee ID cards (API) | registration, PDF (no DOB/NI in PDF), QR tokens, public verify redaction, dashboard | **194 tests OK** in combined employee + Moosyl slice |
 | Wallet 0022 inventory (local DB) | `manage.py wallet_reference_inventory` | **0** duplicate groups |
+| **Jest full suite (172 suites)** | `npm test --runInBand` + setupTests/AdminTopNav pollution fix | **1829 passed**, **6 skipped**, **0 failed** |
 | `build:web` + deploy gates | `verify-web-build.ps1` | **PASS** (Moosyl panel in bundle) |
 | Pilot API (live Django, once) | `ceo@pilot.yala.test` + `YALA_UAT_LOCAL=1` | **200** on `/operations/admin/me/permissions/`, `/employees/id-cards/dashboard/`, `/employees/id-cards/ceo-signature/` |
 | CEO live browser (pilot, once) | `admin-routes-auth.cjs` + local `REACT_APP_API_URL` build | **99/100** shell; **`/admin-dashboard`** bounced to `/login` (fixed in working tree; re-run blocked by login **429**) |

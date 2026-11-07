@@ -2,6 +2,7 @@ import React from "react";
 import { render, screen, fireEvent, act, waitFor } from "@testing-library/react";
 import DriverEarnings, { formatEarningsMRU } from "./DriverEarnings";
 import { DriverProvider } from "./context/DriverContext";
+import { API_URL } from "../apiConfig";
 
 jest.mock("../auth/authenticatedApi", () => ({
   __esModule: true,
@@ -212,7 +213,7 @@ describe("DriverEarnings", () => {
     const earningsCall = authenticatedApi.get.mock.calls.find((call) =>
       call[0].includes("/rides/driver/earnings/")
     );
-    expect(earningsCall?.[0]).toBe("http://localhost:8000/rides/driver/earnings/");
+    expect(earningsCall?.[0]).toBe(`${API_URL}/rides/driver/earnings/`);
     // Earnings failures must not bounce the driver to /login mid-session.
     expect(earningsCall?.[1]).toEqual(
       expect.objectContaining({ suppressAuthRedirect: true })

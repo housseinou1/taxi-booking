@@ -55,11 +55,40 @@ function resolveChromium() {
         }),
       });
     }
-    if (p.includes("/employees/")) {
+    if (p.includes("/employees/") && !p.includes(".pdf")) {
       return route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ results: [], count: 0 }),
+        body: JSON.stringify({
+          results: [
+            {
+              id: 101,
+              full_name: "Pilot Employee",
+              card_number: "YALA-EMP-101",
+              photo_url: "/media/pilot.jpg",
+              has_photo: true,
+            },
+          ],
+          count: 1,
+        }),
+      });
+    }
+    if (p.includes("id-cards") && p.includes(".pdf")) {
+      return route.fulfill({
+        status: 200,
+        contentType: "application/pdf",
+        body: Buffer.from("%PDF-1.4\n% pilot mock\n%%EOF"),
+      });
+    }
+    if (p.includes("/employees/id-cards/") || p.includes("ceo-signature")) {
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          card_number: "YALA-EMP-101",
+          employee_name: "Pilot Employee",
+          slogan: "YALA Technologies",
+        }),
       });
     }
     return route.fulfill({ status: 200, contentType: "application/json", body: "{}" });
@@ -87,6 +116,24 @@ function resolveChromium() {
     );
     await page.goto(`${BASE}${route}`, { waitUntil: "load", timeout: 45000 });
     await page.waitForSelector(".admin-shell", { timeout: 15000 }).catch(() => {});
+    let pdfProbe = {};
+    if (route === "/admin/employees/id-cards") {
+      const dl = page.getByRole("button", { name: /download id card/i });
+      const hasDownload = (await dl.count()) > 0;
+      if (hasDownload) {
+        const [download] = await Promise.all([
+          page.waitForEvent("download", { timeout: 8000 }).catch(() => null),
+          dl.click(),
+        ]);
+        pdfProbe = {
+          downloadButtonVisible: true,
+          downloadClicked: true,
+          downloadSuggestedName: download?.suggestedFilename?.() || null,
+        };
+      } else {
+        pdfProbe = { downloadButtonVisible: false };
+      }
+    }
     const probes = await page.evaluate(() => ({
       shell: Boolean(document.querySelector(".admin-shell")),
       hasTable: Boolean(document.querySelector("table, .admin-table")),
@@ -94,7 +141,7 @@ function resolveChromium() {
       hasButtons: document.querySelectorAll("button").length,
       text: (document.body?.innerText || "").slice(0, 400),
     }));
-    results.push({ route, ...probes });
+    results.push({ route, ...probes, pdfProbe });
   }
 
   await browser.close();

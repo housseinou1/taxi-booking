@@ -127,6 +127,11 @@ function resolveChromium() {
       try {
         await page.goto(`${BASE}${route}`, { waitUntil: "load", timeout: 45000 });
         await page.waitForSelector(".admin-shell", { timeout: 35000 });
+        if (route.includes("id-cards")) {
+          await page
+            .waitForFunction(() => (document.body?.innerText || "").length > 120, { timeout: 25000 })
+            .catch(() => {});
+        }
         await page.waitForTimeout(1200);
         const exercised = await page.evaluate(() => {
           const tab = [...document.querySelectorAll("button")].find((b) =>
