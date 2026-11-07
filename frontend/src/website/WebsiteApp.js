@@ -9,6 +9,7 @@ import {
 } from "./Pages";
 import MauritaniaFlag from "./MauritaniaFlag";
 import { WebsiteCitiesNavDropdown, WebsiteLoginNavDropdown } from "./WebsiteNavMenus";
+import { useWebsiteAuth } from "./useWebsiteAuth";
 import { IconDownload } from "./WebsiteIcons";
 import "./website.css";
 
@@ -40,6 +41,7 @@ const CONTACT = {
 function SiteHeader({ t, lang, route, onNavigate, onLangChange, onCitySelect }) {
   const [open, setOpen] = useState(false);
   const [servicesOpen, setServicesOpen] = useState(false);
+  const auth = useWebsiteAuth();
 
   const go = useCallback(
     (next) => (event) => {
@@ -179,12 +181,33 @@ function SiteHeader({ t, lang, route, onNavigate, onLangChange, onCitySelect }) 
         <a href="#/contact" onClick={go("contact")}>{t("navPartners")}</a>
         <a href="#/about" onClick={go("about")}>{t("navAbout")}</a>
         <a href="#/support" onClick={go("support")}>{t("navSupport")}</a>
-        <span className="ys-mmenu-label">{t("navLogin")}</span>
-        {LOGIN_LINKS_MOBILE.map(({ key, href }) => (
-          <a key={key} href={href} onClick={() => setOpen(false)}>
-            {t(key)}
-          </a>
-        ))}
+        <span className="ys-mmenu-label">{auth.authed ? t("navMyAccount") : t("navLogin")}</span>
+        {auth.authed ? (
+          <>
+            <a href={auth.dashboardPath} onClick={() => setOpen(false)}>
+              {t("accountDashboard")}
+            </a>
+            <a href={auth.profilePath} onClick={() => setOpen(false)}>
+              {t("accountProfile")}
+            </a>
+            <button
+              type="button"
+              className="ys-mmenu-logout"
+              onClick={async () => {
+                setOpen(false);
+                await auth.logout();
+              }}
+            >
+              {t("accountLogout")}
+            </button>
+          </>
+        ) : (
+          LOGIN_LINKS_MOBILE.map(({ key, href }) => (
+            <a key={key} href={href} onClick={() => setOpen(false)}>
+              {t(key)}
+            </a>
+          ))
+        )}
         <hr />
         <a className="ys-btn ys-btn-gold ys-btn-block" href="/#download-apps" onClick={goHomeHash("#download-apps")}>
           {t("getTheApp")}
