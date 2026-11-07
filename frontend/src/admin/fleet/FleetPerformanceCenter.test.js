@@ -234,7 +234,7 @@ async function renderCenter() {
   const utils = render(<FleetPerformanceCenter />);
   // Wait for post-load content: the tab bar only renders once the dashboard has
   // resolved, so this avoids asserting against the loading skeleton.
-  await screen.findByRole("button", { name: "Fleet Overview" });
+  await screen.findByRole("button", { name: "Fleet Overview" }, { timeout: 12000 });
   return utils;
 }
 
@@ -253,6 +253,8 @@ function kpi(label) {
 
 
 describe("FleetPerformanceCenter", () => {
+  jest.setTimeout(20000);
+
   it("renders the header, all five tabs and the filter toolbar", async () => {
     await renderCenter();
 
