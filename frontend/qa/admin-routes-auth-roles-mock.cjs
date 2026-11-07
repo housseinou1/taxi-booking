@@ -244,18 +244,20 @@ async function runRoleMatrix(browser, routeList, matrixLabel) {
   };
 
   const criticalOnly = process.env.YALA_QA_CRITICAL_ONLY === "1";
-  const fullOnly = process.env.YALA_QA_FULL_ROUTES === "1";
+  const fullOnly = process.env.YALA_QA_FULL_ONLY === "1";
   const autoFull = process.env.YALA_QA_AUTO_FULL !== "0";
 
-  report.matrices.critical = await runRoleMatrix(browser, CRITICAL_ROUTES, "critical");
-
-  const ceoCritical = report.matrices.critical.ceo;
-  const ceoCriticalOk =
-    ceoCritical.withShell >= CRITICAL_ROUTES.length && ceoCritical.rbacViolations.length === 0;
-
-  if (!criticalOnly && (fullOnly || (autoFull && ceoCriticalOk))) {
-    console.log("Running full 100-route matrix (autoFull=%s ceoCriticalOk=%s)", autoFull, ceoCriticalOk);
+  if (fullOnly) {
     report.matrices.full = await runRoleMatrix(browser, loadRoutes(), "full-100");
+  } else {
+    report.matrices.critical = await runRoleMatrix(browser, CRITICAL_ROUTES, "critical");
+    const ceoCritical = report.matrices.critical.ceo;
+    const ceoCriticalOk =
+      ceoCritical.withShell >= CRITICAL_ROUTES.length && ceoCritical.rbacViolations.length === 0;
+    if (!criticalOnly && (autoFull && ceoCriticalOk)) {
+      console.log("Running full 100-route matrix…");
+      report.matrices.full = await runRoleMatrix(browser, loadRoutes(), "full-100");
+    }
   }
 
   await browser.close();

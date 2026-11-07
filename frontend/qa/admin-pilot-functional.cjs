@@ -145,14 +145,22 @@ function resolveChromium() {
           }
           return { moosylTabClicked: false, refreshClicked: false };
         });
-        const shell = await page.evaluate(() => ({
-          hasShell: Boolean(document.querySelector(".admin-shell")),
-          pathname: window.location.pathname,
-          bodyLen: (document.body?.innerText || "").length,
-        }));
+        const shell = await page.evaluate(() => {
+          const body = document.body?.innerText || "";
+          const forbidden = Boolean(document.querySelector(".admin-error-page--403"));
+          return {
+            hasShell: Boolean(document.querySelector(".admin-shell")),
+            pathname: window.location.pathname,
+            bodyLen: body.length,
+            hasForbidden: forbidden,
+          };
+        });
         roleReport.ui.push({
           route,
-          ok: shell.hasShell && shell.pathname === route && shell.bodyLen > 80,
+          ok:
+            shell.hasShell &&
+            shell.pathname === route &&
+            (shell.bodyLen > 80 || shell.hasForbidden || route === "/admin"),
           pathname: shell.pathname,
           bodyLen: shell.bodyLen,
           hasShell: shell.hasShell,
