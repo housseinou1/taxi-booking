@@ -2,7 +2,8 @@
 
 **Date:** 2026-11-07  
 **RC branch:** `release/coordinated-admin-moosyl-rc1`  
-**RC tag:** `coordinated-admin-moosyl-rc1` → `23de3a2a` (route fixes); **HEAD** pending commit for pilot QA + `/admin` guard alignment  
+**RC tag:** `coordinated-admin-moosyl-rc1.2` → **`3ac53832`** (security/growth/RBAC QA)  
+Prior: `coordinated-admin-moosyl-rc1.1` (`52f8f7a5`), `coordinated-admin-moosyl-rc1` (`23de3a2a`)  
 **Production / live Moosyl:** **HOLD** (G1 / G2)
 
 ---
@@ -12,7 +13,8 @@
 | Area | Evidence | Result |
 |------|-----------|--------|
 | Admin shell — 7 former gaps | `23de3a2a` + mock re-run | **100/100** mock CEO (`admin-routes-auth-mock.cjs`) |
-| Multi-role mock (critical 15) | same build | **15/15** CEO, HR, Finance, Ops |
+| Multi-role mock (critical 15) | RBAC forbidden detection | **15/15** shell; HR **11** forbidden, Finance **9**, Ops **10** on denied routes; **0 rbacViolations** |
+| Mock CEO 100 routes | 2026-11-07 | **100/100** |
 | Moosyl commissions (taxi 70/30, delivery 80/20, methods) | `payments.tests_moosyl_options` | **PASS** (incl. Bankily / Masravi / Sedad in options API) |
 | Moosyl webhooks, idempotency, security | `tests_moosyl_webhook`, `tests_provider_security` | **PASS** (52+ tests in slice) |
 | Employee ID cards (API) | registration, PDF (no DOB/NI in PDF), QR tokens, public verify redaction, dashboard | **194 tests OK** in combined employee + Moosyl slice |
