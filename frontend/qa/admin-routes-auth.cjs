@@ -158,7 +158,12 @@ function slug(route) {
       } catch {
         /* classify below */
       }
-      await page.waitForTimeout(600);
+      try {
+        await page.waitForSelector(".admin-shell", { timeout: route === "/admin-dashboard" ? 25000 : 12000 });
+      } catch {
+        /* classify below */
+      }
+      await page.waitForTimeout(route === "/admin-dashboard" ? 1200 : 600);
       const info = await page.evaluate(() => {
         const body = document.body?.innerText || "";
         const shell = document.querySelector(".admin-shell");

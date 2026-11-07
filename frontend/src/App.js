@@ -2085,7 +2085,6 @@ function App() {
 
 function isProtectedPage(page) {
   return [
-    "admin",
     "delivery-admin",
     "driver",
     "driver-profile",
