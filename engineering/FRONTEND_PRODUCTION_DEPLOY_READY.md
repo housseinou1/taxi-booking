@@ -1,4 +1,10 @@
-# Frontend production deploy — authorization package (not executed)
+# Frontend production deploy — completed 2026-11-07
+
+**Status:** **EXECUTED** (frontend-only, CEO GO).
+
+---
+
+# Archive — authorization package (pre-deploy)
 
 ## 1. GitHub push (completed)
 
@@ -27,6 +33,19 @@
 | SHA-256 | `F9CBBEB9CFC7265181D86C2E4A26231589797E3C5FB98C592B30B500006A9F29` |
 | `verify-web-build.ps1` | **PASS** |
 | Live (pre-deploy) | `main.42271995.js` |
+
+## Deploy record (2026-11-07)
+
+| Field | Value |
+|-------|--------|
+| Commit | `78ccffa46fa862b56dd84f6154d1b69861cb9bd8` |
+| Bundle | `main.82b6aa37.js` |
+| index.html SHA256 | `650DF94D83CFA1952A5C78DF7940787E97825E0148A14F9E6BF8A8502639496B` |
+| Backup | `/home/yala/pre-website-deploy-20261107-080137` |
+| Pre-deploy index SHA | `c99367923e9995f9f41dba12a1c6df56425c667eac8e7f07a95989233ed19ece` |
+| Rollback | `scripts/rollback-admin-redesign.sh /home/yala/pre-website-deploy-20261107-080137` |
+
+Smoke: www/api health **200**; `/login` `/admin` `/rider` `/driver` `/delivery/courier` `/privacy` **200**; live bundle verified; `REACT_APP_MOOSYL_UI_ENABLED=0` in bundle.
 
 ## 4. Execute (CEO explicit GO only)
 
