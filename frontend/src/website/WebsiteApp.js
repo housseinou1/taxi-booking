@@ -13,6 +13,7 @@ import { useWebsiteAuth } from "./useWebsiteAuth";
 import { CEO_CONTACT } from "./FounderCard";
 import { IconDownload } from "./WebsiteIcons";
 import "./website.css";
+import { applyWebsiteSeo } from "./websiteSeo";
 
 const LOGIN_LINKS_MOBILE = [
   { key: "loginRider", href: "/login?next=%2Frider-dashboard" },
@@ -368,11 +369,8 @@ export default function WebsiteApp({ route = "home", onNavigate = () => {} }) {
 
   const active = WEBSITE_ROUTES.includes(route) ? route : "home";
 
-  // reflect language + page in the document for a11y and SEO
   useEffect(() => {
-    const previous = document.title;
-    document.title = "YALA Technologies — Mauritania";
-    return () => { document.title = previous; };
+    applyWebsiteSeo(active, lang);
   }, [active, lang]);
 
   const handleCitySelect = useCallback(
