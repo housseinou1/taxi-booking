@@ -1,7 +1,7 @@
 # G1 backend deployment result
 
 **Date:** 2026-11-09 UTC  
-**Release commit:** `f206fee70843052ef236833a08a02fd09a8ac7d6`  
+**Release commit (pin):** `40990c6b` (includes `f206fee7` G1 deploy + Celery `redis-py` hotfix)  
 **Website:** not redeployed  
 **Live settlement:** **OFF** (`PAYMENTS_LIVE_MODE=False`)
 
@@ -72,7 +72,7 @@ Controlled backend deploy completed. Payment routes live with sandbox Moosyl vau
 | `POST /payments/webhooks/moosyl/` (unsigned) | **403** |
 | `GET /operations/admin/me/permissions/` (anon) | **401** |
 | Django container | **healthy** |
-| Celery workers | Recreated; monitor after warm-up |
+| Celery workers | **OK** after `redis>=6.1` hotfix — health `celery_workers=2` |
 | Nginx / www | Unchanged |
 
 ---
