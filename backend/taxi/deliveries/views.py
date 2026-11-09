@@ -24,6 +24,7 @@ from authapp.validators import normalize_mauritania_phone, validate_plate_number
 from legal.constants import COURIER_TERMS_VERSION
 from legal.services import courier_has_complete_signature, serialize_courier_signature
 
+from .categories import normalize_service_category
 from .customer_terms import (
     CUSTOMER_DELIVERY_TERMS_VERSION,
     ensure_customer_delivery_terms,

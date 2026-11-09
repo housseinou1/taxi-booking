@@ -336,6 +336,54 @@ class WalletWithdrawalFlowTests(TestCase):
         self.assertEqual(wallet.balance, Decimal("1800.00"))
         self.assertEqual(wallet.pending_balance, Decimal("0.00"))
 
+    def test_rejection_requires_a_reason_and_approval_does_not_pay(self):
+        withdrawal = WithdrawalRequest.objects.create(
+            driver=self.driver_user,
+            amount=Decimal("500.00"),
+            status="pending",
+            idempotency_key="reason-required",
+        )
+        self._login(self.admin_user)
+        denied = self.client.post(
+            f"/payments/withdrawals/{withdrawal.id}/reject/",
+            {},
+            format="json",
+        )
+        self.assertEqual(denied.status_code, 400)
+        self.assertEqual(denied.data["code"], "reason_required")
+        withdrawal.refresh_from_db()
+        self.assertEqual(withdrawal.status, "pending")
+
+        approved = self.client.post(
+            f"/payments/withdrawals/{withdrawal.id}/approve/",
+            {},
+            format="json",
+        )
+        self.assertEqual(approved.status_code, 200)
+        withdrawal.refresh_from_db()
+        self.assertEqual(withdrawal.status, "approved")
+        self.assertIsNone(withdrawal.paid_at)
+
+        self._login(self.regular_user)
+        forbidden = self.client.post(
+            f"/payments/withdrawals/{withdrawal.id}/approve/",
+            {},
+            format="json",
+        )
+        self.assertEqual(forbidden.status_code, 403)
+
+        self._login(self.accountant)
+        unpaid = self.client.post(
+            f"/payments/withdrawals/{withdrawal.id}/mark-paid/",
+            {},
+            format="json",
+        )
+        self.assertEqual(unpaid.status_code, 400)
+        self.assertEqual(unpaid.data["code"], "reference_required")
+        withdrawal.refresh_from_db()
+        self.assertEqual(withdrawal.status, "approved")
+        self.assertEqual(withdrawal.payment_reference, "")
+
     def test_non_driver_cannot_withdraw(self):
         self._login(self.regular_user)
         response = self.client.post(

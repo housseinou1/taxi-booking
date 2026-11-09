@@ -148,6 +148,7 @@ export default function FinanceOperationsCenter() {
   const [withdrawalMethod, setWithdrawalMethod] = useState("");
   const [reportType, setReportType] = useState("daily");
   const [actionLoading, setActionLoading] = useState(null);
+  const [decision, setDecision] = useState(null);
   const [auditFilters, setAuditFilters] = useState({
     date_from: "",
     date_to: "",
@@ -195,12 +196,13 @@ export default function FinanceOperationsCenter() {
     await load();
   };
 
-  const handleWithdrawalAction = async (action, id) => {
+  const handleWithdrawalAction = async (action, id, payload = {}) => {
     setActionLoading(id);
     try {
-      if (action === "approve") await approveWithdrawal(id);
-      else if (action === "reject") await rejectWithdrawal(id);
-      else if (action === "paid") await markWithdrawalPaid(id, { payment_reference: `FIN-${id}` });
+      if (action === "approve") await approveWithdrawal(id, payload);
+      else if (action === "reject") await rejectWithdrawal(id, payload);
+      else if (action === "paid") await markWithdrawalPaid(id, payload);
+      setDecision(null);
       await load();
     } catch (err) {
       setError(
@@ -209,6 +211,22 @@ export default function FinanceOperationsCenter() {
     } finally {
       setActionLoading(null);
     }
+  };
+
+  const submitDecision = () => {
+    if (!decision) return;
+    if (decision.action === "reject" && !decision.reason.trim()) {
+      setError("A rejection reason is required.");
+      return;
+    }
+    if (decision.action === "paid" && !decision.reference.trim()) {
+      setError("Enter the verified transfer reference. This screen does not send money.");
+      return;
+    }
+    const payload = decision.action === "reject"
+      ? { admin_note: decision.reason.trim() }
+      : { payment_reference: decision.reference.trim(), admin_note: decision.reason.trim() };
+    handleWithdrawalAction(decision.action, decision.id, payload);
   };
 
   // WAI-ARIA tab keyboard navigation.
@@ -567,6 +585,12 @@ export default function FinanceOperationsCenter() {
       },
       { id: "method", label: "Method" },
       {
+        id: "available_balance",
+        label: "Available balance",
+        align: "right",
+        render: (row) => formatMoneyOrDash(row.available_balance),
+      },
+      {
         id: "status",
         label: "Status",
         render: (row) => (
@@ -583,6 +607,7 @@ export default function FinanceOperationsCenter() {
       amount: formatMoneyOrDash(item.amount),
       currency: item.currency,
       method: item.payout_display || item.payout_method || "—",
+      available_balance: item.available_balance,
       status: item.status,
       created_at: item.created_at ? new Date(item.created_at).toLocaleString() : "—",
     }));
@@ -595,7 +620,10 @@ export default function FinanceOperationsCenter() {
               Withdrawal Queue
             </h3>
             <p className="finance-ops__section-hint">
-              Approvals and payouts are recorded in the finance audit trail
+              This queue lists every withdrawal, including requests from other days.
+              Approve and Reject appear on pending requests. Approval does not mark a
+              request paid and does not send money. Finance records Paid only after a
+              verified Bankily, Masravi, Sedad, or bank transfer, with its reference.
             </p>
           </div>
 
@@ -677,13 +705,61 @@ export default function FinanceOperationsCenter() {
             </div>
           </div>
 
+          {decision ? (
+            <form
+              className="finance-toolbar"
+              onSubmit={(event) => {
+                event.preventDefault();
+                submitDecision();
+              }}
+            >
+              <p className="finance-ops__section-hint">
+                {decision.action === "reject"
+                  ? `Reject withdrawal #${decision.id}. A reason is required and is written to the audit log.`
+                  : `Record withdrawal #${decision.id} as paid after the transfer is confirmed. This does not send money.`}
+              </p>
+              {decision.action === "paid" ? (
+                <label className="finance-ops__control">
+                  <span className="finance-ops__control-label">Transfer reference</span>
+                  <input
+                    className="finance-ops__date"
+                    aria-label="Verified transfer reference"
+                    value={decision.reference}
+                    onChange={(event) => setDecision({ ...decision, reference: event.target.value })}
+                  />
+                </label>
+              ) : null}
+              <label className="finance-ops__control">
+                <span className="finance-ops__control-label">
+                  {decision.action === "reject" ? "Rejection reason" : "Note"}
+                </span>
+                <input
+                  className="finance-ops__date"
+                  aria-label={decision.action === "reject" ? "Rejection reason" : "Payment note"}
+                  value={decision.reason}
+                  onChange={(event) => setDecision({ ...decision, reason: event.target.value })}
+                />
+              </label>
+              <button type="submit" className="admin-lib-btn" disabled={actionLoading === decision.id}>
+                {decision.action === "reject" ? "Confirm rejection" : "Confirm paid"}
+              </button>
+              <button
+                type="button"
+                className="admin-lib-btn admin-lib-btn--ghost"
+                onClick={() => setDecision(null)}
+              >
+                Cancel
+              </button>
+            </form>
+          ) : null}
+
           <DataTable
             title="Withdrawals"
             columns={withdrawalColumns}
             rows={withdrawalRows}
             loading={loading}
             error={error}
-            emptyMessage="No withdrawal requests match the current filters."
+            emptyMessage="No withdrawal requests are stored. Pending requests from any day appear here."
             searchPlaceholder="Search withdrawals…"
             exportFilename="yala-withdrawals"
             onRefresh={load}
@@ -703,7 +779,7 @@ export default function FinanceOperationsCenter() {
                       type="button"
                       className="admin-lib-btn admin-lib-btn--ghost"
                       disabled={actionLoading === row.id}
-                      onClick={() => handleWithdrawalAction("reject", row.id)}
+                      onClick={() => setDecision({ action: "reject", id: row.id, reason: "", reference: "" })}
                     >
                       Reject
                     </button>
@@ -714,7 +790,7 @@ export default function FinanceOperationsCenter() {
                     type="button"
                     className="admin-lib-btn admin-lib-btn--ghost"
                     disabled={actionLoading === row.id}
-                    onClick={() => handleWithdrawalAction("paid", row.id)}
+                    onClick={() => setDecision({ action: "paid", id: row.id, reason: "", reference: "" })}
                   >
                     Mark paid
                   </button>

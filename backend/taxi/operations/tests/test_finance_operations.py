@@ -1,7 +1,12 @@
+from datetime import timedelta
+
 from django.contrib.auth import get_user_model
 from django.test import TestCase
+from django.utils import timezone
 from django.urls import reverse
 from rest_framework.test import APIRequestFactory, force_authenticate
+
+from payments.models import WithdrawalRequest
 
 from operations.finance_operations_views import (
     finance_accounting_report,
@@ -122,6 +127,26 @@ class FinanceOperationsDashboardTest(TestCase):
         self.assertIn("totals", data)
         self.assertIn("reconciliation", data)
         self.assertIn(data["reconciliation"]["status"], ("balanced", "difference_detected"))
+
+    def test_withdrawal_queue_is_not_limited_to_the_reconciliation_date(self):
+        withdrawal = WithdrawalRequest.objects.create(
+            driver=self.user,
+            amount="360.00",
+            status="pending",
+        )
+        WithdrawalRequest.objects.filter(pk=withdrawal.pk).update(
+            created_at=timezone.now() - timedelta(days=30)
+        )
+        request = self.factory.get(
+            "/operations/business/finance/operations/",
+            {"date": "2020-01-01"},
+        )
+        force_authenticate(request, user=self.user)
+        response = finance_operations_dashboard(request)
+        self.assertEqual(response.status_code, 200)
+        ids = [row["id"] for row in response.data["withdrawals"]["withdrawals"]]
+        self.assertIn(withdrawal.id, ids)
+        self.assertEqual(response.data["withdrawals"]["queue_scope"], "all_dates")
 
     def test_payment_providers_breakdown(self):
         request = self.factory.get("/operations/business/finance/operations/providers/")

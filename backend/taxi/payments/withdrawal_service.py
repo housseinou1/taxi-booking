@@ -581,6 +581,8 @@ def approve_withdrawal_request(withdrawal: WithdrawalRequest, admin, admin_note=
 def reject_withdrawal_request(withdrawal: WithdrawalRequest, admin, admin_note="", request=None):
     if withdrawal.status != "pending":
         raise WithdrawalError("Only pending withdrawals can be rejected.", code="invalid_status")
+    if not str(admin_note or "").strip():
+        raise WithdrawalError("A rejection reason is required.", code="reason_required")
 
     wallet = sync_driver_wallet(withdrawal.driver)
     wallet = WalletAccount.objects.select_for_update().get(pk=wallet.pk)
@@ -614,6 +616,11 @@ def mark_withdrawal_paid(
 ):
     if withdrawal.status != "approved":
         raise WithdrawalError("Only approved withdrawals can be marked paid.", code="invalid_status")
+    if not str(payment_reference or "").strip():
+        raise WithdrawalError(
+            "A verified transfer reference is required before marking a withdrawal paid.",
+            code="reference_required",
+        )
 
     wallet = sync_driver_wallet(withdrawal.driver)
     wallet = WalletAccount.objects.select_for_update().get(pk=wallet.pk)

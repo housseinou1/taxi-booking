@@ -246,7 +246,7 @@ describe("FinanceOperationsCenter — finance dashboard", () => {
 
     expect(screen.getAllByText("Pending").length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole("button", { name: "Approve" }));
-    expect(approveWithdrawal).toHaveBeenCalledWith(55);
+    expect(approveWithdrawal).toHaveBeenCalledWith(55, {});
   });
 
   it("flags an unbalanced reconciliation", async () => {

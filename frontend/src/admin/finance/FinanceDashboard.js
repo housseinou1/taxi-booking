@@ -147,9 +147,21 @@ export default function FinanceDashboard() {
       } else if (confirm.type === "wd_approve") {
         await approveWithdrawal(confirm.id, { admin_note: note });
       } else if (confirm.type === "wd_reject") {
-        await rejectWithdrawal(confirm.id, { admin_note: note });
+        if (!note.trim()) {
+          push({ tone: "danger", title: "Reason required", message: "Enter a rejection reason before rejecting this withdrawal." });
+          return;
+        }
+        await rejectWithdrawal(confirm.id, { admin_note: note.trim() });
       } else if (confirm.type === "wd_paid") {
-        await markWithdrawalPaid(confirm.id, { admin_note: note, payment_reference: note || `paid-${confirm.id}` });
+        if (!note.trim()) {
+          push({
+            tone: "danger",
+            title: "Reference required",
+            message: "Enter the verified transfer reference. Approving or saving here does not send money.",
+          });
+          return;
+        }
+        await markWithdrawalPaid(confirm.id, { admin_note: note.trim(), payment_reference: note.trim() });
       } else if (confirm.type === "batch_approve") {
         for (const id of confirm.ids) {
           await approveWithdrawal(id, { admin_note: note || "Batch approve" });

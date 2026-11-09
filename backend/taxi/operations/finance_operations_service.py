@@ -234,8 +234,15 @@ def build_withdrawal_queue(
         rejected_count=Count("id", filter=Q(status="rejected")),
     )
 
+    items = list(qs[:limit])
+    balances = {
+        row["owner_id"]: row["balance"]
+        for row in WalletAccount.objects.filter(
+            owner_id__in=[item.driver_id for item in items if item.driver_id]
+        ).values("owner_id", "balance")
+    }
     rows = []
-    for item in qs[:limit]:
+    for item in items:
         payout = item.payout_method
         rows.append(
             {
@@ -244,6 +251,7 @@ def build_withdrawal_queue(
                 "driver_email": item.driver.email if item.driver else "",
                 "driver_name": item.driver.get_full_name() if item.driver else "",
                 "amount": _dec(item.amount),
+                "available_balance": _dec(balances.get(item.driver_id)),
                 "currency": item.currency,
                 "status": item.status,
                 "payout_method": payout.payout_type if payout else "",
@@ -258,6 +266,7 @@ def build_withdrawal_queue(
         )
 
     return {
+        "queue_scope": "all_dates",
         "summary": {
             "total_amount": _dec(summary["total_amount"]),
             "pending": {"amount": _dec(summary["pending_amount"]), "count": summary["pending_count"] or 0},
@@ -514,8 +523,6 @@ def build_finance_operations_dashboard(
         "reconciliation": build_daily_reconciliation(target=target, city_id=city_id),
         "payment_providers": build_payment_provider_breakdown(start=target, end=target),
         "withdrawals": build_withdrawal_queue(
-            date_from=target.isoformat(),
-            date_to=target.isoformat(),
             status=withdrawal_status,
             payment_method=withdrawal_method,
         ),
