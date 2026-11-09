@@ -127,18 +127,34 @@ if [ "$OFFSITE_OK" = true ]; then
 fi
 DRILL_END=$(date +%s.%N)
 
-# 9. Retention verification (directory counts within policy)
-DAILY_COUNT=$(find "$BACKUP_DIR/daily" -name 'yala_db_*.sql.gz.gpg' 2>/dev/null | wc -l)
-WEEKLY_COUNT=$(find "$BACKUP_DIR/weekly" -name 'yala_db_*.sql.gz.gpg' 2>/dev/null | wc -l)
-MONTHLY_COUNT=$(find "$BACKUP_DIR/monthly" -name 'yala_db_*.sql.gz.gpg' 2>/dev/null | wc -l)
+# 9. Retention verification — age-based (matches backup-encrypted.sh find -mtime cleanup)
+# Counting files vs DAILY_RETENTION_DAYS is wrong: multiple runs/day stay inside the window
+# and still produce more than N db artifacts. Policy is "delete older than N days", not "max N files".
 DAILY_MAX="${DAILY_RETENTION_DAYS:-14}"
 WEEKLY_MAX="${WEEKLY_RETENTION_WEEKS:-8}"
 MONTHLY_MAX="${MONTHLY_RETENTION_MONTHS:-12}"
+WEEKLY_AGE_DAYS=$((WEEKLY_MAX * 7))
+MONTHLY_AGE_DAYS=$((MONTHLY_MAX * 31))
+
+DAILY_COUNT=$(find "$BACKUP_DIR/daily" -name 'yala_db_*.sql.gz.gpg' 2>/dev/null | wc -l)
+WEEKLY_COUNT=$(find "$BACKUP_DIR/weekly" -name 'yala_db_*.sql.gz.gpg' 2>/dev/null | wc -l)
+MONTHLY_COUNT=$(find "$BACKUP_DIR/monthly" -name 'yala_db_*.sql.gz.gpg' 2>/dev/null | wc -l)
+
+count_stale_files() {
+  local tier="$1"
+  local pattern="$2"
+  local max_age_days="$3"
+  find "$BACKUP_DIR/$tier" -name "$pattern" -mtime +"$max_age_days" 2>/dev/null | wc -l
+}
+
+DAILY_STALE=$(count_stale_files daily 'yala_db_*.sql.gz.gpg' "$DAILY_MAX")
+WEEKLY_STALE=$(count_stale_files weekly 'yala_db_*.sql.gz.gpg' "$WEEKLY_AGE_DAYS")
+MONTHLY_STALE=$(count_stale_files monthly 'yala_db_*.sql.gz.gpg' "$MONTHLY_AGE_DAYS")
 
 RETENTION_OK=true
-[ "$DAILY_COUNT" -gt "$DAILY_MAX" ] && RETENTION_OK=false
-[ "$WEEKLY_COUNT" -gt "$WEEKLY_MAX" ] && RETENTION_OK=false
-[ "$MONTHLY_COUNT" -gt "$MONTHLY_MAX" ] && RETENTION_OK=false
+[ "$DAILY_STALE" -gt 0 ] && RETENTION_OK=false
+[ "$WEEKLY_STALE" -gt 0 ] && RETENTION_OK=false
+[ "$MONTHLY_STALE" -gt 0 ] && RETENTION_OK=false
 run_check retention_within_policy test "$RETENTION_OK" = true
 
 # 10. Cron installed
@@ -183,9 +199,10 @@ cat > "$REPORT_JSON" <<EOF
   "encryption": "GPG AES-256 symmetric",
   "offsite_remote": "${BACKUP_OFFSITE_REMOTE:-none}",
   "retention": {
-    "daily": {"count": $DAILY_COUNT, "max": $DAILY_MAX},
-    "weekly": {"count": $WEEKLY_COUNT, "max": $WEEKLY_MAX},
-    "monthly": {"count": $MONTHLY_COUNT, "max": $MONTHLY_MAX}
+    "policy": "age_days",
+    "daily": {"count": $DAILY_COUNT, "max_age_days": $DAILY_MAX, "stale_files": $DAILY_STALE},
+    "weekly": {"count": $WEEKLY_COUNT, "max_age_days": $WEEKLY_AGE_DAYS, "stale_files": $WEEKLY_STALE},
+    "monthly": {"count": $MONTHLY_COUNT, "max_age_days": $MONTHLY_AGE_DAYS, "stale_files": $MONTHLY_STALE}
   },
   "checks": [$(IFS=,; echo "${CHECKS[*]}")]
 }

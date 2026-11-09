@@ -10,7 +10,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Verdict** | **FAIL** (offsite upload pending credentials) |
+| **Verdict** | **PASS** (2026-11-09 after age-based retention fix in certification script) |
 | **Local encrypted backup** | **PASS** |
 | **Restore drill** | **PASS** |
 | **Retention policy** | **PASS** (configured) |
