@@ -8,9 +8,11 @@
 set -euo pipefail
 
 # ── Config ────────────────────────────────────────────────────────────────────
-BACKUP_DIR="/home/yala/backups"
-MEDIA_DIR="/home/yala/app/backend/taxi/media"
-DB_CONTAINER="taxi-booking-postgres-1"
+APP_DIR="${APP_DIR:-/opt/yala}"
+BACKUP_DIR="${BACKUP_DIR:-/home/yala/backups}"
+MEDIA_DIR="${MEDIA_DIR:-$APP_DIR/backend/taxi/media}"
+# Production compose project name is "yala" (see docker compose -p yala).
+DB_CONTAINER="${DB_CONTAINER:-yala-postgres-1}"
 DB_NAME="yala_db"
 DB_USER="yala_user"
 RETENTION_DAYS=7
