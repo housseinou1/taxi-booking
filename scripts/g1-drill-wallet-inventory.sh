@@ -32,9 +32,11 @@ echo "── drill restore (isolated) archive=$(basename "$LATEST") ──"
 docker run -d --name "$DRILL_NAME" \
   -e POSTGRES_PASSWORD=drill \
   -e POSTGRES_DB=drill \
+  -e POSTGRES_USER=yala_user \
   postgres:15-alpine >/dev/null
 sleep 6
-gunzip -c "$WORKDIR/restore.sql.gz" | docker exec -i "$DRILL_NAME" psql -U postgres -d drill >/dev/null
+docker exec "$DRILL_NAME" psql -U yala_user -d drill -c "SELECT 1" >/dev/null
+gunzip -c "$WORKDIR/restore.sql.gz" | docker exec -i "$DRILL_NAME" psql -U yala_user -d drill >/dev/null
 
 TABLES=$(docker exec "$DRILL_NAME" psql -U postgres -d drill -tAc \
   "SELECT count(*) FROM information_schema.tables WHERE table_schema='public'")

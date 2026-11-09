@@ -11,7 +11,7 @@
 | Item | Value |
 |------|--------|
 | Branch | `release/coordinated-admin-moosyl-rc1` |
-| **Pinned commit** | **`38b198fe5e9e9776d6ac34ca20e0f7e31168b928`** |
+| **Pinned commit** | **`b360c9b7`** (includes `38b198fe` Moosyl + prep scripts/docs) |
 | Change | G1 Moosyl `create_bank_payment`, options `/configuration` parsing, unit tests |
 | Remote | Pushed to `origin` |
 
@@ -36,7 +36,7 @@
 | Production live DB | **Not queried / not migrated** (prep policy) |
 | Prod schema today | `payments` applied through **0018** on running containers |
 | RC schema | Migrations **0019–0023** in repo (`0022` dedupe, `0023` `ProviderWebhookEvent`) |
-| Drill script | `scripts/g1-drill-wallet-inventory.sh` — restore encrypted daily backup → ephemeral Postgres → duplicate `(wallet, reference)` count (**run on server before G1**) |
+| Drill (2026-11-09 server) | **`duplicate_reference_groups=0`** · `wallet_transaction_rows=6` · `migration_0022_preflight=PASS` (archive `yala_db_2026-11-09_02-33-48.sql.gz.gpg`; ephemeral Postgres only) |
 
 ---
 
