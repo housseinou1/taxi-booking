@@ -15,6 +15,9 @@ DOCUMENTED CONTRACT (docs.moosyl.com, retrieved 2026-11-06)
   **Not idempotent**: a second call with the same ``transactionId`` returns 409, so a
   timed-out create is recovered with ``GET /payment-request/by-transaction/{id}``.
 * ``POST /checkout-session`` -> ``{data: {...}, checkoutUrl}``.
+* ``POST /payment`` with ``{transactionId, configurationId, phoneNumber}`` after a
+  ``payment-request`` exists — selects the bank app (Bankily / Masrvi / Sedad) and
+  returns ``{id, status, metadata}`` (sandbox sets ``metadata.isSandbox``).
 * ``GET /configuration`` -> payment methods enabled for the key's environment.
 * ``POST /payment/{paymentId}/simulate-transfer`` — sandbox only (BCI Pay, Amanty and
   Bankily transfer-flow accounts stay ``pending`` until this is called).
@@ -320,6 +323,54 @@ class MoosylProvider(PaymentProvider):
             amount=str(whole_amount),
             currency="MRU",
             payload={"transaction_id": str(data.get("transactionId") or reference)},
+        )
+
+    @staticmethod
+    def _unwrap_payment_payload(payload: dict) -> dict:
+        """Moosyl may return ``{data: {...}}`` or a top-level payment object."""
+        if isinstance(payload.get("data"), dict):
+            return payload["data"]
+        return payload if isinstance(payload, dict) else {}
+
+    def create_bank_payment(
+        self,
+        *,
+        transaction_id: str,
+        configuration_id: str,
+        phone_number: str = "22222222",
+    ) -> ProviderResult:
+        """Start a bank-app payment for an existing Moosyl payment-request.
+
+        Requires a prior ``create_collection`` (``POST /payment-request``) for the same
+        ``transactionId``. The ``configurationId`` comes from ``GET /configuration``
+        (``type`` = ``bankily`` | ``masrivi`` | ``sedad``). Completing the payment still
+        requires Moosyl webhooks — this call never settles Yala orders.
+        """
+        self._guard()
+        if not str(transaction_id or "").strip():
+            raise MoosylError("transactionId is required.")
+        if not str(configuration_id or "").strip():
+            raise MoosylError("configurationId is required.")
+        payload = self._request(
+            "POST",
+            "/payment",
+            body={
+                "transactionId": str(transaction_id).strip(),
+                "configurationId": str(configuration_id).strip(),
+                "phoneNumber": str(phone_number or "").strip() or "22222222",
+            },
+        )
+        data = self._unwrap_payment_payload(payload)
+        status = _STATUS_MAP.get(str(data.get("status") or ""), str(data.get("status") or "pending"))
+        return ProviderResult(
+            provider=self.code,
+            reference=str(data.get("id") or ""),
+            status=status,
+            verified=False,
+            mode=self.mode,
+            amount=str(data.get("amount") or ""),
+            currency="MRU",
+            payload=data,
         )
 
     def create_checkout_session(

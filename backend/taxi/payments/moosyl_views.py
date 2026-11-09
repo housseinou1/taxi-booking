@@ -457,10 +457,17 @@ def payment_options(request):
             for item in (configuration or {}).get("data") or []:
                 if not isinstance(item, dict):
                     continue
-                for key in ("code", "name", "id", "slug"):
+                for key in ("type", "code", "name", "id", "slug", "integration"):
                     value = str(item.get(key, "")).strip().lower()
                     if value:
                         enabled.add(value)
+                cfg = item.get("config")
+                if isinstance(cfg, dict):
+                    code = str(cfg.get("code", "")).strip().lower()
+                    if code:
+                        enabled.add(code)
+            if "masrivi" in enabled or "masrvi" in enabled:
+                enabled.add("masravi")
             narrowed = [code for code in MOOSYL_BANK_APPS if code in enabled]
             if narrowed:
                 moosyl["methods"] = narrowed
