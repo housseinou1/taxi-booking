@@ -18,9 +18,9 @@ PRIVACY_URL = "https://www.yalataxi.live/privacy"
 TERMS_URL = "https://www.yalataxi.live/terms"
 
 APPS = [
-    ("Rider", ROOT / "rider-app" / "android" / "app" / "build.gradle", "com.yala.rider.mr", 19, "1.2.7"),
-    ("Driver", ROOT / "driver-app" / "android" / "app" / "build.gradle", "com.yala.driver.mr", 38, "1.2.23"),
-    ("Delivery", ROOT / "delivery-app" / "android" / "app" / "build.gradle", "com.yala.delivery.mr", 6, "1.0.4"),
+    ("Rider", ROOT / "rider-app" / "android" / "app" / "build.gradle", "com.yala.rider.mr", 35, "1.3.2"),
+    ("Driver", ROOT / "driver-app" / "android" / "app" / "build.gradle", "com.yala.driver.mr", 49, "1.3.1"),
+    ("Delivery", ROOT / "delivery-app" / "android" / "app" / "build.gradle", "com.yala.delivery.mr", 13, "1.1.3"),
 ]
 
 
@@ -50,7 +50,7 @@ def main() -> int:
     if vars_file.exists():
         m = re.search(r"targetSdkVersion\s*=\s*(\d+)", vars_file.read_text())
         target_sdk = int(m.group(1)) if m else None
-    record("target_sdk_35", target_sdk == 35, f"targetSdkVersion={target_sdk}")
+    record("target_sdk_35", target_sdk is not None and target_sdk >= 35, f"targetSdkVersion={target_sdk}")
 
     for name, gradle, package, vcode, vname in APPS:
         text = gradle.read_text(encoding="utf-8")
@@ -58,8 +58,19 @@ def main() -> int:
         record(f"{name.lower()}_version_code", f"versionCode {vcode}" in text, str(vcode))
         record(f"{name.lower()}_version_name", f'versionName "{vname}"' in text, vname)
         record(f"{name.lower()}_signing_config", "signingConfigs" in text and "release" in text, "release signing block present")
-        aabs = list(RELEASE.glob(f"yala-{name.lower()}-*.aab")) if RELEASE.exists() else []
-        record(f"{name.lower()}_production_aab", len(aabs) > 0, aabs[-1].name if aabs else "no AAB in release/android/")
+        aabs = sorted(RELEASE.glob(f"yala-{name.lower()}-*.aab")) if RELEASE.exists() else []
+        latest = aabs[-1].name if aabs else ""
+        record(f"{name.lower()}_production_aab", len(aabs) > 0, latest or "no AAB in release/android/")
+        aab_code = None
+        if latest:
+            m = re.search(r"-(\d+)-(?:minsdk\d+|\d{8})", latest)
+            if m:
+                aab_code = int(m.group(1))
+        record(
+            f"{name.lower()}_aab_matches_gradle",
+            aab_code is not None and aab_code == vcode,
+            f"gradle={vcode} aab_file={aab_code}" if aab_code is not None else "could not parse AAB versionCode",
+        )
 
     record("data_safety_form", False, "MANUAL — complete in Play Console")
     record("account_deletion_play", False, "MANUAL — attest in Play Console + verify in-app")
