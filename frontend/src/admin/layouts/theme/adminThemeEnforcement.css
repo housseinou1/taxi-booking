@@ -152,9 +152,9 @@
   color: var(--admin-text) !important;
 }
 
-.admin-shell [class*="--danger"],
-.admin-shell [class*="--error"],
-.admin-shell [class*="--critical"],
+.admin-shell [class*="--danger"]:not([class*="courier-panel"]),
+.admin-shell [class*="--error"]:not([class*="courier-panel"]),
+.admin-shell [class*="--critical"]:not([class*="courier-panel"]),
 .admin-shell .admin-alert--danger,
 .admin-shell .admin-banner--danger {
   border-left: 4px solid var(--yala-mr-red) !important;
@@ -162,8 +162,8 @@
   color: var(--yala-mr-ivory) !important;
 }
 
-.admin-shell [class*="--warn"],
-.admin-shell [class*="--warning"],
+.admin-shell [class*="--warn"]:not([class*="courier-panel"]),
+.admin-shell [class*="--warning"]:not([class*="courier-panel"]),
 .admin-shell .admin-alert--warning {
   border-left: 4px solid var(--yala-mr-gold) !important;
   background: rgba(245, 197, 24, 0.18) !important;
@@ -278,7 +278,28 @@
 .admin-shell .courier-panel-state,
 .admin-shell .courier-panel-empty,
 .admin-shell .courier-panel-hint {
-  color: #6b7280 !important;
+  color: #4b5563 !important;
+}
+
+.admin-shell .courier-panel-alert--warning {
+  background: #fffbeb !important;
+  border: 1px solid #fcd34d !important;
+  border-left: 1px solid #fcd34d !important;
+  color: #92400e !important;
+}
+
+.admin-shell .courier-panel-alert--danger {
+  background: #fef2f2 !important;
+  border: 1px solid #fecaca !important;
+  border-left: 1px solid #fecaca !important;
+  color: #991b1b !important;
+}
+
+.admin-shell .courier-panel-alert--success {
+  background: #ecfdf5 !important;
+  border: 1px solid #a7f3d0 !important;
+  border-left: 1px solid #a7f3d0 !important;
+  color: #065f46 !important;
 }
 
 .admin-shell .courier-panel-block__toggle:hover,
