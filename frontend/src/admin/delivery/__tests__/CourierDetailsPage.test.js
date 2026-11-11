@@ -212,6 +212,23 @@ test("blocks approval until the electronic signature is complete", async () => {
   expect(await screen.findByRole("button", { name: "Approve" })).toBeDisabled();
 });
 
+test("blocks approval when server requirements report expired documents", async () => {
+  fetchCourierRequirements.mockResolvedValue({
+    ...REQUIREMENTS,
+    approval_blockers: {
+      blocked: true,
+      reasons: ["Expired document(s): Insurance"],
+      expired_document_types: ["insurance"],
+      missing_document_types: [],
+      signature_complete: true,
+    },
+  });
+  renderPage();
+  const approve = await screen.findByRole("button", { name: "Approve" });
+  expect(approve).toBeDisabled();
+  expect(approve).toHaveAttribute("title", expect.stringMatching(/Expired document/i));
+});
+
 test("opens documents through the authenticated endpoint", async () => {
   renderPage();
   await screen.findByText("Moussa Coura");
@@ -226,6 +243,22 @@ test("approves through the approval-center endpoint with confirmation", async ()
   fireEvent.click(screen.getByRole("button", { name: "Approve" }));
   fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
   await waitFor(() => expect(approveCourier).toHaveBeenCalledWith(11));
+});
+
+test("requires confirmation before opening CEO city transfer", async () => {
+  const assign = jest.fn();
+  const original = window.location;
+  delete window.location;
+  window.location = { ...original, assign };
+  renderPage();
+  await screen.findByText("Moussa Coura");
+  fireEvent.click(screen.getByRole("button", { name: "City transfer" }));
+  expect(
+    screen.getByText(/Operating-city transfers require CEO authorization/i)
+  ).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Continue to City Transfer" }));
+  expect(assign).toHaveBeenCalledWith("/admin/administration/city-transfers");
+  window.location = original;
 });
 
 test("loads delivery history in the deliveries tab", async () => {

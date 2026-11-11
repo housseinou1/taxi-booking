@@ -343,23 +343,38 @@
   color: #111827 !important;
 }
 
-/* Courier Details full-page dashboard � light reading surfaces */
-.admin-shell .courier-dash,
-.admin-shell .courier-dash-hero,
-.admin-shell .courier-dash-card,
+/* Courier Details full-page dashboard — Mauritanian flag field (scoped) */
+.admin-shell .courier-dash {
+  color: #111827 !important;
+}
+
+.admin-shell .courier-dash-panel,
 .admin-shell .courier-dash-tabs,
 .admin-shell .courier-dash-table-wrap,
 .admin-shell .courier-dash-dialog,
 .admin-shell .courier-dash-table th,
-.admin-shell .courier-dash-table td {
+.admin-shell .courier-dash-table td,
+.admin-shell .courier-dash-card__body,
+.admin-shell .courier-dash-card {
   background: #ffffff !important;
   background-color: #ffffff !important;
-  border-color: #e5e7eb !important;
   color: #111827 !important;
-  box-shadow: none !important;
 }
 
-.admin-shell .courier-dash-card__head,
+.admin-shell .courier-dash-card {
+  border-color: rgba(255, 196, 0, 0.35) !important;
+}
+
+.admin-shell .courier-dash-card__head {
+  background: linear-gradient(135deg, #006233 0%, #004225 100%) !important;
+  color: #ffc400 !important;
+  border-color: rgba(255, 196, 0, 0.22) !important;
+}
+
+.admin-shell .courier-dash-card__head h3 {
+  color: #ffc400 !important;
+}
+
 .admin-shell .courier-dash-req li,
 .admin-shell .courier-dash-steps li,
 .admin-shell .courier-dash-audit li {
@@ -369,7 +384,6 @@
 }
 
 .admin-shell .courier-dash-hero__title,
-.admin-shell .courier-dash-card__head h3,
 .admin-shell .courier-dash-field dd,
 .admin-shell .courier-dash strong {
   color: #111827 !important;
@@ -399,24 +413,26 @@
   color: #006233 !important;
 }
 
+.admin-shell .courier-dash-tab {
+  font-size: 0.9375rem !important;
+  font-weight: 700 !important;
+  line-height: 1.3 !important;
+  color: #1f2937 !important;
+  padding: 10px 14px !important;
+}
+
 .admin-shell .courier-dash-tab.is-active,
 .admin-shell .courier-dash-tab[aria-selected="true"] {
   background: linear-gradient(180deg, #ffd34d 0%, #ffc400 100%) !important;
   color: #004225 !important;
-  box-shadow: inset 0 0 0 1px #e0ae00 !important;
+  font-weight: 700 !important;
+  box-shadow:
+    inset 0 0 0 1px #e0ae00,
+    0 0 0 1px rgba(0, 98, 51, 0.35) !important;
 }
 
 .admin-shell .courier-dash-back {
   color: #ffc400 !important;
-}
-
-.admin-shell .courier-dash-hero {
-  border-top: 3px solid #006233 !important;
-}
-
-.admin-shell .courier-dash-card__head {
-  border-left: 3px solid #006233 !important;
-  background: linear-gradient(180deg, #ffffff 0%, #f4faf7 100%) !important;
 }
 
 .admin-shell .courier-dash .admin-chip--success {
@@ -434,55 +450,42 @@
   color: #d01c1f !important;
 }
 
-/* Courier Details page only — do not restyle other Admin modules */
-.admin-shell .courier-dash-hero__actions .admin-lib-btn:not(.admin-lib-btn--ghost):not(.admin-lib-btn--danger) {
-  background: linear-gradient(180deg, #ffd34d 0%, #ffc400 100%) !important;
-  border-color: #e0ae00 !important;
-  color: #004225 !important;
-}
-
-.admin-shell .courier-dash-hero__actions .admin-lib-btn--danger {
-  background: #d01c1f !important;
-  border-color: #b01618 !important;
-  color: #ffffff !important;
+.admin-shell .courier-dash .admin-chip--info,
+.admin-shell .courier-dash .admin-chip--neutral {
+  background: #fff3bf !important;
+  color: #7a5a00 !important;
 }
 
 .admin-shell .courier-dash .admin-kpi,
 .admin-shell .courier-dash .admin-kpi--clickable,
 .admin-shell .courier-dash-kpis .admin-kpi {
-  background: #ffffff !important;
-  background-image: none !important;
-  border: 1px solid #e5e7eb !important;
-  border-top: 3px solid #006233 !important;
-  border-right: 1px solid #e5e7eb !important;
-  color: #111827 !important;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+  background: linear-gradient(160deg, rgba(0, 122, 64, 0.96), rgba(0, 66, 37, 0.98)) !important;
+  background-image: linear-gradient(160deg, rgba(0, 122, 64, 0.96), rgba(0, 66, 37, 0.98)) !important;
+  border: 1px solid rgba(255, 196, 0, 0.5) !important;
+  border-top: 3px solid #ffc400 !important;
+  border-right: 2px solid rgba(208, 28, 31, 0.7) !important;
+  color: #fff8e1 !important;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18) !important;
 }
 
 .admin-shell .courier-dash .admin-kpi::after,
 .admin-shell .courier-dash .admin-kpi--clickable::after {
-  display: none !important;
-  content: none !important;
-  background: none !important;
+  content: "" !important;
+  display: block !important;
+  background: linear-gradient(90deg, #d01c1f, transparent) !important;
 }
 
 .admin-shell .courier-dash .admin-kpi__label {
-  color: #006233 !important;
+  color: #ffc400 !important;
 }
 
 .admin-shell .courier-dash .admin-kpi__value {
-  color: #111827 !important;
+  color: #ffffff !important;
 }
 
 .admin-shell .courier-dash .admin-kpi__subtitle,
 .admin-shell .courier-dash .admin-kpi__empty {
-  color: #4b5563 !important;
-}
-
-.admin-shell .courier-dash .admin-chip--info,
-.admin-shell .courier-dash .admin-chip--neutral {
-  background: #e5e7eb !important;
-  color: #1f2937 !important;
+  color: rgba(255, 248, 225, 0.88) !important;
 }
 
 .admin-shell .courier-dash :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]):not([type="range"]) {

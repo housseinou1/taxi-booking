@@ -46,15 +46,27 @@ function AsyncBlock({ state, isEmpty, emptyLabel, children }) {
   return children;
 }
 
-function SectionCard({ title, children, actions = null }) {
+function SectionCard({ title, icon = "profile", children, actions = null }) {
   return (
     <section className="courier-dash-card">
       <header className="courier-dash-card__head">
-        <h3>{title}</h3>
+        <h3>
+          <span className={`courier-dash-card__icon courier-dash-card__icon--${icon}`} aria-hidden="true" />
+          {title}
+        </h3>
         {actions}
       </header>
       <div className="courier-dash-card__body">{children}</div>
     </section>
+  );
+}
+
+function VerificationItem({ ok, label }) {
+  return (
+    <li className={ok ? "is-ok" : "is-pending"}>
+      <span aria-hidden="true">{ok ? "✓" : "!"}</span>
+      {label}
+    </li>
   );
 }
 
@@ -216,8 +228,15 @@ export default function CourierDetailsPage({
   const closeAction = () => setAction({ kind: null, reason: "", submitting: false, error: null });
 
   const submitAction = useCallback(async () => {
-    if (!courierId || !action.kind) return;
+    if (!action.kind) return;
     const { kind, reason } = action;
+
+    if (kind === "city_transfer") {
+      window.location.assign("/admin/administration/city-transfers");
+      return;
+    }
+
+    if (!courierId) return;
     if (kind === "reject" && reason.trim().length < 5) {
       setAction((prev) => ({ ...prev, error: "A rejection reason is required (5+ characters)." }));
       return;
@@ -267,9 +286,32 @@ export default function CourierDetailsPage({
   const pendingReviewDocs = documents.filter(
     (doc) => String(doc.status || "").toLowerCase() === "pending_review"
   );
+  const expiredDocs = documents.filter((doc) => {
+    const status = String(doc.status || doc.display_status || "").toLowerCase();
+    return status === "expired" || Boolean(doc.is_expired);
+  });
   const approvedWithPendingDocs =
     String(courier?.status || "").toLowerCase() === "approved" && pendingReviewDocs.length > 0;
-  const canApprove = Boolean(courier) && courier.status !== "approved" && courier.signature_complete;
+  const approvalBlockers = requirements.data?.approval_blockers || null;
+  const approvalBlockedByRequirements = Boolean(approvalBlockers?.blocked);
+  const canApprove =
+    Boolean(courier) &&
+    courier.status !== "approved" &&
+    courier.signature_complete &&
+    expiredDocs.length === 0 &&
+    (!requirements.data || !approvalBlockedByRequirements);
+  const approveBlockedReason = !courier
+    ? ""
+    : courier.status === "approved"
+      ? "Courier is already approved"
+      : !courier.signature_complete
+        ? "Blocked until the electronic signature is complete"
+        : expiredDocs.length > 0
+          ? "Blocked while expired documents remain unresolved"
+          : approvalBlockedByRequirements
+            ? (approvalBlockers?.reasons || []).join(" ") ||
+              "Blocked by incomplete or expired document requirements"
+            : "Approve this courier application";
   const canReject = Boolean(courier) && courier.status !== "rejected";
   const historyRows = history.data?.results || [];
   const historySummary = history.data?.summary || null;
@@ -281,6 +323,7 @@ export default function CourierDetailsPage({
       reject: "Reject application",
       suspend: "Suspend courier",
       reactivate: "Reactivate courier",
+      city_transfer: "Open CEO city transfer",
     }),
     []
   );
@@ -288,9 +331,14 @@ export default function CourierDetailsPage({
   const pagePath = pathname || `/admin/delivery/couriers/${courierId}`;
   const title = courier?.name ? `Courier · ${courier.name}` : "Courier Details";
 
+  const identitySubmitted = documents.some((doc) =>
+    Boolean(doc.is_uploaded || doc.uploaded_at || doc.status)
+  );
+  const accountVerified = String(courier?.status || "").toLowerCase() === "approved";
+
   return (
     <AdminShellPage pathname={pagePath} title={title}>
-      <div className="courier-dash">
+      <div className="courier-dash" data-testid="courier-dash">
         <div className="courier-dash-toolbar">
           <a className="courier-dash-back" href="/admin/delivery/couriers">
             ← Back to Courier Management
@@ -320,11 +368,11 @@ export default function CourierDetailsPage({
         {courier && !loading && !error ? (
           <>
             <header className="courier-dash-hero">
-              <div className="courier-dash-hero__identity">
+              <section className="courier-dash-panel courier-dash-panel--identity" aria-label="Courier identity">
                 <div className="courier-dash-avatar" aria-hidden="true">
                   {initialsFromName(courier.name, courier.email)}
                 </div>
-                <div>
+                <div className="courier-dash-panel__body">
                   <h1 className="courier-dash-hero__title">{naOr(courier.name || courier.email)}</h1>
                   <div className="courier-dash-hero__meta">
                     <span className="courier-dash-id">ID {naOr(courier.id)}</span>
@@ -350,57 +398,92 @@ export default function CourierDetailsPage({
                     {courier.phone_verified ? " (verified)" : " (unverified)"}
                   </p>
                 </div>
-              </div>
+              </section>
 
-              <AdminActionGuard module="delivery" mode="disable">
-                <div className="courier-dash-hero__actions">
-                  <button
-                    type="button"
-                    className="admin-lib-btn"
-                    disabled={!canApprove}
-                    title={
-                      canApprove
-                        ? "Approve this courier application"
-                        : "Blocked until the electronic signature is complete"
+              <section className="courier-dash-panel courier-dash-panel--verify" aria-label="Verification status">
+                <h2 className="courier-dash-panel__title">Verification</h2>
+                <ul className="courier-dash-verify">
+                  <VerificationItem ok={accountVerified} label="Account approved" />
+                  <VerificationItem ok={identitySubmitted} label="Identity submitted" />
+                  <VerificationItem
+                    ok={pendingReviewDocs.length === 0 && documents.length > 0 && expiredDocs.length === 0}
+                    label={
+                      expiredDocs.length > 0
+                        ? `Expired documents (${expiredDocs.length})`
+                        : pendingReviewDocs.length > 0
+                          ? `Documents under review (${pendingReviewDocs.length})`
+                          : documents.length > 0
+                            ? "Documents reviewed"
+                            : "Documents not uploaded"
                     }
-                    onClick={() => openAction("approve")}
-                  >
-                    Approve
-                  </button>
-                  <button
-                    type="button"
-                    className="admin-lib-btn admin-lib-btn--ghost"
-                    disabled={!canReject}
-                    onClick={() => openAction("reject")}
-                  >
-                    Reject
-                  </button>
-                  {courier.is_suspended ? (
+                  />
+                  <VerificationItem
+                    ok={Boolean(courier.signature_complete)}
+                    label={
+                      courier.signature_complete
+                        ? "Electronic agreement complete"
+                        : "Electronic agreement incomplete"
+                    }
+                  />
+                </ul>
+              </section>
+
+              <section className="courier-dash-panel courier-dash-panel--actions" aria-label="Administrative actions">
+                <h2 className="courier-dash-panel__title">Actions</h2>
+                <AdminActionGuard module="delivery" mode="disable">
+                  <div className="courier-dash-hero__actions">
                     <button
                       type="button"
-                      className="admin-lib-btn"
-                      onClick={() => openAction("reactivate")}
+                      className="admin-lib-btn courier-dash-btn courier-dash-btn--approve"
+                      disabled={!canApprove}
+                      title={approveBlockedReason}
+                      onClick={() => openAction("approve")}
                     >
-                      Reactivate
+                      Approve
                     </button>
-                  ) : (
                     <button
                       type="button"
-                      className="admin-lib-btn admin-lib-btn--danger"
-                      onClick={() => openAction("suspend")}
+                      className="admin-lib-btn courier-dash-btn courier-dash-btn--reject"
+                      disabled={!canReject}
+                      onClick={() => openAction("reject")}
                     >
-                      Suspend
+                      Reject
                     </button>
-                  )}
-                  <a
-                    className="admin-lib-btn admin-lib-btn--ghost"
-                    href="/admin/administration/city-transfers"
-                  >
-                    City transfer
-                  </a>
-                </div>
-              </AdminActionGuard>
+                    {courier.is_suspended ? (
+                      <button
+                        type="button"
+                        className="admin-lib-btn courier-dash-btn courier-dash-btn--approve"
+                        onClick={() => openAction("reactivate")}
+                      >
+                        Reactivate
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="admin-lib-btn courier-dash-btn courier-dash-btn--suspend"
+                        onClick={() => openAction("suspend")}
+                      >
+                        Suspend
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="admin-lib-btn courier-dash-btn courier-dash-btn--transfer"
+                      title="CEO authorization required for operating-city transfers"
+                      onClick={() => openAction("city_transfer")}
+                    >
+                      City transfer
+                    </button>
+                  </div>
+                </AdminActionGuard>
+              </section>
             </header>
+
+            <p className="courier-dash-security" role="note">
+              Account approval and document verification are separate controls. Missing, rejected, or
+              expired required documents block approval. Operating-city changes require CEO
+              authorization and are never applied automatically from this page.
+            </p>
 
             {(cityMismatch || approvedWithPendingDocs) && (
               <div className="courier-dash-alerts" role="region" aria-label="Consistency warnings">
@@ -423,39 +506,71 @@ export default function CourierDetailsPage({
               </div>
             )}
 
-            <div className="admin-kpi-row courier-dash-kpis">
-              <KPICard label="Completed deliveries" value={courier.total_deliveries_completed} />
-              <KPICard label="Active deliveries" value={historySummary?.active} />
+            <div className="admin-kpi-row courier-dash-kpis" aria-label="Courier operational statistics">
+              <KPICard
+                label="Completed deliveries"
+                value={courier.total_deliveries_completed ?? 0}
+                icon={<span className="courier-dash-kpi-icon courier-dash-kpi-icon--box" />}
+              />
+              <KPICard
+                label="Active deliveries"
+                value={historySummary?.active ?? 0}
+                icon={<span className="courier-dash-kpi-icon courier-dash-kpi-icon--bike" />}
+              />
               <KPICard
                 label="Total earnings"
-                value={earnings?.total?.earnings != null ? formatMru(earnings.total.earnings) : null}
+                value={
+                  earnings?.total?.earnings != null
+                    ? formatMru(earnings.total.earnings)
+                    : formatMru(0)
+                }
+                icon={<span className="courier-dash-kpi-icon courier-dash-kpi-icon--coin" />}
               />
-              <KPICard label="Rating" value={courier.delivery_rating} />
+              <KPICard
+                label="Rating"
+                value={courier.delivery_rating ?? "—"}
+                icon={<span className="courier-dash-kpi-icon courier-dash-kpi-icon--star" />}
+              />
               <KPICard
                 label="Documents pending review"
                 value={pendingReviewDocs.length}
+                icon={<span className="courier-dash-kpi-icon courier-dash-kpi-icon--doc" />}
               />
             </div>
 
-            <div className="courier-dash-tabs" role="tablist" aria-label="Courier detail sections">
-              {COURIER_DETAIL_TABS.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={tab === item.id}
-                  className={`courier-dash-tab${tab === item.id ? " is-active" : ""}`}
-                  onClick={() => setTab(item.id)}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
+            <nav className="courier-dash-tabs-wrap" aria-label="Courier detail sections">
+              <div className="courier-dash-tabs" role="tablist">
+                {COURIER_DETAIL_TABS.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    role="tab"
+                    id={`courier-tab-${item.id}`}
+                    aria-controls={`courier-panel-${item.id}`}
+                    aria-selected={tab === item.id}
+                    tabIndex={tab === item.id ? 0 : -1}
+                    className={`courier-dash-tab${tab === item.id ? " is-active" : ""}`}
+                    onClick={() => setTab(item.id)}
+                  >
+                    <span className="courier-dash-tab__label">{item.label}</span>
+                    {item.id === "documents" &&
+                    (pendingReviewDocs.length > 0 || expiredDocs.length > 0) ? (
+                      <span className="courier-dash-tab__dot" aria-hidden="true" />
+                    ) : null}
+                  </button>
+                ))}
+              </div>
+            </nav>
 
-            <div className="courier-dash-tabpanel" role="tabpanel">
+            <div
+              className="courier-dash-tabpanel"
+              role="tabpanel"
+              id={`courier-panel-${tab}`}
+              aria-labelledby={`courier-tab-${tab}`}
+            >
               {tab === "overview" ? (
                 <div className="courier-dash-grid">
-                  <SectionCard title="Profile summary">
+                  <SectionCard title="Profile summary" icon="profile">
                     <dl className="courier-dash-fields">
                       <Field label="Application status">
                         <StatusChip
@@ -476,7 +591,7 @@ export default function CourierDetailsPage({
                       <Field label="Joined">{formatTimestamp(courier.date_joined)}</Field>
                     </dl>
                   </SectionCard>
-                  <SectionCard title="Operational snapshot">
+                  <SectionCard title="Operational snapshot" icon="ops">
                     <dl className="courier-dash-fields">
                       <Field label="Delivery mode">
                         {settings.delivery_mode_enabled ? "Enabled" : "Disabled"}
@@ -490,7 +605,7 @@ export default function CourierDetailsPage({
               ) : null}
 
               {tab === "personal" ? (
-                <SectionCard title="Personal Information">
+                <SectionCard title="Personal Information" icon="profile">
                   <dl className="courier-dash-fields">
                     <Field label="Courier ID">{naOr(courier.id)}</Field>
                     <Field label="Email">{naOr(courier.email)}</Field>
@@ -519,7 +634,7 @@ export default function CourierDetailsPage({
               ) : null}
 
               {tab === "vehicle" ? (
-                <SectionCard title="Vehicle & Delivery Settings">
+                <SectionCard title="Vehicle & Delivery Settings" icon="vehicle">
                   {requirements.loading ? <p className="courier-dash-muted">Loading requirements…</p> : null}
                   {requirements.error ? <InlineError message={requirements.error} /> : null}
                   <dl className="courier-dash-fields">
@@ -554,7 +669,7 @@ export default function CourierDetailsPage({
               ) : null}
 
               {tab === "documents" ? (
-                <SectionCard title="Documents & Verification">
+                <SectionCard title="Documents & Verification" icon="docs">
                   {requirements.data ? (
                     <>
                       <Field label="Approval readiness">
@@ -648,13 +763,15 @@ export default function CourierDetailsPage({
               {tab === "cities" ? (
                 <SectionCard
                   title="Operating Cities"
+                  icon="cities"
                   actions={
-                    <a
+                    <button
+                      type="button"
                       className="admin-lib-btn admin-lib-btn--ghost"
-                      href="/admin/administration/city-transfers"
+                      onClick={() => openAction("city_transfer")}
                     >
                       Open CEO city transfer
-                    </a>
+                    </button>
                   }
                 >
                   <dl className="courier-dash-fields">
@@ -678,7 +795,7 @@ export default function CourierDetailsPage({
               ) : null}
 
               {tab === "agreement" ? (
-                <SectionCard title="Electronic Agreement">
+                <SectionCard title="Electronic Agreement" icon="legal">
                   <dl className="courier-dash-fields">
                     <Field label="Signature complete">
                       {signature.signature_complete ? "Yes" : "No"}
@@ -736,7 +853,7 @@ export default function CourierDetailsPage({
               ) : null}
 
               {tab === "onboarding" ? (
-                <SectionCard title="Onboarding Checklist">
+                <SectionCard title="Onboarding Checklist" icon="list">
                   <p className="courier-dash-muted">{naOr(courier.onboarding?.message)}</p>
                   {steps.length === 0 ? (
                     <p className="courier-dash-muted">No onboarding steps reported.</p>
@@ -760,7 +877,7 @@ export default function CourierDetailsPage({
               ) : null}
 
               {tab === "deliveries" ? (
-                <SectionCard title="Deliveries & Performance">
+                <SectionCard title="Deliveries & Performance" icon="ops">
                   {historySummary ? (
                     <p className="courier-dash-muted">
                       {historySummary.total} total · {historySummary.delivered} delivered ·{" "}
@@ -831,7 +948,7 @@ export default function CourierDetailsPage({
               ) : null}
 
               {tab === "earnings" ? (
-                <SectionCard title="Earnings & Wallet">
+                <SectionCard title="Earnings & Wallet" icon="wallet">
                   {earnings ? (
                     <div className="courier-dash-table-wrap">
                       <table className="courier-dash-table">
@@ -874,7 +991,7 @@ export default function CourierDetailsPage({
               ) : null}
 
               {tab === "audit" ? (
-                <SectionCard title="Approval & Audit History">
+                <SectionCard title="Approval & Audit History" icon="audit">
                   <AsyncBlock
                     state={audit}
                     isEmpty={auditRows.length === 0}
@@ -899,48 +1016,69 @@ export default function CourierDetailsPage({
         ) : null}
 
         {action.kind ? (
-          <div className="courier-dash-dialog" role="dialog" aria-label={actionLabels[action.kind]}>
-            <h4>{actionLabels[action.kind]}</h4>
-            {action.kind === "approve" ? (
-              <p className="courier-dash-muted">
-                The courier&apos;s electronic signature is complete. Approving activates the courier
-                account.
-              </p>
-            ) : (
-              <label className="courier-dash-dialog__field">
-                Reason{" "}
-                {action.kind === "suspend" || action.kind === "reject"
-                  ? "(required)"
-                  : "(optional)"}
-                <textarea
-                  rows={3}
-                  value={action.reason}
-                  onChange={(event) =>
-                    setAction((prev) => ({ ...prev, reason: event.target.value }))
-                  }
-                />
-              </label>
-            )}
-            {action.error ? (
-              <p className="courier-dash-alert courier-dash-alert--danger">{action.error}</p>
-            ) : null}
-            <div className="courier-dash-inline-actions">
-              <button
-                type="button"
-                className="admin-lib-btn admin-lib-btn--ghost"
-                onClick={closeAction}
-                disabled={action.submitting}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="admin-lib-btn"
-                onClick={submitAction}
-                disabled={action.submitting}
-              >
-                {action.submitting ? "Working…" : "Confirm"}
-              </button>
+          <div className="courier-dash-dialog-backdrop" role="presentation" onClick={closeAction}>
+            <div
+              className="courier-dash-dialog"
+              role="dialog"
+              aria-modal="true"
+              aria-label={actionLabels[action.kind]}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <h4>{actionLabels[action.kind]}</h4>
+              {action.kind === "approve" ? (
+                <p className="courier-dash-muted">
+                  The courier&apos;s electronic signature is complete. Approving activates the
+                  courier account. Document verification remains a separate control and is not
+                  bypassed by this action.
+                </p>
+              ) : null}
+              {action.kind === "city_transfer" ? (
+                <p className="courier-dash-muted">
+                  Operating-city transfers require CEO authorization. Continue only if you are
+                  authorized to open the City Transfer console. No city change is applied from this
+                  confirmation alone.
+                </p>
+              ) : null}
+              {action.kind !== "approve" && action.kind !== "city_transfer" ? (
+                <label className="courier-dash-dialog__field">
+                  Reason{" "}
+                  {action.kind === "suspend" || action.kind === "reject"
+                    ? "(required)"
+                    : "(optional)"}
+                  <textarea
+                    rows={3}
+                    value={action.reason}
+                    onChange={(event) =>
+                      setAction((prev) => ({ ...prev, reason: event.target.value }))
+                    }
+                  />
+                </label>
+              ) : null}
+              {action.error ? (
+                <p className="courier-dash-alert courier-dash-alert--danger">{action.error}</p>
+              ) : null}
+              <div className="courier-dash-inline-actions">
+                <button
+                  type="button"
+                  className="admin-lib-btn admin-lib-btn--ghost"
+                  onClick={closeAction}
+                  disabled={action.submitting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="admin-lib-btn courier-dash-btn courier-dash-btn--approve"
+                  onClick={submitAction}
+                  disabled={action.submitting}
+                >
+                  {action.submitting
+                    ? "Working…"
+                    : action.kind === "city_transfer"
+                      ? "Continue to City Transfer"
+                      : "Confirm"}
+                </button>
+              </div>
             </div>
           </div>
         ) : null}
