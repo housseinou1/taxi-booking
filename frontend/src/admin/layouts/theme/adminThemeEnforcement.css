@@ -54,13 +54,13 @@
   background: rgba(4, 120, 87, 0.22);
 }
 
-/* Modals, drawers, overlays */
+/* Modals, drawers, overlays — courier panel stays a light reading surface */
 .admin-shell .admin-modal,
-.admin-shell .admin-drawer,
-.admin-shell [class*="modal"],
-.admin-shell [class*="Modal"],
-.admin-shell [class*="drawer"],
-.admin-shell [class*="Drawer"] {
+.admin-shell .admin-drawer:not(.courier-detail-drawer):not(.courier-panel),
+.admin-shell [class*="modal"]:not(.courier-panel-dialog),
+.admin-shell [class*="Modal"]:not(.courier-panel-dialog),
+.admin-shell [class*="drawer"]:not(.courier-detail-drawer):not(.courier-detail-overlay):not(.courier-panel),
+.admin-shell [class*="Drawer"]:not(.courier-detail-drawer):not(.courier-panel) {
   background: var(--admin-panel);
   border: 1px solid var(--admin-border);
   color: var(--admin-text);
@@ -145,7 +145,7 @@
     [class*="__section"],
     [class*="__table-wrap"],
     [class*="__chart"]
-  ):not(.ss__popup):not(.fleet-kpi):not(.admin-kpi):not([class*="--warn"]):not([class*="--danger"]):not([class*="--success"]):not(.courier-detail-drawer):not(.courier-detail-drawer *) {
+  ):not(.ss__popup):not(.fleet-kpi):not(.admin-kpi):not([class*="--warn"]):not([class*="--danger"]):not([class*="--success"]):not(.courier-detail-drawer):not(.courier-panel):not([class*="courier-panel"]) {
   background-color: var(--admin-surface-alt) !important;
   border-color: var(--admin-border) !important;
   border-top: 3px solid var(--yala-mr-gold) !important;
@@ -220,71 +220,104 @@
 }
 
 /*
- * Courier details drawer must stay a light reading surface.
- * Theme drawer/section rules above force dark green + gold borders onto
- * .admin-drawer__section and related BEM fragments.
+ * Courier Management panel — hard light-surface isolation.
+ * Wins over green panel / BEM gold-border / striped-table theme rules.
  */
 .admin-shell .courier-detail-overlay {
-  background: rgba(15, 23, 42, 0.45) !important;
+  background: rgba(15, 23, 42, 0.42) !important;
+  color: inherit !important;
+  border: 0 !important;
+  box-shadow: none !important;
 }
 
-.admin-shell .admin-drawer.courier-detail-drawer,
-.admin-shell .admin-drawer.courier-detail-drawer .admin-drawer__head,
-.admin-shell .admin-drawer.courier-detail-drawer .admin-drawer__body,
-.admin-shell .courier-detail-drawer .admin-drawer__section,
-.admin-shell .courier-detail-drawer .delivery-detail__table-wrap,
-.admin-shell .courier-detail-drawer .delivery-detail__dialog,
-.admin-shell .courier-detail-drawer .dlvops-panel {
+.admin-shell .courier-detail-drawer.courier-panel,
+.admin-shell .courier-panel-head,
+.admin-shell .courier-panel-body,
+.admin-shell .courier-panel-block,
+.admin-shell .courier-panel-block__toggle,
+.admin-shell .courier-panel-block__body,
+.admin-shell .courier-panel-table-wrap,
+.admin-shell .courier-panel-dialog,
+.admin-shell .courier-panel-table th,
+.admin-shell .courier-panel-table td {
   background: #ffffff !important;
   background-color: #ffffff !important;
   border-color: #e5e7eb !important;
-  border-top: 0 !important;
+  border-top-color: #e5e7eb !important;
   color: #111827 !important;
-  box-shadow: none;
+  box-shadow: none !important;
 }
 
-.admin-shell .admin-drawer.courier-detail-drawer {
+.admin-shell .courier-panel-body {
+  background: #f3f4f6 !important;
+  background-color: #f3f4f6 !important;
+}
+
+.admin-shell .courier-panel-head {
+  background: linear-gradient(180deg, #ffffff 0%, #f7faf8 100%) !important;
+}
+
+.admin-shell .courier-detail-drawer.courier-panel {
   width: min(680px, 96vw) !important;
   max-width: 100% !important;
   border-left: 1px solid #e5e7eb !important;
-  box-shadow: -12px 0 32px rgba(15, 23, 42, 0.18) !important;
+  box-shadow: -16px 0 40px rgba(15, 23, 42, 0.16) !important;
 }
 
-.admin-shell .courier-detail-drawer .admin-drawer__title,
-.admin-shell .courier-detail-drawer .admin-drawer__field-value,
-.admin-shell .courier-detail-drawer .admin-drawer__section h3,
-.admin-shell .courier-detail-drawer .delivery-requirements__label,
-.admin-shell .courier-detail-drawer td,
-.admin-shell .courier-detail-drawer th,
-.admin-shell .courier-detail-drawer strong {
+.admin-shell .courier-panel-head__title,
+.admin-shell .courier-panel-block__title,
+.admin-shell .courier-panel-field__value,
+.admin-shell .courier-panel-req__label,
+.admin-shell .courier-panel strong,
+.admin-shell .courier-panel td,
+.admin-shell .courier-panel th {
   color: #111827 !important;
 }
 
-.admin-shell .courier-detail-drawer .admin-drawer__field-label,
-.admin-shell .courier-detail-drawer .admin-drawer__state,
-.admin-shell .courier-detail-drawer .delivery-cell-hint,
-.admin-shell .courier-detail-drawer .delivery-requirements__meta,
-.admin-shell .courier-detail-drawer .delivery-detail__empty {
-  color: #4b5563 !important;
+.admin-shell .courier-panel-field__label,
+.admin-shell .courier-panel-state,
+.admin-shell .courier-panel-empty,
+.admin-shell .courier-panel-hint {
+  color: #6b7280 !important;
 }
 
-.admin-shell .courier-detail-drawer .admin-chip--success {
+.admin-shell .courier-panel-block__toggle:hover,
+.admin-shell .courier-panel-req li,
+.admin-shell .courier-panel-steps li,
+.admin-shell .courier-panel-audit li {
+  background: #f8faf9 !important;
+  color: #111827 !important;
+}
+
+.admin-shell .courier-panel .admin-chip--success {
   background: #dcfce7 !important;
   color: #166534 !important;
 }
 
-.admin-shell .courier-detail-drawer .admin-chip--warning {
+.admin-shell .courier-panel .admin-chip--warning {
   background: #fef3c7 !important;
   color: #92400e !important;
 }
 
-.admin-shell .courier-detail-drawer .admin-chip--danger {
+.admin-shell .courier-panel .admin-chip--danger {
   background: #fee2e2 !important;
   color: #991b1b !important;
 }
 
-.admin-shell .courier-detail-drawer .admin-chip--info,
-.admin-shell .courier-detail-drawer .admin-chip--neutral {
+.admin-shell .courier-panel .admin-chip--info,
+.admin-shell .courier-panel .admin-chip--neutral {
   background: #e5e7eb !important;
   color: #1f2937 !important;
+}
+
+.admin-shell .courier-panel :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]):not([type="range"]) {
+  background: #ffffff !important;
+  border-color: #e5e7eb !important;
+  color: #111827 !important;
+}
+
+.admin-shell .courier-panel tbody tr:nth-child(even) td,
+.admin-shell .courier-panel tbody tr:hover td {
+  background: #f8fafc !important;
+  color: #111827 !important;
 }

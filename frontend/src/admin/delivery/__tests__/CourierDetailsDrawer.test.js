@@ -216,11 +216,11 @@ beforeEach(() => {
 test("renders signature, settings, earnings and delivery history", async () => {
   renderDrawer();
 
-  expect(document.querySelector(".courier-detail-drawer")).toBeTruthy();
+  expect(document.querySelector(".courier-detail-drawer.courier-panel")).toBeTruthy();
   expect(screen.getAllByText("Moussa Coura").length).toBeGreaterThan(0);
-  expect(screen.getByText("Personal Information")).toBeInTheDocument();
-  expect(screen.getByText("Electronic Signature")).toBeInTheDocument();
-  expect(screen.getByText("Approval History")).toBeInTheDocument();
+  expect(screen.getByText("Courier Profile")).toBeInTheDocument();
+  expect(screen.getByText("Electronic Agreement")).toBeInTheDocument();
+  expect(screen.getByText("Approval & Audit History")).toBeInTheDocument();
   expect(screen.getAllByText("v1.0").length).toBeGreaterThan(0);
   expect(screen.getAllByText("2640 MRU").length).toBeGreaterThan(0);
   expect(await screen.findByText("#501")).toBeInTheDocument();
@@ -358,7 +358,7 @@ test("surfaces a delivery-history failure without breaking the drawer", async ()
   renderDrawer();
 
   expect(await screen.findByText("history boom")).toBeInTheDocument();
-  expect(screen.getByText("Administrative actions")).toBeInTheDocument();
+  expect(screen.getByText("Administrative Actions")).toBeInTheDocument();
 });
 
 // ── authenticated signature viewing (Phase 6 security improvement) ──────────
@@ -404,13 +404,14 @@ test("signature failure is surfaced without breaking the drawer", async () => {
   fireEvent.click(screen.getByRole("button", { name: /view signature image/i }));
 
   expect(await screen.findByText("signature unavailable")).toBeInTheDocument();
-  expect(screen.getByText("Administrative actions")).toBeInTheDocument();
+  expect(screen.getByText("Administrative Actions")).toBeInTheDocument();
 });
 
 test("renders the vehicle-type document checklist with every state", async () => {
   renderDrawer();
 
-  expect(await screen.findByText("Vehicle & Documents")).toBeInTheDocument();
+  expect(await screen.findByText("Documents & Verification")).toBeInTheDocument();
+  expect(screen.getByText("Vehicle Information")).toBeInTheDocument();
   // Labels/states may also appear in the pre-existing documents section, so assert
   // presence rather than uniqueness.
   for (const text of [

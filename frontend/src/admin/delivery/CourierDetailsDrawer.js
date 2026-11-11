@@ -37,9 +37,25 @@ function formatMru(value, currency = "MRU") {
 
 function statusTone(status) {
   const value = String(status || "").toLowerCase();
-  if (value === "approved" || value === "delivered" || value === "complete") return "success";
-  if (value === "rejected" || value === "suspended" || value === "cancelled") return "danger";
-  if (value === "pending_review" || value === "pending review" || value === "uploaded") return "warning";
+  if (value === "approved" || value === "delivered" || value === "complete" || value === "active") {
+    return "success";
+  }
+  if (
+    value === "rejected" ||
+    value === "suspended" ||
+    value === "cancelled" ||
+    value === "failed"
+  ) {
+    return "danger";
+  }
+  if (
+    value === "pending_review" ||
+    value === "pending review" ||
+    value === "uploaded" ||
+    value === "inactive"
+  ) {
+    return value === "inactive" ? "neutral" : "warning";
+  }
   if (["pending", "requested", "accepted", "in_transit", "picked_up"].includes(value)) {
     return "warning";
   }
@@ -63,32 +79,62 @@ function citiesMismatch(accountCity, deliveryCities) {
   return !cities.includes(account);
 }
 
+function initialsFromName(name, email) {
+  const source = String(name || email || "?").trim();
+  const parts = source.split(/\s+/).filter(Boolean);
+  if (!parts.length) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+}
+
 function Field({ label, children }) {
   return (
-    <div className="admin-drawer__field">
-      <span className="admin-drawer__field-label">{label}</span>
-      <span className="admin-drawer__field-value">{children ?? "N/A"}</span>
+    <div className="courier-panel-field">
+      <span className="courier-panel-field__label">{label}</span>
+      <span className="courier-panel-field__value">{children ?? "N/A"}</span>
     </div>
   );
 }
 
 function AsyncSection({ state, isEmpty, emptyLabel, children }) {
-  if (state.loading) return <p className="admin-drawer__state">Loading…</p>;
-  if (state.error) return <p className="delivery-detail__error">{state.error}</p>;
-  if (isEmpty) return <p className="delivery-detail__empty">{emptyLabel}</p>;
+  if (state.loading) return <p className="courier-panel-state">Loading…</p>;
+  if (state.error) return <p className="courier-panel-alert courier-panel-alert--danger">{state.error}</p>;
+  if (isEmpty) return <p className="courier-panel-empty">{emptyLabel}</p>;
   return children;
 }
 
+function PanelSection({ id, title, icon, defaultOpen = true, badge = null, children }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <section className={`courier-panel-block${open ? " is-open" : ""}`} data-section={id}>
+      <button
+        type="button"
+        className="courier-panel-block__toggle"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+      >
+        <span className="courier-panel-block__icon" aria-hidden="true">
+          {icon}
+        </span>
+        <span className="courier-panel-block__title">{title}</span>
+        {badge}
+        <span className="courier-panel-block__chevron" aria-hidden="true">
+          {open ? "▾" : "▸"}
+        </span>
+      </button>
+      <div className="courier-panel-block__body" hidden={!open}>
+        {children}
+      </div>
+    </section>
+  );
+}
+
 /**
- * Courier details drawer (Phase 5).
+ * Courier details panel for Admin Delivery → Courier Management.
  *
- * Sections: profile, delivery settings, electronic signature, onboarding
- * checklist, documents (streamed through the authenticated admin endpoint),
- * earnings, delivery history, audit trail and administrative actions.
- *
- * Approve / reject call the existing approval-center endpoint so the courier
- * e-signature gate stays authoritative on the backend; suspend / reactivate use
- * the Phase 5 delivery endpoints (mandatory reason, audited, delivery-mode only).
+ * Theme-safe class names intentionally avoid BEM fragments targeted by
+ * adminThemeEnforcement (`__section`, `__card`, `__panel`) so the reading
+ * surface stays light and professional.
  */
 export default function CourierDetailsDrawer({
   courier,
@@ -103,6 +149,7 @@ export default function CourierDetailsDrawer({
   const [historyPage, setHistoryPage] = useState(1);
   const [documentState, setDocumentState] = useState({ loadingId: null, error: null });
   const [signatureState, setSignatureState] = useState({ loading: false, error: null });
+  const [showSignatureTech, setShowSignatureTech] = useState(false);
   const [action, setAction] = useState({ kind: null, reason: "", submitting: false, error: null });
   const [notice, setNotice] = useState(null);
 
@@ -111,8 +158,6 @@ export default function CourierDetailsDrawer({
   const closeRef = useRef(null);
   const [requirements, setRequirements] = useState(INITIAL_SECTION);
 
-  // Vehicle-type document requirements + the server-computed approval verdict.
-  // The verdict is authoritative: the API refuses approval while it is blocked.
   const loadRequirements = useCallback(async () => {
     if (!courierId) return;
     setRequirements({ loading: true, error: null, data: null });
@@ -138,6 +183,7 @@ export default function CourierDetailsDrawer({
     setAction({ kind: null, reason: "", submitting: false, error: null });
     setSignatureState({ loading: false, error: null });
     setDocumentState({ loadingId: null, error: null });
+    setShowSignatureTech(false);
   }, [courierId]);
 
   useEffect(() => {
@@ -188,17 +234,13 @@ export default function CourierDetailsDrawer({
     };
   }, [userId]);
 
-
   const openDocument = useCallback(
     async (documentId) => {
       if (!courierId || !documentId) return;
       setDocumentState({ loadingId: documentId, error: null });
-      let url = null;
       try {
-        // Courier documents are NOT public: fetch through the authenticated
-        // admin endpoint and render from a short-lived object URL.
         const blob = await fetchCourierDocumentBlob(courierId, documentId);
-        url = window.URL.createObjectURL(blob);
+        const url = window.URL.createObjectURL(blob);
         window.open(url, "_blank", "noopener,noreferrer");
         setDocumentState({ loadingId: null, error: null });
       } catch (err) {
@@ -211,19 +253,14 @@ export default function CourierDetailsDrawer({
     [courierId]
   );
 
-  const openAction = (kind) =>
-    setAction({ kind, reason: "", submitting: false, error: null });
+  const openAction = (kind) => setAction({ kind, reason: "", submitting: false, error: null });
 
   const openSignature = useCallback(async () => {
     if (!courierId) return;
     setSignatureState({ loading: true, error: null });
-    let url = null;
     try {
-      // The admin payload deliberately carries no public signature URL: the image
-      // is streamed by the authenticated endpoint and rendered from a short-lived
-      // object URL.
       const blob = await fetchCourierSignatureBlob(courierId);
-      url = window.URL.createObjectURL(blob);
+      const url = window.URL.createObjectURL(blob);
       window.open(url, "_blank", "noopener,noreferrer");
       setSignatureState({ loading: false, error: null });
     } catch (err) {
@@ -237,8 +274,7 @@ export default function CourierDetailsDrawer({
     }
   }, [courierId]);
 
-  const closeAction = () =>
-    setAction({ kind: null, reason: "", submitting: false, error: null });
+  const closeAction = () => setAction({ kind: null, reason: "", submitting: false, error: null });
 
   const submitAction = useCallback(async () => {
     if (!courierId || !action.kind) return;
@@ -299,6 +335,8 @@ export default function CourierDetailsDrawer({
     String(courier?.status || "").toLowerCase() === "approved" && pendingReviewDocs.length > 0;
   const canApprove = Boolean(courier) && courier.status !== "approved" && courier.signature_complete;
   const canReject = Boolean(courier) && courier.status !== "rejected";
+  const accountTone = courier?.is_active ? "success" : "neutral";
+  const accountLabel = courier?.is_active ? "Active" : "Inactive";
 
   const actionLabels = useMemo(
     () => ({
@@ -312,40 +350,47 @@ export default function CourierDetailsDrawer({
 
   if (!courier && !loading && !error) return null;
 
-
   return (
-    <div className="admin-drawer__overlay courier-detail-overlay" role="presentation" onClick={onClose}>
+    <div className="courier-detail-overlay" role="presentation" onClick={onClose}>
       <div
-        className="admin-drawer courier-detail-drawer"
+        className="courier-detail-drawer courier-panel"
         role="dialog"
         aria-modal="true"
         aria-label={courier ? `Courier ${courier.name} details` : "Courier details"}
         onClick={(event) => event.stopPropagation()}
       >
-        <header className="admin-drawer__head">
-          <div>
-            <h2 className="admin-drawer__title">
-              {courier ? courier.name || courier.email : "Courier details"}
-            </h2>
-            {courier?.courier_status ? (
-              <StatusChip
-                label={courier.courier_status_label || courier.courier_status}
-                tone={statusTone(courier.courier_status)}
-              />
-            ) : null}
+        <header className="courier-panel-head">
+          <div className="courier-panel-head__identity">
+            <div className="courier-panel-avatar" aria-hidden="true">
+              {initialsFromName(courier?.name, courier?.email)}
+            </div>
+            <div>
+              <h2 className="courier-panel-head__title">
+                {courier ? courier.name || courier.email : "Courier details"}
+              </h2>
+              <div className="courier-panel-head__meta">
+                {courier?.courier_status ? (
+                  <StatusChip
+                    label={courier.courier_status_label || courier.courier_status}
+                    tone={statusTone(courier.courier_status)}
+                  />
+                ) : null}
+                {courier ? <StatusChip label={accountLabel} tone={accountTone} /> : null}
+              </div>
+            </div>
           </div>
           <button
             type="button"
             ref={closeRef}
-            className="admin-lib-btn admin-lib-btn--ghost"
+            className="admin-lib-btn admin-lib-btn--ghost courier-panel-close"
             onClick={onClose}
           >
             Close
           </button>
         </header>
 
-        <div className="admin-drawer__body">
-          {loading ? <p className="admin-drawer__state">Loading courier details…</p> : null}
+        <div className="courier-panel-body">
+          {loading ? <p className="courier-panel-state">Loading courier details…</p> : null}
 
           {error ? (
             <InlineError message={error}>
@@ -360,7 +405,9 @@ export default function CourierDetailsDrawer({
           {notice ? (
             <p
               className={
-                notice.tone === "success" ? "delivery-detail__notice" : "delivery-detail__error"
+                notice.tone === "success"
+                  ? "courier-panel-alert courier-panel-alert--success"
+                  : "courier-panel-alert courier-panel-alert--danger"
               }
             >
               {notice.message}
@@ -369,56 +416,81 @@ export default function CourierDetailsDrawer({
 
           {courier && !loading && !error ? (
             <>
-              <section className="admin-drawer__section">
-                <h3>Personal Information</h3>
+              {(cityMismatch || approvedWithPendingDocs) && (
+                <div className="courier-panel-alerts" role="region" aria-label="Consistency warnings">
+                  {cityMismatch ? (
+                    <p className="courier-panel-alert courier-panel-alert--warning" role="status">
+                      Account city is {accountCity}, but delivery service cities are{" "}
+                      {deliveryCities.join(", ") || "N/A"}. For an approved courier this is not
+                      changed automatically — a CEO operating-city transfer is required before the
+                      service cities can be updated.
+                    </p>
+                  ) : null}
+                  {approvedWithPendingDocs ? (
+                    <p className="courier-panel-alert courier-panel-alert--danger" role="status">
+                      Account status is Approved while {pendingReviewDocs.length} document
+                      {pendingReviewDocs.length === 1 ? " is" : "s are"} still Pending Review.
+                      Review the replacement file before treating onboarding as complete. Approval
+                      is not changed automatically.
+                    </p>
+                  ) : null}
+                </div>
+              )}
+
+              <PanelSection id="profile" title="Courier Profile" icon="👤" defaultOpen>
                 <Field label="Courier ID">{naOr(courier.id)}</Field>
                 <Field label="Email">{naOr(courier.email)}</Field>
                 <Field label="Phone">
                   {naOr(courier.phone_number)}
                   {courier.phone_verified ? " (verified)" : " (unverified)"}
                 </Field>
-                <Field label="Account">{courier.is_active ? "Active" : "Inactive"}</Field>
+                <Field label="Account status">
+                  <StatusChip label={accountLabel} tone={accountTone} />
+                </Field>
                 <Field label="Application status">
                   <StatusChip
                     label={courier.status_label || courier.status}
                     tone={statusTone(courier.status)}
                   />
                 </Field>
-                <Field label="Account city">{naOr(courier.city_name)}</Field>
-                <Field label="Plate">{naOr(courier.plate_number)}</Field>
                 <Field label="Joined">{formatTimestamp(courier.date_joined)}</Field>
                 {courier.rejection_reason ? (
                   <Field label="Rejection reason">{courier.rejection_reason}</Field>
                 ) : null}
-                {cityMismatch ? (
-                  <p className="delivery-detail__city-mismatch" role="status">
-                    Account city is {accountCity}, but delivery service cities are{" "}
-                    {deliveryCities.join(", ") || "N/A"}. For an approved courier this is not
-                    changed automatically — a CEO operating-city transfer is required before the
-                    service cities can be updated.
-                  </p>
-                ) : null}
-                {approvedWithPendingDocs ? (
-                  <p className="delivery-detail__doc-consistency" role="status">
-                    Account status is Approved while {pendingReviewDocs.length} document
-                    {pendingReviewDocs.length === 1 ? " is" : "s are"} still Pending Review.
-                    Review the replacement file before treating onboarding as complete. Approval
-                    is not changed automatically.
-                  </p>
-                ) : null}
-              </section>
+              </PanelSection>
 
-              <section className="admin-drawer__section">
-                <h3>Vehicle &amp; Documents</h3>
+              <PanelSection id="location" title="Location & Operating Cities" icon="📍" defaultOpen>
+                <Field label="Account city">{naOr(accountCity)}</Field>
+                <Field label="Delivery service cities">
+                  {deliveryCities.join(", ") || "N/A"}
+                </Field>
+                <Field label="City transfer">
+                  {cityMismatch
+                    ? "CEO operating-city transfer required"
+                    : "Account city and service cities are aligned"}
+                </Field>
+              </PanelSection>
+
+              <PanelSection id="vehicle" title="Vehicle Information" icon="🛵" defaultOpen>
                 {requirements.loading ? (
-                  <p className="admin-drawer__state">Loading requirements…</p>
+                  <p className="courier-panel-state">Loading requirements…</p>
                 ) : null}
                 {requirements.error ? <InlineError message={requirements.error} /> : null}
+                <Field label="Vehicle type">
+                  {naOr(
+                    requirements.data?.vehicle_label ||
+                      requirements.data?.vehicle_type ||
+                      settings.vehicle_type ||
+                      courier.vehicle_type
+                  )}
+                </Field>
+                <Field label="Plate">{naOr(courier.plate_number)}</Field>
+                <Field label="Max package">{naOr(settings.max_package_size)}</Field>
+              </PanelSection>
+
+              <PanelSection id="documents" title="Documents & Verification" icon="📄" defaultOpen>
                 {requirements.data ? (
                   <>
-                    <Field label="Vehicle type">
-                      {requirements.data.vehicle_label || requirements.data.vehicle_type}
-                    </Field>
                     <Field label="Approval readiness">
                       {requirements.data.approval_blockers?.blocked ? (
                         <StatusChip label="requirements incomplete" tone="danger" />
@@ -427,157 +499,37 @@ export default function CourierDetailsDrawer({
                       )}
                     </Field>
                     {(requirements.data.approval_blockers?.reasons || []).map((reason) => (
-                      <p key={reason} className="delivery-detail__error">
+                      <p key={reason} className="courier-panel-alert courier-panel-alert--danger">
                         {reason}
                       </p>
                     ))}
-                    <ul className="delivery-requirements">
+                    <ul className="courier-panel-req">
                       {(requirements.data.documents?.requirements || []).map((row) => (
                         <li key={row.document_type}>
-                          <span className="delivery-requirements__label">{row.label}</span>
+                          <span className="courier-panel-req__label">{row.label}</span>
                           <StatusChip
                             label={DOCUMENT_STATE_LABELS[row.state] || row.state}
                             tone={DOCUMENT_STATE_TONES[row.state] || "neutral"}
                           />
                           {row.expires_at ? (
-                            <span className="delivery-requirements__meta">
+                            <span className="courier-panel-hint">
                               expires {String(row.expires_at).slice(0, 10)}
                             </span>
                           ) : null}
                           {row.rejection_reason ? (
-                            <span className="delivery-requirements__meta">{row.rejection_reason}</span>
+                            <span className="courier-panel-hint">{row.rejection_reason}</span>
                           ) : null}
                         </li>
                       ))}
                     </ul>
-                    {(requirements.data.documents?.not_required || []).length ? (
-                      <Field label="Not required for this vehicle">
-                        {requirements.data.documents.not_required
-                          .map(
-                            (row) =>
-                              `${row.label} (${
-                                DOCUMENT_STATE_LABELS[row.state] || row.state
-                              })`
-                          )
-                          .join(", ")}
-                      </Field>
-                    ) : null}
                   </>
                 ) : null}
-              </section>
 
-
-              <section className="admin-drawer__section">
-                <h3>Delivery Settings</h3>
-                <Field label="Delivery mode">
-                  {settings.delivery_mode_enabled ? "Enabled" : "Disabled"}
-                </Field>
-                <Field label="Online now">{courier.courier_online ? "Yes" : "No"}</Field>
-                <Field label="Vehicle">{naOr(settings.vehicle_type || courier.vehicle_type)}</Field>
-                <Field label="Max package">{naOr(settings.max_package_size)}</Field>
-                <Field label="Accepts">
-                  {[
-                    settings.accepts_food ? "Food" : null,
-                    settings.accepts_pharmacy ? "Pharmacy" : null,
-                    settings.accepts_fragile ? "Fragile" : null,
-                  ]
-                    .filter(Boolean)
-                    .join(", ") || "N/A"}
-                </Field>
-                <Field label="Delivery service cities">
-                  {deliveryCities.join(", ") || "N/A"}
-                </Field>
-                <Field label="Account city">{naOr(accountCity)}</Field>
-                <Field label="Completed deliveries">
-                  {naOr(courier.total_deliveries_completed)}
-                </Field>
-                <Field label="Delivery rating">{naOr(courier.delivery_rating)}</Field>
-                <Field label="Chat warnings">{naOr(settings.chat_warnings)}</Field>
-                {settings.is_suspended ? (
-                  <Field label="Suspension reason">{naOr(settings.suspension_reason)}</Field>
-                ) : null}
-              </section>
-
-              <section className="admin-drawer__section">
-                <h3>Electronic Signature</h3>
-                <Field label="Signature complete">{signature.signature_complete ? "Yes" : "No"}</Field>
-                <Field label="Signed name">{naOr(signature.signed_full_name)}</Field>
-                <Field label="Terms version">
-                  {naOr(signature.terms_version)}
-                  {signature.terms_version_current === false ? " (outdated)" : ""}
-                </Field>
-                <Field label="Accepted at">{formatTimestamp(signature.terms_accepted_at)}</Field>
-                <Field label="Legal declaration">
-                  {signature.legal_declaration_accepted ? "Accepted" : "Not accepted"}
-                </Field>
-                <Field label="Signed IP">{naOr(signature.signed_ip_address)}</Field>
-                <Field label="Signed device">{naOr(signature.signed_device_info)}</Field>
-                {signature.requires_resign ? (
-                  <p className="delivery-detail__warning">
-                    This courier must re-sign the current courier agreement before approval.
-                  </p>
-                ) : null}
-                {!signature.signature_complete ? (
-                  <p className="delivery-detail__warning">
-                    Approval is blocked until the courier completes the electronic signature.
-                  </p>
-                ) : null}
-                <div className="delivery-detail__actions">
-                  <button
-                    type="button"
-                    className="admin-lib-btn admin-lib-btn--ghost"
-                    disabled={!signature.signature_image_available || signatureState.loading}
-                    onClick={openSignature}
-                  >
-                    {signatureState.loading ? "Opening…" : "View signature image"}
-                  </button>
-                </div>
-                {signatureState.error ? (
-                  <p className="delivery-detail__error">{signatureState.error}</p>
-                ) : null}
-                <p className="delivery-cell-hint">
-                  The signature image is streamed through the authenticated admin endpoint —
-                  the public media URL is never exposed to the admin UI.
-                </p>
-              </section>
-
-              <section className="admin-drawer__section">
-                <h3>Onboarding checklist</h3>
-                <p className="delivery-cell-hint">{naOr(courier.onboarding?.message)}</p>
-                {steps.length === 0 ? (
-                  <p className="delivery-detail__empty">No onboarding steps reported.</p>
-                ) : (
-                  <ul className="delivery-detail__steps">
-                    {steps.map((step) => (
-                      <li key={step.id}>
-                        <span
-                          className={
-                            step.complete
-                              ? "delivery-detail__step delivery-detail__step--done"
-                              : "delivery-detail__step"
-                          }
-                        >
-                          {step.complete ? "Done" : naOr(step.status)}
-                        </span>
-                        <span>
-                          <strong>{naOr(step.title)}</strong>
-                          <br />
-                          <span className="delivery-cell-hint">{naOr(step.description)}</span>
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </section>
-
-
-              <section className="admin-drawer__section">
-                <h3>Documents</h3>
                 {documents.length === 0 ? (
-                  <p className="delivery-detail__empty">No documents uploaded.</p>
+                  <p className="courier-panel-empty">No documents uploaded.</p>
                 ) : (
-                  <div className="delivery-detail__table-wrap">
-                    <table className="delivery-detail__table">
+                  <div className="courier-panel-table-wrap">
+                    <table className="courier-panel-table">
                       <thead>
                         <tr>
                           <th scope="col">Document</th>
@@ -619,19 +571,130 @@ export default function CourierDetailsDrawer({
                   </div>
                 )}
                 {documentState.error ? (
-                  <p className="delivery-detail__error">{documentState.error}</p>
+                  <p className="courier-panel-alert courier-panel-alert--danger">
+                    {documentState.error}
+                  </p>
                 ) : null}
-                <p className="delivery-cell-hint">
+                <p className="courier-panel-hint">
                   Documents are streamed through the authenticated admin endpoint — never from a
                   public media URL.
                 </p>
-              </section>
+              </PanelSection>
 
-              <section className="admin-drawer__section">
-                <h3>Earnings</h3>
+              <PanelSection id="settings" title="Delivery Settings" icon="⚙️" defaultOpen={false}>
+                <Field label="Delivery mode">
+                  {settings.delivery_mode_enabled ? "Enabled" : "Disabled"}
+                </Field>
+                <Field label="Online now">{courier.courier_online ? "Yes" : "No"}</Field>
+                <Field label="Accepts">
+                  {[
+                    settings.accepts_food ? "Food" : null,
+                    settings.accepts_pharmacy ? "Pharmacy" : null,
+                    settings.accepts_fragile ? "Fragile" : null,
+                  ]
+                    .filter(Boolean)
+                    .join(", ") || "N/A"}
+                </Field>
+                <Field label="Service cities">{deliveryCities.join(", ") || "N/A"}</Field>
+                <Field label="Completed deliveries">
+                  {naOr(courier.total_deliveries_completed)}
+                </Field>
+                <Field label="Delivery rating">{naOr(courier.delivery_rating)}</Field>
+                <Field label="Chat warnings">{naOr(settings.chat_warnings)}</Field>
+                {settings.is_suspended ? (
+                  <Field label="Suspension reason">{naOr(settings.suspension_reason)}</Field>
+                ) : null}
+              </PanelSection>
+
+              <PanelSection id="signature" title="Electronic Agreement" icon="✍️" defaultOpen>
+                <Field label="Signature complete">
+                  {signature.signature_complete ? "Yes" : "No"}
+                </Field>
+                <Field label="Signed name">{naOr(signature.signed_full_name)}</Field>
+                <Field label="Agreement version">
+                  {naOr(signature.terms_version)}
+                  {signature.terms_version_current === false ? " (outdated)" : ""}
+                </Field>
+                <Field label="Accepted at">{formatTimestamp(signature.terms_accepted_at)}</Field>
+                <Field label="Legal declaration">
+                  {signature.legal_declaration_accepted ? "Accepted" : "Not accepted"}
+                </Field>
+                {signature.requires_resign ? (
+                  <p className="courier-panel-alert courier-panel-alert--warning">
+                    This courier must re-sign the current courier agreement before approval.
+                  </p>
+                ) : null}
+                {!signature.signature_complete ? (
+                  <p className="courier-panel-alert courier-panel-alert--warning">
+                    Approval is blocked until the courier completes the electronic signature.
+                  </p>
+                ) : null}
+                <div className="courier-panel-actions">
+                  <button
+                    type="button"
+                    className="admin-lib-btn admin-lib-btn--ghost"
+                    disabled={!signature.signature_image_available || signatureState.loading}
+                    onClick={openSignature}
+                  >
+                    {signatureState.loading ? "Opening…" : "View signature image"}
+                  </button>
+                  <button
+                    type="button"
+                    className="admin-lib-btn admin-lib-btn--ghost"
+                    onClick={() => setShowSignatureTech((value) => !value)}
+                  >
+                    {showSignatureTech ? "Hide technical details" : "Show technical details"}
+                  </button>
+                </div>
+                {showSignatureTech ? (
+                  <>
+                    <Field label="Signed IP">{naOr(signature.signed_ip_address)}</Field>
+                    <Field label="Signed device">{naOr(signature.signed_device_info)}</Field>
+                  </>
+                ) : null}
+                {signatureState.error ? (
+                  <p className="courier-panel-alert courier-panel-alert--danger">
+                    {signatureState.error}
+                  </p>
+                ) : null}
+                <p className="courier-panel-hint">
+                  The signature image is streamed through the authenticated admin endpoint — the
+                  public media URL is never exposed to the admin UI.
+                </p>
+              </PanelSection>
+
+              <PanelSection id="onboarding" title="Onboarding Checklist" icon="✅" defaultOpen={false}>
+                <p className="courier-panel-hint">{naOr(courier.onboarding?.message)}</p>
+                {steps.length === 0 ? (
+                  <p className="courier-panel-empty">No onboarding steps reported.</p>
+                ) : (
+                  <ul className="courier-panel-steps">
+                    {steps.map((step) => (
+                      <li key={step.id}>
+                        <span
+                          className={
+                            step.complete
+                              ? "courier-panel-step courier-panel-step--done"
+                              : "courier-panel-step"
+                          }
+                        >
+                          {step.complete ? "Done" : naOr(step.status)}
+                        </span>
+                        <span>
+                          <strong>{naOr(step.title)}</strong>
+                          <br />
+                          <span className="courier-panel-hint">{naOr(step.description)}</span>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </PanelSection>
+
+              <PanelSection id="earnings" title="Earnings & Wallet" icon="💰" defaultOpen={false}>
                 {earnings ? (
-                  <div className="delivery-detail__table-wrap">
-                    <table className="delivery-detail__table">
+                  <div className="courier-panel-table-wrap">
+                    <table className="courier-panel-table">
                       <thead>
                         <tr>
                           <th scope="col">Period</th>
@@ -653,7 +716,7 @@ export default function CourierDetailsDrawer({
                     </table>
                   </div>
                 ) : (
-                  <p className="delivery-detail__empty">No earnings data available.</p>
+                  <p className="courier-panel-empty">No earnings data available.</p>
                 )}
                 {wallet ? (
                   <>
@@ -664,17 +727,15 @@ export default function CourierDetailsDrawer({
                     <Field label="Paid deliveries">{naOr(wallet.completed_deliveries)}</Field>
                   </>
                 ) : null}
-                <p className="delivery-cell-hint">
+                <p className="courier-panel-hint">
                   Read-only summary. Payouts and withdrawals are handled in the payments /
                   withdrawals modules.
                 </p>
-              </section>
+              </PanelSection>
 
-
-              <section className="admin-drawer__section">
-                <h3>Delivery history</h3>
+              <PanelSection id="history" title="Delivery History" icon="📦" defaultOpen={false}>
                 {historySummary ? (
-                  <p className="delivery-cell-hint">
+                  <p className="courier-panel-hint">
                     {historySummary.total} total · {historySummary.delivered} delivered ·{" "}
                     {historySummary.active} active · {historySummary.cancelled} cancelled ·{" "}
                     {historySummary.exceptions} exceptions
@@ -685,8 +746,8 @@ export default function CourierDetailsDrawer({
                   isEmpty={historyRows.length === 0}
                   emptyLabel="No deliveries for this courier yet."
                 >
-                  <div className="delivery-detail__table-wrap">
-                    <table className="delivery-detail__table">
+                  <div className="courier-panel-table-wrap">
+                    <table className="courier-panel-table">
                       <thead>
                         <tr>
                           <th scope="col">ID</th>
@@ -702,10 +763,7 @@ export default function CourierDetailsDrawer({
                           <tr key={row.id}>
                             <td>#{row.id}</td>
                             <td>
-                              <StatusChip
-                                label={naOr(row.status)}
-                                tone={statusTone(row.status)}
-                              />
+                              <StatusChip label={naOr(row.status)} tone={statusTone(row.status)} />
                             </td>
                             <td>
                               {naOr(row.pickup)} → {naOr(row.destination)}
@@ -719,7 +777,7 @@ export default function CourierDetailsDrawer({
                     </table>
                   </div>
                   {history.data?.total_pages > 1 ? (
-                    <div className="delivery-detail__pager">
+                    <div className="courier-panel-pager">
                       <button
                         type="button"
                         className="admin-lib-btn admin-lib-btn--ghost"
@@ -742,33 +800,30 @@ export default function CourierDetailsDrawer({
                     </div>
                   ) : null}
                 </AsyncSection>
-              </section>
+              </PanelSection>
 
-              <section className="admin-drawer__section">
-                <h3>Approval History</h3>
+              <PanelSection id="audit" title="Approval & Audit History" icon="🗂️" defaultOpen={false}>
                 <AsyncSection
                   state={audit}
                   isEmpty={auditRows.length === 0}
                   emptyLabel="No administrative actions recorded yet."
                 >
-                  <ul className="delivery-detail__audit">
+                  <ul className="courier-panel-audit">
                     {auditRows.map((row) => (
                       <li key={row.id}>
                         <strong>{naOr(row.action)}</strong> — {naOr(row.summary)}
                         <br />
-                        <span className="delivery-cell-hint">
+                        <span className="courier-panel-hint">
                           {formatTimestamp(row.created_at)}
                         </span>
                       </li>
                     ))}
                   </ul>
                 </AsyncSection>
-              </section>
+              </PanelSection>
 
-
-              <section className="admin-drawer__section">
-                <h3>Administrative actions</h3>
-                <div className="delivery-detail__actions">
+              <PanelSection id="actions" title="Administrative Actions" icon="🛡️" defaultOpen>
+                <div className="courier-panel-actions">
                   <button
                     type="button"
                     className="admin-lib-btn"
@@ -808,27 +863,30 @@ export default function CourierDetailsDrawer({
                     </button>
                   )}
                 </div>
-                <p className="delivery-cell-hint">
+                <p className="courier-panel-hint">
                   Approve / reject go through the approval center (signature gate enforced on the
                   backend). Suspend / reactivate affect delivery mode only — the account, wallet and
-                  payouts are untouched.
+                  payouts are untouched. Sensitive actions require confirmation.
                 </p>
-              </section>
+              </PanelSection>
             </>
           ) : null}
         </div>
 
         {action.kind ? (
-          <div className="delivery-detail__dialog" role="dialog" aria-label={actionLabels[action.kind]}>
+          <div className="courier-panel-dialog" role="dialog" aria-label={actionLabels[action.kind]}>
             <h4>{actionLabels[action.kind]}</h4>
             {action.kind === "approve" ? (
-              <p className="delivery-cell-hint">
+              <p className="courier-panel-hint">
                 The courier&apos;s electronic signature is complete. Approving activates the courier
                 account.
               </p>
             ) : (
-              <label className="delivery-detail__dialog-field">
-                Reason {action.kind === "suspend" || action.kind === "reject" ? "(required)" : "(optional)"}
+              <label className="courier-panel-dialog__field">
+                Reason{" "}
+                {action.kind === "suspend" || action.kind === "reject"
+                  ? "(required)"
+                  : "(optional)"}
                 <textarea
                   rows={3}
                   value={action.reason}
@@ -838,8 +896,10 @@ export default function CourierDetailsDrawer({
                 />
               </label>
             )}
-            {action.error ? <p className="delivery-detail__error">{action.error}</p> : null}
-            <div className="delivery-detail__dialog-actions">
+            {action.error ? (
+              <p className="courier-panel-alert courier-panel-alert--danger">{action.error}</p>
+            ) : null}
+            <div className="courier-panel-dialog__actions">
               <button
                 type="button"
                 className="admin-lib-btn admin-lib-btn--ghost"
@@ -863,4 +923,3 @@ export default function CourierDetailsDrawer({
     </div>
   );
 }
-
