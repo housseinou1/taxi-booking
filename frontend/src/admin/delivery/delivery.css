@@ -306,64 +306,171 @@
   margin-top: 10px;
 }
 
-/* Courier details sit on a light panel. The shared admin drawer token is a
-   dark green that makes this narrow panel hard to read. */
-.admin-shell .courier-detail-overlay {
-  background: rgba(8, 20, 16, 0.55);
+/* Courier details drawer — light reading surface (desktop 600–700px). */
+.courier-detail-overlay.admin-drawer__overlay {
+  background: rgba(15, 23, 42, 0.45);
+  align-items: stretch;
+  justify-content: flex-end;
 }
 
-.admin-shell .courier-detail-drawer.admin-drawer,
-.admin-shell .courier-detail-drawer.admin-drawer .admin-drawer__head,
-.admin-shell .courier-detail-drawer.admin-drawer .admin-drawer__body {
-  background: #f7faf8;
-  color: #10231c;
-}
-
-.admin-shell .courier-detail-drawer.admin-drawer {
-  width: min(760px, 100%);
+.courier-detail-drawer.admin-drawer {
+  display: flex;
+  flex-direction: column;
+  width: min(680px, 96vw);
   max-width: 100%;
-  border: 1px solid #d5e0da;
-  box-shadow: -8px 0 28px rgba(8, 20, 16, 0.18);
+  height: 100%;
+  max-height: 100vh;
+  margin: 0;
+  border-radius: 12px 0 0 12px;
+  border: 1px solid #e5e7eb;
+  border-right: 0;
+  background: #ffffff;
+  color: #111827;
+  box-shadow: -12px 0 32px rgba(15, 23, 42, 0.18);
+  overflow: hidden;
 }
 
-.admin-shell .courier-detail-drawer .admin-drawer__title,
-.admin-shell .courier-detail-drawer .admin-drawer__field-value,
-.admin-shell .courier-detail-drawer .delivery-requirements__label {
-  color: #10231c;
+.courier-detail-drawer .admin-drawer__head {
+  flex-shrink: 0;
+  gap: 12px;
+  padding: 16px 18px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #ffffff;
 }
 
-.admin-shell .courier-detail-drawer .admin-drawer__field-label,
-.admin-shell .courier-detail-drawer .admin-drawer__section h3,
-.admin-shell .courier-detail-drawer .admin-drawer__state,
-.admin-shell .courier-detail-drawer .delivery-requirements__meta {
-  color: #3d5248;
+.courier-detail-drawer .admin-drawer__body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 16px 18px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  background: #ffffff;
 }
 
-.admin-shell .courier-detail-drawer .admin-drawer__field {
+.courier-detail-drawer .admin-drawer__section {
+  margin: 0;
+  padding: 0 0 16px;
+  border: 0;
+  border-bottom: 1px solid #eef2f7;
+  background: transparent;
+  box-shadow: none;
+}
+
+.courier-detail-drawer .admin-drawer__section:last-of-type {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.courier-detail-drawer .admin-drawer__section h3 {
+  margin: 0 0 12px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #374151;
+}
+
+.courier-detail-drawer .admin-drawer__title {
+  margin: 0 0 6px;
+  color: #111827;
+  font-size: 1.1rem;
+}
+
+.courier-detail-drawer .admin-drawer__field {
   display: grid;
-  grid-template-columns: minmax(148px, 34%) minmax(0, 1fr);
+  grid-template-columns: minmax(150px, 36%) minmax(0, 1fr);
   align-items: start;
   gap: 6px 16px;
+  padding: 8px 0;
+  border-bottom: 1px dashed #eef2f7;
   text-align: left;
 }
 
-.admin-shell .courier-detail-drawer .admin-drawer__field-value {
+.courier-detail-drawer .admin-drawer__field-label {
+  color: #6b7280;
+  font-size: 0.82rem;
+}
+
+.courier-detail-drawer .admin-drawer__field-value {
+  color: #111827;
+  font-weight: 600;
   text-align: left;
-  font-weight: 650;
   overflow-wrap: anywhere;
 }
 
-.admin-shell .courier-detail-drawer .delivery-requirements li {
+.courier-detail-drawer .delivery-detail__city-mismatch {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border: 1px solid #fcd34d;
+  border-radius: 8px;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.courier-detail-drawer .delivery-detail__doc-consistency {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border: 1px solid #fca5a5;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #991b1b;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.courier-detail-drawer .delivery-requirements li {
   align-items: flex-start;
 }
 
+.courier-detail-drawer .delivery-detail__table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.courier-detail-drawer .delivery-detail__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  color: #111827;
+}
+
+.courier-detail-drawer .delivery-detail__table th,
+.courier-detail-drawer .delivery-detail__table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #eef2f7;
+  text-align: left;
+  vertical-align: top;
+}
+
+.courier-detail-drawer .admin-chip--success {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.courier-detail-drawer .admin-chip--warning {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.courier-detail-drawer .admin-chip--danger {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
 @media (max-width: 720px) {
-  .admin-shell .courier-detail-drawer.admin-drawer {
+  .courier-detail-drawer.admin-drawer {
     width: 100%;
     border-radius: 0;
   }
 
-  .admin-shell .courier-detail-drawer .admin-drawer__field {
+  .courier-detail-drawer .admin-drawer__field {
     grid-template-columns: 1fr;
     gap: 2px;
   }

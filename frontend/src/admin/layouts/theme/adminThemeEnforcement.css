@@ -145,7 +145,7 @@
     [class*="__section"],
     [class*="__table-wrap"],
     [class*="__chart"]
-  ):not(.ss__popup):not(.fleet-kpi):not(.admin-kpi):not([class*="--warn"]):not([class*="--danger"]):not([class*="--success"]) {
+  ):not(.ss__popup):not(.fleet-kpi):not(.admin-kpi):not([class*="--warn"]):not([class*="--danger"]):not([class*="--success"]):not(.courier-detail-drawer):not(.courier-detail-drawer *) {
   background-color: var(--admin-surface-alt) !important;
   border-color: var(--admin-border) !important;
   border-top: 3px solid var(--yala-mr-gold) !important;
@@ -217,4 +217,74 @@
   ) {
   background: transparent !important;
   color: var(--admin-text) !important;
+}
+
+/*
+ * Courier details drawer must stay a light reading surface.
+ * Theme drawer/section rules above force dark green + gold borders onto
+ * .admin-drawer__section and related BEM fragments.
+ */
+.admin-shell .courier-detail-overlay {
+  background: rgba(15, 23, 42, 0.45) !important;
+}
+
+.admin-shell .admin-drawer.courier-detail-drawer,
+.admin-shell .admin-drawer.courier-detail-drawer .admin-drawer__head,
+.admin-shell .admin-drawer.courier-detail-drawer .admin-drawer__body,
+.admin-shell .courier-detail-drawer .admin-drawer__section,
+.admin-shell .courier-detail-drawer .delivery-detail__table-wrap,
+.admin-shell .courier-detail-drawer .delivery-detail__dialog,
+.admin-shell .courier-detail-drawer .dlvops-panel {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  border-color: #e5e7eb !important;
+  border-top: 0 !important;
+  color: #111827 !important;
+  box-shadow: none;
+}
+
+.admin-shell .admin-drawer.courier-detail-drawer {
+  width: min(680px, 96vw) !important;
+  max-width: 100% !important;
+  border-left: 1px solid #e5e7eb !important;
+  box-shadow: -12px 0 32px rgba(15, 23, 42, 0.18) !important;
+}
+
+.admin-shell .courier-detail-drawer .admin-drawer__title,
+.admin-shell .courier-detail-drawer .admin-drawer__field-value,
+.admin-shell .courier-detail-drawer .admin-drawer__section h3,
+.admin-shell .courier-detail-drawer .delivery-requirements__label,
+.admin-shell .courier-detail-drawer td,
+.admin-shell .courier-detail-drawer th,
+.admin-shell .courier-detail-drawer strong {
+  color: #111827 !important;
+}
+
+.admin-shell .courier-detail-drawer .admin-drawer__field-label,
+.admin-shell .courier-detail-drawer .admin-drawer__state,
+.admin-shell .courier-detail-drawer .delivery-cell-hint,
+.admin-shell .courier-detail-drawer .delivery-requirements__meta,
+.admin-shell .courier-detail-drawer .delivery-detail__empty {
+  color: #4b5563 !important;
+}
+
+.admin-shell .courier-detail-drawer .admin-chip--success {
+  background: #dcfce7 !important;
+  color: #166534 !important;
+}
+
+.admin-shell .courier-detail-drawer .admin-chip--warning {
+  background: #fef3c7 !important;
+  color: #92400e !important;
+}
+
+.admin-shell .courier-detail-drawer .admin-chip--danger {
+  background: #fee2e2 !important;
+  color: #991b1b !important;
+}
+
+.admin-shell .courier-detail-drawer .admin-chip--info,
+.admin-shell .courier-detail-drawer .admin-chip--neutral {
+  background: #e5e7eb !important;
+  color: #1f2937 !important;
 }

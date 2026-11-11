@@ -36,12 +36,31 @@ function formatMru(value, currency = "MRU") {
 }
 
 function statusTone(status) {
-  if (status === "approved" || status === "delivered" || status === "complete") return "success";
-  if (status === "rejected" || status === "suspended" || status === "cancelled") return "danger";
-  if (["pending", "pending_review", "requested", "accepted", "in_transit", "picked_up"].includes(status)) {
-    return "info";
+  const value = String(status || "").toLowerCase();
+  if (value === "approved" || value === "delivered" || value === "complete") return "success";
+  if (value === "rejected" || value === "suspended" || value === "cancelled") return "danger";
+  if (value === "pending_review" || value === "pending review" || value === "uploaded") return "warning";
+  if (["pending", "requested", "accepted", "in_transit", "picked_up"].includes(value)) {
+    return "warning";
   }
   return "neutral";
+}
+
+function normalizeCityLabel(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function citiesMismatch(accountCity, deliveryCities) {
+  const account = normalizeCityLabel(accountCity);
+  const cities = (Array.isArray(deliveryCities) ? deliveryCities : [])
+    .map(normalizeCityLabel)
+    .filter(Boolean);
+  if (!account || !cities.length) return false;
+  return !cities.includes(account);
 }
 
 function Field({ label, children }) {
@@ -270,6 +289,14 @@ export default function CourierDetailsDrawer({
   const settings = courier?.delivery_settings || {};
   const earnings = courier?.earnings || null;
   const wallet = courier?.wallet || null;
+  const deliveryCities = settings.delivery_cities || [];
+  const accountCity = courier?.city_name || "";
+  const cityMismatch = citiesMismatch(accountCity, deliveryCities);
+  const pendingReviewDocs = documents.filter(
+    (doc) => String(doc.status || "").toLowerCase() === "pending_review"
+  );
+  const approvedWithPendingDocs =
+    String(courier?.status || "").toLowerCase() === "approved" && pendingReviewDocs.length > 0;
   const canApprove = Boolean(courier) && courier.status !== "approved" && courier.signature_complete;
   const canReject = Boolean(courier) && courier.status !== "rejected";
 
@@ -343,7 +370,7 @@ export default function CourierDetailsDrawer({
           {courier && !loading && !error ? (
             <>
               <section className="admin-drawer__section">
-                <h3>Courier profile</h3>
+                <h3>Personal Information</h3>
                 <Field label="Courier ID">{naOr(courier.id)}</Field>
                 <Field label="Email">{naOr(courier.email)}</Field>
                 <Field label="Phone">
@@ -357,16 +384,32 @@ export default function CourierDetailsDrawer({
                     tone={statusTone(courier.status)}
                   />
                 </Field>
-                <Field label="City">{naOr(courier.city_name)}</Field>
+                <Field label="Account city">{naOr(courier.city_name)}</Field>
                 <Field label="Plate">{naOr(courier.plate_number)}</Field>
                 <Field label="Joined">{formatTimestamp(courier.date_joined)}</Field>
                 {courier.rejection_reason ? (
                   <Field label="Rejection reason">{courier.rejection_reason}</Field>
                 ) : null}
+                {cityMismatch ? (
+                  <p className="delivery-detail__city-mismatch" role="status">
+                    Account city is {accountCity}, but delivery service cities are{" "}
+                    {deliveryCities.join(", ") || "N/A"}. For an approved courier this is not
+                    changed automatically — a CEO operating-city transfer is required before the
+                    service cities can be updated.
+                  </p>
+                ) : null}
+                {approvedWithPendingDocs ? (
+                  <p className="delivery-detail__doc-consistency" role="status">
+                    Account status is Approved while {pendingReviewDocs.length} document
+                    {pendingReviewDocs.length === 1 ? " is" : "s are"} still Pending Review.
+                    Review the replacement file before treating onboarding as complete. Approval
+                    is not changed automatically.
+                  </p>
+                ) : null}
               </section>
 
               <section className="admin-drawer__section">
-                <h3>Vehicle &amp; document requirements</h3>
+                <h3>Vehicle &amp; Documents</h3>
                 {requirements.loading ? (
                   <p className="admin-drawer__state">Loading requirements…</p>
                 ) : null}
@@ -425,7 +468,7 @@ export default function CourierDetailsDrawer({
 
 
               <section className="admin-drawer__section">
-                <h3>Delivery settings</h3>
+                <h3>Delivery Settings</h3>
                 <Field label="Delivery mode">
                   {settings.delivery_mode_enabled ? "Enabled" : "Disabled"}
                 </Field>
@@ -441,7 +484,10 @@ export default function CourierDetailsDrawer({
                     .filter(Boolean)
                     .join(", ") || "N/A"}
                 </Field>
-                <Field label="Cities">{(settings.delivery_cities || []).join(", ") || "N/A"}</Field>
+                <Field label="Delivery service cities">
+                  {deliveryCities.join(", ") || "N/A"}
+                </Field>
+                <Field label="Account city">{naOr(accountCity)}</Field>
                 <Field label="Completed deliveries">
                   {naOr(courier.total_deliveries_completed)}
                 </Field>
@@ -453,7 +499,7 @@ export default function CourierDetailsDrawer({
               </section>
 
               <section className="admin-drawer__section">
-                <h3>Electronic signature (courier agreement)</h3>
+                <h3>Electronic Signature</h3>
                 <Field label="Signature complete">{signature.signature_complete ? "Yes" : "No"}</Field>
                 <Field label="Signed name">{naOr(signature.signed_full_name)}</Field>
                 <Field label="Terms version">
@@ -547,8 +593,11 @@ export default function CourierDetailsDrawer({
                             <td>{naOr(doc.label || doc.type)}</td>
                             <td>
                               <StatusChip
-                                label={naOr(doc.display_status || doc.status)}
-                                tone={statusTone(doc.status)}
+                                label={
+                                  DOCUMENT_STATE_LABELS[doc.status] ||
+                                  naOr(doc.display_status || doc.status)
+                                }
+                                tone={DOCUMENT_STATE_TONES[doc.status] || statusTone(doc.status)}
                               />
                             </td>
                             <td>{formatTimestamp(doc.uploaded_at)}</td>
@@ -696,7 +745,7 @@ export default function CourierDetailsDrawer({
               </section>
 
               <section className="admin-drawer__section">
-                <h3>Account activity (audit trail)</h3>
+                <h3>Approval History</h3>
                 <AsyncSection
                   state={audit}
                   isEmpty={auditRows.length === 0}

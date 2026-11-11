@@ -218,7 +218,9 @@ test("renders signature, settings, earnings and delivery history", async () => {
 
   expect(document.querySelector(".courier-detail-drawer")).toBeTruthy();
   expect(screen.getAllByText("Moussa Coura").length).toBeGreaterThan(0);
-  expect(screen.getByText("Electronic signature (courier agreement)")).toBeInTheDocument();
+  expect(screen.getByText("Personal Information")).toBeInTheDocument();
+  expect(screen.getByText("Electronic Signature")).toBeInTheDocument();
+  expect(screen.getByText("Approval History")).toBeInTheDocument();
   expect(screen.getAllByText("v1.0").length).toBeGreaterThan(0);
   expect(screen.getAllByText("2640 MRU").length).toBeGreaterThan(0);
   expect(await screen.findByText("#501")).toBeInTheDocument();
@@ -244,6 +246,43 @@ test("blocks approval until the electronic signature is complete", () => {
   expect(
     screen.getByText(/Approval is blocked until the courier completes the electronic signature/i)
   ).toBeInTheDocument();
+});
+
+test("flags approved courier city mismatch and pending document review without changing data", () => {
+  renderDrawer({
+    status: "approved",
+    status_label: "Approved",
+    courier_status: "approved",
+    courier_status_label: "Approved",
+    city_name: "Nouadhibou",
+    delivery_settings: {
+      ...COURIER.delivery_settings,
+      delivery_cities: ["Nouakchott"],
+    },
+    documents: [
+      {
+        id: 5,
+        type: "national_id",
+        label: "National ID",
+        status: "pending_review",
+        display_status: "Pending review",
+        is_uploaded: true,
+        uploaded_at: "2026-02-02T10:00:00Z",
+        expires_at: "2027-02-02",
+      },
+    ],
+  });
+
+  expect(
+    screen.getByText(/Account city is Nouadhibou, but delivery service cities are Nouakchott/i)
+  ).toBeInTheDocument();
+  expect(
+    screen.getByText(/CEO operating-city transfer is required/i)
+  ).toBeInTheDocument();
+  expect(
+    screen.getByText(/Account status is Approved while 1 document is still Pending Review/i)
+  ).toBeInTheDocument();
+  expect(screen.getByText("Pending review")).toBeInTheDocument();
 });
 
 
@@ -371,7 +410,7 @@ test("signature failure is surfaced without breaking the drawer", async () => {
 test("renders the vehicle-type document checklist with every state", async () => {
   renderDrawer();
 
-  expect(await screen.findByText("Vehicle & document requirements")).toBeInTheDocument();
+  expect(await screen.findByText("Vehicle & Documents")).toBeInTheDocument();
   // Labels/states may also appear in the pre-existing documents section, so assert
   // presence rather than uniqueness.
   for (const text of [
