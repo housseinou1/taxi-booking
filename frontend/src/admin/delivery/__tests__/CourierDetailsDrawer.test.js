@@ -216,6 +216,7 @@ beforeEach(() => {
 test("renders signature, settings, earnings and delivery history", async () => {
   renderDrawer();
 
+  expect(document.querySelector(".courier-detail-drawer")).toBeTruthy();
   expect(screen.getAllByText("Moussa Coura").length).toBeGreaterThan(0);
   expect(screen.getByText("Electronic signature (courier agreement)")).toBeInTheDocument();
   expect(screen.getAllByText("v1.0").length).toBeGreaterThan(0);

@@ -93,6 +93,46 @@ class DocumentAlert:
     expires_at: Optional[date] = None
 
 
+def _audit_document_resubmission(document: DriverDocument, previous_status: str, previous_reason: str) -> None:
+    """Keep the rejection decision when a courier uploads a replacement file."""
+    from security.services.audit_service import log_audit
+
+    reviewer_id = getattr(document, "reviewed_by_id", None)
+    reviewed_at = getattr(document, "reviewed_at", None)
+    driver = document.driver
+    user_id = getattr(driver, "user_id", "") or ""
+    log_audit(
+        action="status_change",
+        entity_type="courier",
+        entity_id=user_id,
+        actor=getattr(driver, "user", None),
+        summary=f"Rejected {document.document_type} resubmitted for review",
+        details={
+            "document_id": document.id,
+            "document_type": document.document_type,
+            "previous_status": previous_status,
+            "previous_rejection_reason": previous_reason,
+            "previous_reviewed_at": reviewed_at.isoformat() if reviewed_at else None,
+            "previous_reviewed_by_id": reviewer_id,
+            "new_status": "pending_review",
+            "auto_approved": False,
+        },
+    )
+    log_audit(
+        action="document_approval",
+        entity_type="document",
+        entity_id=document.id,
+        actor=getattr(driver, "user", None),
+        summary=f"Document resubmitted after rejection: {document.document_type}",
+        details={
+            "driver_id": getattr(driver, "id", None),
+            "previous_status": previous_status,
+            "previous_rejection_reason": previous_reason,
+            "new_status": "pending_review",
+        },
+    )
+
+
 class DocumentService:
     """
     Service responsible for document upload validation, admin review workflow,
@@ -216,7 +256,14 @@ class DocumentService:
         ).first()
 
         if existing:
-            # Replace existing document
+            previous_status = existing.status if isinstance(existing.status, str) else ""
+            previous_reason = (
+                existing.rejection_reason if isinstance(existing.rejection_reason, str) else ""
+            )
+            if previous_status == "rejected" or previous_reason.strip():
+                _audit_document_resubmission(existing, previous_status, previous_reason)
+            # Replace the file and return the document to review.
+            # The previous rejection stays in the audit log.
             existing.file = file
             existing.status = "pending_review"
             existing.rejection_reason = ""

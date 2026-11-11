@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { API_URL } from "../apiConfig";
 import authenticatedApi from "../auth/authenticatedApi";
 import { DeliveryUberPage } from "./DeliveryUberLayout";
+import { headersForFormData } from "./multipartRequest";
 import {
   buildDocumentMap,
   getDocumentDisplayStatus,
@@ -90,7 +91,7 @@ export default function DeliveryCourierDocuments() {
       formData.append("file", file);
       formData.append("document_type", documentType);
       await authenticatedApi.post(`${API_URL}/drivers/me/documents/upload/`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+        headers: headersForFormData(),
       });
       setNotice("Delivery document uploaded for review.");
       await load();
@@ -139,6 +140,9 @@ export default function DeliveryCourierDocuments() {
                 <div>
                   <strong>{docType.label}</strong>
                   <p>{STATUS_LABELS[displayStatus] || displayStatus}</p>
+                  {uploaded?.status === "rejected" && uploaded.rejection_reason ? (
+                    <p>{uploaded.rejection_reason}</p>
+                  ) : null}
                   {uploaded?.expires_at ? <p>Expires {formatDate(uploaded.expires_at)}</p> : null}
                 </div>
                 <div className="delivery-uber__history-meta">

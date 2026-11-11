@@ -68,6 +68,53 @@ def normalize_city_name(value: str) -> str | None:
     return _CITY_LOOKUP.get(str(value).strip().casefold())
 
 
+def canonical_delivery_city_name(city) -> str | None:
+    """Operating-city name stored on the user, or None when it is not a delivery city."""
+    if city is None:
+        return None
+    return normalize_city_name(getattr(city, "name", "") or "")
+
+
+def sync_onboarding_delivery_cities(user) -> None:
+    """Point a not-yet-approved courier's service cities at the city on their profile.
+
+    Approved couriers keep the cities already stored. Nothing is written when
+    the profile city is already the service city.
+    """
+    from taxi.drivers.models import DriverProfile
+
+    from .models import DriverDeliverySettings
+
+    try:
+        profile = user.driver_profile
+    except DriverProfile.DoesNotExist:
+        profile = None
+    if profile is not None and profile.status == "approved":
+        return
+
+    name = canonical_delivery_city_name(getattr(user, "city", None))
+    if not name:
+        return
+    settings_obj = DriverDeliverySettings.objects.filter(driver=user).first()
+    if settings_obj is None:
+        return
+    if list(settings_obj.delivery_cities or []) == [name]:
+        return
+    settings_obj.delivery_cities = [name]
+    settings_obj.save(update_fields=["delivery_cities"])
+
+
+def delivery_cities_for_admin(user, stored, *, approved: bool) -> list[str]:
+    """Show the profile city while onboarding still has only the Nouakchott default."""
+    stored_list = list(stored or [])
+    if approved:
+        return stored_list
+    name = canonical_delivery_city_name(getattr(user, "city", None))
+    if name and stored_list == [DEFAULT_DELIVERY_CITY] and name != DEFAULT_DELIVERY_CITY:
+        return [name]
+    return stored_list
+
+
 def normalize_delivery_cities(cities) -> list[str]:
     """Validate and dedupe a list of delivery city names."""
     if not cities:

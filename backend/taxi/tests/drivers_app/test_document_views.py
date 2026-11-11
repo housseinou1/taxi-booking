@@ -408,6 +408,69 @@ class TestDriverDocumentUploadView:
         assert license_docs.count() == 1
         assert license_docs.first().status == "pending_review"
 
+    def test_rejected_national_id_resubmission_returns_to_pending_review(self):
+        from authapp.models import User
+        from security.models import AuditLog
+
+        payload, token = _register_driver()
+        c = _get_authenticated_client(token)
+        user = User.objects.get(email=payload["email"])
+        accounts_before = User.objects.count()
+        profile = user.driver_profile
+        profile.status = "rejected"
+        profile.application_rejection_reason = "National ID needs another file format."
+        profile.save(update_fields=["status", "application_rejection_reason"])
+        document = DriverDocument.objects.create(
+            driver=profile,
+            document_type="national_id",
+            file=_make_valid_file("old-id.pdf"),
+            status="rejected",
+            rejection_reason="Please upload a PDF or JPEG.",
+        )
+
+        response = c.post(UPLOAD_URL, {
+            "document_type": "national_id",
+            "file": _make_valid_file("new-id.pdf"),
+        }, format="multipart")
+
+        assert response.status_code == 201, response.data
+        document.refresh_from_db()
+        profile.refresh_from_db()
+        assert document.status == "pending_review"
+        assert profile.status == "rejected"
+        assert User.objects.count() == accounts_before
+        audit = AuditLog.objects.filter(
+            entity_type="document",
+            entity_id=str(document.id),
+        ).latest("created_at")
+        assert audit.details["previous_rejection_reason"] == "Please upload a PDF or JPEG."
+        assert audit.details["previous_status"] == "rejected"
+        assert audit.details["new_status"] == "pending_review"
+
+    def test_upload_without_multipart_boundary_header_is_accepted(self):
+        payload, token = _register_driver()
+        c = _get_authenticated_client(token)
+        boundary = "WebKitFormBoundaryYalaDelivery"
+        file_bytes = b"%PDF-" + b"x" * 32
+        body = (
+            f"--{boundary}\r\n"
+            'Content-Disposition: form-data; name="document_type"\r\n\r\n'
+            "national_id\r\n"
+            f"--{boundary}\r\n"
+            'Content-Disposition: form-data; name="file"; filename="id.pdf"\r\n'
+            "Content-Type: application/pdf\r\n\r\n"
+        ).encode("ascii") + file_bytes + f"\r\n--{boundary}--\r\n".encode("ascii")
+
+        response = c.generic(
+            "POST",
+            UPLOAD_URL,
+            data=body,
+            content_type="multipart/form-data",
+        )
+
+        assert response.status_code == 201, getattr(response, "data", response.content)
+        assert "Invalid boundary" not in str(getattr(response, "data", response.content))
+
 
 @pytest.mark.django_db
 class TestAdminDocumentApproveView:

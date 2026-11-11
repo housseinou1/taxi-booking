@@ -1165,9 +1165,13 @@ def courier_vehicle_setup(request):
     profile.car_type = "regular"
     profile.save()
 
-    settings_obj, _ = DriverDeliverySettings.objects.get_or_create(driver=request.user)
+    settings_obj, created = DriverDeliverySettings.objects.get_or_create(driver=request.user)
     settings_obj.delivery_vehicle_type = delivery_vehicle_type
     settings_obj.save(update_fields=["delivery_vehicle_type"])
+    if created:
+        from .cities import sync_onboarding_delivery_cities
+
+        sync_onboarding_delivery_cities(request.user)
 
     return Response(build_courier_onboarding_state(request.user, request))
 
@@ -1257,9 +1261,14 @@ def courier_profile_setup_submit(request):
 @permission_classes([IsAuthenticated])
 def driver_delivery_mode(request):
     """Get or toggle driver delivery mode settings."""
-    settings_obj, _ = DriverDeliverySettings.objects.get_or_create(
+    settings_obj, created = DriverDeliverySettings.objects.get_or_create(
         driver=request.user
     )
+    if created:
+        from .cities import sync_onboarding_delivery_cities
+
+        sync_onboarding_delivery_cities(request.user)
+        settings_obj.refresh_from_db()
 
     if request.method == "GET":
         return Response(DriverDeliverySettingsSerializer(settings_obj).data)

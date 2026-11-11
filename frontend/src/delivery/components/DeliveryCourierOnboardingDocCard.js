@@ -63,6 +63,10 @@ export default function DeliveryCourierOnboardingDocCard({
         </button>
       </div>
 
+      {uploaded?.status === "rejected" && uploaded.rejection_reason ? (
+        <p className="delivery-courier-doc-card__reason">{uploaded.rejection_reason}</p>
+      ) : null}
+
       {isUploading ? (
         <div className="delivery-courier-doc-card__progress" aria-label="Upload progress">
           <div

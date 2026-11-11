@@ -18,6 +18,7 @@ import {
 import { getDeliveryVehicleIcon, getDeliveryVehicleLabel } from "./deliveryVehicleTypes";
 import { DeliveryUberPage } from "./DeliveryUberLayout";
 import { apiRequest } from "./DeliveryShared";
+import { headersForFormData } from "./multipartRequest";
 import "./delivery-uber.css";
 import "./delivery-customer-dashboard.css";
 import "./delivery-courier-onboarding.css";
@@ -489,7 +490,7 @@ export default function DeliveryCourierProfileSetup() {
       formData.append("file", file);
       formData.append("document_type", docTypeKey);
       await axios.post(`${API_URL}/drivers/me/documents/upload/`, formData, {
-        headers: { ...authHeaders, "Content-Type": "multipart/form-data" },
+        headers: headersForFormData(authHeaders),
         onUploadProgress: (progressEvent) => {
           const total = progressEvent.total || file.size || 1;
           const percent = Math.min(100, Math.round((progressEvent.loaded * 100) / total));

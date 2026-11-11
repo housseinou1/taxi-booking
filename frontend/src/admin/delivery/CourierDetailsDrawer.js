@@ -287,9 +287,9 @@ export default function CourierDetailsDrawer({
 
 
   return (
-    <div className="admin-drawer__overlay" role="presentation" onClick={onClose}>
+    <div className="admin-drawer__overlay courier-detail-overlay" role="presentation" onClick={onClose}>
       <div
-        className="admin-drawer"
+        className="admin-drawer courier-detail-drawer"
         role="dialog"
         aria-modal="true"
         aria-label={courier ? `Courier ${courier.name} details` : "Courier details"}

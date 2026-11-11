@@ -456,6 +456,13 @@
   color: #b91c1c;
 }
 
+.delivery-courier-doc-card__reason {
+  margin: 8px 0 0;
+  color: #9f1239;
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
 .delivery-courier-doc-card__progress {
   margin-top: 12px;
   height: 6px;

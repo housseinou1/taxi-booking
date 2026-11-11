@@ -480,6 +480,17 @@ def admin_couriers_list(request):
 # ─── Courier detail ───────────────────────────────────────────────────────────
 
 
+def _admin_delivery_cities(profile, settings):
+    from .cities import delivery_cities_for_admin
+
+    stored = list(settings.delivery_cities) if settings else []
+    return delivery_cities_for_admin(
+        profile.user,
+        stored,
+        approved=profile.status == "approved",
+    )
+
+
 @api_view(["GET"])
 @permission_classes([require_admin_module("delivery")])
 def admin_courier_detail(request, driver_id):
@@ -549,7 +560,7 @@ def admin_courier_detail(request, driver_id):
                 "accepts_food": bool(settings and settings.accepts_food),
                 "accepts_pharmacy": bool(settings and settings.accepts_pharmacy),
                 "accepts_fragile": bool(settings and settings.accepts_fragile),
-                "delivery_cities": list(settings.delivery_cities) if settings else [],
+                "delivery_cities": _admin_delivery_cities(profile, settings),
                 "is_suspended": bool(settings and settings.is_suspended),
                 "suspension_reason": (settings.suspension_reason if settings else "") or "",
                 "chat_warnings": settings.chat_warnings if settings else 0,

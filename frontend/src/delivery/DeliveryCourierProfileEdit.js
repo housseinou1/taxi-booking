@@ -4,6 +4,7 @@ import { API_URL } from "../apiConfig";
 import authenticatedApi from "../auth/authenticatedApi";
 import { DeliveryUberPage } from "./DeliveryUberLayout";
 import { getDeliveryVehicleLabel } from "./deliveryVehicleTypes";
+import { headersForFormData } from "./multipartRequest";
 import "./delivery-uber.css";
 
 export default function DeliveryCourierProfileEdit() {
@@ -76,7 +77,7 @@ export default function DeliveryCourierProfileEdit() {
       if (profilePhoto) body.append("profile_picture", profilePhoto);
 
       await authenticatedApi.patch(`${API_URL}/auth/identity/update/`, body, {
-        headers: { "Content-Type": "multipart/form-data" },
+        headers: headersForFormData(),
       });
       setNotice("Delivery courier profile updated.");
     } catch (err) {

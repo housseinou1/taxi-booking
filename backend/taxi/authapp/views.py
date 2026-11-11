@@ -41,6 +41,17 @@ from operations.admin_module_permissions import require_admin_module
 User = get_user_model()
 
 
+def _onboarding_city_change_allowed(user) -> bool:
+    """Applicants may correct their city until an admin approves the profile."""
+    if getattr(user, "user_type", "") != "driver":
+        return True
+    try:
+        profile = user.driver_profile
+    except ObjectDoesNotExist:
+        return True
+    return profile.status != "approved"
+
+
 def ensure_driver_profile(user):
     if not user or getattr(user, "user_type", "") != "driver":
         return None
@@ -864,7 +875,22 @@ def update_identity(request):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         old_city_id = request.user.city_id
-        if old_city_id != city.id and request.user.user_type == "driver":
+        if old_city_id != city.id and not _onboarding_city_change_allowed(request.user):
+            try:
+                _has_delivery = request.user.delivery_settings is not None
+            except ObjectDoesNotExist:
+                _has_delivery = False
+            if _has_delivery:
+                return Response(
+                    {
+                        "error": (
+                            "Courier operating city changes require CEO approval. "
+                            "Submit a transfer request from the app or contact operations."
+                        ),
+                        "code": "courier_city_transfer_requires_ceo",
+                    },
+                    status=status.HTTP_403_FORBIDDEN,
+                )
             return Response(
                 {
                     "error": (
@@ -872,21 +898,6 @@ def update_identity(request):
                         "Submit a transfer request from the app or contact operations."
                     ),
                     "code": "driver_city_transfer_requires_ceo",
-                },
-                status=status.HTTP_403_FORBIDDEN,
-            )
-        try:
-            _has_delivery = request.user.delivery_settings is not None
-        except ObjectDoesNotExist:
-            _has_delivery = False
-        if old_city_id != city.id and _has_delivery:
-            return Response(
-                {
-                    "error": (
-                        "Courier operating city changes require CEO approval. "
-                        "Submit a transfer request from the app or contact operations."
-                    ),
-                    "code": "courier_city_transfer_requires_ceo",
                 },
                 status=status.HTTP_403_FORBIDDEN,
             )
@@ -934,6 +945,11 @@ def update_identity(request):
         "phone_verified_at",
         "city",
     ])
+
+    if getattr(request.user, "user_type", "") == "driver":
+        from deliveries.cities import sync_onboarding_delivery_cities
+
+        sync_onboarding_delivery_cities(request.user)
 
     return Response({
         "message": "Profile information updated",

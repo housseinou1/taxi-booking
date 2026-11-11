@@ -305,3 +305,66 @@
   gap: 8px;
   margin-top: 10px;
 }
+
+/* Courier details sit on a light panel. The shared admin drawer token is a
+   dark green that makes this narrow panel hard to read. */
+.admin-shell .courier-detail-overlay {
+  background: rgba(8, 20, 16, 0.55);
+}
+
+.admin-shell .courier-detail-drawer.admin-drawer,
+.admin-shell .courier-detail-drawer.admin-drawer .admin-drawer__head,
+.admin-shell .courier-detail-drawer.admin-drawer .admin-drawer__body {
+  background: #f7faf8;
+  color: #10231c;
+}
+
+.admin-shell .courier-detail-drawer.admin-drawer {
+  width: min(760px, 100%);
+  max-width: 100%;
+  border: 1px solid #d5e0da;
+  box-shadow: -8px 0 28px rgba(8, 20, 16, 0.18);
+}
+
+.admin-shell .courier-detail-drawer .admin-drawer__title,
+.admin-shell .courier-detail-drawer .admin-drawer__field-value,
+.admin-shell .courier-detail-drawer .delivery-requirements__label {
+  color: #10231c;
+}
+
+.admin-shell .courier-detail-drawer .admin-drawer__field-label,
+.admin-shell .courier-detail-drawer .admin-drawer__section h3,
+.admin-shell .courier-detail-drawer .admin-drawer__state,
+.admin-shell .courier-detail-drawer .delivery-requirements__meta {
+  color: #3d5248;
+}
+
+.admin-shell .courier-detail-drawer .admin-drawer__field {
+  display: grid;
+  grid-template-columns: minmax(148px, 34%) minmax(0, 1fr);
+  align-items: start;
+  gap: 6px 16px;
+  text-align: left;
+}
+
+.admin-shell .courier-detail-drawer .admin-drawer__field-value {
+  text-align: left;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.admin-shell .courier-detail-drawer .delivery-requirements li {
+  align-items: flex-start;
+}
+
+@media (max-width: 720px) {
+  .admin-shell .courier-detail-drawer.admin-drawer {
+    width: 100%;
+    border-radius: 0;
+  }
+
+  .admin-shell .courier-detail-drawer .admin-drawer__field {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+}
