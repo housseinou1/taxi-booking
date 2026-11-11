@@ -27,6 +27,11 @@ const LABELS = {
   business: "Business",
   "business-accounts": "Corporate Accounts",
   unauthorized: "Access Denied",
+  delivery: "Delivery",
+  couriers: "Couriers",
+  merchants: "Merchants",
+  directory: "Directory",
+  cities: "Cities",
 };
 
 export function buildBreadcrumbs(pathname) {

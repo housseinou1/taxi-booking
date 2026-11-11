@@ -3,19 +3,13 @@
  *
  * Verifies the directory loads through the admin API, KPIs come from the
  * server-side summary, filters/search are passed to the backend, and the drawer
- * opens with the selected courier.
+ * navigates to the courier details page.
  */
 import React from "react";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 
 import CouriersManagement from "../CouriersManagement";
-import {
-  fetchAdminCourierDetail,
-  fetchAdminCouriers,
-  fetchCourierAuditTrail,
-  fetchCourierDeliveries,
-  fetchCourierDocumentBlob,
-} from "../deliveryApi";
+import { fetchAdminCouriers } from "../deliveryApi";
 
 jest.mock("../deliveryApi");
 
@@ -119,25 +113,8 @@ beforeEach(() => {
     results: COURIERS,
     summary: SUMMARY,
   });
-  fetchAdminCourierDetail.mockResolvedValue({
-    ...COURIERS[0],
-    documents: [],
-    onboarding: { message: "Ready", steps: [] },
-    legal_signature: { signature_complete: true, signed_full_name: "Moussa Coura" },
-    delivery_settings: { delivery_mode_enabled: true, vehicle_type: "motorcycle" },
-    earnings: null,
-    wallet: null,
-  });
-  fetchCourierDeliveries.mockResolvedValue({
-    count: 0,
-    page: 1,
-    page_size: 10,
-    total_pages: 1,
-    summary: null,
-    results: [],
-  });
-  fetchCourierAuditTrail.mockResolvedValue([]);
-  fetchCourierDocumentBlob.mockResolvedValue(new Blob(["x"], { type: "image/png" }));
+  delete window.location;
+  window.location = { assign: jest.fn() };
 });
 
 test("renders courier rows and server-side KPI summary", async () => {
@@ -184,14 +161,13 @@ test("passes the queue filter and search to the backend", async () => {
   );
 });
 
-test("opens the drawer for the selected courier", async () => {
+test("navigates to the courier details page for the selected courier", async () => {
   render(<CouriersManagement />);
   await screen.findByText("Moussa Coura");
 
   fireEvent.click(screen.getAllByRole("button", { name: "View" })[0]);
 
-  await waitFor(() => expect(fetchAdminCourierDetail).toHaveBeenCalledWith(11));
-  expect(await screen.findByRole("dialog")).toBeInTheDocument();
+  expect(window.location.assign).toHaveBeenCalledWith("/admin/delivery/couriers/11");
 });
 
 test("surfaces a backend failure without crashing", async () => {

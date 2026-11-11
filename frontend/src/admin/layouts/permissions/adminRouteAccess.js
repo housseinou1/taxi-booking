@@ -66,6 +66,8 @@ export const PATH_MODULE_MAP = {
   // Dedicated refund / payout approval surface. FinanceDashboard existed but had no
   // route, so its approval controls were unreachable.
   "/admin/finance-approvals": "finance",
+  // YALA Zawaj membership ledger. CEO only. It does not grant the taxi finance module.
+  "/admin/zawaj-finance": "ceo",
   "/admin/payments": "finance",
   "/admin/incentives": "finance",
   "/admin/support": "support",
@@ -151,6 +153,7 @@ export function getModuleForPath(pathname) {
   const normalized = (pathname || "").replace(/\/+$/, "") || "/admin";
   if (PATH_MODULE_MAP[normalized]) return PATH_MODULE_MAP[normalized];
   if (normalized.startsWith("/admin/home/")) return "home";
+  if (/^\/admin\/delivery\/couriers\/\d+$/.test(normalized)) return "delivery";
   return null;
 }
 

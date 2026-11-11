@@ -30,6 +30,7 @@ import RidesManagement from "./admin/rides/RidesManagement";
 import "./admin/rides/rides.css";
 import DeliveryManagement from "./admin/delivery/DeliveryManagement";
 import CouriersManagement from "./admin/delivery/CouriersManagement";
+import CourierDetailsPage from "./admin/delivery/CourierDetailsPage";
 import MerchantsDirectory from "./admin/delivery/MerchantsDirectory";
 import DeliveriesDirectory from "./admin/delivery/DeliveriesDirectory";
 import CityAnalytics from "./admin/delivery/CityAnalytics";
@@ -74,6 +75,7 @@ import HrManagementCenter from "./admin/employees/HrManagementCenter";
 import VerificationCenter from "./admin/employees/VerificationCenter";
 import BreakNotificationCenter from "./admin/employees/BreakNotificationCenter";
 import FinanceOperationsCenter from "./admin/finance/FinanceOperationsCenter";
+import ZawajFinanceCenter from "./admin/zawaj/ZawajFinanceCenter";
 import LaunchCommandCenter from "./admin/ops-center/LaunchCommandCenter";
 import CeoMasterCommandCenter from "./admin/ceo/CeoMasterCommandCenter";
 import CeoExecutiveDashboard from "./admin/ceo/CeoExecutiveDashboard";
@@ -573,6 +575,7 @@ function App() {
     else if (currentPath === "/admin/break-notifications") setPage("admin-break-notifications");
     else if (currentPath === "/admin/finance-ops") setPage("admin-finance-ops");
     else if (currentPath === "/admin/finance-approvals") setPage("admin-finance-approvals");
+    else if (currentPath === "/admin/zawaj-finance") setPage("admin-zawaj-finance");
     // Operations Control Center. `adminRouteAccess.js` already mapped
     // "/admin/operations-control" -> "ops" and AdminBreadcrumbs already labels it
     // "Operations Center", but App.js routed neither this path nor the legacy
@@ -626,6 +629,7 @@ function App() {
     else if (currentPath === "/admin/delivery/directory") setPage("admin-delivery-directory");
     else if (currentPath === "/admin/delivery/cities") setPage("admin-delivery-cities");
     else if (currentPath === "/admin/delivery/couriers") setPage("admin-delivery-couriers");
+    else if (currentPath.match(/^\/admin\/delivery\/couriers\/\d+$/)) setPage("admin-delivery-courier-detail");
     else if (currentPath === "/admin/delivery/merchants") setPage("admin-delivery-merchants");
     else if (currentPath === "/admin/bi-growth" || currentPath === "/admin/growth-intelligence") setPage("admin-bi-growth");
     else if (currentPath === "/admin/launch-growth" || currentPath === "/admin/growth-sprint") setPage("admin-launch-growth");
@@ -1278,6 +1282,15 @@ function App() {
   if (page === "admin-delivery-couriers") {
     return withInstall(<CouriersManagement pathname="/admin/delivery/couriers" />);
   }
+  if (page === "admin-delivery-courier-detail") {
+    const courierId = Number((currentPath.match(/^\/admin\/delivery\/couriers\/(\d+)$/) || [])[1]);
+    return withInstall(
+      <CourierDetailsPage
+        courierId={courierId}
+        pathname={`/admin/delivery/couriers/${courierId}`}
+      />
+    );
+  }
   if (page === "admin-delivery-merchants") {
     return withInstall(<MerchantsDirectory pathname="/admin/delivery/merchants" />);
   }
@@ -1502,6 +1515,14 @@ function App() {
 
   if (page === "admin-employees") {
     return withInstall(<EmployeeManagementCenter />);
+  }
+
+  if (page === "admin-zawaj-finance") {
+    return withInstall(
+      <AdminShellPage pathname="/admin/zawaj-finance" title="YALA Zawaj Membership Finance">
+        <ZawajFinanceCenter />
+      </AdminShellPage>
+    );
   }
 
   if (page === "admin-finance-ops") {

@@ -152,9 +152,9 @@
   color: var(--admin-text) !important;
 }
 
-.admin-shell [class*="--danger"]:not([class*="courier-panel"]),
-.admin-shell [class*="--error"]:not([class*="courier-panel"]),
-.admin-shell [class*="--critical"]:not([class*="courier-panel"]),
+.admin-shell [class*="--danger"]:not([class*="courier-panel"]):not([class*="courier-dash"]),
+.admin-shell [class*="--error"]:not([class*="courier-panel"]):not([class*="courier-dash"]),
+.admin-shell [class*="--critical"]:not([class*="courier-panel"]):not([class*="courier-dash"]),
 .admin-shell .admin-alert--danger,
 .admin-shell .admin-banner--danger {
   border-left: 4px solid var(--yala-mr-red) !important;
@@ -162,8 +162,8 @@
   color: var(--yala-mr-ivory) !important;
 }
 
-.admin-shell [class*="--warn"]:not([class*="courier-panel"]),
-.admin-shell [class*="--warning"]:not([class*="courier-panel"]),
+.admin-shell [class*="--warn"]:not([class*="courier-panel"]):not([class*="courier-dash"]),
+.admin-shell [class*="--warning"]:not([class*="courier-panel"]):not([class*="courier-dash"]),
 .admin-shell .admin-alert--warning {
   border-left: 4px solid var(--yala-mr-gold) !important;
   background: rgba(245, 197, 24, 0.18) !important;
@@ -339,6 +339,95 @@
 
 .admin-shell .courier-panel tbody tr:nth-child(even) td,
 .admin-shell .courier-panel tbody tr:hover td {
+  background: #f8fafc !important;
+  color: #111827 !important;
+}
+
+/* Courier Details full-page dashboard — light reading surfaces */
+.admin-shell .courier-dash,
+.admin-shell .courier-dash-hero,
+.admin-shell .courier-dash-card,
+.admin-shell .courier-dash-tabs,
+.admin-shell .courier-dash-table-wrap,
+.admin-shell .courier-dash-dialog,
+.admin-shell .courier-dash-table th,
+.admin-shell .courier-dash-table td {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  border-color: #e5e7eb !important;
+  color: #111827 !important;
+  box-shadow: none !important;
+}
+
+.admin-shell .courier-dash-card__head,
+.admin-shell .courier-dash-req li,
+.admin-shell .courier-dash-steps li,
+.admin-shell .courier-dash-audit li {
+  background: #f8faf9 !important;
+  color: #111827 !important;
+  border-color: #eef2f7 !important;
+}
+
+.admin-shell .courier-dash-hero__title,
+.admin-shell .courier-dash-card__head h3,
+.admin-shell .courier-dash-field dd,
+.admin-shell .courier-dash strong {
+  color: #111827 !important;
+}
+
+.admin-shell .courier-dash-muted,
+.admin-shell .courier-dash-field dt,
+.admin-shell .courier-dash-hero__sub {
+  color: #4b5563 !important;
+}
+
+.admin-shell .courier-dash-alert--warning {
+  background: #fffbeb !important;
+  border: 1px solid #fcd34d !important;
+  color: #92400e !important;
+}
+
+.admin-shell .courier-dash-alert--danger {
+  background: #fef2f2 !important;
+  border: 1px solid #fecaca !important;
+  color: #991b1b !important;
+}
+
+.admin-shell .courier-dash-alert--success {
+  background: #ecfdf5 !important;
+  border: 1px solid #a7f3d0 !important;
+  color: #065f46 !important;
+}
+
+.admin-shell .courier-dash .admin-chip--success {
+  background: #dcfce7 !important;
+  color: #166534 !important;
+}
+
+.admin-shell .courier-dash .admin-chip--warning {
+  background: #fef3c7 !important;
+  color: #92400e !important;
+}
+
+.admin-shell .courier-dash .admin-chip--danger {
+  background: #fee2e2 !important;
+  color: #991b1b !important;
+}
+
+.admin-shell .courier-dash .admin-chip--info,
+.admin-shell .courier-dash .admin-chip--neutral {
+  background: #e5e7eb !important;
+  color: #1f2937 !important;
+}
+
+.admin-shell .courier-dash :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]):not([type="range"]) {
+  background: #ffffff !important;
+  border-color: #e5e7eb !important;
+  color: #111827 !important;
+}
+
+.admin-shell .courier-dash tbody tr:nth-child(even) td,
+.admin-shell .courier-dash tbody tr:hover td {
   background: #f8fafc !important;
   color: #111827 !important;
 }

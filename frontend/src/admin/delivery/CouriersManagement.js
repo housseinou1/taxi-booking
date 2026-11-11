@@ -2,8 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import { AdminShellPage } from "../layouts/AdminShell";
 import { DataTable, KPICard, StatusChip } from "../components/library";
-import CourierDetailsDrawer from "./CourierDetailsDrawer";
-import { fetchAdminCourierDetail, fetchAdminCouriers } from "./deliveryApi";
+import { fetchAdminCouriers } from "./deliveryApi";
 
 const PAGE_SIZE = 25;
 
@@ -109,14 +108,6 @@ export default function CouriersManagement({ pathname = "/admin/delivery/courier
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState({ queue: "all", vehicle_type: "" });
   const [sort, setSort] = useState({ key: "", direction: "asc" });
-  const [drawer, setDrawer] = useState({
-    open: false,
-    courier: null,
-    loading: false,
-    error: "",
-    id: null,
-  });
-
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -149,24 +140,10 @@ export default function CouriersManagement({ pathname = "/admin/delivery/courier
     load();
   }, [load]);
 
-  const openCourier = useCallback(async (id) => {
-    setDrawer({ open: true, courier: null, loading: true, error: "", id });
-    try {
-      const courier = await fetchAdminCourierDetail(id);
-      setDrawer({ open: true, courier, loading: false, error: "", id });
-    } catch (err) {
-      setDrawer({
-        open: true,
-        courier: null,
-        loading: false,
-        error: err?.response?.data?.detail || "Could not load courier details.",
-        id,
-      });
-    }
+  const openCourier = useCallback((id) => {
+    if (!id) return;
+    window.location.assign(`/admin/delivery/couriers/${id}`);
   }, []);
-
-  const closeDrawer = () =>
-    setDrawer({ open: false, courier: null, loading: false, error: "", id: null });
 
   const onFilterChange = (key, value) => {
     setPage(1);
@@ -263,20 +240,6 @@ export default function CouriersManagement({ pathname = "/admin/delivery/courier
             </button>
           )}
         />
-
-        {drawer.open ? (
-          <CourierDetailsDrawer
-            courier={drawer.courier}
-            loading={drawer.loading}
-            error={drawer.error}
-            onClose={closeDrawer}
-            onRetry={() => drawer.id && openCourier(drawer.id)}
-            onActionComplete={() => {
-              if (drawer.id) openCourier(drawer.id);
-              load();
-            }}
-          />
-        ) : null}
       </div>
     </AdminShellPage>
   );
