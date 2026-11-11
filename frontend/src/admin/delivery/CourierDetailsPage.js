@@ -70,6 +70,53 @@ function VerificationItem({ ok, label }) {
   );
 }
 
+function AttentionRequired({ issues, onAction }) {
+  if (!issues.length) {
+    return (
+      <div className="courier-dash-attention courier-dash-attention--clear" role="status">
+        <span className="courier-dash-attention__icon" aria-hidden="true">
+          ✓
+        </span>
+        <p className="courier-dash-attention__clear">No outstanding issues</p>
+      </div>
+    );
+  }
+
+  return (
+    <section className="courier-dash-attention" aria-label="Attention required">
+      <header className="courier-dash-attention__head">
+        <span className="courier-dash-attention__icon" aria-hidden="true">
+          !
+        </span>
+        <h2>Attention Required</h2>
+        <span className="courier-dash-attention__count">{issues.length}</span>
+      </header>
+      <ul className="courier-dash-attention__list">
+        {issues.map((issue) => (
+          <li key={issue.id} className={`courier-dash-attention__item courier-dash-attention__item--${issue.tone}`}>
+            <span className="courier-dash-attention__item-icon" aria-hidden="true">
+              !
+            </span>
+            <div className="courier-dash-attention__copy">
+              <strong>{issue.title}</strong>
+              <p>{issue.description}</p>
+            </div>
+            {issue.actionLabel && issue.tab ? (
+              <button
+                type="button"
+                className="courier-dash-attention__action"
+                onClick={() => onAction(issue.tab)}
+              >
+                {issue.actionLabel}
+              </button>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 /**
  * Full-width Courier Details dashboard (Admin Delivery).
  * Replaces the narrow right-side drawer as the primary courier detail surface.
@@ -290,8 +337,10 @@ export default function CourierDetailsPage({
     const status = String(doc.status || doc.display_status || "").toLowerCase();
     return status === "expired" || Boolean(doc.is_expired);
   });
-  const approvedWithPendingDocs =
-    String(courier?.status || "").toLowerCase() === "approved" && pendingReviewDocs.length > 0;
+  const rejectedDocs = documents.filter(
+    (doc) => String(doc.status || "").toLowerCase() === "rejected"
+  );
+  const incompleteOnboardingSteps = steps.filter((step) => step && step.complete === false);
   const approvalBlockers = requirements.data?.approval_blockers || null;
   const approvalBlockedByRequirements = Boolean(approvalBlockers?.blocked);
   const canApprove =
@@ -335,6 +384,133 @@ export default function CourierDetailsPage({
     Boolean(doc.is_uploaded || doc.uploaded_at || doc.status)
   );
   const accountVerified = String(courier?.status || "").toLowerCase() === "approved";
+
+  const attentionIssues = useMemo(() => {
+    if (!courier) return [];
+    const issues = [];
+
+    if (cityMismatch) {
+      issues.push({
+        id: "city-mismatch",
+        tone: "warning",
+        title: "Operating-city mismatch",
+        description: `Account city ${accountCity || "N/A"} differs from service cities (${
+          deliveryCities.join(", ") || "N/A"
+        }).`,
+        actionLabel: "Review Operating City",
+        tab: "cities",
+      });
+    }
+
+    if (pendingReviewDocs.length > 0) {
+      issues.push({
+        id: "docs-pending",
+        tone: "warning",
+        title: "Documents pending verification",
+        description: `${pendingReviewDocs.length} document${
+          pendingReviewDocs.length === 1 ? "" : "s"
+        } awaiting review.`,
+        actionLabel: "Review Documents",
+        tab: "documents",
+      });
+    }
+
+    if (expiredDocs.length > 0) {
+      issues.push({
+        id: "docs-expired",
+        tone: "danger",
+        title: "Expired documents",
+        description: `${expiredDocs.length} document${
+          expiredDocs.length === 1 ? " has" : "s have"
+        } expired and must be replaced.`,
+        actionLabel: "Review Documents",
+        tab: "documents",
+      });
+    }
+
+    if (rejectedDocs.length > 0) {
+      issues.push({
+        id: "docs-rejected",
+        tone: "danger",
+        title: "Rejected documents",
+        description: `${rejectedDocs.length} document${
+          rejectedDocs.length === 1 ? " was" : "s were"
+        } rejected and need resubmission.`,
+        actionLabel: "Review Documents",
+        tab: "documents",
+      });
+    }
+
+    if (!courier.signature_complete) {
+      issues.push({
+        id: "signature-incomplete",
+        tone: "warning",
+        title: "Incomplete electronic agreement",
+        description: "The courier has not completed the required electronic signature.",
+        actionLabel: "Review Agreement",
+        tab: "agreement",
+      });
+    }
+
+    if (incompleteOnboardingSteps.length > 0) {
+      issues.push({
+        id: "onboarding-incomplete",
+        tone: "warning",
+        title: "Incomplete onboarding",
+        description: `${incompleteOnboardingSteps.length} onboarding step${
+          incompleteOnboardingSteps.length === 1 ? " remains" : "s remain"
+        } incomplete.`,
+        actionLabel: "Review Checklist",
+        tab: "onboarding",
+      });
+    }
+
+    if (documents.length === 0) {
+      issues.push({
+        id: "docs-missing",
+        tone: "danger",
+        title: "Documents not uploaded",
+        description: "Required courier documents have not been submitted.",
+        actionLabel: "Review Documents",
+        tab: "documents",
+      });
+    }
+
+    const blockerReasons = approvalBlockers?.blocked
+      ? (approvalBlockers.reasons || []).filter(Boolean)
+      : [];
+    blockerReasons.forEach((reason, index) => {
+      const normalized = String(reason).toLowerCase();
+      const alreadyCovered =
+        (normalized.includes("expired") && expiredDocs.length > 0) ||
+        (normalized.includes("signature") && !courier.signature_complete) ||
+        (normalized.includes("missing") && documents.length === 0) ||
+        (normalized.includes("pending") && pendingReviewDocs.length > 0) ||
+        (normalized.includes("reject") && rejectedDocs.length > 0);
+      if (alreadyCovered) return;
+      issues.push({
+        id: `approval-blocker-${index}`,
+        tone: "danger",
+        title: "Approval requirement",
+        description: reason,
+        actionLabel: "Review Documents",
+        tab: "documents",
+      });
+    });
+
+    return issues;
+  }, [
+    accountCity,
+    approvalBlockers,
+    cityMismatch,
+    courier,
+    deliveryCities,
+    documents.length,
+    expiredDocs.length,
+    incompleteOnboardingSteps.length,
+    pendingReviewDocs.length,
+    rejectedDocs.length,
+  ]);
 
   return (
     <AdminShellPage pathname={pagePath} title={title}>
@@ -479,32 +655,10 @@ export default function CourierDetailsPage({
               </section>
             </header>
 
-            <p className="courier-dash-security" role="note">
-              Account approval and document verification are separate controls. Missing, rejected, or
-              expired required documents block approval. Operating-city changes require CEO
-              authorization and are never applied automatically from this page.
-            </p>
-
-            {(cityMismatch || approvedWithPendingDocs) && (
-              <div className="courier-dash-alerts" role="region" aria-label="Consistency warnings">
-                {cityMismatch ? (
-                  <p className="courier-dash-alert courier-dash-alert--warning" role="status">
-                    Account city is {accountCity}, but delivery service cities are{" "}
-                    {deliveryCities.join(", ") || "N/A"}. For an approved courier this is not changed
-                    automatically — a CEO operating-city transfer is required before the service
-                    cities can be updated.
-                  </p>
-                ) : null}
-                {approvedWithPendingDocs ? (
-                  <p className="courier-dash-alert courier-dash-alert--danger" role="status">
-                    Account status is Approved while {pendingReviewDocs.length} document
-                    {pendingReviewDocs.length === 1 ? " is" : "s are"} still Pending Review. Review
-                    the replacement file before treating onboarding as complete. Approval is not
-                    changed automatically.
-                  </p>
-                ) : null}
-              </div>
-            )}
+            <AttentionRequired
+              issues={attentionIssues}
+              onAction={(nextTab) => setTab(nextTab)}
+            />
 
             <div className="admin-kpi-row courier-dash-kpis" aria-label="Courier operational statistics">
               <KPICard

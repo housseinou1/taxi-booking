@@ -166,6 +166,7 @@ test("renders the full-width courier dashboard with tabs", async () => {
   expect(screen.getByRole("tab", { name: "Overview" })).toBeInTheDocument();
   expect(screen.getByRole("tab", { name: "Documents & Verification" })).toBeInTheDocument();
   expect(screen.getByRole("tab", { name: "Electronic Agreement" })).toBeInTheDocument();
+  expect(screen.getByText("No outstanding issues")).toBeInTheDocument();
 });
 
 test("flags city mismatch and pending docs without changing records", async () => {
@@ -193,13 +194,21 @@ test("flags city mismatch and pending docs without changing records", async () =
     ],
   });
   renderPage();
+  expect(await screen.findByRole("heading", { name: "Attention Required" })).toBeInTheDocument();
+  expect(screen.getByText("Operating-city mismatch")).toBeInTheDocument();
   expect(
-    await screen.findByText(/Account city is Nouadhibou, but delivery service cities are Nouakchott/i)
+    screen.getByText(/Account city Nouadhibou differs from service cities \(Nouakchott\)/i)
   ).toBeInTheDocument();
-  expect(screen.getByText(/CEO operating-city transfer is required/i)).toBeInTheDocument();
-  expect(
-    screen.getByText(/Account status is Approved while 1 document is still Pending Review/i)
-  ).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Review Operating City" })).toBeInTheDocument();
+  expect(screen.getByText("Documents pending verification")).toBeInTheDocument();
+  expect(screen.getByText(/1 document awaiting review/i)).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Review Documents" })).toBeInTheDocument();
+  expect(screen.queryByText(/Account approval and document verification are separate controls/i)).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Review Documents" }));
+  expect(screen.getByRole("tab", { name: "Documents & Verification" })).toHaveAttribute(
+    "aria-selected",
+    "true"
+  );
 });
 
 test("blocks approval until the electronic signature is complete", async () => {
