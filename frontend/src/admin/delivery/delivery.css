@@ -880,9 +880,36 @@
   margin: 0;
 }
 
+/* Force light Mauritanian KPI cards on Courier Details only (override global dark KPI theme). */
+.courier-dash .admin-kpi,
+.courier-dash .admin-kpi--clickable,
 .courier-dash-kpis .admin-kpi {
-  border-top: 3px solid var(--mr-green);
-  background: var(--cd-surface);
+  background: #ffffff !important;
+  background-image: none !important;
+  border: 1px solid #e5e7eb !important;
+  border-top: 3px solid var(--mr-green) !important;
+  border-right: 1px solid #e5e7eb !important;
+  color: var(--cd-text) !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+}
+
+.courier-dash .admin-kpi::after,
+.courier-dash .admin-kpi--clickable::after {
+  display: none !important;
+  content: none !important;
+}
+
+.courier-dash .admin-kpi__label {
+  color: var(--mr-green) !important;
+}
+
+.courier-dash .admin-kpi__value {
+  color: var(--cd-text) !important;
+}
+
+.courier-dash .admin-kpi__subtitle,
+.courier-dash .admin-kpi__empty {
+  color: var(--cd-muted) !important;
 }
 
 .courier-dash-tabs {
