@@ -382,36 +382,70 @@
 }
 
 .admin-shell .courier-dash-alert--warning {
-  background: #fffbeb !important;
-  border: 1px solid #fcd34d !important;
-  color: #92400e !important;
+  background: #fff8e1 !important;
+  border: 1px solid #ffc400 !important;
+  color: #7a5a00 !important;
 }
 
 .admin-shell .courier-dash-alert--danger {
-  background: #fef2f2 !important;
-  border: 1px solid #fecaca !important;
-  color: #991b1b !important;
+  background: #fdeceb !important;
+  border: 1px solid #f0a3a4 !important;
+  color: #8f1416 !important;
 }
 
 .admin-shell .courier-dash-alert--success {
-  background: #ecfdf5 !important;
-  border: 1px solid #a7f3d0 !important;
-  color: #065f46 !important;
+  background: #e8f5ef !important;
+  border: 1px solid #b7e0c9 !important;
+  color: #006233 !important;
+}
+
+.admin-shell .courier-dash-tab.is-active,
+.admin-shell .courier-dash-tab[aria-selected="true"] {
+  background: linear-gradient(180deg, #ffd34d 0%, #ffc400 100%) !important;
+  color: #004225 !important;
+  box-shadow: inset 0 0 0 1px #e0ae00 !important;
+}
+
+.admin-shell .courier-dash-back {
+  color: #ffc400 !important;
+}
+
+.admin-shell .courier-dash-hero {
+  border-top: 3px solid #006233 !important;
+}
+
+.admin-shell .courier-dash-card__head {
+  border-left: 3px solid #006233 !important;
+  background: linear-gradient(180deg, #ffffff 0%, #f4faf7 100%) !important;
 }
 
 .admin-shell .courier-dash .admin-chip--success {
-  background: #dcfce7 !important;
-  color: #166534 !important;
+  background: #e8f5ef !important;
+  color: #006233 !important;
 }
 
 .admin-shell .courier-dash .admin-chip--warning {
-  background: #fef3c7 !important;
-  color: #92400e !important;
+  background: #fff8e1 !important;
+  color: #7a5a00 !important;
 }
 
 .admin-shell .courier-dash .admin-chip--danger {
-  background: #fee2e2 !important;
-  color: #991b1b !important;
+  background: #fdeceb !important;
+  color: #d01c1f !important;
+}
+
+.admin-shell .courier-dash-hero__actions .admin-lib-btn:not(.admin-lib-btn--ghost):not(.admin-lib-btn--danger),
+.admin-shell .admin-delivery .admin-lib-btn:not(.admin-lib-btn--ghost):not(.admin-lib-btn--danger) {
+  background: linear-gradient(180deg, #ffd34d 0%, #ffc400 100%) !important;
+  border-color: #e0ae00 !important;
+  color: #004225 !important;
+}
+
+.admin-shell .courier-dash-hero__actions .admin-lib-btn--danger,
+.admin-shell .admin-delivery .admin-lib-btn--danger {
+  background: #d01c1f !important;
+  border-color: #b01618 !important;
+  color: #ffffff !important;
 }
 
 .admin-shell .courier-dash .admin-chip--info,
