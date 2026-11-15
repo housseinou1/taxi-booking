@@ -191,6 +191,53 @@ class RegistrationResumeTests(APITestCase):
         self.assertEqual(User.objects.count(), 1)
         self.assertEqual(DriverProfile.objects.count(), 1)
 
+    # --- Moorsyl provider adapter (+222 delivery path) ---------------------
+    def test_moorsyl_adapter_sends_correct_payload(self):
+        import json as _json
+        from unittest.mock import MagicMock
+        from authapp.phone_views import send_sms
+
+        fake_response = MagicMock()
+        fake_response.status = 200
+        fake_response.read.return_value = b'{"accepted": true, "messageId": "m-1"}'
+        fake_response.__enter__ = lambda s: s
+        fake_response.__exit__ = MagicMock(return_value=False)
+
+        with override_settings(
+            YALA_SMS_PROVIDER="moorsyl",
+            YALA_SMS_API_KEY="sk_test_x",
+            YALA_SMS_API_URL="",
+            YALA_SMS_SENDER="Yala",
+        ), patch("authapp.phone_views.urllib_request.urlopen", return_value=fake_response) as mock_open:
+            send_sms("+22222334455", "Your Yala verification code is 123456.")
+
+        req = mock_open.call_args[0][0]
+        self.assertEqual(req.full_url, "https://api.moorsyl.com/api/sms")
+        self.assertEqual(req.headers["X-api-key"], "sk_test_x")
+        body = _json.loads(req.data)
+        self.assertEqual(body["to"], "+22222334455")
+        self.assertEqual(body["from"], "Yala")
+        self.assertIn("123456", body["body"])
+
+    def test_moorsyl_rejection_raises(self):
+        from unittest.mock import MagicMock
+        from authapp.phone_views import send_sms
+
+        fake_response = MagicMock()
+        fake_response.status = 200
+        fake_response.read.return_value = b'{"accepted": false}'
+        fake_response.__enter__ = lambda s: s
+        fake_response.__exit__ = MagicMock(return_value=False)
+
+        with override_settings(
+            YALA_SMS_PROVIDER="moorsyl",
+            YALA_SMS_API_KEY="sk_test_x",
+            YALA_SMS_API_URL="",
+            YALA_SMS_SENDER="Yala",
+        ), patch("authapp.phone_views.urllib_request.urlopen", return_value=fake_response):
+            with self.assertRaises(RuntimeError):
+                send_sms("+22222334455", "test")
+
     # --- Mandatory: dashboard access after mandatory requirements -----------
     def test_driver_dashboard_reflects_state_after_verify(self):
         self._register()

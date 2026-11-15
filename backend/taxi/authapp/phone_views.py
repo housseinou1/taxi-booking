@@ -54,6 +54,32 @@ def send_sms(phone_number, message):
                 raise RuntimeError("SMS provider rejected the message.")
         return
 
+    if provider == "moorsyl":
+        # Moorsyl (moorsyl.com) — Mauritania-native SMS gateway covering
+        # Mauritel, Mattel, and Chinguitel. POST {to, from, body} with an
+        # x-api-key secret; success is signalled by {"accepted": true}.
+        if not settings.YALA_SMS_API_KEY:
+            raise RuntimeError("Moorsyl SMS provider requires YALA_SMS_API_KEY.")
+        api_url = settings.YALA_SMS_API_URL or "https://api.moorsyl.com/api/sms"
+        sender = settings.YALA_SMS_SENDER or "moorsyl"
+        payload = json.dumps(
+            {"to": phone_number, "from": sender, "body": message}
+        ).encode("utf-8")
+        req = urllib_request.Request(
+            api_url,
+            data=payload,
+            headers={
+                "x-api-key": settings.YALA_SMS_API_KEY,
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
+        with urllib_request.urlopen(req, timeout=10) as response:
+            body = json.loads(response.read() or b"{}")
+            if response.status >= 400 or not body.get("accepted"):
+                raise RuntimeError("Moorsyl rejected the message.")
+        return
+
     raise RuntimeError("SMS provider is not configured.")
 
 
