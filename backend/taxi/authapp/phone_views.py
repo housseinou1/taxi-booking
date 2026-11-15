@@ -13,6 +13,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from security.services.audit_service import log_from_request
+
 from .models import PhoneVerificationCode
 
 
@@ -23,6 +25,15 @@ def send_sms(phone_number, message):
     provider = settings.YALA_SMS_PROVIDER
     if provider == "console":
         logger.warning("Yala SMS to %s: %s", phone_number, message)
+        return
+
+    if provider == "mock":
+        # Local-development provider (project convention: see
+        # employees.services.verification_service.LOCAL_NO_SEND_PROVIDERS).
+        # Records the delivery attempt only — never transmits and never logs
+        # message contents, which may contain one-time codes. In DEBUG the
+        # request-code endpoint still returns debug_code for local testing.
+        logger.info("Yala SMS (mock) delivery recorded for %s", phone_number)
         return
 
     if provider == "http" and settings.YALA_SMS_API_URL and settings.YALA_SMS_API_KEY:
@@ -82,17 +93,34 @@ def request_phone_verification(request):
         )
     except Exception:
         logger.exception("Could not send phone verification code")
+        # Honest failure: a code that cannot be delivered must never be
+        # presented as sent (HTTP 200 "check your phone") — that is what left
+        # couriers stuck on "Verify phone number" with an unreachable OTP.
         cache.set(throttle_key, True, timeout=60)
-        response = {
-            "message": "Verification code sent. Check your phone.",
-            "sms_failed": True,
-            "expires_in_seconds": 600,
-        }
-        if settings.DEBUG:
-            response["debug_code"] = code
-        return Response(response)
+        log_from_request(
+            request,
+            action="verification_event",
+            entity_type="customer",
+            entity_id=user.id,
+            summary="Phone verification code request — SMS delivery failed",
+        )
+        return Response(
+            {
+                "error": "SMS delivery is temporarily unavailable. "
+                "Please try again shortly or contact Yala support.",
+                "sms_failed": True,
+            },
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
 
     cache.set(throttle_key, True, timeout=60)
+    log_from_request(
+        request,
+        action="verification_event",
+        entity_type="customer",
+        entity_id=user.id,
+        summary="Phone verification code requested",
+    )
     response = {"message": "Verification code sent.", "expires_in_seconds": 600}
     if settings.DEBUG:
         response["debug_code"] = code
@@ -130,4 +158,11 @@ def verify_phone(request):
     verification.save(update_fields=["consumed_at"])
     request.user.phone_verified_at = now
     request.user.save(update_fields=["phone_verified_at"])
+    log_from_request(
+        request,
+        action="verification_event",
+        entity_type="customer",
+        entity_id=request.user.id,
+        summary="Phone number verified",
+    )
     return Response({"message": "Phone number verified.", "phone_verified": True})

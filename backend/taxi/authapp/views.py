@@ -142,6 +142,41 @@ def build_user_response(user):
         "has_profile_picture": bool(user.profile_picture),
         "driver_category": profile.driver_category if profile else "",
         "driver_category_label": profile.get_driver_category_display() if profile else "",
+        "onboarding": _onboarding_state(user, profile, role),
+    }
+
+
+def _onboarding_state(user, profile, role):
+    """Where an incomplete registration resumes after sign-in.
+
+    Drivers who registered but never verified their phone (e.g. the OTP SMS
+    never arrived) can sign in and pick up at ``verify_phone`` instead of
+    re-registering — which would fail on the duplicate-email check anyway.
+    """
+    if not user.is_phone_verified:
+        resume_step = "verify_phone"
+    elif role == "driver":
+        status_value = profile.status if profile else None
+        resume_step = {
+            "pending": "complete_profile",
+            "pending_review": "awaiting_review",
+            "approved": "ready",
+            "rejected": "rejected",
+        }.get(status_value, "complete_profile")
+    elif role == "rider":
+        resume_step = {
+            "pending": "awaiting_approval",
+            "approved": "ready",
+            "rejected": "rejected",
+        }.get(user.rider_status, "awaiting_approval")
+    else:
+        resume_step = "ready"
+
+    return {
+        "phone_verified": user.is_phone_verified,
+        "registration_complete": bool(user.is_phone_verified),
+        "driver_status": profile.status if profile else None,
+        "resume_step": resume_step,
     }
 
 
@@ -264,8 +299,14 @@ class RegisterView(generics.CreateAPIView):
                     logging.getLogger("yala.security").exception("multi-account fraud flag failed")
 
 
-        # Add redirect_to for delivery courier registrations
+        # Guide fresh registrations to the resume-safe next step: sign in to get
+        # tokens, then request/verify the phone code. No OTP is sent here —
+        # sending SMS on an unauthenticated endpoint would let anyone trigger
+        # messages to arbitrary numbers (SMS bombing).
         app_type = request.META.get("HTTP_X_APP_TYPE", "").strip().lower()
+        if response.status_code == 201:
+            response.data["phone_verified"] = False
+            response.data["next_step"] = "sign_in_and_verify_phone"
         if app_type == "delivery" and response.status_code == 201:
             response.data["redirect_to"] = "/delivery/profile-setup"
 

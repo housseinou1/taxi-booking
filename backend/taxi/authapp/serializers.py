@@ -1,9 +1,14 @@
 from rest_framework import serializers
+from rest_framework.validators import UniqueValidator
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 
 from taxi.drivers.models import DriverProfile
 from cities.models import City
+from cities.operating_catalog import (
+    get_operational_cities_queryset,
+    select_operational_cities,
+)
 from .validators import (
     normalize_mauritania_phone,
     normalize_national_id,
@@ -41,6 +46,48 @@ def validate_uploaded_file(uploaded_file, *, allowed_types, max_size, label):
     return uploaded_file
 
 
+class OperationalCityPrimaryKeyRelatedField(serializers.PrimaryKeyRelatedField):
+    """PK field resolving the 13 operational cities lazily per request.
+
+    Calling ``get_operational_cities_queryset()`` at class-definition time
+    queries the database before migrations run and freezes the city list
+    for the lifetime of the process.
+    """
+
+    def get_queryset(self):
+        return get_operational_cities_queryset()
+
+
+# Trilingual duplicate-account messages (English / Français / العربية) —
+# the backend has no gettext infrastructure, so the three languages are
+# returned inline. Whichever one the app displays, the guidance is the same:
+# sign in to resume, or recover via "Forgot password".
+_EMAIL_TAKEN = (
+    "This email is already registered. Sign in to continue your registration, "
+    "or use \"Forgot password\" to recover your account. "
+    "Cet e-mail est déjà enregistré. Connectez-vous pour continuer votre "
+    "inscription, ou utilisez « Mot de passe oublié ». "
+    "هذا البريد الإلكتروني مسجّل بالفعل. سجّل الدخول لمتابعة تسجيلك، "
+    "أو استخدم «نسيت كلمة المرور»."
+)
+_PHONE_TAKEN = (
+    "This phone number is already registered. Sign in to continue your "
+    "registration, or use \"Forgot password\" to recover your account. "
+    "Ce numéro de téléphone est déjà enregistré. Connectez-vous pour continuer "
+    "votre inscription, ou utilisez « Mot de passe oublié ». "
+    "رقم الهاتف هذا مسجّل بالفعل. سجّل الدخول لمتابعة تسجيلك، "
+    "أو استخدم «نسيت كلمة المرور»."
+)
+_NID_TAKEN = (
+    "This National ID number is already used. If this is your account, sign in "
+    "to continue or contact support. "
+    "Ce numéro de carte nationale est déjà utilisé. Si c'est votre compte, "
+    "connectez-vous pour continuer ou contactez le support. "
+    "رقم البطاقة الوطنية هذا مستخدم بالفعل. إذا كان هذا حسابك، "
+    "سجّل الدخول للمتابعة أو اتصل بالدعم."
+)
+
+
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(
         write_only=True,
@@ -53,9 +100,39 @@ class RegisterSerializer(serializers.ModelSerializer):
         choices=["rider", "driver", "admin"],
         write_only=True
     )
-    city = serializers.PrimaryKeyRelatedField(
-        queryset=City.objects.filter(is_active=True),
-        write_only=True,
+    city = OperationalCityPrimaryKeyRelatedField(write_only=True)
+
+    # The model-level UNIQUE constraints emit the generic
+    # "user with this email already exists." — a dead end for people whose
+    # first registration was interrupted before OTP verification. Point them
+    # at sign-in / account recovery instead.
+    email = serializers.EmailField(
+        validators=[
+            UniqueValidator(
+                queryset=User.objects.all(),
+                message=_EMAIL_TAKEN,
+            )
+        ]
+    )
+    phone_number = serializers.CharField(
+        validators=[
+            UniqueValidator(
+                queryset=User.objects.all(),
+                message=_PHONE_TAKEN,
+            )
+        ]
+    )
+    national_id_number = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        allow_null=True,
+        validators=[
+            UniqueValidator(
+                queryset=User.objects.all(),
+                lookup="iexact",
+                message=_NID_TAKEN,
+            )
+        ]
     )
 
     class Meta:
@@ -78,9 +155,7 @@ class RegisterSerializer(serializers.ModelSerializer):
     def validate_email(self, value):
         value = value.strip().lower()
         if User.objects.filter(email=value).exists():
-            raise serializers.ValidationError(
-                "This email is already registered."
-            )
+            raise serializers.ValidationError(_EMAIL_TAKEN)
         return value
 
     def validate_first_name(self, value):
@@ -92,17 +167,13 @@ class RegisterSerializer(serializers.ModelSerializer):
     def validate_phone_number(self, value):
         value = normalize_mauritania_phone(value)
         if User.objects.filter(phone_number=value).exists():
-            raise serializers.ValidationError(
-                "This phone number is already registered."
-            )
+            raise serializers.ValidationError(_PHONE_TAKEN)
         return value
 
     def validate_national_id_number(self, value):
         value = normalize_national_id(value)
         if value and User.objects.filter(national_id_number__iexact=value).exists():
-            raise serializers.ValidationError(
-                "This National ID number is already used."
-            )
+            raise serializers.ValidationError(_NID_TAKEN)
         return value
 
     def validate_profile_picture(self, value):
