@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 import {
   ConfirmationDialog,
@@ -96,6 +96,9 @@ export default function DriversManagement({
   onApproveDriver,
   onRejectDriver,
   onBlockUser,
+  // Deep-link support: when the URL carries ?driver=<profile id or user id>
+  // (e.g. from Vehicle Management), open that driver's drawer automatically.
+  initialDriverId = "",
   // Note: AdminDashboard also passes onReintegrate for parity with the legacy
   // handlers, but Stage 1 routes Suspend/Reactivate through the block/unblock
   // account workflow (onBlockUser), so it is intentionally not destructured.
@@ -128,6 +131,29 @@ export default function DriversManagement({
   const handleApprove = (driver) => onApproveDriver?.(driver.id);
   const handleReject = (driver) => onRejectDriver?.(driver.id);
   const requestSuspendToggle = (driver) => setSuspendTarget(driver);
+
+  // Auto-open the details drawer for a deep-linked driver. Runs once per
+  // incoming id: only when no drawer is already open, and only after the
+  // directory rows have arrived (an empty drivers list while loading must not
+  // consume the id, or the drawer would never open on a cold load).
+  const [initialHandled, setInitialHandled] = useState("");
+  useEffect(() => {
+    if (!initialDriverId || initialHandled === initialDriverId) return;
+    if (selectedDriver || drivers.length === 0) return;
+    const target = drivers.find(
+      (d) =>
+        String(d.id) === String(initialDriverId) ||
+        String(d.user_id) === String(initialDriverId)
+    );
+    if (target) {
+      setSelectedDriver(target);
+      setInitialHandled(initialDriverId);
+    } else if (!loading) {
+      // Finished loading and no such driver — consume the id so we don't
+      // keep scanning on every subsequent render.
+      setInitialHandled(initialDriverId);
+    }
+  }, [initialDriverId, initialHandled, selectedDriver, drivers, loading]);
 
   // Actions invoked from WITHIN the details drawer must first close the drawer,
   // so a confirmation surface (the in-module Suspend dialog, or the injected

@@ -18,9 +18,11 @@ jest.mock("./driverAdminApi", () => {
   return {
     ...actual,
     getDriverApprovalQueue: jest.fn(),
+    getCourierApprovalQueue: jest.fn(),
     getDriverDirectory: jest.fn(),
     approveDriverDocument: jest.fn(),
     rejectDriverDocument: jest.fn(),
+    requestDriverDocumentReplacement: jest.fn(),
   };
 });
 
@@ -33,9 +35,11 @@ import DriverDocumentsPage, {
 } from "./DriverDocumentsPage";
 import {
   approveDriverDocument,
+  getCourierApprovalQueue,
   getDriverApprovalQueue,
   getDriverDirectory,
   rejectDriverDocument,
+  requestDriverDocumentReplacement,
 } from "./driverAdminApi";
 
 const QUEUE = [
@@ -85,9 +89,11 @@ const DIRECTORY = [
 beforeEach(() => {
   jest.clearAllMocks();
   getDriverApprovalQueue.mockResolvedValue(QUEUE);
+  getCourierApprovalQueue.mockResolvedValue([]);
   getDriverDirectory.mockResolvedValue(DIRECTORY);
   approveDriverDocument.mockResolvedValue({ message: "Document approved." });
   rejectDriverDocument.mockResolvedValue({ message: "Document rejected." });
+  requestDriverDocumentReplacement.mockResolvedValue({ message: "Replacement requested." });
 });
 
 describe("buildDocumentRows", () => {
@@ -107,6 +113,31 @@ describe("buildDocumentRows", () => {
     expect(missingRow).toBeDefined();
     expect(missingRow.document_id).toBeNull();
     expect(missingRow.actionable).toBe(false);
+  });
+
+  it("keeps Approve/Reject actionable for already-approved uploaded documents", () => {
+    const rows = buildDocumentRows(
+      [
+        {
+          ...QUEUE[0],
+          documents: [
+            {
+              id: 88,
+              document_type: "insurance",
+              document_type_display: "Insurance",
+              file_url: "/media/insurance.pdf",
+              status: "approved",
+              rejection_reason: "",
+              expires_at: null,
+            },
+          ],
+        },
+      ],
+      DIRECTORY
+    );
+    const approved = rows.find((row) => row.document_id === 88);
+    expect(approved.actionable).toBe(true);
+    expect(approved.can_inspect).toBe(true);
   });
 
   it("does not invent rows when a driver has no documents and no reported gaps", () => {
@@ -197,5 +228,79 @@ describe("DriverDocumentsPage", () => {
     await waitFor(() =>
       expect(screen.getByText("No documents are waiting for review.")).toBeInTheDocument()
     );
+  });
+
+  it("includes courier documents, which are excluded from the driver queue", async () => {
+    getCourierApprovalQueue.mockResolvedValue([
+      {
+        id: 9,
+        profile_id: 20,
+        full_name: "Sy Aboubacri",
+        phone_number: "22334455",
+        documents: [
+          {
+            id: 58,
+            document_type: "plate_number_photo",
+            document_type_display: "Plate Number Photo",
+            file_url: "/media/driver/documents/plate.jpg?e=1&s=sig",
+            status: "rejected",
+            rejection_reason: "Plate is unreadable",
+            reviewed_by: "Housseinou Sakho",
+            reviewed_at: "2026-10-02T10:05:00Z",
+            expires_at: null,
+          },
+        ],
+        approval_history: [],
+      },
+    ]);
+    render(<DriverDocumentsPage mode="documents" />);
+    expect(await screen.findAllByText("Sy Aboubacri")).not.toHaveLength(0);
+    expect(screen.getAllByText("Plate Number Photo").length).toBeGreaterThan(0);
+  });
+
+  it("requests a resubmission with a required reason", async () => {
+    render(<DriverDocumentsPage mode="documents" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Request resubmission" }));
+
+    const confirm = screen.getByRole("button", { name: "Request new upload" });
+    expect(confirm).toBeDisabled();
+    expect(requestDriverDocumentReplacement).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByPlaceholderText(/too dark/i), {
+      target: { value: "Retake in daylight" },
+    });
+    expect(confirm).not.toBeDisabled();
+    fireEvent.click(confirm);
+    await waitFor(() =>
+      expect(requestDriverDocumentReplacement).toHaveBeenCalledWith(77, "Retake in daylight")
+    );
+  });
+
+  it("keeps approved and rejected documents visible in the register", async () => {
+    getDriverApprovalQueue.mockResolvedValue([
+      {
+        ...QUEUE[0],
+        documents: [
+          {
+            ...QUEUE[0].documents[0],
+            id: 52,
+            document_type: "national_id",
+            document_type_display: "National ID",
+            status: "approved",
+          },
+          {
+            ...QUEUE[0].documents[0],
+            id: 58,
+            document_type: "plate_number_photo",
+            document_type_display: "Plate Number Photo",
+            status: "rejected",
+          },
+        ],
+      },
+    ]);
+    render(<DriverDocumentsPage mode="documents" />);
+    await screen.findAllByText("Awa Diallo");
+    expect(screen.getAllByText("National ID").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Plate Number Photo").length).toBeGreaterThan(0);
   });
 });

@@ -411,6 +411,8 @@ class DriverDocument(models.Model):
     DOCUMENT_TYPES = [
         ("license", "Driver License"),
         ("national_id", "National ID"),
+        ("national_id_front", "National ID — Front"),
+        ("national_id_back", "National ID — Back"),
         ("insurance", "Insurance"),
         ("carte_grise", "Carte Grise"),
         ("vignette", "Vignette"),
@@ -423,6 +425,7 @@ class DriverDocument(models.Model):
         ("pending_review", "Pending Review"),
         ("approved", "Approved"),
         ("rejected", "Rejected"),
+        ("replacement_required", "Replacement Required"),
     ]
 
     driver = models.ForeignKey(

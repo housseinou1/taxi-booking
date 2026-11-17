@@ -9,6 +9,7 @@ import {
   getDriverPayouts,
   getDriverRideHistory,
 } from "../driversApi";
+import { getDriverDocuments } from "../driverAdminApi";
 
 // Stage 2 per-driver admin endpoints are mocked; nothing hits the network.
 jest.mock("../driversApi", () => ({
@@ -18,6 +19,17 @@ jest.mock("../driversApi", () => ({
   getDriverPayouts: jest.fn(),
   getDriverRideHistory: jest.fn(),
 }));
+
+jest.mock("../driverAdminApi", () => {
+  const actual = jest.requireActual("../driverAdminApi");
+  return {
+    ...actual,
+    getDriverDocuments: jest.fn(),
+    approveDriverDocument: jest.fn(),
+    rejectDriverDocument: jest.fn(),
+    requestDriverDocumentReplacement: jest.fn(),
+  };
+});
 
 const EMPTY_BUCKET = {
   earnings_mru: null,
@@ -52,6 +64,7 @@ function mockEmptyStage2() {
   });
   getDriverPayouts.mockResolvedValue({ count: 0, page: 1, page_size: 25, total_pages: 1, results: [] });
   getDriverAuditTrail.mockResolvedValue([]);
+  getDriverDocuments.mockResolvedValue({ documents: [] });
 }
 
 beforeEach(() => {
@@ -63,6 +76,13 @@ beforeEach(() => {
 // mock the permission context so it renders without a provider.
 jest.mock("../../permissions/PermissionContext", () => ({
   usePermissions: () => ({
+    permissions: { role: "ceo", modules: ["drivers"], actions: {}, feature_flags: {} },
+    canView: () => true,
+    canAction: () => true,
+    canApprove: () => true,
+    canExport: () => true,
+  }),
+  useOptionalPermissions: () => ({
     permissions: { role: "ceo", modules: ["drivers"], actions: {}, feature_flags: {} },
     canView: () => true,
     canAction: () => true,
@@ -487,5 +507,68 @@ test("audit history surfaces its own error without breaking the drawer", async (
 test("driver audit trail is requested with the DriverProfile id", async () => {
   renderDrawer();
   await waitFor(() => expect(getDriverAuditTrail).toHaveBeenCalledWith(7));
+});
+
+// ─── Driver documents (DriverDocument rows) ─────────────────────────────────
+
+test("documents are requested with the DriverProfile id", async () => {
+  renderDrawer();
+  await waitFor(() => expect(getDriverDocuments).toHaveBeenCalledWith(7));
+});
+
+test("every uploaded document stays visible with status, reviewer and review date", async () => {
+  getDriverDocuments.mockResolvedValue({
+    driver_id: 7,
+    documents: [
+      {
+        id: 52,
+        document_type: "national_id",
+        document_type_display: "National ID",
+        file_url: "/media/driver/documents/nid.jpg?e=1&s=sig",
+        status: "approved",
+        display_status: "approved",
+        rejection_reason: "",
+        uploaded_at: "2026-10-01T09:00:00Z",
+        reviewed_at: "2026-10-02T10:00:00Z",
+        reviewed_by_name: "Housseinou Sakho",
+        expires_at: null,
+      },
+      {
+        id: 58,
+        document_type: "plate_number_photo",
+        document_type_display: "Plate Number Photo",
+        file_url: "/media/driver/documents/plate.jpg?e=1&s=sig",
+        status: "rejected",
+        display_status: "rejected",
+        rejection_reason: "Plate is unreadable",
+        uploaded_at: "2026-10-01T09:05:00Z",
+        reviewed_at: "2026-10-02T10:05:00Z",
+        reviewed_by_name: "Housseinou Sakho",
+        expires_at: null,
+      },
+    ],
+  });
+  renderDrawer();
+  const section = (await screen.findByText("Driver documents")).closest(
+    ".drivers-detail__section"
+  );
+  // Approved AND rejected rows stay visible.
+  expect(within(section).getByText("National ID")).toBeInTheDocument();
+  expect(within(section).getByText("Plate Number Photo")).toBeInTheDocument();
+  expect(within(section).getByText("approved")).toBeInTheDocument();
+  expect(within(section).getByText("rejected")).toBeInTheDocument();
+  // Reviewer + rejection reason are shown for audit.
+  expect(within(section).getAllByText(/Housseinou Sakho/).length).toBe(2);
+  expect(within(section).getByText(/Plate is unreadable/)).toBeInTheDocument();
+  // Secure file access via the signed URL.
+  expect(
+    within(section).getAllByRole("link", { name: /view file/i })[0]
+  ).toHaveAttribute("href", expect.stringContaining("?e=1&s=sig"));
+});
+
+test("documents section shows an honest error state when the fetch fails", async () => {
+  getDriverDocuments.mockRejectedValue(new Error("docs boom"));
+  renderDrawer();
+  expect(await screen.findByText("docs boom")).toBeInTheDocument();
 });
 

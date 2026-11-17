@@ -24,6 +24,8 @@ from .views_documents import (
     DriverDocumentUploadView,
     AdminDocumentApproveView,
     AdminDocumentRejectView,
+    AdminDocumentRequestReplacementView,
+    AdminDriverDocumentsView,
 )
 from .views_feedback import (
     FeedbackOverviewView,
@@ -153,8 +155,10 @@ urlpatterns = [
 
 # Admin document review endpoints (included in main urls.py at /admin/documents/)
 admin_document_urlpatterns = [
+    path("driver/<int:driver_id>/", AdminDriverDocumentsView.as_view(), name="admin-driver-documents"),
     path("<int:document_id>/approve/", AdminDocumentApproveView.as_view(), name="admin-document-approve"),
     path("<int:document_id>/reject/", AdminDocumentRejectView.as_view(), name="admin-document-reject"),
+    path("<int:document_id>/request-replacement/", AdminDocumentRequestReplacementView.as_view(), name="admin-document-request-replacement"),
 ]
 
 # Admin QR verification endpoints (included in main urls.py at /api/v1/admin/)

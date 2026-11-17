@@ -6,6 +6,8 @@ Provides:
 - POST /drivers/me/documents/upload/    - Upload a document (validates format and size)
 - POST /admin/documents/{id}/approve/   - Admin approve a document
 - POST /admin/documents/{id}/reject/    - Admin reject a document with reason
+- POST /admin/documents/{id}/request-replacement/ - Admin request a new upload
+- GET  /admin/documents/driver/{id}/    - Admin list every document for one driver
 
 Requirements: 8.1, 8.2, 8.3, 8.6
 """
@@ -209,15 +211,13 @@ class AdminDocumentApproveView(APIView):
 
     def post(self, request, document_id):
         document = get_object_or_404(DriverDocument, id=document_id)
-
-        if document.status == "approved":
-            return Response(
-                {"error": "Document is already approved."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        prior_status = document.status
 
         service = DocumentService()
-        document = service.approve_document(document, reviewer=request.user)
+        try:
+            document = service.approve_document(document, reviewer=request.user)
+        except ValueError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
         from security.services.audit_service import log_from_request
 
@@ -227,7 +227,12 @@ class AdminDocumentApproveView(APIView):
             entity_type="document",
             entity_id=document.id,
             summary=f"Document approved: {document.document_type}",
-            details={"driver_id": document.driver_id, "document_type": document.document_type},
+            details={
+                "driver_id": document.driver_id,
+                "document_type": document.document_type,
+                "prior_status": prior_status,
+                "account_status_unchanged": True,
+            },
         )
 
         serializer = DriverDocumentSerializer(document)
@@ -263,12 +268,7 @@ class AdminDocumentRejectView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if document.status == "rejected":
-            return Response(
-                {"error": "Document is already rejected."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
+        prior_status = document.status
         service = DocumentService()
         document = service.reject_document(
             document, reviewer=request.user, reason=reason
@@ -282,7 +282,12 @@ class AdminDocumentRejectView(APIView):
             entity_type="document",
             entity_id=document.id,
             summary=f"Document rejected: {document.document_type}",
-            details={"driver_id": document.driver_id, "reason": reason},
+            details={
+                "driver_id": document.driver_id,
+                "reason": reason,
+                "prior_status": prior_status,
+                "account_status_unchanged": True,
+            },
         )
 
         serializer = DriverDocumentSerializer(document)
@@ -290,6 +295,106 @@ class AdminDocumentRejectView(APIView):
             {
                 "message": "Document rejected.",
                 "document": serializer.data,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class AdminDocumentRequestReplacementView(APIView):
+    """
+    POST /admin/documents/{id}/request-replacement/
+
+    Admin endpoint to request a new upload for a driver document without
+    rejecting the driver account. Sets status to 'replacement_required',
+    records the reviewer and reason, and notifies the driver.
+
+    Request body (JSON):
+        - reason: (required) what the driver must fix
+    """
+
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def post(self, request, document_id):
+        document = get_object_or_404(DriverDocument, id=document_id)
+
+        reason = str(request.data.get("reason") or "").strip()
+        if not reason:
+            return Response(
+                {"error": "A reason is required when requesting a replacement."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        prior_status = document.status
+        service = DocumentService()
+        try:
+            document = service.request_document_replacement(
+                document, reviewer=request.user, reason=reason
+            )
+        except ValueError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        from security.services.audit_service import log_from_request
+
+        log_from_request(
+            request,
+            action="document_approval",
+            entity_type="document",
+            entity_id=document.id,
+            summary=f"Document replacement requested: {document.document_type}",
+            details={
+                "driver_id": document.driver_id,
+                "document_type": document.document_type,
+                "reason": reason,
+                "prior_status": prior_status,
+                "account_status_unchanged": True,
+            },
+        )
+
+        serializer = DriverDocumentSerializer(document)
+        return Response(
+            {
+                "message": "Replacement requested. Driver account status was not changed.",
+                "document": serializer.data,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class AdminDriverDocumentsView(APIView):
+    """
+    GET /admin/documents/driver/{driver_id}/
+
+    Admin endpoint listing every DriverDocument for one driver, regardless of
+    review status. Approved and rejected documents stay visible for audit.
+
+    ``driver_id`` may be the DriverProfile id or the underlying User id —
+    resolved the same way the other per-driver admin endpoints resolve it.
+    """
+
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def get(self, request, driver_id):
+        from .views import get_driver_profile_by_any_id
+
+        profile = get_driver_profile_by_any_id(driver_id)
+        if profile is None:
+            return Response(
+                {"error": "Driver not found."}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        documents = (
+            DriverDocument.objects.filter(driver=profile)
+            .select_related("reviewed_by")
+            .order_by("document_type", "-uploaded_at")
+        )
+        serializer = DriverDocumentSerializer(
+            documents, many=True, context={"request": request}
+        )
+        return Response(
+            {
+                "driver_id": profile.id,
+                "user_id": profile.user_id,
+                "documents": serializer.data,
             },
             status=status.HTTP_200_OK,
         )

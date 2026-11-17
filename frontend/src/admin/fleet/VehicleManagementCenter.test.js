@@ -334,7 +334,7 @@ describe("VehicleManagementCenter", () => {
     expect(drawer.getByText(/Documents valid/i)).toBeInTheDocument();
     expect(drawer.getByRole("link", { name: /Open driver management/i })).toHaveAttribute(
       "href",
-      "/admin/drivers"
+      "/admin/drivers?driver=1"
     );
   });
 

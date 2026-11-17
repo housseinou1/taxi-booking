@@ -56,6 +56,10 @@ class DriverDocumentSerializer(serializers.ModelSerializer):
     days_until_expiry = serializers.SerializerMethodField()
     display_status = serializers.SerializerMethodField()
     is_uploaded = serializers.SerializerMethodField()
+    reviewed_by_name = serializers.SerializerMethodField()
+    document_type_display = serializers.CharField(
+        source="get_document_type_display", read_only=True
+    )
 
     class Meta:
         model = DriverDocument
@@ -63,6 +67,7 @@ class DriverDocumentSerializer(serializers.ModelSerializer):
             "id",
             "driver",
             "document_type",
+            "document_type_display",
             "file",
             "status",
             "display_status",
@@ -73,6 +78,7 @@ class DriverDocumentSerializer(serializers.ModelSerializer):
             "uploaded_at",
             "reviewed_at",
             "reviewed_by",
+            "reviewed_by_name",
             "days_until_expiry",
         ]
         read_only_fields = [
@@ -84,8 +90,19 @@ class DriverDocumentSerializer(serializers.ModelSerializer):
             "uploaded_at",
             "reviewed_at",
             "reviewed_by",
+            "reviewed_by_name",
             "days_until_expiry",
         ]
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if instance.file:
+            from taxi.media_security import protected_media_url
+
+            signed = protected_media_url(self.context.get("request"), instance.file)
+            data["file"] = signed
+            data["file_url"] = signed
+        return data
 
     def get_days_until_expiry(self, obj):
         """Return days until expiration, or None if no expiry date set."""
@@ -104,6 +121,12 @@ class DriverDocumentSerializer(serializers.ModelSerializer):
 
     def get_is_uploaded(self, obj):
         return bool(obj.file)
+
+    def get_reviewed_by_name(self, obj):
+        reviewer = getattr(obj, "reviewed_by", None)
+        if reviewer is None:
+            return None
+        return reviewer.get_full_name() or reviewer.email or f"User {reviewer.pk}"
 
 
 class DriverDocumentUploadSerializer(serializers.ModelSerializer):

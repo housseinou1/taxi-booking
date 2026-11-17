@@ -32,9 +32,52 @@ import { API_URL } from "../../apiConfig";
 import { apiRequest } from "../../delivery/DeliveryShared";
 import { buildQuery } from "./driversApi";
 
+const QUEUE_PAGE_SIZE = 100;
+
+/**
+ * Fetch EVERY page of an approval queue. The backend paginates at
+ * page_size=20 by default; reading only page 1 silently drops drivers (and
+ * their documents) once the queue grows past the first page.
+ */
+async function fetchAllQueuePages(path, params = {}) {
+  const first = await apiRequest(
+    `${API_URL}${path}${buildQuery({ ...params, page: 1, page_size: QUEUE_PAGE_SIZE })}`
+  );
+  const results = Array.isArray(first?.results)
+    ? [...first.results]
+    : Array.isArray(first)
+      ? [...first]
+      : [];
+  const totalPages = first?.total_pages || 1;
+  for (let page = 2; page <= totalPages; page += 1) {
+    const next = await apiRequest(
+      `${API_URL}${path}${buildQuery({ ...params, page, page_size: QUEUE_PAGE_SIZE })}`
+    );
+    results.push(...(next?.results || []));
+  }
+  return results;
+}
+
 /** Driver approval queue: driver identity + their DriverDocument rows (with ids). */
 export async function getDriverApprovalQueue(params = {}) {
-  return apiRequest(`${API_URL}/admin/approvals/drivers/${buildQuery(params)}`);
+  return fetchAllQueuePages("/admin/approvals/drivers/", params);
+}
+
+/**
+ * Courier approval queue — couriers are drivers with delivery mode enabled and
+ * are EXCLUDED from the driver queue, so their documents only exist here.
+ */
+export async function getCourierApprovalQueue(params = {}) {
+  return fetchAllQueuePages("/admin/approvals/couriers/", params);
+}
+
+/**
+ * GET /admin/documents/driver/<driver_id>/ — every DriverDocument for one
+ * driver (approved and rejected included), with signed file URLs and review
+ * metadata. `driverId` is the DriverProfile id (backend also accepts User id).
+ */
+export async function getDriverDocuments(driverId) {
+  return apiRequest(`${API_URL}/admin/documents/driver/${driverId}/`);
 }
 
 /** Admin driver list. Each row already carries document review state + a performance snapshot. */
@@ -69,6 +112,51 @@ export async function rejectDriverDocument(documentId, reason) {
   });
 }
 
+/**
+ * Ask the driver to upload a replacement file (status -> replacement_required).
+ * The reason is REQUIRED and audited; the driver account status is unchanged.
+ */
+export async function requestDriverDocumentReplacement(documentId, reason) {
+  return apiRequest(`${API_URL}/admin/documents/${documentId}/request-replacement/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ reason: String(reason || "").trim() }),
+  });
+}
+
+/**
+ * Approve the driver ACCOUNT (POST /drivers/approve/<id>/). The backend resolves
+ * either a DriverProfile id or a user id, enforces phone + plate + complete
+ * e-signature, writes a driver audit row, and activates the user. It returns
+ * { message, driver } on success or { error } / a signature block on failure.
+ */
+export async function approveDriverAccount(driverId) {
+  return apiRequest(`${API_URL}/drivers/approve/${driverId}/`, { method: "POST" });
+}
+
+/**
+ * Reject the driver ACCOUNT (POST /drivers/reject/<id>/). The backend REQUIRES a
+ * reason of at least 5 characters and writes it to the audit trail; the user is
+ * deactivated.
+ */
+export async function rejectDriverAccount(driverId, reason) {
+  return apiRequest(`${API_URL}/drivers/reject/${driverId}/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ reason: String(reason || "").trim() }),
+  });
+}
+
+/**
+ * Suspend or reactivate the driver's LOGIN (POST /auth/users/<user_id>/block|unblock/).
+ * This is the same audited block/unblock workflow the legacy dashboard uses —
+ * separate from the document and application decisions above.
+ */
+export async function setDriverUserBlocked(userId, shouldBlock) {
+  const action = shouldBlock ? "block" : "unblock";
+  return apiRequest(`${API_URL}/auth/users/${userId}/${action}/`, { method: "POST" });
+}
+
 /** Safety incidents (admin). Used for the "safety incidents requiring review" KPI. */
 export async function getSafetyIncidents(params = {}) {
   return apiRequest(`${API_URL}/safety/admin/incidents/${buildQuery(params)}`);
@@ -81,7 +169,10 @@ export const DOCUMENT_TYPE_LABELS = {
   license: "Driver's License",
   driver_license: "Driver's License",
   national_id: "National ID",
+  national_id_front: "National ID — Front",
+  national_id_back: "National ID — Back",
   vehicle_registration: "Vehicle Registration",
+  carte_grise: "Carte Grise (Registration)",
   insurance: "Vehicle Insurance",
   vignette: "Vehicle Inspection",
   vehicle_inspection: "Vehicle Inspection",
@@ -104,6 +195,8 @@ export function documentStatusTone(status) {
       return "danger";
     case "expired":
       return "danger";
+    case "replacement_required":
+      return "warning";
     case "pending":
     case "pending_review":
     case "uploaded":

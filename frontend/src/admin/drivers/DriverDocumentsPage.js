@@ -18,9 +18,11 @@ import {
   documentStatusTone,
   documentTypeLabel,
   expiryBand,
+  getCourierApprovalQueue,
   getDriverApprovalQueue,
   getDriverDirectory,
   rejectDriverDocument,
+  requestDriverDocumentReplacement,
 } from "./driverAdminApi";
 import { useOperatingCityOptions } from "../layouts/useOperatingCityOptions";
 import "./driverDocuments.css";
@@ -58,6 +60,7 @@ const STATUS_OPTIONS = [
   { value: "pending", label: "Pending" },
   { value: "approved", label: "Approved" },
   { value: "rejected", label: "Rejected" },
+  { value: "replacement_required", label: "Replacement requested" },
   { value: "expired", label: "Expired" },
   { value: "missing", label: "Missing" },
 ];
@@ -100,6 +103,7 @@ export function buildDocumentRows(queueDrivers, directoryRows) {
     };
 
     asArray(driver.documents).forEach((doc) => {
+      const fileUrl = doc.file_url || "";
       rows.push({
         ...base,
         id: `doc-${doc.id}`,
@@ -107,13 +111,18 @@ export function buildDocumentRows(queueDrivers, directoryRows) {
         document_type: doc.document_type,
         document_type_display:
           doc.document_type_display || documentTypeLabel(doc.document_type),
-        submitted_at: driver.date_joined || driver.created_at || null,
+        submitted_at: doc.uploaded_at || driver.date_joined || driver.created_at || null,
         expires_at: doc.expires_at || null,
         status: doc.status || "pending",
         rejection_reason: doc.rejection_reason || "",
-        file_url: doc.file_url || "",
+        reviewed_at: doc.reviewed_at || null,
+        reviewed_by: doc.reviewed_by || null,
+        file_url: fileUrl,
         approval_history: asArray(driver.approval_history),
-        actionable: PENDING_STATUSES.includes(String(doc.status || "").toLowerCase()),
+        // Every uploaded document row is independently reviewable. Missing
+        // requirement rows (no document_id) stay non-actionable below.
+        actionable: Boolean(doc.id),
+        can_inspect: Boolean(fileUrl),
       });
     });
 
@@ -132,6 +141,7 @@ export function buildDocumentRows(queueDrivers, directoryRows) {
         file_url: "",
         approval_history: asArray(driver.approval_history),
         actionable: false,
+        can_inspect: false,
       });
     });
   });
@@ -188,6 +198,8 @@ function DriverDocumentsInner({ mode }) {
   const [detail, setDetail] = useState(null);
   const [rejectTarget, setRejectTarget] = useState(null);
   const [rejectReason, setRejectReason] = useState("");
+  const [resubmitTarget, setResubmitTarget] = useState(null);
+  const [resubmitReason, setResubmitReason] = useState("");
   const [busyId, setBusyId] = useState(null);
   const [actionError, setActionError] = useState("");
 
@@ -195,21 +207,28 @@ function DriverDocumentsInner({ mode }) {
     setQueue((prev) => ({ ...prev, loading: true, error: "" }));
     setDirectory((prev) => ({ ...prev, loading: true, error: "" }));
 
-    const [queueResult, directoryResult] = await Promise.allSettled([
-      getDriverApprovalQueue(),
-      getDriverDirectory(),
-    ]);
+    const [driverQueueResult, courierQueueResult, directoryResult] =
+      await Promise.allSettled([
+        getDriverApprovalQueue(),
+        getCourierApprovalQueue(),
+        getDriverDirectory(),
+      ]);
 
-    if (queueResult.status === "fulfilled") {
-      const payload = queueResult.value;
-      setQueue({ loading: false, error: "", drivers: asArray(payload?.results || payload) });
-    } else {
-      setQueue({
-        loading: false,
-        error: queueResult.reason?.message || "Could not load driver documents.",
-        drivers: [],
-      });
-    }
+    // Couriers are drivers with delivery mode enabled — they are excluded from
+    // the driver queue, so their documents only exist in the courier queue.
+    const queueDrivers = [
+      ...(driverQueueResult.status === "fulfilled" ? asArray(driverQueueResult.value?.results || driverQueueResult.value) : []),
+      ...(courierQueueResult.status === "fulfilled" ? asArray(courierQueueResult.value?.results || courierQueueResult.value) : []),
+    ];
+    const queueErrors = [
+      driverQueueResult.status === "rejected"
+        ? driverQueueResult.reason?.message || "Could not load driver documents."
+        : "",
+      courierQueueResult.status === "rejected"
+        ? courierQueueResult.reason?.message || "Could not load courier documents."
+        : "",
+    ].filter(Boolean);
+    setQueue({ loading: false, error: queueErrors.join(" "), drivers: queueDrivers });
 
     if (directoryResult.status === "fulfilled") {
       const payload = directoryResult.value;
@@ -397,7 +416,18 @@ function DriverDocumentsInner({ mode }) {
                     <button
                       type="button"
                       className="admin-lib-btn"
-                      disabled={busyId === row.document_id}
+                      disabled={
+                        busyId === row.document_id ||
+                        !row.can_inspect ||
+                        String(row.status || "").toLowerCase() === "approved"
+                      }
+                      title={
+                        !row.can_inspect
+                          ? "No uploaded file to approve"
+                          : String(row.status || "").toLowerCase() === "approved"
+                            ? "Document is already approved"
+                            : "Approve this document only"
+                      }
                       onClick={() => handleApprove(row)}
                     >
                       Approve
@@ -405,7 +435,18 @@ function DriverDocumentsInner({ mode }) {
                     <button
                       type="button"
                       className="admin-lib-btn admin-lib-btn--danger"
-                      disabled={busyId === row.document_id}
+                      disabled={
+                        busyId === row.document_id ||
+                        !row.can_inspect ||
+                        String(row.status || "").toLowerCase() === "rejected"
+                      }
+                      title={
+                        !row.can_inspect
+                          ? "No uploaded file to reject"
+                          : String(row.status || "").toLowerCase() === "rejected"
+                            ? "Document is already rejected"
+                            : "Reject this document only"
+                      }
                       onClick={() => {
                         setRejectTarget(row);
                         setRejectReason("");
@@ -414,11 +455,22 @@ function DriverDocumentsInner({ mode }) {
                     >
                       Reject
                     </button>
+                    <button
+                      type="button"
+                      className="admin-lib-btn admin-lib-btn--ghost"
+                      disabled={busyId === row.document_id}
+                      title="Ask the driver to upload a new file for this document"
+                      onClick={() => {
+                        setResubmitTarget(row);
+                        setResubmitReason("");
+                        setActionError("");
+                      }}
+                    >
+                      Request resubmission
+                    </button>
                   </AdminActionGuard>
                 ) : (
-                  <small className="driver-docs__na">
-                    {row.status === "missing" ? "No uploaded file to review" : "Already decided"}
-                  </small>
+                  <small className="driver-docs__na">No uploaded file to review</small>
                 )}
               </span>
             ),
@@ -514,10 +566,66 @@ function DriverDocumentsInner({ mode }) {
           </p>
         ) : null}
       </Modal>
+
+      <Modal
+        open={Boolean(resubmitTarget)}
+        title="Request resubmission"
+        onClose={() => setResubmitTarget(null)}
+        footer={
+          <>
+            <button
+              type="button"
+              className="admin-lib-btn admin-lib-btn--ghost"
+              onClick={() => setResubmitTarget(null)}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="admin-lib-btn"
+              disabled={!resubmitReason.trim() || busyId === resubmitTarget?.document_id}
+              onClick={handleRequestResubmission}
+            >
+              Request new upload
+            </button>
+          </>
+        }
+      >
+        <p>
+          Ask <strong>{resubmitTarget?.driver_name}</strong> to upload a new{" "}
+          <strong>{resubmitTarget?.document_type_display}</strong>. The current file and
+          review history stay on record.
+        </p>
+        <label className="driver-docs__field">
+          <span>Reason (required — recorded in the audit trail)</span>
+          <textarea
+            rows={3}
+            value={resubmitReason}
+            onChange={(event) => setResubmitReason(event.target.value)}
+            placeholder="e.g. Photo is too dark — retake in daylight"
+          />
+        </label>
+        {actionError ? (
+          <p className="driver-docs__error" role="alert">
+            {actionError}
+          </p>
+        ) : null}
+      </Modal>
     </div>
   );
 
   async function handleApprove(row) {
+    if (!row?.can_inspect) {
+      const message =
+        "File unavailable — cannot approve until the document can be inspected.";
+      setActionError(message);
+      push?.({ tone: "error", message });
+      return;
+    }
+    if (String(row.status || "").toLowerCase() === "approved") {
+      push?.({ tone: "error", message: "Document is already approved." });
+      return;
+    }
     setBusyId(row.document_id);
     setActionError("");
     try {
@@ -535,6 +643,19 @@ function DriverDocumentsInner({ mode }) {
 
   async function handleReject() {
     if (!rejectTarget?.document_id || !rejectReason.trim()) return;
+    if (!rejectTarget.can_inspect) {
+      setActionError(
+        "File unavailable — cannot reject until the document can be inspected."
+      );
+      return;
+    }
+    const status = String(rejectTarget.status || "").toLowerCase();
+    if (!PENDING_STATUSES.includes(status)) {
+      const confirmed = window.confirm(
+        `This document is currently "${rejectTarget.status}". Confirm re-review and set status to rejected? Driver account status will not change.`
+      );
+      if (!confirmed) return;
+    }
     setBusyId(rejectTarget.document_id);
     setActionError("");
     try {
@@ -545,6 +666,26 @@ function DriverDocumentsInner({ mode }) {
       await load();
     } catch (error) {
       setActionError(error?.message || "Could not reject this document.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handleRequestResubmission() {
+    if (!resubmitTarget?.document_id || !resubmitReason.trim()) return;
+    setBusyId(resubmitTarget.document_id);
+    setActionError("");
+    try {
+      await requestDriverDocumentReplacement(resubmitTarget.document_id, resubmitReason.trim());
+      push?.({
+        tone: "success",
+        message: `Replacement requested for ${resubmitTarget.document_type_display}.`,
+      });
+      setResubmitTarget(null);
+      setResubmitReason("");
+      await load();
+    } catch (error) {
+      setActionError(error?.message || "Could not request a replacement.");
     } finally {
       setBusyId(null);
     }
@@ -579,6 +720,18 @@ export function DriverDocumentDetail({ row, onClose }) {
           <dd>
             <StatusChip label={String(row.status).replace(/_/g, " ")} tone={documentStatusTone(row.status)} />
           </dd>
+        </div>
+        <div>
+          <dt>Uploaded</dt>
+          <dd>{row.submitted_at ? new Date(row.submitted_at).toLocaleString() : "—"}</dd>
+        </div>
+        <div>
+          <dt>Reviewed by</dt>
+          <dd>{row.reviewed_by || "—"}</dd>
+        </div>
+        <div>
+          <dt>Reviewed at</dt>
+          <dd>{row.reviewed_at ? new Date(row.reviewed_at).toLocaleString() : "—"}</dd>
         </div>
         <div>
           <dt>Expires</dt>

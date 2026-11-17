@@ -49,6 +49,21 @@ def file_url(request, field):
     return request.build_absolute_uri(field.url)
 
 
+def document_file_url(request, field):
+    """URL for document-type files that may live under protected media prefixes.
+
+    DriverDocument uploads are stored under ``driver/documents/`` and are
+    mirrored onto the legacy profile columns on review — an unsigned ``/media/``
+    URL 403s there, so protected paths get the HMAC-signed URL instead. Public
+    prefixes (e.g. ``drivers/photos/``) are returned unchanged.
+    """
+    if not field:
+        return ""
+    from taxi.media_security import protected_media_url
+
+    return protected_media_url(request, field) or ""
+
+
 def document_status(expires_at):
     if not expires_at:
         return "missing_expiration"
@@ -244,24 +259,24 @@ def serialize_driver(profile, request):
             else ""
         ),
         "national_id_number": profile.user.national_id_number or "",
-        "national_id_document": file_url(request, profile.user.national_id_document),
+        "national_id_document": document_file_url(request, profile.user.national_id_document),
         "has_national_id_document": bool(profile.user.national_id_document),
         "latitude": profile.current_lat,
         "longitude": profile.current_lng,
         "current_lat": profile.current_lat,
         "current_lng": profile.current_lng,
-        "driver_photo": file_url(request, profile.driver_photo),
-        "license_file": file_url(request, profile.license_file),
+        "driver_photo": document_file_url(request, profile.driver_photo),
+        "license_file": document_file_url(request, profile.license_file),
         "license_issued_at": profile.license_issued_at,
         "license_expires_at": profile.license_expires_at,
         "license_status": document_status(profile.license_expires_at),
-        "vehicle_registration": file_url(request, profile.vehicle_registration),
+        "vehicle_registration": document_file_url(request, profile.vehicle_registration),
         "vehicle_registration_expires_at": profile.vehicle_registration_expires_at,
         "vehicle_registration_status": document_status(profile.vehicle_registration_expires_at),
-        "insurance_document": file_url(request, profile.insurance_document),
+        "insurance_document": document_file_url(request, profile.insurance_document),
         "insurance_expires_at": profile.insurance_expires_at,
         "insurance_status": document_status(profile.insurance_expires_at),
-        "vignette_document": file_url(request, profile.vignette_document),
+        "vignette_document": document_file_url(request, profile.vignette_document),
         "vignette_expires_at": profile.vignette_expires_at,
         "vignette_status": document_status(profile.vignette_expires_at),
         "expired_documents": expired_documents,

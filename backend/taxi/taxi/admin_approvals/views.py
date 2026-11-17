@@ -29,6 +29,7 @@ from authapp.models import User
 from legal.services import approval_signature_block
 from taxi.drivers.models import DriverProfile, DriverDocument
 from .models import ApprovalAction
+from taxi.media_security import protected_media_url
 
 logger = logging.getLogger(__name__)
 
@@ -122,7 +123,7 @@ def _log_action(request, target_user, target_type, action, reason=""):
     )
 
 
-def _serialize_rider(user):
+def _serialize_rider(user, request=None):
     """Serialize a rider for the approval queue."""
     history = ApprovalAction.objects.filter(
         target_user=user, target_type="rider"
@@ -143,7 +144,7 @@ def _serialize_rider(user):
             {
                 "document_type": "national_id",
                 "document_type_display": "National ID",
-                "file_url": user.national_id_document.url if user.national_id_document else None,
+                "file_url": protected_media_url(request, user.national_id_document) if user.national_id_document else None,
                 "status": "pending_review" if user.national_id_document else "missing",
             }
         ] if user.national_id_document else [],
@@ -159,11 +160,13 @@ def _serialize_rider(user):
     }
 
 
-def _serialize_driver(profile, target_type="driver"):
+def _serialize_driver(profile, target_type="driver", request=None):
     """Serialize a driver/courier for the approval queue."""
     user = profile.user
-    documents = DriverDocument.objects.filter(driver=profile).values(
-        "id", "document_type", "file", "status", "rejection_reason", "expires_at"
+    documents = (
+        DriverDocument.objects.filter(driver=profile)
+        .select_related("reviewed_by")
+        .order_by("document_type", "-uploaded_at")
     )
 
     history = ApprovalAction.objects.filter(
@@ -172,15 +175,24 @@ def _serialize_driver(profile, target_type="driver"):
 
     doc_list = []
     for doc in documents:
-        file_path = doc["file"]
+        reviewer = doc.reviewed_by
         doc_list.append({
-            "id": doc["id"],
-            "document_type": doc["document_type"],
-            "document_type_display": doc["document_type"].replace("_", " ").title(),
-            "file_url": f"/media/{file_path}" if file_path else None,
-            "status": doc["status"],
-            "rejection_reason": doc["rejection_reason"] or "",
-            "expires_at": doc["expires_at"].isoformat() if doc["expires_at"] else None,
+            "id": doc.id,
+            "document_type": doc.document_type,
+            "document_type_display": doc.get_document_type_display(),
+            "file_url": protected_media_url(request, doc.file.name) if doc.file else None,
+            "status": doc.status,
+            "rejection_reason": doc.rejection_reason or "",
+            "issued_at": doc.issued_at.isoformat() if doc.issued_at else None,
+            "expires_at": doc.expires_at.isoformat() if doc.expires_at else None,
+            "uploaded_at": doc.uploaded_at.isoformat() if doc.uploaded_at else None,
+            "reviewed_at": doc.reviewed_at.isoformat() if doc.reviewed_at else None,
+            "reviewed_by": (
+                (reviewer.get_full_name() or reviewer.email)
+                if reviewer
+                else None
+            ),
+            "reviewed_by_id": doc.reviewed_by_id,
         })
 
     return {
@@ -189,11 +201,12 @@ def _serialize_driver(profile, target_type="driver"):
         "full_name": user.get_full_name() or user.email,
         "email": user.email,
         "phone_number": profile.phone_number or user.phone_number or "",
+        "phone_verified": bool(getattr(user, "is_phone_verified", False)),
         "gender": user.gender or "",
         "city_name": getattr(user.city, "name", "") if user.city else "",
         "national_id_number": user.national_id_number or "",
-        "profile_picture": profile.driver_photo.url if profile.driver_photo else (
-            user.profile_picture.url if user.profile_picture else None
+        "profile_picture": protected_media_url(request, profile.driver_photo) if profile.driver_photo else (
+            protected_media_url(request, user.profile_picture) if user.profile_picture else None
         ),
         "status": profile.status,
         "date_joined": user.date_joined.isoformat() if user.date_joined else None,
@@ -203,7 +216,7 @@ def _serialize_driver(profile, target_type="driver"):
         "vehicle_model": profile.vehicle_model or "",
         "vehicle_color": profile.vehicle_color or "",
         "plate_number": profile.plate_number or profile.vehicle_plate or "",
-        "vehicle_photo": profile.vehicle_photo.url if profile.vehicle_photo else None,
+        "vehicle_photo": protected_media_url(request, profile.vehicle_photo) if profile.vehicle_photo else None,
         "documents": doc_list,
         "approval_history": [
             {
@@ -321,7 +334,7 @@ def rider_queue(request):
     items = qs[start:start + page_size]
 
     return Response({
-        "results": [_serialize_rider(u) for u in items],
+        "results": [_serialize_rider(u, request) for u in items],
         "count": total,
         "total_pages": max(1, (total + page_size - 1) // page_size),
         "page": page,
@@ -378,7 +391,7 @@ def driver_queue(request):
     items = qs[start:start + page_size]
 
     return Response({
-        "results": [_serialize_driver(p) for p in items],
+        "results": [_serialize_driver(p, request=request) for p in items],
         "count": total,
         "total_pages": max(1, (total + page_size - 1) // page_size),
         "page": page,
@@ -429,7 +442,7 @@ def courier_queue(request):
     items = qs[start:start + page_size]
 
     return Response({
-        "results": [_serialize_driver(p, target_type="courier") for p in items],
+        "results": [_serialize_driver(p, target_type="courier", request=request) for p in items],
         "count": total,
         "total_pages": max(1, (total + page_size - 1) // page_size),
         "page": page,

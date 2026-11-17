@@ -15,6 +15,17 @@ import {
   getDriverPayouts,
   getDriverRideHistory,
 } from "./driversApi";
+import {
+  approveDriverDocument,
+  documentStatusTone,
+  documentTypeLabel,
+  getDriverDocuments,
+  rejectDriverDocument,
+  requestDriverDocumentReplacement,
+} from "./driverAdminApi";
+import ChangeWorkingCityModal from "../city/ChangeWorkingCityModal";
+import "../city/ChangeWorkingCityModal.css";
+import { useOptionalPermissions } from "../permissions/PermissionContext";
 
 const RIDE_HISTORY_PAGE_SIZE = 10;
 const INITIAL_SECTION = { loading: false, error: null, data: null };
@@ -139,6 +150,12 @@ export default function DriverDetailsDrawer({
   onReject,
   onSuspendToggle,
 }) {
+  // Optional: unit tests mount the drawer without PermissionProvider; live admin
+  // hubs wrap DriversManagement in AdminShellPage so CEO gating still works.
+  const permissionCtx = useOptionalPermissions();
+  const canCeoCityChange = Boolean(permissionCtx?.canView?.("ceo"));
+  const [cityChangeOpen, setCityChangeOpen] = useState(false);
+  const [cityChangeNotice, setCityChangeNotice] = useState("");
   const drawerRef = useRef(null);
   const previouslyFocusedRef = useRef(null);
 
@@ -186,11 +203,28 @@ export default function DriverDetailsDrawer({
   const [historyPage, setHistoryPage] = useState(1);
   const [payouts, setPayouts] = useState(INITIAL_SECTION);
   const [audit, setAudit] = useState(INITIAL_SECTION);
+  const [documents, setDocuments] = useState(INITIAL_SECTION);
+  const [docBusyId, setDocBusyId] = useState(null);
+  const [docAction, setDocAction] = useState(null); // { id, kind: "reject" | "resubmit" }
+  const [docReason, setDocReason] = useState("");
+  const [docActionError, setDocActionError] = useState("");
 
   // Start each driver at the first ride-history page.
   useEffect(() => {
     setHistoryPage(1);
   }, [driverId]);
+
+  const reloadDocuments = () => {
+    if (driverId == null) return;
+    setDocuments((prev) => ({ ...prev, loading: true, error: null }));
+    getDriverDocuments(driverId)
+      .then((data) =>
+        setDocuments({ loading: false, error: null, data: data?.documents || [] })
+      )
+      .catch((err) =>
+        setDocuments({ loading: false, error: err?.message || "Failed to load documents.", data: null })
+      );
+  };
 
   // Activity, earnings, and payouts: fetched once per open + driver.
   useEffect(() => {
@@ -210,10 +244,34 @@ export default function DriverDetailsDrawer({
     load(setEarnings, () => getDriverEarnings(driverId), "Failed to load earnings.");
     load(setPayouts, () => getDriverPayouts(driverId), "Failed to load payout history.");
     load(setAudit, () => getDriverAuditTrail(driverId), "Failed to load audit history.");
+    load(
+      setDocuments,
+      () => getDriverDocuments(driverId).then((data) => data?.documents || []),
+      "Failed to load driver documents."
+    );
     return () => {
       cancelled = true;
     };
   }, [open, driverId]);
+
+  const handleDocumentReview = async (documentId, kind) => {
+    const reason = docReason.trim();
+    if ((kind === "reject" || kind === "resubmit") && !reason) return;
+    setDocBusyId(documentId);
+    setDocActionError("");
+    try {
+      if (kind === "approve") await approveDriverDocument(documentId);
+      else if (kind === "reject") await rejectDriverDocument(documentId, reason);
+      else await requestDriverDocumentReplacement(documentId, reason);
+      setDocAction(null);
+      setDocReason("");
+      reloadDocuments();
+    } catch (err) {
+      setDocActionError(err?.message || "Document review failed.");
+    } finally {
+      setDocBusyId(null);
+    }
+  };
 
   // Ride history: refetched when the page changes.
   useEffect(() => {
@@ -320,7 +378,10 @@ export default function DriverDetailsDrawer({
           <dl className="drivers-detail__grid">
             <Field label="Full name">{driver.driver_name || "N/A"}</Field>
             <Field label="Email">{driver.email || "N/A"}</Field>
-            <Field label="Phone">{driver.phone_number || "N/A"}</Field>
+            <Field label="Phone">
+              {driver.phone_number || "N/A"}
+              {driver.phone_number ? (driver.phone_verified ? " (verified)" : " (unverified)") : ""}
+            </Field>
             <Field label="City / region">
               {[driver.city_name, driver.region_name].filter(Boolean).join(" · ") || "N/A"}
             </Field>
@@ -680,6 +741,238 @@ export default function DriverDetailsDrawer({
           </dl>
         </section>
 
+        {/* Uploaded driver documents (DriverDocument rows) — all statuses stay
+            visible for audit: pending, approved, rejected, replacement_required. */}
+        <section className="drivers-detail__section">
+          <h4>Driver documents</h4>
+          <AsyncSection
+            state={documents}
+            isEmpty={!documents.data || documents.data.length === 0}
+            emptyLabel="No uploaded documents on file."
+          >
+            <div className="drivers-detail__doc-list">
+              {(documents.data || []).map((doc) => {
+                const docStatus = doc.display_status || doc.status;
+                const statusKey = String(docStatus || "").toLowerCase();
+                const fileUrl = doc.file_url || doc.file || "";
+                const reasonOpen = docAction?.id === doc.id;
+                return (
+                  <div key={doc.id} className="drivers-detail__doc-card">
+                    <div className="drivers-detail__doc-head">
+                      <strong>
+                        {doc.document_type_display || documentTypeLabel(doc.document_type)}
+                      </strong>
+                      <StatusChip
+                        label={String(docStatus || "unknown").replace(/_/g, " ")}
+                        tone={documentStatusTone(statusKey)}
+                      />
+                    </div>
+                    <div className="drivers-cell-hint">
+                      {doc.uploaded_at ? `Uploaded ${formatTimestamp(doc.uploaded_at)}` : "Upload date unknown"}
+                      {doc.expires_at ? ` · Expires ${formatTimestamp(doc.expires_at)}` : ""}
+                    </div>
+                    {doc.reviewed_at || doc.reviewed_by_name ? (
+                      <div className="drivers-cell-hint">
+                        Reviewed
+                        {doc.reviewed_by_name ? ` by ${doc.reviewed_by_name}` : ""}
+                        {doc.reviewed_at ? ` · ${formatTimestamp(doc.reviewed_at)}` : ""}
+                      </div>
+                    ) : null}
+                    {doc.rejection_reason ? (
+                      <p className="drivers-detail__error" style={{ margin: "4px 0 0" }}>
+                        {statusKey === "replacement_required"
+                          ? "Replacement requested"
+                          : "Rejection reason"}
+                        : {doc.rejection_reason}
+                      </p>
+                    ) : null}
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+                      {fileUrl ? (
+                        <a
+                          className="drivers-detail__doc-link"
+                          href={fileUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          View file
+                        </a>
+                      ) : null}
+                      <AdminActionGuard action="drivers.verify_documents" mode="disable">
+                        <button
+                          type="button"
+                          className="admin-lib-btn"
+                          disabled={docBusyId === doc.id || !fileUrl || statusKey === "approved"}
+                          title={
+                            !fileUrl
+                              ? "No uploaded file to approve"
+                              : statusKey === "approved"
+                                ? "Document is already approved"
+                                : "Approve this document only"
+                          }
+                          onClick={() => handleDocumentReview(doc.id, "approve")}
+                        >
+                          Approve
+                        </button>
+                        <button
+                          type="button"
+                          className="admin-lib-btn admin-lib-btn--danger"
+                          disabled={docBusyId === doc.id || !fileUrl || statusKey === "rejected"}
+                          title={
+                            !fileUrl
+                              ? "No uploaded file to reject"
+                              : statusKey === "rejected"
+                                ? "Document is already rejected"
+                                : "Reject this document only"
+                          }
+                          onClick={() => {
+                            setDocAction({ id: doc.id, kind: "reject" });
+                            setDocReason("");
+                            setDocActionError("");
+                          }}
+                        >
+                          Reject
+                        </button>
+                        <button
+                          type="button"
+                          className="admin-lib-btn admin-lib-btn--ghost"
+                          disabled={docBusyId === doc.id || !fileUrl}
+                          title="Ask the driver to upload a new file for this document"
+                          onClick={() => {
+                            setDocAction({ id: doc.id, kind: "resubmit" });
+                            setDocReason("");
+                            setDocActionError("");
+                          }}
+                        >
+                          Request resubmission
+                        </button>
+                      </AdminActionGuard>
+                    </div>
+                    {reasonOpen ? (
+                      <div style={{ marginTop: 8 }}>
+                        <label className="drivers-cell-hint" style={{ display: "block", marginBottom: 4 }}>
+                          {docAction.kind === "reject"
+                            ? "Rejection reason (required — audited)"
+                            : "What must the driver fix? (required — audited)"}
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={docReason}
+                          onChange={(event) => setDocReason(event.target.value)}
+                          style={{ width: "100%", boxSizing: "border-box" }}
+                        />
+                        <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+                          <button
+                            type="button"
+                            className="admin-lib-btn"
+                            disabled={docBusyId === doc.id || docReason.trim().length < 5}
+                            onClick={() => handleDocumentReview(doc.id, docAction.kind)}
+                          >
+                            Confirm {docAction.kind === "reject" ? "rejection" : "request"}
+                          </button>
+                          <button
+                            type="button"
+                            className="admin-lib-btn admin-lib-btn--ghost"
+                            onClick={() => setDocAction(null)}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+            {docActionError ? (
+              <p className="drivers-detail__error" role="alert">
+                {docActionError}
+              </p>
+            ) : null}
+          </AsyncSection>
+        </section>
+
+        {/* Approval requirements — shows the exact outstanding blockers before
+            the admin clicks Approve. The three enforced items mirror the
+            server-side gate in POST /drivers/approve/<id>/ (phone number,
+            plate number for motor vehicles, complete e-signature); the rest
+            are CEO review checks the endpoint deliberately does NOT enforce
+            (the human review IS the control). Nothing here auto-approves. */}
+        <section className="drivers-detail__section">
+          <h4>Approval requirements</h4>
+          {(() => {
+            const docs = documents.data || [];
+            const unapproved = docs.filter(
+              (d) =>
+                String(d.display_status || d.status || "").toLowerCase() !== "approved"
+            );
+            const unapprovedNames = unapproved
+              .map((d) => d.document_type_display || documentTypeLabel(d.document_type))
+              .join(", ");
+            const requirements = [
+              { label: "Phone number on file", ok: Boolean(driver.phone_number), enforced: true },
+              {
+                label: "Vehicle plate number on file",
+                ok: Boolean(driver.plate_number || driver.vehicle_plate),
+                enforced: true,
+                hint: "required for motor vehicles",
+              },
+              { label: "Driver e-signature complete", ok: signatureComplete, enforced: true },
+              { label: "Phone number verified", ok: Boolean(driver.phone_verified), enforced: false },
+              {
+                label: "Vehicle details (make / model / color)",
+                ok: Boolean(driver.vehicle_make && driver.vehicle_model && driver.vehicle_color),
+                enforced: false,
+              },
+              {
+                label:
+                  docs.length === 0
+                    ? "Documents uploaded"
+                    : `All ${docs.length} uploaded document(s) approved`,
+                ok: docs.length > 0 && unapproved.length === 0,
+                enforced: false,
+                hint: unapprovedNames ? `Outstanding: ${unapprovedNames}` : "",
+              },
+            ];
+            const outstanding = requirements.filter((r) => !r.ok);
+            return (
+              <>
+                <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
+                  {requirements.map((req) => (
+                    <li
+                      key={req.label}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        padding: "4px 0",
+                      }}
+                    >
+                      <StatusChip
+                        label={req.ok ? "Met" : "Outstanding"}
+                        tone={req.ok ? "success" : "danger"}
+                      />
+                      <span>
+                        {req.label}
+                        {req.enforced ? (
+                          <span className="drivers-cell-hint"> (server-enforced)</span>
+                        ) : null}
+                        {!req.ok && req.hint ? (
+                          <span className="drivers-cell-hint"> — {req.hint}</span>
+                        ) : null}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="drivers-cell-hint" style={{ margin: "8px 0 0" }}>
+                  {outstanding.length === 0
+                    ? "All listed requirements are met."
+                    : `${outstanding.length} requirement(s) outstanding — the server-enforced items block approval even if clicked.`}
+                </p>
+              </>
+            );
+          })()}
+        </section>
+
         {/* Administrative actions — gating is applied by the caller (DriversManagement) */}
         <section className="drivers-detail__section">
           <h4>Administrative actions</h4>
@@ -724,8 +1017,43 @@ export default function DriverDetailsDrawer({
                 {driver.is_active === false ? "Reactivate account" : "Suspend account"}
               </button>
             </AdminActionGuard>
+            {canCeoCityChange ? (
+              <button
+                type="button"
+                className="admin-lib-btn"
+                title="CEO: correct or transfer the authorized working city"
+                onClick={() => setCityChangeOpen(true)}
+              >
+                Change Working City
+              </button>
+            ) : null}
           </div>
+          {cityChangeNotice ? (
+            <p className="drivers-detail__empty" role="status" style={{ marginTop: 8 }}>
+              {cityChangeNotice}
+            </p>
+          ) : null}
         </section>
+
+        <ChangeWorkingCityModal
+          open={cityChangeOpen}
+          onClose={() => setCityChangeOpen(false)}
+          subject={{
+            kind: "driver",
+            userId: driver?.user_id,
+            accountId: driver?.id,
+            name: driver?.driver_name || driver?.full_name || driver?.email,
+            email: driver?.email,
+            registeredCity: driver?.city_name || "—",
+            authorizedCity: driver?.city_name || "—",
+          }}
+          onSuccess={(result) => {
+            setCityChangeNotice(
+              result?.message ||
+                `Working city updated to ${result?.new_authorized_city || "the selected city"}.`
+            );
+          }}
+        />
       </div>
     </Drawer>
   );

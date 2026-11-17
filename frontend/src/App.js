@@ -136,6 +136,7 @@ import MerchantRegister from "./merchant/MerchantRegister";
 import WalletPage from "./payments/WalletPage";
 import AdminPaymentDashboard from "./admin/AdminPaymentDashboard";
 import DriversDashboard from "./admin/drivers/DriversDashboard";
+import DriversManagementPage from "./admin/drivers/DriversManagementPage";
 import DriverDocumentsPage from "./admin/drivers/DriverDocumentsPage";
 import DriverPerformancePage from "./admin/drivers/DriverPerformancePage";
 import RidersDashboard from "./admin/riders/RidersDashboard";
@@ -1443,8 +1444,20 @@ function App() {
       </AdminShellPage>
     );
   }
+  if (page === "admin-drivers") {
+    // Real driver directory (list + details drawer + audited account actions).
+    // Previously this path rendered AdminModuleHub — a tile grid linking to
+    // Fleet/Approvals — so "Open driver management" never reached a driver.
+    // Deep link: /admin/drivers?driver=<DriverProfile id or user id> opens the
+    // driver's drawer directly, preserving selection across Vehicle
+    // Management / Fleet navigation.
+    return withInstall(
+      <AdminShellPage pathname="/admin/drivers" title="Drivers Management">
+        <DriversManagementPage />
+      </AdminShellPage>
+    );
+  }
   const MODULE_HUB_PAGES = {
-    "admin-drivers": { hubKey: "drivers", pathname: "/admin/drivers", title: "Drivers Management" },
     "admin-riders": { hubKey: "riders", pathname: "/admin/riders", title: "Riders Management" },
     // "admin-delivery" is intentionally absent: `/admin/delivery` is served by
     // DeliveryManagement (the `page === "admin-delivery"` branch above), which already renders

@@ -807,7 +807,10 @@ export default function VehicleManagementCenter() {
                     </div>
                   </div>
                   <div className="fleet-action-bar">
-                    <a className="fleet-btn fleet-btn--sm" href="/admin/drivers">
+                    <a
+                      className="fleet-btn fleet-btn--sm"
+                      href={`/admin/drivers?driver=${selected.driver_id}`}
+                    >
                       Open driver management
                     </a>
                   </div>

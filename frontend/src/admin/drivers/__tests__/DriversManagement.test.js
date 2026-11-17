@@ -9,6 +9,7 @@ import {
   getDriverPayouts,
   getDriverRideHistory,
 } from "../driversApi";
+import { getDriverDocuments } from "../driverAdminApi";
 
 // DataTable's export toolbar + the RBAC guards read usePermissions via
 // AdminActionGuard — mock the permission context so the module renders without
@@ -21,7 +22,27 @@ jest.mock("../../permissions/PermissionContext", () => ({
     canApprove: () => true,
     canExport: () => true,
   }),
+  useOptionalPermissions: () => ({
+    permissions: { role: "ceo", modules: ["drivers"], actions: {}, feature_flags: {} },
+    canView: () => true,
+    canAction: () => true,
+    canApprove: () => true,
+    canExport: () => true,
+  }),
 }));
+
+// The details drawer also fetches per-driver documents and exposes the doc
+// review actions; keep pure helpers real and stub the network calls.
+jest.mock("../driverAdminApi", () => {
+  const actual = jest.requireActual("../driverAdminApi");
+  return {
+    ...actual,
+    getDriverDocuments: jest.fn(),
+    approveDriverDocument: jest.fn(),
+    rejectDriverDocument: jest.fn(),
+    requestDriverDocumentReplacement: jest.fn(),
+  };
+});
 
 // Opening the details drawer triggers the Stage 2 per-driver fetches; mock
 // them so the table tests never touch the network. CRA's Jest config uses
@@ -46,6 +67,7 @@ beforeEach(() => {
   });
   getDriverPayouts.mockResolvedValue({ count: 0, total_pages: 1, results: [] });
   getDriverAuditTrail.mockResolvedValue([]);
+  getDriverDocuments.mockResolvedValue({ documents: [] });
   getDriverRideHistory.mockResolvedValue({ count: 0, total_pages: 1, results: [], summary: null });
 });
 
@@ -337,4 +359,22 @@ test("suspending from inside the drawer closes the drawer so dialogs do not stac
 test("loading state renders the table skeleton (no rows)", () => {
   renderModule({ loading: true });
   expect(screen.queryByText("Amadou Ba")).not.toBeInTheDocument();
+});
+
+test("initialDriverId deep link auto-opens the matching driver drawer", () => {
+  renderModule({ initialDriverId: "2" });
+  // DriverProfile id 2 -> Fatou Sow's details drawer opens without a row click.
+  expect(screen.getByRole("dialog")).toBeInTheDocument();
+  expect(screen.getByText(/Personal information/i)).toBeInTheDocument();
+});
+
+test("initialDriverId also resolves by user_id", () => {
+  renderModule({ initialDriverId: "103" });
+  // user_id 103 -> Moussa Diop.
+  expect(screen.getByRole("dialog")).toBeInTheDocument();
+});
+
+test("an unknown initialDriverId does not open a drawer or crash", () => {
+  renderModule({ initialDriverId: "999" });
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 });

@@ -57,9 +57,12 @@ DOCUMENT_DISPLAY_STATUSES = (
     "pending_review",
     "approved",
     "rejected",
+    "replacement_required",
     "expired",
     "expiring_soon",
 )
+
+_UNSATISFIED_DOCUMENT_STATUSES = frozenset({"rejected", "replacement_required"})
 
 
 def get_document_display_status(document: DriverDocument) -> str:
@@ -69,7 +72,7 @@ def get_document_display_status(document: DriverDocument) -> str:
         if document.expires_at < today:
             return "expired"
         days_remaining = (document.expires_at - today).days
-        if days_remaining <= EXPIRATION_ALERT_DAYS:
+        if days_remaining <= EXPIRATION_ALERT_DAYS and document.status == "approved":
             return "expiring_soon"
     if document.status == "pending_review":
         return "pending_review"
@@ -139,19 +142,20 @@ class DocumentService:
     expiration warning calculations, and expired/missing document alerts.
     """
 
-    def validate_upload(self, file) -> ValidationResult:
+    def validate_upload(self, file, document_type: Optional[str] = None) -> ValidationResult:
         """
         Validate a file upload for format and size.
 
         Accepts JPEG, PNG, or PDF files with a maximum size of 10 MB.
-
-        Args:
-            file: An uploaded file object (Django UploadedFile or similar
-                  with .name, .size, and .content_type attributes).
-
-        Returns:
-            ValidationResult indicating whether the file is valid.
+        National ID front/back photos must be JPEG/PNG and pass image
+        quality checks (blur, lighting, glare, framing). Quality failure
+        never auto-approves; it only blocks a poor upload.
         """
+        from taxi.drivers.services.document_image_quality import (
+            analyze_national_id_image,
+            requires_national_id_image_quality,
+        )
+
         if file is None:
             return ValidationResult(
                 valid=False,
@@ -178,6 +182,24 @@ class DocumentService:
         # Check file extension
         file_name = getattr(file, "name", "") or ""
         _, ext = os.path.splitext(file_name.lower())
+        id_image_required = requires_national_id_image_quality(document_type or "")
+
+        if id_image_required:
+            if ext not in {".jpg", ".jpeg", ".png"}:
+                return ValidationResult(
+                    valid=False,
+                    error="National ID photos must be JPEG or PNG images (not PDF).",
+                )
+            content_type = getattr(file, "content_type", None)
+            if content_type and content_type not in {"image/jpeg", "image/png"}:
+                return ValidationResult(
+                    valid=False,
+                    error="National ID photos must be JPEG or PNG images (not PDF).",
+                )
+            quality = analyze_national_id_image(file)
+            if not quality.passed:
+                return ValidationResult(valid=False, error=quality.error)
+            return ValidationResult(valid=True)
 
         if ext not in ALLOWED_EXTENSIONS:
             return ValidationResult(
@@ -237,8 +259,8 @@ class DocumentService:
                 f"Valid types: {', '.join(valid_types)}"
             )
 
-        # Validate the file
-        validation = self.validate_upload(file)
+        # Validate the file (includes National ID image quality when applicable)
+        validation = self.validate_upload(file, document_type=document_type)
         if not validation.valid:
             raise ValueError(validation.error)
 
@@ -260,7 +282,10 @@ class DocumentService:
             previous_reason = (
                 existing.rejection_reason if isinstance(existing.rejection_reason, str) else ""
             )
-            if previous_status == "rejected" or previous_reason.strip():
+            if (
+                previous_status in _UNSATISFIED_DOCUMENT_STATUSES
+                or previous_reason.strip()
+            ):
                 _audit_document_resubmission(existing, previous_status, previous_reason)
             # Replace the file and return the document to review.
             # The previous rejection stays in the audit log.
@@ -272,6 +297,7 @@ class DocumentService:
             existing.reviewed_at = None
             existing.reviewed_by = None
             existing.save()
+            self._sync_legacy_document_fields(existing, "pending")
             return existing
 
         # Create new document
@@ -283,12 +309,51 @@ class DocumentService:
             issued_at=issued_at,
             expires_at=expires_at,
         )
+        self._sync_legacy_document_fields(document, "pending")
 
         return document
+
+
+    # Maps DriverDocument types to the legacy per-type DriverProfile columns that
+    # the vehicle directory / document-compliance report still reads. Without this
+    # mirror, documents uploaded and approved through DriverDocument stay invisible
+    # to compliance: the profile columns are what _document_state() derives state from.
+    _LEGACY_DOC_FIELDS = {
+        "license": ("license_file", "license_expires_at", "license_status", "license_rejection_note"),
+        "carte_grise": ("vehicle_registration", "vehicle_registration_expires_at", "registration_status", "registration_rejection_note"),
+        "vehicle_registration": ("vehicle_registration", "vehicle_registration_expires_at", "registration_status", "registration_rejection_note"),
+        "insurance": ("insurance_document", "insurance_expires_at", "insurance_status", "insurance_rejection_note"),
+        "vignette": ("vignette_document", "vignette_expires_at", "vignette_status", "vignette_rejection_note"),
+        "profile_photo": ("driver_photo", None, "photo_status", "photo_rejection_note"),
+    }
+
+    def _sync_legacy_document_fields(self, document: DriverDocument, status: str, note: str = "") -> None:
+        """Mirror a DriverDocument decision onto the legacy DriverProfile columns."""
+        fields = self._LEGACY_DOC_FIELDS.get(document.document_type)
+        if not fields:
+            return
+        file_field, expiry_field, status_field, note_field = fields
+        profile = document.driver
+        update = []
+        if document.file:
+            setattr(profile, file_field, document.file.name)
+            update.append(file_field)
+        if expiry_field and document.expires_at:
+            setattr(profile, expiry_field, document.expires_at)
+            update.append(expiry_field)
+        setattr(profile, status_field, status)
+        update.append(status_field)
+        if note_field:
+            setattr(profile, note_field, note or "")
+            update.append(note_field)
+        profile.save(update_fields=update)
 
     def approve_document(self, document: DriverDocument, reviewer) -> DriverDocument:
         """
         Approve a document and trigger a notification to the driver.
+
+        Does NOT change the courier/driver account status. Account approval remains
+        a separate administrative control.
 
         Args:
             document: The DriverDocument instance to approve.
@@ -297,11 +362,17 @@ class DocumentService:
         Returns:
             The updated DriverDocument instance.
         """
+        if not document.file:
+            raise ValueError("Cannot approve a document with no uploaded file.")
+        if document.expires_at and document.expires_at < date.today():
+            raise ValueError("Cannot approve an expired document. Request a replacement first.")
+
         document.status = "approved"
         document.reviewed_at = timezone.now()
         document.reviewed_by = reviewer
         document.rejection_reason = ""
-        document.save()
+        document.save(update_fields=["status", "reviewed_at", "reviewed_by", "rejection_reason"])
+        self._sync_legacy_document_fields(document, "approved")
 
         # Trigger notification to driver
         self._notify_document_status(document)
@@ -313,6 +384,8 @@ class DocumentService:
     ) -> DriverDocument:
         """
         Reject a document with a reason and trigger a notification to the driver.
+
+        Does NOT change the courier/driver account status.
 
         Args:
             document: The DriverDocument instance to reject.
@@ -326,11 +399,29 @@ class DocumentService:
         document.reviewed_at = timezone.now()
         document.reviewed_by = reviewer
         document.rejection_reason = reason
-        document.save()
+        document.save(update_fields=["status", "reviewed_at", "reviewed_by", "rejection_reason"])
+        self._sync_legacy_document_fields(document, "rejected", reason)
 
         # Trigger notification to driver
         self._notify_document_status(document)
 
+        return document
+
+    def request_document_replacement(
+        self, document: DriverDocument, reviewer, reason: str
+    ) -> DriverDocument:
+        """Mark a document as needing a replacement file without changing account status."""
+        reason = (reason or "").strip()
+        if not reason:
+            raise ValueError("A reason is required when requesting a document replacement.")
+
+        document.status = "replacement_required"
+        document.reviewed_at = timezone.now()
+        document.reviewed_by = reviewer
+        document.rejection_reason = reason
+        document.save(update_fields=["status", "reviewed_at", "reviewed_by", "rejection_reason"])
+        self._sync_legacy_document_fields(document, "rejected", f"Replacement required: {reason}")
+        self._notify_document_status(document)
         return document
 
     def get_expiring_documents(
@@ -462,8 +553,8 @@ class DocumentService:
                         reason="missing",
                     )
                 )
-            elif document.status == "rejected":
-                # Document was rejected - treated as missing
+            elif document.status in _UNSATISFIED_DOCUMENT_STATUSES:
+                # Rejected / replacement-required documents are treated as missing.
                 alerts.append(
                     DocumentAlert(
                         document_type=doc_type,
@@ -531,7 +622,7 @@ class DocumentService:
 
         for doc_type in REQUIRED_DOCUMENT_TYPES:
             document = self._latest_required_document(driver, doc_type)
-            if document is None or document.status == "rejected":
+            if document is None or document.status in _UNSATISFIED_DOCUMENT_STATUSES:
                 continue
             if document.expires_at is None:
                 continue

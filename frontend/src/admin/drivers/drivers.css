@@ -343,6 +343,28 @@
   color: var(--admin-accent-text);
 }
 
+/* Uploaded DriverDocument cards inside the details drawer. */
+.drivers-detail__doc-list {
+  display: grid;
+  gap: 10px;
+}
+
+.drivers-detail__doc-card {
+  border: 1px solid var(--admin-border, #e2e8f0);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: var(--admin-surface-alt, #f8fafc);
+}
+
+.drivers-detail__doc-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
 .drivers-detail__actions {
   display: flex;
   flex-wrap: wrap;
